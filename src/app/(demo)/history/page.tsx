@@ -174,7 +174,7 @@ export default function OperationsPage() {
           </SelectContent>
         </Select>
         </div>
-                    <div className="text-slate-600 text-xs flex flex-row ">Page {currentPage}</div> 
+          <div className="text-slate-600 text-xs flex flex-row ">Page {currentPage}</div> 
 
            <Table className=" my-8 border border-slate-200 rounded-lg shadow-md">
               <TableHeader >
