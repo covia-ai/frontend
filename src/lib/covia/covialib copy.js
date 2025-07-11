@@ -1,9 +1,12 @@
 
+const cache = new Map();
+
 class CoviaError extends Error {
   constructor(message, code = null) {
     super(message);
     this.name = 'CoviaError';
     this.code = code;
+    this.message = message;
   }
 }
 
@@ -51,218 +54,170 @@ class Venue {
   /**
    * Create a new asset
    * @param {Object} assetData - Asset configuration
-   * @returns {Promise<Asset>}
+   * @returns {Promise<String>}
    */
   async createAsset(assetData) {
-    if (!this.connected) {
-      throw new CoviaError('Not connected to venue. Connect first');
-    }
-    
-    try {
+     try {
       
-      const response = await this._makeRequest('POST', '/assets/create', assetData);
-      const asset = new Asset(
-        response.id,
-        response.name,
-        response.type,
-        this,
-        response.data
-      );
-      
-      this.assets.set(asset.id, asset);
-      return asset;
-    } catch (error) {
-      throw new CoviaError(`Failed to create asset: ${error.message}`);
-    }
+        const response = await fetch('http://localhost:8080/api/v1/assets/',{
+           method: 'POST',
+           headers: {
+             'Content-Type': 'application/json',
+           },
+
+            body: JSON.stringify(assetData),
+        })
+     
+        if (!response.ok) {
+              throw new CoviaError(`Failed to create asset! status: ${response.status}`);
+        }
+         const data =  await response.json(); // Await the parsing of the JSON response
+        
+        return data;
+      }
+      catch(e) {
+       if(e instanceof CoviaError)
+          throw e;
+       else 
+           throw new CoviaError(`Failed to create asset: ${error.message}`);
+        
+      }
   }
 
   /**
    * Get asset by ID
    * @param {string} assetId - Asset identifier
-   * @returns {Asset|null}
+   * @returns {Promise<Asset>}
    */
-  getAsset(assetId) {
-    return this.assets.get(assetId) || null;
+  async getAsset(assetId) {
+ 
+     try {
+        if (cache.has(assetId)) {
+          // Check if result is already in cache
+          return cache.get(assetId);
+        } else {
+          const response = await fetch('http://localhost:8080/api/v1/assets/'+assetId)
+      
+          if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const data =  await response.json(); // Await the parsing of the JSON response
+          const asset = new Asset(
+              assetId,
+              this,
+              data
+            );
+          cache.set(assetId, asset);
+          return asset;
+        }
+      }
+      catch(error) {
+       throw new CoviaError(`Failed to get asset: ${error.message}`);
+        
+      }
+
+  }
+  /**
+   * Get asset by ID
+   * @param {string} assetId - Asset identifier
+   * @returns {Promise<Operation>}
+   */
+  async getOperation(assetId) {
+     try {
+        if (cache.has(assetId)) {
+          // Check if result is already in cache
+          return cache.get(assetId);
+        } else {
+          const response = await fetch('http://localhost:8080/api/v1/assets/'+assetId)
+          if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const data =  await response.json(); // Await the parsing of the JSON response
+          const operation = new Operation(
+              assetId,
+              this,
+              data
+            );
+            return operation;
+        }
+      }
+      catch(error) {
+       throw new CoviaError(`Failed to get operation: ${error.message}`);
+        
+      }
+
   }
 
   /**
    * Get all assets
    * @param {Object} filters - Optional filters
-   * @returns {Asset[]}
+   * @returns {Promise<[]>}
    */
-  getAssets() {
-     fetch('http://localhost:8080/api/v1/assets/')
-      .then(response => {
+  async getAssets() {
+     try {
+      
+        const response = await fetch('http://localhost:8080/api/v1/assets/')
+     
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+              throw new Error(`HTTP error! status: ${response.status}`);
         }
+         const data =  response.json(); // Await the parsing of the JSON response
+         return data;
+      }
+      catch(error) {
+       throw new CoviaError(`Failed to get asset: ${error.message}`);
        
-        return response.json(); // or response.text() for text files
-      })
-      .then(data => {
-        return data;
+      }
        
-      })
-      .catch(error => {
-        console.error('Error fetching assets:', error);
-      });
    
-    
-    return assets;
   }
 
-  /**
-   * Create a new operation
-   * @param {Object} operationData - Operation configuration
-   * @returns {Promise<Operation>}
-   */
-  getOperation(operationId) {
-    return this.operations.get(operationId) || null;
-  }
-
-  /**
-   * Get all operations
-   * @param {Object} filters - Optional filters
-   * @returns {Operation[]}
-   */
-  getOperations(filters = {}) {
-    let operations = Array.from(this.operations.values());
-    
-    if (filters.type) {
-      operations = operations.filter(op => op.type === filters.type);
-    }
-    
-    if (filters.id) {
-      operations = operations.filter(op => op.id === filters.id);
-    }
-    
-    return operations;
-  }
-
-  /**
-   * Get history of execution
-   * @returns {Run[]}
-   */
-  async getExecutionHistory(filter = {}  ) {
-    const response = await this._makeRequest('GET', '/run/', filter);
-    const run = new Run(
-      response.id,
-      response.name,
-      response.type,
-      this,
-      response.data
-    );
-          
-  }
-
-  // Private methods
-  async _makeRequest(method, endpoint, data = null) {
-    const url = `${this.baseUrl}${endpoint}`;
-    const options = {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      timeout: this.timeout
-    };
-
-    if (data && (method === 'POST' || method === 'PUT')) {
-      options.body = JSON.stringify(data);
-    }
-
-    // Simulate API call for demo purposes
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        // Mock successful responses
-        if (endpoint === '/venues/connect') {
-          resolve({ name: `Venue ${data.venueId}`, metadata: {} });
-        } else if (endpoint === '/assets') {
-          resolve({ 
-            id: `asset_${Date.now()}`, 
-            name: data.name, 
-            type: data.type, 
-            data: data.data || {} 
-          });
-        } else if (endpoint === '/operations') {
-          resolve({ 
-            id: `op_${Date.now()}`, 
-            name: data.name, 
-            type: data.type, 
-            config: data.config || {} 
-          });
-        } else {
-          resolve({ success: true });
-        }
-      }, 100);
-    });
-  }
-
-  async _loadAssets() {
-     fetch('http://localhost:8080/api/v1/assets/458bf52b1b58c571bc9c6ed5239df938e549c1b1c2104e3757a64fc6942e6ab5')
-      .then(response => {
+  async getJob(jobId) {
+     try {
+      
+        const response = await fetch('http://localhost:8080/api/v1/jobs/'+jobId)
+     
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+              throw new Error(`HTTP error! status: ${response.status}`);
         }
-        return response.json(); // or response.text() for text files
-      })
-      .then(data => {
-        console.log(data)
-        this.assets = data;
-      })
-      .catch(error => {
-        console.error('Error fetching assets:', error);
-      });
-
-
-
+         const data =  response.json(); // Await the parsing of the JSON response
+         return data;
+      }
+      catch(error) {
+       throw new CoviaError(`Failed to get asset: ${error.message}`);
+       
+      }
   }
+ 
 
-  
-  async _loadOperations() {
-     const  op1 = new Asset();
-        op1.id = "rand101";
-        op1.name = "Random";
-        op1.description = "Produces a random hex String of the specified length.";
-        op1.type = "Mathematical";
-        op1.venue = this;
-        op1.data = "Prompt to scrap a website and give you summary";
-
-        this.operations = [op1];
+  async getJobs() {
+     try {
+      
+        const response = await fetch('http://localhost:8080/api/v1/jobs')
+     
+        if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+        }
+         const data =  response.json(); // Await the parsing of the JSON response
+         return data;
+      }
+      catch(error) {
+       throw new CoviaError(`Failed to get asset: ${error.message}`);
+       
+      }
   }
-
+ 
 }
-
+const RunStatus = {
+  COMPLETED: "COMPLETED",
+  FAILED: "FAILED",
+  INPROGRESS: "INPROGRESS"
+};
 class Asset {
-  constructor(id, name, version,description, type, venue, data = {}, creator,license,) {
+  constructor(id, venue, metadata= {}) {
     this.id = id;
-    this.name = name;
-    this.version = version;
-    this.description = description;
-    this.type = type;
-    this.creator = creator;
     this.venue = venue;
-    this.license = license;
-    this.data = data;
-    this.createdAt = new Date();
-    this.updatedAt = new Date();
-  }
-
-  /**
-   * Update asset data
-   * @param {Object} updates - Properties to update
-   * @returns {Promise<Asset>}
-   */
-  async update(newName, newDescription, newLicense) {
-     const cloneData = {
-      name: newName,
-      description: newDescription,
-      license: newLicense,
-      type: this.type,
-      version: this.version+1,
-      creator:this.creator,
-      data: { ...this.data }
-    };
-    return await this.venue.createAsset(cloneData);
+    this.metadata = metadata
   }
 
 
@@ -271,16 +226,7 @@ class Asset {
    * @returns {Object}
    */
   getMetadata() {
-    return {
-      id: this.id,
-      name: this.name,
-      type: this.type,
-      creator: this.creator,
-      venue:this.venue,
-      license:this.license,
-      createdAt: this.createdAt,
-      updatedAt: this.updatedAt
-    };
+    return this.metadata;
   }
 
   /**
@@ -300,73 +246,57 @@ class Asset {
     };
     return await this.venue.createAsset(cloneData);
   }
-}
 
-class Operation {
-  constructor(id, name, type, venue, inputs, results) {
-    this.id = id;
-    this.name = name;
-    this.type = type;
-    this.venue = venue;
-    this.inputs = inputs;
-    this.results = results;
-  
-  }
-
-  /**
+   /**
    * Execute the operation
    * @param {Object} params - Operation parameters
    * @returns {Promise<any>}
    */
-  async execute(inputs = {}, userId) {
-    try {
-      
-      const response = await this.venue._makeRequest('POST', `/operations/${this.id}/execute`, {
-        inputs,
-        userId
-      });
-       const executionRun = new Run(
-        response.id,
-        this,
-        this.venue,
-        response.status,
-        response.progress,
-        response.inputs,
-        response.results,
-        userId
-      );     
-      return executionRun;
-    } catch (error) {
-      this.status = RunStatus.FAILED;
-      this.error = error.message;
-      throw new CoviaError(`Operation execution failed: ${error.message}`);
-    }
-  }
  
-}
-const RunStatus = {
-  PENDING: "pending",
-  IN_PROGRESS: "in_progress",
-  COMPLETED: "completed",
-  FAILED: "failed",
-};
-class Run {
-  constructor(id, operation, venue, progress, inputs, results, userId) {
-    this.id = id;
-    this.status = RunStatus.PENDING;
-    this.progress = progress;
-    this.operation = operation;
-    this.venue = venue;
-    this.inputs = inputs;
-    this.results = results;
-    this.userId = userId;
-    this.executionDate = new Date();
-  
+ async invoke(payload) {
+      
+     try {
+      
+        const response = await fetch('http://localhost:8080/api/v1/invoke/',{
+           method: 'POST',
+           headers: {
+             'Content-Type': 'application/json',
+           },
+
+            body: JSON.stringify(payload),
+        })
+        if (!response.ok) {
+           const errorText = await response.text();
+           const status = response.status;
+           throw new CoviaError(`Operation execution failed: ${errorText}`, status);
+        }
+        else {
+          return  await response.json();
+         }
+
+    } catch (error) {
+      if(error instanceof CoviaError)
+          throw error;
+      else {
+        this.status = RunStatus.FAILED;
+        this.error = error.message;
+        throw new CoviaError(`Operation execution failed: ${error.message}`);
+      }
+    }
   }
 }
 
+class Operation extends Asset {
+  constructor(id, venue, metadata) {
+    super(id,venue,metadata);
+  
+  }
+
+  
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { Venue, Asset, Operation, CoviaError };
+  module.exports = { Venue, Asset, Operation, CoviaError, RunStatus };
 } else {
-  window.VenueClient = { Venue, Asset, Operation, CoviaError };
+  window.VenueClient = { Venue, Asset, Operation, CoviaError, RunStatus };
 }

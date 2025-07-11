@@ -5,7 +5,7 @@ import { Button } from "./ui/button";
 import { Label } from "@/components/ui/label"
 
 import { useEffect, useState } from "react";
-import {  Venue,Operation, CoviaError, Asset } from "@/lib/covia/covialib";
+import {  Operation } from "@/lib/covia/covialib";
 import { redirect } from "next/navigation";
 
 
@@ -18,41 +18,38 @@ import {
   BreadcrumbSeparator
 } from "@/components/ui/breadcrumb"
 
-import {
-  RadioGroup,
-  RadioGroupItem,
-} from "@/components/ui/radio-group"
+
 
 import Link from "next/link";
-import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogClose } from "./ui/dialog";
 import { Textarea } from "./ui/textarea";
+import { useStore } from "zustand";
+import { useVenue } from "@/hooks/use-venue";
+import { DiagramViewer } from "./DiagramViewer";
+import { parseJsonForReactFlow } from "@/lib/utils";
 export const FormGenerator = (props:any) => {
-        const [venue, setVenue] = useState<Venue>();
         const [assetsMetadata, setAssetsMetadata] = useState<Operation>();
-        const [assetIds, setAssetIds] = useState([]);
         const [errorMessage, setErrorMessage] = useState("");
+        const [loading, setLoading] = useState(false);
         const valueMap = new Map();
 
+        const venue = useStore(useVenue, (x) => x).venue;
+        if (!venue) return null;
+        
         useEffect(() => {
-          const venue = new Venue();
-          venue.connect().then((venueObj) => {
-              setVenue(venue);
-              venueObj.getOperation(props.assetId).then(( asset:Operation) => {
+              venue.getAsset(props.assetId).then(( asset:Operation) => {
+                console.log(asset)
                   setAssetsMetadata(asset);
-            })
-          })
-          venue.connect().then((venueObj) => {
-              venueObj.getAssets().then(( assetObj) => {
-                  setAssetIds(assetObj);
-            })
-          })
-      }, []);
             
+          })
+         
+      }, []);
+       
+
       function setKeyValue(key,value) {
           valueMap.set(key,value);
       }
       async function invokeOp(id, requiredKeys:string[]= []) {
-        console.log(valueMap)
+        setLoading(true)
         let operationStatus= true;
         for(let index=0;index<requiredKeys.length;index++) {
            if(!valueMap.has(requiredKeys[index]))
@@ -77,61 +74,69 @@ export const FormGenerator = (props:any) => {
           catch(e : Error) {
             console.log(e)
             setErrorMessage(e.message);
+             setLoading(false);
           }
         if(response?.id) {
             redirect("/runs/"+response?.id);
           } 
         } else {
           setErrorMessage("Please provide all the inputs")
+          setLoading(false);
         }
       }
       function renderJSONMap(jsonObject:JSON, requiredKeys: string[]) {
-        let keys = Object.keys(jsonObject);
-        let type = new Array<string>();
-        let description = new Array<string>();
+        if(jsonObject != null && jsonObject != undefined) {
+          let keys = Object.keys(jsonObject);
+          let type = new Array<string>();
+          let description = new Array<string>();
 
-        keys.map((key, index) => {
-            let jsonValue = jsonObject[key];
-            type[index] = jsonValue.type;
-            description[index] = jsonValue.description;
-        });
+          keys.map((key, index) => {
+              let jsonValue = jsonObject[key];
+              type[index] = jsonValue.type;
+              description[index] = jsonValue.description;
+          });
         
-        return (
-                  <div className="flex flex-col w-full space-x-2 my-2">
-                     <div className="flex flex-col w-full space-x-2 my-2 items-center justify-center">
-                         {keys.map((key, index) => (
-                            <div className="flex flex-row space-x-2 w-full">
-                              
-                              <Label>{key.toUpperCase()} </Label>
-                              {requiredKeys != undefined && requiredKeys?.indexOf(key) != -1 && <span className="text-red-400">*</span>}
-                              {type[index]=="string" && (
-                                <>
+          return (
+                    <div className="flex flex-col w-full space-x-2 my-2">
+                      <div className="flex flex-col w-full space-x-2 my-2 items-center justify-center">
+                          {keys.map((key, index) => (
+                              <div key={index} className="flex flex-row space-x-2 w-full">
                                 
-                                <Input  className="my-2"
-                                  required={true}
+                                <Label>{key.toUpperCase()} </Label>
+                                {requiredKeys != undefined && requiredKeys?.indexOf(key) != -1 && <span className="text-red-400">*</span>}
+                                {type[index]=="string" && (
+                                  <>
+                                  
+                                  <Input  className="my-2"
+                                    required={true}
+                                    onChange={e => setKeyValue(key,e.target.value)}
+                                    type="text" placeholder={description[index]}></Input>
+                                  
+                                  </>
+                                )
+                                }
+                                {type[index]=="asset" &&
+                                <Input className="my-2" type="text"
                                   onChange={e => setKeyValue(key,e.target.value)}
-                                  type="text" placeholder={description[index]}></Input>
-                                 
-                                </>
-                              )
-                              }
-                              {type[index]=="asset" &&
-                               <Input className="my-2" type="text"
+                                  placeholder={description[index]}></Input>
+                                }
+                                {type[index]=="json" && 
+                                <Textarea className="my-2" rows={5} cols={200} 
                                 onChange={e => setKeyValue(key,e.target.value)}
-                                placeholder={description[index]}></Input>
-                               }
-                              {type[index]=="json" && 
-                              <Textarea className="my-2" rows={5} cols={200} 
-                               onChange={e => setKeyValue(key,e.target.value)}
-                               placeholder={description[index]}></Textarea>
-                              }
-                            </div>
-                         ))}
-                         <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
-                        <Button type="button" className="w-32" onClick={() => invokeOp(assetsMetadata?.id, requiredKeys)}>Run</Button>
-                     </div>
-                  </div>
-                )
+                                placeholder={description[index]}></Textarea>
+                                }
+                              </div>
+                          ))}
+                          <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
+                         {!loading && <Button type="button" className="w-32" onClick={() => invokeOp(assetsMetadata?.id, requiredKeys)}>Run</Button>}
+                         {loading && <Button type="button" className="w-32" disabled>Please wait ...</Button>}
+                      </div>
+                    </div>
+                  )
+        }
+        else {
+          return <></>
+        }
       }
       
         return (
@@ -151,12 +156,12 @@ export const FormGenerator = (props:any) => {
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbPage>{assetsMetadata?.metadata.name}</BreadcrumbPage>
+                <BreadcrumbPage>{assetsMetadata?.metadata?.name}</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
              
-              {assetsMetadata && (
+              {assetsMetadata?.metadata && assetsMetadata?.metadata?.operation?.diagram == undefined && (
                 
                 <div className="flex flex-col w-full items-center justify-center">
                    <h2 className="text-lg text-semibold my-2">{assetsMetadata?.metadata?.name}</h2>
@@ -165,6 +170,22 @@ export const FormGenerator = (props:any) => {
                 </div>
               )  
               }
+              {assetsMetadata?.metadata && assetsMetadata?.metadata?.operation?.diagram && (
+                <div className="flex flex-col w-full items-center justify-between">
+                 
+                   <h2 className="text-lg text-semibold my-2">{assetsMetadata?.metadata?.name}</h2>
+                   <p className="text-sm  mb-4 text-slate-600 ">{assetsMetadata?.metadata?.description}</p>
+                    <div className="flex flex-row w-full ">
+                      <div className="w-full border border-slate-200 rounded-md shadow-lg mr-2 p-4 my-4">
+                       {renderJSONMap(assetsMetadata?.metadata?.operation?.input?.properties, assetsMetadata?.metadata?.operation?.input?.required)}
+                     </div>
+                     <div className="w-full border border-slate-200 rounded-md shadow-lg  p-4">
+                      <DiagramViewer diagramData={parseJsonForReactFlow(assetsMetadata?.metadata?.operation?.diagram)}></DiagramViewer></div>
+                     </div>
+                </div>
+              )
+              }
+              
             
              
              

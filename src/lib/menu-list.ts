@@ -65,6 +65,11 @@ export function   getMenuList(): Group[] {
             label: "Venues",
             icon: LocationEdit,
           },
+           {
+            href: "/history",
+            label: "History",
+            icon: User
+          },
           {
             href: "/learning",
             label: "Learning corner",

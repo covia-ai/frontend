@@ -31,7 +31,7 @@ export default async function Page({
               </BreadcrumbItem>
               <BreadcrumbSeparator />
                  <BreadcrumbLink asChild>
-                  <Link href="/userhistory">Runs</Link>
+                  <Link href="/history">Runs</Link>
                 </BreadcrumbLink>
               <BreadcrumbSeparator />
               <BreadcrumbItem>

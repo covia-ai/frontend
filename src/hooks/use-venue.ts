@@ -9,13 +9,13 @@ type VenueStore = {
 export const useVenue = create(
   persist<VenueStore>(
     (set, get) => ({
-        venue: new Venue(),
+        venue: new Venue().connect(),
         setVenue: (venue: Venue) => {
             set({ venue });
         },
         getVenue: () => {
-        const state = get();
-        return state.venue;
+           const state = get();
+           return state.venue;
       },
     }),
     {

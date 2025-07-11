@@ -89,15 +89,15 @@ class Venue {
    * @returns {Promise<Asset>}
    */
   async getAsset(assetId) {
-
+ 
      try {
         if (cache.has(assetId)) {
-           return new Asset(assetId, this,cache.get(assetId));
+          return new Asset(assetId, this, cache.get(assetId));
         } else {
           const response = await fetch('http://localhost:8080/api/v1/assets/'+assetId)
       
           if (!response.ok) {
-                throw new CoviaError(`Failed to get asset with id: `+assetId+`! status: ${response.status}`);
+                throw new Error(`HTTP error! status: ${response.status}`);
           }
           const data =  await response.json(); // Await the parsing of the JSON response
           cache.set(assetId, data);
@@ -105,12 +105,10 @@ class Venue {
         }
       }
       catch(error) {
-        if(e instanceof CoviaError)
-          throw e;
-       else 
-           throw new CoviaError(`Failed to get asset with id: `+assetId+`!  ${error.message}`);
+       throw new CoviaError(`Failed to get asset: ${error.message}`);
         
       }
+
   }
  
 
@@ -124,21 +122,17 @@ class Venue {
      try {
        
         let response = await fetch('http://localhost:8080/api/v1/assets/');
-         
-        if (!response.ok) {
-              throw new CoviaError(`Failed to fetch assets! status: ${response.status}`);
-        }
+
         let assetIds = await response.json();
         assetIds.forEach(assetId => {
-                  assets.push(new Asset(assetId, this))
+                  assets.push(new Asset(assetId, this, this.getAsset(assetId)))
         });
         return assets;
+             
+       
       }
       catch(error) {
-        if(e instanceof CoviaError)
-          throw e;
-        else 
-         throw new CoviaError(`Failed to fetch assets: ${error.message}`);
+         throw new CoviaError(`Failed to get asset: ${error.message}`);
       }
   }
 
@@ -150,21 +144,19 @@ class Venue {
    * @returns {Promise<[]>}
    */
   async getJobs() {
+     const jobs= new Array();
      try {
       
         const response = await fetch('http://localhost:8080/api/v1/jobs')
      
         if (!response.ok) {
-              throw new CoviaError(`Failed to get jobs details! status: ${response.status}`);
+              throw new Error(`HTTP error! status: ${response.status}`);
         }
         return await response.json();
         
       }
       catch(error) {
-       if(e instanceof CoviaError)
-          throw e;
-       else 
-          throw new CoviaError(`Failed to get jobs details: ${error.message}`);
+       throw new CoviaError(`Failed to get asset: ${error.message}`);
        
       }
   }
@@ -179,16 +171,13 @@ class Venue {
         const response = await fetch('http://localhost:8080/api/v1/jobs/'+jobId)
      
         if (!response.ok) {
-              throw new CoviaError(`Failed to get job detail! status: ${response.status}`);
+              throw new Error(`HTTP error! status: ${response.status}`);
         }
         return response.json();
        
       }
       catch(error) {
-         if(e instanceof CoviaError)
-          throw e;
-       else 
-          throw new CoviaError(`Failed to get job detail: ${error.message}`);
+       throw new CoviaError(`Failed to get asset: ${error.message}`);
        
       }
   }
@@ -196,7 +185,7 @@ class Venue {
 const RunStatus = {
   COMPLETE: "COMPLETE",
   FAILED: "FAILED",
-  PENDING: "PENDING"
+  INPROGRESS: "INPROGRESS"
 };
 class Asset {
   constructor(id, venue, metadata= {}) {
@@ -212,24 +201,20 @@ class Asset {
   async getMetadata() {
    try {
         if (cache.has(this.id)) {
+          // Check if result is already in cache
           return cache.get(this.id);
         } else {
           const response = await fetch('http://localhost:8080/api/v1/assets/'+this.id)
       
           if (!response.ok) {
-                throw new CoviaError(`Failed to get asset metadata! status: ${response.status}`);
+                throw new Error(`HTTP error! status: ${response.status}`);
           }
-          const data =  await response.json(); // Await the parsing of the JSON response
-          cache.set(this.id, data);
-          return data;
+          return await response.json(); // Await the parsing of the JSON response
           
         }
       }
       catch(error) {
-         if(e instanceof CoviaError)
-          throw e;
-        else 
-          throw new CoviaError(`Failed to get asset metadata: ${error.message}`);
+       throw new CoviaError(`Failed to get asset: ${error.message}`);
         
       }
   }
