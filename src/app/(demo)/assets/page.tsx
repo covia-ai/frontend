@@ -41,15 +41,6 @@ import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { TbCircleDashedNumber1,  TbCircleDashedNumber2} from "react-icons/tb";
 
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 
 import {
   Tooltip,
@@ -57,8 +48,7 @@ import {
   TooltipContent,
   
 } from "@/components/ui/tooltip";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+
 import { Badge } from "@/components/ui/badge";
 
 import {
@@ -70,52 +60,48 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
+import { CreateAssetComponent } from "@/components/CreateAssetComponent";
 
 export default function AssetPage() {
   const searchParams = useSearchParams()
   const search = searchParams.get('search');
-  const [jsonData, setJsonData] = useState({});
-  const [step, setStep] = useState(1);
-  const [assetType, setAssetType] = useState("file");
-  const [assetJSONData, setAssetJSONData] = useState({});
-  const [assetStringData, setAssetStringDate] = useState({});
-  const [baseData, setBaseData] = useState({ "name":"",
-        "creator":"",
-        "description":"",
-        "license": {
-            "name": "",
-            "url": ""
-          },
-        "inLanguage":"en-GB",
-        "keywords":[],
-        "additionalInformation":{
-          "notes":[""]
-        }
-  });
+
   const [assetCreated, setAssetCreated] = useState(false);
   const [assetsMetadata, setAssetsMetadata] = useState<Asset[]>([]);
   const [newJsonData, setNewJsonData] = useState({});
 
-  const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 6
+  let offset = 0;
+  let limit=itemsPerPage;
   const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
- 
- const handlePageChange = (page: number) => {
-    if(page >= 1)
+  const [totalPages, setTotalPages] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1)
+  
+ const nextPage = (page: number) => {
          setCurrentPage(page)
+         offset = limit;
+         fetchAssets(offset,limit)
+    
+  }
+  const prevPage = (page: number) => {
+         setCurrentPage(page)
+         offset = limit - itemsPerPage;
+         fetchAssets(offset,limit)
+    
   }
   const venue = useStore(useVenue, (x) => x).venue;
   if (!venue) return null;
 
-    function fetchAssets() {
+    function fetchAssets(offset,limit) {
        setAssetsMetadata([]);
-        venue.getAssets().then((assets) => {
-           
+       console.log(offset+" : "+limit)
+        venue.getAssets(offset,limit).then((assets) => {
               assets.forEach((asset : Asset) => {
                asset.getMetadata().then((metadata: Object) => {
-                     if(metadata.name != undefined && metadata.operation == undefined)
+                     if(metadata.name != undefined && metadata.operation == undefined) {
+
                       setAssetsMetadata(prevArray => [...prevArray, new Asset(asset.id, asset.venue, metadata)]);
+                     }
                })
                  
                               
@@ -125,108 +111,28 @@ export default function AssetPage() {
              
     }
     useEffect(() => {
-            setAssetsMetadata([]);
-            venue.getAssets().then((assets) => {
-           
-              assets.forEach((asset : Asset) => {
-               asset.getMetadata().then((metadata: Object) => {
-                     if(metadata.name != undefined && metadata.operation == undefined)
-                      setAssetsMetadata(prevArray => [...prevArray, new Asset(asset.id, asset.venue, metadata)]);
-               })
-                 
-                              
-               })
-                
-          })  
+            fetchAssets(offset, limit)
       }, []);
-
-  useEffect(() => {
-    setTotalItems(assetsMetadata.length)
-    setTotalPages(Math.ceil(assetsMetadata.length / itemsPerPage))
-  },[assetsMetadata])
-        
+   
   function copyAsset(jsonData:JSON) {
     try {
-      console.log(jsonData)
       venue?.createAsset(jsonData).then( (asset:Asset) => {
-             console.log(asset)
              if(asset != undefined && asset != null) {
                      setNewJsonData({})
                      setAssetCreated(true);
-                     fetchAssets();
-                     setStep(0)
+                     fetchAssets(offset,limit);
               }  
       })
     }
     catch(error) {
       setAssetCreated(false);
       console.log(error)
-        setStep(0)
     }
   }   
-        
-  function createNewAsset() {
-    try {
-      console.log(jsonData)
-      venue?.createAsset(jsonData).then( (asset: Asset) => {
-            console.log(asset)
-             if(asset != undefined && asset != null) {
-                     setNewJsonData({})
-                    setAssetCreated(true);
-                     fetchAssets();
-                       setStep(0)
-              }
-              else {
-                setAssetCreated(false);
-                  setStep(0)
-              }
-              
-      })
-    }
-    catch(error) {
-      console.log("Hello "+error)
-    }
-  } 
-  function str2ab(str) {
-  var buf = new ArrayBuffer(str.length*2); // 2 bytes for each char
-  var bufView = new Uint16Array(buf);
-  for (var i=0, strLen=str.length; i<strLen; i++) {
-    bufView[i] = str.charCodeAt(i);
-  }
-  return buf;
-}
-  async function createHashOfContent(fileContent) {
-    try {
-        // Use SHA-256 for a strong cryptographic hash
-        const hashBuffer = await crypto.subtle.digest('SHA-256', str2ab(fileContent)); 
-        
-        // Convert the ArrayBuffer hash to a hexadecimal string
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hexHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  function handleDataFromChild(status: boolean) {
+    fetchAssets(offset,limit);
+  }    
 
-        console.log('SHA-256 Hash:', hexHash);
-        return hexHash;
-        // You can display this hash in the UI or use it for further operations
-    } catch (error) {
-        console.error('Error creating hash:', error);
-        return "";
-    }
-}  
-  function uploadContent() {
- 
-     if(assetType == "string") {
-      createHashOfContent(assetStringData).then((hash) => {
-        console.log(hash)
-        baseData.content = {
-          "sha256" : hash
-      }
-      console.log(baseData)
-      setBaseData(baseData)
-      setStep(2);
-     });
-    }
-    
-  }
   return (
     <ContentLayout title="Assets">
       <Breadcrumb>
@@ -242,107 +148,31 @@ export default function AssetPage() {
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
-                            {assetCreated &&  <Alert className="my-4">
-                              <CheckCircle2Icon />
-                              <AlertTitle>Success! Asset Created</AlertTitle>
-                            
-                            </Alert>}
+         
           <div className="flex flex-col items-center justify-center">
               <div className="flex flex-row items-center justify-center w-full space-x-2 ">
-                <Search/>
-                  <Tooltip delayDuration={100}>
-                  <TooltipTrigger asChild>
-                  <Dialog >
-                    <DialogTrigger><PlusCircle size={32} color="#636363"></PlusCircle></DialogTrigger>
-                    {step ==1 && <DialogContent className="">  
-                          <DialogTitle className="flex flex-row items-center space-x-2">
-                                  <TbCircleDashedNumber1 size={32}></TbCircleDashedNumber1>
-                                  <Label>Choose Asset Type & Upload Content</Label>
-                          </DialogTitle>
-                                
-                                 <div className="flex flex-col items-center justify-between space-y-4">
-                                    <div className="w-full flex flex-row items-center justify-evenly">                                        
-                                        <Select onValueChange={(value) => setAssetType(value)} defaultValue={assetType}>
-                                            <SelectTrigger className="w-full">
-                                             <SelectValue placeholder="Select a type" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectGroup>
-                                              <SelectLabel>Metadata Type</SelectLabel>
-                                              <SelectItem value="file">File</SelectItem>     
-                                              <SelectItem value="json">JSON</SelectItem>     
-                                              <SelectItem value="string">String</SelectItem>           
-                                            </SelectGroup>
-                                          </SelectContent>
-                                        </Select>
-                                    </div>
-                                      {assetType == "file" && <div className="w-full flex flex-row items-center justify-evenly">
-                                        <Input type="file" required onChange={e => setAssetStringDate(e.target.value)} accept=".csv,.txt,.json"></Input>
-                                      </div> 
-                                      }
-                                      {assetType == "string" && <div className="w-full flex flex-row items-center justify-evenly">
-                                        <Input required onChange={e => setAssetStringDate(e.target.value)} placeholder="Add string content here"></Input>
-                                      </div> 
-                                      }
-                                      {assetType == "json" && <div className="w-full flex flex-row items-center justify-evenly">
-                                           <JsonEditor
-                                          data={assetJSONData  }
-                                          setData={ setAssetJSONData }
-                                          rootName="content"
-                                          rootFontSize="1em"
-                                          collapse={2}
-                                          className="w-full"
-                                              />
-                                             
-                                        
-                                      </div> 
-                                      }
-                                       <Button type="button" onClick={(e) => uploadContent()}>Upload Content</Button>
-                                  </div> 
-                                          
-                    </DialogContent>}
-                    {step == 2 && 
-                    <DialogContent className="h-11/12 min-w-10/12">
-                        <DialogTitle className="flex flex-row items-center space-x-2">
-                                <TbCircleDashedNumber2 size={32}></TbCircleDashedNumber2> 
-                                <Label> Edit metadata </Label>
-                               
-                          </DialogTitle>
-                          
-                          { JSON.stringify(jsonData) == "{}"  && <JsonEditor
-                                          data={ baseData }
-                                          setData={ setJsonData }
-                                          rootName="metadata"
-                                          rootFontSize="1em"
-                                          collapse={false}
-                                          maxWidth="90vw"
-                                          minWidth="50vw"
-                                              />
-                                        }
-                                          {step ==2 &&  JSON.stringify(jsonData) != "{}"  && <JsonEditor
-                                          data={ jsonData }
-                                          setData={ setJsonData }
-                                          rootName="metadata"
-                                          rootFontSize="1em"
-                                          collapse={false}
-                                          maxWidth="90vw"
-                                          minWidth="50vw"
-                                              />
-                                        }
-                          {JSON.stringify(jsonData) != "{}" && <Button type="button" className="mx-2 w-32" onClick={() => createNewAsset()}>Create Asset</Button>}
-                          </DialogContent>
-                    }
-                    
-                    </Dialog>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" align="start" alignOffset={2}>
-                          Add New Asset
-                    </TooltipContent>
-                  </Tooltip>
+                <Search/> 
+                <CreateAssetComponent  sendDataToParent={handleDataFromChild} ></CreateAssetComponent>
+                   
               </div>
 
+             <Pagination>
+              <PaginationContent className="my-4 flex flex-row-reverse w-full">
+                 {currentPage != totalPages && currentPage < totalPages && <PaginationItem>
+                  <PaginationNext href="#" onClick={() => nextPage(currentPage + 1)} />
+                </PaginationItem>}
+
+                {currentPage != 1 && <PaginationItem>
+                  <PaginationPrevious href="#" onClick={() => prevPage(currentPage - 1)}/>
+                </PaginationItem>}
+               
+              </PaginationContent>
+            </Pagination>
+            <div className="text-slate-600 text-xs flex flex-row my-2 ">Page {currentPage} : Showing {assetsMetadata.length} of X</div> 
+           <div className="text-slate-600 text-xs flex flex-row my-2 "></div> 
+
               <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-center justify-center gap-4">
-              {assetsMetadata.slice((currentPage-1)*itemsPerPage, (currentPage-1)*itemsPerPage+itemsPerPage).map((asset, index) => ( 
+              {assetsMetadata.map((asset, index) => ( 
                   
                    <Card key={index} className="px-2  shadow-md bg-slate-100 flex flex-col rounded-md  hover:-translate-1 hover:shadow-xl ">
                         <CardTitle  className="px-2 flex flex-row items-center justify-between">
@@ -397,16 +227,7 @@ export default function AssetPage() {
                  ))}
              
              </div>
-              <Pagination>
-              <PaginationContent className="mt-8">
-                {currentPage != 1 && <PaginationItem>
-                  <PaginationPrevious href="#" onClick={() => handlePageChange(currentPage - 1)}/>
-                </PaginationItem>}
-                {currentPage != totalPages && currentPage < totalPages && <PaginationItem>
-                  <PaginationNext href="#" onClick={() => handlePageChange(currentPage + 1)} />
-                </PaginationItem>}
-              </PaginationContent>
-            </Pagination>
+             
           </div>
     </ContentLayout>
   );

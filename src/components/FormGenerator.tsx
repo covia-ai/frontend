@@ -125,6 +125,11 @@ export const FormGenerator = (props:any) => {
                                 onChange={e => setKeyValue(key,e.target.value)}
                                 placeholder={description[index]}></Textarea>
                                 }
+                                 {type[index]=="number" && 
+                                 <Input className="my-2" type="text"
+                                  onChange={e => setKeyValue(key,e.target.value)}
+                                  placeholder={description[index]}></Input>
+                                }
                               </div>
                           ))}
                           <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
@@ -135,7 +140,13 @@ export const FormGenerator = (props:any) => {
                   )
         }
         else {
-          return <></>
+          return  (
+                  <div className="flex flex-col items-center justify-center w-full space-x-2 my-2">
+                    <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
+                    {!loading && <Button type="button" className="w-32" onClick={() => invokeOp(assetsMetadata?.id, requiredKeys)}>Run</Button>}
+                    {loading && <Button type="button" className="w-32" disabled>Please wait ...</Button>}
+                  </div>
+                  )
         }
       }
       

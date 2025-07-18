@@ -119,11 +119,11 @@ class Venue {
    * @param {Object} filters - Optional filters
    * @returns {Promise<Asset[]>}
    */
-  async getAssets() {
+  async getAssets(offset, limit) {
      const assets = new Array();
      try {
        
-        let response = await fetch('http://localhost:8080/api/v1/assets/');
+        let response = await fetch('http://localhost:8080/api/v1/assets/?offset='+offset+'&limit='+limit);
          
         if (!response.ok) {
               throw new CoviaError(`Failed to fetch assets! status: ${response.status}`);
@@ -196,7 +196,8 @@ class Venue {
 const RunStatus = {
   COMPLETE: "COMPLETE",
   FAILED: "FAILED",
-  PENDING: "PENDING"
+  PENDING: "PENDING",
+  INPROGRESS: "INPROGRESS"
 };
 class Asset {
   constructor(id, venue, metadata= {}) {
@@ -234,6 +235,72 @@ class Asset {
       }
   }
 
+  async readStream(reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          console.log('Stream finished.');
+          break;
+        }
+        // Process the 'value' (data chunk) here
+        console.log('Received chunk:', value);
+      }
+    }
+
+async uploadContent(content) {
+      try {
+         
+          const response = await fetch('http://localhost:8080/api/v1/assets/'+this.id+'/content',
+            {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/octet-stream',
+            },
+
+              body: content,
+           })
+          
+          console.log(response)
+          if (!response.ok) {
+                response.text().then(function (text) {
+              console.log(text)
+            });
+                throw new CoviaError(`Failed to get upload content! status: ${response.status}`);
+               
+          }
+          console.log(response.body)
+        return  response.body;
+      }
+      catch(error) {
+         if(error instanceof CoviaError)
+          throw error;
+        else 
+          throw new CoviaError(`Failed to upload content metadata: ${error.message}`);
+        
+      }
+  }
+  
+  
+
+  async getContent() {
+      try {
+       
+          const response = await fetch('http://localhost:8080/api/v1/assets/'+this.id+'/content')
+      
+          if (!response.ok) {
+                throw new CoviaError(`Failed to get asset metadata! status: ${response.status}`);
+          }
+        return  response.body;
+      }
+      catch(error) {
+         if(error instanceof CoviaError)
+          throw error;
+        else 
+          throw new CoviaError(`Failed to get asset metadata: ${error.message}`);
+        
+      }
+  }
+  
    /**
    * Execute the operation
    * @param {Object} params - Operation parameters
@@ -271,8 +338,8 @@ class Asset {
       }
     }
   }
-}
 
+}
 class Operation extends Asset {
   constructor(id, venue, metadata) {
     super(id,venue,metadata);

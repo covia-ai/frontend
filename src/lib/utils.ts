@@ -30,3 +30,8 @@ export function parseJsonForReactFlow(json:JSON) {
   
   return initalNode;
 }
+export function getLicenseUrl(licenseName : string) {
+  console.log(licenseName)
+  if(licenseName.trim() ==  "CC BY 4.0")
+    return "https://creativecommons.org/licenses/by/4.0/"
+}

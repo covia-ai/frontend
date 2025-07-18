@@ -47,21 +47,33 @@ export default function AssetPage() {
   const [assetsMetadata, setAssetsMetadata] = useState<Asset[]>([]);
   const [isLoading, setLoading] = useState(true);
 
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 6
+   const itemsPerPage = 6
+  let offset = 0;
+  let limit=itemsPerPage;
   const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
- 
-   const handlePageChange = (page: number) => {
-    if(page >= 1)
+  const [totalPages, setTotalPages] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1)
+  
+ const nextPage = (page: number) => {
          setCurrentPage(page)
+         offset = limit;
+         fetchAssets(offset,limit)
+    
   }
-
+  const prevPage = (page: number) => {
+         setCurrentPage(page)
+         offset = limit - itemsPerPage;
+         fetchAssets(offset,limit)
+    
+  }
+ 
   const venue = useStore(useVenue, (x) => x).venue;
-    if (!venue) return null;
-      useEffect(() => {
-            setAssetsMetadata([]);
-            venue.getAssets().then((assets) => {
+  if (!venue) return null;
+  
+  function fetchAssets(offset, limit) {
+        console.log(offset+" : "+limit)
+        setAssetsMetadata([]);
+            venue.getAssets(offset,limit).then((assets) => {
             
               assets.forEach((asset) => {
                  asset.getMetadata().then((metadata: Object) => {
@@ -74,11 +86,13 @@ export default function AssetPage() {
                })
                 
           })  
+  }
+      useEffect(() => {
+          fetchAssets(offset, limit);
       }, []);
        
      useEffect(() => {
-        setTotalItems(assetsMetadata.length)
-        setTotalPages(Math.ceil(assetsMetadata.length / itemsPerPage))
+       
         setLoading(false)
      },[assetsMetadata])
         
@@ -131,8 +145,22 @@ export default function AssetPage() {
           </Breadcrumb>
           <div className="flex flex-col items-center justify-center">
               <Search/>
+              <Pagination>
+              <PaginationContent className="my-4 flex flex-row-reverse w-full">
+                 {currentPage != totalPages && currentPage < totalPages && <PaginationItem>
+                  <PaginationNext href="#" onClick={() => nextPage(currentPage + 1)} />
+                </PaginationItem>}
+
+                {currentPage != 1 && <PaginationItem>
+                  <PaginationPrevious href="#" onClick={() => prevPage(currentPage - 1)}/>
+                </PaginationItem>}
+               
+              </PaginationContent>
+            </Pagination>
+            <div className="text-slate-600 text-xs flex flex-row my-2 ">Page {currentPage} : Showing {assetsMetadata.length} of X</div> 
+
               <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-center justify-center gap-4">
-              {!isLoading && assetsMetadata?.slice((currentPage-1)*itemsPerPage, (currentPage-1)*itemsPerPage+itemsPerPage).map((asset, index) => ( 
+              {!isLoading && assetsMetadata?.map((asset, index) => ( 
                   
                     <Sheet key={index} >   
                         <Card className=" px-2 w-64 h-38 shadow-md bg-slate-100 flex flex-col rounded-md  hover:-translate-1 hover:shadow-xl t-pink-400">
@@ -194,16 +222,7 @@ export default function AssetPage() {
               ))}
               {isLoading && <div>Loading</div>}
              </div>
-              <Pagination>
-                <PaginationContent className="mt-8">
-                  {currentPage != 1 && <PaginationItem>
-                    <PaginationPrevious href="#" onClick={() => handlePageChange(currentPage - 1)}/>
-                  </PaginationItem>}
-                  {currentPage != totalPages && <PaginationItem>
-                    <PaginationNext href="#" onClick={() => handlePageChange(currentPage + 1)} />
-                  </PaginationItem>}
-                </PaginationContent>
-              </Pagination>
+              
              </div>
     </ContentLayout>
   );

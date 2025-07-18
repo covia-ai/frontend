@@ -85,50 +85,7 @@ export default function OperationsPage() {
              })
        }, []);
  
-    function renderJSONObject(jsonObject: JSON, type: string) {
-          if(jsonObject != undefined) {
-            
-                let keys = Object.keys(jsonObject);       
-                
-                if(keys != undefined && keys.length > 0) {
-                
-                  return (
-                      <Table className="border border-slate-200 rounded-md py-2">
-                         
-                          <TableBody >
-                              {keys.map((key,index) => (
-                              <TableRow key={index}>
-                                  <TableCell key={index} className="text-left">{key}</TableCell>
-                                  <TableCell className="text-center ">{jsonObject[key]}</TableCell>
-                              </TableRow>
-                              ))}
-                          </TableBody>
-                      </Table>
-                      
-                  )
-                }
-                else {
-                    return (
-                       <div>
-                         {type == "input" && 
-                            <Table className="border border-slate-200 rounded-md py-2">
-                         
-                          <TableBody >
-                              <TableRow key={0}>
-                                  <TableCell key={0} className="text-center">--</TableCell>
-                                  <TableCell className="text-center ">--</TableCell>
-                              </TableRow>
-                            
-                          </TableBody>
-                      </Table>
-                          }
-                         {type == "output" && <div>--</div>}
-                       </div>
-
-                    )
-                }
-          }
-    }
+   
       
   return (
     <ContentLayout title="Operations">
@@ -155,9 +112,10 @@ export default function OperationsPage() {
       <SelectContent>
         <SelectGroup>
            <SelectItem value="All">All</SelectItem>
-           <SelectItem value={RunStatus.COMPLETE}>{RunStatus.COMPLETE}</SelectItem>
+           <SelectItem value={RunStatus.PENDING}>{RunStatus.PENDING}</SelectItem>
            <SelectItem value={RunStatus.INPROGRESS}>{RunStatus.INPROGRESS}</SelectItem>
-           <SelectItem value={RunStatus.FAILED}>{RunStatus.FAILED}</SelectItem>
+           <SelectItem value={RunStatus.COMPLETE}>{RunStatus.COMPLETE}</SelectItem>
+          <SelectItem value={RunStatus.FAILED}>{RunStatus.FAILED}</SelectItem>
         </SelectGroup>
       </SelectContent>
         </Select>
@@ -174,26 +132,26 @@ export default function OperationsPage() {
           </SelectContent>
         </Select>
         </div>
-          <div className="text-slate-600 text-xs flex flex-row ">Page {currentPage}</div> 
+          
+           <Pagination>
+              <PaginationContent className="my-4 flex flex-row-reverse w-full">
+                {currentPage != 1 && <PaginationItem>
+                  <PaginationPrevious href="#" onClick={() => handlePageChange(currentPage - 1)}/>
+                </PaginationItem>}
+                {currentPage != totalPages && <PaginationItem>
+                  <PaginationNext href="#" onClick={() => handlePageChange(currentPage + 1)} />
+                </PaginationItem>}
+              </PaginationContent>
+            </Pagination>
+            <div className="text-slate-600 text-xs flex flex-row ">Page {currentPage}</div> 
 
            <Table className=" my-8 border border-slate-200 rounded-lg shadow-md">
               <TableHeader >
                 <TableRow className="hover:bg-slate-800 bg-slate-800 rounded-full text-white ">
                   <TableCell className="text-center border border-slate-400">Job Id</TableCell>
                   <TableCell className="text-center border border-slate-400">Execution Date</TableCell>
-                  <TableCell className="text-center border border-slate-400   ">Inputs
-                      <TableRow className=" border border-slate-400 bg-slate-400 p-2 rounded-lg text-xs mt-2 p-0 grid grid-cols-2 items-start">
-                          <TableCell className=" text-left ">Name</TableCell>
-                          <TableCell  className=" text-left  ">Value</TableCell>
-                      </TableRow>
-                  </TableCell>
-                  <TableCell className="text-center border border-slate-400   ">Outputs
-                       <TableRow className=" border border-slate-400 bg-slate-400 p-2 rounded-lg text-xs mt-2 p-0 grid grid-cols-2 items-start">
-                          <TableCell className=" text-left">Name</TableCell>
-                          <TableCell  className=" text-left  ">Value</TableCell>
-                      </TableRow>
-                  </TableCell>
-
+                 
+               
                   <TableCell className="text-center">Run Status</TableCell>
                 </TableRow>
               </TableHeader>
@@ -205,45 +163,19 @@ export default function OperationsPage() {
                        (<TableRow key={index}>
                           <TableCell className="text-center"><Link className="hover:text-pink-400 hover:text-underline" href={`/runs/${job.id}`}>{job.id}</Link></TableCell>
                           <TableCell className="text-center">{new Date(job.created).toLocaleString()}</TableCell>
-                          <TableCell className="text-center">{renderJSONObject(job?.input, "input")}</TableCell>
-                          {job.status == RunStatus.COMPLETE    &&    <TableCell className="text-center">{renderJSONObject(job.output, "output")}</TableCell>}
-                          {job.status == RunStatus.FAILED      &&    
-                          <TableCell className="text-center">
-                            <Table className="border border-slate-200 rounded-md py-2">
-                              <TableBody >
-                              <TableRow key={0}>
-                                  <TableCell key={0} className="text-center">Error</TableCell>
-                                  {job.error.length > 20 && <TableCell className="text-center max-w-sm">{job.error.slice(0, 20)+" ..."}</TableCell>}
-                                  {job.error.length <= 20 && <TableCell className="text-center max-w-sm">{job.error}</TableCell>}
 
-                              </TableRow>
-
-                            
-                          </TableBody>
-                          </Table>  
-                            
-                          </TableCell>}
-                          {job.status == RunStatus.PENDING     &&    <TableCell className="text-center">......</TableCell>}
 
                           {job.status == RunStatus.COMPLETE    &&   <TableCell className="text-green-600 text-center">{RunStatus.COMPLETE}</TableCell>}
                           {job.status == RunStatus.FAILED      &&   <TableCell className="text-red-600 text-center">{RunStatus.FAILED}</TableCell>}
                           {job.status == RunStatus.PENDING     &&   <TableCell className="text-blue-600 text-center">{RunStatus.PENDING}</TableCell>}
+                          {job.status == RunStatus.INPROGRESS   &&   <TableCell className="text-blue-600 text-center">{RunStatus.INPROGRESS}</TableCell>}
+
                        </TableRow>
                        )
                   )}
               </TableBody>
             </Table>
 
-           <Pagination>
-              <PaginationContent>
-                {currentPage != 1 && <PaginationItem>
-                  <PaginationPrevious href="#" onClick={() => handlePageChange(currentPage - 1)}/>
-                </PaginationItem>}
-                {currentPage != totalPages && <PaginationItem>
-                  <PaginationNext href="#" onClick={() => handlePageChange(currentPage + 1)} />
-                </PaginationItem>}
-              </PaginationContent>
-            </Pagination>
           
     
     </div>
