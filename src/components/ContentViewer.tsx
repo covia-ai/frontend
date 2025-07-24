@@ -14,7 +14,7 @@ export const ContentViewer = (props:any) => {
         return (
           <Dialog>
             <DialogTrigger>
-                    <span className="hover:text-pink-400 hover:underline"> Click to load content </span>
+                    <span className="text-pink-600 underline"> Click to load content </span>
             </DialogTrigger>
              
               <DialogContent className="h-8/12 w-9/12">

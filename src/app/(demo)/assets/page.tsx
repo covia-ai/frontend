@@ -25,11 +25,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/ui/alert"
 
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
@@ -39,24 +34,14 @@ import { JsonEditor } from "json-edit-react";
 
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { TbCircleDashedNumber1,  TbCircleDashedNumber2} from "react-icons/tb";
 
-
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-  
-} from "@/components/ui/tooltip";
 
 import { Badge } from "@/components/ui/badge";
 
 import {
   Pagination,
   PaginationContent,
-  PaginationEllipsis,
   PaginationItem,
-  PaginationLink,
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
@@ -71,31 +56,24 @@ export default function AssetPage() {
   const [newJsonData, setNewJsonData] = useState({});
 
   const itemsPerPage = 6
-  let offset = 0;
-  let limit=itemsPerPage;
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(10);
   const [currentPage, setCurrentPage] = useState(1)
-  
+  const [noOfItemsOnPage, setNoOfItemsOnPage] = useState(0);
  const nextPage = (page: number) => {
          setCurrentPage(page)
-         offset = limit;
-         fetchAssets(offset,limit)
     
   }
   const prevPage = (page: number) => {
          setCurrentPage(page)
-         offset = limit - itemsPerPage;
-         fetchAssets(offset,limit)
     
   }
   const venue = useStore(useVenue, (x) => x).venue;
   if (!venue) return null;
 
-    function fetchAssets(offset,limit) {
+    function fetchAssets() {
        setAssetsMetadata([]);
-       console.log(offset+" : "+limit)
-        venue.getAssets(offset,limit).then((assets) => {
+        venue.getAssets().then((assets) => {
               assets.forEach((asset : Asset) => {
                asset.getMetadata().then((metadata: Object) => {
                      if(metadata.name != undefined && metadata.operation == undefined) {
@@ -111,16 +89,22 @@ export default function AssetPage() {
              
     }
     useEffect(() => {
-            fetchAssets(offset, limit)
+            fetchAssets()
+            
       }, []);
-   
+ useEffect(() => {
+           setTotalItems(assetsMetadata.length)
+           setTotalPages(Math.ceil(assetsMetadata.length/itemsPerPage))
+           
+      }, [assetsMetadata]);
+
   function copyAsset(jsonData:JSON) {
     try {
       venue?.createAsset(jsonData).then( (asset:Asset) => {
              if(asset != undefined && asset != null) {
                      setNewJsonData({})
                      setAssetCreated(true);
-                     fetchAssets(offset,limit);
+                     fetchAssets();
               }  
       })
     }
@@ -130,7 +114,7 @@ export default function AssetPage() {
     }
   }   
   function handleDataFromChild(status: boolean) {
-    fetchAssets(offset,limit);
+    fetchAssets();
   }    
 
   return (
@@ -168,11 +152,11 @@ export default function AssetPage() {
                
               </PaginationContent>
             </Pagination>
-            <div className="text-slate-600 text-xs flex flex-row my-2 ">Page {currentPage} : Showing {assetsMetadata.length} of X</div> 
+            <div className="text-slate-600 text-xs flex flex-row my-2 ">Page {currentPage} : Showing {assetsMetadata.slice((currentPage-1)*itemsPerPage, (currentPage-1)*itemsPerPage+itemsPerPage).length} of {assetsMetadata.length} </div> 
            <div className="text-slate-600 text-xs flex flex-row my-2 "></div> 
 
               <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-center justify-center gap-4">
-              {assetsMetadata.map((asset, index) => ( 
+              {assetsMetadata.slice((currentPage-1)*itemsPerPage, (currentPage-1)*itemsPerPage+itemsPerPage).map((asset, index) =>
                   
                    <Card key={index} className="px-2  shadow-md bg-slate-100 flex flex-col rounded-md  hover:-translate-1 hover:shadow-xl ">
                         <CardTitle  className="px-2 flex flex-row items-center justify-between">
@@ -224,7 +208,7 @@ export default function AssetPage() {
                           </CardContent>
                     </Card>           
                          
-                 ))}
+              )}
              
              </div>
              

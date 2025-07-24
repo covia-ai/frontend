@@ -6,8 +6,8 @@ import { BaseHandle } from "@/components/base-handle";
 
 const flexDirections = {
   top: "flex-col",
-  right: "flex-row-reverse justify-end",
-  bottom: "flex-col-reverse justify-end",
+  right: "flex-row-reverse",
+  bottom: "flex-col-reverse",
   left: "flex-row",
 };
 
@@ -19,7 +19,7 @@ export const LabeledHandle = forwardRef<
       handleClassName?: string;
       labelClassName?: string;
     }
->(
+   >(
   (
     { className, labelClassName, handleClassName, title, position, ...props },
     ref,
@@ -28,13 +28,13 @@ export const LabeledHandle = forwardRef<
       ref={ref}
       title={title}
       className={cn(
-        "relative flex",
+        "relative flex ",
         flexDirections[position],
-        className,
+        className
       )}
     >
       <BaseHandle position={position} className={handleClassName} {...props} />
-      <label className={cn("", labelClassName)}>
+      <label className={labelClassName}>
         {title}
       </label>
     </div>

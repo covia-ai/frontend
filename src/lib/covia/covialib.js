@@ -119,24 +119,25 @@ class Venue {
    * @param {Object} filters - Optional filters
    * @returns {Promise<Asset[]>}
    */
-  async getAssets(offset, limit) {
+  async getAssets() {
      const assets = new Array();
      try {
        
-        let response = await fetch('http://localhost:8080/api/v1/assets/?offset='+offset+'&limit='+limit);
-         
+        let response = await fetch('http://localhost:8080/api/v1/assets/');
+        console.log(response)
         if (!response.ok) {
               throw new CoviaError(`Failed to fetch assets! status: ${response.status}`);
         }
         let assetIds = await response.json();
-        assetIds.forEach(assetId => {
+        console.log(assetIds)
+        assetIds.items.forEach(assetId => {
                   assets.push(new Asset(assetId, this))
         });
         return assets;
       }
       catch(error) {
-        if(e instanceof CoviaError)
-          throw e;
+        if(error instanceof CoviaError)
+          throw error;
         else 
          throw new CoviaError(`Failed to fetch assets: ${error.message}`);
       }
@@ -197,7 +198,7 @@ const RunStatus = {
   COMPLETE: "COMPLETE",
   FAILED: "FAILED",
   PENDING: "PENDING",
-  INPROGRESS: "INPROGRESS"
+  STARTED: "STARTED"
 };
 class Asset {
   constructor(id, venue, metadata= {}) {

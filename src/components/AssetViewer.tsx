@@ -4,7 +4,7 @@
 
 import { useEffect, useState } from "react";
 import { Asset, Venue } from "@/lib/covia/covialib";
-import { Calendar, Copyright, EyeIcon, Info, InfoIcon, Map, Tag, User, View } from "lucide-react";
+import { Calendar, Copy, CopyCheck, Copyright, EyeIcon, Hash, Info, InfoIcon, Map, Tag, User, View } from "lucide-react";
 import Link from "next/link";
 import {
   Breadcrumb,
@@ -21,6 +21,7 @@ import { ContentViewer } from "./ContentViewer";
 import { JsonEditor } from "json-edit-react";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "./ui/dialog";
+import { copyDataToClipBoard } from "@/lib/utils";
 
 export const AssetViewer = (props:any) => {
       
@@ -93,79 +94,92 @@ export const AssetViewer = (props:any) => {
                         {assetsMetadata.metadata?.name}
                     </h3>
                    <p className="mt-4"> {assetsMetadata.metadata?.description}</p>
-                  <div className="flex flex-row border-1 shadow-md rounded-md border-slate-200  mt-8 p-4 items-center justify-between min-w-lg">
-                      <div className="flex flex-col min-w-lg border-r-2 border-slate-200 px-2 ">
+                    <div className="flex flex-row-reverse space-x-4 space-x-reverse w-full"> 
+                      <div className="flex flex-row space-x-2 ">
+                        <span > AssetId </span>
+                        <span><Copy onClick={ (e) => copyDataToClipBoard(assetsMetadata?.id,"AssetId copied to clipboard")}></Copy></span>
+                      </div>
+                      <div className="flex flex-row space-x-2 ">
+                        <span> Asset Link </span>
+                        <span><Copy onClick={ (e) => copyDataToClipBoard(window.location.href, "Asset Link copied to clipboard")}></Copy></span>
                     
-                        <div className="flex flex-row items-center space-x-2 my-4">
-                          <Map size={18}></Map>
-                          <span><strong>Venue:</strong></span>
-                          <span><Link href="/venues/default" className="hover:underline hover:text-pink-400"> {assetsMetadata?.venue?.venueId}</Link></span>
-                        </div>
-                        {assetsMetadata?.metadata?.creator && <div className="flex flex-row items-center space-x-2 my-4">
-                          <User  size={18}></User>
-                          <span><strong>Creator:</strong>  </span>
-                          <span>{assetsMetadata?.metadata?.creator}</span>
-                        </div>}
-                        <div className="flex flex-row items-center space-x-2 my-4">
-                          <Copyright size={18}></Copyright>
-                          <span><strong>License: </strong>  </span>
-                          <span><Link className="hover:text-pink-400 hover:underline" href={assetsMetadata?.metadata?.license?.url}>{assetsMetadata?.metadata?.license?.name}</Link></span>
-                        </div> 
-                        {assetsMetadata?.metadata?.dateCreated && <div className="flex flex-row items-center space-x-2 my-4">
-                          <Calendar size={18}></Calendar>
-                          <span><strong>Created on:</strong>  </span>
-                          <span>{assetsMetadata?.metadata?.dateCreated}</span>
-                        </div>}
-                        {assetsMetadata?.metadata?.dateModified && <div className="flex flex-row items-center space-x-2 my-4">
-                          <Calendar size={18}></Calendar>
-                          <span><strong>Modified on:</strong>  </span>
-                          <span>{assetsMetadata?.metadata?.dateModified}</span>
-                        </div>   }      
+                      </div>
+                    </div>
+                  <div className="flex flex-col border-1 shadow-md rounded-md border-slate-200  mt-8 p-4 items-center justify-between min-w-lg">
+                    
+                    <div className="flex flex-row">
+                      <div className="flex flex-col min-w-lg border-r-2 border-slate-200 px-2 ">
+                          <div className="flex flex-row items-center space-x-2 my-4">
+                            <Map size={18}></Map>
+                            <span><strong>Venue:</strong></span>
+                            <span><Link href="/venues/default" className="hover:underline hover:text-pink-600"> {assetsMetadata?.venue?.venueId}</Link></span>
+                          </div>
+                          {assetsMetadata?.metadata?.creator && <div className="flex flex-row items-center space-x-2 my-4">
+                            <User  size={18}></User>
+                            <span><strong>Creator:</strong>  </span>
+                            <span>{assetsMetadata?.metadata?.creator}</span>
+                          </div>}
+                          <div className="flex flex-row items-center space-x-2 my-4">
+                            <Copyright size={18}></Copyright>
+                            <span><strong>License: </strong>  </span>
+                            <span><Link className="hover:text-pink-400 hover:underline" href={assetsMetadata?.metadata?.license?.url}>{assetsMetadata?.metadata?.license?.name}</Link></span>
+                          </div> 
+                          {assetsMetadata?.metadata?.dateCreated && <div className="flex flex-row items-center space-x-2 my-4">
+                            <Calendar size={18}></Calendar>
+                            <span><strong>Created on:</strong>  </span>
+                            <span>{assetsMetadata?.metadata?.dateCreated}</span>
+                          </div>}
+                          {assetsMetadata?.metadata?.dateModified && <div className="flex flex-row items-center space-x-2 my-4">
+                            <Calendar size={18}></Calendar>
+                            <span><strong>Modified on:</strong>  </span>
+                            <span>{assetsMetadata?.metadata?.dateModified}</span>
+                          </div>   }      
                       </div>  
-                    <div className="flex flex-col min-w-lg px-2 ">
-                        {assetsMetadata?.metadata?.keyword && <div className="flex flex-row items-center space-x-2 my-4">
-                            <Tag size={18}></Tag>
-                            <span><strong>Keywords:</strong> </span>
-                            <span className="space-x-2">{assetsMetadata?.metadata?.keywords?.map((keyword,index) => (
-                                <Badge variant="secondary" key={index}>{keyword}</Badge>
-                            ))}</span>
-                        </div>}
-                        {assetsMetadata?.metadata?.additionalInformation?.notes && <div className="flex flex-row items-center space-x-2">
-                          <InfoIcon size={18}></InfoIcon>
-                          <span><strong>Comment:</strong></span>
-                          <span>{assetsMetadata?.metadata?.additionalInformation?.notes}</span>
-                        </div>}
-                        {content?.length> 0 && <div className="flex flex-row items-center space-x-2 my-4">
-                              <EyeIcon size={18}></EyeIcon>
-                              <span><strong>Data:</strong></span>
-                              <span><ContentViewer title={"Content"} data={content }></ContentViewer></span>   
-                        </div>}
-                        <div className="flex flex-row items-center space-x-2">
-                              <Info size={18}></Info>
-                              <span><strong>Metadata:</strong></span>
-                              <span>
-                                <Dialog>
-                                  <DialogTrigger>
-                                      <span className="hover:text-pink-400 hover:underline"> Click to load metadata</span>
+                      <div className="flex flex-col min-w-lg px-2 ">
+                          {assetsMetadata?.metadata?.keyword && <div className="flex flex-row items-center space-x-2 my-4">
+                              <Tag size={18}></Tag>
+                              <span><strong>Keywords:</strong> </span>
+                              <span className="space-x-2">{assetsMetadata?.metadata?.keywords?.map((keyword,index) => (
+                                  <Badge variant="secondary" key={index}>{keyword}</Badge>
+                              ))}</span>
+                          </div>}
+                          {assetsMetadata?.metadata?.additionalInformation?.notes && <div className="flex flex-row items-center space-x-2">
+                            <InfoIcon size={18}></InfoIcon>
+                            <span><strong>Comment:</strong></span>
+                            <span>{assetsMetadata?.metadata?.additionalInformation?.notes}</span>
+                          </div>}
+                          {content?.length> 0 && <div className="flex flex-row items-center space-x-2 my-4">
+                                <EyeIcon size={18}></EyeIcon>
+                                <span><strong>Data:</strong></span>
+                                <span><ContentViewer title={"Content"} data={content }></ContentViewer></span>   
+                          </div>}
+                          <div className="flex flex-row items-center space-x-2">
+                                <Info size={18}></Info>
+                                <span><strong>Metadata:</strong></span>
+                                <span>
+                                  <Dialog>
+                                    <DialogTrigger>
+                                        <span className="text-pink-400 underline"> Click to load metadata</span>
 
-                                  </DialogTrigger>
-                                  <DialogContent>
+                                    </DialogTrigger>
+                                    <DialogContent>
 
-                                    <JsonEditor data={assetsMetadata?.metadata}
-                                                                         rootName="metadata"
-                                                                         rootFontSize="1em"
-                                                                         maxWidth="90vw"
-                                                                         restrictEdit={true}
-                                                                         restrictAdd={true}
-                                                                         restrictDelete={true}
-                                                                          collapse={2}
-                                                                      /> 
-                                  </DialogContent>
-                                  </Dialog>
-                                   
-                              </span>   
-                        </div>  
+                                      <JsonEditor data={assetsMetadata?.metadata}
+                                                                          rootName="metadata"
+                                                                          rootFontSize="1em"
+                                                                          maxWidth="90vw"
+                                                                          restrictEdit={true}
+                                                                          restrictAdd={true}
+                                                                          restrictDelete={true}
+                                                                            collapse={1}
+                                                                        /> 
+                                    </DialogContent>
+                                    </Dialog>
+                                    
+                                </span>   
+                          </div>  
                       </div>  
+                    </div>
                   </div>
              
                   </div>

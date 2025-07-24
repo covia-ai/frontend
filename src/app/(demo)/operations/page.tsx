@@ -92,7 +92,8 @@ export default function AssetPage() {
       }, []);
        
      useEffect(() => {
-       
+        setTotalItems(assetsMetadata.length)
+        setTotalPages(Math.ceil(assetsMetadata.length/itemsPerPage))
         setLoading(false)
      },[assetsMetadata])
         
@@ -157,10 +158,10 @@ export default function AssetPage() {
                
               </PaginationContent>
             </Pagination>
-            <div className="text-slate-600 text-xs flex flex-row my-2 ">Page {currentPage} : Showing {assetsMetadata.length} of X</div> 
+            <div className="text-slate-600 text-xs flex flex-row my-2 ">Page {currentPage} : Showing {assetsMetadata.slice((currentPage-1)*itemsPerPage, (currentPage-1)*itemsPerPage+itemsPerPage).length} of {assetsMetadata.length} </div> 
 
               <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-center justify-center gap-4">
-              {!isLoading && assetsMetadata?.map((asset, index) => ( 
+              {!isLoading && assetsMetadata.slice((currentPage-1)*itemsPerPage, (currentPage-1)*itemsPerPage+itemsPerPage).map((asset, index) => ( 
                   
                     <Sheet key={index} >   
                         <Card className=" px-2 w-64 h-38 shadow-md bg-slate-100 flex flex-col rounded-md  hover:-translate-1 hover:shadow-xl t-pink-400">

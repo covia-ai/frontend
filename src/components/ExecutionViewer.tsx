@@ -3,12 +3,12 @@
 
 import { useEffect, useState } from "react";
 import { RunStatus, Venue } from "@/lib/covia/covialib";
-import { Check, Clock,  FileInput, FileOutput, RotateCcw, X } from "lucide-react";
+import { Check, Clock,  Copy,  CopyCheck,  FileInput, FileOutput, Hash, RotateCcw, X } from "lucide-react";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
-import { MdOutlinePendingActions } from "react-icons/md";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { useRouter } from "next/navigation";
+import { copyDataToClipBoard } from "@/lib/utils";
 export const ExecutionViewer = (props:any) => {
         const router = useRouter()
         const [executionData, setExecutionData] = useState({})
@@ -95,20 +95,31 @@ export const ExecutionViewer = (props:any) => {
                  {executionData && (
                 
                 <div className="flex flex-col w-full items-center justify-center">
+                  <div className="flex flex-row-reverse space-x-4 space-x-reverse w-full"> 
+                      <div className="flex flex-row space-x-2 ">
+                        <span > Job Id </span>
+                        <span><Copy onClick={ (e) => copyDataToClipBoard(executionData?.id, "Job Id copied to clipboard")}></Copy></span>
+                      </div>
+                      <div className="flex flex-row space-x-2 ">
+                        <span> Job Link </span>
+                        <span><Copy onClick={ (e) => copyDataToClipBoard(window.location.href, "Job Link copied to clipboard")}></Copy></span>
                     
+                      </div>
+                    </div>   
                 <div className="flex flex-row border-1 shadow-md rounded-md border-slate-200 w-11/12 mt-8 p-4 items-center justify-between">
                   <div className="flex flex-col w-full">
+                     
                      <div className="flex flex-row items-center space-x-4 py-2">
                                     {executionData?.status == RunStatus.COMPLETE && <Check></Check>}
                                     {executionData?.status == RunStatus.FAILED &&   <X></X>}
                                     {executionData?.status == RunStatus.PENDING &&  <RotateCcw />}
-                                    {executionData?.status == RunStatus.INPROGRESS &&  < RotateCcw/>}
+                                    {executionData?.status == RunStatus.STARTED &&  < RotateCcw/>}
 
                                     <span className="w-28"><strong>Status:</strong></span>
                                     {executionData?.status == RunStatus.COMPLETE && <span className="text-green-600 ">{RunStatus.COMPLETE}</span>}
                                     {executionData?.status == RunStatus.FAILED && <span className="text-red-600 ">{RunStatus.FAILED}</span>}
                                     {executionData?.status == RunStatus.PENDING && <span className="text-blue-600 ">{RunStatus.PENDING}</span>}
-                                    {executionData?.status == RunStatus.INPROGRESS && <span className="text-blue-600 ">{RunStatus.INPROGRESS}</span>}
+                                    {executionData?.status == RunStatus.STARTED && <span className="text-blue-600 ">{RunStatus.STARTED}</span>}
 
                     </div>
 

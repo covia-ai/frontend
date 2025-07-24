@@ -38,14 +38,15 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
+import { getExecutionTime } from "@/lib/utils";
 
 export default function OperationsPage() {
  const [statusFilter, setStatusFilter] = useState("All");
  const [dateFilter, setDateFilter] = useState("All");
  const [jobsData, setJobsData] = useState<Object[]>([]);
-  
+ const [filteredData, setFilteredData] = useState<Object[]>([]);
  const [currentPage, setCurrentPage] = useState(1)
- const itemsPerPage = 5
+ const itemsPerPage = 10
  const [totalItems, setTotalItems] = useState(0);
  const [totalPages, setTotalPages] = useState(0);
 
@@ -77,7 +78,7 @@ export default function OperationsPage() {
                  jobs.forEach((jobId) => {
                     venue.getJob(jobId).then( (metadata) =>{
                       setJobsData(prevArray => [...prevArray, metadata]);
-                     
+                      setFilteredData(prevArray => [...prevArray, metadata])
                     })
                  })
                 
@@ -85,7 +86,18 @@ export default function OperationsPage() {
              })
        }, []);
  
-   
+    useEffect(() => {
+           setFilteredData([]);
+           if(statusFilter == 'All')
+             setFilteredData(jobsData)
+           else {
+                jobsData.forEach((job) => {
+                if(job.status == statusFilter) {
+                  setFilteredData(prevArray => [...prevArray, job])
+                }
+            })
+          }
+       }, [statusFilter]);
       
   return (
     <ContentLayout title="Operations">
@@ -113,7 +125,7 @@ export default function OperationsPage() {
         <SelectGroup>
            <SelectItem value="All">All</SelectItem>
            <SelectItem value={RunStatus.PENDING}>{RunStatus.PENDING}</SelectItem>
-           <SelectItem value={RunStatus.INPROGRESS}>{RunStatus.INPROGRESS}</SelectItem>
+           <SelectItem value={RunStatus.STARTED}>{RunStatus.STARTED}</SelectItem>
            <SelectItem value={RunStatus.COMPLETE}>{RunStatus.COMPLETE}</SelectItem>
           <SelectItem value={RunStatus.FAILED}>{RunStatus.FAILED}</SelectItem>
         </SelectGroup>
@@ -143,35 +155,36 @@ export default function OperationsPage() {
                 </PaginationItem>}
               </PaginationContent>
             </Pagination>
-            <div className="text-slate-600 text-xs flex flex-row ">Page {currentPage}</div> 
+            <div className="text-slate-600 text-xs flex flex-row my-2 ">Page {currentPage} : Showing {filteredData.slice((currentPage-1)*itemsPerPage, (currentPage-1)*itemsPerPage+itemsPerPage).length} of {jobsData.length} </div> 
 
            <Table className=" my-8 border border-slate-200 rounded-lg shadow-md">
               <TableHeader >
                 <TableRow className="hover:bg-slate-800 bg-slate-800 rounded-full text-white ">
                   <TableCell className="text-center border border-slate-400">Job Id</TableCell>
-                  <TableCell className="text-center border border-slate-400">Execution Date</TableCell>
-                 
+                  <TableCell className="text-center border border-slate-400">Created Date</TableCell>
+                   <TableCell className="text-center border border-slate-400">Execution Time</TableCell>
                
                   <TableCell className="text-center">Run Status</TableCell>
                 </TableRow>
               </TableHeader>
               
               <TableBody>
-                  { jobsData.slice((currentPage-1)*itemsPerPage, (currentPage-1)*itemsPerPage+itemsPerPage).map((job,index) => 
-                       (statusFilter == "All" || statusFilter == job.status)  && 
-                        (dateFilter == "All"  || isInRange(job.created))  &&
-                       (<TableRow key={index}>
-                          <TableCell className="text-center"><Link className="hover:text-pink-400 hover:text-underline" href={`/runs/${job.id}`}>{job.id}</Link></TableCell>
+                  { filteredData.slice((currentPage-1)*itemsPerPage, (currentPage-1)*itemsPerPage+itemsPerPage).map((job,index) => 
+                     
+                       <TableRow key={index}>
+                          <TableCell className="text-center"><Link className="text-pink-600 underline" href={`/runs/${job.id}`}>{job.id}</Link></TableCell>
                           <TableCell className="text-center">{new Date(job.created).toLocaleString()}</TableCell>
+                          {(job.status == RunStatus.COMPLETE || job.status == RunStatus.FAILED) && (<TableCell className="text-center">{getExecutionTime(job.created,job.updated)}</TableCell>)}
+                          {(job.status == RunStatus.PENDING || job.status == RunStatus.STARTED) && (<TableCell className="text-center">--</TableCell>)}
 
 
                           {job.status == RunStatus.COMPLETE    &&   <TableCell className="text-green-600 text-center">{RunStatus.COMPLETE}</TableCell>}
                           {job.status == RunStatus.FAILED      &&   <TableCell className="text-red-600 text-center">{RunStatus.FAILED}</TableCell>}
                           {job.status == RunStatus.PENDING     &&   <TableCell className="text-blue-600 text-center">{RunStatus.PENDING}</TableCell>}
-                          {job.status == RunStatus.INPROGRESS   &&   <TableCell className="text-blue-600 text-center">{RunStatus.INPROGRESS}</TableCell>}
+                          {job.status == RunStatus.STARTED   &&   <TableCell className="text-blue-600 text-center">{RunStatus.STARTED}</TableCell>}
 
                        </TableRow>
-                       )
+                       
                   )}
               </TableBody>
             </Table>

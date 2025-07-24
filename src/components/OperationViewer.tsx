@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { useEffect, useState } from "react";
 import {  Operation } from "@/lib/covia/covialib";
 import { redirect } from "next/navigation";
+import { copyDataToClipBoard } from "@/lib/utils";
 
 
 import {
@@ -25,25 +26,28 @@ import { Textarea } from "./ui/textarea";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { DiagramViewer } from "./DiagramViewer";
-import { parseJsonForReactFlow } from "@/lib/utils";
-export const FormGenerator = (props:any) => {
+import { Copy, CopyCheck } from "lucide-react";
+import copy from 'copy-to-clipboard';
+import { toast } from "sonner"
+
+export const OperationViewer = (props:any) => {
         const [assetsMetadata, setAssetsMetadata] = useState<Operation>();
         const [errorMessage, setErrorMessage] = useState("");
         const [loading, setLoading] = useState(false);
         const valueMap = new Map();
-
         const venue = useStore(useVenue, (x) => x).venue;
         if (!venue) return null;
         
+        
         useEffect(() => {
               venue.getAsset(props.assetId).then(( asset:Operation) => {
-                console.log(asset)
                   setAssetsMetadata(asset);
             
           })
          
       }, []);
        
+     
 
       function setKeyValue(key,value) {
           valueMap.set(key,value);
@@ -170,35 +174,29 @@ export const FormGenerator = (props:any) => {
                 <BreadcrumbPage>{assetsMetadata?.metadata?.name}</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
-          </Breadcrumb>
+            </Breadcrumb>
              
-              {assetsMetadata?.metadata && assetsMetadata?.metadata?.operation?.diagram == undefined && (
+            
                 
                 <div className="flex flex-col w-full items-center justify-center">
                    <h2 className="text-lg text-semibold my-2">{assetsMetadata?.metadata?.name}</h2>
                    <p className="text-sm  mb-4 text-slate-600">{assetsMetadata?.metadata?.description}</p>
+                   <div className="flex flex-row-reverse space-x-4 space-x-reverse w-full"> 
+                      <div className="flex flex-row space-x-2 ">
+                        <span > AssetId </span>
+                        <span><Copy  onClick={ (e) => copyDataToClipBoard(assetsMetadata?.id, "AssetId copied to clipboard")}></Copy></span>
+                      </div>
+                      <div className="flex flex-row space-x-2 ">
+                        <span> Asset Link </span>
+                        <span><Copy onClick={ (e) => copyDataToClipBoard(window.location.href, "Asset Link copied to clipboard")}></Copy></span>
+                     
+                      </div>
+                    </div>
                   {renderJSONMap(assetsMetadata?.metadata?.operation?.input?.properties, assetsMetadata?.metadata?.operation?.input?.required)}
                 </div>
-              )  
-              }
-              {assetsMetadata?.metadata && assetsMetadata?.metadata?.operation?.diagram && (
-                <div className="flex flex-col w-full items-center justify-between">
-                 
-                   <h2 className="text-lg text-semibold my-2">{assetsMetadata?.metadata?.name}</h2>
-                   <p className="text-sm  mb-4 text-slate-600 ">{assetsMetadata?.metadata?.description}</p>
-                    <div className="flex flex-row w-full ">
-                      <div className="w-full border border-slate-200 rounded-md shadow-lg mr-2 p-4 my-4">
-                       {renderJSONMap(assetsMetadata?.metadata?.operation?.input?.properties, assetsMetadata?.metadata?.operation?.input?.required)}
-                     </div>
-                     <div className="w-full border border-slate-200 rounded-md shadow-lg  p-4">
-                      <DiagramViewer diagramData={parseJsonForReactFlow(assetsMetadata?.metadata?.operation?.diagram)}></DiagramViewer></div>
-                     </div>
-                </div>
-              )
-              }
-              
             
              
+                
              
         </>
            

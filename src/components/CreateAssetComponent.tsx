@@ -20,15 +20,15 @@ import { PlusCircle, Router, User } from "lucide-react";
 import { TbCircleDashedNumber1,  TbCircleDashedNumber2, TbCircleDashedNumber3} from "react-icons/tb";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { JsonEditor } from "json-edit-react";
 import { Button } from "./ui/button";
 
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { Asset } from "@/lib/covia/covialib";
-import { getLicenseUrl } from "@/lib/utils";
  
+import { getContentTypeForFile } from "@/lib/utils";
 export const CreateAssetComponent = ({sendDataToParent}) => {
     const [step, setStep] = useState(0);
     const [jsonData, setJsonData] = useState({});
@@ -40,16 +40,19 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
     const [name, setName] = useState("");
     const [creator, setCreator] = useState("");
     const [description, setDescription] = useState("");
-    const [license, setLicense] = useState("CC BY 4.0 ")
-    const [language, setLanguage] = useState("en-us")
+    const [license, setLicense] = useState("")
+    const [language, setLanguage] = useState("")
     const [keywords, setKeywords] = useState("")
     const [notes, setNotes] = useState("")
+    const [contentType, setContentType] = useState("")
+    const [encoding, setEncoding] = useState("")
     const [hash, setHash] = useState("");
     const [baseData, setBaseData] = useState({});
     const [metadataUpdated, setMetadataUpdated] = useState(false);
     const venue = useStore(useVenue, (x) => x).venue;
 
- 
+    const [open, setOpen] = useState(false)
+
     if (!venue) return null;
     function createNewAsset(jsonData:JSON) {
         try {
@@ -59,6 +62,7 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
                       asset.uploadContent(assetStringData).then((response) =>{
                       sendDataToParent(true)
                        setStep(1)
+
                     })
                   
                   }
@@ -83,7 +87,7 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
         catch(error) {
           console.log("Hello "+error)
         }
-      }
+    }
   
     const getSHA256Hash = async (input) => {
       const textAsBuffer = new TextEncoder().encode(input);
@@ -96,24 +100,29 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
     };
      
     function uploadContent(event) {
-       if(assetType == "string") {
+       if(assetType == "string" ) {
         getSHA256Hash(assetStringData).then((hash) => {
                 setHash(hash)
+                setContentType("text/plain")
                 setStep(2);  
         });
        
       }
-      if(assetType == "json") {
+      else if(assetType == "json"   ) {
         getSHA256Hash(JSON.stringify(assetJSONData)).then((hash) => {
         setHash(hash)
+        setContentType("application/json")
         setStep(2);  
         });
       }
-       if(assetType == "file") {
+      else if(assetType == "file" ) {
         getSHA256Hash(assetFileData).then((hash) => {
         setHash(hash)
         setStep(2);  
         });
+      }
+      else {
+        setStep(2)
       }
     }
 
@@ -121,17 +130,21 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
      const file = event.target.files[0]; // Get the selected file
      console.log(file.name)
      setName(file.name)
-         if (file) {
-          const reader = new FileReader(); // Create a new FileReader object
+     const [contentType, encoding] = getContentTypeForFile(file.name);
+     setContentType(contentType);
+     setEncoding(encoding)
+     
+      if (file) {
+      const reader = new FileReader(); // Create a new FileReader object
 
-          reader.onload = (e) => {
-            // When the file is loaded, set its content to state
-            console.log(typeof(e.target.result))
-            setAssetFileDate(e.target.result);
-          };
+      reader.onload = (e) => {
+        // When the file is loaded, set its content to state
+        console.log(typeof(e.target.result))
+        setAssetFileDate(e.target.result);
+      };
 
-          reader.readAsText(file); // Read the file as text
-        }
+      reader.readAsText(file); // Read the file as text
+    }
     }
     
     function createMetadata(nextStep){
@@ -143,15 +156,25 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
           metadata.creator = creator;
         if(description.length > 0)
           metadata.description = description;
-        metadata.license = {"name": license, "url" : getLicenseUrl(license)};
-        metadata.inLanguage = language;
-      if(keywords.length > 0)
+        if(license.length >0 ) 
+          metadata.license = {"name": license, "url" : getLicenseUrl(license)};
+      
+        
+        if(keywords.length > 0)
             metadata.keywords = keywords.split(",");
         if(notes.length > 0)
             metadata.additionalInformationnotes = {"notes":[notes]}
-        metadata.content = {
-          "sha256" : hash
-        }
+        if(hash.length> 0) {
+          metadata.content = {
+            "sha256" : hash,
+          }
+          if(contentType.length >0)
+               metadata.content.contentType = contentType
+          if(encoding.length >0)
+               metadata.content.encoding = encoding
+          if(language.length >0)
+               metadata.content.inLanguage = language  
+          }
         metadata.dateCreated = new Date().toISOString();
         setStep(nextStep)
         setBaseData(metadata)
@@ -162,14 +185,17 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
       
     }
   
-    
+    useEffect(() => {
+          if(open == false)
+              setStep(1)
+      }, [open]);
   return (
-                  <Dialog >
+                  <Dialog open={open} onOpenChange={setOpen}>
                     <DialogTrigger><PlusCircle size={32} color="#636363"></PlusCircle></DialogTrigger>
                     <DialogContent className="">  
                           <DialogTitle className="flex flex-row items-center space-x-2">
                                   <TbCircleDashedNumber1 size={32}></TbCircleDashedNumber1>
-                                  <Label>Choose Asset Type & Upload Content</Label>
+                                  <Label>Choose Asset Type & Upload Content </Label>
                           </DialogTitle>
                                 
                                  <div className="flex flex-col items-center justify-between space-y-4">
@@ -232,13 +258,24 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
                               <Label>Notes</Label>
                               <Input  onChange={e => setNotes(e.target.value)} placeholder="Notes"></Input>
                             </div>
+                            <div className="flex flex-row space-x-2 items-center justify-between">
+                              <div>
+                                <Label>Content Type</Label>
+                                <Input defaultValue={contentType} onChange={e => setContentType(e.target.value)} ></Input>
+                              </div>
+                                <div>
+                                <Label>Encoding</Label>
+                                <Input defaultValue={encoding} onChange={e => setEncoding(e.target.value)} ></Input>
+                              </div>
+                            </div>
                             <div>
                               <Label>Keywords <span className="text-xs text-slate-400">(comma seperated)</span></Label>
                               <Input  onChange={e => setKeywords(e.target.value)} placeholder="iris, dataset"></Input>
                             </div>
-                            <div>
+                            <div className="flex flex-row space-x-2 items-center justify-between">
+                             <div>
                               <Label>Choose a language</Label>
-                              <Select defaultValue="en-us" onValueChange={(value) => setLanguage(value)}>
+                              <Select  onValueChange={(value) => setLanguage(value)}>
                               <SelectTrigger> <SelectValue placeholder="Select a language" /></SelectTrigger>
                                <SelectContent>
                                   <SelectGroup>
@@ -249,7 +286,7 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
                            </div>
                            <div>
                             <Label>Choose a license</Label>
-                            <Select defaultValue="CC BY 4.0"  onValueChange={(value) => setLicense(value)}>
+                            <Select onValueChange={(value) => setLicense(value)}>
                               <SelectTrigger> <SelectValue placeholder="Select a license" /></SelectTrigger>
                                <SelectContent>
                                   <SelectGroup>
@@ -258,11 +295,15 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
                                </SelectContent>
                            </Select>
                            </div>
+                            </div>
                              <div className="flex flex-row items-center justify-between ">
+                              <Button type="button" onClick={(e) => setStep(1)}>Go Back</Button>
+                              
+                              <Button type="button" onClick={(e) => createMetadata(3)}>Edit </Button>
                               <DialogClose>
                                 <Button type="button" onClick={(e) => createMetadata(0)}>Create Asset</Button>
                               </DialogClose>
-                              <Button type="button" onClick={(e) => createMetadata(3)}>Edit Metadata & Create Asset</Button>
+
                             </div>
                       </DialogContent>            
                     }
@@ -295,11 +336,15 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
                                           onChange={setMetadataUpdated}
                                               />
                                         }
-                            <DialogClose>
-                              {metadataUpdated && <Button type="button" className="mx-2 w-32" onClick={() => createNewAsset(jsonData)}>Create Asset</Button>}
-                              {!metadataUpdated && <Button type="button" className="mx-2 w-32" onClick={() => createNewAsset(baseData)}>Create Asset</Button>}
-                            </DialogClose>
-
+                            <div className="flex flex-row items-center justify-between ">
+                                <Button type="button" onClick={(e) => setStep(2)}>Go Back</Button>
+                              <DialogClose>
+                                {metadataUpdated && <Button type="button" className="mx-2 w-32" onClick={() => createNewAsset(jsonData)}>Create Asset</Button>}
+                                {!metadataUpdated && <Button type="button" className="mx-2 w-32" onClick={() => createNewAsset(baseData)}>Create Asset</Button>}
+                                
+                              </DialogClose>
+                          
+                            </div>
                       </DialogContent>
                      }
                   </Dialog>

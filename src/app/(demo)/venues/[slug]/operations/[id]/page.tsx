@@ -1,7 +1,7 @@
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 
-import { FormGenerator } from "@/components/FormGenerator";
+import { OperationViewer } from "@/components/OperationViewer";
 
 export default async function Page({
   params,
@@ -12,7 +12,7 @@ export default async function Page({
   return (
 
      <ContentLayout title="Operations">
-             <FormGenerator assetId= {id}></FormGenerator>
+             <OperationViewer assetId= {id}></OperationViewer>
       </ContentLayout>
   )
 }
