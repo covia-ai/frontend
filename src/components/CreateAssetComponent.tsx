@@ -28,7 +28,7 @@ import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { Asset } from "@/lib/covia/covialib";
  
-import { getContentTypeForFile } from "@/lib/utils";
+import { getContentTypeForFile, getLicenseUrl } from "@/lib/utils";
 export const CreateAssetComponent = ({sendDataToParent}) => {
     const [step, setStep] = useState(0);
     const [jsonData, setJsonData] = useState({});
@@ -149,7 +149,7 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
     
     function createMetadata(nextStep){
 
-      let metadata = {};
+      const metadata = {};
         if(name.length > 0)
             metadata.name = name;
         if(creator.length > 0)

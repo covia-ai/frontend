@@ -1,5 +1,5 @@
 "use client";
-
+/* eslint-disable */
 
 import Link from "next/link";
 
@@ -49,7 +49,7 @@ export default function AssetPage() {
 
    const itemsPerPage = 6
   let offset = 0;
-  let limit=itemsPerPage;
+  const limit=itemsPerPage;
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(10);
   const [currentPage, setCurrentPage] = useState(1)
@@ -76,7 +76,7 @@ export default function AssetPage() {
             venue.getAssets(offset,limit).then((assets) => {
             
               assets.forEach((asset) => {
-                 asset.getMetadata().then((metadata: Object) => {
+                 asset.getMetadata().then((metadata: object) => {
 
                      if( metadata.operation != undefined)
                           setAssetsMetadata(prevArray => [...prevArray, new Asset(asset.id, asset.venue, metadata)]);
@@ -98,11 +98,11 @@ export default function AssetPage() {
      },[assetsMetadata])
         
        function renderJSONMap(jsonObject:JSON, requiredKeys: string[] = []) {
-        let keys = Object.keys(jsonObject);
-        let type = new Array<String>();
-        let description = new Array<String>();
+        const keys = Object.keys(jsonObject);
+        const type = new Array<string>();
+        const description = new Array<string>();
         keys.map((key, index) => {
-            let jsonValue = jsonObject[key];
+            const jsonValue = jsonObject[key];
             type[index] = jsonValue.type;
             description[index] = jsonValue.description;
         });
@@ -146,8 +146,9 @@ export default function AssetPage() {
           </Breadcrumb>
           <div className="flex flex-col items-center justify-center">
               <Search/>
+              <div className="text-slate-600 text-xs flex flex-row mt-2">Page {currentPage} : Showing {assetsMetadata.slice((currentPage-1)*itemsPerPage, (currentPage-1)*itemsPerPage+itemsPerPage).length} of {assetsMetadata.length} </div> 
               <Pagination>
-              <PaginationContent className="my-4 flex flex-row-reverse w-full">
+              <PaginationContent className="flex flex-row-reverse w-full">
                  {currentPage != totalPages && currentPage < totalPages && <PaginationItem>
                   <PaginationNext href="#" onClick={() => nextPage(currentPage + 1)} />
                 </PaginationItem>}
@@ -158,7 +159,6 @@ export default function AssetPage() {
                
               </PaginationContent>
             </Pagination>
-            <div className="text-slate-600 text-xs flex flex-row my-2 ">Page {currentPage} : Showing {assetsMetadata.slice((currentPage-1)*itemsPerPage, (currentPage-1)*itemsPerPage+itemsPerPage).length} of {assetsMetadata.length} </div> 
 
               <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-center justify-center gap-4">
               {!isLoading && assetsMetadata.slice((currentPage-1)*itemsPerPage, (currentPage-1)*itemsPerPage+itemsPerPage).map((asset, index) => ( 

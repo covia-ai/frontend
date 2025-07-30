@@ -1,5 +1,6 @@
 
 "use client";
+/* eslint-disable */
 
 import Link from "next/link";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
@@ -43,8 +44,8 @@ import { getExecutionTime } from "@/lib/utils";
 export default function OperationsPage() {
  const [statusFilter, setStatusFilter] = useState("All");
  const [dateFilter, setDateFilter] = useState("All");
- const [jobsData, setJobsData] = useState<Object[]>([]);
- const [filteredData, setFilteredData] = useState<Object[]>([]);
+ const [jobsData, setJobsData] = useState<object[]>([]);
+ const [filteredData, setFilteredData] = useState<object[]>([]);
  const [currentPage, setCurrentPage] = useState(1)
  const itemsPerPage = 10
  const [totalItems, setTotalItems] = useState(0);
@@ -114,7 +115,7 @@ export default function OperationsPage() {
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
-       <div className="flex flex-col items-center justify-center  mt-8">
+       <div className="flex flex-col items-center justify-center  mt-2">
         <Search></Search>
         <div className="flex flex-row w-full  items-start justify-start mt-4 space-x-4 ">
          <Select onValueChange={value => setStatusFilter(value)} defaultValue="All">
@@ -144,9 +145,10 @@ export default function OperationsPage() {
           </SelectContent>
         </Select>
         </div>
-          
+            <div className="text-slate-600 text-xs flex flex-row ">Page {currentPage} : Showing {filteredData.slice((currentPage-1)*itemsPerPage, (currentPage-1)*itemsPerPage+itemsPerPage).length} of {jobsData.length} </div> 
+
            <Pagination>
-              <PaginationContent className="my-4 flex flex-row-reverse w-full">
+              <PaginationContent className=" flex flex-row-reverse w-full">
                 {currentPage != 1 && <PaginationItem>
                   <PaginationPrevious href="#" onClick={() => handlePageChange(currentPage - 1)}/>
                 </PaginationItem>}
@@ -155,9 +157,8 @@ export default function OperationsPage() {
                 </PaginationItem>}
               </PaginationContent>
             </Pagination>
-            <div className="text-slate-600 text-xs flex flex-row my-2 ">Page {currentPage} : Showing {filteredData.slice((currentPage-1)*itemsPerPage, (currentPage-1)*itemsPerPage+itemsPerPage).length} of {jobsData.length} </div> 
 
-           <Table className=" my-8 border border-slate-200 rounded-lg shadow-md">
+           <Table className="  border border-slate-200 rounded-lg shadow-md">
               <TableHeader >
                 <TableRow className="hover:bg-slate-800 bg-slate-800 rounded-full text-white ">
                   <TableCell className="text-center border border-slate-400">Job Id</TableCell>

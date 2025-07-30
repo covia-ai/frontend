@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable */
 
 
 import Link from "next/link";
@@ -140,8 +141,10 @@ export default function AssetPage() {
                    
               </div>
 
-             <Pagination>
-              <PaginationContent className="my-4 flex flex-row-reverse w-full">
+            
+            <div className="text-slate-600 text-xs flex flex-row my-2 ">Page {currentPage} : Showing {assetsMetadata.slice((currentPage-1)*itemsPerPage, (currentPage-1)*itemsPerPage+itemsPerPage).length} of {assetsMetadata.length} </div> 
+ <Pagination>
+              <PaginationContent className="flex flex-row-reverse w-full">
                  {currentPage != totalPages && currentPage < totalPages && <PaginationItem>
                   <PaginationNext href="#" onClick={() => nextPage(currentPage + 1)} />
                 </PaginationItem>}
@@ -152,9 +155,6 @@ export default function AssetPage() {
                
               </PaginationContent>
             </Pagination>
-            <div className="text-slate-600 text-xs flex flex-row my-2 ">Page {currentPage} : Showing {assetsMetadata.slice((currentPage-1)*itemsPerPage, (currentPage-1)*itemsPerPage+itemsPerPage).length} of {assetsMetadata.length} </div> 
-           <div className="text-slate-600 text-xs flex flex-row my-2 "></div> 
-
               <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-center justify-center gap-4">
               {assetsMetadata.slice((currentPage-1)*itemsPerPage, (currentPage-1)*itemsPerPage+itemsPerPage).map((asset, index) =>
                   

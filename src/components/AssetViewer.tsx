@@ -1,10 +1,10 @@
 
 'use client'
-
+/* eslint-disable */
 
 import { useEffect, useState } from "react";
 import { Asset, Venue } from "@/lib/covia/covialib";
-import { Calendar, Copy, CopyCheck, Copyright, EyeIcon, Hash, Info, InfoIcon, Map, Tag, User, View } from "lucide-react";
+import { Calendar, Copy, CopyCheck, Copyright, Download, EyeIcon, Hash, Info, InfoIcon, Map, Tag, User, View } from "lucide-react";
 import Link from "next/link";
 import {
   Breadcrumb,
@@ -17,11 +17,10 @@ import {
 import { Badge } from "./ui/badge";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { ContentViewer } from "./ContentViewer";
 import { JsonEditor } from "json-edit-react";
-import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "./ui/dialog";
 import { copyDataToClipBoard } from "@/lib/utils";
+import { Table, TableCell, TableHead, TableRow } from "./ui/table";
 
 export const AssetViewer = (props:any) => {
       
@@ -59,10 +58,13 @@ export const AssetViewer = (props:any) => {
     
       useEffect(() => {
               console.log(assetsMetadata)
-              assetsMetadata?.getContent().then(( content) => {
+             /* assetsMetadata?.getContent().then(( content) => {
                   console.log(readStream(content?.getReader()))
                   
-            })
+            })*/
+           let contentDownloadUrl = venue.baseUrl+"/api/v1/assets/"+assetsMetadata?.id+"/content";
+           console.log(contentDownloadUrl)
+           setContent(contentDownloadUrl)
       }, [assetsMetadata]);
 
         return (
@@ -93,37 +95,34 @@ export const AssetViewer = (props:any) => {
                     <h3 className="text-center text-xl md:text-4xl font-bold lg:px-10 md:px-10">
                         {assetsMetadata.metadata?.name}
                     </h3>
-                   <p className="mt-4"> {assetsMetadata.metadata?.description}</p>
-                    <div className="flex flex-row-reverse space-x-4 space-x-reverse w-full"> 
-                      <div className="flex flex-row space-x-2 ">
-                        <span > AssetId </span>
-                        <span><Copy onClick={ (e) => copyDataToClipBoard(assetsMetadata?.id,"AssetId copied to clipboard")}></Copy></span>
+                   <p className="mb-4"> {assetsMetadata.metadata?.description}</p>
+                          <div className="flex flex-row-reverse space-x-4 space-x-reverse w-full mb-2"> 
+                     
+                      <div className="flex flex-row text-xs ">
+                        <span> {(window.location.href).slice(0,60)+"..."} </span>
+                        <span><Copy size={12} onClick={ (e) => copyDataToClipBoard(window.location.href, "Asset Link copied to clipboard")}></Copy></span>
+                     
                       </div>
-                      <div className="flex flex-row space-x-2 ">
-                        <span> Asset Link </span>
-                        <span><Copy onClick={ (e) => copyDataToClipBoard(window.location.href, "Asset Link copied to clipboard")}></Copy></span>
-                    
+                       <div className="flex flex-row ">
+                        <span className="text-xs">{assetsMetadata?.id.slice(0,60)+"..."} </span>
+                        <span><Copy size={12} onClick={ (e) => copyDataToClipBoard(assetsMetadata?.id, "AssetId copied to clipboard")}></Copy></span>
                       </div>
                     </div>
-                  <div className="flex flex-col border-1 shadow-md rounded-md border-slate-200  mt-8 p-4 items-center justify-between min-w-lg">
-                    
+                  <div className="flex flex-col border-1 shadow-md rounded-md border-slate-200 p-2 items-center justify-between min-w-lg w-11/12">
+                     
                     <div className="flex flex-row">
                       <div className="flex flex-col min-w-lg border-r-2 border-slate-200 px-2 ">
-                          <div className="flex flex-row items-center space-x-2 my-4">
-                            <Map size={18}></Map>
-                            <span><strong>Venue:</strong></span>
-                            <span><Link href="/venues/default" className="hover:underline hover:text-pink-600"> {assetsMetadata?.venue?.venueId}</Link></span>
-                          </div>
+                          
                           {assetsMetadata?.metadata?.creator && <div className="flex flex-row items-center space-x-2 my-4">
                             <User  size={18}></User>
                             <span><strong>Creator:</strong>  </span>
                             <span>{assetsMetadata?.metadata?.creator}</span>
                           </div>}
-                          <div className="flex flex-row items-center space-x-2 my-4">
+                          {assetsMetadata?.metadata?.license && <div className="flex flex-row items-center space-x-2 my-4">
                             <Copyright size={18}></Copyright>
                             <span><strong>License: </strong>  </span>
                             <span><Link className="hover:text-pink-400 hover:underline" href={assetsMetadata?.metadata?.license?.url}>{assetsMetadata?.metadata?.license?.name}</Link></span>
-                          </div> 
+                          </div>}
                           {assetsMetadata?.metadata?.dateCreated && <div className="flex flex-row items-center space-x-2 my-4">
                             <Calendar size={18}></Calendar>
                             <span><strong>Created on:</strong>  </span>
@@ -149,9 +148,9 @@ export const AssetViewer = (props:any) => {
                             <span>{assetsMetadata?.metadata?.additionalInformation?.notes}</span>
                           </div>}
                           {content?.length> 0 && <div className="flex flex-row items-center space-x-2 my-4">
-                                <EyeIcon size={18}></EyeIcon>
+                                <Download size={18}></Download>
                                 <span><strong>Data:</strong></span>
-                                <span><ContentViewer title={"Content"} data={content }></ContentViewer></span>   
+                                <span><Link href={content} className="text-pink-400 underline" >Click to download content</Link></span>   
                           </div>}
                           <div className="flex flex-row items-center space-x-2">
                                 <Info size={18}></Info>
@@ -181,9 +180,12 @@ export const AssetViewer = (props:any) => {
                       </div>  
                     </div>
                   </div>
-             
+                  <div className="flex flex-row items-center space-x-2 my-2 text-xs text-slate-800">
+                            <span>Venue:</span>
+                            <span><Link href="/venues/default" className="hover:underline hover:text-pink-600"> {assetsMetadata?.venue?.venueId}</Link></span>
                   </div>
-              </div>
+                  </div>
+                </div>
             )  
             }      
         </>

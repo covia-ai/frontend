@@ -8,31 +8,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function parseJsonForReactFlow(json:JSON) {
-  let initialX=100, initialY=150;
-  let initalNode = new Array(), initialEdge = new Array();
-  const myMap = new Map(Object.entries(json));
-  const outputInputMap = new Map();
-  let index=1, YIncrement=200, XPos = initialX, YPos=initialY;
-  
-  for (const [taskName, task] of myMap) {
-            
-  
-    let nodeJson = {
-          id: index+"",
-          position: { x: XPos, y: YPos },
-          type:'taskNode',
-          data: {  label:taskName, inputLabel:task.input, outputLabel:task.output},
-    };
-    initalNode.push(nodeJson)
-    outputInputMap.set(index,task.output);
-    
-    index = index + 1;
-    YPos = YPos + YIncrement;
-  }
-  
-  return initalNode;
-}
 export function getLicenseUrl(licenseName : string) {
   console.log(licenseName)
   if(licenseName.trim() ==  "CC BY 4.0")
@@ -45,7 +20,7 @@ export function getContentTypeForFile(filename: string) {
     const charset  = mimeType.split(';')[1]?.split("=")[1];
     return [contentType,charset];
 }
-export function getExecutionTime(date1, date2) {
+export function getExecutionTime(date1:string, date2:string) {
   const milliseconds1 = new Date(date1).getTime();
   const milliseconds2 = new Date(date2).getTime();
   const differenceInMilliseconds = milliseconds2 - milliseconds1;

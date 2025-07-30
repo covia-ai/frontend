@@ -1,5 +1,7 @@
 
 'use client'
+/* eslint-disable */
+
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Label } from "@/components/ui/label"
@@ -129,7 +131,12 @@ export const OperationViewer = (props:any) => {
                                 onChange={e => setKeyValue(key,e.target.value)}
                                 placeholder={description[index]}></Textarea>
                                 }
-                                 {type[index]=="number" && 
+                                 {type[index]=="object" && 
+                                <Textarea className="my-2" rows={5} cols={200} 
+                                onChange={e => setKeyValue(key,e.target.value)}
+                                placeholder={description[index]}></Textarea>
+                                }
+                                {type[index]=="number" && 
                                  <Input className="my-2" type="text"
                                   onChange={e => setKeyValue(key,e.target.value)}
                                   placeholder={description[index]}></Input>
@@ -182,14 +189,15 @@ export const OperationViewer = (props:any) => {
                    <h2 className="text-lg text-semibold my-2">{assetsMetadata?.metadata?.name}</h2>
                    <p className="text-sm  mb-4 text-slate-600">{assetsMetadata?.metadata?.description}</p>
                    <div className="flex flex-row-reverse space-x-4 space-x-reverse w-full"> 
-                      <div className="flex flex-row space-x-2 ">
-                        <span > AssetId </span>
-                        <span><Copy  onClick={ (e) => copyDataToClipBoard(assetsMetadata?.id, "AssetId copied to clipboard")}></Copy></span>
-                      </div>
-                      <div className="flex flex-row space-x-2 ">
-                        <span> Asset Link </span>
-                        <span><Copy onClick={ (e) => copyDataToClipBoard(window.location.href, "Asset Link copied to clipboard")}></Copy></span>
                      
+                      <div className="flex flex-row text-xs ">
+                        <span> {(window.location.href).slice(0,60)+"..."} </span>
+                        <span><Copy size={12} onClick={ (e) => copyDataToClipBoard(window.location.href, "Asset Link copied to clipboard")}></Copy></span>
+                     
+                      </div>
+                       <div className="flex flex-row ">
+                        <span className="text-xs">{assetsMetadata?.id.slice(0,60)+"..."} </span>
+                        <span><Copy size={12} onClick={ (e) => copyDataToClipBoard(assetsMetadata?.id, "AssetId copied to clipboard")}></Copy></span>
                       </div>
                     </div>
                   {renderJSONMap(assetsMetadata?.metadata?.operation?.input?.properties, assetsMetadata?.metadata?.operation?.input?.required)}

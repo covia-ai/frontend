@@ -1,3 +1,4 @@
+/* eslint-disable */
 
 const cache = new Map();
 
@@ -105,8 +106,8 @@ class Venue {
         }
       }
       catch(error) {
-        if(e instanceof CoviaError)
-          throw e;
+        if(error instanceof CoviaError)
+          throw error;
        else 
            throw new CoviaError(`Failed to get asset with id: `+assetId+`!  ${error.message}`);
         

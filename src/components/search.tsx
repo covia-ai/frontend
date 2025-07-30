@@ -17,7 +17,7 @@ export const Search: React.FC = (   ) => {
   }
   return (
     <div className="flex flex-col items-center justify-center w-1/2">
-        <div className="flex flex-row items-center py-4 w-full">
+        <div className="flex flex-row items-center py-2 w-full">
         
         <Input
           placeholder="Type keyword to search..."
