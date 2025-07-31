@@ -10,6 +10,9 @@ import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { useRouter } from "next/navigation";
 import { copyDataToClipBoard, getExecutionTime } from "@/lib/utils";
+import { TbSubtask } from "react-icons/tb";
+import Link from "next/link";
+
 export const ExecutionViewer = (props:any) => {
         const router = useRouter()
         const [executionData, setExecutionData] = useState({})
@@ -50,6 +53,34 @@ export const ExecutionViewer = (props:any) => {
        }
     }, [poll])
 
+      function renderChildJobs(jsonObject: JSON) {
+         let steps = executionData.steps;
+         console.log(steps)
+         return (
+
+                        <Table className="border border-slate-200 rounded-md py-2">
+                            <TableHeader>
+                                <TableRow className="bg-slate-200">
+                                   
+                                    <TableCell className="text-center">JobId</TableCell>
+                                    <TableCell className="text-center ">Status</TableCell>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody >
+                                  {steps.map((step,index) => (
+                                    <TableRow key={index}>
+                                    <TableCell className="text-pink-600 underline"><Link href={`/runs/${step.id}`}>{step.id}</Link></TableCell>
+                                     {step?.status == RunStatus.COMPLETE && <span className="text-green-600 ">{RunStatus.COMPLETE}</span>}
+                                     {step?.status == RunStatus.FAILED && <span className="text-red-600 ">{RunStatus.FAILED}</span>}
+                                     {step?.status == RunStatus.PENDING && <span className="text-blue-600 ">{RunStatus.PENDING}</span>}
+                                     {step?.status == RunStatus.STARTED && <span className="text-blue-600 ">{RunStatus.STARTED}</span>}
+                                  </TableRow>
+                                  ))}
+                            </TableBody>
+                        </Table>
+                
+                    )
+      }
       function renderJSONObject(jsonObject: JSON, type:string) {
             if(jsonObject != undefined) {      
                 let keys = new Array();
@@ -59,7 +90,7 @@ export const ExecutionViewer = (props:any) => {
                     inOutType = assetsMetadata?.metadata?.operation?.input?.type;
                 }
                 else {
-                    keys = Object.keys(executionData?.output);
+                     keys = Object.keys(executionData?.output);
                      inOutType = assetsMetadata?.metadata?.operation?.output?.type;
                 }
                 if(inOutType == "asset")
@@ -72,17 +103,17 @@ export const ExecutionViewer = (props:any) => {
                                    
                                     <TableCell className="text-center">Name</TableCell>
                                     <TableCell className="text-center flex-2">Value</TableCell>
-                                     <TableCell className="text-center ">Type</TableCell>
+                                    {inOutType && <TableCell className="text-center ">Type</TableCell>}
                                 </TableRow>
                             </TableHeader>
                             <TableBody >
                                 {keys.map((key,index) => (
-                                <TableRow>
+                                <TableRow key={index}>
                                   
                                     <TableCell key={index} className="text-left font-bold bg-pink-100">{key}</TableCell>
-                                    {inOutType != "asset" && <TableCell className="text-center flex-2">{jsonObject[key]}</TableCell>}
+                                    {inOutType != "asset" && <TableCell className="text-center flex-2">{JSON.stringify(jsonObject[key])}</TableCell>}
                                     {inOutType == "asset" && <TableCell className="text-center flex-2">{assetLink}</TableCell>}
-                                    <TableCell className="text-center text-slate-600">{inOutType}</TableCell>
+                                    {inOutType && <TableCell className="text-center text-slate-600">{inOutType}</TableCell>}
                                 </TableRow>
                                 ))}
                             </TableBody>
@@ -143,7 +174,17 @@ export const ExecutionViewer = (props:any) => {
                         <span className="w-28"><strong>Execution Time:</strong></span>
                         <span>{getExecutionTime(executionData.created,executionData.updated)}</span>
                     </div>
-                    <div className="flex flex-row w-full items-center justify-between space-x-4 ">
+                    <div className="flex flex-col py-2 space-x-4 w-1/2 ">{executionData?.steps && 
+                    <div className="flex flex-row items-center space-x-4  py-2">
+                        <div className="flex flex-row space-x-4 my-2 ">
+                                <TbSubtask size={20}></TbSubtask>
+                                <span className="w-28"><strong>Steps:</strong></span>
+                            </div>
+                                {renderChildJobs(executionData?.steps)}
+                    </div>
+                    }
+                    </div>
+                    <div className="flex flex-row w-full items-start justify-between space-x-4 ">
                         <div className="flex flex-col py-2 space-x-4 w-1/2 ">
                             <div className="flex flex-row space-x-4 my-2 ">
                                 <FileInput></FileInput>

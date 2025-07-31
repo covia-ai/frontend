@@ -164,15 +164,15 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
             metadata.keywords = keywords.split(",");
         if(notes.length > 0)
             metadata.additionalInformationnotes = {"notes":[notes]}
-        if(hash.length> 0) {
+        if(hash && hash.length> 0) {
           metadata.content = {
             "sha256" : hash,
           }
-          if(contentType.length >0)
+          if(contentType && contentType.length >0)
                metadata.content.contentType = contentType
-          if(encoding.length >0)
+          if(encoding && encoding.length >0)
                metadata.content.encoding = encoding
-          if(language.length >0)
+          if(language && language.length >0)
                metadata.content.inLanguage = language  
           }
         metadata.dateCreated = new Date().toISOString();
