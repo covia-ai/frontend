@@ -159,7 +159,7 @@ export default function AssetPage() {
               {assetsMetadata.slice((currentPage-1)*itemsPerPage, (currentPage-1)*itemsPerPage+itemsPerPage).map((asset, index) =>
                   
                    <Card key={index} className="px-2  shadow-md bg-slate-100 flex flex-col rounded-md  hover:-translate-1 hover:shadow-xl ">
-                        <CardTitle  className="px-2 flex flex-row items-center justify-between">
+                        <CardTitle onClick={() => {redirect("/venues/default/assets/"+asset.id)}}  className="px-2 flex flex-row items-center justify-between">
 
                         <div>{asset.metadata.name}</div>
                         <Dialog>
@@ -205,7 +205,7 @@ export default function AssetPage() {
                                 <div className="flex flex-row items-center justify-between mt-4">
                                     <CircleArrowRight onClick={() => {redirect("/venues/default/assets/"+asset.id)}}/>
                                 </div>
-                          </CardContent>
+                        </CardContent>
                     </Card>           
                          
               )}

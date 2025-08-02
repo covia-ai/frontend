@@ -108,7 +108,7 @@ export const OperationViewer = (props:any) => {
                           {keys.map((key, index) => (
                               <div key={index} className="flex flex-row space-x-2 w-full">
                                 
-                                <Label>{key.toUpperCase()} </Label>
+                                <Label className="w-20">{key} </Label>
                                 {requiredKeys != undefined && requiredKeys?.indexOf(key) != -1 && <span className="text-red-400">*</span>}
                                 {type[index]=="string" && (
                                   <>

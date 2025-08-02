@@ -183,7 +183,6 @@ function processSteps(stepIndex, steps, results, nodes, edges,posX,posY) {
 				}
 			)
 			posX = posX + 400;
-			console.log( currentStep.op)
 			edges.push(
 					{
 						id: "e"+edges.length,
@@ -194,7 +193,6 @@ function processSteps(stepIndex, steps, results, nodes, edges,posX,posY) {
 						type : "customEdge",
 					}
 			)
-			console.log(edges)
 		}
 		else if(inputs[0] == '0' && inputs.length == 1) {
 			nodes.push(
