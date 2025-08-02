@@ -201,6 +201,7 @@ export const OperationViewer = (props:any) => {
                       </div>
                     </div>
                   {renderJSONMap(assetsMetadata?.metadata?.operation?.input?.properties, assetsMetadata?.metadata?.operation?.input?.required)}
+                  {assetsMetadata?.metadata?.operation?.steps && <DiagramViewer metadata={assetsMetadata.metadata}></DiagramViewer>}
                 </div>
             
              

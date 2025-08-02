@@ -44,7 +44,7 @@ export const ExecutionViewer = (props:any) => {
       }, []);
     
       useEffect(() => {
-        if(poll == RunStatus.PENDING) {
+        if(poll != RunStatus.FAILED && poll != RunStatus.COMPLETE) {
             const intervalId = setInterval(() => {
             fetchJobStatus();
         }, 1000)

@@ -14,78 +14,30 @@ import {
 
 import '@xyflow/react/dist/style.css';
 
-import TaskNode from '@/components/diagrams/TaskNode';
-import InputNode from '@/components/diagrams/InputNode';
-
-import CustomEdge from '@/components/diagrams/CustomEdge';
-import OutputNode from '@/components/diagrams/OutputNode';
+import TaskNode from '@/components/diagram/TaskNode';
+import InputNode from '@/components/diagram/InputNode';
+import ConstNode from '@/components/diagram/ConstNode';
+import CustomEdge from '@/components/diagram/CustomEdge';
+import OutputNode from '@/components/diagram/OutputNode';
+import { parseOpMetadata } from '@/lib/diagramutils';
 
 const nodeTypes = {
   TaskNode: TaskNode,
   InputNode:InputNode,
-  OutputNode:OutputNode
+  OutputNode:OutputNode,
+  ConstNode:ConstNode
   
 };
 const edgeTypes: EdgeTypes = {
   customEdge: CustomEdge
 };
 
-const initNodes = [
-  
-   {
-    id: '1',
-    type: 'InputNode',
-    data: {  nodelabel:"Inputs", inputs:["length", "types"] },
-    position: { x: 100, y: 200 },
-  },
 
-  
-   {
-    id: '2',
-    type: 'TaskNode',
-    data: { nodelabel:"Step1", inputs:["length", "types"],outputs:["stepR"] },
-    position: { x: 300, y: 250 },
-  },
-  {
-    id: '3',
-    type: 'TaskNode',
-    data: { nodelabel:"Step2", inputs:["stepR", "types"],outputs:["bytes"] },
-    position: { x: 600, y: 250 },
-  },
-  {
-    id: '4',
-    type: 'OutputNode',
-    data: {nodelabel:"Outputs", outputs:["bytes"] },
-    position: { x: 800, y: 200 },
-  },
-  
-];
-
-const initEdges = [
- {
-    id: 'e1-2a',
-    source: '1',
-    target: '2',
-    animated: true,
-    sourcehandle:'input2',
-    type : "customEdge",
-  },
-  {
-    id: 'e1-2b',
-    source: '1',
-    target: '2',
-    animated: false,
-    sourcehandle:'input1',
-    type : "customEdge",
-    
-  }
-  
-  
-];
 
 export const DiagramViewer = (props:any) => {
-       const [nodes, setNodes, onNodesChange] = useNodesState(initNodes);
-      const [edges, setEdges, onEdgesChange] = useEdgesState(initEdges);
+       const parseJson = parseOpMetadata(props.metadata);
+       const [nodes, setNodes, onNodesChange] = useNodesState(parseJson[0]);
+       const [edges, setEdges, onEdgesChange] = useEdgesState(parseJson[1]);
       
       
    
