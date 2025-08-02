@@ -32,7 +32,6 @@ function InputNode({ data }) {
                 key="input"
                 className="!w-3 !h-3 !rounded-full !border-2 !bg-purple-400 !border-purple-400 !rounded-md !top-1"
                 >  
-                <div className="text-[10px] ml-6 text-black -translate-x-14 translate-y-2">input</div>
           </Handle>
           {inputs.map((input,index) => (
             <Handle

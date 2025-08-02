@@ -166,41 +166,42 @@ function processSteps(stepIndex, steps, results, nodes, edges,posX,posY) {
 		const inputs = currentStep.input;
 		
 		if(inputs[0] == 'const' && inputs.length > 1) {
-			nodes.push(
+				nodes.push(
 					{
 						id: (stepIndex+1)+"c",
 						type: 'ConstNode',
-						data: { nodeLabel:JSON.stringify(inputs[1])},
+						data: { id: stepIndex+"c", nodeLabel:JSON.stringify(inputs[1])},
 						position: { x: posX, y: posY + 200 },
-				}
-			)
-			
+				    }
+			    )
 			nodes.push(
 					{
 						id: (stepIndex+1)+"",
 						type: 'TaskNode',
-						data: { nodeLabel:currentStep.name, inputs:[JSON.stringify(inputs[1])], outputs:getResultOfStep(results,stepIndex)},
-						position: { x: posX+50, y: posY + 200 },
+						data: { nodeLabel:currentStep.name, op:currentStep.op, inputs:[], outputs:getResultOfStep(results,stepIndex)},
+						position: { x: posX+100, y: posY+ 200 },
 				}
 			)
 			posX = posX + 400;
+			console.log( currentStep.op)
 			edges.push(
 					{
 						id: "e"+edges.length,
 						source: (stepIndex+1)+"c",
 						target: (stepIndex+1)+"",
 						animated: true,
-						targetHandle: getResultOfStep(results,stepIndex)[0],
+						targetHandle:"taskinput",
 						type : "customEdge",
 					}
 			)
+			console.log(edges)
 		}
 		else if(inputs[0] == '0' && inputs.length == 1) {
 			nodes.push(
 					{
 						id: (stepIndex+1)+"",
 						type: 'TaskNode',
-						data: { nodeLabel:currentStep.name, inputs:getResultOfStep(results,stepIndex-1), outputs:getResultOfStep(results,stepIndex)},
+						data: { nodeLabel:currentStep.name, op:currentStep.op, inputs:getResultOfStep(results,stepIndex-1), outputs:getResultOfStep(results,stepIndex)},
 						position: { x: posX, y: posY },
 				}
 			)
@@ -224,7 +225,7 @@ function processSteps(stepIndex, steps, results, nodes, edges,posX,posY) {
 					{
 						id: (stepIndex+1)+"",
 						type: 'TaskNode',
-						data: { nodeLabel:currentStep.name, inputs:stepInputKeys, outputs:stepOutput},
+						data: { nodeLabel:currentStep.name, op:currentStep.op, inputs:stepInputKeys, outputs:stepOutput},
 						position: { x: posX, y: posY },
 					}
 					

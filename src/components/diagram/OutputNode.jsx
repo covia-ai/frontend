@@ -24,12 +24,11 @@ function OutputNode({ data }) {
             </span>
             }
                <Handle
-                     type="source"
+                     type="target"
                      position={Position.Left}
                      id={"output"}
                      className="!w-3 !h-3 !rounded-full !border-2 !bg-purple-400 !border-purple-400 !rounded-md !top-1"
                      >
-                     <div className="text-[10px] ml-6 text-black -translate-x-14 translate-y-2">output</div>
                  </Handle>
                   {outputs.map((output,index) => (
                     <Handle

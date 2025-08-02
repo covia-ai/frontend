@@ -4,6 +4,7 @@ import { Handle, Position } from '@xyflow/react';
 function TaskNode({ data }) {
   const inputs = data.inputs;
   const outputs = data.outputs;
+  const op = data.op;
 
   const inputSpacing = 100/(inputs.length+1);
   const outputSpacing = 100/(outputs.length+1);
@@ -33,6 +34,13 @@ function TaskNode({ data }) {
           </div>
            <div className="flex flex-row items-center justify-between"> 
                <div className="bg-yellow-200  border-2 border-slate-400 rounded-md h-12 w-16 -translate-x-2">
+                   <Handle
+                        type="target"
+                        position={Position.Left}
+                        id="taskinput"
+                        className="!w-3 !h-3 !rounded-full !border-2 !bg-purple-400 !border-purple-400 !rounded-md !top-0"
+                        >  
+                  </Handle>
                 {inputs.map((input,index) => (
                     <Handle
                       type="target"
@@ -51,7 +59,14 @@ function TaskNode({ data }) {
 
                </div>
                <div className="bg-blue-200  border-2 border-slate-400 rounded-md h-12 w-16 translate-x-2">
-                {outputs.map((output,index) => (
+                <Handle
+                        type="source"
+                        position={Position.Right}
+                        id="taskoutput"
+                        className="!w-3 !h-3 !rounded-full !border-2 !bg-purple-400 !border-purple-400 !rounded-md !top-1"
+                        >  
+                  </Handle>
+                  {outputs.map((output,index) => (
                   <Handle
                     type="source"
                     key={output}
