@@ -83,18 +83,34 @@ export const ExecutionViewer = (props:any) => {
       }
       function renderJSONObject(jsonObject: JSON, type:string) {
             if(jsonObject != undefined) {      
-                let keys = new Array();
+                let keys = new Array(); // keys of the input or output
                 let inOutType = "", assetLink ="";
+                let schema={}; 
                 if(type == "input") {
                     keys = Object.keys(executionData?.input);
-                    inOutType = assetsMetadata?.metadata?.operation?.input?.type;
-                }
-                else {
-                     keys = Object.keys(executionData?.output);
-                     inOutType = assetsMetadata?.metadata?.operation?.output?.type;
+                    schema = assetsMetadata?.metadata?.operation?.input;
+                    inOutType = schema?.type;
+                } else {
+                    schema = assetsMetadata?.metadata?.operation?.output;
+                    inOutType = schema?.type;
+                    keys = Object.keys(executionData?.output);
                 }
                 if(inOutType == "asset")
                       assetLink = window.location.href+"/venues/default/assets/"+assetsMetadata?.id;
+
+                // render function for each key within the input or output like "prompt" or "image"
+                let renderContent = key=>{
+                    let text=JSON.stringify(jsonObject[key]);
+                    let fieldType=schema?.properties?.[key]?.type || "object";
+                    return <TableCell className="flex-2">{text}</TableCell>;
+                }
+                
+                // render function for the type each key within the input or output like "string" or "asset"
+                let renderType = key=>{
+                   let fieldType=schema?.properties?.[key]?.type || "object";
+                   return  <TableCell className="text-center text-slate-600">{fieldType}</TableCell>;
+                }
+
                 if(keys != undefined && keys.length > 0) {
                     return (
                         <Table className="border border-slate-200 rounded-md py-2">
@@ -112,18 +128,15 @@ export const ExecutionViewer = (props:any) => {
                                   
                                     {type == "input" && <TableCell key={index} className="text-left font-bold bg-yellow-200">{key}</TableCell>}
                                     {type == "output" && <TableCell key={index} className="text-left font-bold bg-blue-200">{key}</TableCell>}
-                                    {inOutType != "asset" && <TableCell className="flex-2">{JSON.stringify(jsonObject[key])}</TableCell>}
-                                    {inOutType == "asset" && <TableCell className="text-center flex-2">{assetLink}</TableCell>}
-                                    {inOutType && <TableCell className="text-center text-slate-600">{inOutType}</TableCell>}
+                                    {renderContent(key)}
+                                    {renderType(key)}
                                 </TableRow>
                                 ))}
                             </TableBody>
                         </Table>
                 
                     )
-                }
-                   
-                        
+                }      
           }
       }
       
