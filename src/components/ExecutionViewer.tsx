@@ -112,7 +112,7 @@ export const ExecutionViewer = (props:any) => {
                                   
                                     {type == "input" && <TableCell key={index} className="text-left font-bold bg-yellow-200">{key}</TableCell>}
                                     {type == "output" && <TableCell key={index} className="text-left font-bold bg-blue-200">{key}</TableCell>}
-                                    {inOutType != "asset" && <TableCell className="text-center flex-2">{JSON.stringify(jsonObject[key])}</TableCell>}
+                                    {inOutType != "asset" && <TableCell className="flex-2">{JSON.stringify(jsonObject[key])}</TableCell>}
                                     {inOutType == "asset" && <TableCell className="text-center flex-2">{assetLink}</TableCell>}
                                     {inOutType && <TableCell className="text-center text-slate-600">{inOutType}</TableCell>}
                                 </TableRow>
