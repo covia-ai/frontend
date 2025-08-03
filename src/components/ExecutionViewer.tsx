@@ -100,9 +100,9 @@ export const ExecutionViewer = (props:any) => {
 
                 // render function for each key within the input or output like "prompt" or "image"
                 let renderContent = key=>{
-                    let text=JSON.stringify(jsonObject[key]);
                     let fieldType=schema?.properties?.[key]?.type || "object";
-                    return <TableCell className="flex-2">{text}</TableCell>;
+                    let text=JSON.stringify(jsonObject[key]);
+                    return <TableCell className="flex-2 text-wrap">{text}</TableCell>;
                 }
                 
                 // render function for the type each key within the input or output like "string" or "asset"
@@ -116,18 +116,16 @@ export const ExecutionViewer = (props:any) => {
                         <Table className="border border-slate-200 rounded-md py-2">
                             <TableHeader>
                                 <TableRow className="bg-slate-200">
-                                   
-                                    <TableCell className="text-center">Name</TableCell>
-                                    <TableCell className="text-center flex-2">Value</TableCell>
-                                    {inOutType && <TableCell className="text-center ">Type</TableCell>}
+                                    <TableCell >Name</TableCell>
+                                    <TableCell >Value</TableCell>
+                                    {inOutType && <TableCell>Type</TableCell>}
                                 </TableRow>
                             </TableHeader>
                             <TableBody >
                                 {keys.map((key,index) => (
                                 <TableRow key={index}>
-                                  
-                                    {type == "input" && <TableCell key={index} className="text-left font-bold bg-yellow-200">{key}</TableCell>}
-                                    {type == "output" && <TableCell key={index} className="text-left font-bold bg-blue-200">{key}</TableCell>}
+                                    {type == "input" && <TableCell key={index} className="font-bold bg-yellow-200">{key}</TableCell>}
+                                    {type == "output" && <TableCell key={index} className="font-bold bg-blue-200">{key}</TableCell>}
                                     {renderContent(key)}
                                     {renderType(key)}
                                 </TableRow>
@@ -136,7 +134,9 @@ export const ExecutionViewer = (props:any) => {
                         </Table>
                 
                     )
-                }      
+                } else {
+                    return <div>No data</div>
+                }
           }
       }
       
@@ -145,7 +145,7 @@ export const ExecutionViewer = (props:any) => {
                  {executionData && (
                 
                 <div className="flex flex-col w-full items-center justify-center">
-                  <div className="flex flex-row-reverse space-x-4 space-x-reverse w-full"> 
+                  <div className="flex flex-row-reverse space-x-2 space-x-reverse w-full"> 
                        <div className="flex flex-row text-xs ">
                         <span> {(window.location.href).slice(0,60)+"..."} </span>
                         <span><Copy size={12} onClick={ (e) => copyDataToClipBoard(window.location.href, "Job Link copied to clipboard")}></Copy></span>

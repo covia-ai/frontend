@@ -92,19 +92,20 @@ export const AssetViewer = (props:any) => {
                 
                 <div className="flex flex-col w-full items-center justify-center">
                   <div className="flex flex-col items-center justify-center">
-                    <h3 className="text-center text-xl md:text-4xl font-bold lg:px-10 md:px-10">
+                    <h3 className="text-center text-wrap text-xl md:text-4xl font-bold lg:px-10 md:px-10">
                         {assetsMetadata.metadata?.name}
                     </h3>
-                   <p className="mb-4"> {assetsMetadata.metadata?.description}</p>
-                          <div className="flex flex-row-reverse space-x-4 space-x-reverse w-full mb-2"> 
-                     
+                   <p className="mb-4 text-wrap w-1/2"> {assetsMetadata.metadata?.description}</p>
+
+                   {/* Links to the asset and the asset id*/}
+                   <div className="flex flex-row-reverse space-x-4 space-x-reverse w-full mb-2"> 
                       <div className="flex flex-row text-xs ">
-                        <span> {(window.location.href).slice(0,60)+"..."} </span>
+                        <span><a href={window.location.href} className="hover:text-pink-400 hover:underline">Asset Link </a></span>
                         <span><Copy size={12} onClick={ (e) => copyDataToClipBoard(window.location.href, "Asset Link copied to clipboard")}></Copy></span>
                      
                       </div>
                        <div className="flex flex-row ">
-                        <span className="text-xs">{assetsMetadata?.id.slice(0,60)+"..."} </span>
+                        <span className="text-xs">{assetsMetadata?.id} </span>
                         <span><Copy size={12} onClick={ (e) => copyDataToClipBoard(assetsMetadata?.id, "AssetId copied to clipboard")}></Copy></span>
                       </div>
                     </div>
@@ -159,10 +160,8 @@ export const AssetViewer = (props:any) => {
                                   <Dialog>
                                     <DialogTrigger>
                                         <span className="text-pink-400 underline"> Click to load metadata</span>
-
                                     </DialogTrigger>
                                     <DialogContent>
-
                                       <JsonEditor data={assetsMetadata?.metadata}
                                                                           rootName="metadata"
                                                                           rootFontSize="1em"
@@ -173,8 +172,7 @@ export const AssetViewer = (props:any) => {
                                                                             collapse={1}
                                                                         /> 
                                     </DialogContent>
-                                    </Dialog>
-                                    
+                                  </Dialog>     
                                 </span>   
                           </div>  
                       </div>  
