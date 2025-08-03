@@ -3,8 +3,6 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { redirect } from "next/navigation";
 
-
-
 export const AIPrompt = () => {
   const handleSubmit = (e: any) => {
     e.preventDefault();
@@ -34,8 +32,9 @@ export const AIPrompt = () => {
             className="bg-muted/50 dark:bg-muted/80 w-8/12"
             aria-label="email"
           />
-          <Button variant="default"
-           onClick={()=>redirect("/operations/rand101")}>Run</Button>
+          <Button variant="default" onClick={() => redirect("/operations/rand101")}>
+              Run
+          </Button>
         </form>
       </div>
 

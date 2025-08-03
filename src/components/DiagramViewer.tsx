@@ -39,11 +39,9 @@ export const DiagramViewer = (props:any) => {
        const [nodes, setNodes, onNodesChange] = useNodesState(parseJson[0]);
        const [edges, setEdges, onEdgesChange] = useEdgesState(parseJson[1]);
       
-      
-   
+
       return (
         <div style={{ width: '80%', height: '500px' }}>
-           
            <ReactFlow
                 nodes={nodes}
                 edges={edges}

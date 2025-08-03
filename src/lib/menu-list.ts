@@ -139,7 +139,7 @@ export function   getMenuList(): Group[] {
             ]
           },
           {
-            href: "/userhistory",
+            href: "/history",
             label: "User History",
             icon: User
           },
