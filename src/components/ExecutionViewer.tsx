@@ -62,8 +62,8 @@ export const ExecutionViewer = (props:any) => {
                             <TableHeader>
                                 <TableRow className="bg-slate-200">
                                    
-                                    <TableCell className="text-center">JobId</TableCell>
-                                    <TableCell className="text-center ">Status</TableCell>
+                                    <TableCell>Job Id</TableCell>
+                                    <TableCell>Status</TableCell>
                                 </TableRow>
                             </TableHeader>
                             <TableBody >
@@ -188,13 +188,13 @@ export const ExecutionViewer = (props:any) => {
                         <span className="w-28"><strong>Execution Time:</strong></span>
                         <span>{getExecutionTime(executionData.created,executionData.updated)}</span>
                     </div>
-                    <div className="flex flex-col py-2 space-x-4 w-1/2 ">{executionData?.steps && 
-                    <div className="flex flex-row items-center space-x-4  py-2">
+                    <div className="flex flex-col py-2 space-x-4 w-3/4 ">{executionData?.steps && 
+                    <div className="flex flex-row space-x-4  py-2">
                         <div className="flex flex-row space-x-4 my-2 ">
-                                <TbSubtask size={20}></TbSubtask>
-                                <span className="w-28"><strong>Steps:</strong></span>
-                            </div>
-                                {renderChildJobs(executionData?.steps)}
+                            <TbSubtask size={20}></TbSubtask>
+                            <span className="w-28"><strong>Steps:</strong></span>
+                        </div>
+                        {renderChildJobs(executionData?.steps)}
                     </div>
                     }
                     </div>
