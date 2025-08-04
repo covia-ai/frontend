@@ -58,7 +58,7 @@ const METADATA_FIELDS: MetadataFieldConfig[] = [
     icon: Tag,
     path: 'metadata.keywords',
     renderValue: (value) => (
-      <div className="space-x-2">
+      <div className="space-x-1">
         {value?.map((keyword: string, index: number) => (
           <Badge variant="secondary" key={index}>{keyword}</Badge>
         ))}
@@ -88,7 +88,7 @@ const renderMetadataFields = (assetsMetadata: Asset, fields: MetadataFieldConfig
     const IconComponent = field.icon;
     
     return (
-      <div key={field.key} className="flex flex-row items-center space-x-2 my-2">
+      <div key={field.key} className="flex flex-row items-center space-x-2 my-1">
         <IconComponent size={18} />
         <span><strong>{field.label}</strong></span>
         <span>
