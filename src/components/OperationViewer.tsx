@@ -96,58 +96,70 @@ export const OperationViewer = (props: any) => {
       let keys = Object.keys(jsonObject);
       let type = new Array<string>();
       let description = new Array<string>();
+      let defaultValue = new Array<string>();
 
       keys.map((key, index) => {
         let jsonValue = jsonObject[key];
         type[index] = jsonValue.type;
         description[index] = jsonValue.description;
+        defaultValue[index] = jsonValue.default || "";
       });
 
       return (
-        <div className="flex flex-col w-full space-x-2 my-2">
-          <div className="flex flex-col w-full space-x-2 my-2 items-center justify-center">
-            {keys.map((key, index) => (
-              <div key={index} className="flex flex-row space-x-2 w-full">
+        <div className="flex flex-col w-7/8 space-x-2 my-2 items-center justify-center">
+          {keys.map((key, index) => (
+            <div key={index} className="flex flex-row space-x-2 w-full items-center">
 
-                <Label className="w-20">{key} </Label>
-                {requiredKeys != undefined && requiredKeys?.indexOf(key) != -1 && <span className="text-red-400">*</span>}
-                {type[index] == "string" && (
-                  <>
-
-                    <Input className="my-2"
-                      required={true}
-                      onChange={e => setKeyValue(key, e.target.value)}
-                      type="text" placeholder={description[index]}></Input>
-
-                  </>
-                )
-                }
-                {type[index] == "asset" &&
-                  <Input className="my-2" type="text"
+              <Label className="w-20">{key} </Label>
+              {requiredKeys != undefined && requiredKeys?.indexOf(key) != -1 && <span className="text-red-400">*</span>}
+              {type[index] == "string" && (
+                <>
+                  <Input className="my-2 flex-1"
+                    required={true}
+                    defaultValue={defaultValue[index]}
                     onChange={e => setKeyValue(key, e.target.value)}
-                    placeholder={description[index]}></Input>
-                }
-                {type[index] == "json" &&
-                  <Textarea className="my-2" rows={5} cols={200}
-                    onChange={e => setKeyValue(key, e.target.value)}
-                    placeholder={description[index]}></Textarea>
-                }
-                {type[index] == "object" &&
-                  <Textarea className="my-2" rows={5} cols={200}
-                    onChange={e => setKeyValue(key, e.target.value)}
-                    placeholder={description[index]}></Textarea>
-                }
-                {type[index] == "number" &&
-                  <Input className="my-2" type="text"
-                    onChange={e => setKeyValue(key, e.target.value)}
-                    placeholder={description[index]}></Input>
-                }
-              </div>
-            ))}
-            <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
-            {!loading && <Button type="button" className="w-32" onClick={() => invokeOp(assetsMetadata?.id, requiredKeys)}>Run</Button>}
-            {loading && <Button type="button" className="w-32" disabled>Please wait ...</Button>}
-          </div>
+                    type="text"></Input>
+                  <span className="text-sm text-gray-600 ml-2">{description[index]}</span>
+                </>
+              )
+              }
+              {type[index] == "asset" &&
+                <>
+                  <Input className="my-2 flex-1" type="text"
+                    defaultValue={defaultValue[index]}
+                    onChange={e => setKeyValue(key, e.target.value)}></Input>
+                  <span className="text-sm text-gray-600 ml-2">{description[index]}</span>
+                </>
+              }
+              {type[index] == "json" &&
+                <>
+                  <Textarea className="my-2 flex-1" rows={5} cols={200}
+                    defaultValue={defaultValue[index]}
+                    onChange={e => setKeyValue(key, e.target.value)}></Textarea>
+                  <span className="text-sm text-gray-600 ml-2">{description[index]}</span>
+                </>
+              }
+              {type[index] == "object" &&
+                <>
+                  <Textarea className="my-2 flex-1" rows={5} cols={200}
+                    defaultValue={defaultValue[index]}
+                    onChange={e => setKeyValue(key, e.target.value)}></Textarea>
+                  <span className="text-sm text-gray-600 ml-2">{description[index]}</span>
+                </>
+              }
+              {type[index] == "number" &&
+                <>
+                  <Input className="my-2 flex-1" type="text"
+                    defaultValue={defaultValue[index]}
+                    onChange={e => setKeyValue(key, e.target.value)}></Input>
+                  <span className="text-sm text-gray-600 ml-2">{description[index]}</span>
+                </>
+              }
+            </div>
+          ))}
+          <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
+          {!loading && <Button type="button" className="w-32" onClick={() => invokeOp(assetsMetadata?.id, requiredKeys)}>Run</Button>}
+          {loading && <Button type="button" className="w-32" disabled>Please wait ...</Button>}
         </div>
       )
     }
