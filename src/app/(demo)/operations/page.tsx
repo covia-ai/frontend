@@ -47,7 +47,7 @@ export default function AssetPage() {
   const [assetsMetadata, setAssetsMetadata] = useState<Asset[]>([]);
   const [isLoading, setLoading] = useState(true);
 
-   const itemsPerPage = 6
+   const itemsPerPage = 12
   let offset = 0;
   const limit=itemsPerPage;
   const [totalItems, setTotalItems] = useState(0);
