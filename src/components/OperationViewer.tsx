@@ -28,6 +28,7 @@ import { Textarea } from "./ui/textarea";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { DiagramViewer } from "./DiagramViewer";
+import { MetadataViewer } from "./MetadataViewer";
 import { Copy, CopyCheck } from "lucide-react";
 import copy from 'copy-to-clipboard';
 import { toast } from "sonner"
@@ -198,6 +199,7 @@ export const OperationViewer = (props: any) => {
             <span><Copy size={12} onClick={(e) => copyDataToClipBoard(assetsMetadata?.id, "AssetId copied to clipboard")}></Copy></span>
           </div>
         </div>
+        {assetsMetadata && <MetadataViewer assetsMetadata={assetsMetadata} />}
         {renderJSONMap(assetsMetadata?.metadata?.operation?.input?.properties, assetsMetadata?.metadata?.operation?.input?.required)}
         {assetsMetadata?.metadata?.operation?.steps && <DiagramViewer metadata={assetsMetadata.metadata}></DiagramViewer>}
       </div>

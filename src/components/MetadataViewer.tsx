@@ -15,9 +15,9 @@ interface MetadataViewerProps {
 
 export const MetadataViewer = ({ assetsMetadata, content }: MetadataViewerProps) => {
   return (
-    <div className="flex flex-col border-1 shadow-md rounded-md border-slate-200 p-2 items-center justify-between min-w-lg w-full">
+    <div className="border-1 shadow-md rounded-md border-slate-200 p-2 items-center justify-between min-w-lg w-full">
       <div className="flex flex-row">
-        <div className="flex flex-col min-w-lg border-r-2 border-slate-200 px-2 ">
+        <div className="flex flex-col flex-1 border-r-2 border-slate-200 px-2 ">
           {assetsMetadata?.metadata?.creator && (
             <div className="flex flex-row items-center space-x-2 my-2">
               <User size={18}></User>
@@ -51,7 +51,7 @@ export const MetadataViewer = ({ assetsMetadata, content }: MetadataViewerProps)
             </div>
           )}
         </div>
-        <div className="flex flex-col min-w-lg px-2 ">
+        <div className="flex flex-col flex-1 px-2 ">
           {assetsMetadata?.metadata?.keyword && (
             <div className="flex flex-row items-center space-x-2 my-2">
               <Tag size={18}></Tag>
