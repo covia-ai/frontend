@@ -7,69 +7,107 @@ import { Badge } from "./ui/badge";
 import { JsonEditor } from "json-edit-react";
 import { Dialog, DialogContent, DialogTrigger } from "./ui/dialog";
 import { copyDataToClipBoard } from "@/lib/utils";
+import { LucideIcon } from "lucide-react";
 
 interface MetadataViewerProps {
   assetsMetadata: Asset;
   content?: string;
 }
 
+interface MetadataFieldConfig {
+  key: string;
+  label: string;
+  icon: LucideIcon;
+  path: string;
+  renderValue?: (value: any) => React.ReactNode;
+}
+
+const METADATA_FIELDS: MetadataFieldConfig[] = [
+  {
+    key: 'creator',
+    label: 'Creator:',
+    icon: User,
+    path: 'metadata.creator'
+  },
+  {
+    key: 'license',
+    label: 'License:',
+    icon: Copyright,
+    path: 'metadata.license',
+    renderValue: (value) => (
+      <Link className="hover:text-secondary hover:underline" href={value?.url}>
+        {value?.name}
+      </Link>
+    )
+  },
+  {
+    key: 'dateCreated',
+    label: 'Created on:',
+    icon: Calendar,
+    path: 'metadata.dateCreated'
+  },
+  {
+    key: 'dateModified',
+    label: 'Modified on:',
+    icon: Calendar,
+    path: 'metadata.dateModified'
+  },
+  {
+    key: 'keywords',
+    label: 'Keywords:',
+    icon: Tag,
+    path: 'metadata.keywords',
+    renderValue: (value) => (
+      <div className="space-x-2">
+        {value?.map((keyword: string, index: number) => (
+          <Badge variant="secondary" key={index}>{keyword}</Badge>
+        ))}
+      </div>
+    )
+  },
+  {
+    key: 'notes',
+    label: 'Comment:',
+    icon: InfoIcon,
+    path: 'metadata.additionalInformation.notes'
+  }
+];
+
+// Utility function to get nested object values by path
+const getNestedValue = (obj: any, path: string): any => {
+  return path.split('.').reduce((current, key) => current?.[key], obj);
+};
+
+// Utility function to render metadata fields
+const renderMetadataFields = (assetsMetadata: Asset, fields: MetadataFieldConfig[]) => {
+  return fields.map((field) => {
+    const value = getNestedValue(assetsMetadata, field.path);
+    
+    if (!value) return null;
+    
+    const IconComponent = field.icon;
+    
+    return (
+      <div key={field.key} className="flex flex-row items-center space-x-2 my-2">
+        <IconComponent size={18} />
+        <span><strong>{field.label}</strong></span>
+        <span>
+          {field.renderValue ? field.renderValue(value) : value}
+        </span>
+      </div>
+    );
+  });
+};
+
 export const MetadataViewer = ({ assetsMetadata, content }: MetadataViewerProps) => {
   return (
     <div className="border-1 shadow-md rounded-md border-slate-200 p-2 items-center justify-between min-w-lg w-full">
       <div className="flex flex-row">
-        <div className="flex flex-col flex-1 border-r-2 border-slate-200 px-2 ">
-          {assetsMetadata?.metadata?.creator && (
-            <div className="flex flex-row items-center space-x-2 my-2">
-              <User size={18}></User>
-              <span><strong>Creator:</strong>  </span>
-              <span>{assetsMetadata?.metadata?.creator}</span>
-            </div>
-          )}
-          {assetsMetadata?.metadata?.license && (
-            <div className="flex flex-row items-center space-x-2 my-2">
-              <Copyright size={18}></Copyright>
-              <span><strong>License: </strong>  </span>
-              <span>
-                <Link className="hover:text-secondary hover:underline" href={assetsMetadata?.metadata?.license?.url}>
-                  {assetsMetadata?.metadata?.license?.name}
-                </Link>
-              </span>
-            </div>
-          )}
-          {assetsMetadata?.metadata?.dateCreated && (
-            <div className="flex flex-row items-center space-x-2 my-2">
-              <Calendar size={18}></Calendar>
-              <span><strong>Created on:</strong>  </span>
-              <span>{assetsMetadata?.metadata?.dateCreated}</span>
-            </div>
-          )}
-          {assetsMetadata?.metadata?.dateModified && (
-            <div className="flex flex-row items-center space-x-2 my-2">
-              <Calendar size={18}></Calendar>
-              <span><strong>Modified on:</strong>  </span>
-              <span>{assetsMetadata?.metadata?.dateModified}</span>
-            </div>
-          )}
+        <div className="flex flex-col flex-3 border-r-2 border-slate-200 px-2 ">
+          {renderMetadataFields(assetsMetadata, METADATA_FIELDS)}
         </div>
-        <div className="flex flex-col flex-1 px-2 ">
-          {assetsMetadata?.metadata?.keyword && (
-            <div className="flex flex-row items-center space-x-2 my-2">
-              <Tag size={18}></Tag>
-              <span><strong>Keywords:</strong> </span>
-              <span className="space-x-2">
-                {assetsMetadata?.metadata?.keywords?.map((keyword, index) => (
-                  <Badge variant="secondary" key={index}>{keyword}</Badge>
-                ))}
-              </span>
-            </div>
-          )}
-          {assetsMetadata?.metadata?.additionalInformation?.notes && (
-            <div className="flex flex-row items-center space-x-2">
-              <InfoIcon size={18}></InfoIcon>
-              <span><strong>Comment:</strong></span>
-              <span>{assetsMetadata?.metadata?.additionalInformation?.notes}</span>
-            </div>
-          )}
+        <div className="flex flex-col flex-2 px-2 ">
+ 
           {content?.length > 0 && (
             <div className="flex flex-row items-center space-x-2 my-2">
               <Download size={18}></Download>
