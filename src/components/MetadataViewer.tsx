@@ -1,5 +1,6 @@
 'use client'
 
+import React from "react";
 import { Asset } from "@/lib/covia/covialib";
 import { Calendar, Copy, Copyright, Download, Info, InfoIcon, Tag, User } from "lucide-react";
 import Link from "next/link";
@@ -58,7 +59,7 @@ const METADATA_FIELDS: MetadataFieldConfig[] = [
     icon: Tag,
     path: 'metadata.keywords',
     renderValue: (value) => (
-      <div className="space-x-1">
+      <div className="flex space-x-1">
         {value?.map((keyword: string, index: number) => (
           <Badge variant="secondary" key={index}>{keyword}</Badge>
         ))}
@@ -80,28 +81,38 @@ const getNestedValue = (obj: any, path: string): any => {
 
 // Utility function to render metadata fields
 const renderMetadataFields = (assetsMetadata: Asset, fields: MetadataFieldConfig[]) => {
-  return fields.map((field) => {
+  const validFields = fields.filter((field) => {
     const value = getNestedValue(assetsMetadata, field.path);
-    
-    if (!value) return null;
-    
-    const IconComponent = field.icon;
-    
-    return (
-      <div key={field.key} className="flex flex-row items-center space-x-2 my-1">
-        <IconComponent size={18} />
-        <span><strong>{field.label}</strong></span>
-        <span>
-          {field.renderValue ? field.renderValue(value) : value}
-        </span>
-      </div>
-    );
+    return value;
   });
+
+  if (validFields.length === 0) return null;
+
+  return (
+    <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
+      {validFields.map((field) => {
+        const value = getNestedValue(assetsMetadata, field.path);
+        const IconComponent = field.icon;
+        
+        return (
+          <React.Fragment key={field.key}>
+            <div className="flex items-center space-x-2">
+              <IconComponent size={18} />
+              <span className="font-medium whitespace-nowrap"><strong>{field.label}</strong></span>
+            </div>
+            <div >
+              {field.renderValue ? field.renderValue(value) : value}
+            </div>
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
 };
 
 export const MetadataViewer = ({ assetsMetadata, content }: MetadataViewerProps) => {
   return (
-    <div className="border-1 shadow-md rounded-md border-slate-200 p-2 items-center justify-between min-w-lg w-full">
+    <div className="text-sm border-1 shadow-md rounded-md border-slate-200 p-2 items-center justify-between min-w-lg w-full">
       <div className="flex flex-row">
         <div className="flex flex-col flex-3 border-r-2 border-slate-200 px-2 ">
           {renderMetadataFields(assetsMetadata, METADATA_FIELDS)}
