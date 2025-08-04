@@ -32,8 +32,6 @@ const edgeTypes: EdgeTypes = {
   customEdge: CustomEdge
 };
 
-
-
 export const DiagramViewer = (props:any) => {
        const parseJson = parseOpMetadata(props.metadata);
        const [nodes, setNodes, onNodesChange] = useNodesState(parseJson[0]);
@@ -41,7 +39,7 @@ export const DiagramViewer = (props:any) => {
       
 
       return (
-        <div style={{ width: '80%', height: '500px' }}>
+        <div style={{ width: '80%', height: '500px' , border: '1px solid #ccc'}}>
            <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -51,6 +49,7 @@ export const DiagramViewer = (props:any) => {
                 edgeTypes={edgeTypes}
                 nodesConnectable={false}
                 className="bg-slate-800"
+                fitView
               >
                 <Background/>
                 <Controls />
