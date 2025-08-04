@@ -61,8 +61,8 @@ export const ExecutionViewer = (props:any) => {
                             <TableHeader>
                                 <TableRow className="bg-slate-200">
                                    
-                                    <TableCell className="text-center">JobId</TableCell>
-                                    <TableCell className="text-center ">Status</TableCell>
+                                    <TableCell>Job Id</TableCell>
+                                    <TableCell>Status</TableCell>
                                 </TableRow>
                             </TableHeader>
                             <TableBody >
@@ -82,47 +82,60 @@ export const ExecutionViewer = (props:any) => {
       }
       function renderJSONObject(jsonObject: JSON, type:string) {
             if(jsonObject != undefined) {      
-                let keys = new Array();
+                let keys = new Array(); // keys of the input or output
                 let inOutType = "", assetLink ="";
+                let schema={}; 
                 if(type == "input") {
                     keys = Object.keys(executionData?.input);
-                    inOutType = assetsMetadata?.metadata?.operation?.input?.type;
-                }
-                else {
-                     keys = Object.keys(executionData?.output);
-                     inOutType = assetsMetadata?.metadata?.operation?.output?.type;
+                    schema = assetsMetadata?.metadata?.operation?.input;
+                    inOutType = schema?.type;
+                } else {
+                    schema = assetsMetadata?.metadata?.operation?.output;
+                    inOutType = schema?.type;
+                    keys = Object.keys(executionData?.output);
                 }
                 if(inOutType == "asset")
                       assetLink = window.location.href+"/venues/default/assets/"+assetsMetadata?.id;
+
+                // render function for each key within the input or output like "prompt" or "image"
+                let renderContent = key=>{
+                    let fieldType=schema?.properties?.[key]?.type || "object";
+                    let text=JSON.stringify(jsonObject[key]);
+                    return <TableCell className="flex-2 text-wrap">{text}</TableCell>;
+                }
+                
+                // render function for the type each key within the input or output like "string" or "asset"
+                let renderType = key=>{
+                   let fieldType=schema?.properties?.[key]?.type || "object";
+                   return  <TableCell className="text-center text-slate-600">{fieldType}</TableCell>;
+                }
+
                 if(keys != undefined && keys.length > 0) {
                     return (
                         <Table className="border border-slate-200 rounded-md py-2">
                             <TableHeader>
                                 <TableRow className="bg-slate-200">
-                                   
-                                    <TableCell className="text-center">Name</TableCell>
-                                    <TableCell className="text-center flex-2">Value</TableCell>
-                                    {inOutType && <TableCell className="text-center ">Type</TableCell>}
+                                    <TableCell >Name</TableCell>
+                                    <TableCell >Value</TableCell>
+                                    {inOutType && <TableCell>Type</TableCell>}
                                 </TableRow>
                             </TableHeader>
                             <TableBody >
                                 {keys.map((key,index) => (
                                 <TableRow key={index}>
-                                  
-                                    {type == "input" && <TableCell key={index} className="text-left font-bold bg-yellow-200">{key}</TableCell>}
-                                    {type == "output" && <TableCell key={index} className="text-left font-bold bg-blue-200">{key}</TableCell>}
-                                    {inOutType != "asset" && <TableCell className="text-center flex-2">{JSON.stringify(jsonObject[key])}</TableCell>}
-                                    {inOutType == "asset" && <TableCell className="text-center flex-2">{assetLink}</TableCell>}
-                                    {inOutType && <TableCell className="text-center text-slate-600">{inOutType}</TableCell>}
+                                    {type == "input" && <TableCell key={index} className="font-bold bg-yellow-200">{key}</TableCell>}
+                                    {type == "output" && <TableCell key={index} className="font-bold bg-blue-200">{key}</TableCell>}
+                                    {renderContent(key)}
+                                    {renderType(key)}
                                 </TableRow>
                                 ))}
                             </TableBody>
                         </Table>
                 
                     )
+                } else {
+                    return <div>No data</div>
                 }
-                   
-                        
           }
       }
       
@@ -131,7 +144,7 @@ export const ExecutionViewer = (props:any) => {
                  {executionData && (
                 
                 <div className="flex flex-col w-full items-center justify-center">
-                  <div className="flex flex-row-reverse space-x-4 space-x-reverse w-full"> 
+                  <div className="flex flex-row-reverse space-x-2 space-x-reverse w-full"> 
                        <div className="flex flex-row text-xs ">
                         <span> {(window.location.href).slice(0,60)+"..."} </span>
                         <span><Copy size={12} onClick={ (e) => copyDataToClipBoard(window.location.href, "Job Link copied to clipboard")}></Copy></span>
@@ -174,13 +187,13 @@ export const ExecutionViewer = (props:any) => {
                         <span className="w-28"><strong>Execution Time:</strong></span>
                         <span>{getExecutionTime(executionData.created,executionData.updated)}</span>
                     </div>
-                    <div className="flex flex-col py-2 space-x-4 w-11/12 ">{executionData?.steps && 
-                    <div className="flex flex-row items-center space-x-4  py-2">
+                    <div className="flex flex-col py-2 space-x-4 w-3/4 ">{executionData?.steps && 
+                    <div className="flex flex-row space-x-4  py-2">
                         <div className="flex flex-row space-x-4 my-2 ">
-                                <TbSubtask size={20}></TbSubtask>
-                                <span className="w-28"><strong>Steps:</strong></span>
-                            </div>
-                                {renderChildJobs(executionData?.steps)}
+                            <TbSubtask size={20}></TbSubtask>
+                            <span className="w-28"><strong>Steps:</strong></span>
+                        </div>
+                        {renderChildJobs(executionData?.steps)}
                     </div>
                     }
                     </div>

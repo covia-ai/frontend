@@ -16,10 +16,7 @@ function InputNode({ data }) {
   }
   
   return (
-     
       <div  style={{ height:height+"rem", width: width+"rem" }} className={topDivClass}>
-          
-          
           {active && <span class="relative flex flex-row w-full size-3 -translate-x-2 -translate-y-2">
             <span class="absolute inline-flex  h-4 w-4 animate-ping rounded-full bg-green-400 opacity-75"></span>
             <span class="relative inline-flex size-3 rounded-full bg-green-500"></span>
@@ -30,8 +27,7 @@ function InputNode({ data }) {
                 position={Position.Right}
                 id={"input"}
                 key="input"
-                className="!w-3 !h-3 !rounded-full !border-2 !bg-purple-400 !border-purple-400 !rounded-md !top-1"
-                >  
+                className="!w-3 !h-3 !rounded-full !border-2 !bg-purple-400 !border-purple-400 !rounded-md !top-1">  
           </Handle>
           {inputs.map((input,index) => (
             <Handle

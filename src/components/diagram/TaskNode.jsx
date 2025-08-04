@@ -21,7 +21,7 @@ function TaskNode({ data }) {
   }
   return (
       
-      <div className="border-2 border-slate-400 shadow-md bg-muted rounded-md h-32 w-64  ">
+      <div className="border-2 border-slate-400 shadow-md bg-muted rounded-md h-32 w-48  ">
           {active && <span class="relative flex flex-row w-full size-3 -translate-x-2 -translate-y-2">
             <span class="absolute inline-flex  h-4 w-4 animate-ping rounded-full bg-green-400 opacity-75"></span>
             <span class="relative inline-flex size-3 rounded-full bg-green-500"></span>
