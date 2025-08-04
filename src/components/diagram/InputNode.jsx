@@ -41,7 +41,7 @@ function InputNode({ data }) {
                 }}
                 className={inputClassName}
                 >
-                <div className="text-[10px] ml-6 text-black -translate-x-14  ">{input}</div>
+                <div className="text-xs ml-6 text-black -translate-x-16  ">{input}</div>
             </Handle>
           
           ))}
