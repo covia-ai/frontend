@@ -125,10 +125,11 @@ export const MetadataViewer = ({ assetsMetadata, content }: MetadataViewerProps)
             <span>
               <Dialog>
                 <DialogTrigger>
-                  <span className="text-secondary underline"> Click to load metadata</span>
+                  <span className="text-secondary underline"> View metadata</span>
                 </DialogTrigger>
                 <DialogContent>
                   <JsonEditor 
+                  
                     data={assetsMetadata?.metadata}
                     rootName="metadata"
                     rootFontSize="1em"

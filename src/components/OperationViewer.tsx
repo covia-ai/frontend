@@ -29,6 +29,7 @@ import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { DiagramViewer } from "./DiagramViewer";
 import { MetadataViewer } from "./MetadataViewer";
+import { AssetHeader } from "./AssetHeader";
 import { Copy, CopyCheck } from "lucide-react";
 import copy from 'copy-to-clipboard';
 import { toast } from "sonner"
@@ -197,20 +198,7 @@ export const OperationViewer = (props: any) => {
       </Breadcrumb>
 
       <div className="flex flex-col w-full items-center justify-center">
-        <h2 className="text-lg text-semibold my-2">{assetsMetadata?.metadata?.name}</h2>
-        <p className="text-sm  mb-4 text-slate-600">{assetsMetadata?.metadata?.description}</p>
-        <div className="flex flex-row-reverse space-x-4 space-x-reverse w-full">
-
-          <div className="flex flex-row text-xs ">
-            <span> {(window.location.href).slice(0, 60) + "..."} </span>
-            <span><Copy size={12} onClick={(e) => copyDataToClipBoard(window.location.href, "Asset Link copied to clipboard")}></Copy></span>
-
-          </div>
-          <div className="flex flex-row ">
-            <span className="text-xs">{assetsMetadata?.id.slice(0, 60) + "..."} </span>
-            <span><Copy size={12} onClick={(e) => copyDataToClipBoard(assetsMetadata?.id, "AssetId copied to clipboard")}></Copy></span>
-          </div>
-        </div>
+        {assetsMetadata && <AssetHeader assetsMetadata={assetsMetadata} />}
         {assetsMetadata && <MetadataViewer assetsMetadata={assetsMetadata} />}
         {renderJSONMap(assetsMetadata?.metadata?.operation?.input?.properties, assetsMetadata?.metadata?.operation?.input?.required)}
         {assetsMetadata?.metadata?.operation?.steps && <DiagramViewer metadata={assetsMetadata.metadata}></DiagramViewer>}
