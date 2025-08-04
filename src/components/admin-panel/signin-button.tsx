@@ -29,7 +29,7 @@ export function SignInButton(props:any) {
           <Button
                     onClick={() => {redirect("/signUp")}}
                     variant="outline"
-                    className="justify-center h-10 my-5 bg-black text-white text-sm"
+                    className="justify-center h-10 my-5 bg-primary text-primary-foreground text-sm"
                   >
                     <LogInIcon/>
                     <p

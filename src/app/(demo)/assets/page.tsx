@@ -199,11 +199,11 @@ export default function AssetPage() {
                                 <div className="flex flex-row mt-4 space-x-2">
                                   {asset.metadata?.keywords?.map((keyword,index) => (
                                         
-                                        index <2 && <Badge className="text-xs"  key={index}>{keyword}</Badge>
+                                        index <2 && <Badge variant="default"  className="border bg-secondary text-white text-xs"  key={index}>{keyword}</Badge>
                                   ))}
                                 </div>
                                 <div className="flex flex-row items-center justify-between mt-4">
-                                    <CircleArrowRight onClick={() => {redirect("/venues/default/assets/"+asset.id)}}/>
+                                    <CircleArrowRight color="#6B46C1" onClick={() => {redirect("/venues/default/assets/"+asset.id)}}/>
                                 </div>
                         </CardContent>
                     </Card>           

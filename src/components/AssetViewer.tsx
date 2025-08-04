@@ -92,23 +92,23 @@ export const AssetViewer = (props:any) => {
                 
                 <div className="flex flex-col w-full items-center justify-center">
                   <div className="flex flex-col items-center justify-center">
-                    <h3 className="text-center text-xl md:text-4xl font-bold lg:px-10 md:px-10">
+                    <h3 className="text-center text-xl md:text-4xl font-bold lg:px-10 md:px-10 text-foreground">
                         {assetsMetadata.metadata?.name}
                     </h3>
                    <p className="mb-4"> {assetsMetadata.metadata?.description}</p>
                           <div className="flex flex-row-reverse space-x-4 space-x-reverse w-full mb-2"> 
                      
                       <div className="flex flex-row text-xs ">
-                        <span> {(window.location.href).slice(0,60)+"..."} </span>
+                        <span> {(window.location.href).slice(0,50)+"..."} </span>
                         <span><Copy size={12} onClick={ (e) => copyDataToClipBoard(window.location.href, "Asset Link copied to clipboard")}></Copy></span>
                      
                       </div>
                        <div className="flex flex-row ">
-                        <span className="text-xs">{assetsMetadata?.id.slice(0,60)+"..."} </span>
+                        <span className="text-xs">{assetsMetadata?.id.slice(0,50)+"..."} </span>
                         <span><Copy size={12} onClick={ (e) => copyDataToClipBoard(assetsMetadata?.id, "AssetId copied to clipboard")}></Copy></span>
                       </div>
                     </div>
-                  <div className="flex flex-col border-1 shadow-md rounded-md border-slate-200 p-2 items-center justify-between min-w-lg w-11/12">
+                  <div className="flex flex-col border-1 shadow-md rounded-md border-slate-200 p-2 items-center justify-between min-w-lg w-full">
                      
                     <div className="flex flex-row">
                       <div className="flex flex-col min-w-lg border-r-2 border-slate-200 px-2 ">
@@ -121,7 +121,7 @@ export const AssetViewer = (props:any) => {
                           {assetsMetadata?.metadata?.license && <div className="flex flex-row items-center space-x-2 my-4">
                             <Copyright size={18}></Copyright>
                             <span><strong>License: </strong>  </span>
-                            <span><Link className="hover:text-pink-400 hover:underline" href={assetsMetadata?.metadata?.license?.url}>{assetsMetadata?.metadata?.license?.name}</Link></span>
+                            <span><Link className="hover:text-secondary hover:underline" href={assetsMetadata?.metadata?.license?.url}>{assetsMetadata?.metadata?.license?.name}</Link></span>
                           </div>}
                           {assetsMetadata?.metadata?.dateCreated && <div className="flex flex-row items-center space-x-2 my-4">
                             <Calendar size={18}></Calendar>
@@ -150,7 +150,7 @@ export const AssetViewer = (props:any) => {
                           {content?.length> 0 && <div className="flex flex-row items-center space-x-2 my-4">
                                 <Download size={18}></Download>
                                 <span><strong>Data:</strong></span>
-                                <span><Link href={content} className="text-pink-400 underline" >Click to download content</Link></span>   
+                                <span><Link href={content} className="text-secondary underline" >Click to download content</Link></span>   
                           </div>}
                           <div className="flex flex-row items-center space-x-2">
                                 <Info size={18}></Info>
@@ -158,7 +158,7 @@ export const AssetViewer = (props:any) => {
                                 <span>
                                   <Dialog>
                                     <DialogTrigger>
-                                        <span className="text-pink-400 underline"> Click to load metadata</span>
+                                        <span className="text-secondary underline"> Click to load metadata</span>
 
                                     </DialogTrigger>
                                     <DialogContent>
@@ -182,7 +182,7 @@ export const AssetViewer = (props:any) => {
                   </div>
                   <div className="flex flex-row items-center space-x-2 my-2 text-xs text-slate-800">
                             <span>Venue:</span>
-                            <span><Link href="/venues/default" className="hover:underline hover:text-pink-600"> {assetsMetadata?.venue?.venueId}</Link></span>
+                            <span><Link href="/venues/default" className="underline text-secondary"> {assetsMetadata?.venue?.venueId}</Link></span>
                   </div>
                   </div>
                 </div>

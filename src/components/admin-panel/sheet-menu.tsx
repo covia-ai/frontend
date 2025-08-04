@@ -28,7 +28,7 @@ export function SheetMenu() {
           >
             <Link href="/operations" className="flex items-center gap-2">
               <PanelsTopLeft className="w-6 h-6 mr-1" />
-              <SheetTitle className="font-bold text-lg">Covia</SheetTitle>
+              <SheetTitle className="font-bold text-lg text-primary">Covia</SheetTitle>
             </Link>
           </Button>
         </SheetHeader>

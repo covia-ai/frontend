@@ -109,7 +109,7 @@ export default function AssetPage() {
           return (
              <Table>
               <TableHeader>
-                <TableRow className="bg-secondary">
+                <TableRow className="bg-secondary text-white">
                   <TableCell>Name</TableCell>
                   <TableCell>Type</TableCell>
                   <TableCell>Description</TableCell>
@@ -164,7 +164,7 @@ export default function AssetPage() {
               {!isLoading && assetsMetadata.slice((currentPage-1)*itemsPerPage, (currentPage-1)*itemsPerPage+itemsPerPage).map((asset, index) => ( 
                   
                     <Sheet key={index} >   
-                        <Card className=" px-2 w-64 h-38 shadow-md bg-slate-100 flex flex-col rounded-md  hover:-translate-1 hover:shadow-xl t-pink-400">
+                        <Card className=" px-2 w-64 h-38 shadow-md bg-slate-100 flex flex-col rounded-md  hover:-translate-1 hover:shadow-xl ">
                             <SheetTrigger asChild>
                                  <CardTitle  className="px-2 flex flex-row items-center justify-between">
 
@@ -214,7 +214,7 @@ export default function AssetPage() {
                         <CardContent className="flex flex-col px-2"> 
                                 <div className="text-xs text-slate-600 line-clamp-1">{asset.metadata.description}</div>
                                 <div className="flex flex-row items-center justify-between mt-4">
-                                    <CircleArrowRight onClick={() => {redirect("/venues/default/operations/"+asset.id)}}/>
+                                    <CircleArrowRight color="#6B46C1" onClick={() => {redirect("/venues/default/operations/"+asset.id)}}/>
                                 </div>
                           </CardContent>
                     </Card> 

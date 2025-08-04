@@ -173,7 +173,7 @@ export default function OperationsPage() {
                   { filteredData.slice((currentPage-1)*itemsPerPage, (currentPage-1)*itemsPerPage+itemsPerPage).map((job,index) => 
                      
                        <TableRow key={index}>
-                          <TableCell className="text-center"><Link className="text-pink-600 underline" href={`/runs/${job.id}`}>{job.id}</Link></TableCell>
+                          <TableCell className="text-center"><Link className="text-secondary underline" href={`/runs/${job.id}`}>{job.id}</Link></TableCell>
                           <TableCell className="text-center">{new Date(job.created).toLocaleString()}</TableCell>
                           {(job.status == RunStatus.COMPLETE || job.status == RunStatus.FAILED) && (<TableCell className="text-center">{getExecutionTime(job.created,job.updated)}</TableCell>)}
                           {(job.status == RunStatus.PENDING || job.status == RunStatus.STARTED) && (<TableCell className="text-center">--</TableCell>)}

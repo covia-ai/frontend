@@ -55,10 +55,9 @@ export const ExecutionViewer = (props:any) => {
 
       function renderChildJobs(jsonObject: JSON) {
          let steps = executionData.steps;
-         console.log(steps)
          return (
-
-                        <Table className="border border-slate-200 rounded-md py-2">
+                        
+                        <Table className="border border-slate-200 rounded-md py-2 ">
                             <TableHeader>
                                 <TableRow className="bg-slate-200">
                                    
@@ -69,7 +68,7 @@ export const ExecutionViewer = (props:any) => {
                             <TableBody >
                                   {steps.map((step,index) => (
                                     <TableRow key={index}>
-                                    <TableCell className="text-pink-600 underline"><Link href={`/runs/${step.id}`}>{step.id}</Link></TableCell>
+                                    <TableCell className="text-secondary underline"><Link href={`/runs/${step.id}`}>{step.id}</Link></TableCell>
                                      {step?.status == RunStatus.COMPLETE && <span className="text-green-600 ">{RunStatus.COMPLETE}</span>}
                                      {step?.status == RunStatus.FAILED && <span className="text-red-600 ">{RunStatus.FAILED}</span>}
                                      {step?.status == RunStatus.PENDING && <span className="text-blue-600 ">{RunStatus.PENDING}</span>}
@@ -175,7 +174,7 @@ export const ExecutionViewer = (props:any) => {
                         <span className="w-28"><strong>Execution Time:</strong></span>
                         <span>{getExecutionTime(executionData.created,executionData.updated)}</span>
                     </div>
-                    <div className="flex flex-col py-2 space-x-4 w-1/2 ">{executionData?.steps && 
+                    <div className="flex flex-col py-2 space-x-4 w-11/12 ">{executionData?.steps && 
                     <div className="flex flex-row items-center space-x-4  py-2">
                         <div className="flex flex-row space-x-4 my-2 ">
                                 <TbSubtask size={20}></TbSubtask>

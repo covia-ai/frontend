@@ -91,6 +91,7 @@ export const OperationViewer = (props:any) => {
         }
       }
       function renderJSONMap(jsonObject:JSON, requiredKeys: string[]) {
+        console.log(jsonObject)
         if(jsonObject != null && jsonObject != undefined) {
           let keys = Object.keys(jsonObject);
           let type = new Array<string>();
@@ -153,6 +154,7 @@ export const OperationViewer = (props:any) => {
         else {
           return  (
                   <div className="flex flex-col items-center justify-center w-full space-x-2 my-2">
+                      
                     <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
                     {!loading && <Button type="button" className="w-32" onClick={() => invokeOp(assetsMetadata?.id, requiredKeys)}>Run</Button>}
                     {loading && <Button type="button" className="w-32" disabled>Please wait ...</Button>}
@@ -186,7 +188,7 @@ export const OperationViewer = (props:any) => {
             
                 
                 <div className="flex flex-col w-full items-center justify-center">
-                   <h2 className="text-lg text-semibold my-2">{assetsMetadata?.metadata?.name}</h2>
+                   <h2 className="text-lg text-semibold my-2 text-foreground">{assetsMetadata?.metadata?.name}</h2>
                    <p className="text-sm  mb-4 text-slate-600">{assetsMetadata?.metadata?.description}</p>
                    <div className="flex flex-row-reverse space-x-4 space-x-reverse w-full"> 
                      

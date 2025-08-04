@@ -57,7 +57,7 @@ export default function OperationsPage() {
                                         <CardContent className="flex flex-col px-2"> 
                                                 <div className="text-xs text-slate-600 line-clamp-1">Default Covia Venue</div>
                                                 <div className="flex flex-row items-center justify-start mt-4 space-x-2">
-                                                  <Badge variant="outline" className="border bg-white border-pink-200 ">covia</Badge> 
+                                                  <Badge variant="default" className="border bg-secondary text-white text-xs">covia</Badge> 
                                                 </div>
 
                                           </CardContent>

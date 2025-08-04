@@ -85,7 +85,7 @@ export default function HomePage() {
                               <div className="text-xs text-slate-600 mt-2 line-clamp-1">Lorem ipsum dolor sit amet, consectetur adipiscing elit</div>
                                <div className="flex flex-row items-center justify-between mt-4">
                                                    <Badge variant="outline" className="border border-pink-200 bg-white">orchestration</Badge>
-                                                   <CircleArrowRight/>
+                                                   <CircleArrowRight color="#6B46C1"/>
                                                 </div>
                               </CardContent>                 
                         </Card>
@@ -95,7 +95,7 @@ export default function HomePage() {
                               <div className="text-xs text-slate-600 mt-2 line-clamp-1">Lorem ipsum dolor sit amet, consectetur adipiscing elit</div>
                                <div className="flex flex-row items-center justify-between mt-4">
                                                  <Badge variant="outline" className="border border-pink-200 bg-white">orchestration</Badge>
-                                                  <CircleArrowRight/>
+                                                  <CircleArrowRight color="#6B46C1"/>
                                                 </div>
                               </CardContent>                    
                         </Card>
@@ -105,7 +105,7 @@ export default function HomePage() {
                               <div className="text-xs text-slate-600 mt-2 line-clamp-1">Lorem ipsum dolor sit amet, consectetur adipiscing elit</div>
                                <div className="flex flex-row items-center justify-between mt-4">
                                   <Badge variant="outline" className="border border-pink-200 bg-white">orchestration</Badge>
-                                  <CircleArrowRight/>
+                                  <CircleArrowRight color="#6B46C1" />
                               </div>
                               </CardContent>
                         </Card>
