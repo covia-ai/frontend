@@ -146,15 +146,14 @@ export const MetadataViewer = ({ assetsMetadata, content }: MetadataViewerProps)
                 </DialogTrigger>
                 <DialogContent>
                   <JsonEditor 
-                  
                     data={assetsMetadata?.metadata}
                     rootName="metadata"
                     rootFontSize="1em"
-                    maxWidth="90vw"
+                    maxWidth="120vw"
                     restrictEdit={true}
                     restrictAdd={true}
                     restrictDelete={true}
-                    collapse={1}
+                    collapse={3}
                   />
                 </DialogContent>
               </Dialog>
