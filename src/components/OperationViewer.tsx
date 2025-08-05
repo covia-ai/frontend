@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 
 import { useEffect, useState } from "react";
 import { Operation } from "@/lib/covia/covialib";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { copyDataToClipBoard } from "@/lib/utils";
 
 
@@ -39,6 +39,7 @@ export const OperationViewer = (props: any) => {
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const valueMap = new Map();
+  const router = useRouter();
   const venue = useStore(useVenue, (x) => x).venue;
   if (!venue) return null;
 
@@ -85,7 +86,7 @@ export const OperationViewer = (props: any) => {
         setLoading(false);
       }
       if (response?.id) {
-        redirect("/runs/" + response?.id);
+        router.push("/runs/" + response?.id);
       }
     } else {
       setErrorMessage("Please provide all the inputs")
