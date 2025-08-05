@@ -25,7 +25,7 @@ export abstract class Asset {
       if (cache.has(this.id)) {
         return cache.get(this.id);
       } else {
-        const response = await fetch(`http://localhost:8080/api/v1/assets/${this.id}`);
+        const response = await fetch(`${this.venue.baseUrl}/api/v1/assets/${this.id}`);
 
         if (!response.ok) {
           throw new CoviaError(`Failed to get asset metadata! status: ${response.status}`);
@@ -66,7 +66,7 @@ export abstract class Asset {
    */
   async uploadContent(content: BodyInit): Promise<ReadableStream<Uint8Array> | null> {
     try {
-      const response = await fetch(`http://localhost:8080/api/v1/assets/${this.id}/content`, {
+      const response = await fetch(`${this.venue.baseUrl}/api/v1/assets/${this.id}/content`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/octet-stream',
@@ -98,7 +98,7 @@ export abstract class Asset {
    */
   async getContent(): Promise<ReadableStream<Uint8Array> | null> {
     try {
-      const response = await fetch(`http://localhost:8080/api/v1/assets/${this.id}/content`);
+      const response = await fetch(`${this.venue.baseUrl}/api/v1/assets/${this.id}/content`);
 
       if (!response.ok) {
         throw new CoviaError(`Failed to get asset content! status: ${response.status}`);
@@ -114,6 +114,14 @@ export abstract class Asset {
   }
 
   /**
+   * Get the URL for downloading asset content
+   * @returns {string} The URL for downloading the asset content
+   */
+  getContentURL(): string {
+    return `${this.venue.baseUrl}/api/v1/assets/${this.id}/content`;
+  }
+
+  /**
    * Execute the operation
    * @param payload - Operation parameters
    * @returns {Promise<any>}
@@ -125,7 +133,7 @@ export abstract class Asset {
         payload: payload,
       };
 
-      const response = await fetch('http://localhost:8080/api/v1/invoke/', {
+      const response = await fetch(`${this.venue.baseUrl}/api/v1/invoke/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

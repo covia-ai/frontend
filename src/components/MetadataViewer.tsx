@@ -11,8 +11,7 @@ import { copyDataToClipBoard } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
 
 interface MetadataViewerProps {
-  assetsMetadata: Asset;
-  content?: string;
+  asset: Asset;
 }
 
 interface MetadataFieldConfig {
@@ -80,9 +79,9 @@ const getNestedValue = (obj: any, path: string): any => {
 };
 
 // Utility function to render metadata fields
-const renderMetadataFields = (assetsMetadata: Asset, fields: MetadataFieldConfig[]) => {
+const renderMetadataFields = (asset: Asset, fields: MetadataFieldConfig[]) => {
   const validFields = fields.filter((field) => {
-    const value = getNestedValue(assetsMetadata, field.path);
+    const value = getNestedValue(asset, field.path);
     return value;
   });
 
@@ -91,7 +90,7 @@ const renderMetadataFields = (assetsMetadata: Asset, fields: MetadataFieldConfig
   return (
     <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
       {validFields.map((field) => {
-        const value = getNestedValue(assetsMetadata, field.path);
+        const value = getNestedValue(asset, field.path);
         const IconComponent = field.icon;
          
         return (
@@ -110,26 +109,28 @@ const renderMetadataFields = (assetsMetadata: Asset, fields: MetadataFieldConfig
   );
 };
 
-export const MetadataViewer = ({ assetsMetadata, content }: MetadataViewerProps) => {
+export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
+  const contentURL = asset.getContentURL();
+  
   return (
     <div className="text-sm border-1 shadow-md rounded-md border-slate-200 p-2 items-center justify-between min-w-lg w-full">
       <div className="flex flex-row">
         <div className="flex flex-col flex-3 border-r-2 border-slate-200 px-2 ">
-          {renderMetadataFields(assetsMetadata, METADATA_FIELDS)}
+          {renderMetadataFields(asset, METADATA_FIELDS)}
         </div>
         <div className="flex flex-col flex-2 px-2 ">
  
-          {content?.length > 0 && (
+          {contentURL && (
             <div className="flex flex-row items-center space-x-2 my-2">
               <Download size={18}></Download>
               <span><strong>Data:</strong></span>
               <span>
-                <Link href={content} className="text-secondary underline" download={true}>
+                <Link href={contentURL} className="text-secondary underline" download={true}>
                   Download
                 </Link>
               </span>
               <span>
-                <a href={content + '?inline=true'} 
+                <a href={contentURL + '?inline=true'} 
                 target="_blank" rel="noopener noreferrer" className="text-secondary underline" >
                   View
                 </a>
@@ -146,7 +147,7 @@ export const MetadataViewer = ({ assetsMetadata, content }: MetadataViewerProps)
                 </DialogTrigger>
                 <DialogContent>
                   <JsonEditor 
-                    data={assetsMetadata?.metadata}
+                    data={asset.metadata}
                     rootName="metadata"
                     rootFontSize="1em"
                     maxWidth="120vw"

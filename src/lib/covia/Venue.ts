@@ -58,7 +58,7 @@ export class Venue implements VenueInterface {
   async createAsset(assetData: any): Promise<Asset> {
     try {
       console.log(assetData);
-      const response = await fetch('http://localhost:8080/api/v1/assets/', {
+      const response = await fetch(`${this.baseUrl}/api/v1/assets/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -87,16 +87,28 @@ export class Venue implements VenueInterface {
   async getAsset(assetId: string): Promise<Asset> {
     try {
       if (cache.has(assetId)) {
-        return new Asset(assetId, this, cache.get(assetId));
+        const cachedData = cache.get(assetId);
+        // Determine asset type from metadata and return appropriate concrete class
+        if (cachedData.metadata?.operation) {
+          return new Operation(assetId, this, cachedData);
+        } else {
+          return new DataAsset(assetId, this, cachedData);
+        }
       } else {
-        const response = await fetch(`http://localhost:8080/api/v1/assets/${assetId}`);
+        const response = await fetch(`${this.baseUrl}/api/v1/assets/${assetId}`);
 
         if (!response.ok) {
           throw new CoviaError(`Failed to get asset with id: ${assetId}! status: ${response.status}`);
         }
         const data = await response.json();
         cache.set(assetId, data);
-        return new Asset(assetId, this, data);
+        
+        // Determine asset type from metadata and return appropriate concrete class
+        if (data.metadata?.operation) {
+          return new Operation(assetId, this, data);
+        } else {
+          return new DataAsset(assetId, this, data);
+        }
       }
     } catch (error) {
       if (error instanceof CoviaError) {
@@ -117,7 +129,7 @@ export class Venue implements VenueInterface {
       if (cache.has(operationId)) {
         return new Operation(operationId, this, cache.get(operationId));
       } else {
-        const response = await fetch(`http://localhost:8080/api/v1/assets/${operationId}`);
+        const response = await fetch(`${this.baseUrl}/api/v1/assets/${operationId}`);
 
         if (!response.ok) {
           throw new CoviaError(`Failed to get operation with id: ${operationId}! status: ${response.status}`);
@@ -145,7 +157,7 @@ export class Venue implements VenueInterface {
       if (cache.has(dataAssetId)) {
         return new DataAsset(dataAssetId, this, cache.get(dataAssetId));
       } else {
-        const response = await fetch(`http://localhost:8080/api/v1/assets/${dataAssetId}`);
+        const response = await fetch(`${this.baseUrl}/api/v1/assets/${dataAssetId}`);
 
         if (!response.ok) {
           throw new CoviaError(`Failed to get data asset with id: ${dataAssetId}! status: ${response.status}`);
@@ -170,16 +182,17 @@ export class Venue implements VenueInterface {
   async getAssets(): Promise<Asset[]> {
     const assets: Asset[] = [];
     try {
-      let response = await fetch('http://localhost:8080/api/v1/assets/');
+      let response = await fetch(`${this.baseUrl}/api/v1/assets/`);
       console.log(response);
       if (!response.ok) {
         throw new CoviaError(`Failed to fetch assets! status: ${response.status}`);
       }
       let assetIds = await response.json();
       console.log(assetIds);
-      assetIds.items.forEach((assetId: string) => {
-        assets.push(new Asset(assetId, this));
-      });
+      for (const assetId of assetIds.items) {
+        const asset = await this.getAsset(assetId);
+        assets.push(asset);
+      }
       return assets;
     } catch (error) {
       if (error instanceof CoviaError) {
@@ -196,7 +209,7 @@ export class Venue implements VenueInterface {
    */
   async getJobs(): Promise<JobData[]> {
     try {
-      const response = await fetch('http://localhost:8080/api/v1/jobs');
+      const response = await fetch(`${this.baseUrl}/api/v1/jobs`);
 
       if (!response.ok) {
         throw new CoviaError(`Failed to get jobs details! status: ${response.status}`);
@@ -218,7 +231,7 @@ export class Venue implements VenueInterface {
    */
   async getJob(jobId: string): Promise<JobData> {
     try {
-      const response = await fetch(`http://localhost:8080/api/v1/jobs/${jobId}`);
+      const response = await fetch(`${this.baseUrl}/api/v1/jobs/${jobId}`);
 
       if (!response.ok) {
         throw new CoviaError(`Failed to get job detail! status: ${response.status}`);

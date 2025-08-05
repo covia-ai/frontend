@@ -65,7 +65,7 @@ export const AssetViewer = (props: any) => {
       {assetsMetadata && (
         <div className="flex flex-col w-full items-center justify-center">
           <AssetHeader assetsMetadata={assetsMetadata} />
-          <MetadataViewer assetsMetadata={assetsMetadata} content={content} />
+          <MetadataViewer asset={assetsMetadata} />
           <div className="flex flex-row items-center space-x-2 my-2 text-xs text-slate-800">
             <span>Venue:</span>
             <span><Link href="/venues/default" className="underline text-secondary"> {assetsMetadata?.venue?.venueId}</Link></span>
