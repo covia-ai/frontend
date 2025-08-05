@@ -16,7 +16,7 @@ import {
 import { Search } from "@/components/search";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Eraser, PlusCircle, CircleArrowRight, CopyIcon, Save, AlertCircle, CheckCircle2Icon } from "lucide-react";
-import { redirect, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useSearchParams } from 'next/navigation'
 import {
   Dialog,
@@ -51,6 +51,7 @@ import { CreateAssetComponent } from "@/components/CreateAssetComponent";
 export default function AssetPage() {
   const searchParams = useSearchParams()
   const search = searchParams.get('search');
+  const router = useRouter();
 
   const [assetCreated, setAssetCreated] = useState(false);
   const [assetsMetadata, setAssetsMetadata] = useState<Asset[]>([]);
@@ -159,7 +160,7 @@ export default function AssetPage() {
               {assetsMetadata.slice((currentPage-1)*itemsPerPage, (currentPage-1)*itemsPerPage+itemsPerPage).map((asset, index) =>
                   
                    <Card key={index} className="px-2  shadow-md bg-slate-100 flex flex-col rounded-md  hover:-translate-1 hover:shadow-xl ">
-                        <CardTitle onClick={() => {redirect("/venues/default/assets/"+asset.id)}}  className="px-2 flex flex-row items-center justify-between">
+                        <CardTitle onClick={() => {router.push("/venues/default/assets/"+asset.id)}}  className="px-2 flex flex-row items-center justify-between">
 
                         <div>{asset.metadata.name}</div>
                         <Dialog>
@@ -203,7 +204,7 @@ export default function AssetPage() {
                                   ))}
                                 </div>
                                 <div className="flex flex-row items-center justify-between mt-4">
-                                    <CircleArrowRight color="#6B46C1" onClick={() => {redirect("/venues/default/assets/"+asset.id)}}/>
+                                    <CircleArrowRight color="#6B46C1" onClick={() => {router.push("/venues/default/assets/"+asset.id)}}/>
                                 </div>
                         </CardContent>
                     </Card>           

@@ -35,7 +35,7 @@ import {
 import { Toaster, toast } from "sonner";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {  redirect, useSearchParams } from 'next/navigation'
+import {  useRouter, useSearchParams } from 'next/navigation'
 
 
 import { JsonEditor } from 'json-edit-react'
@@ -45,11 +45,11 @@ import { useSession } from "next-auth/react";
 import { Input } from "@/components/ui/input";
  
 export default function AssetPage() {
-
+  const router = useRouter();
 
   const { data: session } = useSession();
   if (!session?.user) {
-      redirect("/signUp");
+      router.push("/signUp");
   }
   const searchParams = useSearchParams()
   const search = searchParams.get('search');
@@ -75,7 +75,7 @@ export default function AssetPage() {
           venue.connect().then((venueObj) => {
               venueObj.createAsset(jsonData).then(( assetId) => {
                   if(assetId) {
-                    redirect("/assets");
+                    router.push("/assets");
                   }
             })
           })

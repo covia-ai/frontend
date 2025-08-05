@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import {  redirect } from "next/navigation";
+import {  useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react"
 import { logout } from "@/lib/actions/auth";
@@ -22,12 +22,13 @@ import {
 import { AvatarFallback } from "@radix-ui/react-avatar";
 export function SignInButton(props:any) {
   const { data: session } = useSession()
+  const router = useRouter()
 
    if (!session?.user) {
     return (
         <div className="flex items-center justify-center" key={props.index}>
           <Button
-                    onClick={() => {redirect("/signUp")}}
+                    onClick={() => {router.push("/signUp")}}
                     variant="outline"
                     className="justify-center h-10 my-5 bg-primary text-primary-foreground text-sm"
                   >

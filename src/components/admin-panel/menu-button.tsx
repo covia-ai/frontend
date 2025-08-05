@@ -1,10 +1,11 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import {  redirect, usePathname } from "next/navigation";
+import {  useRouter, usePathname } from "next/navigation";
    
 export function MenuButton(props:any) {
   const pathname = usePathname();
+  const router = useRouter();
   
     return (
         <div className="w-full" key={props.index}>
@@ -16,7 +17,7 @@ export function MenuButton(props:any) {
             : "ghost"
            }
             
-             onClick={() => {redirect(props.href)}}
+             onClick={() => {router.push(props.href)}}
              >
             {props.label}
           </Button>

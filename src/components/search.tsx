@@ -3,16 +3,17 @@
 import React, { useState } from "react";
 import { Input } from "./ui/input";
 import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 import { usePathname } from "next/navigation";
 export const Search: React.FC = (   ) => {
   const [searchValue, setSearchValue] = useState("")
   const pathname = usePathname()
+  const router = useRouter()
   function clearAndSetFilter(value:string)   {
      setSearchValue(value);
      console.log(pathname)
-     redirect(pathname+"?search="+value);
+     router.push(pathname+"?search="+value);
      
   }
   return (
@@ -26,7 +27,7 @@ export const Search: React.FC = (   ) => {
           onChange= {(e) => setSearchValue(e.target.value)}
         />
         <div className="flex flex-row items-center">
-          <MagnifyingGlassIcon className=" relative ml-4 right-10"  onClick={() => {redirect(pathname+"?search="+searchValue)}}/>
+          <MagnifyingGlassIcon className=" relative ml-4 right-10"  onClick={() => {router.push(pathname+"?search="+searchValue)}}/>
           {searchValue && <Button  onClick={() => {clearAndSetFilter("")}}>Clear</Button>}
         </div>
        
