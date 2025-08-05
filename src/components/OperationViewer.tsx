@@ -174,7 +174,7 @@ export const OperationViewer = (props: any) => {
       <SmartBreadcrumb />
 
       <div className="flex flex-col w-full items-center justify-center">
-        {assetsMetadata && <AssetHeader assetsMetadata={assetsMetadata} />}
+        {assetsMetadata && <AssetHeader asset={assetsMetadata} />}
         {assetsMetadata && <MetadataViewer asset={assetsMetadata} />}
         {renderJSONMap(assetsMetadata?.metadata?.operation?.input?.properties, assetsMetadata?.metadata?.operation?.input?.required)}
         {assetsMetadata?.metadata?.operation?.steps && <DiagramViewer metadata={assetsMetadata.metadata}></DiagramViewer>}
