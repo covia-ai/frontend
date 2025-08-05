@@ -4,14 +4,7 @@
 import Link from "next/link";
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator
-} from "@/components/ui/breadcrumb";
+import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 import {
   Dialog,
   DialogContent,
@@ -82,20 +75,7 @@ export default function AssetPage() {
   }
   return (
     <ContentLayout title="Assets">
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link href="/">Home</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>My Assets</BreadcrumbPage>
-          </BreadcrumbItem>
-         
-        </BreadcrumbList>
-      </Breadcrumb>
+      <SmartBreadcrumb />
         <div className="flex flex-col items-center justify-center">
                     <div className="flex flex-row items-center justify-center w-full space-x-2 ">
                         <Search></Search>  

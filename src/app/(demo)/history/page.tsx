@@ -4,14 +4,7 @@
 
 import Link from "next/link";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator
-} from "@/components/ui/breadcrumb";
+import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 
 import { Search } from "@/components/search";
 import {
@@ -104,19 +97,7 @@ export default function OperationsPage() {
 
   return (
     <ContentLayout title="Operations">
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link href="/">Home</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>User History</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+      <SmartBreadcrumb />
       <div className="flex flex-col items-center justify-center  mt-2">
         <Search></Search>
         <div className="flex flex-row w-full  items-start justify-start mt-4 space-x-4 ">

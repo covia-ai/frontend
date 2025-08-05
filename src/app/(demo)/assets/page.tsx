@@ -18,6 +18,7 @@ import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Eraser, PlusCircle, CircleArrowRight, CopyIcon, Save, AlertCircle, CheckCircle2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from 'next/navigation'
+import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 import {
   Dialog,
   DialogClose,
@@ -121,19 +122,7 @@ export default function AssetPage() {
 
   return (
     <ContentLayout title="Assets">
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link href="/">Home</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>Assets</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+      <SmartBreadcrumb />
          
           <div className="flex flex-col items-center justify-center">
               <div className="flex flex-row items-center justify-center w-full space-x-2 ">
