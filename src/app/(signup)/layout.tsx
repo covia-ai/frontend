@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Head from 'next/head';
 import { siteConfig } from "@/config/site";
-import { CookieConstent } from "@/components/CookieConstent";
+import { CookieConstent } from "@/components/CookieConsent";
 
 
 const { title, description } = siteConfig;

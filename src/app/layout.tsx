@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Head from 'next/head';
 import { siteConfig } from "@/config/site";
-import { CookieConstent } from "@/components/CookieConstent";
+import { CookieConsentComponent } from "@/components/CookieConsent";
 
 
 const { title, description } = siteConfig;
@@ -42,7 +42,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
-        <CookieConstent />
+        <CookieConsentComponent />
       </body>
     </html>
   );

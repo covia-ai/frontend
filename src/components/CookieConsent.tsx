@@ -1,7 +1,7 @@
 "use client";
 import CookieConsent from "react-cookie-consent";
 
-export const CookieConstent = () => {
+export const CookieConsentComponent = () => {
 
   return (
     <div id="cookie_constent" className="w-full">
