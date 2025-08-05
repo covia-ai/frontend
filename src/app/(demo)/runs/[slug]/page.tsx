@@ -1,14 +1,6 @@
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { ExecutionViewer } from "@/components/ExecutionViewer";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator
-} from "@/components/ui/breadcrumb";
-import Link from "next/link";
+import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 
 export default async function Page({
   params,
@@ -22,23 +14,7 @@ export default async function Page({
   return (
 
      <ContentLayout title="Operations">
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink asChild>
-                  <Link href="/">Home</Link>
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-                 <BreadcrumbLink asChild>
-                  <Link href="/history">Runs</Link>
-                </BreadcrumbLink>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>{slug}</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
+          <SmartBreadcrumb />
             
            <ExecutionViewer jobId={slug}></ExecutionViewer>
       </ContentLayout>

@@ -6,14 +6,7 @@ import { useEffect, useState } from "react";
 import { Asset, Venue } from "@/lib/covia/covialib";
 import { Copy } from "lucide-react";
 import Link from "next/link";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator
-} from "@/components/ui/breadcrumb";
+import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { copyDataToClipBoard } from "@/lib/utils";
@@ -68,25 +61,7 @@ export const AssetViewer = (props: any) => {
 
   return (
     <>
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link href="/">Home</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link href="/assets">Assets</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage> {assetsMetadata?.metadata?.name}</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+      <SmartBreadcrumb />
       {assetsMetadata && (
         <div className="flex flex-col w-full items-center justify-center">
           <AssetHeader assetsMetadata={assetsMetadata} />

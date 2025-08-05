@@ -12,18 +12,11 @@ import { useRouter } from "next/navigation";
 import { copyDataToClipBoard } from "@/lib/utils";
 
 
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator
-} from "@/components/ui/breadcrumb"
+import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb"
 
 
 
-import Link from "next/link";
+
 import { Textarea } from "./ui/textarea";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
@@ -178,25 +171,7 @@ export const OperationViewer = (props: any) => {
 
   return (
     <>
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link href="/">Home</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link href="/operations">Operations</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>{assetsMetadata?.metadata?.name}</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+      <SmartBreadcrumb />
 
       <div className="flex flex-col w-full items-center justify-center">
         {assetsMetadata && <AssetHeader assetsMetadata={assetsMetadata} />}
