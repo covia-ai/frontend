@@ -49,8 +49,8 @@ export default function OperationsPage() {
                 <Separator className="my-6" />
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl">
-                  <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer group">
-                    <CardHeader>
+                  <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer group h-64">
+                    <CardHeader className="flex-1">
                       <div className="flex items-center space-x-3">
                         <div className="bg-[#5865F2] p-3 rounded-lg">
                           <MessagesSquare size={32} color="white" />
@@ -64,7 +64,7 @@ export default function OperationsPage() {
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="flex flex-col justify-between">
                       <p className="text-sm text-slate-600 mb-4">
                         Connect with the Covia AI community, get help, share ideas, and stay updated with the latest developments.
                       </p>
@@ -77,8 +77,8 @@ export default function OperationsPage() {
                     </CardContent>
                   </Card>
 
-                  <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer group">
-                    <CardHeader>
+                  <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer group h-64">
+                    <CardHeader className="flex-1">
                       <div className="flex items-center space-x-3">
                         <div className="bg-blue-600 p-3 rounded-lg">
                           <LibraryBigIcon size={32} color="white" />
@@ -92,7 +92,7 @@ export default function OperationsPage() {
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="flex flex-col justify-between">
                       <p className="text-sm text-slate-600 mb-4">
                         Comprehensive documentation, tutorials, API references, and guides to help you master Covia AI.
                       </p>

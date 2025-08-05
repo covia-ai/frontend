@@ -57,37 +57,58 @@ export default function HomePage() {
                  Create your first flow with AI or check out our guided tutorials below
 
                 </p>
-              <div className="grid grid-cols-3 items-center justify-center space-x-8  mt-4 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 items-stretch justify-center gap-4 mt-4 mb-8">
                 
-                     <Card className=" px-2 w-64 h-38 shadow-md bg-slate-100 flex flex-col rounded-md  hover:-translate-1 hover:shadow-xl t-pink-400">
-                              <CardTitle  className="px-2">Web Scraping</CardTitle>                         
-                              <CardContent className="flex flex-col px-2">
-                              <div className="text-xs text-slate-600 mt-2 line-clamp-1">Lorem ipsum dolor sit amet, consectetur adipiscing elit</div>
-                               <div className="flex flex-row items-center justify-between mt-4">
-                                                   <Badge variant="outline" className="border border-pink-200 bg-white">orchestration</Badge>
-                                                   <CircleArrowRight color="#6B46C1"/>
-                                                </div>
-                              </CardContent>                 
+                     <Card className="shadow-md bg-slate-100 flex flex-col rounded-md hover:-translate-1 hover:shadow-xl h-48 overflow-hidden">
+                              {/* Fixed-size header */}
+                              <div className="h-14 p-3 flex flex-row items-center justify-between border-b bg-slate-50">
+                                <div className="truncate flex-1 font-semibold text-sm">Web Scraping</div>
+                              </div>
+                              
+                              {/* Flexible middle section */}
+                              <div className="flex-1 p-3 flex flex-col justify-between">
+                                <div className="text-xs text-slate-600 line-clamp-3 mb-2">Lorem ipsum dolor sit amet, consectetur adipiscing elit</div>
+                                
+                                {/* Fixed-size footer */}
+                                <div className="h-12 flex flex-row items-center justify-between">
+                                  <Badge variant="outline" className="border border-pink-200 bg-white">orchestration</Badge>
+                                  <CircleArrowRight color="#6B46C1"/>
+                                </div>
+                              </div>
                         </Card>
-                        <Card className=" px-2 w-64 h-38 shadow-md bg-slate-100 flex flex-col rounded-md  hover:-translate-1 hover:shadow-xl t-pink-400">
-                              <CardTitle  className="px-2">Document Classification</CardTitle>                         
-                              <CardContent className="flex flex-col px-2">
-                              <div className="text-xs text-slate-600 mt-2 line-clamp-1">Lorem ipsum dolor sit amet, consectetur adipiscing elit</div>
-                               <div className="flex flex-row items-center justify-between mt-4">
-                                                 <Badge variant="outline" className="border border-pink-200 bg-white">orchestration</Badge>
-                                                  <CircleArrowRight color="#6B46C1"/>
-                                                </div>
-                              </CardContent>                    
+                        <Card className="shadow-md bg-slate-100 flex flex-col rounded-md hover:-translate-1 hover:shadow-xl h-48 overflow-hidden">
+                              {/* Fixed-size header */}
+                              <div className="h-14 p-3 flex flex-row items-center justify-between border-b bg-slate-50">
+                                <div className="truncate flex-1 font-semibold text-sm">Document Classification</div>
+                              </div>
+                              
+                              {/* Flexible middle section */}
+                              <div className="flex-1 p-3 flex flex-col justify-between">
+                                <div className="text-xs text-slate-600 line-clamp-3 mb-2">Lorem ipsum dolor sit amet, consectetur adipiscing elit</div>
+                                
+                                {/* Fixed-size footer */}
+                                <div className="h-12 flex flex-row items-center justify-between">
+                                  <Badge variant="outline" className="border border-pink-200 bg-white">orchestration</Badge>
+                                  <CircleArrowRight color="#6B46C1"/>
+                                </div>
+                              </div>
                         </Card>
-                             <Card className=" px-2 w-64 h-38 shadow-md bg-slate-100 flex flex-col rounded-md  hover:-translate-1 hover:shadow-xl t-pink-400">
-                              <CardTitle  className="px-2">Request Approval</CardTitle>                         
-                              <CardContent className="flex flex-col px-2">
-                              <div className="text-xs text-slate-600 mt-2 line-clamp-1">Lorem ipsum dolor sit amet, consectetur adipiscing elit</div>
-                               <div className="flex flex-row items-center justify-between mt-4">
+                             <Card className="shadow-md bg-slate-100 flex flex-col rounded-md hover:-translate-1 hover:shadow-xl h-48 overflow-hidden">
+                              {/* Fixed-size header */}
+                              <div className="h-14 p-3 flex flex-row items-center justify-between border-b bg-slate-50">
+                                <div className="truncate flex-1 font-semibold text-sm">Request Approval</div>
+                              </div>
+                              
+                              {/* Flexible middle section */}
+                              <div className="flex-1 p-3 flex flex-col justify-between">
+                                <div className="text-xs text-slate-600 line-clamp-3 mb-2">Lorem ipsum dolor sit amet, consectetur adipiscing elit</div>
+                                
+                                {/* Fixed-size footer */}
+                                <div className="h-12 flex flex-row items-center justify-between">
                                   <Badge variant="outline" className="border border-pink-200 bg-white">orchestration</Badge>
                                   <CircleArrowRight color="#6B46C1" />
+                                </div>
                               </div>
-                              </CardContent>
                         </Card>
                       
               </div>   

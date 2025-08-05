@@ -23,14 +23,15 @@ export default function OperationsPage() {
         <div className="flex flex-row items-center justify-evenly w-full space-x-2">
           <Search></Search>
         </div>
-        <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-center justify-center gap-4">
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4">
           <Card 
             key={0} 
-            className="px-2 w-64 h-38 shadow-md bg-slate-100 flex flex-col rounded-md hover:-translate-1 hover:shadow-xl cursor-pointer"
+            className="shadow-md bg-slate-100 flex flex-col rounded-md hover:-translate-1 hover:shadow-xl cursor-pointer h-48 overflow-hidden"
             onClick={() => router.push('/venues/default')}
           >
-            <CardTitle className="px-2 flex flex-row items-center justify-between">
-              <div>Default Venue</div>
+            {/* Fixed-size header */}
+            <div className="h-14 p-3 flex flex-row items-center justify-between border-b bg-slate-50">
+              <div className="truncate flex-1 mr-2 font-semibold text-sm">Default Venue</div>
               <div className="flex space-x-2">
                 <Link2 
                   color="#008800" 
@@ -41,13 +42,19 @@ export default function OperationsPage() {
                 />
                 <ArrowRight size={16} className="text-muted-foreground" />
               </div>
-            </CardTitle>
-            <CardContent className="flex flex-col px-2">
-              <div className="text-xs text-slate-600 line-clamp-1">Default Covia Venue</div>
-              <div className="flex flex-row items-center justify-start mt-4 space-x-2">
-                <Badge variant="default" className="border bg-secondary text-white text-xs">covia</Badge>
+            </div>
+
+            {/* Flexible middle section */}
+            <div className="flex-1 p-3 flex flex-col justify-between">
+              <div className="text-xs text-slate-600 line-clamp-3 mb-2">Default Covia Venue</div>
+              
+              {/* Fixed-size footer */}
+              <div className="h-12 flex flex-row items-center justify-between">
+                <div className="flex flex-row items-center space-x-2">
+                  <Badge variant="default" className="border bg-secondary text-white text-xs">covia</Badge>
+                </div>
               </div>
-            </CardContent>
+            </div>
           </Card>
         </div>
       </div>

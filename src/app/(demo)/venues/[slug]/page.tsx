@@ -134,8 +134,8 @@ export default function VenuePage({ params }: VenuePageProps) {
         <div>
           <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer">
-              <CardHeader>
+            <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer h-48">
+              <CardHeader className="flex-1">
                 <div className="flex items-center space-x-3">
                   <div className="bg-blue-100 p-3 rounded-lg">
                     <Database size={24} className="text-blue-600" />
@@ -158,8 +158,8 @@ export default function VenuePage({ params }: VenuePageProps) {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer">
-              <CardHeader>
+            <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer h-48">
+              <CardHeader className="flex-1">
                 <div className="flex items-center space-x-3">
                   <div className="bg-green-100 p-3 rounded-lg">
                     <Settings size={24} className="text-green-600" />
