@@ -5,4 +5,5 @@ export * from './types';
 export { Venue } from './Venue';
 export { Asset } from './Asset';
 export { Operation } from './Operation';
-export { DataAsset } from './DataAsset'; 
+export { DataAsset } from './DataAsset';
+export { fetchWithError, fetchStreamWithError } from './Utils'; 

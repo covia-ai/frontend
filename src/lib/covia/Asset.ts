@@ -1,7 +1,8 @@
 import { CoviaError, AssetMetadata, RunStatus, OperationPayload, VenueInterface } from './types';
+import { fetchWithError, fetchStreamWithError } from './Utils';
 
 // Cache for storing asset data
-const cache = new Map<string, any>();
+const cache = new Map<string, AssetMetadata>();
 
 export abstract class Asset {
   public id: string;
@@ -21,25 +22,14 @@ export abstract class Asset {
    * @returns {Promise<AssetMetadata>}
    */
   async getMetadata(): Promise<AssetMetadata> {
-    try {
-      if (cache.has(this.id)) {
-        return cache.get(this.id);
-      } else {
-        const response = await fetch(`${this.venue.baseUrl}/api/v1/assets/${this.id}`);
-
-        if (!response.ok) {
-          throw new CoviaError(`Failed to get asset metadata! status: ${response.status}`);
-        }
-        const data = await response.json();
+    if (cache.has(this.id)) {
+      return cache.get(this.id)!;
+    } else {
+      const data = await fetchWithError<AssetMetadata>(`${this.venue.baseUrl}/api/v1/assets/${this.id}`);
+      if (data) {
         cache.set(this.id, data);
-        return data;
       }
-    } catch (error) {
-      if (error instanceof CoviaError) {
-        throw error;
-      } else {
-        throw new CoviaError(`Failed to get asset metadata: ${(error as Error).message}`);
-      }
+      return data;
     }
   }
 
@@ -51,11 +41,9 @@ export abstract class Asset {
     while (true) {
       const { done, value } = await reader.read();
       if (done) {
-        console.log('Stream finished.');
         break;
       }
       // Process the 'value' (data chunk) here
-      console.log('Received chunk:', value);
     }
   }
 
@@ -65,31 +53,15 @@ export abstract class Asset {
    * @returns {Promise<ReadableStream<Uint8Array> | null>}
    */
   async uploadContent(content: BodyInit): Promise<ReadableStream<Uint8Array> | null> {
-    try {
-      const response = await fetch(`${this.venue.baseUrl}/api/v1/assets/${this.id}/content`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/octet-stream',
-        },
-        body: content,
-      });
+    const response = await fetchStreamWithError(`${this.venue.baseUrl}/api/v1/assets/${this.id}/content`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/octet-stream',
+      },
+      body: content,
+    });
 
-      console.log(response);
-      if (!response.ok) {
-        response.text().then(function (text) {
-          console.log(text);
-        });
-        throw new CoviaError(`Failed to upload content! status: ${response.status}`);
-      }
-      console.log(response.body);
-      return response.body;
-    } catch (error) {
-      if (error instanceof CoviaError) {
-        throw error;
-      } else {
-        throw new CoviaError(`Failed to upload content: ${(error as Error).message}`);
-      }
-    }
+    return response.body;
   }
 
   /**
@@ -97,20 +69,8 @@ export abstract class Asset {
    * @returns {Promise<ReadableStream<Uint8Array> | null>}
    */
   async getContent(): Promise<ReadableStream<Uint8Array> | null> {
-    try {
-      const response = await fetch(`${this.venue.baseUrl}/api/v1/assets/${this.id}/content`);
-
-      if (!response.ok) {
-        throw new CoviaError(`Failed to get asset content! status: ${response.status}`);
-      }
-      return response.body;
-    } catch (error) {
-      if (error instanceof CoviaError) {
-        throw error;
-      } else {
-        throw new CoviaError(`Failed to get asset content: ${(error as Error).message}`);
-      }
-    }
+    const response = await fetchStreamWithError(`${this.venue.baseUrl}/api/v1/assets/${this.id}/content`);
+    return response.body;
   }
 
   /**
@@ -128,34 +88,17 @@ export abstract class Asset {
    */
   async invoke(payload: OperationPayload): Promise<any> {
     try {
-      const invokePayload = {
-        assetId: this.id,
-        payload: payload,
-      };
-
-      const response = await fetch(`${this.venue.baseUrl}/api/v1/invoke/`, {
+      return await fetchWithError<any>(`${this.venue.baseUrl}/api/v1/invoke/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(invokePayload),
+        body: JSON.stringify(payload),
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        const status = response.status;
-        throw new CoviaError(`Operation execution failed: ${errorText}`, status);
-      } else {
-        return await response.json();
-      }
     } catch (error) {
-      if (error instanceof CoviaError) {
-        throw error;
-      } else {
-        this.status = RunStatus.FAILED;
-        this.error = (error as Error).message;
-        throw new CoviaError(`Operation execution failed: ${(error as Error).message}`);
-      }
+      this.status = RunStatus.FAILED;
+      this.error = (error as Error).message;
+      throw error;
     }
   }
 }

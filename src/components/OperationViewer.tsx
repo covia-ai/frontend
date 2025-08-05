@@ -26,9 +26,10 @@ import { AssetHeader } from "./AssetHeader";
 import { Copy, CopyCheck } from "lucide-react";
 import copy from 'copy-to-clipboard';
 import { toast } from "sonner"
+import { Asset } from "@/lib/covia";
 
 export const OperationViewer = (props: any) => {
-  const [assetsMetadata, setAssetsMetadata] = useState<Operation>();
+  const [assetsMetadata, setAssetsMetadata] = useState<Asset>();
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const valueMap = new Map();
@@ -38,7 +39,7 @@ export const OperationViewer = (props: any) => {
 
 
   useEffect(() => {
-    venue.getAsset(props.assetId).then((asset: Operation) => {
+    venue.getAsset(props.assetId).then((asset: Asset) => {
       setAssetsMetadata(asset);
 
     })
@@ -66,11 +67,17 @@ export const OperationViewer = (props: any) => {
       let response = {};
       try {
         let payload = {
-          "operation": id,
+          "operation": assetsMetadata?.id,
           "input": inputs
         }
         console.log(assetsMetadata)
-        response = await assetsMetadata?.invoke(payload);
+        
+        // Check if the asset is actually an operation before invoking
+        if (assetsMetadata && assetsMetadata.metadata?.operation) {
+          response = await assetsMetadata.invoke(payload);
+        } else {
+          throw new Error("This asset is not an operation and cannot be invoked");
+        }
 
       }
       catch (e: Error) {
@@ -176,8 +183,17 @@ export const OperationViewer = (props: any) => {
       <div className="flex flex-col w-full items-center justify-center">
         {assetsMetadata && <AssetHeader asset={assetsMetadata} />}
         {assetsMetadata && <MetadataViewer asset={assetsMetadata} />}
-        {renderJSONMap(assetsMetadata?.metadata?.operation?.input?.properties, assetsMetadata?.metadata?.operation?.input?.required)}
-        {assetsMetadata?.metadata?.operation?.steps && <DiagramViewer metadata={assetsMetadata.metadata}></DiagramViewer>}
+        {assetsMetadata?.metadata?.operation && (
+          <>
+            {renderJSONMap(assetsMetadata?.metadata?.operation?.input?.properties, assetsMetadata?.metadata?.operation?.input?.required)}
+            {assetsMetadata?.metadata?.operation?.steps && <DiagramViewer metadata={assetsMetadata.metadata}></DiagramViewer>}
+          </>
+        )}
+        {!assetsMetadata?.metadata?.operation && (
+          <div className="text-center p-4">
+            <p className="text-red-500">This asset is not an operation and cannot be executed.</p>
+          </div>
+        )}
       </div>
     </>
   );
