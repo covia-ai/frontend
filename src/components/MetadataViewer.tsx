@@ -6,7 +6,7 @@ import { Calendar, Copy, Copyright, Download, Info, InfoIcon, Tag, User } from "
 import Link from "next/link";
 import { Badge } from "./ui/badge";
 import { JsonEditor } from "json-edit-react";
-import { Dialog, DialogContent, DialogTrigger } from "./ui/dialog";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "./ui/dialog";
 import { copyDataToClipBoard } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
 
@@ -146,6 +146,7 @@ export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
                   <span className="text-secondary underline"> View metadata</span>
                 </DialogTrigger>
                 <DialogContent>
+                  <DialogTitle>Asset Metadata</DialogTitle>
                   <JsonEditor 
                     data={asset.metadata}
                     rootName="metadata"

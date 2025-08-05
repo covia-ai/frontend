@@ -65,13 +65,12 @@ export default function AssetPage() {
 
   function createAsset() {
      const venue = new Venue();
-          venue.connect().then((venueObj) => {
-              venueObj.createAsset(jsonData).then(( assetId) => {
-                  if(assetId) {
-                    router.push("/assets");
-                  }
-            })
-          })
+     venue.connect();
+     venue.createAsset(jsonData).then((asset) => {
+         if(asset) {
+           router.push("/assets");
+         }
+     });
   }
   return (
     <ContentLayout title="Assets">
