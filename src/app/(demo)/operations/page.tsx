@@ -15,7 +15,7 @@ import {
 import { Search } from "@/components/search";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { CircleArrowRight, Copy } from "lucide-react";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useSearchParams } from 'next/navigation'
 
 
@@ -46,6 +46,7 @@ export default function AssetPage() {
   const search = searchParams.get('search');
   const [assetsMetadata, setAssetsMetadata] = useState<Asset[]>([]);
   const [isLoading, setLoading] = useState(true);
+  const router = useRouter();
 
   const itemsPerPage = 12
   let offset = 0;
@@ -207,14 +208,14 @@ export default function AssetPage() {
                   )}
                   <SheetFooter>
                     <SheetClose asChild>
-                      {asset.id && asset.metadata?.operation?.input && <Button type="submit" onClick={() => { redirect("/venues/default/operations/" + asset.id) }}>Run</Button>}
+                      {asset.id && asset.metadata?.operation?.input && <Button type="submit" onClick={() => { router.push("/venues/default/operations/" + asset.id) }}>Run</Button>}
                     </SheetClose>
                   </SheetFooter>
                 </SheetContent>
                 <CardContent className="flex flex-col px-2">
                   <div className="text-xs text-slate-600 line-clamp-1">{asset.metadata.description}</div>
                   <div className="flex flex-row items-center justify-between mt-4">
-                    <CircleArrowRight color="#6B46C1" onClick={() => { redirect("/venues/default/operations/" + asset.id) }} />
+                    <CircleArrowRight color="#6B46C1" onClick={() => { router.push("/venues/default/operations/" + asset.id) }} />
                   </div>
                 </CardContent>
               </Card>
