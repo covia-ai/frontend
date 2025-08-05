@@ -124,12 +124,13 @@ export const MetadataViewer = ({ assetsMetadata, content }: MetadataViewerProps)
               <Download size={18}></Download>
               <span><strong>Data:</strong></span>
               <span>
-                <Link href={content} className="text-secondary underline" >
+                <Link href={content} className="text-secondary underline" download={true}>
                   Download
                 </Link>
               </span>
               <span>
-                <a href={content} target="_blank" rel="noopener noreferrer" className="text-secondary underline" >
+                <a href={content + '?inline=true'} 
+                target="_blank" rel="noopener noreferrer" className="text-secondary underline" >
                   View
                 </a>
               </span>

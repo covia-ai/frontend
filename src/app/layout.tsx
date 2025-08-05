@@ -31,19 +31,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-       <Head>
+       <head>
         <title>{title}</title>
         <meta name="description" content={description} />
         <meta name="googlebot" content="noindex,nofollow" />
         <meta name="google" content="nositelinkssearchbox" key="sitelinks" />
         <meta name="google" content="notranslate" key="notranslate" />
-      </Head>
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <CookieConstent />
       </body>
-       <CookieConstent />
     </html>
   );
 }
