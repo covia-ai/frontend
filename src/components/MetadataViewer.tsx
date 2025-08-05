@@ -93,7 +93,7 @@ const renderMetadataFields = (assetsMetadata: Asset, fields: MetadataFieldConfig
       {validFields.map((field) => {
         const value = getNestedValue(assetsMetadata, field.path);
         const IconComponent = field.icon;
-        
+         
         return (
           <React.Fragment key={field.key}>
             <div className="flex items-center space-x-2">
@@ -125,8 +125,13 @@ export const MetadataViewer = ({ assetsMetadata, content }: MetadataViewerProps)
               <span><strong>Data:</strong></span>
               <span>
                 <Link href={content} className="text-secondary underline" >
-                  Click to download content
+                  Download
                 </Link>
+              </span>
+              <span>
+                <a href={content} target="_blank" rel="noopener noreferrer" className="text-secondary underline" >
+                  View
+                </a>
               </span>
             </div>
           )}

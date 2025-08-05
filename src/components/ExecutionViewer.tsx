@@ -103,8 +103,16 @@ export const ExecutionViewer = (props: any) => {
             // render function for each key within the input or output like "prompt" or "image"
             let renderContent = key => {
                 let fieldType = schema?.properties?.[key]?.type || "object";
-                let text = JSON.stringify(jsonObject[key]);
-                return <TableCell className="flex-2 text-wrap">{text}</TableCell>;
+                let value = jsonObject[key];
+                
+                if (fieldType === "string") {
+                    // Display string values as plain text with proper line breaks
+                    return <TableCell className="max-w-xs break-words whitespace-pre-wrap">{value}</TableCell>;
+                } else {
+                    // For non-string types, use JSON.stringify
+                    let text = JSON.stringify(value);
+                    return <TableCell className="max-w-xs break-words whitespace-normal">{text}</TableCell>;
+                }
             }
 
             // render function for the type each key within the input or output like "string" or "asset"
