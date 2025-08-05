@@ -7,7 +7,7 @@ export const login = async (providerName:string) => {
 };
 
 export const logout = async () => {
-  await signOut({ redirectTo: "/operations" });
+  await signOut({ redirectTo: "/" });
 };
 
 export const getUserEmail = async() => {

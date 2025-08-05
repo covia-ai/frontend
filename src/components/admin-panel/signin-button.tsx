@@ -3,8 +3,7 @@
 import { Button } from "@/components/ui/button";
 import {  useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useSession } from "next-auth/react"
-import { logout } from "@/lib/actions/auth";
+import { useSession, signOut } from "next-auth/react"
 import { LogInIcon } from "lucide-react";
 import {
   Avatar,
@@ -68,7 +67,7 @@ export function SignInButton(props:any) {
                            <DropdownMenuSeparator />
                              <DropdownMenuItem className="items-center text-center">
                               <Button
-                                onClick={() => {logout()}}
+                                onClick={() => signOut({ callbackUrl: "/" })}
                                 variant="ghost"
                                 className="text-sm mx-0"
                               >                              
