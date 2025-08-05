@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Head from 'next/head';
 import { siteConfig } from "@/config/site";
 import { CookieConsentComponent } from "@/components/CookieConsent";
 
@@ -21,6 +20,14 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: title,
   description: description,
+  robots: {
+    index: false,
+    follow: false,
+  },
+  other: {
+    google: "nositelinkssearchbox",
+    "google-translate": "notranslate",
+  },
 };
 
 export default function RootLayout({
@@ -31,13 +38,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-       <head>
-        <title>{title}</title>
-        <meta name="description" content={description} />
-        <meta name="googlebot" content="noindex,nofollow" />
-        <meta name="google" content="nositelinkssearchbox" key="sitelinks" />
-        <meta name="google" content="notranslate" key="notranslate" />
-      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
