@@ -25,17 +25,15 @@ Asset (abstract base class)
 ```typescript
 import { Venue, Asset, Operation, DataAsset } from '@/lib/covia';
 
-// Create venue and connect
+// Create venue
 const venue = new Venue({ 
   baseUrl: 'http://localhost:8080',
   venueId: 'my-venue' 
 });
-venue.connect();
 
-// Get assets
-const assets = await venue.getAssets();
-const operation = await venue.getOperation('op-id');
-const dataAsset = await venue.getDataAsset('data-id');
+// Get assets (returns Operation or DataAsset based on metadata)
+const operation = await venue.getAsset('op-id');
+const dataAsset = await venue.getAsset('data-id');
 
 // Use inherited functionality
 await operation.invoke({ param: 'value' });
@@ -49,15 +47,3 @@ await dataAsset.uploadContent(content);
 - **Caching**: Built-in caching for improved performance
 - **Error Handling**: Typed `CoviaError` class for proper error management
 - **Stream Support**: Built-in support for content streaming
-
-## Migration from JavaScript
-
-The old `covialib.js` file has been removed. All imports have been updated to use the new TypeScript API:
-
-```typescript
-// Old
-import { Venue } from '@/lib/covia/covialib';
-
-// New
-import { Venue } from '@/lib/covia';
-``` 

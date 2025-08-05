@@ -51,7 +51,7 @@ export class Venue implements VenueInterface {
   /**
    * Get asset by ID
    * @param assetId - Asset identifier
-   * @returns {Promise<Asset>}
+   * @returns {Promise<Asset>} Returns either an Operation or DataAsset based on the asset's metadata
    */
   async getAsset(assetId: string): Promise<Asset> {
     try {
@@ -84,62 +84,6 @@ export class Venue implements VenueInterface {
         throw error;
       } else {
         throw new CoviaError(`Failed to get asset with id: ${assetId}! ${(error as Error).message}`);
-      }
-    }
-  }
-
-  /**
-   * Get operation by ID
-   * @param operationId - Operation identifier
-   * @returns {Promise<Operation>}
-   */
-  async getOperation(operationId: string): Promise<Operation> {
-    try {
-      if (cache.has(operationId)) {
-        return new Operation(operationId, this, cache.get(operationId));
-      } else {
-        const response = await fetch(`${this.baseUrl}/api/v1/assets/${operationId}`);
-
-        if (!response.ok) {
-          throw new CoviaError(`Failed to get operation with id: ${operationId}! status: ${response.status}`);
-        }
-        const data = await response.json();
-        cache.set(operationId, data);
-        return new Operation(operationId, this, data);
-      }
-    } catch (error) {
-      if (error instanceof CoviaError) {
-        throw error;
-      } else {
-        throw new CoviaError(`Failed to get operation with id: ${operationId}! ${(error as Error).message}`);
-      }
-    }
-  }
-
-  /**
-   * Get data asset by ID
-   * @param dataAssetId - Data asset identifier
-   * @returns {Promise<DataAsset>}
-   */
-  async getDataAsset(dataAssetId: string): Promise<DataAsset> {
-    try {
-      if (cache.has(dataAssetId)) {
-        return new DataAsset(dataAssetId, this, cache.get(dataAssetId));
-      } else {
-        const response = await fetch(`${this.baseUrl}/api/v1/assets/${dataAssetId}`);
-
-        if (!response.ok) {
-          throw new CoviaError(`Failed to get data asset with id: ${dataAssetId}! status: ${response.status}`);
-        }
-        const data = await response.json();
-        cache.set(dataAssetId, data);
-        return new DataAsset(dataAssetId, this, data);
-      }
-    } catch (error) {
-      if (error instanceof CoviaError) {
-        throw error;
-      } else {
-        throw new CoviaError(`Failed to get data asset with id: ${dataAssetId}! ${(error as Error).message}`);
       }
     }
   }

@@ -9,9 +9,6 @@ async function example() {
       venueId: 'my-venue'
     });
 
-    // Connect to the venue
-    venue.connect();
-
     // Get all assets
     const assets = await venue.getAssets();
     console.log('Found assets:', assets.length);
@@ -24,17 +21,13 @@ async function example() {
     const metadata = await asset.getMetadata();
     console.log('Asset metadata:', metadata);
 
-    // Get an operation
-    const operation = await venue.getOperation('operation-id');
-    console.log('Operation:', operation.id);
+    // Get assets (returns Operation or DataAsset based on metadata)
+    const operation = await venue.getAsset('operation-id');
+    console.log('Operation:', operation);
 
-    // Invoke an operation
-    const result = await operation.invoke({ param1: 'value1' });
-    console.log('Operation result:', result);
-
-    // Get a data asset
-    const dataAsset = await venue.getDataAsset('data-asset-id');
-    console.log('Data asset:', dataAsset.id);
+    // Get data asset
+    const dataAsset = await venue.getAsset('data-asset-id');
+    console.log('Data Asset:', dataAsset);
 
     // Upload content to data asset
     const content = new Blob(['Hello World'], { type: 'text/plain' });
@@ -54,9 +47,6 @@ async function example() {
     // Get a specific job
     const job = await venue.getJob('job-id');
     console.log('Job:', job);
-
-    // Disconnect from venue
-    venue.disconnect();
 
   } catch (error) {
     if (error instanceof CoviaError) {

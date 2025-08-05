@@ -14,12 +14,6 @@ export interface AssetMetadata {
   [key: string]: any;
 }
 
-export interface AssetData {
-  id: string;
-  metadata?: AssetMetadata;
-  [key: string]: any;
-}
-
 export interface OperationPayload {
   [key: string]: any;
 }
