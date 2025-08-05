@@ -25,6 +25,10 @@ async function example() {
     const operation = await venue.getAsset('operation-id');
     console.log('Operation:', operation);
 
+    // Invoke an operation with simplified API
+    const result = await operation.invoke({ length: '100' });
+    console.log('Operation result:', result);
+
     // Get data asset
     const dataAsset = await venue.getAsset('data-asset-id');
     console.log('Data Asset:', dataAsset);

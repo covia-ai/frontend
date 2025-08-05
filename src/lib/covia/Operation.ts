@@ -1,8 +1,8 @@
 import { Asset } from './Asset';
-import { AssetMetadata, VenueInterface } from './types';
+import { AssetMetadata, VenueInterface, AssetID } from './types';
 
 export class Operation extends Asset {
-  constructor(id: string, venue: VenueInterface, metadata: AssetMetadata = {}) {
+  constructor(id: AssetID, venue: VenueInterface, metadata: AssetMetadata = {}) {
     super(id, venue, metadata);
   }
 

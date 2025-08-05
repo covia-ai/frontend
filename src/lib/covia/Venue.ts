@@ -1,11 +1,11 @@
-import { CoviaError, VenueOptions, AssetMetadata, JobData, VenueInterface } from './types';
+import { CoviaError, VenueOptions, AssetMetadata, JobData, VenueInterface, AssetID } from './types';
 import { Asset } from './Asset';
 import { Operation } from './Operation';
 import { DataAsset } from './DataAsset';
 import { fetchWithError } from './Utils';
 
 // Cache for storing asset data
-const cache = new Map<string, any>();
+const cache = new Map<AssetID, any>();
 
 export class Venue implements VenueInterface {
   public baseUrl: string;
@@ -26,7 +26,6 @@ export class Venue implements VenueInterface {
    * @returns {Promise<Asset>}
    */
   async createAsset(assetData: any): Promise<Asset> {
-    console.log(assetData);
     const response = await fetchWithError<any>(`${this.baseUrl}/api/v1/assets/`, {
       method: 'POST',
       headers: {
@@ -42,7 +41,7 @@ export class Venue implements VenueInterface {
    * @param assetId - Asset identifier
    * @returns {Promise<Asset>} Returns either an Operation or DataAsset based on the asset's metadata
    */
-  async getAsset(assetId: string): Promise<Asset> {
+  async getAsset(assetId: AssetID): Promise<Asset> {
     if (cache.has(assetId)) {
       const cachedData = cache.get(assetId);
       // Determine asset type from metadata and return appropriate concrete class
@@ -56,6 +55,7 @@ export class Venue implements VenueInterface {
       cache.set(assetId, data);
       
       // Determine asset type from metadata and return appropriate concrete class
+      // TODO: Do we actually need separate concrete classes?
       if (data.metadata?.operation) {
         return new Operation(assetId, this, data);
       } else {
@@ -71,7 +71,6 @@ export class Venue implements VenueInterface {
   async getAssets(): Promise<Asset[]> {
     const assets: Asset[] = [];
     const assetIds = await fetchWithError<any>(`${this.baseUrl}/api/v1/assets/`);
-    console.log(assetIds);
     for (const assetId of assetIds.items) {
       const asset = await this.getAsset(assetId);
       assets.push(asset);

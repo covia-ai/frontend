@@ -10,6 +10,8 @@ export interface VenueInterface {
   metadata: AssetMetadata;
 }
 
+export type AssetID = string;
+
 export interface AssetMetadata {
   [key: string]: any;
 }
@@ -23,7 +25,7 @@ export interface JobData {
 }
 
 export interface InvokePayload {
-  assetId: string;
+  assetId: AssetID;
   payload: OperationPayload;
 }
 

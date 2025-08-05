@@ -36,7 +36,7 @@ const operation = await venue.getAsset('op-id');
 const dataAsset = await venue.getAsset('data-id');
 
 // Use inherited functionality
-await operation.invoke({ param: 'value' });
+await operation.invoke({ param: 'value' }); // Simplified: just pass input parameters
 await dataAsset.uploadContent(content);
 ```
 

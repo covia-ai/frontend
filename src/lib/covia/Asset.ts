@@ -1,17 +1,17 @@
-import { CoviaError, AssetMetadata, RunStatus, OperationPayload, VenueInterface } from './types';
+import { CoviaError, AssetMetadata, RunStatus, OperationPayload, VenueInterface, AssetID } from './types';
 import { fetchWithError, fetchStreamWithError } from './Utils';
 
 // Cache for storing asset data
-const cache = new Map<string, AssetMetadata>();
+const cache = new Map<AssetID, AssetMetadata>();
 
 export abstract class Asset {
-  public id: string;
+  public id: AssetID;
   public venue: VenueInterface;
   public metadata: AssetMetadata;
   public status?: RunStatus;
   public error?: string;
 
-  constructor(id: string, venue: VenueInterface, metadata: AssetMetadata = {}) {
+  constructor(id: AssetID, venue: VenueInterface, metadata: AssetMetadata = {}) {
     this.id = id;
     this.venue = venue;
     this.metadata = metadata;
@@ -83,10 +83,15 @@ export abstract class Asset {
 
   /**
    * Execute the operation
-   * @param payload - Operation parameters
+   * @param input - Operation input parameters
    * @returns {Promise<any>}
    */
-  async invoke(payload: OperationPayload): Promise<any> {
+  async invoke(input: Record<string, any>): Promise<any> {
+    const payload = {
+      operation: this.id,
+      input: input
+    };
+
     try {
       return await fetchWithError<any>(`${this.venue.baseUrl}/api/v1/invoke/`, {
         method: 'POST',
