@@ -32,7 +32,7 @@ import {  useRouter, useSearchParams } from 'next/navigation'
 
 
 import { JsonEditor } from 'json-edit-react'
-import { Venue } from "@/lib/covia/covialib";
+import { Venue } from "@/lib/covia";
 import { DialogClose } from "@radix-ui/react-dialog";
 import { useSession } from "next-auth/react";
 import { Input } from "@/components/ui/input";

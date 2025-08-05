@@ -12,7 +12,7 @@ import { useSearchParams } from 'next/navigation'
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
-import { Asset } from "@/lib/covia/covialib";
+import { Asset } from "@/lib/covia";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 import { Separator } from "@/components/ui/separator"

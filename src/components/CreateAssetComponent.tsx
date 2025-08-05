@@ -26,7 +26,7 @@ import { Button } from "./ui/button";
 
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { Asset } from "@/lib/covia/covialib";
+import { Asset } from "@/lib/covia";
  
 import { getContentTypeForFile, getLicenseUrl } from "@/lib/utils";
 export const CreateAssetComponent = ({sendDataToParent}) => {

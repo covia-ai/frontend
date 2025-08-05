@@ -21,7 +21,7 @@ import { useEffect, useState } from "react";
 
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { RunStatus } from "@/lib/covia/covialib";
+import { RunStatus } from "@/lib/covia";
 
 import {
   Pagination,

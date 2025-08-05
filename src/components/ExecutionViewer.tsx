@@ -3,7 +3,7 @@
 /* eslint-disable */
 
 import { useEffect, useState } from "react";
-import { Asset, RunStatus, Venue } from "@/lib/covia/covialib";
+import { Asset, RunStatus, Venue } from "@/lib/covia";
 import { Check, Clock, Copy, CopyCheck, FileInput, FileOutput, Hash, RotateCcw, Timer, X } from "lucide-react";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { useStore } from "zustand";

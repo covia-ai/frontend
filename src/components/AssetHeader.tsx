@@ -1,6 +1,6 @@
 'use client'
 
-import { Asset } from "@/lib/covia/covialib";
+import { Asset } from "@/lib/covia";
 import { Copy } from "lucide-react";
 import { copyDataToClipBoard } from "@/lib/utils";
 import Link from "next/link";

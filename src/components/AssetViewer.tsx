@@ -3,7 +3,7 @@
 /* eslint-disable */
 
 import { useEffect, useState } from "react";
-import { Asset, Venue } from "@/lib/covia/covialib";
+import { Asset, Venue } from "@/lib/covia";
 import { Copy } from "lucide-react";
 import Link from "next/link";
 import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";

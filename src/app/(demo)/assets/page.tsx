@@ -31,7 +31,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
-import { Venue,Asset } from "@/lib/covia/covialib";
+import { Venue, Asset } from "@/lib/covia";
 import { JsonEditor } from "json-edit-react";
 
 import { useStore } from "zustand";

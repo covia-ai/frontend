@@ -7,7 +7,7 @@ import { Button } from "./ui/button";
 import { Label } from "@/components/ui/label"
 
 import { useEffect, useState } from "react";
-import { Operation } from "@/lib/covia/covialib";
+import { Operation } from "@/lib/covia";
 import { useRouter } from "next/navigation";
 import { copyDataToClipBoard } from "@/lib/utils";
 

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { Venue } from "@/lib/covia/covialib";
+import { Venue } from "@/lib/covia";
 
 type VenueStore = {
   venue:Venue;
