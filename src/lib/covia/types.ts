@@ -8,7 +8,6 @@ export interface VenueInterface {
   connected: boolean;
   venueId: string;
   name: string;
-  metadata: AssetMetadata;
 }
 
 export interface AssetMetadata {

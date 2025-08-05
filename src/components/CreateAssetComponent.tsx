@@ -26,12 +26,12 @@ import { Button } from "./ui/button";
 
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { Asset } from "@/lib/covia";
+import { Asset, AssetMetadata } from "@/lib/covia";
  
 import { getContentTypeForFile, getLicenseUrl } from "@/lib/utils";
 export const CreateAssetComponent = ({sendDataToParent}) => {
     const [step, setStep] = useState(0);
-    const [jsonData, setJsonData] = useState({});
+    const [jsonData, setJsonData] = useState<AssetMetadata>({});
     const [assetType, setAssetType] = useState("file");
     const [assetJSONData, setAssetJSONData] = useState({});
     const [assetStringData, setAssetStringDate] = useState("");
@@ -47,14 +47,14 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
     const [contentType, setContentType] = useState("")
     const [encoding, setEncoding] = useState("")
     const [hash, setHash] = useState("");
-    const [baseData, setBaseData] = useState({});
+    const [baseData, setBaseData] = useState<AssetMetadata>({});
     const [metadataUpdated, setMetadataUpdated] = useState(false);
     const venue = useStore(useVenue, (x) => x).venue;
 
     const [open, setOpen] = useState(false)
 
     if (!venue) return null;
-    function createNewAsset(jsonData:JSON) {
+    function createNewAsset(jsonData: AssetMetadata) {
         try {
        
           venue?.createAsset(jsonData).then( (asset: Asset) => {
@@ -149,7 +149,7 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
     
     function createMetadata(nextStep){
 
-      const metadata = {};
+      const metadata: AssetMetadata = {};
         if(name.length > 0)
             metadata.name = name;
         if(creator.length > 0)
