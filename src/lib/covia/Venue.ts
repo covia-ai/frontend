@@ -8,44 +8,15 @@ const cache = new Map<string, any>();
 
 export class Venue implements VenueInterface {
   public baseUrl: string;
-  public connected: boolean;
   public venueId: string;
   public name: string;
+  public metadata: AssetMetadata;
 
   constructor(options: VenueOptions = {}) {
     this.baseUrl = options.baseUrl || 'http://localhost:8080';
-    this.connected = false;
     this.venueId = options.venueId || "default";
     this.name = options.venueId || "default";
-  }
-
-  /**
-   * Connect to the venue
-   * @returns {Venue}
-   */
-  connect(): Venue {
-    try {
-      this.connected = true;
-      return this;
-    } catch (error) {
-      throw new CoviaError(`Failed to connect to venue: ${(error as Error).message}`);
-    }
-  }
-
-  /**
-   * Disconnect from the venue
-   * @returns {boolean}
-   */
-  disconnect(): boolean {
-    try {
-      if (this.connected) {
-        this.connected = false;
-        this.venueId = null as any;
-      }
-      return true;
-    } catch (error) {
-      throw new CoviaError(`Failed to disconnect: ${(error as Error).message}`);
-    }
+    this.metadata = {};
   }
 
   /**

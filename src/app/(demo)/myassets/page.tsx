@@ -65,7 +65,6 @@ export default function AssetPage() {
 
   function createAsset() {
      const venue = new Venue();
-     venue.connect();
      venue.createAsset(jsonData).then((asset) => {
          if(asset) {
            router.push("/assets");

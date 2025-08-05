@@ -5,9 +5,9 @@ export interface VenueOptions {
 
 export interface VenueInterface {
   baseUrl: string;
-  connected: boolean;
   venueId: string;
   name: string;
+  metadata: AssetMetadata;
 }
 
 export interface AssetMetadata {
