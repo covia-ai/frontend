@@ -118,7 +118,7 @@ export const ExecutionViewer = (props: any) => {
             // render function for the type each key within the input or output like "string" or "asset"
             let renderType = key => {
                 let fieldType = schema?.properties?.[key]?.type || "object";
-                return <TableCell className="text-center text-slate-600">{fieldType}</TableCell>;
+                return <TableCell className="text-slate-600">{fieldType}</TableCell>;
             }
 
             if (keys != undefined && keys.length > 0) {
@@ -128,7 +128,7 @@ export const ExecutionViewer = (props: any) => {
                             <TableRow className="bg-slate-200">
                                 <TableCell >Name</TableCell>
                                 <TableCell >Value</TableCell>
-                                {inOutType && <TableCell>Type</TableCell>}
+                                <TableCell>Type</TableCell>
                             </TableRow>
                         </TableHeader>
                         <TableBody >
