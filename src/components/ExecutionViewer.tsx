@@ -22,6 +22,21 @@ export const ExecutionViewer = (props: any) => {
     const venue = useStore(useVenue, (x) => x).venue;
     if (!venue) return null;
 
+    // Function to determine text color based on status
+    function colourForStatus(status: RunStatus): string {
+        switch (status) {
+            case RunStatus.COMPLETE:
+                return "text-green-600";
+            case RunStatus.FAILED:
+                return "text-red-600";
+            case RunStatus.PENDING:
+            case RunStatus.STARTED:
+                return "text-blue-600";
+            default:
+                return "text-gray-600";
+        }
+    }
+
     function fetchJobStatus() {
         venue.getJob(props.jobId).then((response) => {
 
@@ -56,7 +71,6 @@ export const ExecutionViewer = (props: any) => {
     function renderChildJobs(jsonObject: JSON) {
         let steps = executionData.steps;
         return (
-
             <Table className="border border-slate-200 rounded-md py-2 ">
                 <TableHeader>
                     <TableRow className="bg-slate-200">
@@ -66,21 +80,21 @@ export const ExecutionViewer = (props: any) => {
                     </TableRow>
                 </TableHeader>
                 <TableBody >
-                    {steps.map((step, index) => (
-                        <TableRow key={index} >
-                            <TableCell className="text-secondary">{index}</TableCell>
-                            <TableCell className="text-secondary font-mono underline"><Link href={`/history/${step.id}`}>{step.id}</Link></TableCell>
-                            <TableCell>
-                                {step?.status == RunStatus.COMPLETE && <span className="text-green-600 ">{RunStatus.COMPLETE}</span>}
-                                {step?.status == RunStatus.FAILED && <span className="text-red-600 ">{RunStatus.FAILED}</span>}
-                                {step?.status == RunStatus.PENDING && <span className="text-blue-600 ">{RunStatus.PENDING}</span>}
-                                {step?.status == RunStatus.STARTED && <span className="text-blue-600 ">{RunStatus.STARTED}</span>}
-                            </TableCell>
-                        </TableRow>
-                    ))}
+                    { /* Loop through the steps and render a table row for each step */
+                        steps.map((step, index) => {
+                            const status = step?.status || "UNKNOWN";
+                            return (
+                                <TableRow key={index} >
+                                    <TableCell className="text-secondary">{index}</TableCell>
+                                    <TableCell className="text-secondary font-mono underline"><Link href={`/history/${step.id}`}>{step.id}</Link></TableCell>
+                                    <TableCell>
+                                        <span className={colourForStatus(status)}>{status}</span>
+                                    </TableCell>
+                                </TableRow>
+                            );
+                        })}
                 </TableBody>
             </Table>
-
         )
     }
     function renderJSONObject(jsonObject: JSON, type: string) {
@@ -136,8 +150,9 @@ export const ExecutionViewer = (props: any) => {
                         <TableBody >
                             {keys.map((key, index) => (
                                 <TableRow key={index}>
-                                    {type == "input" && <TableCell key={index} className="font-bold bg-yellow-200">{key}</TableCell>}
-                                    {type == "output" && <TableCell key={index} className="font-bold bg-blue-200">{key}</TableCell>}
+                                    {type == "input" 
+                                        ? <TableCell key={index} className="font-semibold bg-yellow-100">{key}</TableCell>
+                                        : <TableCell key={index} className="font-semibold bg-blue-100">{key}</TableCell>}
                                     {renderContent(key)}
                                     {renderType(key)}
                                 </TableRow>
@@ -147,6 +162,7 @@ export const ExecutionViewer = (props: any) => {
 
                 )
             } else {
+                /* If there are no keys, render a table with the value and type */
                 return (<Table className="border border-slate-200 rounded-md py-2">
                     <TableHeader>
                         <TableRow className="bg-slate-200">
@@ -157,7 +173,7 @@ export const ExecutionViewer = (props: any) => {
                     <TableBody >
                         <TableRow>
                             <TableCell><div className="font-mono">{JSON.stringify(jsonObject)}</div></TableCell>
-                            <TableCell>object</TableCell>
+                            <TableCell>{typeof jsonObject}</TableCell>
                         </TableRow>
                     </TableBody>
                 </Table>
@@ -192,11 +208,7 @@ export const ExecutionViewer = (props: any) => {
                                 {executionData?.status == RunStatus.STARTED && < RotateCcw />}
 
                                 <span className="w-28"><strong>Status:</strong></span>
-                                {executionData?.status == RunStatus.COMPLETE && <span className="text-green-600 ">{RunStatus.COMPLETE}</span>}
-                                {executionData?.status == RunStatus.FAILED && <span className="text-red-600 ">{RunStatus.FAILED}</span>}
-                                {executionData?.status == RunStatus.PENDING && <span className="text-blue-600 ">{RunStatus.PENDING}</span>}
-                                {executionData?.status == RunStatus.STARTED && <span className="text-blue-600 ">{RunStatus.STARTED}</span>}
-
+                                <span className={colourForStatus(executionData?.status)}>{executionData?.status}</span>
                             </div>
 
                             <div className="flex flex-row items-center space-x-4  py-2">
