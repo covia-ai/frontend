@@ -104,7 +104,7 @@ export const ExecutionViewer = (props: any) => {
             let renderContent = key => {
                 let fieldType = schema?.properties?.[key]?.type || "object";
                 let value = jsonObject[key];
-                
+
                 if (fieldType === "string") {
                     // Display string values as plain text with proper line breaks
                     return <TableCell className="max-w-xs break-words whitespace-pre-wrap">{value}</TableCell>;
@@ -121,7 +121,9 @@ export const ExecutionViewer = (props: any) => {
                 return <TableCell className="text-slate-600">{fieldType}</TableCell>;
             }
 
-            if (keys != undefined && keys.length > 0) {
+            if (keys == undefined || keys == null) {
+                return <div>No Data</div>
+            } else if (keys.length > 0) {
                 return (
                     <Table className="border border-slate-200 rounded-md py-2">
                         <TableHeader>
@@ -145,7 +147,21 @@ export const ExecutionViewer = (props: any) => {
 
                 )
             } else {
-                return <div>No data</div>
+                return (<Table className="border border-slate-200 rounded-md py-2">
+                    <TableHeader>
+                        <TableRow className="bg-slate-200">
+                            <TableCell >Value</TableCell>
+                            <TableCell>Type</TableCell>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody >
+                        <TableRow>
+                            <TableCell><div className="font-mono">{JSON.stringify(jsonObject)}</div></TableCell>
+                            <TableCell>object</TableCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
+                )
             }
         }
     }
