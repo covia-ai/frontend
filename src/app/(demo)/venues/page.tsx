@@ -6,7 +6,6 @@ import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 import { Search } from "@/components/search";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { useSearchParams, useRouter } from 'next/navigation'
-import { VenueDetails } from "@/config/types";
 import { Badge } from "@/components/ui/badge";
 import { Link2, ArrowRight } from "lucide-react";
 

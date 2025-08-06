@@ -17,7 +17,7 @@ export const AssetHeader = ({ asset }: AssetHeaderProps) => {
           {asset?.metadata?.name}
         </Link>
       </h1>
-      <p className="text-m mb-4 text-slate-600 w-3/4">{asset?.metadata?.description}</p>
+      <p className="text-m mb-4 text-slate-600 w-3/4 text-center">{asset?.metadata?.description}</p>
 
       <div className="flex flex-row-reverse space-x-4 space-x-reverse w-full justify-center">
         <div className="flex flex-row ">

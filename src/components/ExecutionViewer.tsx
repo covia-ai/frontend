@@ -69,7 +69,7 @@ export const ExecutionViewer = (props: any) => {
                     {steps.map((step, index) => (
                         <TableRow key={index} >
                             <TableCell className="text-secondary">{index}</TableCell>
-                            <TableCell className="text-secondary font-mono underline"><Link href={`/runs/${step.id}`}>{step.id}</Link></TableCell>
+                            <TableCell className="text-secondary font-mono underline"><Link href={`/history/${step.id}`}>{step.id}</Link></TableCell>
                             <TableCell>
                                 {step?.status == RunStatus.COMPLETE && <span className="text-green-600 ">{RunStatus.COMPLETE}</span>}
                                 {step?.status == RunStatus.FAILED && <span className="text-red-600 ">{RunStatus.FAILED}</span>}

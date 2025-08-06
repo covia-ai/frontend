@@ -99,8 +99,8 @@ function processSteps(stepIndex, steps, results, nodes, edges, posX, posY) {
 				{
 					id: (stepIndex + 1) + "",
 					type: 'TaskNode',
-					data: { nodeLabel: currentStep.name, op: currentStep.op, inputs: [], outputs: getResultOfStep(results, stepIndex) },
-					position: { x: posX + 100, y: posY + 200 },
+					data: { taskId: currentStep.id, nodeLabel: currentStep.name, op: currentStep.op, inputs: [], outputs: getResultOfStep(results, stepIndex) },
+					position: { x: posX + 200, y: posY + 200 },
 				}
 			)
 			posX = posX + 400;
@@ -120,7 +120,7 @@ function processSteps(stepIndex, steps, results, nodes, edges, posX, posY) {
 				{
 					id: (stepIndex + 1) + "",
 					type: 'TaskNode',
-					data: { nodeLabel: currentStep.name, op: currentStep.op, inputs: getResultOfStep(results, stepIndex - 1), outputs: getResultOfStep(results, stepIndex) },
+					data: {taskId: currentStep.id, nodeLabel: currentStep.name, op: currentStep.op, inputs: getResultOfStep(results, stepIndex - 1), outputs: getResultOfStep(results, stepIndex) },
 					position: { x: posX, y: posY },
 				}
 			)
@@ -144,7 +144,7 @@ function processSteps(stepIndex, steps, results, nodes, edges, posX, posY) {
 				{
 					id: (stepIndex + 1) + "",
 					type: 'TaskNode',
-					data: { nodeLabel: currentStep.name, op: currentStep.op, inputs: stepInputKeys, outputs: stepOutput },
+					data: { taskId: currentStep.id, nodeLabel: currentStep.name, op: currentStep.op, inputs: stepInputKeys, outputs: stepOutput },
 					position: { x: posX, y: posY },
 				}
 

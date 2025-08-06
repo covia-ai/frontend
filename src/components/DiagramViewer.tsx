@@ -20,6 +20,8 @@ import ConstNode from '@/components/diagram/ConstNode';
 import CustomEdge from '@/components/diagram/CustomEdge';
 import OutputNode from '@/components/diagram/OutputNode';
 import { parseOpMetadata } from '@/lib/diagramutils';
+import { useCallback } from 'react';
+import { redirect } from 'next/navigation';
 
 const nodeTypes = {
   TaskNode: TaskNode,
@@ -37,8 +39,15 @@ export const DiagramViewer = (props:any) => {
        const [nodes, setNodes, onNodesChange] = useNodesState(parseJson[0]);
        const [edges, setEdges, onEdgesChange] = useEdgesState(parseJson[1]);
       
-
-      return (
+        const onNodeClick = useCallback(
+            (event: React.MouseEvent, node: Node) => {
+              console.log(node);
+              redirect("http://localhost:3000/venues/default/operations/"+node.op);
+            },
+            []
+          );
+          
+       return (
         <div style={{ width: '80%', height: '500px' , border: '1px solid #ccc'}}>
            <ReactFlow
                 nodes={nodes}
@@ -49,6 +58,7 @@ export const DiagramViewer = (props:any) => {
                 edgeTypes={edgeTypes}
                 nodesConnectable={false}
                 className="bg-slate-800"
+                onNodeClick={onNodeClick}
                 fitView
               >
                 <Background/>

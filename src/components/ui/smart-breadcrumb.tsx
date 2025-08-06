@@ -62,7 +62,6 @@ export function SmartBreadcrumb() {
       'venues': 'Venues',
       'assets': 'Assets',
       'operations': 'Operations',
-      'runs': 'Runs',
       'history': 'History',
       'learning': 'Learning',
       'workspace': 'Workspace',

@@ -111,7 +111,6 @@ const renderMetadataFields = (asset: Asset, fields: MetadataFieldConfig[]) => {
 
 export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
   const contentURL = asset.getContentURL();
-  
   return (
     <div className="text-sm border-1 shadow-md rounded-md border-slate-200 p-2 items-center justify-between min-w-lg w-full">
       <div className="flex flex-row">
@@ -120,7 +119,7 @@ export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
         </div>
         <div className="flex flex-col flex-2 px-2 ">
  
-          {contentURL && (
+          {contentURL  && (
             <div className="flex flex-row items-center space-x-2 my-2">
               <Download size={18}></Download>
               <span><strong>Data:</strong></span>

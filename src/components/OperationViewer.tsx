@@ -82,7 +82,7 @@ export const OperationViewer = (props: any) => {
         setLoading(false);
       }
       if (response?.id) {
-        router.push("/runs/" + response?.id);
+        router.push("/history/" + response?.id);
       }
     } else {
       setErrorMessage("Please provide all the inputs")
