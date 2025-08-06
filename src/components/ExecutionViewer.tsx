@@ -1,9 +1,9 @@
 
 'use client'
-/* eslint-disable */
 
 import { useEffect, useState } from "react";
 import { Asset, RunStatus, Venue } from "@/lib/covia";
+import { JobData } from "@/lib/covia/types";
 import { Check, Clock, Copy, CopyCheck, FileInput, FileOutput, Hash, RotateCcw, Timer, X } from "lucide-react";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { useStore } from "zustand";
@@ -15,7 +15,7 @@ import Link from "next/link";
 
 export const ExecutionViewer = (props: any) => {
     const router = useRouter()
-    const [executionData, setExecutionData] = useState({})
+    const [executionData, setExecutionData] = useState<JobData>({})
     const [poll, setPollStatus] = useState("");
     const [assetsMetadata, setAssetsMetadata] = useState<Asset>();
 
@@ -42,7 +42,7 @@ export const ExecutionViewer = (props: any) => {
 
             console.log(response)
             setExecutionData(response);
-            setPollStatus(response.status);
+            setPollStatus(response.status || "");
 
         })
     }
@@ -50,7 +50,7 @@ export const ExecutionViewer = (props: any) => {
         venue.getJob(props.jobId).then((response) => {
 
             setExecutionData(response);
-            setPollStatus(response.status);
+            setPollStatus(response.status || "");
             venue.getAsset(response?.op).then((asset: Asset) => {
                 setAssetsMetadata(asset);
 
@@ -69,7 +69,7 @@ export const ExecutionViewer = (props: any) => {
     }, [poll])
 
     function renderChildJobs(jsonObject: JSON) {
-        let steps = executionData.steps;
+        let steps = executionData.steps as any[];
         return (
             <Table className="border border-slate-200 rounded-md py-2 ">
                 <TableHeader>
@@ -81,7 +81,7 @@ export const ExecutionViewer = (props: any) => {
                 </TableHeader>
                 <TableBody >
                     { /* Loop through the steps and render a table row for each step */
-                        steps.map((step, index) => {
+                        steps?.map((step: any, index: number) => {
                             const status = step?.status || "UNKNOWN";
                             return (
                                 <TableRow key={index} >
@@ -97,27 +97,27 @@ export const ExecutionViewer = (props: any) => {
             </Table>
         )
     }
-    function renderJSONObject(jsonObject: JSON, type: string) {
+    function renderJSONObject(jsonObject: any, type: string) {
         if (jsonObject != undefined) {
             let keys = new Array(); // keys of the input or output
             let inOutType = "", assetLink = "";
-            let schema = {};
+            let schema: any = {};
             if (type == "input") {
-                keys = Object.keys(executionData?.input);
+                keys = Object.keys(executionData?.input || {});
                 schema = assetsMetadata?.metadata?.operation?.input;
                 inOutType = schema?.type;
             } else {
                 schema = assetsMetadata?.metadata?.operation?.output;
                 inOutType = schema?.type;
-                keys = Object.keys(executionData?.output);
+                keys = Object.keys(executionData?.output || {});
             }
             if (inOutType == "asset")
                 assetLink = window.location.href + "/venues/default/assets/" + assetsMetadata?.id;
 
             // render function for each key within the input or output like "prompt" or "image"
-            let renderContent = key => {
+            let renderContent = (key: string) => {
                 let fieldType = schema?.properties?.[key]?.type || "object";
-                let value = jsonObject[key];
+                let value = (jsonObject as any)[key];
 
                 if (fieldType === "string") {
                     // Display string values as plain text with proper line breaks
@@ -130,7 +130,7 @@ export const ExecutionViewer = (props: any) => {
             }
 
             // render function for the type each key within the input or output like "string" or "asset"
-            let renderType = key => {
+            let renderType = (key: string) => {
                 let fieldType = schema?.properties?.[key]?.type || "object";
                 return <TableCell className="text-slate-600">{fieldType}</TableCell>;
             }
@@ -208,23 +208,23 @@ export const ExecutionViewer = (props: any) => {
                                 {executionData?.status == RunStatus.STARTED && < RotateCcw />}
 
                                 <span className="w-28"><strong>Status:</strong></span>
-                                <span className={colourForStatus(executionData?.status)}>{executionData?.status}</span>
+                                <span className={colourForStatus(executionData?.status as RunStatus)}>{executionData?.status}</span>
                             </div>
 
                             <div className="flex flex-row items-center space-x-4  py-2">
                                 <Clock></Clock>
                                 <span className="w-28"><strong>Created Date:</strong></span>
-                                <span>{new Date(executionData?.created).toLocaleString()}</span>
+                                <span>{executionData?.created ? new Date(executionData.created).toLocaleString() : 'N/A'}</span>
                             </div>
                             <div className="flex flex-row items-center space-x-4  py-2">
                                 <Clock></Clock>
                                 <span className="w-28"><strong>Updated Date:</strong></span>
-                                <span>{new Date(executionData?.updated).toLocaleString()}</span>
+                                <span>{executionData?.updated ? new Date(executionData.updated).toLocaleString() : 'N/A'}</span>
                             </div>
                             <div className="flex flex-row items-center space-x-4  py-2">
                                 <Timer></Timer>
                                 <span className="w-28"><strong>Time:</strong></span>
-                                <span>{getExecutionTime(executionData.created, executionData.updated)}</span>
+                                <span>{executionData?.created && executionData?.updated ? getExecutionTime(executionData.created, executionData.updated) : 'N/A'}</span>
                             </div>
                             <div className="flex flex-col py-2 space-x-4 w-3/4 ">{executionData?.steps &&
                                 <div className="flex flex-row space-x-4  py-2">

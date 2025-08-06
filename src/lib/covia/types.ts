@@ -21,6 +21,12 @@ export interface OperationPayload {
 }
 
 export interface JobData {
+  id?: string;
+  status?: string;
+  created?: string;
+  updated?: string;
+  input?: any;
+  output?: any;
   [key: string]: any;
 }
 
