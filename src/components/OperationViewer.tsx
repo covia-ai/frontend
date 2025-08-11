@@ -1,6 +1,5 @@
 
 'use client'
-/* eslint-disable */
 
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
@@ -58,7 +57,7 @@ export const OperationViewer = (props: any) => {
           operationStatus = false;
       }
       if (operationStatus) {
-        let inputs = {};
+        const inputs = {};
         for (const [key, value] of valueMap) {
           if (value[0] == "json" || value[0] == "object")
             inputs[key] = JSON.parse(value[1]);
@@ -67,7 +66,7 @@ export const OperationViewer = (props: any) => {
           else
             inputs[key] = value[1];
         }
-        let response = {};
+        const response = {};
         try {
           console.log(inputs)
           // Check if the asset is actually an operation before invoking
@@ -115,13 +114,13 @@ export const OperationViewer = (props: any) => {
   }
   function renderJSONMap(jsonObject: JSON, requiredKeys: string[]) {
     if (jsonObject != null && jsonObject != undefined) {
-      let keys = Object.keys(jsonObject);
-      let type = new Array<string>();
-      let description = new Array<string>();
-      let defaultValue = new Array<string>();
+      const keys = Object.keys(jsonObject);
+      const type = new Array<string>();
+      const description = new Array<string>();
+      const defaultValue = new Array<string>();
 
       keys.map((key, index) => {
-        let jsonValue = jsonObject[key];
+        const jsonValue = jsonObject[key];
         type[index] = jsonValue.type;
         description[index] = jsonValue.description;
         defaultValue[index] = jsonValue.default || "";

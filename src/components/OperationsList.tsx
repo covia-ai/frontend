@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable */
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
