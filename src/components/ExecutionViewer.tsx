@@ -69,7 +69,7 @@ export const ExecutionViewer = (props: any) => {
     }, [poll])
 
     function renderChildJobs(jsonObject: JSON) {
-        let steps = executionData.steps as any[];
+        const steps = executionData.steps as any[];
         return (
             <Table className="border border-slate-200 rounded-md py-2 ">
                 <TableHeader>
@@ -99,7 +99,7 @@ export const ExecutionViewer = (props: any) => {
     }
     function renderJSONObject(jsonObject: any, type: string) {
         if (jsonObject != undefined) {
-            let keys = new Array(); // keys of the input or output
+            let keys = []; // keys of the input or output
             let inOutType = "", assetLink = "";
             let schema: any = {};
             if (type == "input") {
@@ -115,23 +115,23 @@ export const ExecutionViewer = (props: any) => {
                 assetLink = window.location.href + "/venues/default/assets/" + assetsMetadata?.id;
 
             // render function for each key within the input or output like "prompt" or "image"
-            let renderContent = (key: string) => {
-                let fieldType = schema?.properties?.[key]?.type || "object";
-                let value = (jsonObject as any)[key];
+            const renderContent = (key: string) => {
+                const fieldType = schema?.properties?.[key]?.type || "object";
+                const value = (jsonObject as any)[key];
 
                 if (fieldType === "string") {
                     // Display string values as plain text with proper line breaks
                     return <TableCell className="max-w-xs break-words whitespace-pre-wrap">{value}</TableCell>;
                 } else {
                     // For non-string types, use JSON.stringify
-                    let text = JSON.stringify(value);
+                    const text = JSON.stringify(value);
                     return <TableCell className="max-w-xs break-words whitespace-normal">{text}</TableCell>;
                 }
             }
 
             // render function for the type each key within the input or output like "string" or "asset"
-            let renderType = (key: string) => {
-                let fieldType = schema?.properties?.[key]?.type || "object";
+            const renderType = (key: string) => {
+                const fieldType = schema?.properties?.[key]?.type || "object";
                 return <TableCell className="text-slate-600">{fieldType}</TableCell>;
             }
 

@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable */
 
 
 import Link from "next/link";
@@ -78,7 +77,7 @@ export default function AssetPage() {
     setAssetsMetadata([]);
     venue.getAssets().then((assets) => {
       assets.forEach((asset: Asset) => {
-        asset.getMetadata().then((metadata: Object) => {
+        asset.getMetadata().then((metadata: object) => {
           if (metadata.name != undefined && metadata.operation == undefined) {
 
             setAssetsMetadata(prevArray => [...prevArray, new Asset(asset.id, asset.venue, metadata)]);
