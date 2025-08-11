@@ -70,13 +70,13 @@ export function CollapseMenuButton({
           className="w-full justify-start h-10"
         >
           <div className="w-full items-center flex justify-between">
-            <div className="flex items-center">
+            <div className="flex items-center space-x-2">
               <span className="mr-4">
                 <Icon size={18} />
               </span>
               <p
                 className={cn(
-                  "max-w-[150px] truncate",
+                  "max-w-[200px] truncate ml-2",
                   isOpen
                     ? "translate-x-0 opacity-100"
                     : "-translate-x-96 opacity-0"

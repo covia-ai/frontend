@@ -151,7 +151,8 @@ export default function AssetPage() {
             <Card key={index} className="shadow-md h-full bg-slate-100 flex flex-col rounded-md hover:-translate-1 hover:shadow-xl h-48">
               {/* Fixed-size header */}
               <div className="h-14 p-2 flex flex-row items-center border-b bg-slate-50">
-                <div className="truncate flex-1 mr-2 font-semibold text-sm">{asset.metadata.name || 'Unnamed Asset'}</div>
+                <div className="truncate flex-1 mr-2 font-semibold text-sm"
+                onClick={() => { router.push("/venues/default/assets/" + asset.id) }}>{asset.metadata.name || 'Unnamed Asset'}</div>
                 <Dialog>
                   <DialogTrigger><CopyIcon size={16}></CopyIcon></DialogTrigger>
                   <DialogContent className="h-11/12 min-w-10/12 ">
