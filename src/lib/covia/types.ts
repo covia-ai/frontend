@@ -14,6 +14,30 @@ export type AssetID = string;
 
 export interface AssetMetadata {
   [key: string]: any;
+  name?: string;
+  description?: string;
+  type?: string;
+  created?: string;
+  updated?: string;
+  operation?: OperationDetails;
+  content?: ContentDetails;
+  input?: any;
+  output?: any;
+}
+
+/** Type for metadata.operation */
+export interface OperationDetails {
+  [key: string]: any;
+  adapter?: string;
+  input?: any;
+  output?: any;
+  steps?: any[];
+  result?: any;
+}
+
+/** Type for metadata.content */
+export interface ContentDetails {
+  [key: string]: any;
 }
 
 export interface OperationPayload {

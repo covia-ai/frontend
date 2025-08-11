@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
       {
         source: '/',
         destination: '/workspace', // Replace with your internal page path
-        permanent: true, // Use false for temporary redirects
+        permanent: false, // Use false for temporary redirects
       },
     ];
   },
