@@ -83,10 +83,11 @@ export const ExecutionViewer = (props: any) => {
                     { /* Loop through the steps and render a table row for each step */
                         steps?.map((step: any, index: number) => {
                             const status = step?.status || "UNKNOWN";
+                            const id = step?.status || "";
                             return (
                                 <TableRow key={index} >
                                     <TableCell className="text-secondary">{index}</TableCell>
-                                    <TableCell className="text-secondary font-mono underline"><Link href={`/history/${step.id}`}>{step.id}</Link></TableCell>
+                                    <TableCell className="text-secondary font-mono underline"><Link href={`/history/${id}`}>{id}</Link></TableCell>
                                     <TableCell>
                                         <span className={colourForStatus(status)}>{status}</span>
                                     </TableCell>
