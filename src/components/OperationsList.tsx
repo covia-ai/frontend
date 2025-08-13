@@ -64,7 +64,6 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
   if (!venue) return null;
 
   function fetchAssets(offset, limit) {
-    console.log(offset + " : " + limit)
     setAssetsMetadata([]);
     venue.getAssets(offset, limit).then((assets) => {
       assets.forEach((asset) => {

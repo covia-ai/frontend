@@ -66,7 +66,7 @@ export const OperationViewer = (props: any) => {
           else
             inputs[key] = value[1];
         }
-        const response = {};
+        let response = {};
         try {
           console.log(inputs)
           // Check if the asset is actually an operation before invoking

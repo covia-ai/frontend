@@ -60,6 +60,7 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
           venue?.createAsset(jsonData).then( (asset: Asset) => {
                 if(assetType == "string") {
                       asset.uploadContent(assetStringData).then((response) =>{
+                        console.log(response)
                       sendDataToParent(true)
                        setStep(1)
 
