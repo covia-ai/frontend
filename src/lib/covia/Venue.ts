@@ -3,6 +3,7 @@ import { Asset } from './Asset';
 import { Operation } from './Operation';
 import { DataAsset } from './DataAsset';
 import { fetchWithError } from './Utils';
+import { Credentials } from './Credentials';
 
 // Cache for storing asset data
 const cache = new Map<AssetID, any>();
@@ -18,6 +19,51 @@ export class Venue implements VenueInterface {
     this.venueId = options.venueId || "default";
     this.name = options.venueId || "default";
     this.metadata = {};
+  }
+
+  /**
+   * Static method to connect to a venue
+   * @param venueId - Can be a HTTP base URL, DNS name, or existing Venue instance
+   * @param credentials - Optional credentials for venue authentication
+   * @returns {Venue} A new Venue instance configured appropriately
+   */
+  static connect(venueId: string | Venue, credentials?: Credentials): Venue {
+    if (venueId instanceof Venue) {
+      // If it's already a Venue instance, return a new instance with the same configuration
+      return new Venue({
+        baseUrl: venueId.baseUrl,
+        venueId: venueId.venueId
+      });
+    }
+
+    // If it's a string, determine if it's a URL or DNS name
+    if (typeof venueId === 'string') {
+      let baseUrl: string;
+      let venueIdStr: string;
+
+      // Check if it's a valid HTTP/HTTPS URL
+      if (venueId.startsWith('http://') || venueId.startsWith('https://')) {
+        baseUrl = venueId;
+        // Extract venue ID from URL (could be domain name or path)
+        try {
+          const url = new URL(venueId);
+          venueIdStr = url.hostname || url.pathname || 'default';
+        } catch {
+          venueIdStr = 'default';
+        }
+      } else {
+        // Assume it's a DNS name or venue identifier
+        baseUrl = `https://${venueId}`;
+        venueIdStr = venueId;
+      }
+
+      return new Venue({
+        baseUrl,
+        venueId: venueIdStr
+      });
+    }
+
+    throw new CoviaError('Invalid venue ID parameter. Must be a string (URL/DNS) or Venue instance.');
   }
 
   /**
