@@ -97,7 +97,6 @@ export default function OperationsPage() {
     <ContentLayout title="Operations">
       <SmartBreadcrumb />
       <div className="flex flex-col items-center justify-center  mt-2">
-        <Search></Search>
         <div className="flex flex-row w-full  items-start justify-start mt-4 space-x-4 ">
           <Select onValueChange={value => setStatusFilter(value)} defaultValue="All">
             <SelectTrigger className="w-[180px] text-semibold">
