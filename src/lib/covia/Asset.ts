@@ -86,7 +86,7 @@ export abstract class Asset {
    * @param input - Operation input parameters
    * @returns {Promise<any>}
    */
-  async invoke(input: Record<string, any>): Promise<any> {
+  async run(input: Record<string, any>): Promise<any> {
     const payload = {
       operation: this.id,
       input: input

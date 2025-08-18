@@ -27,7 +27,7 @@ async function example() {
     console.log('Operation:', operation);
 
     // Invoke an operation with simplified API
-    const result = await operation.invoke({ length: '100' });
+    const result = await operation.run({ length: '100' });
     console.log('Operation result:', result);
 
     // Get data asset
@@ -69,8 +69,16 @@ async function webExamples() {
   // Connect to a Venue
   const venue = Venue.connect("grid.covia.ai", credentials);
 
-  // Get a operation by cryptographic ID
+  // Get AI operation by cryptographic ID
   const op = await venue.getAsset("0xdcdda5950931489c1e7b1311dfe3321e6cb1e22cb306adfcf31aa030098e02c0");
+
+  // Run the operation
+  const result = await op.run({ 
+    prompt: [
+      'Ask 100 different AI agents for their opinion on the following question:',
+      '"What is the meaning of life?"',
+      'Then write up a summary of the survey results and publish it as a new artifact.']
+  });
 
 }
 

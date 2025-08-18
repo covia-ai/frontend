@@ -71,7 +71,7 @@ export const OperationViewer = (props: any) => {
           console.log(inputs)
           // Check if the asset is actually an operation before invoking
           if (assetsMetadata && assetsMetadata.metadata?.operation) {
-            response = await assetsMetadata.invoke(inputs);
+            response = await assetsMetadata.run(inputs);
           } else {
             throw new Error("This asset is not an operation and cannot be invoked");
           }
@@ -96,7 +96,7 @@ export const OperationViewer = (props: any) => {
 
         // Check if the asset is actually an operation before invoking
         if (assetsMetadata && assetsMetadata.metadata?.operation) {
-          response = await assetsMetadata.invoke(JSON.parse(objectValue));
+          response = await assetsMetadata.run(JSON.parse(objectValue));
         } else {
           throw new Error("This asset is not an operation and cannot be invoked");
         }
