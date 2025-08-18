@@ -15,7 +15,7 @@ export class Venue implements VenueInterface {
   public metadata: AssetMetadata;
 
   constructor(options: VenueOptions = {}) {
-    this.baseUrl = options.baseUrl || 'http://localhost:8080';
+    this.baseUrl = options.baseUrl || 'https://venue-test.covia.ai';
     this.venueId = options.venueId || "default";
     this.name = options.venueId || "default";
     this.metadata = {};

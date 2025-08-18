@@ -9,7 +9,7 @@ import { CustomNodeToolTip } from './CustomNodeToolTip';
 function OutputNode({ data }) {
   const outputs = data.outputs;
   const outputSpacing = 100 / (outputs.length + 1);
-  const width = 4;
+  const width = 6;
   const height = 4 * (outputs.length)
   const outputClassName = "!w-3 !h-3 !rounded-full !border-2 !bg-white !border-purple-400 !rounded-md"
   const topDivClass = "inline-block border-2 border-slate-400 shadow-md bg-blue-200 rounded-md flex flex-col justify-start items-center min-w-16 min-h-16 hover:border-primary";
@@ -50,7 +50,10 @@ function OutputNode({ data }) {
                         }}
                         className={outputClassName}
                       >
-                     <div className="text-xs !ml-4 !text-black ">{output}</div>
+                     {output.length <20 ? 
+                     (<div className="text-[9px] text-black  !text-black  w-[5rem]  flex flex-row pl-3 ">{output}</div>) :
+                     (<div className="text-[9px] text-black  !text-black  w-[5rem]  flex flex-row pl-3 ">{output.substring(0,18)+".."}</div>)
+                     }
                      </Handle>}
           />
 

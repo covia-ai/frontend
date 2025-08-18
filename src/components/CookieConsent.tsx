@@ -18,11 +18,9 @@ export const CookieConsentComponent = () => {
         onAccept={() => {
           // Add functionality when user accepts cookies
           
-          console.log("Cookies accepted");
         }}
         onDecline={() => {
           // Add functionality when user declines cookies
-          console.log("Cookies declined");
         }}
       >
         This website uses cookies to enhance your experience. By using our website, you consent to the use of cookies. 

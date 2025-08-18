@@ -23,11 +23,9 @@ function TaskNode({ data }) {
   }
 
   function getPosInputForTooltip(index) {
-    console.log(inputSpacing * index)
     return inputSpacing * index 
   }
   function getPosOutputForTooltip(index) {
-    console.log(inputSpacing * index)
     return inputSpacing * index 
   }
 
@@ -38,10 +36,10 @@ function TaskNode({ data }) {
 
   return (
 
-    <div className="border-2 border-slate-400 shadow-md bg-muted rounded-md h-32 w-48 hover:border-primary ">
-      {active && <span class="relative flex flex-row w-full size-3 -translate-x-2 -translate-y-2">
-        <span class="absolute inline-flex  h-4 w-4 animate-ping rounded-full bg-green-400 opacity-75"></span>
-        <span class="relative inline-flex size-3 rounded-full bg-green-500"></span>
+    <div className="border-2 border-slate-400 shadow-md bg-muted rounded-md h-32 w-54 hover:border-primary ">
+      {active && <span className="relative flex flex-row w-full size-3 -translate-x-2 -translate-y-2">
+        <span className="absolute inline-flex  h-4 w-4 animate-ping rounded-full bg-green-400 opacity-75"></span>
+        <span className="relative inline-flex size-3 rounded-full bg-green-500"></span>
       </span>
       }
 
@@ -52,7 +50,7 @@ function TaskNode({ data }) {
                  />
       </div>
       <div className="flex flex-row items-center justify-between">
-        <div className="bg-yellow-200  border-2 border-slate-400 rounded-md h-15 w-20 -translate-x-2">
+        <div className="bg-yellow-200  border-2 border-slate-400 rounded-md h-20 w-48 -translate-x-2">
           
           <Handle
               type="target"
@@ -76,13 +74,16 @@ function TaskNode({ data }) {
                         className={inputClassName}
                         id={input}
                       >
-                        <div className="text-xs ml-3">{input}</div>
+                        {input.length < 20 ? 
+                                 (<div className="text-[9px] text-black  w-[5rem] flex flex-row pl-3 ">{input}</div>) : 
+                                 (<div className="text-[9px] text-black  w-[5rem] flex flex-row pl-3">{input.substring(0,18)+".."}</div>)
+                        }
                   </Handle>}/>
              
           ))}
 
         </div>
-        <div className="bg-blue-200  border-2 border-slate-400 rounded-md h-15 w-20 translate-x-2">
+        <div className="bg-blue-200  border-2 border-slate-400 rounded-md h-20 w-48 translate-x-2">
             
                <Handle
                   type="source"
@@ -107,7 +108,10 @@ function TaskNode({ data }) {
                     className={outputClassName}
 
                 >
-              <div className="text-xs ml-2 -translate-x-12">{output}</div>
+                  {output.length <20 ? 
+                     (<div className="text-[9px] text-black  !text-black  w-[5rem] -translate-x-20 flex flex-row-reverse pr-1 ">{output}</div>) :
+                     (<div className="text-[9px] text-black  !text-black  w-[5rem]  -translate-x-20 flex flex-row-reverse pr-1 ">{output.substring(0,18)+".."}</div>)
+                  }
                 </Handle>
                                 }/>
            

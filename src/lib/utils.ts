@@ -9,7 +9,6 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function getLicenseUrl(licenseName : string) {
-  console.log(licenseName)
   if(licenseName.trim() ==  "CC BY 4.0")
     return "https://creativecommons.org/licenses/by/4.0/"
 }
@@ -25,7 +24,6 @@ export function getExecutionTime(date1:string, date2:string) {
   const milliseconds2 = new Date(date2).getTime();
   const differenceInMilliseconds = milliseconds2 - milliseconds1;
   const differenceInSeconds = differenceInMilliseconds / 1000;
-  console.log(differenceInSeconds)
   if(differenceInSeconds > 1)
       return differenceInSeconds+" s";
   return differenceInMilliseconds+" ms";

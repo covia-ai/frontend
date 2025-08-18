@@ -60,7 +60,6 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
           venue?.createAsset(jsonData).then( (asset: Asset) => {
                 if(assetType == "string") {
                       asset.uploadContent(assetStringData).then((response) =>{
-                        console.log(response)
                       sendDataToParent(true)
                        setStep(1)
 
@@ -68,7 +67,6 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
                   
                   }
                   if(assetType == "json") {
-                      console.log(JSON.stringify(assetJSONData))
                       asset.uploadContent((JSON.stringify(assetJSONData))).then((response) =>{
                       sendDataToParent(true)
                        setStep(1)
@@ -86,7 +84,7 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
           })
         }
         catch(error) {
-          console.log("Hello "+error)
+          console.log(error)
         }
     }
   
@@ -129,7 +127,6 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
 
     function handleFileChange (event) {
      const file = event.target.files[0]; // Get the selected file
-     console.log(file.name)
      setName(file.name)
      const [contentType, encoding] = getContentTypeForFile(file.name);
      setContentType(contentType);
@@ -140,7 +137,6 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
 
       reader.onload = (e) => {
         // When the file is loaded, set its content to state
-        console.log(typeof(e.target.result))
         setAssetFileDate(e.target.result);
       };
 

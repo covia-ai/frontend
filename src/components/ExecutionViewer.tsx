@@ -40,7 +40,6 @@ export const ExecutionViewer = (props: any) => {
     function fetchJobStatus() {
         venue.getJob(props.jobId).then((response) => {
 
-            console.log(response)
             setExecutionData(response);
             setPollStatus(response.status || "");
 
@@ -83,7 +82,7 @@ export const ExecutionViewer = (props: any) => {
                     { /* Loop through the steps and render a table row for each step */
                         steps?.map((step: any, index: number) => {
                             const status = step?.status || "UNKNOWN";
-                            const id = step?.status || "";
+                            const id = step?.id || "";
                             return (
                                 <TableRow key={index} >
                                     <TableCell className="text-secondary">{index}</TableCell>

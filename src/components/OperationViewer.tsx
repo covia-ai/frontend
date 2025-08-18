@@ -68,7 +68,6 @@ export const OperationViewer = (props: any) => {
         }
         let response = {};
         try {
-          console.log(inputs)
           // Check if the asset is actually an operation before invoking
           if (assetsMetadata && assetsMetadata.metadata?.operation) {
             response = await assetsMetadata.run(inputs);
@@ -78,7 +77,6 @@ export const OperationViewer = (props: any) => {
 
         }
         catch (e: Error) {
-          console.log(e)
           setErrorMessage(e.message);
           setLoading(false);
         }
@@ -103,7 +101,6 @@ export const OperationViewer = (props: any) => {
 
       }
       catch (e) {
-        console.log(e)
         setErrorMessage(e.message);
         setLoading(false);
       }

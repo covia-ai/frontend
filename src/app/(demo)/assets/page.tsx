@@ -112,7 +112,6 @@ export default function AssetPage() {
     }
     catch (error) {
       setAssetCreated(false);
-      console.log(error)
     }
   }
   function handleDataFromChild(status: boolean) {
