@@ -11,7 +11,7 @@ function InputNode({ data }) {
   const inputs = data.inputs;
   const inputSpacing = 100/(inputs.length+1);
 
-  const width  = 4;
+  const width  = 6;
   const height = 4*(inputs.length+1)
   const topDivClass ="inline-block border-2 border-slate-400 shadow-md bg-yellow-200 rounded-md flex flex-col justify-start items-center min-w-16 min-h-16 hover:border-primary";
   const inputClassName = "!w-3 !h-3 !bg-white !border-purple-400 !border-2 !rounded-md ";
@@ -52,7 +52,10 @@ function InputNode({ data }) {
                               }}
                               className={inputClassName}
                               >
-                                 <div className="text-xs ml-6 text-black -translate-x-16  ">{input}</div>
+                                 {input.length < 20 ? 
+                                 (<div className="text-[9px] text-black -translate-x-20   w-[5rem] flex flex-row-reverse pr-1">{input}</div>) : 
+                                 (<div className="text-[9px] text-black -translate-x-20   w-[5rem] flex flex-row-reverse pr-1">{input.substring(0,18)+".."}</div>)
+                                 }
                             </Handle>
                             }
               />

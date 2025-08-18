@@ -52,9 +52,6 @@ export default function OperationsPage() {
     if (dateFilter == "today") {
       const x = new Date().getDay();
       const y = new Date(date).getDay();
-      console.log(x)
-      console.log(y)
-      console.log(x == y)
       if (x == y) return true;
 
       return false;

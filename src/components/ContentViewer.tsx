@@ -8,7 +8,6 @@ import { CopyIcon } from "lucide-react";
 
 
 export const ContentViewer = (props: any) => {
-  console.log(props.data)
   return (
     <Dialog>
       <DialogTrigger>

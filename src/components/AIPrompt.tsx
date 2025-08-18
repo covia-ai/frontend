@@ -7,7 +7,6 @@ export const AIPrompt = () => {
   const router = useRouter();
   const handleSubmit = (e: any) => {
     e.preventDefault();
-    console.log("Subscribed!");
   };
   return (
     <div id="newsletter" className="w-full bg-red-100">

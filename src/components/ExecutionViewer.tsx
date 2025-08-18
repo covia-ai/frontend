@@ -40,7 +40,6 @@ export const ExecutionViewer = (props: any) => {
     function fetchJobStatus() {
         venue.getJob(props.jobId).then((response) => {
 
-            console.log(response)
             setExecutionData(response);
             setPollStatus(response.status || "");
 

@@ -12,7 +12,6 @@ export const Search: React.FC = (   ) => {
   const router = useRouter()
   function clearAndSetFilter(value:string)   {
      setSearchValue(value);
-     console.log(pathname)
      router.push(pathname+"?search="+value);
      
   }
