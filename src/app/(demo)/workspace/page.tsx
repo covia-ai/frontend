@@ -19,8 +19,7 @@ export default function HomePage() {
 
 
   return (
-    <ContentLayout title="Operations">
-      <SmartBreadcrumb />
+    <ContentLayout title="Workspace">
        
         <div id="" className=" ">
 
@@ -41,7 +40,7 @@ export default function HomePage() {
                     className="bg-muted/50 dark:bg-muted/80 w-8/12"
                     aria-label="email"
                   />
-                  <Button variant="default" className="my-4"><MagicWandIcon></MagicWandIcon></Button>
+                  <Button variant="default" disabled className="my-4"><MagicWandIcon></MagicWandIcon>Coming Soon</Button>
                   </div>
              
             </div>

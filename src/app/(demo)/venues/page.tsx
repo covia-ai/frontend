@@ -7,8 +7,12 @@ import { Search } from "@/components/search";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Badge } from "@/components/ui/badge";
-import { Link2, ArrowRight } from "lucide-react";
-
+import { Link2, ArrowRight, CircleArrowRight, CopyIcon } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 export default function OperationsPage() {
   const searchParams = useSearchParams()
   const search = searchParams.get('search');
@@ -32,28 +36,32 @@ export default function OperationsPage() {
             <div className="h-14 p-3 flex flex-row items-center justify-between border-b bg-slate-50">
               <div className="truncate flex-1 mr-2 font-semibold text-sm">Default Venue</div>
               <div className="flex space-x-2">
-                <Link2 
-                  color="#008800" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    window.open("http://localhost:8080", '_blank');
-                  }}
-                />
-                <ArrowRight size={16} className="text-muted-foreground" />
+                
+                  <Tooltip>
+                      <TooltipTrigger><CopyIcon size={16}></CopyIcon></TooltipTrigger>
+                      <TooltipContent>Copy Venue</TooltipContent>
+                      </Tooltip>
+                    
               </div>
             </div>
 
             {/* Flexible middle section */}
             <div className="flex-1 p-3 flex flex-col justify-between">
               <div className="text-xs text-slate-600 line-clamp-3 mb-2">Default Covia Venue</div>
-              
+            </div>
               {/* Fixed-size footer */}
-              <div className="h-12 flex flex-row items-center justify-between">
+            <div className="p-2 h-12 flex flex-row items-center justify-between">
                 <div className="flex flex-row items-center space-x-2">
                   <Badge variant="default" className="border bg-secondary text-white text-xs">covia</Badge>
                 </div>
-              </div>
-            </div>
+              
+           
+                <CircleArrowRight color="#6B46C1"  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open("http://localhost:8080", '_blank');
+                  }} />
+              
+</div>
           </Card>
         </div>
       </div>

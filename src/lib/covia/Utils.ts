@@ -1,4 +1,4 @@
-import { CoviaError } from './types';
+  import { CoviaError } from './types';
 
 /**
  * Utility function to handle API calls with consistent error handling

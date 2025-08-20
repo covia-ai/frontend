@@ -85,7 +85,7 @@ function processSteps(stepIndex, steps, results, nodes, edges, posX, posY) {
 	else {
 		const currentStep = steps[stepIndex];
 		const inputs = currentStep.input;
-
+		
 		if (inputs[0] == 'const' && inputs.length > 1) {
 			nodes.push(
 				{
@@ -139,6 +139,7 @@ function processSteps(stepIndex, steps, results, nodes, edges, posX, posY) {
 		}
 		else {
 			const stepInputKeys = Object.keys(currentStep.input);
+			
 			const stepOutput = getResultOfStep(results, stepIndex);
 			nodes.push(
 				{
@@ -173,7 +174,7 @@ function processSteps(stepIndex, steps, results, nodes, edges, posX, posY) {
 					edges.push(
 						{
 							id: "e" + edges.length,
-							source: inputData[0] + "",
+							source: inputData[0] +1 + "",
 							target: (stepIndex + 1) + "",
 							animated: true,
 							sourceHandle: inputData[1],
@@ -183,6 +184,7 @@ function processSteps(stepIndex, steps, results, nodes, edges, posX, posY) {
 					)
 				}
 				else if (inputData[0] == 'const') {
+				
 				}
 			}))
 			posX = posX + 300;
@@ -196,8 +198,9 @@ function getResultOfStep(results, stepIndex) {
 	for (const key in results) {
 		const stepResult = Array.from(results[key]);
 		if (stepResult[0] == stepIndex) {
-			if (stepResult.length == 1)
+			if (stepResult.length == 1) {
 				return [key]
+			}
 			else
 				return [stepResult[1]]
 		}

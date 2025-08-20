@@ -1,5 +1,5 @@
 import { Venue, Asset, Operation, DataAsset, CoviaError, RunStatus } from './index';
-import { Credentials } from './Credentials';
+import { CredentialsHTTP } from './Credentials';
 
 
 async function example() {
@@ -64,7 +64,7 @@ async function example() {
 
 // Example usage of the Covia API
 async function webExamples() {
-  const credentials = new Credentials("grid.covia.ai", "my-api-key");
+  const credentials = new CredentialsHTTP("grid.covia.ai", "my-api-key");
 
   // Connect to a Venue
   const venue = Venue.connect("grid.covia.ai", credentials);
