@@ -11,7 +11,7 @@ import { useSearchParams } from 'next/navigation'
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
-import { Asset } from "@/lib/covia";
+import { Asset, DataAsset, Operation } from "@/lib/covia";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 import { Separator } from "@/components/ui/separator"
@@ -68,8 +68,8 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
     venue.getAssets(offset, limit).then((assets) => {
       assets.forEach((asset) => {
         asset.getMetadata().then((metadata: object) => {
-          if (metadata.operation != undefined)
-            setAssetsMetadata(prevArray => [...prevArray, new Asset(asset.id, asset.venue, metadata)]);
+          if (metadata.operation != undefined) 
+            setAssetsMetadata(prevArray => [...prevArray, new Operation(asset.id, asset.venue, metadata)]);
         })
       })
     })
