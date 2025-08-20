@@ -65,7 +65,7 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
 
   function fetchAssets(offset, limit) {
     setAssetsMetadata([]);
-    venue.getAssets(offset, limit).then((assets) => {
+    venue.getAssets().then((assets) => {
       assets.forEach((asset) => {
         asset.getMetadata().then((metadata: object) => {
           if (metadata.operation != undefined)

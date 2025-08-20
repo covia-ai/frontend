@@ -30,7 +30,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
-import { Venue, Asset } from "@/lib/covia";
+import { Venue, Asset, DataAsset } from "@/lib/covia";
 import { JsonEditor } from "json-edit-react";
 
 import { useStore } from "zustand";
@@ -80,7 +80,7 @@ export default function AssetPage() {
         asset.getMetadata().then((metadata: object) => {
           if (metadata.name != undefined && metadata.operation == undefined) {
 
-            setAssetsMetadata(prevArray => [...prevArray, new Asset(asset.id, asset.venue, metadata)]);
+            setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
           }
         })
 
