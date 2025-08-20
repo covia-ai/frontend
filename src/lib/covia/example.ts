@@ -6,7 +6,7 @@ async function example() {
   try {
     // Create a venue connection
     const venue = new Venue({
-      baseUrl: 'http://localhost:8080',
+      baseUrl: 'https://venue-test.covia.ai',
       venueId: 'my-venue'
     });
 

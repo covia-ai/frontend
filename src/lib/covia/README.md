@@ -27,7 +27,7 @@ import { Venue, Asset, Operation, DataAsset } from '@/lib/covia';
 
 // Create venue
 const venue = new Venue({ 
-  baseUrl: 'http://localhost:8080',
+  baseUrl: 'https://venue-test.covia.ai',
   venueId: 'my-venue' 
 });
 

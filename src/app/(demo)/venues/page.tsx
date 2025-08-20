@@ -36,7 +36,7 @@ export default function OperationsPage() {
                   color="#008800" 
                   onClick={(e) => {
                     e.stopPropagation();
-                    window.open("http://localhost:8080", '_blank');
+                    window.open("https://venue-test.covia.ai", '_blank');
                   }}
                 />
                 <ArrowRight size={16} className="text-muted-foreground" />

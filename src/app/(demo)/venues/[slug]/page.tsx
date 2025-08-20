@@ -34,7 +34,7 @@ export default function VenuePage({ params }: VenuePageProps) {
     description: "A Covia venue for managing assets and operations",
     status: "active",
     type: "covia",
-    url: "http://localhost:8080",
+    url: "https://venue-test.covia.ai",
     stats: {
       assets: 24,
       operations: 12,
