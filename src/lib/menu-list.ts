@@ -50,15 +50,26 @@ export function   getMenuList(): Group[] {
             icon: Home
           },
           {
-            href: "/operations",
-            label: "Operations",
-            icon: PlayCircle,
-          
-          },
-          {
             href: "/assets",
             label: "Assets",
             icon: Database,
+            submenus: [
+              {
+                href: "/publicartifacts",
+                label: "Public Artifacts",
+                icon: BookKey,
+                active: false
+              },
+              {
+                href: "/operations",
+                label: "Operations",
+                icon: PlayCircle,
+                active: false
+              
+              },
+
+            ]
+          
           },
           {
             href: "/venues",

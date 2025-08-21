@@ -25,25 +25,8 @@ export default function OperationsPage() {
              <div className="flex flex-col items-center justify-center py-10 px-10 my-4">
               
                 <div className="flex flex-row space-x-4 items-center mb-8">
-                  <ReactPlayer url='https://www.youtube.com/watch?v=LXb3EKWsInQ' />
-                  <div className="flex flex-col">
-                    <Card className="h-1/2 m-2 bg-pink-50 px-2"> 
-                       <CardHeader>
-                        <LibraryBigIcon size={38} color="#6f6f6f" className="bg-white rounded-md p-2"/>
-                        <CardTitle>Learning Corner</CardTitle>
-                       </CardHeader>
-                       <CardContent className="text-sm text-slate-600">
-                        Join the learning corner to learn more about Covia</CardContent>
-                    </Card>
-                    <Card className="h-1/2 m-2 bg-blue-50 px-2"> 
-                       <CardHeader>
-                        <MessagesSquare size={38} color="#6f6f6f" className="bg-white rounded-md p-2"/>
-                        <CardTitle>Covia Forum</CardTitle>
-                       </CardHeader>
-                       <CardContent className="text-sm text-slate-600">
-                        Join the forum for information and discussions</CardContent>
-                    </Card>
-                  </div>
+                  <ReactPlayer url='https://www.youtube.com/embed/b0HwKymJbnA?si=w5aKxeNECLn5JuAE' />
+                
                 </div>
 
                 <Separator className="my-6" />
@@ -69,7 +52,7 @@ export default function OperationsPage() {
                         Connect with the Covia AI community, get help, share ideas, and stay updated with the latest developments.
                       </p>
                       <Button 
-                        onClick={() => window.open('https://discord.gg/WY2fvFgcQW', '_blank')}
+                        onClick={() => window.open('https://discord.gg/fywdrKd8QT', '_blank')}
                         className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white"
                       >
                         Join Discord Server

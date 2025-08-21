@@ -1,8 +1,14 @@
 
 import { SheetMenu } from "@/components/admin-panel/sheet-menu";
 import { SignInButton } from "./signin-button";
-import { Dot } from "lucide-react";
-
+import { ChevronDown, Dot } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Button } from "../ui/button";
 interface NavbarProps {
   title: string;
 }
@@ -19,7 +25,18 @@ export  function  Navbar({ title }: NavbarProps) {
         </div>
         <div className="flex flex-1 items-center justify-end">
           <div className="flex flex-row items-center mr-10">
-             <Dot size={32} color="#63d035" className="p-0"></Dot> <span className="text-xs">Default Venue</span>
+            <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <div className="text-primary text-xs flex flex-row items-center justify-center">Venues <ChevronDown size={16}></ChevronDown></div>
+              </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-48" align="start">
+               <DropdownMenuItem>
+                  <Dot size={20} color={"#008000"}></Dot> Default Venue
+               </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            
           </div>
           <SignInButton/>
         </div>

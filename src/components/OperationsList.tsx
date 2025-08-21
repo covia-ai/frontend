@@ -142,14 +142,18 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
           </PaginationContent>
         </Pagination>
 
-        <div className="w-full grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] items-center justify-center gap-4 mt-2">
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4">
           {!isLoading && assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset, index) => (
             <Sheet key={index} >
-              <Card className=" px-1 w-64 h-38 shadow-md bg-slate-100 flex flex-col rounded-md  hover:-translate-1 hover:shadow-xl ">
+              <Card key={index} className="shadow-md h-full bg-slate-100 flex flex-col rounded-md hover:-translate-1 hover:shadow-xl h-48">
+                {/* Fixed-size header */}                
                 <SheetTrigger asChild>
-                  <CardTitle className="px-2 flex flex-row items-center justify-between">
-                    <div>{asset.metadata.name}</div>
-                  </CardTitle>
+                  <div className="h-14 p-2 flex flex-row items-center border-b bg-slate-50">
+                   <div className="truncate flex-1 mr-2 font-semibold text-sm">
+                
+                    {asset.metadata.name}
+                    </div>
+                  </div>
                 </SheetTrigger>
                 <SheetContent className="min-w-lg">
                   <SheetHeader className="flex flex-col items-center justify-center">
@@ -184,17 +188,32 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
                     </SheetClose>
                   </SheetFooter>
                 </SheetContent>
-                <CardContent className="flex flex-col px-2">
-                  <div className="text-xs text-slate-600 line-clamp-1">{asset.metadata.description}</div>
-                  <div className="flex flex-row items-center justify-between mt-4">
-                    <CircleArrowRight color="#6B46C1" onClick={() => { router.push(getOperationPath(asset.id)) }} />
-                  </div>
-                </CardContent>
+                 {/* Flexible middle section */}
+              <div className="flex-1 p-2 flex flex-col justify-between">
+                <div className="text-xs text-slate-600 line-clamp-3 mb-2">{asset.metadata.description || 'No description available'}</div>
+              </div>
+               {/* Fixed-size footer */}
+                <div className="p-2 h-12 flex flex-row-reverse items-center justify-between">
+                  
+                  <CircleArrowRight color="#6B46C1" onClick={() => { router.push("/venues/default/assets/" + asset.id) }} />
+                </div>
               </Card>
             </Sheet>
           ))}
-          {isLoading && <div>Loading</div>}
+           
         </div>
+        <Pagination>
+          <PaginationContent className="flex flex-row-reverse w-full">
+            {currentPage != totalPages && currentPage < totalPages && <PaginationItem>
+              <PaginationNext href="#" onClick={() => nextPage(currentPage + 1)} />
+            </PaginationItem>}
+
+            {currentPage != 1 && <PaginationItem>
+              <PaginationPrevious href="#" onClick={() => prevPage(currentPage - 1)} />
+            </PaginationItem>}
+          </PaginationContent>
+        </Pagination>
+
       </div>
     </ContentLayout>
   );

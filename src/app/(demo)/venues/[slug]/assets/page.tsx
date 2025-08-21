@@ -199,7 +199,7 @@ export default function AssetPage() {
                 </div>
                 <Tooltip>
                       <TooltipTrigger>  <CircleArrowRight color="#6B46C1" onClick={() => { router.push("/venues/default/assets/" + asset.id) }} /></TooltipTrigger>
-                      <TooltipContent>View Asset</TooltipContent>
+                      <TooltipContent>View Artifact</TooltipContent>
                       </Tooltip>
               
               </div>
@@ -210,6 +210,18 @@ export default function AssetPage() {
           
             
         </div>
+          <Pagination>
+          <PaginationContent className="flex flex-row-reverse w-full">
+            {currentPage != totalPages && currentPage < totalPages && <PaginationItem>
+              <PaginationNext href="#" onClick={() => nextPage(currentPage + 1)} />
+            </PaginationItem>}
+
+            {currentPage != 1 && <PaginationItem>
+              <PaginationPrevious href="#" onClick={() => prevPage(currentPage - 1)} />
+            </PaginationItem>}
+
+          </PaginationContent>
+        </Pagination>
          <CreateAssetComponent sendDataToParent={handleDataFromChild} ></CreateAssetComponent>
 
       </div>

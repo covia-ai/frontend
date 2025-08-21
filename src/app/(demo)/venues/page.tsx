@@ -13,6 +13,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { copyDataToClipBoard } from "@/lib/utils";
 export default function OperationsPage() {
   const searchParams = useSearchParams()
   const search = searchParams.get('search');
@@ -38,7 +39,9 @@ export default function OperationsPage() {
               <div className="flex space-x-2">
                 
                   <Tooltip>
-                      <TooltipTrigger><CopyIcon size={16}></CopyIcon></TooltipTrigger>
+                      <TooltipTrigger><CopyIcon size={16} 
+                       onClick={(e) => copyDataToClipBoard("https://localhost:8080", "Venue link copied to clipboard")}
+                      ></CopyIcon></TooltipTrigger>
                       <TooltipContent>Copy Venue</TooltipContent>
                       </Tooltip>
                     
@@ -55,11 +58,17 @@ export default function OperationsPage() {
                   <Badge variant="default" className="border bg-secondary text-white text-xs">covia</Badge>
                 </div>
               
-           
-                <CircleArrowRight color="#6B46C1"  onClick={(e) => {
-                    e.stopPropagation();
-                    window.open("http://localhost:8080", '_blank');
-                  }} />
+            <Tooltip>
+                <TooltipTrigger>
+                  <CircleArrowRight color="#6B46C1"  onClick={(e) => {
+                      e.stopPropagation();
+                      window.open("http://localhost:8080", '_blank');
+                    }} />
+                </TooltipTrigger>
+                <TooltipContent>
+                    View Venue
+                </TooltipContent>
+            </Tooltip>
               
 </div>
           </Card>

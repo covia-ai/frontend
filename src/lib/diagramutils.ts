@@ -86,6 +86,7 @@ function processSteps(stepIndex, steps, results, nodes, edges, posX, posY) {
 		const currentStep = steps[stepIndex];
 		const inputs = currentStep.input;
 		
+		/*If input to step is an array */
 		if (inputs[0] == 'const' && inputs.length > 1) {
 			nodes.push(
 				{
@@ -137,9 +138,8 @@ function processSteps(stepIndex, steps, results, nodes, edges, posX, posY) {
 				}
 			)
 		}
-		else {
+		else { /*If input to step is a map*/
 			const stepInputKeys = Object.keys(currentStep.input);
-			
 			const stepOutput = getResultOfStep(results, stepIndex);
 			nodes.push(
 				{
@@ -150,10 +150,9 @@ function processSteps(stepIndex, steps, results, nodes, edges, posX, posY) {
 				}
 
 			)
-
 			stepInputKeys.forEach((inputKey => {
 				const inputData = currentStep.input[inputKey];
-				if (inputData[0] == 'input') {
+				if (inputData[0] == 'input')  {
 					let sourceHandle = "input";
 					if (inputData.length > 1) {
 						sourceHandle = inputData[1];
@@ -184,7 +183,25 @@ function processSteps(stepIndex, steps, results, nodes, edges, posX, posY) {
 					)
 				}
 				else if (inputData[0] == 'const') {
-				
+					console.log(JSON.stringify(inputs[1]));
+				   nodes.push(
+						{
+							id: (stepIndex + 1) + "c"+inputKey,
+							type: 'ConstNode',
+							data: { id: stepIndex + "c", nodeLabel: JSON.stringify(inputData[1]) },
+							position: { x: posX+Math.floor(Math.random() * (100 - 50 + 1)) + 50, y: posY + 200 },
+						}
+					)
+					edges.push(
+						{
+							id: "e" + edges.length,
+							source: (stepIndex + 1) + "c"+inputKey,
+							target: (stepIndex + 1) + "",
+							animated: true,
+							targetHandle: inputKey,
+							type: "customEdge",
+						}
+			        )
 				}
 			}))
 			posX = posX + 300;
