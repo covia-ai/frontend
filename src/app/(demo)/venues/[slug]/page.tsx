@@ -35,7 +35,7 @@ export default function VenuePage({ params }: VenuePageProps) {
   const router = useRouter();
   const { slug } = params;
   const { venues } = useVenues();
-  const { setCurrentVenue } = useVenue();
+  const { currentVenue, setCurrentVenue } = useVenue();
   const [venue, setVenue] = useState<Venue | null>(null);
 
   useEffect(() => {
@@ -43,9 +43,11 @@ export default function VenuePage({ params }: VenuePageProps) {
     const foundVenue = venues.find(v => v.venueId === slug);
     if (foundVenue) {
       setVenue(foundVenue);
-      setCurrentVenue(foundVenue);
+      // Don't automatically set as current venue - only when user clicks "Make Default"
     }
-  }, [slug, venues, setCurrentVenue]);
+  }, [slug, venues]);
+
+  const isCurrentVenue = currentVenue?.venueId === venue?.venueId;
 
   if (!venue) {
     return (
@@ -83,14 +85,26 @@ export default function VenuePage({ params }: VenuePageProps) {
                 </div>
               </div>
             </div>
-            <Button 
-              onClick={() => window.open(venue.baseUrl, '_blank')}
-              variant="outline"
-              className="flex items-center space-x-2"
-            >
-              <ExternalLink size={16} />
-              <span>Open Venue</span>
-            </Button>
+            <div className="flex flex-col space-y-2">
+              <Button 
+                onClick={() => window.open(venue.baseUrl, '_blank')}
+                variant="outline"
+                className="flex items-center space-x-2"
+              >
+                <ExternalLink size={16} />
+                <span>Open Venue</span>
+              </Button>
+              
+              <Button 
+                onClick={() => setCurrentVenue(venue)}
+                variant={isCurrentVenue ? "default" : "secondary"}
+                className="flex items-center space-x-2"
+                disabled={isCurrentVenue}
+              >
+                <Settings size={16} />
+                <span>{isCurrentVenue ? "Current Default" : "Make Default"}</span>
+              </Button>
+            </div>
           </div>
         </Card>
 
