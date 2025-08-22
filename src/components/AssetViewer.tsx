@@ -9,19 +9,21 @@ import { useVenue } from "@/hooks/use-venue";
 import { MetadataViewer } from "./MetadataViewer";
 import { AssetHeader } from "./AssetHeader";
 
-export const AssetViewer = (props: any) => {
+interface AssetViewerProps {
+  assetId: string;
+}
 
+export function AssetViewer(props: AssetViewerProps) {
   const [asset, setAsset] = useState<Asset>();
-
-  const venue = useStore(useVenue, (x) => x).venue;
+  const venue = useStore(useVenue, (x) => x.currentVenue);
+  
   if (!venue) return null;
 
   useEffect(() => {
     venue.getAsset(props.assetId).then((asset: Asset) => {
       setAsset(asset);
-
     })
-  }, []);
+  }, [venue, props.assetId]);
 
   return (
     <>
@@ -32,11 +34,11 @@ export const AssetViewer = (props: any) => {
           <MetadataViewer asset={asset} />
           <div className="flex flex-row items-center space-x-2 my-2 text-xs text-slate-800">
             <span>Venue:</span>
-            <span><Link href="/venues/default" className="underline text-secondary"> {asset?.venue?.venueId}</Link></span>
+            <span><Link href={`/venues/${venue.venueId}`} className="underline text-secondary"> {venue.venueId}</Link></span>
           </div>
         </div>
       )}
     </>
   );
-};
+}
 

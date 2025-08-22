@@ -31,7 +31,7 @@ export const OperationViewer = (props: any) => {
   const [objectValue, setObjectValue] = useState()
   const valueMap = new Map();
   const router = useRouter();
-  const venue = useStore(useVenue, (x) => x).venue;
+  const venue = useStore(useVenue, (x) => x.currentVenue);
   if (!venue) return null;
 
 
