@@ -55,6 +55,9 @@ export function VenueCard({ venue }: VenueCardProps) {
         <div className="text-xs text-slate-600 line-clamp-3 mb-2">
           {venue.metadata.description || `${venue.name} Covia Venue`}
         </div>
+        <div className="text-xs text-slate-500 font-mono bg-slate-50 p-2 rounded break-all">
+          {venue.getDID()}
+        </div>
       </div>
 
       {/* Fixed-size footer */}

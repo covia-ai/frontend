@@ -140,4 +140,19 @@ export class Venue implements VenueInterface {
   async getJob(jobId: string): Promise<JobData> {
     return fetchWithError<JobData>(`${this.baseUrl}/api/v1/jobs/${jobId}`);
   }
+
+  /**
+   * Get the DID (Decentralized Identifier) for this venue
+   * @returns {string} DID in the format did:web:domain
+   */
+  getDID(): string {
+    try {
+      const url = new URL(this.baseUrl);
+      const domain = url.hostname;
+      return `did:web:${domain}`;
+    } catch {
+      // Fallback if baseUrl is not a valid URL
+      return `did:web:${this.baseUrl.replace(/^https?:\/\//, '')}`;
+    }
+  }
 } 

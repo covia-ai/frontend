@@ -14,9 +14,16 @@ import {
   Globe, 
   Activity,
   ArrowRight,
-  ExternalLink
+  ExternalLink,
+  Link as LinkIcon,
+  Fingerprint
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useVenues } from "@/hooks/use-venues";
+import { useVenue } from "@/hooks/use-venue";
+import { useEffect, useState } from "react";
+import { Venue } from "@/lib/covia";
+import Link from "next/link";
 
 interface VenuePageProps {
   params: {
@@ -27,24 +34,32 @@ interface VenuePageProps {
 export default function VenuePage({ params }: VenuePageProps) {
   const router = useRouter();
   const { slug } = params;
+  const { venues } = useVenues();
+  const { setCurrentVenue } = useVenue();
+  const [venue, setVenue] = useState<Venue | null>(null);
 
-  // Mock venue data - in a real app, this would come from an API
-  const venueData = {
-    name: slug === "default" ? "Default Venue" : `${slug.charAt(0).toUpperCase() + slug.slice(1)} Venue`,
-    description: "A Covia venue for managing assets and operations",
-    status: "active",
-    type: "covia",
-    url: "http://localhost:8080",
-    stats: {
-      assets: 24,
-      operations: 12,
-      runs: 156,
-      users: 8
+  useEffect(() => {
+    // Find the venue by slug
+    const foundVenue = venues.find(v => v.venueId === slug);
+    if (foundVenue) {
+      setVenue(foundVenue);
+      setCurrentVenue(foundVenue);
     }
-  };
+  }, [slug, venues, setCurrentVenue]);
+
+  if (!venue) {
+    return (
+      <ContentLayout title="Venue Not Found">
+        <SmartBreadcrumb />
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Venue not found</p>
+        </div>
+      </ContentLayout>
+    );
+  }
 
   return (
-    <ContentLayout title={venueData.name}>
+    <ContentLayout title={venue.name}>
       <SmartBreadcrumb />
       
       <div className="flex flex-col space-y-6">
@@ -56,24 +71,88 @@ export default function VenuePage({ params }: VenuePageProps) {
                 <Building2 size={32} className="text-blue-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold">{venueData.name}</h1>
-                <p className="text-muted-foreground">{venueData.description}</p>
+                <h1 className="text-2xl font-bold">{venue.name}</h1>
+                <p className="text-muted-foreground">
+                  {venue.metadata.description || "A Covia venue for managing assets and operations"}
+                </p>
                 <div className="flex items-center space-x-2 mt-2">
                   <Badge variant="default" className="bg-green-100 text-green-800">
-                    {venueData.status}
+                    Active
                   </Badge>
-                  <Badge variant="outline">{venueData.type}</Badge>
+                  <Badge variant="outline">covia</Badge>
                 </div>
               </div>
             </div>
             <Button 
-              onClick={() => window.open(venueData.url, '_blank')}
+              onClick={() => window.open(venue.baseUrl, '_blank')}
               variant="outline"
               className="flex items-center space-x-2"
             >
               <ExternalLink size={16} />
               <span>Open Venue</span>
             </Button>
+          </div>
+        </Card>
+
+        {/* Venue Information */}
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold mb-4">Venue Information</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <div className="bg-blue-100 p-2 rounded-lg">
+                  <LinkIcon size={20} className="text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Venue URL</p>
+                  <Link 
+                    href={venue.baseUrl} 
+                    target="_blank"
+                    className="text-blue-600 hover:text-blue-800 underline break-all"
+                  >
+                    {venue.baseUrl}
+                  </Link>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <div className="bg-purple-100 p-2 rounded-lg">
+                  <Fingerprint size={20} className="text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Venue DID</p>
+                  <p className="font-mono text-sm bg-gray-100 p-2 rounded break-all">
+                    {venue.getDID()}
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <div className="bg-green-100 p-2 rounded-lg">
+                  <Building2 size={20} className="text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Venue ID</p>
+                  <p className="font-mono text-sm bg-gray-100 p-2 rounded">
+                    {venue.venueId}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <div className="bg-orange-100 p-2 rounded-lg">
+                  <Globe size={20} className="text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Base URL</p>
+                  <p className="font-mono text-sm bg-gray-100 p-2 rounded break-all">
+                    {venue.baseUrl}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </Card>
 
@@ -86,7 +165,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Assets</p>
-                <p className="text-2xl font-bold">{venueData.stats.assets}</p>
+                <p className="text-2xl font-bold">-</p>
               </div>
             </div>
           </Card>
@@ -98,7 +177,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Operations</p>
-                <p className="text-2xl font-bold">{venueData.stats.operations}</p>
+                <p className="text-2xl font-bold">-</p>
               </div>
             </div>
           </Card>
@@ -110,7 +189,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Runs</p>
-                <p className="text-2xl font-bold">{venueData.stats.runs}</p>
+                <p className="text-2xl font-bold">-</p>
               </div>
             </div>
           </Card>
@@ -122,7 +201,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Users</p>
-                <p className="text-2xl font-bold">{venueData.stats.users}</p>
+                <p className="text-2xl font-bold">-</p>
               </div>
             </div>
           </Card>
@@ -161,7 +240,7 @@ export default function VenuePage({ params }: VenuePageProps) {
             <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer h-48">
               <CardHeader className="flex-1">
                 <div className="flex items-center space-x-3">
-                  <div className="bg-green-100 p-3 rounded-lg">
+                  <div className="bg-green-100 p-2 rounded-lg">
                     <Settings size={24} className="text-green-600" />
                   </div>
                   <div>
