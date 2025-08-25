@@ -145,7 +145,7 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
         <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4">
           {!isLoading && assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset, index) => (
             <Sheet key={index} >
-              <Card key={index} className="shadow-md h-full bg-slate-100 flex flex-col rounded-md hover:-translate-1 hover:shadow-xl h-48">
+              <Card key={index} className="shadow-md h-full bg-slate-100 flex flex-col rounded-md hover:border-accent hover:border-2 h-48">
                 {/* Fixed-size header */}                
                 <SheetTrigger asChild>
                   <div className="h-14 p-2 flex flex-row items-center border-b bg-slate-50">
