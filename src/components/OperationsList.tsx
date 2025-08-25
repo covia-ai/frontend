@@ -196,7 +196,7 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
                {/* Fixed-size footer */}
                 <div className="p-2 h-12 flex flex-row-reverse items-center justify-between">
                   
-                  <CircleArrowRight color="#6B46C1" onClick={() => { router.push("/venues/default/assets/" + asset.id) }} />
+                  <CircleArrowRight color="#6B46C1" onClick={() => { router.push("/venues/default/operations/" + asset.id) }} />
                 </div>
               </Card>
             </Sheet>

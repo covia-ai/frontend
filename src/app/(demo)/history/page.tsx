@@ -20,7 +20,7 @@ import { useEffect, useState } from "react";
 
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { RunStatus } from "@/lib/covia";
+import { RunStatus, Venue } from "@/lib/covia";
 
 import {
   Pagination,
