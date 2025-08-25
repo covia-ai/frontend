@@ -54,8 +54,12 @@ export default function VenuesPage() {
                             
                             <div className="flex flex-col items-center justify-between space-y-4">
                               <div className="flex flex-row items-center justify-center space-x-2 w-full">
-                              <Label>Venue</Label>
-                              <Input required onChange={e => setVenueDid(e.target.value)} placeholder="Provide venue url or did"></Input>
+                              <Label className="w-28">Venue DID</Label>
+                              <Input required onChange={e => setVenueDid(e.target.value)} placeholder="Provide venue DID"></Input>
+                            </div>
+                            <div className="flex flex-row items-center justify-center space-x-2 w-full">
+                              <Label  className="w-28">Venue ID</Label>
+                              <Input required onChange={e => setVenueDid(e.target.value)} placeholder="Provide venue Id"></Input>
                             </div>
                           </div>
                              <DialogClose>

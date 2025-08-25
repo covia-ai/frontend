@@ -11,7 +11,7 @@ import { useSearchParams } from 'next/navigation'
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
-import { Asset, DataAsset, Operation } from "@/lib/covia";
+import { Asset, DataAsset, Operation, Venue } from "@/lib/covia";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 import { Separator } from "@/components/ui/separator"
@@ -60,12 +60,13 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
     fetchAssets(offset, limit)
   }
 
-  const venue = useStore(useVenue, (x) => x.currentVenue);
-  if (!venue) return null;
+  const venueObj = useStore(useVenue, (x) => x.currentVenue);
+  if (!venueObj) return null;
+  const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
 
   function fetchAssets(offset, limit) {
     setAssetsMetadata([]);
-    venue.getAssets(offset, limit).then((assets) => {
+    venue?.getAssets().then((assets) => {
       assets.forEach((asset) => {
         asset.getMetadata().then((metadata: object) => {
           if (metadata.operation != undefined) 
