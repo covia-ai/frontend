@@ -19,7 +19,7 @@ export const ExecutionViewer = (props: any) => {
     const [poll, setPollStatus] = useState("");
     const [assetsMetadata, setAssetsMetadata] = useState<Asset>();
 
-    const venue = useStore(useVenue, (x) => x).venue;
+    const venue = useStore(useVenue, (x) => x.currentVenue);
     if (!venue) return null;
 
     // Function to determine text color based on status
@@ -38,24 +38,23 @@ export const ExecutionViewer = (props: any) => {
     }
 
     function fetchJobStatus() {
+        if (!venue) return;
         venue.getJob(props.jobId).then((response) => {
-
             setExecutionData(response);
             setPollStatus(response.status || "");
-
         })
     }
+    
     useEffect(() => {
+        if (!venue) return;
         venue.getJob(props.jobId).then((response) => {
-
             setExecutionData(response);
             setPollStatus(response.status || "");
             venue.getAsset(response?.op).then((asset: Asset) => {
                 setAssetsMetadata(asset);
-
             })
         })
-    }, []);
+    }, [venue, props.jobId]);
 
     useEffect(() => {
         if (poll != RunStatus.FAILED && poll != RunStatus.COMPLETE) {

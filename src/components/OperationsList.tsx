@@ -60,7 +60,7 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
     fetchAssets(offset, limit)
   }
 
-  const venue = useStore(useVenue, (x) => x).venue;
+  const venue = useStore(useVenue, (x) => x.currentVenue);
   if (!venue) return null;
 
   function fetchAssets(offset, limit) {

@@ -55,7 +55,7 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
     const [hash, setHash] = useState("");
     const [baseData, setBaseData] = useState<AssetMetadata>({});
     const [metadataUpdated, setMetadataUpdated] = useState(false);
-    const venue = useStore(useVenue, (x) => x).venue;
+    const venue = useStore(useVenue, (x) => x.currentVenue);
 
     const [open, setOpen] = useState(false)
 

@@ -65,7 +65,7 @@ export default function AssetPage() {
     setCurrentPage(page)
 
   }
-  const venue = useStore(useVenue, (x) => x).venue;
+  const venue = useStore(useVenue, (x) => x.currentVenue);
   if (!venue) return null;
 
   function fetchAssets() {
