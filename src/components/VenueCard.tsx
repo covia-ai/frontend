@@ -31,7 +31,7 @@ export function VenueCard({ venue }: VenueCardProps) {
 
   return (
     <Card 
-      className="shadow-md bg-slate-100 flex flex-col rounded-md hover:-translate-1 hover:shadow-xl cursor-pointer h-48 overflow-hidden"
+      className="shadow-md bg-slate-100 flex flex-col rounded-md hover:border-accent hover:border-2 cursor-pointer h-48 overflow-hidden"
       onClick={handleCardClick}
     >
       {/* Fixed-size header */}
