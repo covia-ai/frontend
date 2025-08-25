@@ -123,8 +123,7 @@ export default function AssetPage() {
       <SmartBreadcrumb />
 
       <div className="flex flex-col items-center justify-center">
-        <div className="flex flex-row items-center justify-center w-full space-x-2 ">
-          <Search />
+        <div className="flex flex-row items-center justify-end w-full space-x-2 ">
           <CreateAssetComponent sendDataToParent={handleDataFromChild} ></CreateAssetComponent>
 
         </div>

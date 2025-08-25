@@ -76,7 +76,6 @@ export default function AssetPage() {
       <SmartBreadcrumb />
         <div className="flex flex-col items-center justify-center">
                     <div className="flex flex-row items-center justify-center w-full space-x-2 ">
-                        <Search></Search>  
                         <Toaster />
                         <Tooltip delayDuration={100}>
                         <TooltipTrigger asChild>
