@@ -70,12 +70,14 @@ export default function AssetPage() {
     setCurrentPage(page)
 
   }
-  const venue = useStore(useVenue, (x) => x.currentVenue);
-  if (!venue) return null;
+  const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
+  if (!venueObj) return null;
+  const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
+
 
   function fetchAssets() {
     setAssetsMetadata([]);
-    venue.getAssets().then((assets) => {
+    ssets().then((assets) => {
       assets.forEach((asset: Asset) => {
         asset.getMetadata().then((metadata: object) => {
           if (metadata.name != undefined && metadata.operation == undefined) {

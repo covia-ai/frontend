@@ -58,8 +58,10 @@ export default function OperationsPage() {
 
     }
   }
-  const venue = useStore(useVenue, (x) => x.currentVenue);
-  if (!venue) return null;
+ const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
+  if (!venueObj) return null;
+  const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
+
   useEffect(() => {
     venue.getJobs().then((jobs) => {
       setTotalItems(jobs.length)

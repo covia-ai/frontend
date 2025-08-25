@@ -36,7 +36,7 @@ export const OperationViewer = (props: any) => {
 
 
   useEffect(() => {
-    venue.getAsset(props.assetId).then((asset: Asset) => {
+    sset(props.assetId).then((asset: Asset) => {
       setAssetsMetadata(asset);
 
     })

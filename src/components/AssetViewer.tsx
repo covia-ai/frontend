@@ -15,15 +15,15 @@ interface AssetViewerProps {
 
 export function AssetViewer(props: AssetViewerProps) {
   const [asset, setAsset] = useState<Asset>();
-  const venue = useStore(useVenue, (x) => x.currentVenue);
+  const venueObj = useStore(useVenue, (x) => x.currentVenue);
   
-  if (!venue) return null;
+  if (!venueObj) return null;
 
   useEffect(() => {
-    venue.getAsset(props.assetId).then((asset: Asset) => {
+    new Venue({baseUrl: venueObj.baseUrl,venueId: venueObj.venueId }).getAsset(props.assetId).then((asset: Asset) => {
       setAsset(asset);
     })
-  }, [venue, props.assetId]);
+  }, [props.assetId]);
 
   return (
     <>
@@ -34,7 +34,7 @@ export function AssetViewer(props: AssetViewerProps) {
           <MetadataViewer asset={asset} />
           <div className="flex flex-row items-center space-x-2 my-2 text-xs text-slate-800">
             <span>Venue:</span>
-            <span><Link href={`/venues/${venue.venueId}`} className="underline text-secondary"> {venue.venueId}</Link></span>
+            <span><Link href={`/venues/${venueObj.venueId}`} className="underline text-secondary"> {venueObj.venueId}</Link></span>
           </div>
         </div>
       )}
