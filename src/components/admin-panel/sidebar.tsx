@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { PanelsTopLeft } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-
+import Image from "next/image";
 export function Sidebar() {
   const sidebar = useStore(useSidebar, (x) => x);
   if (!sidebar) return null;
@@ -16,7 +16,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "fixed top-0 left-0 z-20 bg-linear-to-b from-white from-60% via-primary-light via-75% to-secondary-light to-90%  shadow-lg h-screen -translate-x-full lg:translate-x-0 transition-[width] ease-in-out duration-300",
+        "fixed top-0 left-0 z-20 bg-linear-to-b from-white from-60% via-primary-light via-75% to-secondary-light to-90% shadow-lg h-screen -translate-x-full lg:translate-x-0 transition-[width] ease-in-out duration-300",
         !getOpenState() ? "w-[90px]" : "w-72",
         settings.disabled && "hidden"
       )}
@@ -44,7 +44,9 @@ export function Sidebar() {
                   : "translate-x-0 opacity-100"
               )}
             >
-              <Image src="/covia.ai_dark_blue.png" width={100} height={0} alt="covia"></Image>
+
+              <Image src="/covia.ai_dark_blue.png" width={100} height={0} alt="Covia"></Image>
+
             </h1>
           </Link>
         </Button>

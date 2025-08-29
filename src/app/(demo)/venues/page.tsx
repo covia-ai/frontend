@@ -4,56 +4,68 @@
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 import { Search } from "@/components/search";
-import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import { useSearchParams, useRouter } from 'next/navigation'
-import { Badge } from "@/components/ui/badge";
-import { Link2, ArrowRight } from "lucide-react";
-
-export default function OperationsPage() {
-  const searchParams = useSearchParams()
-  const search = searchParams.get('search');
-  const router = useRouter();
-
+import { VenueCard } from "@/components/VenueCard";
+import { useVenues } from "@/hooks/use-venues";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {  PlusCircleIcon } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+export default function VenuesPage() {
+  const { venues } = useVenues();
+  const [venueDid, setVenueDid] = useState("");
   return (
-    <ContentLayout title="Operations">
+    <ContentLayout title="Venues">
       <SmartBreadcrumb />
 
       <div className="flex flex-col items-center justify-center">
         <div className="flex flex-row items-center justify-evenly w-full space-x-2">
         </div>
         <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4">
-          <Card 
-            key={0} 
-            className="shadow-md bg-slate-100 flex flex-col rounded-md hover:-translate-1 hover:shadow-xl cursor-pointer h-48 overflow-hidden"
-            onClick={() => router.push('/venues/default')}
-          >
-            {/* Fixed-size header */}
-            <div className="h-14 p-3 flex flex-row items-center justify-between border-b bg-slate-50">
-              <div className="truncate flex-1 mr-2 font-semibold text-sm">Default Venue</div>
-              <div className="flex space-x-2">
-                <Link2 
-                  color="#008800" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    window.open("https://venue-test.covia.ai", '_blank');
-                  }}
-                />
-                <ArrowRight size={16} className="text-muted-foreground" />
-              </div>
-            </div>
-
-            {/* Flexible middle section */}
-            <div className="flex-1 p-3 flex flex-col justify-between">
-              <div className="text-xs text-slate-600 line-clamp-3 mb-2">Default Covia Venue</div>
-              
-              {/* Fixed-size footer */}
-              <div className="h-12 flex flex-row items-center justify-between">
-                <div className="flex flex-row items-center space-x-2">
-                  <Badge variant="default" className="border bg-secondary text-white text-xs">covia</Badge>
-                </div>
-              </div>
-            </div>
-          </Card>
+          {venues.map((venue) => (
+            <VenueCard key={venue.venueId} venue={venue} />
+          ))}
+             <Dialog>
+                    <DialogTrigger>
+                        <Tooltip>
+                           <TooltipTrigger>
+                           <PlusCircleIcon size={32} color="#636363"></PlusCircleIcon>
+                             </TooltipTrigger>
+                            <TooltipContent>Create new Asset</TooltipContent>
+                          </Tooltip>  
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogTitle className="flex flex-row items-center space-x-2">
+                              <Label>Connect to a venue </Label>
+                      </DialogTitle>
+                            
+                            <div className="flex flex-col items-center justify-between space-y-4">
+                              <div className="flex flex-row items-center justify-center space-x-2 w-full">
+                              <Label className="w-28">Venue DID</Label>
+                              <Input required onChange={e => setVenueDid(e.target.value)} placeholder="Provide venue DID"></Input>
+                            </div>
+                            <div className="flex flex-row items-center justify-center space-x-2 w-full">
+                              <Label  className="w-28">Venue ID</Label>
+                              <Input required onChange={e => setVenueDid(e.target.value)} placeholder="Provide venue Id"></Input>
+                            </div>
+                          </div>
+                             <DialogClose>
+                                  <Button>Connect</Button>                 
+                            </DialogClose>
+                    </DialogContent>
+            </Dialog>
         </div>
       </div>
     </ContentLayout>

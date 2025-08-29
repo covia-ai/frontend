@@ -13,14 +13,17 @@ import { Separator } from "@/components/ui/separator";
 import { CircleArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { MagicWandIcon } from "@radix-ui/react-icons";
-
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 export default function HomePage() {
 
 
   return (
-    <ContentLayout title="Operations">
-      <SmartBreadcrumb />
+    <ContentLayout title="Workspace">
        
         <div id="" className=" ">
 
@@ -41,7 +44,7 @@ export default function HomePage() {
                     className="bg-muted/50 dark:bg-muted/80 w-8/12"
                     aria-label="email"
                   />
-                  <Button variant="default" className="my-4"><MagicWandIcon></MagicWandIcon></Button>
+                  <Button variant="default" disabled className="my-4"><MagicWandIcon></MagicWandIcon>Coming Soon</Button>
                   </div>
              
             </div>
@@ -72,7 +75,12 @@ export default function HomePage() {
                                 {/* Fixed-size footer */}
                                 <div className="h-12 flex flex-row items-center justify-between">
                                   <Badge variant="outline" className="border border-pink-200 bg-white">orchestration</Badge>
-                                  <CircleArrowRight color="#6B46C1"/>
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <CircleArrowRight color="#6B46C1" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>View Asset</TooltipContent>
+                                  </Tooltip>
                                 </div>
                               </div>
                         </Card>
@@ -89,7 +97,12 @@ export default function HomePage() {
                                 {/* Fixed-size footer */}
                                 <div className="h-12 flex flex-row items-center justify-between">
                                   <Badge variant="outline" className="border border-pink-200 bg-white">orchestration</Badge>
-                                  <CircleArrowRight color="#6B46C1"/>
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <CircleArrowRight color="#6B46C1" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>View Asset</TooltipContent>
+                                  </Tooltip>
                                 </div>
                               </div>
                         </Card>
@@ -106,7 +119,12 @@ export default function HomePage() {
                                 {/* Fixed-size footer */}
                                 <div className="h-12 flex flex-row items-center justify-between">
                                   <Badge variant="outline" className="border border-pink-200 bg-white">orchestration</Badge>
-                                  <CircleArrowRight color="#6B46C1" />
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <CircleArrowRight color="#6B46C1" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>View Asset</TooltipContent>
+                                  </Tooltip>
                                 </div>
                               </div>
                         </Card>

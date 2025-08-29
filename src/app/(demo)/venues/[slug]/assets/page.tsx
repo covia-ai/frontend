@@ -1,20 +1,11 @@
 "use client";
 
 
-import Link from "next/link";
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator
-} from "@/components/ui/breadcrumb";
 import { Search } from "@/components/search";
-import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import { Eraser, PlusCircle, CircleArrowRight, CopyIcon, Save, AlertCircle, CheckCircle2Icon } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { CircleArrowRight, CopyIcon, Save,  } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from 'next/navigation'
 import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
@@ -25,12 +16,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
-import { Venue, Asset, DataAsset } from "@/lib/covia";
+import {  Asset, DataAsset, Venue } from "@/lib/covia";
 import { JsonEditor } from "json-edit-react";
 
 import { useStore } from "zustand";
@@ -71,10 +66,9 @@ export default function AssetPage() {
 
   }
   const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
-  if (!venueObj) return null;
-  const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
-
-
+    if (!venueObj) return null;
+    const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
+  
   function fetchAssets() {
     setAssetsMetadata([]);
     venue.getAssets().then((assets) => {
@@ -125,8 +119,8 @@ export default function AssetPage() {
       <SmartBreadcrumb />
 
       <div className="flex flex-col items-center justify-center">
-        <div className="flex flex-row items-center justify-end w-full space-x-2 ">
-          <CreateAssetComponent sendDataToParent={handleDataFromChild} ></CreateAssetComponent>
+        <div className="flex flex-row items-center justify-center w-full space-x-2 ">
+          <Search />
 
         </div>
 
@@ -147,13 +141,19 @@ export default function AssetPage() {
         <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4">
           {assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset, index) =>
 
-            <Card key={index} className="shadow-md h-full bg-slate-100 flex flex-col rounded-md hover:-translate-1 hover:shadow-xl h-48">
+            <Card key={index} className="shadow-md h-full bg-slate-100 flex flex-col rounded-md hover:border-2 hover:border-accent h-48">
               {/* Fixed-size header */}
               <div className="h-14 p-2 flex flex-row items-center border-b bg-slate-50">
                 <div className="truncate flex-1 mr-2 font-semibold text-sm"
                 onClick={() => { router.push("/venues/default/assets/" + asset.id) }}>{asset.metadata.name || 'Unnamed Asset'}</div>
                 <Dialog>
-                  <DialogTrigger><CopyIcon size={16}></CopyIcon></DialogTrigger>
+                  <DialogTrigger>
+                    <Tooltip>
+                      <TooltipTrigger><CopyIcon size={16}></CopyIcon></TooltipTrigger>
+                      <TooltipContent>Copy Asset</TooltipContent>
+                      </Tooltip>
+                    
+                    </DialogTrigger>
                   <DialogContent className="h-11/12 min-w-10/12 ">
                     <DialogTitle className="flex flex-row items-center justify-between mr-4">
                       Copy asset
@@ -186,25 +186,44 @@ export default function AssetPage() {
               </div>
 
               {/* Flexible middle section */}
-              <div className="flex-1 p-2 flex flex-col justify-between">
+              <div className="flex-1 p-2 flex flex-col justify-between" onClick={() => { router.push("/venues/default/assets/" + asset.id) }}>
                 <div className="text-xs text-slate-600 line-clamp-3 mb-2">{asset.metadata.description || 'No description available'}</div>
 
 
               </div>
               {/* Fixed-size footer */}
-              <div className="p-2 h-12 flex flex-row items-center justify-between">
+              <div className="p-2 h-12 flex flex-row items-center justify-between" onClick={() => { router.push("/venues/default/assets/" + asset.id) }}>
                 <div className="flex flex-row space-x-2">
                   {asset.metadata?.keywords?.map((keyword, index) => (
                     index < 2 && <Badge variant="default" className="border bg-secondary text-white text-xs" key={index}>{keyword}</Badge>
                   ))}
                 </div>
-                <CircleArrowRight color="#6B46C1" onClick={() => { router.push("/venues/default/assets/" + asset.id) }} />
+                <Tooltip>
+                      <TooltipTrigger>  <CircleArrowRight color="#6B46C1" onClick={() => { router.push("/venues/default/assets/" + asset.id) }} /></TooltipTrigger>
+                      <TooltipContent>View Artifact</TooltipContent>
+                      </Tooltip>
+              
               </div>
             </Card>
 
           )}
-
+        
+          
+            
         </div>
+          <Pagination>
+          <PaginationContent className="flex flex-row-reverse w-full">
+            {currentPage != totalPages && currentPage < totalPages && <PaginationItem>
+              <PaginationNext href="#" onClick={() => nextPage(currentPage + 1)} />
+            </PaginationItem>}
+
+            {currentPage != 1 && <PaginationItem>
+              <PaginationPrevious href="#" onClick={() => prevPage(currentPage - 1)} />
+            </PaginationItem>}
+
+          </PaginationContent>
+        </Pagination>
+         <CreateAssetComponent sendDataToParent={handleDataFromChild} ></CreateAssetComponent>
 
       </div>
     </ContentLayout>

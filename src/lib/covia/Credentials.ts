@@ -6,6 +6,7 @@ export interface Credentials {
   apiKey: string;
 }
 
-export class CredentialsC implements Credentials {
+export class CredentialsHTTP implements Credentials {
+
   constructor(public venueId: string, public apiKey: string) {}
 } 

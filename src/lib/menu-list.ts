@@ -50,15 +50,26 @@ export function   getMenuList(): Group[] {
             icon: Home
           },
           {
-            href: "/operations",
-            label: "Operations",
-            icon: PlayCircle,
-          
-          },
-          {
             href: "/assets",
             label: "Assets",
             icon: Database,
+            submenus: [
+              {
+                href: "/publicartifacts",
+                label: "Public Artifacts",
+                icon: BookKey,
+                active: false
+              },
+              {
+                href: "/operations",
+                label: "Operations",
+                icon: PlayCircle,
+                active: false
+              
+              },
+
+            ]
+          
           },
           {
             href: "/venues",
@@ -89,31 +100,33 @@ export function   getMenuList(): Group[] {
           {
             href: "/workspace",
             label: "Workspace",
-            icon: Home
+            icon: Home,
           },
-          {
-            href: "/operations",
-            label: "Operations",
-            icon: PlayCircle,
           
-          },
           {
             href: "/assets",
             label: "Assets",
             icon: Database,
             submenus: [
               {
-                href: "/assets",
-                label: "Public Assets",
+                href: "/publicartifacts",
+                label: "Public Artifacts",
                 icon: BookKey,
                 active: false
               },
               {
-                href: "/myassets",
-                label: "My Assets",
+                href: "/privateartifacts",
+                label: "Private Artifacts",
                 icon: FileKey,
                 active: false
-              }
+              },
+              {
+                href: "/operations",
+                label: "Operations",
+                icon: PlayCircle,
+                active: false
+              
+              },
 
             ]
           
@@ -122,21 +135,6 @@ export function   getMenuList(): Group[] {
             href: "/venues",
             label: "Venues",
             icon: LocationEdit,
-            submenus: [
-              {
-                href: "/venues",
-                label: "Public Venues",
-                icon: MapPinCheck,
-                active: false
-              },
-              {
-                href: "/myvenues",
-                label: "My Venues",
-                icon: MapPinHouse,
-                active: false
-              }
-
-            ]
           },
           {
             href: "/history",

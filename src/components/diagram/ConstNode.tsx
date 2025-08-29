@@ -25,7 +25,9 @@ function ConstNode({ data }) {
                     {data.nodeLabel}
                   </NodeTooltipContent>
                      <NodeTooltipTrigger>
-                       <div className="text-sm flex items-center text-center text-black">{data.nodeLabel}</div>
+                      {data.nodeLabel?.length < 15 && <div className="text-sm flex items-center text-center text-black">{data.nodeLabel}</div>}
+                      {data.nodeLabel?.length > 15 && <div className="text-sm flex items-center text-center text-black">{data.nodeLabel.substring(0,13)+".."}</div>}
+
                 </NodeTooltipTrigger>
                 </NodeTooltip>
     </div>

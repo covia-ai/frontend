@@ -3,23 +3,27 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { Venue } from "@/lib/covia";
 
 type VenueStore = {
-  venue:Venue;
+  currentVenue: Venue | null;
+  setCurrentVenue: (venue: Venue) => void;
+  getCurrentVenue: () => Venue | null;
 };
 
 export const useVenue = create(
   persist<VenueStore>(
     (set, get) => ({
-        venue: new Venue(),
-        setVenue: (venue: Venue) => {
-            set({ venue });
-        },
-        getVenue: () => {
-           const state = get();
-           return state.venue;
+      currentVenue: null,
+      
+      setCurrentVenue: (venue: Venue) => {
+        set({ currentVenue: venue });
+      },
+      
+      getCurrentVenue: () => {
+        const state = get();
+        return state.currentVenue;
       },
     }),
     {
-      name: "venue",
+      name: "current-venue",
       storage: createJSONStorage(() => localStorage)
     }
   )

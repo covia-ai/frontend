@@ -20,7 +20,7 @@ import { useEffect, useState } from "react";
 
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { RunStatus } from "@/lib/covia";
+import { RunStatus, Venue } from "@/lib/covia";
 
 import {
   Pagination,
@@ -58,10 +58,13 @@ export default function OperationsPage() {
 
     }
   }
-  const venue = useStore(useVenue, (x) => x).venue;
-  if (!venue) return null;
+ const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
+  if (!venueObj) return null;
+  const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
+
   useEffect(() => {
     venue.getJobs().then((jobs) => {
+      console.log(jobs)
       setTotalItems(jobs.length)
       setTotalPages(Math.ceil(jobs.length / itemsPerPage))
       jobs.forEach((jobId) => {
@@ -123,13 +126,12 @@ export default function OperationsPage() {
           </Select>
         </div>
         <div className="text-slate-600 text-xs flex flex-row ">Page {currentPage} : Showing {filteredData.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of {jobsData.length} </div>
-
         <Pagination>
           <PaginationContent className=" flex flex-row-reverse w-full">
             {currentPage != 1 && <PaginationItem>
               <PaginationPrevious href="#" onClick={() => handlePageChange(currentPage - 1)} />
             </PaginationItem>}
-            {currentPage < (totalPages - 1) && <PaginationItem>
+            {currentPage != totalPages && <PaginationItem>
               <PaginationNext href="#" onClick={() => handlePageChange(currentPage + 1)} />
             </PaginationItem>}
           </PaginationContent>

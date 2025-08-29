@@ -5,17 +5,10 @@ import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Label } from "@/components/ui/label"
 
-import { useEffect, useState } from "react";
-import { Operation } from "@/lib/covia";
+import { useEffect, useMemo, useState } from "react";
+import { Operation, Venue } from "@/lib/covia";
 import { useRouter } from "next/navigation";
-import { copyDataToClipBoard } from "@/lib/utils";
-
-
 import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb"
-
-
-
-
 import { Textarea } from "./ui/textarea";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
@@ -31,17 +24,21 @@ export const OperationViewer = (props: any) => {
   const [objectValue, setObjectValue] = useState()
   const valueMap = new Map();
   const router = useRouter();
-  const venue = useStore(useVenue, (x) => x).venue;
-  if (!venue) return null;
-
+  const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
+  if (!venueObj) return null;
+  const venue = useMemo(() => {
+        // Your expensive calculation or value creation
+        return new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
+        }, []); // Dependency array
 
   useEffect(() => {
     venue.getAsset(props.assetId).then((asset: Asset) => {
+      console.log(asset)
       setAssetsMetadata(asset);
 
     })
 
-  }, []);
+  }, [props.assetId, venue]);
 
 
 
@@ -202,6 +199,7 @@ export const OperationViewer = (props: any) => {
       <SmartBreadcrumb />
 
       <div className="flex flex-col w-full items-center justify-center">
+        
         {assetsMetadata && <AssetHeader asset={assetsMetadata} />}
         {assetsMetadata && <MetadataViewer asset={assetsMetadata} />}
         {assetsMetadata?.metadata?.operation && (

@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Asset, RunStatus, Venue } from "@/lib/covia";
 import { JobData } from "@/lib/covia/types";
 import { Check, Clock, Copy, CopyCheck, FileInput, FileOutput, Hash, RotateCcw, Timer, X } from "lucide-react";
@@ -19,8 +19,12 @@ export const ExecutionViewer = (props: any) => {
     const [poll, setPollStatus] = useState("");
     const [assetsMetadata, setAssetsMetadata] = useState<Asset>();
 
-    const venue = useStore(useVenue, (x) => x).venue;
-    if (!venue) return null;
+     const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
+     if (!venueObj) return null;
+    const venue = useMemo(() => {
+      // Your expensive calculation or value creation
+      return new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
+      }, []); // Dependency array
 
     // Function to determine text color based on status
     function colourForStatus(status: RunStatus): string {
@@ -38,24 +42,23 @@ export const ExecutionViewer = (props: any) => {
     }
 
     function fetchJobStatus() {
+        if (!venue) return;
         venue.getJob(props.jobId).then((response) => {
-
             setExecutionData(response);
             setPollStatus(response.status || "");
-
         })
     }
+    
     useEffect(() => {
+        if (!venue) return;
         venue.getJob(props.jobId).then((response) => {
-
             setExecutionData(response);
             setPollStatus(response.status || "");
             venue.getAsset(response?.op).then((asset: Asset) => {
                 setAssetsMetadata(asset);
-
             })
         })
-    }, []);
+    }, [venue, props.jobId]);
 
     useEffect(() => {
         if (poll != RunStatus.FAILED && poll != RunStatus.COMPLETE) {

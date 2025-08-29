@@ -23,7 +23,7 @@ export function SmartBreadcrumb() {
   const generateBreadcrumbs = (): BreadcrumbItem[] => {
     const segments = pathname.split('/').filter(Boolean);
     const breadcrumbs: BreadcrumbItem[] = [
-      { label: 'Home', href: '/' }
+      { label: 'Workspace', href: '/' }
     ];
 
     let currentPath = '';

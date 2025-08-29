@@ -25,25 +25,7 @@ export default function OperationsPage() {
              <div className="flex flex-col items-center justify-center py-10 px-10 my-4">
               
                 <div className="flex flex-row space-x-4 items-center mb-8">
-                  <ReactPlayer url='https://youtu.be/b0HwKymJbnA' />
-                  <div className="flex flex-col">
-                    <Card className="h-1/2 m-2 bg-pink-50 px-2"> 
-                       <CardHeader>
-                        <LibraryBigIcon size={38} color="#6f6f6f" className="bg-white rounded-md p-2"/>
-                        <CardTitle>Learning Corner</CardTitle>
-                       </CardHeader>
-                       <CardContent className="text-sm text-slate-600">
-                        Join the learning corner to learn more about Covia</CardContent>
-                    </Card>
-                    <Card className="h-1/2 m-2 bg-blue-50 px-2"> 
-                       <CardHeader>
-                        <MessagesSquare size={38} color="#6f6f6f" className="bg-white rounded-md p-2"/>
-                        <CardTitle>Covia Forum</CardTitle>
-                       </CardHeader>
-                       <CardContent className="text-sm text-slate-600">
-                        Join the forum for information and discussions</CardContent>
-                    </Card>
-                  </div>
+                  <ReactPlayer url='https://www.youtube.com/embed/b0HwKymJbnA?si=w5aKxeNECLn5JuAE' />
                 </div>
 
                 <Separator className="my-6" />

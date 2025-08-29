@@ -26,9 +26,15 @@ import { Button } from "./ui/button";
 
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { Asset, AssetMetadata } from "@/lib/covia";
+import { Asset, AssetMetadata, Venue } from "@/lib/covia";
  
 import { getContentTypeForFile, getLicenseUrl } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+
 export const CreateAssetComponent = ({sendDataToParent}) => {
     const [step, setStep] = useState(0);
     const [jsonData, setJsonData] = useState<AssetMetadata>({});
@@ -49,11 +55,13 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
     const [hash, setHash] = useState("");
     const [baseData, setBaseData] = useState<AssetMetadata>({});
     const [metadataUpdated, setMetadataUpdated] = useState(false);
-    const venue = useStore(useVenue, (x) => x).venue;
 
     const [open, setOpen] = useState(false)
 
-    if (!venue) return null;
+    const venueObj = useStore(useVenue, (x) => x.currentVenue);
+      if (!venueObj) return null;
+    const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
+
     function createNewAsset(jsonData: AssetMetadata) {
         try {
        
@@ -187,8 +195,16 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
               setStep(1)
       }, [open]);
   return (
+    <div className="h-48 flex flex-center items-center justify-center ">
                   <Dialog open={open} onOpenChange={setOpen}>
-                    <DialogTrigger><PlusCircle size={32} color="#636363"></PlusCircle></DialogTrigger>
+                    <DialogTrigger>
+                        <Tooltip>
+                           <TooltipTrigger>
+                           <PlusCircle size={32} color="#636363"></PlusCircle>
+                             </TooltipTrigger>
+                            <TooltipContent>Create new Asset</TooltipContent>
+                          </Tooltip>  
+                    </DialogTrigger>
                     <DialogContent className="">  
                           <DialogTitle className="flex flex-row items-center space-x-2">
                                   <TbCircleDashedNumber1 size={32}></TbCircleDashedNumber1>
@@ -345,5 +361,6 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
                       </DialogContent>
                      }
                   </Dialog>
+    </div>
   );
 };

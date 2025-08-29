@@ -3,7 +3,8 @@ import { Asset } from './Asset';
 import { Operation } from './Operation';
 import { DataAsset } from './DataAsset';
 import { fetchWithError } from './Utils';
-import { CredentialsC } from './Credentials';
+import { CredentialsHTTP } from './Credentials';
+
 
 // Cache for storing asset data
 const cache = new Map<AssetID, any>();
@@ -27,7 +28,8 @@ export class Venue implements VenueInterface {
    * @param credentials - Optional credentials for venue authentication
    * @returns {Venue} A new Venue instance configured appropriately
    */
-  static connect(venueId: string | Venue, credentials?: CredentialsC): Venue {
+  static connect(venueId: string | Venue, credentials?: CredentialsHTTP): Venue {
+
     if (venueId instanceof Venue) {
       // If it's already a Venue instance, return a new instance with the same configuration
       return new Venue({
@@ -139,5 +141,20 @@ export class Venue implements VenueInterface {
    */
   async getJob(jobId: string): Promise<JobData> {
     return fetchWithError<JobData>(`${this.baseUrl}/api/v1/jobs/${jobId}`);
+  }
+
+  /**
+   * Get the DID (Decentralized Identifier) for this venue
+   * @returns {string} DID in the format did:web:domain
+   */
+  getDID(): string {
+    try {
+      const url = new URL(this.baseUrl);
+      const domain = url.hostname;
+      return `did:web:${domain}`;
+    } catch {
+      // Fallback if baseUrl is not a valid URL
+      return `did:web:${this.baseUrl.replace(/^https?:\/\//, '')}`;
+    }
   }
 } 
