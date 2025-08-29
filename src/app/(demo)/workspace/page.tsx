@@ -53,7 +53,7 @@ export default function HomePage() {
                <h3 className="text-center text-2xl  font-bold">
                 Try some   {" "}
                   <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
-                     usecases
+                     sample Grid operations
                   </span>
                 </h3>
                   <p className="text-xl text-muted-foreground text-center mt-4 mb-8">
