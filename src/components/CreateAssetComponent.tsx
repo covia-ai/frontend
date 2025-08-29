@@ -26,7 +26,7 @@ import { Button } from "./ui/button";
 
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { Asset, AssetMetadata } from "@/lib/covia";
+import { Asset, AssetMetadata, Venue } from "@/lib/covia";
  
 import { getContentTypeForFile, getLicenseUrl } from "@/lib/utils";
 import {
@@ -55,11 +55,13 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
     const [hash, setHash] = useState("");
     const [baseData, setBaseData] = useState<AssetMetadata>({});
     const [metadataUpdated, setMetadataUpdated] = useState(false);
-    const venue = useStore(useVenue, (x) => x.currentVenue);
 
     const [open, setOpen] = useState(false)
 
-    if (!venue) return null;
+    const venueObj = useStore(useVenue, (x) => x.currentVenue);
+      if (!venueObj) return null;
+    const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
+
     function createNewAsset(jsonData: AssetMetadata) {
         try {
        
