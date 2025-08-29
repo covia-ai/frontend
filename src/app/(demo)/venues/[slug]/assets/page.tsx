@@ -141,7 +141,7 @@ export default function AssetPage() {
         <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4">
           {assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset, index) =>
 
-            <Card key={index} className="shadow-md h-full bg-slate-100 flex flex-col rounded-md hover:-translate-1 hover:shadow-xl h-48">
+            <Card key={index} className="shadow-md h-full bg-slate-100 flex flex-col rounded-md hover:border-2 hover:border-accent h-48">
               {/* Fixed-size header */}
               <div className="h-14 p-2 flex flex-row items-center border-b bg-slate-50">
                 <div className="truncate flex-1 mr-2 font-semibold text-sm"
@@ -186,13 +186,13 @@ export default function AssetPage() {
               </div>
 
               {/* Flexible middle section */}
-              <div className="flex-1 p-2 flex flex-col justify-between">
+              <div className="flex-1 p-2 flex flex-col justify-between" onClick={() => { router.push("/venues/default/assets/" + asset.id) }}>
                 <div className="text-xs text-slate-600 line-clamp-3 mb-2">{asset.metadata.description || 'No description available'}</div>
 
 
               </div>
               {/* Fixed-size footer */}
-              <div className="p-2 h-12 flex flex-row items-center justify-between">
+              <div className="p-2 h-12 flex flex-row items-center justify-between" onClick={() => { router.push("/venues/default/assets/" + asset.id) }}>
                 <div className="flex flex-row space-x-2">
                   {asset.metadata?.keywords?.map((keyword, index) => (
                     index < 2 && <Badge variant="default" className="border bg-secondary text-white text-xs" key={index}>{keyword}</Badge>

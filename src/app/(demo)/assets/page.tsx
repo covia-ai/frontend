@@ -77,7 +77,7 @@ export default function AssetPage() {
 
   function fetchAssets() {
     setAssetsMetadata([]);
-    ssets().then((assets) => {
+    venue.getAssets().then((assets) => {
       assets.forEach((asset: Asset) => {
         asset.getMetadata().then((metadata: object) => {
           if (metadata.name != undefined && metadata.operation == undefined) {

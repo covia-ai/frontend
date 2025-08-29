@@ -186,13 +186,13 @@ export default function AssetPage() {
               </div>
 
               {/* Flexible middle section */}
-              <div className="flex-1 p-2 flex flex-col justify-between">
+              <div className="flex-1 p-2 flex flex-col justify-between" onClick={() => { router.push("/venues/default/assets/" + asset.id) }}>
                 <div className="text-xs text-slate-600 line-clamp-3 mb-2">{asset.metadata.description || 'No description available'}</div>
 
 
               </div>
               {/* Fixed-size footer */}
-              <div className="p-2 h-12 flex flex-row items-center justify-between">
+              <div className="p-2 h-12 flex flex-row items-center justify-between" onClick={() => { router.push("/venues/default/assets/" + asset.id) }}>
                 <div className="flex flex-row space-x-2">
                   {asset.metadata?.keywords?.map((keyword, index) => (
                     index < 2 && <Badge variant="default" className="border bg-secondary text-white text-xs" key={index}>{keyword}</Badge>

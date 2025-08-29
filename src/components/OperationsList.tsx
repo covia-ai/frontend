@@ -4,7 +4,7 @@ import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 import { Search } from "@/components/search";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import { CircleArrowRight, Copy } from "lucide-react";
+import { CircleArrowRight, Copy, InfoIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from 'next/navigation'
 
@@ -29,6 +29,11 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface OperationsListProps {
   venueSlug?: string; // Optional venue slug for venue-specific pages
@@ -148,14 +153,20 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
             <Sheet key={index} >
               <Card key={index} className="shadow-md h-full bg-slate-100 flex flex-col rounded-md hover:border-accent hover:border-2 h-48">
                 {/* Fixed-size header */}                
-                <SheetTrigger asChild>
-                  <div className="h-14 p-2 flex flex-row items-center border-b bg-slate-50">
-                   <div className="truncate flex-1 mr-2 font-semibold text-sm">
                 
-                    {asset.metadata.name}
+                  <div className="h-14 p-2 flex flex-row items-center border-b bg-slate-50">
+                   <div className="truncate flex-1 mr-2 font-semibold text-sm"
+                   onClick={() => { router.push("/venues/default/operations/" + asset.id) }}>{asset.metadata.name || 'Unnamed Asset'}  
                     </div>
+                    <Tooltip><TooltipTrigger>
+                      <SheetTrigger asChild>
+                      <InfoIcon size={16}></InfoIcon>
+                      
+                    </SheetTrigger> 
+                    <TooltipContent>Information</TooltipContent>
+                    </TooltipTrigger> 
+                    </Tooltip> 
                   </div>
-                </SheetTrigger>
                 <SheetContent className="min-w-lg">
                   <SheetHeader className="flex flex-col items-center justify-center">
                     <SheetTitle>{asset.metadata.name}</SheetTitle>
@@ -189,12 +200,13 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
                     </SheetClose>
                   </SheetFooter>
                 </SheetContent>
+              
                  {/* Flexible middle section */}
-              <div className="flex-1 p-2 flex flex-col justify-between">
+              <div className="flex-1 p-2 flex flex-col justify-between" onClick={() => { router.push("/venues/default/operations/" + asset.id) }}>
                 <div className="text-xs text-slate-600 line-clamp-3 mb-2">{asset.metadata.description || 'No description available'}</div>
               </div>
                {/* Fixed-size footer */}
-                <div className="p-2 h-12 flex flex-row-reverse items-center justify-between">
+                <div className="p-2 h-12 flex flex-row-reverse items-center justify-between" onClick={() => { router.push("/venues/default/operations/" + asset.id) }}>
                   
                   <CircleArrowRight color="#6B46C1" onClick={() => { router.push("/venues/default/operations/" + asset.id) }} />
                 </div>
