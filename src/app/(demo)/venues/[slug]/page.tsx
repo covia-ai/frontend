@@ -38,6 +38,7 @@ export default function VenuePage({ params }: VenuePageProps) {
   const { currentVenue, setCurrentVenue } = useVenue();
   const [venue, setVenue] = useState<Venue | null>(null);
 
+
   useEffect(() => {
     // Find the venue by slug
     const foundVenue = venues.find(v => v.venueId === slug);

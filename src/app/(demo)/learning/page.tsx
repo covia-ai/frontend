@@ -26,7 +26,6 @@ export default function OperationsPage() {
               
                 <div className="flex flex-row space-x-4 items-center mb-8">
                   <ReactPlayer url='https://www.youtube.com/embed/b0HwKymJbnA?si=w5aKxeNECLn5JuAE' />
-                
                 </div>
 
                 <Separator className="my-6" />

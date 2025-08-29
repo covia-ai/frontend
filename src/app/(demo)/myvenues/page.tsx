@@ -54,7 +54,6 @@ export default function OperationsPage() {
        
       <div className="flex flex-col items-center justify-center">
         <div className="flex flex-row items-center justify-evenly w-full space-x-2">
-                        <Search></Search>  
                         <Tooltip delayDuration={100}>
                         <TooltipTrigger asChild>
                         <Dialog>

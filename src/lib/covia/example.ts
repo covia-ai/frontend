@@ -6,7 +6,7 @@ async function example() {
   try {
     // Create a venue connection
     const venue = new Venue({
-      baseUrl: 'http://localhost:8080',
+      baseUrl: 'https://venue-test.covia.ai',
       venueId: 'my-venue'
     });
 
@@ -65,6 +65,7 @@ async function example() {
 // Example usage of the Covia API
 async function webExamples() {
   const credentials = new CredentialsHTTP("grid.covia.ai", "my-api-key");
+  const credentials = new CredentialsC("grid.covia.ai", "my-api-key");
 
   // Connect to a Venue
   const venue = Venue.connect("grid.covia.ai", credentials);

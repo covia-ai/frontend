@@ -5,6 +5,7 @@ import { DataAsset } from './DataAsset';
 import { fetchWithError } from './Utils';
 import { CredentialsHTTP } from './Credentials';
 
+
 // Cache for storing asset data
 const cache = new Map<AssetID, any>();
 
@@ -28,6 +29,7 @@ export class Venue implements VenueInterface {
    * @returns {Venue} A new Venue instance configured appropriately
    */
   static connect(venueId: string | Venue, credentials?: CredentialsHTTP): Venue {
+
     if (venueId instanceof Venue) {
       // If it's already a Venue instance, return a new instance with the same configuration
       return new Venue({

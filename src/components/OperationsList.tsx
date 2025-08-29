@@ -134,7 +134,6 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
     <ContentLayout title="Operations">
       <SmartBreadcrumb />
       <div className="flex flex-col items-center justify-center">
-        <Search />
         <div className="text-slate-600 text-xs flex flex-row mt-2">Page {currentPage} : Showing {assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of {assetsMetadata.length} </div>
         <Pagination>
           <PaginationContent className="flex flex-row-reverse w-full">

@@ -41,7 +41,7 @@ export const DiagramViewer = (props:any) => {
       
         const onNodeClick = useCallback(
             (event: React.MouseEvent, node: Node) => {
-              redirect("http://localhost:3000/venues/default/operations/"+node.op);
+              redirect("https://venue-test.covia.ai/venues/default/operations/"+node.op);
             },
             []
           );

@@ -6,6 +6,7 @@ import { useSidebar } from "@/hooks/use-sidebar";
 import { useStore } from "@/hooks/use-store";
 import { cn } from "@/lib/utils";
 import { PanelsTopLeft } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import Image from "next/image";
 export function Sidebar() {
@@ -35,7 +36,6 @@ export function Sidebar() {
           asChild
         >
           <Link href="/workspace" className="flex items-center gap-2">
-           
             <h1
               className={cn(
                 "font-bold text-lg whitespace-nowrap transition-[transform,opacity,display] ease-in-out duration-300",
@@ -44,7 +44,9 @@ export function Sidebar() {
                   : "translate-x-0 opacity-100"
               )}
             >
+
               <Image src="/covia.ai_dark_blue.png" width={100} height={0} alt="Covia"></Image>
+
             </h1>
           </Link>
         </Button>
