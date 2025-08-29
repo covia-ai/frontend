@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 import { PanelsTopLeft } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import Image from "next/image";
 export function Sidebar() {
   const sidebar = useStore(useSidebar, (x) => x);
   if (!sidebar) return null;
