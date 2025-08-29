@@ -126,7 +126,6 @@ export default function OperationsPage() {
           </Select>
         </div>
         <div className="text-slate-600 text-xs flex flex-row ">Page {currentPage} : Showing {filteredData.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of {jobsData.length} </div>
-       {currentPage} : {totalPages}
         <Pagination>
           <PaginationContent className=" flex flex-row-reverse w-full">
             {currentPage != 1 && <PaginationItem>
