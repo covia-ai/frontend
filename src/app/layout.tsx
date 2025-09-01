@@ -8,16 +8,6 @@ import localFont from 'next/font/local';
 
 const { title, description } = siteConfig;
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 const aetherFont = localFont({
       src: '../../public/fonts/aether.woff2'
 });

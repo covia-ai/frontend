@@ -23,10 +23,11 @@ export const Search: React.FC = (   ) => {
           placeholder="Type keyword to search..."
           className="w-full pl-10"
           value={searchValue}
+          disabled
           onChange= {(e) => setSearchValue(e.target.value)}
         />
         <div className="flex flex-row items-center">
-          <MagnifyingGlassIcon className=" relative ml-4 right-10"  onClick={() => {router.push(pathname+"?search="+searchValue)}}/>
+          <MagnifyingGlassIcon className=" relative ml-4 right-10 pointer-events-none"   onClick={() => {router.push(pathname+"?search="+searchValue)}}/>
           {searchValue && <Button  onClick={() => {clearAndSetFilter("")}}>Clear</Button>}
         </div>
        
