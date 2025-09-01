@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { useStore } from "@/hooks/use-store";
 import { cn } from "@/lib/utils";
-import { PanelsTopLeft } from "lucide-react";
+import  Image  from "next/image";
 import Link from "next/link";
 export function Sidebar() {
   const sidebar = useStore(useSidebar, (x) => x);
