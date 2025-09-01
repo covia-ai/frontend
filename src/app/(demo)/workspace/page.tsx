@@ -62,7 +62,7 @@ export default function HomePage() {
                 </p>
               <div className="grid grid-cols-1 md:grid-cols-3 items-stretch justify-center gap-4 mt-4 mb-8">
                 
-                     <Card className="shadow-md bg-slate-100 flex flex-col rounded-md hover:-translate-1 hover:shadow-xl h-48 overflow-hidden">
+                     <Card className="shadow-md bg-slate-100 flex flex-col rounded-md hover:border-2 hover:border-accent h-48 overflow-hidden">
                               {/* Fixed-size header */}
                               <div className="h-14 p-3 flex flex-row items-center justify-between border-b bg-slate-50">
                                 <div className="truncate flex-1 font-semibold text-sm">Web Scraping</div>
@@ -74,7 +74,6 @@ export default function HomePage() {
                                 
                                 {/* Fixed-size footer */}
                                 <div className="h-12 flex flex-row items-center justify-between">
-                                  <Badge variant="outline" className="border border-pink-200 bg-white">orchestration</Badge>
                                   <Tooltip>
                                     <TooltipTrigger>
                                       <CircleArrowRight color="#6B46C1" />
@@ -84,7 +83,7 @@ export default function HomePage() {
                                 </div>
                               </div>
                         </Card>
-                        <Card className="shadow-md bg-slate-100 flex flex-col rounded-md hover:-translate-1 hover:shadow-xl h-48 overflow-hidden">
+                        <Card className="shadow-md bg-slate-100 flex flex-col rounded-md hover:border-2 hover:border-accent h-48 overflow-hidden">
                               {/* Fixed-size header */}
                               <div className="h-14 p-3 flex flex-row items-center justify-between border-b bg-slate-50">
                                 <div className="truncate flex-1 font-semibold text-sm">Document Classification</div>
@@ -106,7 +105,7 @@ export default function HomePage() {
                                 </div>
                               </div>
                         </Card>
-                             <Card className="shadow-md bg-slate-100 flex flex-col rounded-md hover:-translate-1 hover:shadow-xl h-48 overflow-hidden">
+                             <Card className="shadow-md bg-slate-100 flex flex-col rounded-md hover:border-2 hover:border-accent h-48 overflow-hidden">
                               {/* Fixed-size header */}
                               <div className="h-14 p-3 flex flex-row items-center justify-between border-b bg-slate-50">
                                 <div className="truncate flex-1 font-semibold text-sm">Request Approval</div>

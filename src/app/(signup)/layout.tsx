@@ -2,18 +2,14 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { siteConfig } from "@/config/site";
 import { CookieConsentComponent } from "@/components/CookieConsent";
+import localFont from 'next/font/local';
 
 const { title, description } = siteConfig;
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+const aetherFont = localFont({
+      src: '../../../public/fonts/aether.woff2'
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: title,
@@ -36,7 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${aetherFont.className} antialiased`}
       >
         {children}
         <CookieConsentComponent />

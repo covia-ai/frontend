@@ -31,9 +31,11 @@ export default function VenuesPage() {
       <SmartBreadcrumb />
 
       <div className="flex flex-col items-center justify-center">
-        <div className="flex flex-row items-center justify-evenly w-full space-x-2">
+        <div className="flex flex-row items-center justify-center w-full space-x-2 mb-2">
+          <Search />
+
         </div>
-        <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4">
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4 ">
           {venues.map((venue) => (
             <VenueCard key={venue.venueId} venue={venue} />
           ))}

@@ -121,53 +121,57 @@ export const OperationViewer = (props: any) => {
       });
 
       return (
-        <div className="flex flex-col w-7/8 space-x-2 my-2 items-center justify-center">
+        <div className="flex flex-col w-11/12 space-x-2 my-2 items-center justify-center">
           {keys.map((key, index) => (
             <div key={index} className="flex flex-row space-x-2 w-full items-center">
 
-              <Label className="w-20">{key} </Label>
-              {requiredKeys != undefined && requiredKeys?.indexOf(key) != -1 && <span className="text-red-400">*</span>}
+              <div  className="flex flex-row w-20">
+                <Label>{key} </Label>
+                {requiredKeys != undefined && requiredKeys?.indexOf(key) != -1 && <span className="text-red-400">*</span>}
+              </div>
               {type[index] == "string" && (
                 <>
-                  <Input className="my-2 flex-1"
+                  <Input className="my-2 flex-1 w-48"
                     required={true}
                     defaultValue={defaultValue[index]}
                     onChange={e => setKeyValue(key, ["string", e.target.value])}
                     type="text"></Input>
-                  <span className="text-sm text-gray-600 ml-2">{description[index]}</span>
+                  <div className="text-sm text-gray-600 ml-2 w-48 ">{description[index]}</div>
                 </>
               )
               }
               {type[index] == "asset" &&
                 <>
-                  <Input className="my-2 flex-1" type="text"
+                  <Input className="my-2 flex-1 w-48 bg-blue-400" type="text"
                     defaultValue={defaultValue[index]}
                     onChange={e => setKeyValue(key, ["asset", e.target.value])}></Input>
-                  <span className="text-sm text-gray-600 ml-2">{description[index]}</span>
+                  <div className="text-sm text-gray-600 ml-2 w-48 ">{description[index]}</div>
                 </>
               }
               {type[index] == "json" &&
                 <>
-                  <Textarea className="my-2 flex-1" rows={5} cols={200}
+                  <Textarea className="my-2 flex-1 w-48 " rows={5} 
                     defaultValue={defaultValue[index]}
+                    placeholder="Json data"
                     onChange={e => setKeyValue(key, ["json", e.target.value])}></Textarea>
-                  <span className="text-sm text-gray-600 ml-2">{description[index]}</span>
+                  <div className="text-sm text-gray-600 ml-2 w-48 ">{description[index]}</div>
                 </>
               }
               {type[index] == "object" &&
                 <>
-                  <Textarea className="my-2 flex-1" rows={5} cols={200}
+                  <Textarea className="my-2 flex-1 w-48" rows={5}
                     defaultValue={defaultValue[index]}
+                    placeholder="Object data"
                     onChange={e => setKeyValue(key, ["json", e.target.value])}></Textarea>
-                  <span className="text-sm text-gray-600 ml-2">{description[index]}</span>
+                  <div className="text-sm text-gray-600 ml-2 w-48">{description[index]}</div>
                 </>
               }
               {type[index] == "number" &&
                 <>
-                  <Input className="my-2 flex-1" type="text"
+                  <Input className="my-2 flex-1 w-48 bg-blue-400" type="text"
                     defaultValue={defaultValue[index]}
                     onChange={e => setKeyValue(key, ["number", e.target.value])}></Input>
-                  <span className="text-sm text-gray-600 ml-2">{description[index]}</span>
+                  <div className="text-sm text-gray-600 ml-2 w-48">{description[index]}</div>
                 </>
               }
             </div>
