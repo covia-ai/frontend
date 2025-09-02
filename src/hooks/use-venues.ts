@@ -23,7 +23,7 @@ if(process.env.NEXT_PUBLIC_IS_ENV_PROD == "true") {
     })
  ];
  // Set names for the default venues
-defaultVenues[0].name = "Test-Prod Venue";
+defaultVenues[0].name = "Test Venue";
 defaultVenues[0].metadata.description = "Test Covia Venue ";
 defaultVenues[1].name = "Local Venue";
 defaultVenues[1].metadata.description = "Local Development Venue";
