@@ -21,11 +21,15 @@ import {
 import {  PlusCircleIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useSearchParams } from "next/navigation";
 export default function VenuesPage() {
   const { venues } = useVenues();
   const [venueDid, setVenueDid] = useState("");
+  const searchParams = useSearchParams()
+  const search = searchParams.get('search');
+  
   return (
     <ContentLayout title="Venues">
       <SmartBreadcrumb />
@@ -36,9 +40,17 @@ export default function VenuesPage() {
 
         </div>
         <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4 ">
-          {venues.map((venue) => (
-            <VenueCard key={venue.venueId} venue={venue} />
-          ))}
+          {venues.map((venue) => ( 
+            
+              ( search && search.length > 0 ? 
+                ( (venue.name.toLowerCase().indexOf(search.toLowerCase()) != -1 || venue.venueId.toLowerCase().indexOf(search.toLowerCase()) != -1)
+                 && <VenueCard key={venue.venueId} venue={venue} />)
+                :
+                (  <VenueCard key={venue.venueId} venue={venue} /> )
+             
+              )
+           ))}
+
              <Dialog>
                     <DialogTrigger>
                         <Tooltip>

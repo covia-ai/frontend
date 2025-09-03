@@ -47,7 +47,7 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
   const router = useRouter();
 
   const itemsPerPage = 12
-  let offset = 0;
+  const offset = 0;
   const limit = itemsPerPage;
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(10);
@@ -55,14 +55,10 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
 
   const nextPage = (page: number) => {
     setCurrentPage(page)
-    offset = limit;
-    fetchAssets(offset, limit)
   }
   
   const prevPage = (page: number) => {
     setCurrentPage(page)
-    offset = limit - itemsPerPage;
-    fetchAssets(offset, limit)
   }
 
   const venueObj = useStore(useVenue, (x) => x.currentVenue);
@@ -75,7 +71,13 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
       assets.forEach((asset) => {
         asset.getMetadata().then((metadata: object) => {
           if (metadata.operation != undefined) 
-            setAssetsMetadata(prevArray => [...prevArray, new Operation(asset.id, asset.venue, metadata)]);
+             if(search && search.length>0 ) {
+                  if(metadata?.name?.toLowerCase().indexOf(search.toLowerCase()) != -1)
+                     setAssetsMetadata(prevArray => [...prevArray, new Operation(asset.id, asset.venue, metadata)]);
+              }
+              else {
+                   setAssetsMetadata(prevArray => [...prevArray, new Operation(asset.id, asset.venue, metadata)]);
+              }
         })
       })
     })

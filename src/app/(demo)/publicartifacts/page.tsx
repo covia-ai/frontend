@@ -75,8 +75,14 @@ export default function AssetPage() {
       assets.forEach((asset: Asset) => {
         asset.getMetadata().then((metadata: object) => {
           if (metadata.name != undefined && metadata.operation == undefined) {
-
-            setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
+              if(search && search.length>0 ) {
+                  if(metadata?.name?.toLowerCase().indexOf(search.toLowerCase()) != -1)
+                     setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
+              }
+              else {
+                   setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
+             
+              }
           }
         })
 
