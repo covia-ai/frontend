@@ -72,7 +72,7 @@ export function VenueCard({ venue }: VenueCardProps) {
           <TooltipTrigger>
             <CircleArrowRight 
               color="#6B46C1" 
-              onClick={handleViewVenueClick}
+              onClick={handleCardClick}
             />
           </TooltipTrigger>
           <TooltipContent>
