@@ -28,7 +28,7 @@ export default function HomePage() {
         <div id="" className=" ">
 
             <div className="flex flex-col items-center justify-center py-10 px-10  my-4 ">
-                <h3 className="text-center text-2xl  font-bold">
+                <h3 className="text-center text-4xl  font-bold">
                 How can I help you in  {" "}
                   <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
                      being more productive
@@ -50,7 +50,7 @@ export default function HomePage() {
             </div>
              <Separator/>
              <div className="flex flex-col items-center justify-center py-10 px-10  my-4">
-               <h3 className="text-center text-2xl  font-bold">
+               <h3 className="text-center text-4xl  font-bold">
                 Try some   {" "}
                   <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
                      sample Grid operations
