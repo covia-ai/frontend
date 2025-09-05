@@ -22,7 +22,6 @@ import { AvatarFallback } from "@radix-ui/react-avatar";
 export function SignInButton(props:any) {
   const { data: session } = useSession()
   const router = useRouter()
-
    if (!session?.user) {
     return (
         <div className="flex items-center justify-center" key={props.index}>

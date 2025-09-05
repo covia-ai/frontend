@@ -152,7 +152,7 @@ export const OperationViewer = (props: any) => {
                 <>
                   <Textarea className="my-2 flex-1 w-48 " rows={5} 
                     defaultValue={defaultValue[index]}
-                    placeholder="Json data"
+                    placeholder="Provide json input here"
                     onChange={e => setKeyValue(key, ["json", e.target.value])}></Textarea>
                   <div className="text-sm text-gray-600 ml-2 w-48 ">{description[index]}</div>
                 </>
@@ -161,7 +161,16 @@ export const OperationViewer = (props: any) => {
                 <>
                   <Textarea className="my-2 flex-1 w-48" rows={5}
                     defaultValue={defaultValue[index]}
-                    placeholder="Object data"
+                    placeholder="Provide json input here"
+                    onChange={e => setKeyValue(key, ["json", e.target.value])}></Textarea>
+                  <div className="text-sm text-gray-600 ml-2 w-48">{description[index]}</div>
+                </>
+              }
+               {type[index] == "any" &&
+                <>
+                  <Textarea className="my-2 flex-1 w-48" rows={5}
+                    defaultValue={defaultValue[index]}
+                    placeholder="Provide json input here"
                     onChange={e => setKeyValue(key, ["json", e.target.value])}></Textarea>
                   <div className="text-sm text-gray-600 ml-2 w-48">{description[index]}</div>
                 </>
@@ -188,7 +197,7 @@ export const OperationViewer = (props: any) => {
 
           <Textarea className="my-2 flex-1" rows={5} cols={200}
             onChange={e => setObjectValue(e.target.value)}
-            placeholder="Provide inputs here"></Textarea>
+            placeholder="Provide json input here"></Textarea>
 
           <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
           {!loading && <Button type="button" className="w-32" onClick={() => invokeOp(assetsMetadata?.id, requiredKeys)}>Run</Button>}
