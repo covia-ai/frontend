@@ -16,7 +16,8 @@ import {
   ArrowRight,
   ExternalLink,
   Link as LinkIcon,
-  Fingerprint
+  Fingerprint,
+  Copy
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useVenues } from "@/hooks/use-venues";
@@ -24,6 +25,7 @@ import { useVenue } from "@/hooks/use-venue";
 import { useEffect, useState } from "react";
 import { Venue } from "@/lib/covia";
 import Link from "next/link";
+import { copyDataToClipBoard } from "@/lib/utils";
 
 interface VenuePageProps {
   params: {
@@ -70,8 +72,8 @@ export default function VenuePage({ params }: VenuePageProps) {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="bg-blue-100 p-3 rounded-lg">
-                <Building2 size={32} className="text-blue-600" />
+              <div className="bg-secondary-vlight p-3 rounded-lg">
+                <Building2 size={32} className="text-secondary" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold">{venue.name}</h1>
@@ -115,27 +117,38 @@ export default function VenuePage({ params }: VenuePageProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="flex items-center space-x-3">
-                <div className="bg-blue-100 p-2 rounded-lg">
-                  <LinkIcon size={20} className="text-blue-600" />
+                <div className="bg-primary-vlight p-2 rounded-lg">
+                  <LinkIcon size={20} className="text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Venue URL</p>
+                  <p className="text-sm text-muted-foreground flex flex-row space-x-2">Venue URL <Copy
+                    size={12}
+                    onClick={(e) => copyDataToClipBoard(venue.baseUrl, "Venue URL copied to clipboard")}
+                    className="cursor-pointer hover:text-pink-400"
+                  /></p>
+                  
                   <Link 
                     href={venue.baseUrl} 
                     target="_blank"
-                    className="text-blue-600 hover:text-blue-800 underline break-all"
+                    className="font-mono text-sm bg-gray-100 p-2 rounded break-all"
                   >
                     {venue.baseUrl}
                   </Link>
+                 
                 </div>
               </div>
               
               <div className="flex items-center space-x-3">
-                <div className="bg-purple-100 p-2 rounded-lg">
-                  <Fingerprint size={20} className="text-purple-600" />
+                <div className="bg-primary-vlight p-2 rounded-lg">
+                  <Fingerprint size={20} className="text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Venue DID</p>
+                  <p className="text-sm text-muted-foreground flex flex-row space-x-2">Venue DID
+                 <Copy
+                    size={12}
+                    onClick={(e) => copyDataToClipBoard(venue.getDID(), "Venue DID copied to clipboard")}
+                    className="cursor-pointer hover:text-pink-400"></Copy>
+                    </p>
                   <p className="font-mono text-sm bg-gray-100 p-2 rounded break-all">
                     {venue.getDID()}
                   </p>
@@ -145,11 +158,15 @@ export default function VenuePage({ params }: VenuePageProps) {
             
             <div className="space-y-4">
               <div className="flex items-center space-x-3">
-                <div className="bg-green-100 p-2 rounded-lg">
-                  <Building2 size={20} className="text-green-600" />
+                <div className="bg-primary-vlight p-2 rounded-lg">
+                  <Building2 size={20} className="text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Venue ID</p>
+                  <p className="text-sm text-muted-foreground flex flex-row space-x-2">Venue ID <Copy
+                    size={12}
+                    onClick={(e) => copyDataToClipBoard(venue.venueId, "Venue ID copied to clipboard")}
+                    className="cursor-pointer hover:text-pink-400"></Copy>
+                    </p>
                   <p className="font-mono text-sm bg-gray-100 p-2 rounded">
                     {venue.venueId}
                   </p>
@@ -157,11 +174,15 @@ export default function VenuePage({ params }: VenuePageProps) {
               </div>
               
               <div className="flex items-center space-x-3">
-                <div className="bg-orange-100 p-2 rounded-lg">
-                  <Globe size={20} className="text-orange-600" />
+                <div className="bg-primary-vlight p-2 rounded-lg">
+                  <Globe size={20} className="text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Base URL</p>
+                  <p className="text-sm text-muted-foreground flex flex-row space-x-2">Base URL <Copy
+                    size={12}
+                    onClick={(e) => copyDataToClipBoard(venue.baseUrl, "Base URL copied to clipboard")}
+                    className="cursor-pointer hover:text-pink-400"></Copy>
+                    </p>
                   <p className="font-mono text-sm bg-gray-100 p-2 rounded break-all">
                     {venue.baseUrl}
                   </p>
