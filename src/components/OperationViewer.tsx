@@ -16,15 +16,18 @@ import { DiagramViewer } from "./DiagramViewer";
 import { MetadataViewer } from "./MetadataViewer";
 import { AssetHeader } from "./AssetHeader";
 import { Asset } from "@/lib/covia";
+import { usePathname } from "next/navigation";
 
 export const OperationViewer = (props: any) => {
   const [assetsMetadata, setAssetsMetadata] = useState<Asset>();
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [objectValue, setObjectValue] = useState()
-  const valueMap = new Map();
+  const [buttonText, setButtonText] = useState("Run");
+  const [valueMap, setValueMap] = useState(new Map());
   const router = useRouter();
+  const pathname = usePathname();
   const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
+
   if (!venueObj) return null;
   const venue = useMemo(() => {
         // Your expensive calculation or value creation
@@ -33,7 +36,6 @@ export const OperationViewer = (props: any) => {
 
   useEffect(() => {
     venue.getAsset(props.assetId).then((asset: Asset) => {
-      console.log(asset)
       setAssetsMetadata(asset);
 
     })
@@ -43,68 +45,101 @@ export const OperationViewer = (props: any) => {
 
 
   function setKeyValue(key, value) {
-    valueMap.set(key, value);
+    const newMap = new Map(valueMap);
+    newMap.set(key,value);
+    setValueMap(newMap)
+
+  }
+  async function resetForm() {
+    window.location.href=pathname;
   }
   async function invokeOp(id, requiredKeys: string[] = []) {
-    setLoading(true)
-    if (valueMap.size > 0) {
-      let operationStatus = true;
-      for (let index = 0; index < requiredKeys.length; index++) {
-        if (!valueMap.has(requiredKeys[index]))
-          operationStatus = false;
-      }
-      if (operationStatus) {
-        const inputs = {};
-        for (const [key, value] of valueMap) {
-          if (value[0] == "json" || value[0] == "object")
-            inputs[key] = JSON.parse(value[1]);
-          else if (value[0] == "number")
-            inputs[key] = Number(value[1]);
-          else
-            inputs[key] = value[1];
-        }
-        let response = {};
-        try {
-          // Check if the asset is actually an operation before invoking
+    const inputs = {};
+    //First attempt , do all validations and inform user of operation inputs
+    if(buttonText == "Run" ) {
+      //Check if any inputs are provided by user
+      try {
+        if(valueMap && valueMap.size>0) {    
+          //Check if all required values are provided
+          for (let index = 0; index < requiredKeys.length; index++) {
+            if (!valueMap.has(requiredKeys[index])) {
+              throw new Error("The input \""+requiredKeys[index]+"\" is expected as per the operation schema. please verify before running the operation");
+            }
+          
+          }
+          //Check if inputs are valid as per expected type mainly json 
+          for (const [key, value] of valueMap) {
+                if (value[0] == "json" || value[0] == "object" || value[0] == "any") {
+                  try {
+                    inputs[key] = JSON.parse(value[1]);
+                  }
+                  catch(e) {
+                    console.log(key)
+                    if(key != "none")
+                        throw new Error("Operation input \""+key+"\" expects a valid Json value, please verify before running the operation");
+                    else 
+                        throw new Error("Operation input expects a valid Json value, please verify before running the operation");
+                  }
+                }
+                else if (value[0] == "number") {
+                  try {
+                    inputs[key] = Number(value[1]);
+                  }
+                  catch(e) {
+                    throw new Error("Key "+key+" expects a number, please verify before running the operation");
+                  }
+
+                }
+                else
+                  inputs[key] = value[1];
+          }
+          let response = "";
+        
           if (assetsMetadata && assetsMetadata.metadata?.operation) {
-            response = await assetsMetadata.run(inputs);
+              response = await assetsMetadata.run(inputs);
+              if (response?.id) {
+              router.push("/history/" + response?.id);
+            }
           } else {
             throw new Error("This asset is not an operation and cannot be invoked");
           }
-
-        }
-        catch (e: Error) {
-          setErrorMessage(e.message);
-          setLoading(false);
-        }
-        if (response?.id) {
-          router.push("/history/" + response?.id);
-        }
-      } else {
-        setErrorMessage("Please provide all the inputs")
-        setLoading(false);
+        } 
+         else {
+         //No inputs provided
+          throw Error("No inputs provided for the operation, please verify before running the operation");
+        }    
       }
+      catch (e: Error) {
+            console.log(e)
+            setErrorMessage(e.message);
+            setButtonText("Run anyway?")
+            setLoading(false);
+        }
     }
+    //Second attempt, we do not do any validation just run the operations
     else {
-      let response = "";
-      try {
-
-        // Check if the asset is actually an operation before invoking
-        if (assetsMetadata && assetsMetadata.metadata?.operation) {
-          response = await assetsMetadata.run(JSON.parse(objectValue));
-        } else {
-          throw new Error("This asset is not an operation and cannot be invoked");
-        }
-
-      }
-      catch (e) {
-        setErrorMessage(e.message);
-        setLoading(false);
-      }
-      if (response?.id) {
-        router.push("/history/" + response?.id);
-      }
+          for (const [key, value] of valueMap) {      
+                   inputs[key] = value[1];
+          }
+          console.log(inputs)
+          let response = "";
+           try {
+            if (assetsMetadata && assetsMetadata.metadata?.operation) {
+                setLoading(true)
+                response = await assetsMetadata.run(inputs);
+                if (response?.id) {
+                router.push("/history/" + response?.id);
+               }
+            } else {
+               throw new Error("This asset is not an operation and cannot be invoked");
+            }
+          }  
+          catch(e) {
+               setErrorMessage(e.message)
+               setLoading(false);
+          }
     }
+    
   }
   function renderJSONMap(jsonObject: JSON, requiredKeys: string[]) {
     if (jsonObject != null && jsonObject != undefined) {
@@ -112,14 +147,15 @@ export const OperationViewer = (props: any) => {
       const type = new Array<string>();
       const description = new Array<string>();
       const defaultValue = new Array<string>();
+      const exampleValue = new Array<string>();
 
       keys.map((key, index) => {
         const jsonValue = jsonObject[key];
         type[index] = jsonValue.type;
         description[index] = jsonValue.description;
         defaultValue[index] = jsonValue.default || "";
+        exampleValue[index] = jsonValue.examples || "";
       });
-
       return (
         <div className="flex flex-col w-11/12 space-x-2 my-2 items-center justify-center">
           {keys.map((key, index) => (
@@ -134,6 +170,7 @@ export const OperationViewer = (props: any) => {
                   <Input className="my-2 flex-1 w-48"
                     required={true}
                     defaultValue={defaultValue[index]}
+                    placeholder={exampleValue[index]}
                     onChange={e => setKeyValue(key, ["string", e.target.value])}
                     type="text"></Input>
                   <div className="text-sm text-gray-600 ml-2 w-48 ">{description[index]}</div>
@@ -142,8 +179,9 @@ export const OperationViewer = (props: any) => {
               }
               {type[index] == "asset" &&
                 <>
-                  <Input className="my-2 flex-1 w-48 bg-blue-400" type="text"
+                  <Input className="my-2 flex-1 w-48" type="text"
                     defaultValue={defaultValue[index]}
+                    placeholder={exampleValue[index]}
                     onChange={e => setKeyValue(key, ["asset", e.target.value])}></Input>
                   <div className="text-sm text-gray-600 ml-2 w-48 ">{description[index]}</div>
                 </>
@@ -152,7 +190,7 @@ export const OperationViewer = (props: any) => {
                 <>
                   <Textarea className="my-2 flex-1 w-48 " rows={5} 
                     defaultValue={defaultValue[index]}
-                    placeholder="Provide json input here"
+                    placeholder={exampleValue[index]}
                     onChange={e => setKeyValue(key, ["json", e.target.value])}></Textarea>
                   <div className="text-sm text-gray-600 ml-2 w-48 ">{description[index]}</div>
                 </>
@@ -161,7 +199,7 @@ export const OperationViewer = (props: any) => {
                 <>
                   <Textarea className="my-2 flex-1 w-48" rows={5}
                     defaultValue={defaultValue[index]}
-                    placeholder="Provide json input here"
+                     placeholder={exampleValue[index]}
                     onChange={e => setKeyValue(key, ["json", e.target.value])}></Textarea>
                   <div className="text-sm text-gray-600 ml-2 w-48">{description[index]}</div>
                 </>
@@ -170,15 +208,16 @@ export const OperationViewer = (props: any) => {
                 <>
                   <Textarea className="my-2 flex-1 w-48" rows={5}
                     defaultValue={defaultValue[index]}
-                    placeholder="Provide json input here"
+                    placeholder={exampleValue[index]}
                     onChange={e => setKeyValue(key, ["json", e.target.value])}></Textarea>
                   <div className="text-sm text-gray-600 ml-2 w-48">{description[index]}</div>
                 </>
               }
               {type[index] == "number" &&
                 <>
-                  <Input className="my-2 flex-1 w-48 bg-blue-400" type="text"
+                  <Input className="my-2 flex-1 w-48 " type="text"
                     defaultValue={defaultValue[index]}
+                    placeholder={exampleValue[index]}
                     onChange={e => setKeyValue(key, ["number", e.target.value])}></Input>
                   <div className="text-sm text-gray-600 ml-2 w-48">{description[index]}</div>
                 </>
@@ -186,7 +225,10 @@ export const OperationViewer = (props: any) => {
             </div>
           ))}
           <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
-          {!loading && <Button type="button" className="w-32" onClick={() => invokeOp(assetsMetadata?.id, requiredKeys)}>Run</Button>}
+          <div className="flex flex-row space-x-2">{!loading && <Button type="button" className="w-32" onClick={() => invokeOp(assetsMetadata?.id, requiredKeys)}>{buttonText}</Button>}
+          {!loading && <Button type="button" className="w-32" onClick={() => resetForm()}>Reset</Button>}
+          </div>
+
           {loading && <Button type="button" className="w-32" disabled>Please wait ...</Button>}
         </div>
       )
@@ -196,11 +238,13 @@ export const OperationViewer = (props: any) => {
         <div className="flex flex-col items-center justify-center w-full space-x-2 my-2">
 
           <Textarea className="my-2 flex-1" rows={5} cols={200}
-            onChange={e => setObjectValue(e.target.value)}
-            placeholder="Provide json input here"></Textarea>
+            onChange={e => setKeyValue("none",["any",e.target.value])}
+            placeholder="Provide input here"></Textarea>
 
           <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
-          {!loading && <Button type="button" className="w-32" onClick={() => invokeOp(assetsMetadata?.id, requiredKeys)}>Run</Button>}
+           <div className="flex flex-row space-x-2">{!loading && <Button type="button" className="w-32" onClick={() => invokeOp(assetsMetadata?.id, requiredKeys)}>{buttonText}</Button>}
+          {!loading && <Button type="button" className="w-32" onClick={() => resetForm()}>Reset</Button>}
+          </div>
           {loading && <Button type="button" className="w-32" disabled>Please wait ...</Button>}
         </div>
       )

@@ -44,7 +44,7 @@ export function Sidebar() {
               )}
             >
 
-              <Image src="/covia.ai_dark_blue.png" width={100} height={0} alt="Covia"></Image>
+              <Link href="https://www.covia.ai"><Image src="/covia.ai_dark_blue.png" width={100} height={0} alt="Covia" ></Image></Link>
 
             </h1>
           </Link>
