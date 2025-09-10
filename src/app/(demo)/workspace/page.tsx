@@ -2,25 +2,53 @@
 "use client";
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
-import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
-import React from 'react'
-
-
+import React, { useEffect, useState } from 'react'
 import { Button } from "@/components/ui/button";
-import { Card, CardContent,CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { CircleArrowRight } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { MagicWandIcon } from "@radix-ui/react-icons";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { useStore } from "zustand";
+import { useVenue } from "@/hooks/use-venue";
+import { Asset, Operation, Venue } from "@/lib/covia";
+import { useRouter } from "next/navigation";
+import { Spinner } from '@/components/ui/shadcn-io/spinner';
 
 export default function HomePage() {
 
+  const [loading, setLoading] = useState(true);
+  const [assetsMetadata, setAssetsMetadata] = useState<Asset[]>([]);
+  const router = useRouter();
+  
+  const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
+    if (!venueObj) return null;
+    const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
+  
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await venue.getAssets();
+        res.forEach(( asset:Asset) => {
+          if(asset?.metadata?.operation?.info?.featured) {
+              setAssetsMetadata(prevArray => [...prevArray, asset]);
+               
+          }
+         
+        })
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []); // Empty dependency array to run once on mount
 
   return (
     <ContentLayout title="Workspace">
@@ -60,76 +88,44 @@ export default function HomePage() {
                  Create your first flow with AI or check out our guided tutorials below
 
                 </p>
-              <div className="grid grid-cols-1 md:grid-cols-3 items-stretch justify-center gap-4 mt-4 mb-8">
-                
-                     <Card className="shadow-md bg-slate-100 flex flex-col rounded-md hover:border-2 hover:border-accent h-48 overflow-hidden">
-                              {/* Fixed-size header */}
-                              <div className="h-14 p-3 flex flex-row items-center justify-between border-b bg-slate-50">
-                                <div className="truncate flex-1 font-semibold text-sm">Web Scraping</div>
-                              </div>
-                              
-                              {/* Flexible middle section */}
-                              <div className="flex-1 p-3 flex flex-col justify-between">
-                                <div className="text-xs text-slate-600 line-clamp-3 mb-2">Lorem ipsum dolor sit amet, consectetur adipiscing elit</div>
-                                
-                                {/* Fixed-size footer */}
-                                <div className="h-12 flex flex-row items-center justify-between">
-                                  <Tooltip>
-                                    <TooltipTrigger>
-                                      <CircleArrowRight color="#6B46C1" />
-                                    </TooltipTrigger>
-                                    <TooltipContent>View Asset</TooltipContent>
-                                  </Tooltip>
-                                </div>
-                              </div>
-                        </Card>
-                        <Card className="shadow-md bg-slate-100 flex flex-col rounded-md hover:border-2 hover:border-accent h-48 overflow-hidden">
-                              {/* Fixed-size header */}
-                              <div className="h-14 p-3 flex flex-row items-center justify-between border-b bg-slate-50">
-                                <div className="truncate flex-1 font-semibold text-sm">Document Classification</div>
-                              </div>
-                              
-                              {/* Flexible middle section */}
-                              <div className="flex-1 p-3 flex flex-col justify-between">
-                                <div className="text-xs text-slate-600 line-clamp-3 mb-2">Lorem ipsum dolor sit amet, consectetur adipiscing elit</div>
-                                
-                                {/* Fixed-size footer */}
-                                <div className="h-12 flex flex-row items-center justify-between">
-                                  <Badge variant="outline" className="border border-pink-200 bg-white">orchestration</Badge>
-                                  <Tooltip>
-                                    <TooltipTrigger>
-                                      <CircleArrowRight color="#6B46C1" />
-                                    </TooltipTrigger>
-                                    <TooltipContent>View Asset</TooltipContent>
-                                  </Tooltip>
-                                </div>
-                              </div>
-                        </Card>
-                             <Card className="shadow-md bg-slate-100 flex flex-col rounded-md hover:border-2 hover:border-accent h-48 overflow-hidden">
-                              {/* Fixed-size header */}
-                              <div className="h-14 p-3 flex flex-row items-center justify-between border-b bg-slate-50">
-                                <div className="truncate flex-1 font-semibold text-sm">Request Approval</div>
-                              </div>
-                              
-                              {/* Flexible middle section */}
-                              <div className="flex-1 p-3 flex flex-col justify-between">
-                                <div className="text-xs text-slate-600 line-clamp-3 mb-2">Lorem ipsum dolor sit amet, consectetur adipiscing elit</div>
-                                
-                                {/* Fixed-size footer */}
-                                <div className="h-12 flex flex-row items-center justify-between">
-                                  <Badge variant="outline" className="border border-pink-200 bg-white">orchestration</Badge>
-                                  <Tooltip>
-                                    <TooltipTrigger>
-                                      <CircleArrowRight color="#6B46C1" />
-                                    </TooltipTrigger>
-                                    <TooltipContent>View Asset</TooltipContent>
-                                  </Tooltip>
-                                </div>
-                              </div>
-                        </Card>
-                      
-              </div>   
-             </div>
+              
+                  {loading && 
+                        <div className="flex flex-row items-center justify-center w-full">
+                          <Spinner variant="ellipsis" className="text-primary" size={32}/>
+                        </div>
+                  }
+                  {!loading && 
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 items-stretch justify-center gap-4 mt-4 mb-8 w-full">
+                    
+                    {assetsMetadata.slice(0,3).map((asset, index) =>
+                  
+                     <Card key={index} className="shadow-md h-full bg-slate-100 flex flex-col rounded-md hover:border-accent hover:border-2 h-48">
+                    {/* Fixed-size header */}                
+                    
+                      <div className="h-14 p-2 flex flex-row items-center border-b bg-slate-50">
+                      <div className="truncate flex-1 mr-2 font-semibold text-sm"
+                      onClick={() => { router.push("/venues/default/operations/" + asset.id) }}>{asset.metadata.name || 'Unnamed Asset'}  
+                      </div>   
+                      </div>
+                    {/* Flexible middle section */}
+                  <div className="flex-1 p-2 flex flex-col justify-between" onClick={() => { router.push("/venues/default/operations/" + asset.id) }}>
+                    <div className="text-xs text-slate-600 line-clamp-3 mb-2">{asset.metadata.description || 'No description available'}</div>
+                  </div>
+                  {/* Fixed-size footer */}
+                    <div className="p-2 h-12 flex flex-row-reverse items-center justify-between" onClick={() => { router.push("/venues/default/operations/" + asset.id) }}>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <CircleArrowRight color="#6B46C1" onClick={() => { router.push("/venues/default/operations/" + asset.id) }} />
+                        </TooltipTrigger> 
+                        <TooltipContent>View Operation</TooltipContent>
+                        </Tooltip> 
+                    </div>
+                     </Card>
+                     )}
+                   </div>}
+                    
+               </div>
       </div>
        
    </ContentLayout>
