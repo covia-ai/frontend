@@ -117,13 +117,10 @@ export class Venue implements VenueInterface {
    * @returns {Promise<Asset[]>}
    */
   async getAssets(): Promise<Asset[]> {
-    const assets: Asset[] = [];
     const assetIds = await fetchWithError<any>(`${this.baseUrl}/api/v1/assets/`);
-    for (const assetId of assetIds.items) {
-      const asset = await this.getAsset(assetId);
-      assets.push(asset);
-    }
-    return assets;
+    // Fetch all assets in parallel
+    const assetPromises = assetIds.items.map((assetId: AssetID) => this.getAsset(assetId));
+    return Promise.all(assetPromises);
   }
 
   /**
