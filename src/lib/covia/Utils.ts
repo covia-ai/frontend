@@ -6,18 +6,19 @@
  * @param options - Fetch options
  * @returns {Promise<T>} The response data
  */
-export async function fetchWithError<T>(url: string, options?: RequestInit): Promise<T> {
-  try {
-    const response = await fetch(url, options);
-    if (!response.ok) {
-      throw new CoviaError(`Request failed! status: ${response.status}`);
-    }
-    return response.json();
-  } catch (error) {
-    throw error instanceof CoviaError
-      ? error
-      : new CoviaError(`Request failed: ${(error as Error).message}`);
-  }
+export function fetchWithError<T>(url: string, options?: RequestInit): Promise<T> {
+  return fetch(url, options)
+    .then(response => {
+      if (!response.ok) {
+        throw new CoviaError(`Request failed! status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .catch(error => {
+      throw error instanceof CoviaError
+        ? error
+        : new CoviaError(`Request failed: ${(error as Error).message}`);
+    });
 }
 
 /**
@@ -26,16 +27,17 @@ export async function fetchWithError<T>(url: string, options?: RequestInit): Pro
  * @param options - Fetch options
  * @returns {Promise<Response>} The fetch response
  */
-export async function fetchStreamWithError(url: string, options?: RequestInit): Promise<Response> {
-  try {
-    const response = await fetch(url, options);
-    if (!response.ok) {
-      throw new CoviaError(`Request failed! status: ${response.status}`);
-    }
-    return response;
-  } catch (error) {
-    throw error instanceof CoviaError
-      ? error
-      : new CoviaError(`Request failed: ${(error as Error).message}`);
-  }
+export function fetchStreamWithError(url: string, options?: RequestInit): Promise<Response> {
+  return fetch(url, options)
+    .then(response => {
+      if (!response.ok) {
+        throw new CoviaError(`Request failed! status: ${response.status}`);
+      }
+      return response;
+    })
+    .catch(error => {
+      throw error instanceof CoviaError
+        ? error
+        : new CoviaError(`Request failed: ${(error as Error).message}`);
+    });
 } 
