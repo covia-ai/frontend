@@ -19,11 +19,12 @@ import { Asset } from "@/lib/covia";
 import { usePathname } from "next/navigation";
 
 export const OperationViewer = (props: any) => {
-  const [assetsMetadata, setAssetsMetadata] = useState<Asset>();
+  const [asset, setAsset] = useState<Asset>();
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [buttonText, setButtonText] = useState("Run");
   const [valueMap, setValueMap] = useState(new Map());
+  const [assetNotFound, setAssetNotFound] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
@@ -35,10 +36,19 @@ export const OperationViewer = (props: any) => {
         }, []); // Dependency array
 
   useEffect(() => {
-    venue.getAsset(props.assetId).then((asset: Asset) => {
-      setAssetsMetadata(asset);
-
-    })
+    setAssetNotFound(false);
+    setErrorMessage("");
+    venue.getAsset(props.assetId)
+      .then((asset: Asset) => {
+        setAsset(asset);
+      })
+      .catch((e: Error) => {
+        if (e?.message && (e.message.includes('404') || e.message.toLowerCase().includes('not found'))) {
+          setAssetNotFound(true);
+          return;
+        }
+        setErrorMessage(e?.message || 'Failed to load asset');
+      });
 
   }, [props.assetId, venue]);
 
@@ -95,8 +105,8 @@ export const OperationViewer = (props: any) => {
           }
           let response = "";
         
-          if (assetsMetadata && assetsMetadata.metadata?.operation) {
-              response = await assetsMetadata.run(inputs);
+          if (asset && asset.metadata?.operation) {
+              response = await asset.run(inputs);
               if (response?.id) {
               router.push("/history/" + response?.id);
             }
@@ -124,9 +134,9 @@ export const OperationViewer = (props: any) => {
           console.log(inputs)
           let response = "";
            try {
-            if (assetsMetadata && assetsMetadata.metadata?.operation) {
+            if (asset && asset.metadata?.operation) {
                 setLoading(true)
-                response = await assetsMetadata.run(inputs);
+                response = await asset.run(inputs);
                 if (response?.id) {
                 router.push("/history/" + response?.id);
                }
@@ -203,16 +213,16 @@ export const OperationViewer = (props: any) => {
     return null;
   }
 
-  function renderJSONMap(jsonObject: JSON, requiredKeys: string[]) {
-    if (jsonObject != null && jsonObject != undefined) {
-      const keys = Object.keys(jsonObject);
+  function renderInputFields(operation: JSON, requiredKeys: string[]) {
+    if (operation != null && operation != undefined) {
+      const keys = Object.keys(operation);
       const type = new Array<string>();
       const description = new Array<string>();
       const defaultValue = new Array<string>();
       const exampleValue = new Array<string>();
 
       keys.map((key, index) => {
-        const jsonValue = jsonObject[key];
+        const jsonValue = operation[key];
         type[index] = jsonValue.type;
         description[index] = jsonValue.description;
         defaultValue[index] = jsonValue.default || "";
@@ -267,19 +277,25 @@ export const OperationViewer = (props: any) => {
 
   return (
     <>
-      <SmartBreadcrumb />
+      <SmartBreadcrumb assetName={asset?.metadata?.name} />
 
       <div className="flex flex-col w-full items-center justify-center">
+        {assetNotFound && (
+          <div className="text-center p-8">
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">Asset Not Found</h2>
+            <p className="text-gray-600">The asset ID "{props.assetId}" does not exist on this venue.</p>
+          </div>
+        )}
         
-        {assetsMetadata && <AssetHeader asset={assetsMetadata} />}
-        {assetsMetadata && <MetadataViewer asset={assetsMetadata} />}
-        {assetsMetadata?.metadata?.operation && (
+        {!assetNotFound && asset && <AssetHeader asset={asset} />}
+        {!assetNotFound && asset && <MetadataViewer asset={asset} />}
+        {!assetNotFound && asset?.metadata?.operation && (
           <>
-            {renderJSONMap(assetsMetadata?.metadata?.operation?.input?.properties, assetsMetadata?.metadata?.operation?.input?.required)}
-            {assetsMetadata?.metadata?.operation?.steps && <DiagramViewer metadata={assetsMetadata.metadata}></DiagramViewer>}
+            {renderInputFields(asset?.metadata?.operation?.input?.properties, asset?.metadata?.operation?.input?.required)}
+            {asset?.metadata?.operation?.steps && <DiagramViewer metadata={asset.metadata}></DiagramViewer>}
           </>
         )}
-        {!assetsMetadata?.metadata?.operation && (
+        {!assetNotFound && asset && !asset?.metadata?.operation && (
           <div className="text-center p-4">
             <p className="text-red-500">This asset is not an operation and cannot be executed.</p>
           </div>
