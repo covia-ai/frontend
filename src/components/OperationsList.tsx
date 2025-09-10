@@ -212,8 +212,12 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
               </div>
                {/* Fixed-size footer */}
                 <div className="p-2 h-12 flex flex-row-reverse items-center justify-between" onClick={() => { router.push("/venues/default/operations/" + asset.id) }}>
-                  
-                  <CircleArrowRight color="#6B46C1" onClick={() => { router.push("/venues/default/operations/" + asset.id) }} />
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <CircleArrowRight color="#6B46C1" onClick={() => { router.push("/venues/default/operations/" + asset.id) }} />
+                    </TooltipTrigger> 
+                    <TooltipContent>View Operation</TooltipContent>
+                    </Tooltip> 
                 </div>
               </Card>
             </Sheet>
