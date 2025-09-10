@@ -154,7 +154,7 @@ export const OperationViewer = (props: any) => {
         type[index] = jsonValue.type;
         description[index] = jsonValue.description;
         defaultValue[index] = jsonValue.default || "";
-        exampleValue[index] = jsonValue.examples || "";
+        exampleValue[index] = jsonValue.examples ? `e.g. ${Array.isArray(jsonValue.examples) ? jsonValue.examples[0] : jsonValue.examples}` : "";
       });
       return (
         <div className="flex flex-col w-11/12 space-x-2 my-2 items-center justify-center">
@@ -167,7 +167,7 @@ export const OperationViewer = (props: any) => {
               </div>
               {type[index] == "string" && (
                 <>
-                  <Input className="my-2 flex-1 w-48"
+                  <Input className="my-2 flex-1 w-48 placeholder:text-gray-500"
                     required={true}
                     defaultValue={defaultValue[index]}
                     placeholder={exampleValue[index]}
@@ -179,7 +179,7 @@ export const OperationViewer = (props: any) => {
               }
               {type[index] == "asset" &&
                 <>
-                  <Input className="my-2 flex-1 w-48" type="text"
+                  <Input className="my-2 flex-1 w-48 placeholder:text-gray-500" type="text"
                     defaultValue={defaultValue[index]}
                     placeholder={exampleValue[index]}
                     onChange={e => setKeyValue(key, ["asset", e.target.value])}></Input>
@@ -188,7 +188,7 @@ export const OperationViewer = (props: any) => {
               }
               {type[index] == "json" &&
                 <>
-                  <Textarea className="my-2 flex-1 w-48 " rows={5} 
+                  <Textarea className="my-2 flex-1 w-48 placeholder:text-gray-500" rows={5} 
                     defaultValue={defaultValue[index]}
                     placeholder={exampleValue[index]}
                     onChange={e => setKeyValue(key, ["json", e.target.value])}></Textarea>
@@ -197,7 +197,7 @@ export const OperationViewer = (props: any) => {
               }
               {type[index] == "object" &&
                 <>
-                  <Textarea className="my-2 flex-1 w-48" rows={5}
+                  <Textarea className="my-2 flex-1 w-48 placeholder:text-gray-500" rows={5}
                     defaultValue={defaultValue[index]}
                      placeholder={exampleValue[index]}
                     onChange={e => setKeyValue(key, ["json", e.target.value])}></Textarea>
@@ -206,7 +206,7 @@ export const OperationViewer = (props: any) => {
               }
                {type[index] == "any" &&
                 <>
-                  <Textarea className="my-2 flex-1 w-48" rows={5}
+                  <Textarea className="my-2 flex-1 w-48 placeholder:text-gray-500" rows={5}
                     defaultValue={defaultValue[index]}
                     placeholder={exampleValue[index]}
                     onChange={e => setKeyValue(key, ["json", e.target.value])}></Textarea>
@@ -215,7 +215,7 @@ export const OperationViewer = (props: any) => {
               }
               {type[index] == "number" &&
                 <>
-                  <Input className="my-2 flex-1 w-48 " type="text"
+                  <Input className="my-2 flex-1 w-48 placeholder:text-gray-500" type="text"
                     defaultValue={defaultValue[index]}
                     placeholder={exampleValue[index]}
                     onChange={e => setKeyValue(key, ["number", e.target.value])}></Input>
@@ -237,9 +237,9 @@ export const OperationViewer = (props: any) => {
       return (
         <div className="flex flex-col items-center justify-center w-full space-x-2 my-2">
 
-          <Textarea className="my-2 flex-1" rows={5} cols={200}
+          <Textarea className="my-2 flex-1 placeholder:text-gray-500" rows={5} cols={200}
             onChange={e => setKeyValue("none",["any",e.target.value])}
-            placeholder="Provide input here"></Textarea>
+            placeholder="e.g. Provide input here"></Textarea>
 
           <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
            <div className="flex flex-row space-x-2">{!loading && <Button type="button" className="w-32" onClick={() => invokeOp(assetsMetadata?.id, requiredKeys)}>{buttonText}</Button>}

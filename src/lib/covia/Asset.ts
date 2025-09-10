@@ -21,15 +21,17 @@ export abstract class Asset {
    * Get asset metadata
    * @returns {Promise<AssetMetadata>}
    */
-  async getMetadata(): Promise<AssetMetadata> {
+  getMetadata(): Promise<AssetMetadata> {
     if (cache.has(this.id)) {
-      return cache.get(this.id)!;
+      return Promise.resolve(cache.get(this.id)!);
     } else {
-      const data = await fetchWithError<AssetMetadata>(`${this.venue.baseUrl}/api/v1/assets/${this.id}`);
-      if (data) {
-        cache.set(this.id, data);
-      }
-      return data;
+      return fetchWithError<AssetMetadata>(`${this.venue.baseUrl}/api/v1/assets/${this.id}`)
+        .then(data => {
+          if (data) {
+            cache.set(this.id, data);
+          }
+          return data;
+        });
     }
   }
 
@@ -52,25 +54,23 @@ export abstract class Asset {
    * @param content - Content to upload
    * @returns {Promise<ReadableStream<Uint8Array> | null>}
    */
-  async uploadContent(content: BodyInit): Promise<ReadableStream<Uint8Array> | null> {
-    const response = await fetchStreamWithError(`${this.venue.baseUrl}/api/v1/assets/${this.id}/content`, {
+  uploadContent(content: BodyInit): Promise<ReadableStream<Uint8Array> | null> {
+    return fetchStreamWithError(`${this.venue.baseUrl}/api/v1/assets/${this.id}/content`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/octet-stream',
       },
       body: content,
-    });
-
-    return response.body;
+    }).then(response => response.body);
   }
 
   /**
    * Get asset content
    * @returns {Promise<ReadableStream<Uint8Array> | null>}
    */
-  async getContent(): Promise<ReadableStream<Uint8Array> | null> {
-    const response = await fetchStreamWithError(`${this.venue.baseUrl}/api/v1/assets/${this.id}/content`);
-    return response.body;
+  getContent(): Promise<ReadableStream<Uint8Array> | null> {
+    return fetchStreamWithError(`${this.venue.baseUrl}/api/v1/assets/${this.id}/content`)
+      .then(response => response.body);
   }
 
   /**
@@ -86,25 +86,23 @@ export abstract class Asset {
    * @param input - Operation input parameters
    * @returns {Promise<any>}
    */
-  async run(input: Record<string, any>): Promise<any> {
+  run(input: Record<string, any>): Promise<any> {
     const payload = {
       operation: this.id,
       input: input
     };
 
-    try {
-      return await fetchWithError<any>(`${this.venue.baseUrl}/api/v1/invoke/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-    } catch (error) {
+    return fetchWithError<any>(`${this.venue.baseUrl}/api/v1/invoke/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    }).catch(error => {
       this.status = RunStatus.FAILED;
       this.error = (error as Error).message;
       throw error;
-    }
+    });
   }
 }
 
