@@ -141,6 +141,68 @@ export const OperationViewer = (props: any) => {
     }
     
   }
+  function renderInputComponent(
+    key: string, 
+    type: string, 
+    defaultValue: string, 
+    placeholder: string, 
+    description: string, 
+    isRequired: boolean,
+    setKeyValue: (key: string, value: [string, string]) => void
+  ) {
+    const commonProps = {
+      className: "my-2 flex-1 w-48 placeholder:text-gray-500",
+      defaultValue,
+      placeholder,
+      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const valueType = type === "object" || type === "any" ? "json" : type;
+        setKeyValue(key, [valueType, e.target.value]);
+      }
+    };
+
+    const descriptionElement = (
+      <div className="text-sm text-gray-600 ml-2 w-48">{description}</div>
+    );
+
+    if (type === "string") {
+      return (
+        <>
+          <Input {...commonProps} required={isRequired} type="text" />
+          {descriptionElement}
+        </>
+      );
+    }
+
+    if (type === "asset") {
+      return (
+        <>
+          <Input {...commonProps} type="text" />
+          {descriptionElement}
+        </>
+      );
+    }
+
+    if (type === "number") {
+      return (
+        <>
+          <Input {...commonProps} type="text" />
+          {descriptionElement}
+        </>
+      );
+    }
+
+    if (type === "json" || type === "object" || type === "any") {
+      return (
+        <>
+          <Textarea {...commonProps} rows={5} />
+          {descriptionElement}
+        </>
+      );
+    }
+
+    return null;
+  }
+
   function renderJSONMap(jsonObject: JSON, requiredKeys: string[]) {
     if (jsonObject != null && jsonObject != undefined) {
       const keys = Object.keys(jsonObject);
@@ -165,63 +227,15 @@ export const OperationViewer = (props: any) => {
                 <Label>{key} </Label>
                 {requiredKeys != undefined && requiredKeys?.indexOf(key) != -1 && <span className="text-red-400">*</span>}
               </div>
-              {type[index] == "string" && (
-                <>
-                  <Input className="my-2 flex-1 w-48 placeholder:text-gray-500"
-                    required={true}
-                    defaultValue={defaultValue[index]}
-                    placeholder={exampleValue[index]}
-                    onChange={e => setKeyValue(key, ["string", e.target.value])}
-                    type="text"></Input>
-                  <div className="text-sm text-gray-600 ml-2 w-48 ">{description[index]}</div>
-                </>
-              )
-              }
-              {type[index] == "asset" &&
-                <>
-                  <Input className="my-2 flex-1 w-48 placeholder:text-gray-500" type="text"
-                    defaultValue={defaultValue[index]}
-                    placeholder={exampleValue[index]}
-                    onChange={e => setKeyValue(key, ["asset", e.target.value])}></Input>
-                  <div className="text-sm text-gray-600 ml-2 w-48 ">{description[index]}</div>
-                </>
-              }
-              {type[index] == "json" &&
-                <>
-                  <Textarea className="my-2 flex-1 w-48 placeholder:text-gray-500" rows={5} 
-                    defaultValue={defaultValue[index]}
-                    placeholder={exampleValue[index]}
-                    onChange={e => setKeyValue(key, ["json", e.target.value])}></Textarea>
-                  <div className="text-sm text-gray-600 ml-2 w-48 ">{description[index]}</div>
-                </>
-              }
-              {type[index] == "object" &&
-                <>
-                  <Textarea className="my-2 flex-1 w-48 placeholder:text-gray-500" rows={5}
-                    defaultValue={defaultValue[index]}
-                     placeholder={exampleValue[index]}
-                    onChange={e => setKeyValue(key, ["json", e.target.value])}></Textarea>
-                  <div className="text-sm text-gray-600 ml-2 w-48">{description[index]}</div>
-                </>
-              }
-               {type[index] == "any" &&
-                <>
-                  <Textarea className="my-2 flex-1 w-48 placeholder:text-gray-500" rows={5}
-                    defaultValue={defaultValue[index]}
-                    placeholder={exampleValue[index]}
-                    onChange={e => setKeyValue(key, ["json", e.target.value])}></Textarea>
-                  <div className="text-sm text-gray-600 ml-2 w-48">{description[index]}</div>
-                </>
-              }
-              {type[index] == "number" &&
-                <>
-                  <Input className="my-2 flex-1 w-48 placeholder:text-gray-500" type="text"
-                    defaultValue={defaultValue[index]}
-                    placeholder={exampleValue[index]}
-                    onChange={e => setKeyValue(key, ["number", e.target.value])}></Input>
-                  <div className="text-sm text-gray-600 ml-2 w-48">{description[index]}</div>
-                </>
-              }
+              {renderInputComponent(
+                key,
+                type[index],
+                defaultValue[index],
+                exampleValue[index],
+                description[index],
+                requiredKeys?.indexOf(key) !== -1,
+                setKeyValue
+              )}
             </div>
           ))}
           <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
