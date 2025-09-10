@@ -19,6 +19,7 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components
 
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
+import { Spinner } from '@/components/ui/shadcn-io/spinner';
 
 import {
   Pagination,
@@ -60,27 +61,33 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
   const prevPage = (page: number) => {
     setCurrentPage(page)
   }
-
+  console.log(isLoading)
   const venueObj = useStore(useVenue, (x) => x.currentVenue);
   if (!venueObj) return null;
   const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
 
   function fetchAssets(offset, limit) {
     setAssetsMetadata([]);
-    venue?.getAssets().then((assets) => {
-      assets.forEach((asset) => {
-        asset.getMetadata().then((metadata: object) => {
-          if (metadata.operation != undefined) 
-             if(search && search.length>0 ) {
-                  if(metadata?.name?.toLowerCase().indexOf(search.toLowerCase()) != -1)
-                     setAssetsMetadata(prevArray => [...prevArray, new Operation(asset.id, asset.venue, metadata)]);
-              }
-              else {
-                   setAssetsMetadata(prevArray => [...prevArray, new Operation(asset.id, asset.venue, metadata)]);
-              }
+      try {
+        venue?.getAssets().then((assets) => {
+        assets.forEach((asset) => {
+          asset.getMetadata().then((metadata: object) => {
+            if (metadata.operation != undefined) 
+              if(search && search.length>0 ) {
+                    if(metadata?.name?.toLowerCase().indexOf(search.toLowerCase()) != -1)
+                      setAssetsMetadata(prevArray => [...prevArray, new Operation(asset.id, asset.venue, metadata)]);
+                }
+                else {
+                    setAssetsMetadata(prevArray => [...prevArray, new Operation(asset.id, asset.venue, metadata)]);
+                }
+          })
+          setLoading(false)
         })
       })
-    })
+    }
+   catch (error) {
+        console.error('Error fetching data:', error);
+   } 
   }
   
   useEffect(() => {
@@ -90,7 +97,6 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
   useEffect(() => {
     setTotalItems(assetsMetadata.length)
     setTotalPages(Math.ceil(assetsMetadata.length / itemsPerPage))
-    setLoading(false)
   }, [assetsMetadata])
 
   function renderJSONMap(jsonObject: JSON, requiredKeys: string[] = []) {
@@ -140,103 +146,111 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
           <Search />
 
         </div>
-        <div className="text-slate-600 text-xs flex flex-row my-2">Page {currentPage} : Showing {assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of {assetsMetadata.length} </div>
-        <Pagination>
-          <PaginationContent className="flex flex-row-reverse w-full">
-            {currentPage != totalPages && currentPage < totalPages && <PaginationItem>
-              <PaginationNext href="#" onClick={() => nextPage(currentPage + 1)} />
-            </PaginationItem>}
+        {!isLoading && 
+        <>
+          <div className="text-slate-600 text-xs flex flex-row my-2">Page {currentPage} : Showing {assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of {assetsMetadata.length} </div>
+          <Pagination>
+            <PaginationContent className="flex flex-row-reverse w-full">
+              {currentPage != totalPages && currentPage < totalPages && <PaginationItem>
+                <PaginationNext href="#" onClick={() => nextPage(currentPage + 1)} />
+              </PaginationItem>}
 
-            {currentPage != 1 && <PaginationItem>
-              <PaginationPrevious href="#" onClick={() => prevPage(currentPage - 1)} />
-            </PaginationItem>}
-          </PaginationContent>
-        </Pagination>
-
-        <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4">
-          {!isLoading && assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset, index) => (
-            <Sheet key={index} >
-              <Card key={index} className="shadow-md h-full bg-slate-100 flex flex-col rounded-md hover:border-accent hover:border-2 h-48">
-                {/* Fixed-size header */}                
+              {currentPage != 1 && <PaginationItem>
+                <PaginationPrevious href="#" onClick={() => prevPage(currentPage - 1)} />
+              </PaginationItem>}
+            </PaginationContent>
+          </Pagination>
+          <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4">
+            {
+            assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset, index) => (
+              <Sheet key={index} >
+                <Card key={index} className="shadow-md h-full bg-slate-100 flex flex-col rounded-md hover:border-accent hover:border-2 h-48">
+                  {/* Fixed-size header */}                
+                  
+                    <div className="h-14 p-2 flex flex-row items-center border-b bg-slate-50">
+                    <div className="truncate flex-1 mr-2 font-semibold text-sm"
+                    onClick={() => { router.push("/venues/default/operations/" + asset.id) }}>{asset.metadata.name || 'Unnamed Asset'}  
+                      </div>
+                      <Tooltip><TooltipTrigger>
+                        <SheetTrigger asChild>
+                        <InfoIcon size={16}></InfoIcon>
+                        
+                      </SheetTrigger> 
+                      <TooltipContent>Information</TooltipContent>
+                      </TooltipTrigger> 
+                      </Tooltip> 
+                    </div>
+                  <SheetContent className="min-w-lg">
+                    <SheetHeader className="flex flex-col items-center justify-center">
+                      <SheetTitle>{asset.metadata.name}</SheetTitle>
+                      {asset.metadata.description && <SheetDescription>
+                        {asset.metadata.description}
+                      </SheetDescription>}
+                    </SheetHeader>
+                    {asset.metadata.operation?.input?.properties && (
+                      <div className="flex flex-center flex-col mx-4">
+                        <div className="p-2">Inputs</div>
+                        <Separator />
+                        <div className="grid grid-cols-1">{asset.metadata.operation?.input?.properties &&
+                          renderJSONMap(asset.metadata.operation?.input?.properties, asset.metadata.operation?.input?.required)
+                        }
+                        </div>
+                      </div>
+                    )}
+                    {asset.metadata.operation?.output?.properties && (
+                      <div className="flex flex-center flex-col mx-4">
+                        <div className="p-2">Outputs</div>
+                        <Separator />
+                        <div className="grid grid-cols-1">{asset.metadata.operation?.output?.properties &&
+                          renderJSONMap(asset.metadata.operation?.output?.properties)
+                        }
+                        </div>
+                      </div>
+                    )}
+                    <SheetFooter>
+                      <SheetClose asChild>
+                        {asset.id && asset.metadata?.operation?.input && <Button type="submit" onClick={() => { router.push(getOperationPath(asset.id)) }}>Run</Button>}
+                      </SheetClose>
+                    </SheetFooter>
+                  </SheetContent>
                 
-                  <div className="h-14 p-2 flex flex-row items-center border-b bg-slate-50">
-                   <div className="truncate flex-1 mr-2 font-semibold text-sm"
-                   onClick={() => { router.push("/venues/default/operations/" + asset.id) }}>{asset.metadata.name || 'Unnamed Asset'}  
-                    </div>
-                    <Tooltip><TooltipTrigger>
-                      <SheetTrigger asChild>
-                      <InfoIcon size={16}></InfoIcon>
-                      
-                    </SheetTrigger> 
-                    <TooltipContent>Information</TooltipContent>
-                    </TooltipTrigger> 
-                    </Tooltip> 
-                  </div>
-                <SheetContent className="min-w-lg">
-                  <SheetHeader className="flex flex-col items-center justify-center">
-                    <SheetTitle>{asset.metadata.name}</SheetTitle>
-                    {asset.metadata.description && <SheetDescription>
-                      {asset.metadata.description}
-                    </SheetDescription>}
-                  </SheetHeader>
-                  {asset.metadata.operation?.input?.properties && (
-                    <div className="flex flex-center flex-col mx-4">
-                      <div className="p-2">Inputs</div>
-                      <Separator />
-                      <div className="grid grid-cols-1">{asset.metadata.operation?.input?.properties &&
-                        renderJSONMap(asset.metadata.operation?.input?.properties, asset.metadata.operation?.input?.required)
-                      }
-                      </div>
-                    </div>
-                  )}
-                  {asset.metadata.operation?.output?.properties && (
-                    <div className="flex flex-center flex-col mx-4">
-                      <div className="p-2">Outputs</div>
-                      <Separator />
-                      <div className="grid grid-cols-1">{asset.metadata.operation?.output?.properties &&
-                        renderJSONMap(asset.metadata.operation?.output?.properties)
-                      }
-                      </div>
-                    </div>
-                  )}
-                  <SheetFooter>
-                    <SheetClose asChild>
-                      {asset.id && asset.metadata?.operation?.input && <Button type="submit" onClick={() => { router.push(getOperationPath(asset.id)) }}>Run</Button>}
-                    </SheetClose>
-                  </SheetFooter>
-                </SheetContent>
-              
-                 {/* Flexible middle section */}
-              <div className="flex-1 p-2 flex flex-col justify-between" onClick={() => { router.push("/venues/default/operations/" + asset.id) }}>
-                <div className="text-xs text-slate-600 line-clamp-3 mb-2">{asset.metadata.description || 'No description available'}</div>
-              </div>
-               {/* Fixed-size footer */}
-                <div className="p-2 h-12 flex flex-row-reverse items-center justify-between" onClick={() => { router.push("/venues/default/operations/" + asset.id) }}>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <CircleArrowRight color="#6B46C1" onClick={() => { router.push("/venues/default/operations/" + asset.id) }} />
-                    </TooltipTrigger> 
-                    <TooltipContent>View Operation</TooltipContent>
-                    </Tooltip> 
+                  {/* Flexible middle section */}
+                <div className="flex-1 p-2 flex flex-col justify-between" onClick={() => { router.push("/venues/default/operations/" + asset.id) }}>
+                  <div className="text-xs text-slate-600 line-clamp-3 mb-2">{asset.metadata.description || 'No description available'}</div>
                 </div>
-              </Card>
-            </Sheet>
-          ))}
-           
-        </div>
-        <Pagination>
-          <PaginationContent className="flex flex-row-reverse w-full">
-            {currentPage != totalPages && currentPage < totalPages && <PaginationItem>
-              <PaginationNext href="#" onClick={() => nextPage(currentPage + 1)} />
-            </PaginationItem>}
+                {/* Fixed-size footer */}
+                  <div className="p-2 h-12 flex flex-row-reverse items-center justify-between" onClick={() => { router.push("/venues/default/operations/" + asset.id) }}>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <CircleArrowRight color="#6B46C1" onClick={() => { router.push("/venues/default/operations/" + asset.id) }} />
+                      </TooltipTrigger> 
+                      <TooltipContent>View Operation</TooltipContent>
+                      </Tooltip> 
+                  </div>
+                </Card>
+              </Sheet>
+            ))}
+          </div>
+          <Pagination>
+            <PaginationContent className="flex flex-row-reverse w-full">
+              {currentPage != totalPages && currentPage < totalPages && <PaginationItem>
+                <PaginationNext href="#" onClick={() => nextPage(currentPage + 1)} />
+              </PaginationItem>}
 
-            {currentPage != 1 && <PaginationItem>
-              <PaginationPrevious href="#" onClick={() => prevPage(currentPage - 1)} />
-            </PaginationItem>}
-          </PaginationContent>
-        </Pagination>
-
+              {currentPage != 1 && <PaginationItem>
+                <PaginationPrevious href="#" onClick={() => prevPage(currentPage - 1)} />
+              </PaginationItem>}
+            </PaginationContent>
+          </Pagination>
+        </>
+       }
+      {isLoading && 
+                              <div className="flex flex-row items-center justify-center w-full h-100">
+                                <Spinner variant="ellipsis" className="text-primary" size={64}/>
+                              </div>
+                        }
       </div>
+      
     </ContentLayout>
   );
 } 
