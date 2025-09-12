@@ -249,7 +249,7 @@ export const OperationViewer = (props: any) => {
             </div>
           ))}
           <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
-          <div className="flex flex-row space-x-2">{!loading && <Button type="button" className="w-32" onClick={() => invokeOp(assetsMetadata?.id, requiredKeys)}>{buttonText}</Button>}
+          <div className="flex flex-row space-x-2">{!loading && <Button type="button" className="w-32" onClick={() => invokeOp(asset?.id, requiredKeys)}>{buttonText}</Button>}
           {!loading && <Button type="button" className="w-32" onClick={() => resetForm()}>Reset</Button>}
           </div>
 
@@ -266,7 +266,7 @@ export const OperationViewer = (props: any) => {
             placeholder="e.g. Provide input here"></Textarea>
 
           <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
-           <div className="flex flex-row space-x-2">{!loading && <Button type="button" className="w-32" onClick={() => invokeOp(assetsMetadata?.id, requiredKeys)}>{buttonText}</Button>}
+           <div className="flex flex-row space-x-2">{!loading && <Button type="button" className="w-32" onClick={() => invokeOp(asset?.id, requiredKeys)}>{buttonText}</Button>}
           {!loading && <Button type="button" className="w-32" onClick={() => resetForm()}>Reset</Button>}
           </div>
           {loading && <Button type="button" className="w-32" disabled>Please wait ...</Button>}
