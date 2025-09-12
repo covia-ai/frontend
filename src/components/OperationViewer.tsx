@@ -283,7 +283,7 @@ export const OperationViewer = (props: any) => {
         {assetNotFound && (
           <div className="text-center p-8">
             <h2 className="text-xl font-semibold text-gray-800 mb-2">Asset Not Found</h2>
-            <p className="text-gray-600">The asset ID "{props.assetId}" does not exist on this venue.</p>
+            <p className="text-gray-600">The asset ID &quot;{props.assetId}&quot; does not exist on this venue.</p>
           </div>
         )}
         
