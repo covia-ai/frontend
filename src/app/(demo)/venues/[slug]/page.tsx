@@ -17,7 +17,8 @@ import {
   ExternalLink,
   Link as LinkIcon,
   Fingerprint,
-  Copy
+  Copy,
+  FolderUpIcon
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useVenues } from "@/hooks/use-venues";
@@ -38,20 +39,38 @@ export default function VenuePage({ params }: VenuePageProps) {
   const { slug } = params;
   const { venues } = useVenues();
   const { currentVenue, setCurrentVenue } = useVenue();
-  const [venue, setVenue] = useState<Venue | null>(null);
-
+  const [ venue, setVenue] = useState<Venue | null>(null);
+  const [ venueDID, setVenueDID] = useState("");
+  const [ venueMCPUrl, setVenueMCPURL] = useState("Not Found")
 
   useEffect(() => {
     // Find the venue by slug
     const foundVenue = venues.find(v => v.venueId === slug);
+    console.log(foundVenue)
     if (foundVenue) {
       setVenue(foundVenue);
+      setVenueDID(foundVenue.getDID())
       // Don't automatically set as current venue - only when user clicks "Make Default"
+      
     }
   }, [slug, venues]);
 
-  const isCurrentVenue = currentVenue?.venueId === venue?.venueId;
+    useEffect(() => {
+       const fetchMCP = async () => {
+          const response = await fetch(venue?.baseUrl+"/.well-known/mcp");
+          const body = await response.json();
+          setVenueMCPURL(body?.server_url)
+      }
+      const fetchDID = async () => {
+          const response = await fetch(venue?.baseUrl+"/.well-known/did.json");
+          const body = await response.json();
+          setVenueDID(body?.id)
+      }
+      fetchDID();
+      fetchMCP();
+  }, [venue]);
 
+  const isCurrentVenue = currentVenue?.venueId === venue?.venueId;
   if (!venue) {
     return (
       <ContentLayout title="Venue Not Found">
@@ -146,11 +165,11 @@ export default function VenuePage({ params }: VenuePageProps) {
                   <p className="text-sm text-muted-foreground flex flex-row space-x-2">Venue DID
                  <Copy
                     size={12}
-                    onClick={(e) => copyDataToClipBoard(venue.getDID(), "Venue DID copied to clipboard")}
+                    onClick={(e) => copyDataToClipBoard(venueDID, "Venue DID copied to clipboard")}
                     className="cursor-pointer hover:text-pink-400"></Copy>
                     </p>
                   <p className="font-mono text-sm bg-gray-100 p-2 rounded break-all">
-                    {venue.getDID()}
+                    {venueDID}
                   </p>
                 </div>
               </div>
@@ -178,13 +197,13 @@ export default function VenuePage({ params }: VenuePageProps) {
                   <Globe size={20} className="text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground flex flex-row space-x-2">Base URL <Copy
+                  <p className="text-sm text-muted-foreground flex flex-row space-x-2">MCP URL <Copy
                     size={12}
-                    onClick={(e) => copyDataToClipBoard(venue.baseUrl, "Base URL copied to clipboard")}
+                    onClick={(e) => copyDataToClipBoard(venueMCPUrl, "MCP URL copied to clipboard")}
                     className="cursor-pointer hover:text-pink-400"></Copy>
                     </p>
                   <p className="font-mono text-sm bg-gray-100 p-2 rounded break-all">
-                    {venue.baseUrl}
+                    {venueMCPUrl}
                   </p>
                 </div>
               </div>
@@ -194,7 +213,7 @@ export default function VenuePage({ params }: VenuePageProps) {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="p-4">
+          <Card className="p-4 pointer-event-none">
             <div className="flex items-center space-x-3">
               <div className="bg-blue-100 p-2 rounded-lg">
                 <Database size={20} className="text-blue-600" />
