@@ -135,7 +135,7 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
     if (venueSlug) {
       return `/venues/${venueSlug}/operations/${assetId}`;
     }
-    return `/venues/default/operations/${assetId}`;
+    return `/venues/operations/${assetId}`;
   };
 
   return (
@@ -169,7 +169,7 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
                   
                     <div className="h-14 p-2 flex flex-row items-center border-b bg-slate-50">
                     <div className="truncate flex-1 mr-2 font-semibold text-sm"
-                    onClick={() => { router.push("/venues/default/operations/" + asset.id) }}>{asset.metadata.name || 'Unnamed Asset'}  
+                    onClick={() => { router.push("/venues/"+venue.venueId+"/operations/" + asset.id) }}>{asset.metadata.name || 'Unnamed Asset'}  
                       </div>
                       <Tooltip><TooltipTrigger>
                         <SheetTrigger asChild>
@@ -215,14 +215,14 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
                   </SheetContent>
                 
                   {/* Flexible middle section */}
-                <div className="flex-1 p-2 flex flex-col justify-between" onClick={() => { router.push("/venues/default/operations/" + asset.id) }}>
+                <div className="flex-1 p-2 flex flex-col justify-between" onClick={() => { router.push("/venues/"+venue.venueId+"/operations/" + asset.id) }}>
                   <div className="text-xs text-slate-600 line-clamp-3 mb-2">{asset.metadata.description || 'No description available'}</div>
                 </div>
                 {/* Fixed-size footer */}
-                  <div className="p-2 h-12 flex flex-row-reverse items-center justify-between" onClick={() => { router.push("/venues/default/operations/" + asset.id) }}>
+                  <div className="p-2 h-12 flex flex-row-reverse items-center justify-between" onClick={() => { router.push("/venues/"+venue.venueId+"/operations/" + asset.id) }}>
                     <Tooltip>
                       <TooltipTrigger>
-                        <CircleArrowRight color="#6B46C1" onClick={() => { router.push("/venues/default/operations/" + asset.id) }} />
+                        <CircleArrowRight color="#6B46C1" onClick={() => { router.push("/venues/"+venue.venueId+"/operations/" + asset.id) }} />
                       </TooltipTrigger> 
                       <TooltipContent>View Operation</TooltipContent>
                       </Tooltip> 

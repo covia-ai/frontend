@@ -115,7 +115,7 @@ export const ExecutionViewer = (props: any) => {
                 keys = Object.keys(executionData?.output || {});
             }
             if (inOutType == "asset")
-                assetLink = window.location.href + "/venues/default/assets/" + assetsMetadata?.id;
+                assetLink = window.location.href + "/venues/"+venue.venueId+"/assets/" + assetsMetadata?.id;
 
             // render function for each key within the input or output like "prompt" or "image"
             const renderContent = (key: string) => {

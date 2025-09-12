@@ -154,7 +154,7 @@ export default function AssetPage() {
                 {/* Fixed-size header */}
                 <div className="h-14 p-2 flex flex-row items-center border-b bg-slate-50">
                   <div className="truncate flex-1 mr-2 font-semibold text-sm"
-                  onClick={() => { router.push("/venues/default/assets/" + asset.id) }}>{asset.metadata.name || 'Unnamed Asset'}</div>
+                  onClick={() => { router.push("/venues/"+venue.venueId+"/assets/" + asset.id) }}>{asset.metadata.name || 'Unnamed Asset'}</div>
                   <Dialog>
                     <DialogTrigger>
                       <Tooltip>
@@ -195,20 +195,20 @@ export default function AssetPage() {
                 </div>
 
                 {/* Flexible middle section */}
-                <div className="flex-1 p-2 flex flex-col justify-between" onClick={() => { router.push("/venues/default/assets/" + asset.id) }}>
+                <div className="flex-1 p-2 flex flex-col justify-between" onClick={() => { router.push("/venues/"+venue.venueId+"/assets/" + asset.id) }}>
                   <div className="text-xs text-slate-600 line-clamp-3 mb-2">{asset.metadata.description || 'No description available'}</div>
 
 
                 </div>
                 {/* Fixed-size footer */}
-                <div className="p-2 h-12 flex flex-row items-center justify-between" onClick={() => { router.push("/venues/default/assets/" + asset.id) }}>
+                <div className="p-2 h-12 flex flex-row items-center justify-between" onClick={() => { router.push("/venues/"+venue.venueId+"/assets/" + asset.id) }}>
                   <div className="flex flex-row space-x-2">
                     {asset.metadata?.keywords?.map((keyword, index) => (
                       index < 2 && <Badge variant="default" className="border bg-secondary text-white text-xs" key={index}>{keyword}</Badge>
                     ))}
                   </div>
                   <Tooltip>
-                        <TooltipTrigger>  <CircleArrowRight color="#6B46C1" onClick={() => { router.push("/venues/default/assets/" + asset.id) }} /></TooltipTrigger>
+                        <TooltipTrigger>  <CircleArrowRight color="#6B46C1" onClick={() => { router.push("/venues/"+venue.venueId+"/assets/" + asset.id) }} /></TooltipTrigger>
                         <TooltipContent>View Asset</TooltipContent>
                         </Tooltip>
                 

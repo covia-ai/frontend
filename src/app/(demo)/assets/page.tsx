@@ -151,7 +151,7 @@ export default function AssetPage() {
               {/* Fixed-size header */}
               <div className="h-14 p-2 flex flex-row items-center border-b bg-slate-50">
                 <div className="truncate flex-1 mr-2 font-semibold text-sm"
-                onClick={() => { router.push("/venues/default/assets/" + asset.id) }}>{asset.metadata.name || 'Unnamed Asset'}</div>
+                onClick={() => { router.push("/venues/"+venue.venueId+"/assets/" + asset.id) }}>{asset.metadata.name || 'Unnamed Asset'}</div>
                 <Dialog>
                   <DialogTrigger><CopyIcon size={16}></CopyIcon></DialogTrigger>
                   <DialogContent className="h-11/12 min-w-10/12 ">
@@ -198,7 +198,7 @@ export default function AssetPage() {
                     index < 2 && <Badge variant="default" className="border bg-secondary text-white text-xs" key={index}>{keyword}</Badge>
                   ))}
                 </div>
-                <CircleArrowRight color="#6B46C1" onClick={() => { router.push("/venues/default/assets/" + asset.id) }} />
+                <CircleArrowRight color="#6B46C1" onClick={() => { router.push("/venues/assets/" + asset.id) }} />
               </div>
             </Card>
 
