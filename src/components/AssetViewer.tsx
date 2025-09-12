@@ -27,7 +27,7 @@ export function AssetViewer(props: AssetViewerProps) {
 
   return (
     <>
-      <SmartBreadcrumb />
+      <SmartBreadcrumb assetName={asset?.metadata?.name} />
       {asset && (
         <div className="flex flex-col w-full items-center justify-center">
           <AssetHeader asset={asset} />

@@ -19,11 +19,12 @@ import { Asset } from "@/lib/covia";
 import { usePathname } from "next/navigation";
 
 export const OperationViewer = (props: any) => {
-  const [assetsMetadata, setAssetsMetadata] = useState<Asset>();
+  const [asset, setAsset] = useState<Asset>();
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [buttonText, setButtonText] = useState("Run");
   const [valueMap, setValueMap] = useState(new Map());
+  const [assetNotFound, setAssetNotFound] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
@@ -35,10 +36,19 @@ export const OperationViewer = (props: any) => {
         }, []); // Dependency array
 
   useEffect(() => {
-    venue.getAsset(props.assetId).then((asset: Asset) => {
-      setAssetsMetadata(asset);
-
-    })
+    setAssetNotFound(false);
+    setErrorMessage("");
+    venue.getAsset(props.assetId)
+      .then((asset: Asset) => {
+        setAsset(asset);
+      })
+      .catch((e: Error) => {
+        if (e?.message && (e.message.includes('404') || e.message.toLowerCase().includes('not found'))) {
+          setAssetNotFound(true);
+          return;
+        }
+        setErrorMessage(e?.message || 'Failed to load asset');
+      });
 
   }, [props.assetId, venue]);
 
@@ -95,8 +105,8 @@ export const OperationViewer = (props: any) => {
           }
           let response = "";
         
-          if (assetsMetadata && assetsMetadata.metadata?.operation) {
-              response = await assetsMetadata.run(inputs);
+          if (asset && asset.metadata?.operation) {
+              response = await asset.run(inputs);
               if (response?.id) {
               router.push("/history/" + response?.id);
             }
@@ -124,9 +134,9 @@ export const OperationViewer = (props: any) => {
           console.log(inputs)
           let response = "";
            try {
-            if (assetsMetadata && assetsMetadata.metadata?.operation) {
+            if (asset && asset.metadata?.operation) {
                 setLoading(true)
-                response = await assetsMetadata.run(inputs);
+                response = await asset.run(inputs);
                 if (response?.id) {
                 router.push("/history/" + response?.id);
                }
@@ -141,20 +151,82 @@ export const OperationViewer = (props: any) => {
     }
     
   }
-  function renderJSONMap(jsonObject: JSON, requiredKeys: string[]) {
-    if (jsonObject != null && jsonObject != undefined) {
-      const keys = Object.keys(jsonObject);
+  function renderInputComponent(
+    key: string, 
+    type: string, 
+    defaultValue: string, 
+    placeholder: string, 
+    description: string, 
+    isRequired: boolean,
+    setKeyValue: (key: string, value: [string, string]) => void
+  ) {
+    const commonProps = {
+      className: "my-2 flex-1 w-48 placeholder:text-gray-500",
+      defaultValue,
+      placeholder,
+      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const valueType = type === "object" || type === "any" ? "json" : type;
+        setKeyValue(key, [valueType, e.target.value]);
+      }
+    };
+
+    const descriptionElement = (
+      <div className="text-sm text-gray-600 ml-2 w-48">{description}</div>
+    );
+
+    if (type === "string") {
+      return (
+        <>
+          <Input {...commonProps} required={isRequired} type="text" />
+          {descriptionElement}
+        </>
+      );
+    }
+
+    if (type === "asset") {
+      return (
+        <>
+          <Input {...commonProps} type="text" />
+          {descriptionElement}
+        </>
+      );
+    }
+
+    if (type === "number") {
+      return (
+        <>
+          <Input {...commonProps} type="text" />
+          {descriptionElement}
+        </>
+      );
+    }
+
+    if (type === "json" || type === "object" || type === "any") {
+      return (
+        <>
+          <Textarea {...commonProps} rows={5} />
+          {descriptionElement}
+        </>
+      );
+    }
+
+    return null;
+  }
+
+  function renderInputFields(operation: JSON, requiredKeys: string[]) {
+    if (operation != null && operation != undefined) {
+      const keys = Object.keys(operation);
       const type = new Array<string>();
       const description = new Array<string>();
       const defaultValue = new Array<string>();
       const exampleValue = new Array<string>();
 
       keys.map((key, index) => {
-        const jsonValue = jsonObject[key];
+        const jsonValue = operation[key];
         type[index] = jsonValue.type;
         description[index] = jsonValue.description;
         defaultValue[index] = jsonValue.default || "";
-        exampleValue[index] = jsonValue.examples || "";
+        exampleValue[index] = jsonValue.examples ? `e.g. ${Array.isArray(jsonValue.examples) ? jsonValue.examples[0] : jsonValue.examples}` : "";
       });
       return (
         <div className="flex flex-col w-11/12 space-x-2 my-2 items-center justify-center">
@@ -165,63 +237,15 @@ export const OperationViewer = (props: any) => {
                 <Label>{key} </Label>
                 {requiredKeys != undefined && requiredKeys?.indexOf(key) != -1 && <span className="text-red-400">*</span>}
               </div>
-              {type[index] == "string" && (
-                <>
-                  <Input className="my-2 flex-1 w-48"
-                    required={true}
-                    defaultValue={defaultValue[index]}
-                    placeholder={exampleValue[index]}
-                    onChange={e => setKeyValue(key, ["string", e.target.value])}
-                    type="text"></Input>
-                  <div className="text-sm text-gray-600 ml-2 w-48 ">{description[index]}</div>
-                </>
-              )
-              }
-              {type[index] == "asset" &&
-                <>
-                  <Input className="my-2 flex-1 w-48" type="text"
-                    defaultValue={defaultValue[index]}
-                    placeholder={exampleValue[index]}
-                    onChange={e => setKeyValue(key, ["asset", e.target.value])}></Input>
-                  <div className="text-sm text-gray-600 ml-2 w-48 ">{description[index]}</div>
-                </>
-              }
-              {type[index] == "json" &&
-                <>
-                  <Textarea className="my-2 flex-1 w-48 " rows={5} 
-                    defaultValue={defaultValue[index]}
-                    placeholder={exampleValue[index]}
-                    onChange={e => setKeyValue(key, ["json", e.target.value])}></Textarea>
-                  <div className="text-sm text-gray-600 ml-2 w-48 ">{description[index]}</div>
-                </>
-              }
-              {type[index] == "object" &&
-                <>
-                  <Textarea className="my-2 flex-1 w-48" rows={5}
-                    defaultValue={defaultValue[index]}
-                     placeholder={exampleValue[index]}
-                    onChange={e => setKeyValue(key, ["json", e.target.value])}></Textarea>
-                  <div className="text-sm text-gray-600 ml-2 w-48">{description[index]}</div>
-                </>
-              }
-               {type[index] == "any" &&
-                <>
-                  <Textarea className="my-2 flex-1 w-48" rows={5}
-                    defaultValue={defaultValue[index]}
-                    placeholder={exampleValue[index]}
-                    onChange={e => setKeyValue(key, ["json", e.target.value])}></Textarea>
-                  <div className="text-sm text-gray-600 ml-2 w-48">{description[index]}</div>
-                </>
-              }
-              {type[index] == "number" &&
-                <>
-                  <Input className="my-2 flex-1 w-48 " type="text"
-                    defaultValue={defaultValue[index]}
-                    placeholder={exampleValue[index]}
-                    onChange={e => setKeyValue(key, ["number", e.target.value])}></Input>
-                  <div className="text-sm text-gray-600 ml-2 w-48">{description[index]}</div>
-                </>
-              }
+              {renderInputComponent(
+                key,
+                type[index],
+                defaultValue[index],
+                exampleValue[index],
+                description[index],
+                requiredKeys?.indexOf(key) !== -1,
+                setKeyValue
+              )}
             </div>
           ))}
           <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
@@ -237,9 +261,9 @@ export const OperationViewer = (props: any) => {
       return (
         <div className="flex flex-col items-center justify-center w-full space-x-2 my-2">
 
-          <Textarea className="my-2 flex-1" rows={5} cols={200}
+          <Textarea className="my-2 flex-1 placeholder:text-gray-500" rows={5} cols={200}
             onChange={e => setKeyValue("none",["any",e.target.value])}
-            placeholder="Provide input here"></Textarea>
+            placeholder="e.g. Provide input here"></Textarea>
 
           <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
            <div className="flex flex-row space-x-2">{!loading && <Button type="button" className="w-32" onClick={() => invokeOp(assetsMetadata?.id, requiredKeys)}>{buttonText}</Button>}
@@ -253,19 +277,25 @@ export const OperationViewer = (props: any) => {
 
   return (
     <>
-      <SmartBreadcrumb />
+      <SmartBreadcrumb assetName={asset?.metadata?.name} />
 
       <div className="flex flex-col w-full items-center justify-center">
+        {assetNotFound && (
+          <div className="text-center p-8">
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">Asset Not Found</h2>
+            <p className="text-gray-600">The asset ID "{props.assetId}" does not exist on this venue.</p>
+          </div>
+        )}
         
-        {assetsMetadata && <AssetHeader asset={assetsMetadata} />}
-        {assetsMetadata && <MetadataViewer asset={assetsMetadata} />}
-        {assetsMetadata?.metadata?.operation && (
+        {!assetNotFound && asset && <AssetHeader asset={asset} />}
+        {!assetNotFound && asset && <MetadataViewer asset={asset} />}
+        {!assetNotFound && asset?.metadata?.operation && (
           <>
-            {renderJSONMap(assetsMetadata?.metadata?.operation?.input?.properties, assetsMetadata?.metadata?.operation?.input?.required)}
-            {assetsMetadata?.metadata?.operation?.steps && <DiagramViewer metadata={assetsMetadata.metadata}></DiagramViewer>}
+            {renderInputFields(asset?.metadata?.operation?.input?.properties, asset?.metadata?.operation?.input?.required)}
+            {asset?.metadata?.operation?.steps && <DiagramViewer metadata={asset.metadata}></DiagramViewer>}
           </>
         )}
-        {!assetsMetadata?.metadata?.operation && (
+        {!assetNotFound && asset && !asset?.metadata?.operation && (
           <div className="text-center p-4">
             <p className="text-red-500">This asset is not an operation and cannot be executed.</p>
           </div>
