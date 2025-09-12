@@ -15,7 +15,11 @@ interface BreadcrumbItem {
   isCurrent?: boolean;
 }
 
-export function SmartBreadcrumb() {
+interface SmartBreadcrumbProps {
+  assetName?: string;
+}
+
+export function SmartBreadcrumb({ assetName }: SmartBreadcrumbProps = {}) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -41,18 +45,29 @@ export function SmartBreadcrumb() {
         });
       } else {
         // For regular segments, capitalize and format
-        const label = getCustomLabel(segment, currentPath) || segment
+        let label = getCustomLabel(segment, currentPath) || segment
           .replace(/-/g, ' ')
           .replace(/\b\w/g, l => l.toUpperCase());
         
-                 breadcrumbs.push({
-           label,
-           href: currentPath,
-         });
+        // If this is the last segment and we have an asset name, use it instead
+        if (index === segments.length - 1 && assetName && isAssetSegment(segment)) {
+          label = assetName;
+        }
+        
+        breadcrumbs.push({
+          label,
+          href: currentPath,
+        });
       }
     });
 
     return breadcrumbs;
+  };
+
+  // Check if a segment represents an asset (not a known route)
+  const isAssetSegment = (segment: string): boolean => {
+    const knownRoutes = ['demo', 'venues', 'assets', 'operations', 'history', 'learning', 'workspace', 'myvenues', 'myassets', 'signup', 'privacypolicy'];
+    return !knownRoutes.includes(segment) && !segment.startsWith('[') && !segment.endsWith(']');
   };
 
   // Custom label mapping for better UX

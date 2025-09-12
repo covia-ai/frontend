@@ -74,14 +74,13 @@ export class Venue implements VenueInterface {
    * @returns {Promise<Asset>}
    */
   async createAsset(assetData: any): Promise<Asset> {
-    const response = await fetchWithError<any>(`${this.baseUrl}/api/v1/assets/`, {
+    return fetchWithError<any>(`${this.baseUrl}/api/v1/assets/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(assetData),
-    });
-    return this.getAsset(response);
+    }).then(response=>{return this.getAsset(response)});
   }
 
   /**
@@ -99,16 +98,18 @@ export class Venue implements VenueInterface {
         return new DataAsset(assetId, this, cachedData);
       }
     } else {
-      const data = await fetchWithError<any>(`${this.baseUrl}/api/v1/assets/${assetId}`);
-      cache.set(assetId, data);
-      
-      // Determine asset type from metadata and return appropriate concrete class
-      // TODO: Do we actually need separate concrete classes?
-      if (data.metadata?.operation) {
-        return new Operation(assetId, this, data);
-      } else {
-        return new DataAsset(assetId, this, data);
-      }
+      return fetchWithError<any>(`${this.baseUrl}/api/v1/assets/${assetId}`)
+        .then(data => {
+          cache.set(assetId, data);
+          
+          // Determine asset type from metadata and return appropriate concrete class
+          // TODO: Do we actually need separate concrete classes?
+          if (data.metadata?.operation) {
+            return new Operation(assetId, this, data);
+          } else {
+            return new DataAsset(assetId, this, data);
+          }
+        });
     }
   }
 
@@ -116,14 +117,13 @@ export class Venue implements VenueInterface {
    * Get all assets
    * @returns {Promise<Asset[]>}
    */
-  async getAssets(): Promise<Asset[]> {
-    const assets: Asset[] = [];
-    const assetIds = await fetchWithError<any>(`${this.baseUrl}/api/v1/assets/`);
-    for (const assetId of assetIds.items) {
-      const asset = await this.getAsset(assetId);
-      assets.push(asset);
-    }
-    return assets;
+  getAssets(): Promise<Asset[]> {
+    return fetchWithError<any>(`${this.baseUrl}/api/v1/assets/`)
+      .then(assetIds => {
+        // Fetch all assets in parallel
+        const assetPromises = assetIds.items.map((assetId: AssetID) => this.getAsset(assetId));
+        return Promise.all(assetPromises);
+      });
   }
 
   /**

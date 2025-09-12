@@ -12,7 +12,7 @@ export const Search: React.FC = (   ) => {
   const router = useRouter()
   function clearAndSetFilter(value:string)   {
      setSearchValue(value);
-     router.push(pathname+"?search="+value);
+     window.location.href = pathname;
      
   }
   return (
@@ -23,12 +23,12 @@ export const Search: React.FC = (   ) => {
           placeholder="Type keyword to search..."
           className="w-full pl-10"
           value={searchValue}
-          disabled
           onChange= {(e) => setSearchValue(e.target.value)}
         />
         <div className="flex flex-row items-center">
-          <MagnifyingGlassIcon className=" relative ml-4 right-10 pointer-events-none"   onClick={() => {router.push(pathname+"?search="+searchValue)}}/>
-          {searchValue && <Button  onClick={() => {clearAndSetFilter("")}}>Clear</Button>}
+          <MagnifyingGlassIcon className=" relative ml-4 right-10 "   onClick={() => {
+            window.location.href = pathname+"?search="+searchValue}}/>
+          <Button  onClick={() => {clearAndSetFilter("")}}>Clear</Button>
         </div>
        
       </div>

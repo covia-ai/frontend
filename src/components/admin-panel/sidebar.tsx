@@ -43,7 +43,12 @@ export function Sidebar() {
               )}
             >
 
-              <Image src="/covia.ai_dark_blue.png" width={100} height={0} alt="Covia"></Image>
+              <Link href="https://www.covia.ai">
+               <div className="flex flex-row items-center justify-center">
+                <Image src="/Covia_logo_icon_transparent.png" width={25} height={0} alt="covia"></Image>
+                <Image src="/covia.ai_dark_blue.png" width={100} height={0} alt="Covia" ></Image>
+              </div>
+              </Link>
 
             </h1>
           </Link>
