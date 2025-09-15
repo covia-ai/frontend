@@ -26,16 +26,14 @@ if(process.env.NEXT_PUBLIC_IS_ENV_PROD == "true") {
       venueId: "test-venue"
     })
  ];
- // Set names for the default venues
-defaultVenues[0].name = "Venue 1";
-defaultVenues[0].metadata.description = "Covia Venue 1";
-defaultVenues[1].name = "Venue 2";
-defaultVenues[1].metadata.description = "Covia Venue 2";
-defaultVenues[2].name = "Test Venue";
-defaultVenues[2].metadata.description = "Test Covia Venue ";
-
-}
-else {
+  // Set names for the default venues
+  defaultVenues[0].name = "Venue 1";
+  defaultVenues[0].metadata.description = "Covia Venue 1";
+  defaultVenues[1].name = "Venue 2";
+  defaultVenues[1].metadata.description = "Covia Venue 2";
+  defaultVenues[2].name = "Test Venue";
+  defaultVenues[2].metadata.description = "Test Covia Venue ";
+} else {
   defaultVenues = [
    new Venue({
       baseUrl: "https://venue-1.covia.ai",
@@ -48,6 +46,10 @@ else {
     new Venue({
       baseUrl: "https://venue-test.covia.ai",
       venueId: "test-venue"
+    }),
+    new Venue({
+      baseUrl: "http://localhost:8080",
+      venueId: "local-venue"
     })
  ];
  // Set names for the default venues
@@ -57,6 +59,8 @@ else {
   defaultVenues[1].metadata.description = "Covia Venue 2";
   defaultVenues[2].name = "Test Venue";
   defaultVenues[2].metadata.description = "Test Covia Venue ";
+  defaultVenues[3].name = "Local Venue";
+  defaultVenues[3].metadata.description = "Local Venue ";
 
 }
 
@@ -81,7 +85,7 @@ export const useVenues = create(
         set((state) => ({
           venues: state.venues.map(venue => 
             venue.venueId === venueId 
-              ? { ...venue, ...updates }
+              ? Object.assign(venue, updates)
               : venue
           )
         }));

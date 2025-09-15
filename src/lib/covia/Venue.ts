@@ -4,7 +4,11 @@ import { Operation } from './Operation';
 import { DataAsset } from './DataAsset';
 import { fetchWithError } from './Utils';
 import { CredentialsHTTP } from './Credentials';
+import { Resolver } from 'did-resolver'
+import { getResolver } from 'web-did-resolver'
 
+const webResolver = getResolver()
+const resolver = new Resolver(webResolver)
 
 // Cache for storing asset data
 const cache = new Map<AssetID, any>();
@@ -26,9 +30,9 @@ export class Venue implements VenueInterface {
    * Static method to connect to a venue
    * @param venueId - Can be a HTTP base URL, DNS name, or existing Venue instance
    * @param credentials - Optional credentials for venue authentication
-   * @returns {Venue} A new Venue instance configured appropriately
+   * @returns {Promise<Venue>} A new Venue instance configured appropriately
    */
-  static connect(venueId: string | Venue, credentials?: CredentialsHTTP): Venue {
+  static async connect(venueId: string | Venue, credentials?: CredentialsHTTP): Promise<Venue> {
 
     if (venueId instanceof Venue) {
       // If it's already a Venue instance, return a new instance with the same configuration
@@ -44,7 +48,7 @@ export class Venue implements VenueInterface {
       let venueIdStr: string;
 
       // Check if it's a valid HTTP/HTTPS URL
-      if (venueId.startsWith('http://') || venueId.startsWith('https://')) {
+      if (venueId.startsWith('http:') || venueId.startsWith('https:')) {
         baseUrl = venueId;
         // Extract venue ID from URL (could be domain name or path)
         try {
@@ -53,6 +57,18 @@ export class Venue implements VenueInterface {
         } catch {
           venueIdStr = 'default';
         }
+      } else if (venueId.startsWith('did:web:')) {
+        // Resolve the DID document
+        const didDoc = await resolver.resolve(venueId);
+        if (!didDoc.didDocument) {
+          throw new CoviaError('Invalid DID document');
+        }
+        const endpoint = didDoc.didDocument.service?.find(service => service.type === 'Covia.API.v1')?.serviceEndpoint;
+        if (!endpoint) {
+          throw new CoviaError('No endpoint found for DID');
+        }
+        baseUrl = endpoint.toString().replace(/\/api\/v1/, '');
+        venueIdStr = venueId;
       } else {
         // Assume it's a DNS name or venue identifier
         baseUrl = `https://${venueId}`;
@@ -61,6 +77,7 @@ export class Venue implements VenueInterface {
 
       return new Venue({
         baseUrl,
+
         venueId: venueIdStr
       });
     }
