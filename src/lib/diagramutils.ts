@@ -183,7 +183,6 @@ function processSteps(stepIndex, steps, results, nodes, edges, posX, posY) {
 					)
 				}
 				else if (inputData[0] == 'const') {
-					console.log(JSON.stringify(inputs[1]));
 				   nodes.push(
 						{
 							id: (stepIndex + 1) + "c"+inputKey,

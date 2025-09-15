@@ -13,40 +13,53 @@ type VenuesStore = {
 let defaultVenues: Venue[] = [];
 if(process.env.NEXT_PUBLIC_IS_ENV_PROD == "true") {
   defaultVenues = [
+     new Venue({
+      baseUrl: "https://venue-1.covia.ai",
+      venueId: "venue-1"
+    }),
+    new Venue({
+      baseUrl: "https://venue-2.covia.ai",
+      venueId: "venue-2"
+    }),
     new Venue({
       baseUrl: "https://venue-test.covia.ai",
       venueId: "test-venue"
-    }),
-    new Venue({
-      baseUrl: "http://localhost:8080",
-      venueId: "local-venue"
     })
  ];
  // Set names for the default venues
-defaultVenues[0].name = "Test Venue";
-defaultVenues[0].metadata.description = "Test Covia Venue ";
-defaultVenues[1].name = "Local Venue";
-defaultVenues[1].metadata.description = "Local Development Venue";
+defaultVenues[0].name = "Venue 1";
+defaultVenues[0].metadata.description = "Covia Venue 1";
+defaultVenues[1].name = "Venue 2";
+defaultVenues[1].metadata.description = "Covia Venue 2";
+defaultVenues[2].name = "Test Venue";
+defaultVenues[2].metadata.description = "Test Covia Venue ";
+
 }
 else {
   defaultVenues = [
+   new Venue({
+      baseUrl: "https://venue-1.covia.ai",
+      venueId: "venue-1"
+    }),
+    new Venue({
+      baseUrl: "https://venue-2.covia.ai",
+      venueId: "venue-2"
+    }),
     new Venue({
       baseUrl: "https://venue-test.covia.ai",
       venueId: "test-venue"
-    }),
-    new Venue({
-      baseUrl: "http://localhost:8080",
-      venueId: "local-venue"
     })
  ];
  // Set names for the default venues
-defaultVenues[0].name = "Test Venue ";
-defaultVenues[0].metadata.description = "Test Covia Venue";
-defaultVenues[1].name = "Local Venue";
-defaultVenues[1].metadata.description = "Local Development Venue";
+  defaultVenues[0].name = "Venue 1";
+  defaultVenues[0].metadata.description = "Covia Venue 1";
+  defaultVenues[1].name = "Venue 2";
+  defaultVenues[1].metadata.description = "Covia Venue 2";
+  defaultVenues[2].name = "Test Venue";
+  defaultVenues[2].metadata.description = "Test Covia Venue ";
+
 }
 
-console.log(defaultVenues)
 export const useVenues = create(
   persist<VenuesStore>(
     (set, get) => ({

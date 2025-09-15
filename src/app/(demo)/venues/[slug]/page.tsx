@@ -18,7 +18,8 @@ import {
   Link as LinkIcon,
   Fingerprint,
   Copy,
-  FolderUpIcon
+  FolderUpIcon,
+  ActivityIcon
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useVenues } from "@/hooks/use-venues";
@@ -46,7 +47,6 @@ export default function VenuePage({ params }: VenuePageProps) {
   useEffect(() => {
     // Find the venue by slug
     const foundVenue = venues.find(v => v.venueId === slug);
-    console.log(foundVenue)
     if (foundVenue) {
       setVenue(foundVenue);
       setVenueDID(foundVenue.getDID())
@@ -64,7 +64,10 @@ export default function VenuePage({ params }: VenuePageProps) {
       const fetchDID = async () => {
           const response = await fetch(venue?.baseUrl+"/.well-known/did.json");
           const body = await response.json();
-          setVenueDID(body?.id)
+          if(body.verificationMethod[0].id)
+              setVenueDID(body.verificationMethod[0].id)
+            else 
+              setVenueDID(body.id)
       }
       fetchDID();
       fetchMCP();
@@ -212,11 +215,11 @@ export default function VenuePage({ params }: VenuePageProps) {
         </Card>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Card className="p-4 pointer-event-none">
             <div className="flex items-center space-x-3">
-              <div className="bg-blue-100 p-2 rounded-lg">
-                <Database size={20} className="text-blue-600" />
+              <div className="bg-primary-vlight p-2 rounded-lg">
+                <Database size={20} className="text-primary" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Assets</p>
@@ -227,8 +230,8 @@ export default function VenuePage({ params }: VenuePageProps) {
 
           <Card className="p-4">
             <div className="flex items-center space-x-3">
-              <div className="bg-green-100 p-2 rounded-lg">
-                <Settings size={20} className="text-green-600" />
+              <div className="bg-primary-vlight p-2 rounded-lg">
+                <Settings size={20} className="text-primary" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Operations</p>
@@ -239,8 +242,8 @@ export default function VenuePage({ params }: VenuePageProps) {
 
           <Card className="p-4">
             <div className="flex items-center space-x-3">
-              <div className="bg-purple-100 p-2 rounded-lg">
-                <Activity size={20} className="text-purple-600" />
+              <div className="bg-primary-vlight  p-2 rounded-lg">
+                <Activity size={20} className="text-primary" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Runs</p>
@@ -249,7 +252,7 @@ export default function VenuePage({ params }: VenuePageProps) {
             </div>
           </Card>
 
-          <Card className="p-4">
+       {/*   <Card className="p-4">
             <div className="flex items-center space-x-3">
               <div className="bg-orange-100 p-2 rounded-lg">
                 <Users size={20} className="text-orange-600" />
@@ -259,7 +262,7 @@ export default function VenuePage({ params }: VenuePageProps) {
                 <p className="text-2xl font-bold">-</p>
               </div>
             </div>
-          </Card>
+          </Card>*/}
         </div>
 
         <Separator />
@@ -267,12 +270,12 @@ export default function VenuePage({ params }: VenuePageProps) {
         {/* Quick Actions */}
         <div>
           <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer h-48">
               <CardHeader className="flex-1">
                 <div className="flex items-center space-x-3">
-                  <div className="bg-blue-100 p-3 rounded-lg">
-                    <Database size={24} className="text-blue-600" />
+                  <div className="bg-secondary-vlight p-3 rounded-lg">
+                    <Database size={24} className="text-secondary" />
                   </div>
                   <div>
                     <CardTitle>Assets</CardTitle>
@@ -295,8 +298,8 @@ export default function VenuePage({ params }: VenuePageProps) {
             <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer h-48">
               <CardHeader className="flex-1">
                 <div className="flex items-center space-x-3">
-                  <div className="bg-green-100 p-2 rounded-lg">
-                    <Settings size={24} className="text-green-600" />
+                  <div className="bg-secondary-vlight p-2 rounded-lg">
+                    <Settings size={24} className="text-secondary" />
                   </div>
                   <div>
                     <CardTitle>Operations</CardTitle>
@@ -311,6 +314,30 @@ export default function VenuePage({ params }: VenuePageProps) {
                   variant="outline"
                 >
                   View Operations
+                  <ArrowRight size={16} className="ml-2" />
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer h-48">
+              <CardHeader className="flex-1">
+                <div className="flex items-center space-x-3">
+                  <div className="bg-secondary-vlight p-2 rounded-lg">
+                     <Activity size={20} className="text-secondary" />
+                  </div>
+                  <div>
+                    <CardTitle>History</CardTitle>
+                    <p className="text-sm text-muted-foreground">Manage venue history</p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Button 
+                  onClick={() => router.push(`/venues/${slug}/history`)}
+                  className="w-full"
+                  variant="outline"
+                >
+                  View History
                   <ArrowRight size={16} className="ml-2" />
                 </Button>
               </CardContent>

@@ -7,6 +7,7 @@ import { CopyIcon, CircleArrowRight } from "lucide-react";
 import { Venue } from "@/lib/covia";
 import { useRouter } from 'next/navigation';
 import { copyDataToClipBoard } from "@/lib/utils";
+import { useEffect, useState } from "react";
 
 interface VenueCardProps {
   venue: Venue;
@@ -14,6 +15,20 @@ interface VenueCardProps {
 
 export function VenueCard({ venue }: VenueCardProps) {
   const router = useRouter();
+  const [ venueDID, setVenueDID] = useState(venue.getDID());
+
+   useEffect(() => {
+     
+        const fetchDID = async () => {
+            const response = await fetch(venue?.baseUrl+"/.well-known/did.json");
+            const body = await response.json();
+            if(body.verificationMethod[0].id)
+              setVenueDID(body.verificationMethod[0].id)
+            else 
+              setVenueDID(body.id)
+        }
+        fetchDID();
+    }, []);
 
   const handleCardClick = () => {
     router.push(`/venues/${venue.venueId}`);
@@ -55,8 +70,8 @@ export function VenueCard({ venue }: VenueCardProps) {
         <div className="text-xs text-slate-600 line-clamp-3 mb-2">
           {venue.metadata.description || `${venue.name} Covia Venue`}
         </div>
-        <div className="text-xs text-slate-500 font-mono bg-slate-50 p-2 rounded break-all">
-          {venue.getDID()}
+        <div className="text-xs text-slate-500 font-mono bg-slate-50 p-2 rounded break-all line-clamp-1">
+          {venueDID.length> 40 ? (venueDID.substring(0,40)+"....") : (venueDID)}
         </div>
       </div>
 

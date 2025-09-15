@@ -84,7 +84,6 @@ export const OperationViewer = (props: any) => {
                     inputs[key] = JSON.parse(value[1]);
                   }
                   catch(e) {
-                    console.log(key)
                     if(key != "none")
                         throw new Error("Operation input \""+key+"\" expects a valid Json value, please verify before running the operation");
                     else 
@@ -131,7 +130,6 @@ export const OperationViewer = (props: any) => {
           for (const [key, value] of valueMap) {      
                    inputs[key] = value[1];
           }
-          console.log(inputs)
           let response = "";
            try {
             if (asset && asset.metadata?.operation) {
