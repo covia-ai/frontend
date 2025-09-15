@@ -22,10 +22,7 @@ export function VenueCard({ venue }: VenueCardProps) {
         const fetchDID = async () => {
             const response = await fetch(venue?.baseUrl+"/.well-known/did.json");
             const body = await response.json();
-            if(body.verificationMethod[0].id)
-              setVenueDID(body.verificationMethod[0].id)
-            else 
-              setVenueDID(body.id)
+            setVenueDID(body.id);
         }
         fetchDID();
     }, []);
