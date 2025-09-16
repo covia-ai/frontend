@@ -158,17 +158,14 @@ export const OperationViewer = (props: any) => {
     const type = typeMap.get(key) || schema.type || "string";
 
     // Helper function to process a value based on its type
-    const processValue = (value: any) => {
+    const processValue = (value: string) => {
       if (type === "json" || type === "object" || type === "any") {
-        if (typeof value === "string") {
-          try {
-            return JSON.parse(value);
-          } catch(e) {
-            // If parsing fails, return the raw string value
-            return value;
-          }
+        try {
+          return JSON.parse(value);
+        } catch(e) {
+          // If parsing fails, return the raw string value
+          return value;
         }
-        return value;
       } else if (type === "number") {
         return Number(value);
       } else {
