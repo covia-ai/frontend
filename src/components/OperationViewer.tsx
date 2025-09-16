@@ -24,7 +24,7 @@ export const OperationViewer = (props: any) => {
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [buttonText, setButtonText] = useState("Run");
-  const [valueMap, setValueMap] = useState(new Map()); // input values to be passed to the operation
+  const [input, setInput] = useState(new Map()); // input values to be passed to the operation
   const [typeMap, setTypeMap] = useState(new Map()); // user-specified types of the values to be passed to the operation, affects parsing
   const [assetNotFound, setAssetNotFound] = useState(false);
   const router = useRouter();
@@ -69,9 +69,9 @@ export const OperationViewer = (props: any) => {
   }, [props.assetId, venue]);
 
   function setKeyValue(key: any, value: any) {
-    const newMap = new Map(valueMap);
+    const newMap = new Map(input);
     newMap.set(key, value);
-    setValueMap(newMap)
+    setInput(newMap)
   }
 
   function setKeyType(key: any, type: any) {
@@ -91,10 +91,10 @@ export const OperationViewer = (props: any) => {
     if(buttonText == "Run" ) {
       //Check if any inputs are provided by user
       try {
-        if(valueMap ) {    
+        if(input ) {    
           //Check if all required values are provided
           for (let index = 0; index < requiredKeys.length; index++) {
-            if (!valueMap.has(requiredKeys[index])) {
+            if (!input.has(requiredKeys[index])) {
               throw new Error("The input \""+requiredKeys[index]+"\" is expected as per the operation schema. please verify before running the operation");
             }
           }
@@ -103,7 +103,7 @@ export const OperationViewer = (props: any) => {
           let response: any = "";
         
           if (asset && asset.metadata?.operation) {
-              response = await asset.run(valueMap);
+              response = await asset.run(input);
               if (response?.id) {
               router.push("/history/" + response?.id);
             }
@@ -129,7 +129,7 @@ export const OperationViewer = (props: any) => {
            try {
             if (asset && asset.metadata?.operation) {
                 setLoading(true)
-                response = await asset.run(valueMap);
+                response = await asset.run(input);
                 if (response?.id) {
                 router.push("/history/" + response?.id);
                }
@@ -302,7 +302,7 @@ export const OperationViewer = (props: any) => {
               "",
               "e.g. Provide input here",
               "Provide input for the operation",
-              (value) => setValueMap(value),
+              (value) => setInput(value),
               (type) => setKeyType("none", type)
             )}
             {renderDescription("Provide input for the operation")}
