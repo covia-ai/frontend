@@ -27,6 +27,50 @@ export const OperationViewer = (props: any) => {
   const [input, setInput] = useState<Record<string, any>>({}); // input values to be passed to the operation
   const [typeMap, setTypeMap] = useState(new Map()); // user-specified types of the values to be passed to the operation, affects parsing
   const [assetNotFound, setAssetNotFound] = useState(false);
+
+  // Session storage key based on asset ID
+  const getStorageKey = (suffix: string) => `operation_input_${props.assetId}_${suffix}`;
+  
+  // Save input values to session storage
+  const saveToSessionStorage = (inputData: Record<string, any>, typeData: Map<string, any>) => {
+    try {
+      sessionStorage.setItem(getStorageKey('input'), JSON.stringify(inputData));
+      sessionStorage.setItem(getStorageKey('types'), JSON.stringify(Array.from(typeData.entries())));
+    } catch (error) {
+      console.warn('Failed to save to session storage:', error);
+    }
+  };
+
+  // Restore input values from session storage
+  const restoreFromSessionStorage = () => {
+    try {
+      const savedInput = sessionStorage.getItem(getStorageKey('input'));
+      const savedTypes = sessionStorage.getItem(getStorageKey('types'));
+      
+      if (savedInput) {
+        const parsedInput = JSON.parse(savedInput);
+        setInput(parsedInput);
+      }
+      
+      if (savedTypes) {
+        const parsedTypes = new Map(JSON.parse(savedTypes));
+        setTypeMap(parsedTypes);
+      }
+    } catch (error) {
+      console.warn('Failed to restore from session storage:', error);
+    }
+  };
+
+  // Clear session storage
+  const clearSessionStorage = () => {
+    try {
+      sessionStorage.removeItem(getStorageKey('input'));
+      sessionStorage.removeItem(getStorageKey('types'));
+    } catch (error) {
+      console.warn('Failed to clear session storage:', error);
+    }
+  };
+
   const router = useRouter();
   const pathname = usePathname();
   const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
@@ -44,7 +88,10 @@ export const OperationViewer = (props: any) => {
       .then((asset: Asset) => {
         setAsset(asset);
         
-        // Pre-populate defaults into input and types into typeMap
+        // Try to restore from session storage first
+        restoreFromSessionStorage();
+        
+        // If no saved data, pre-populate defaults into input and types into typeMap
         if (asset?.metadata?.operation?.input?.properties) {
           const properties = asset.metadata.operation.input.properties;
           const newInput: Record<string, any> = {};
@@ -60,8 +107,16 @@ export const OperationViewer = (props: any) => {
             }
           });
           
-          setInput(newInput);
-          setTypeMap(newTypeMap);
+          // Only set defaults if no saved data exists
+          const hasSavedInput = sessionStorage.getItem(getStorageKey('input'));
+          const hasSavedTypes = sessionStorage.getItem(getStorageKey('types'));
+          
+          if (!hasSavedInput) {
+            setInput(newInput);
+          }
+          if (!hasSavedTypes) {
+            setTypeMap(newTypeMap);
+          }
         }
       })
       .catch((e: Error) => {
@@ -74,6 +129,13 @@ export const OperationViewer = (props: any) => {
 
   }, [props.assetId, venue]);
 
+  // Save to session storage whenever input changes
+  useEffect(() => {
+    if (Object.keys(input).length > 0) {
+      saveToSessionStorage(input, typeMap);
+    }
+  }, [input, typeMap]);
+
   function setKeyValue(key: any, value: any) {
     setInput(prev => ({ ...prev, [key]: value }));
   }
@@ -85,6 +147,9 @@ export const OperationViewer = (props: any) => {
   }
 
   async function resetForm() {
+    clearSessionStorage();
+    setInput({});
+    setTypeMap(new Map());
     window.location.href=pathname;
   }
 
@@ -156,6 +221,9 @@ export const OperationViewer = (props: any) => {
     const description = schema.description || "";
     const exampleValue = schema.examples ? `e.g. ${Array.isArray(schema.examples) ? schema.examples[0] : schema.examples}` : "";
     const type = typeMap.get(key) || schema.type || "string";
+    
+    // Get current value from input state or use default
+    const currentValue = input[key] !== undefined ? input[key] : defaultValue;
 
     // Helper function to process a value based on its type
     const processValue = (value: string) => {
@@ -175,7 +243,7 @@ export const OperationViewer = (props: any) => {
 
     const commonProps = {
       className: "flex-1 placeholder:text-gray-500",
-      defaultValue,
+      value: currentValue,
       placeholder: exampleValue,
       onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const processedValue = processValue(e.target.value);
@@ -287,7 +355,7 @@ export const OperationViewer = (props: any) => {
             </div>
             {renderInputComponent(
               "none",
-              { type: "any", description: "Provide input for the operation" },
+              { type: "any", description: "Provide input for the operation", default: "" },
               (value) => setInput(value),
               (type) => setKeyType("none", type)
             )}
