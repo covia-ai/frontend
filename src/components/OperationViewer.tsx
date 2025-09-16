@@ -219,6 +219,7 @@ export const OperationViewer = (props: any) => {
     const description = schema.description || "";
     const exampleValue = schema.examples ? `e.g. ${Array.isArray(schema.examples) ? schema.examples[0] : schema.examples}` : "";
     const type = typeMap[key] || schema.type || "string";
+    const isSecret = schema.secret === true;
     
     // Get current value from input state or use default
     const currentValue = input[key] !== undefined ? input[key] : defaultValue;
@@ -243,6 +244,7 @@ export const OperationViewer = (props: any) => {
       className: "flex-1 placeholder:text-gray-500",
       value: currentValue,
       placeholder: exampleValue,
+      type: isSecret ? "password" : undefined,
       onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const processedValue = processValue(e.target.value);
         onValueChange(processedValue);
@@ -268,7 +270,7 @@ export const OperationViewer = (props: any) => {
     if (type === "string") {
       return (
         <div className="flex flex-row space-x-2 items-center">
-          <Input {...commonProps} type="text" />
+          <Input {...commonProps} type={isSecret ? "password" : "text"} />
           {typeSelector}
         </div>
       );
@@ -277,7 +279,7 @@ export const OperationViewer = (props: any) => {
     if (type === "asset") {
       return (
         <div className="flex flex-row space-x-2 items-center">
-          <Input {...commonProps} type="text" />
+          <Input {...commonProps} type={isSecret ? "password" : "text"} />
           {typeSelector}
         </div>
       );
@@ -286,7 +288,7 @@ export const OperationViewer = (props: any) => {
     if (type === "number") {
       return (
         <div className="flex flex-row space-x-2 items-center">
-          <Input {...commonProps} type="text" />
+          <Input {...commonProps} type={isSecret ? "password" : "text"} />
           {typeSelector}
         </div>
       );
@@ -295,7 +297,12 @@ export const OperationViewer = (props: any) => {
     if (type === "json" || type === "object" || type === "any") {
       return (
         <div className="flex flex-row space-x-2 items-center">
-          <Textarea {...commonProps} rows={5} />
+          <Textarea 
+            {...commonProps} 
+            rows={5} 
+            className={`flex-1 placeholder:text-gray-500 ${isSecret ? 'font-mono' : ''}`}
+            style={isSecret ? { fontFamily: 'monospace', letterSpacing: '0.1em' } : undefined}
+          />
           {typeSelector}
         </div>
       );
