@@ -25,17 +25,17 @@ export const OperationViewer = (props: any) => {
   const [loading, setLoading] = useState(false);
   const [buttonText, setButtonText] = useState("Run");
   const [input, setInput] = useState<Record<string, any>>({}); // input values to be passed to the operation
-  const [typeMap, setTypeMap] = useState(new Map()); // user-specified types of the values to be passed to the operation, affects parsing
+  const [typeMap, setTypeMap] = useState<Record<string, string>>({}); // user-specified types of the values to be passed to the operation, affects parsing
   const [assetNotFound, setAssetNotFound] = useState(false);
 
   // Session storage key based on asset ID
   const getStorageKey = (suffix: string) => `operation_input_${props.assetId}_${suffix}`;
   
   // Save input values to session storage
-  const saveToSessionStorage = (inputData: Record<string, any>, typeData: Map<string, any>) => {
+  const saveToSessionStorage = (inputData: Record<string, any>, typeData: Record<string, string>) => {
     try {
       sessionStorage.setItem(getStorageKey('input'), JSON.stringify(inputData));
-      sessionStorage.setItem(getStorageKey('types'), JSON.stringify(Array.from(typeData.entries())));
+      sessionStorage.setItem(getStorageKey('types'), JSON.stringify(typeData));
     } catch (error) {
       console.warn('Failed to save to session storage:', error);
     }
@@ -53,7 +53,7 @@ export const OperationViewer = (props: any) => {
       }
       
       if (savedTypes) {
-        const parsedTypes = new Map(JSON.parse(savedTypes));
+        const parsedTypes = JSON.parse(savedTypes);
         setTypeMap(parsedTypes);
       }
     } catch (error) {
@@ -95,7 +95,7 @@ export const OperationViewer = (props: any) => {
         if (asset?.metadata?.operation?.input?.properties) {
           const properties = asset.metadata.operation.input.properties;
           const newInput: Record<string, any> = {};
-          const newTypeMap = new Map(typeMap);
+          const newTypeMap: Record<string, string> = {};
           
           Object.keys(properties).forEach(key => {
             const property = properties[key];
@@ -103,7 +103,7 @@ export const OperationViewer = (props: any) => {
               newInput[key] = property.default;
             }
             if (property.type !== undefined) {
-              newTypeMap.set(key, property.type);
+              newTypeMap[key] = property.type;
             }
           });
           
@@ -141,15 +141,13 @@ export const OperationViewer = (props: any) => {
   }
 
   function setKeyType(key: any, type: any) {
-    const newMap = new Map(typeMap);
-    newMap.set(key, type);
-    setTypeMap(newMap);
+    setTypeMap(prev => ({ ...prev, [key]: type }));
   }
 
   async function resetForm() {
     clearSessionStorage();
     setInput({});
-    setTypeMap(new Map());
+    setTypeMap({});
     window.location.href=pathname;
   }
 
@@ -220,7 +218,7 @@ export const OperationViewer = (props: any) => {
     const defaultValue = schema.default || "";
     const description = schema.description || "";
     const exampleValue = schema.examples ? `e.g. ${Array.isArray(schema.examples) ? schema.examples[0] : schema.examples}` : "";
-    const type = typeMap.get(key) || schema.type || "string";
+    const type = typeMap[key] || schema.type || "string";
     
     // Get current value from input state or use default
     const currentValue = input[key] !== undefined ? input[key] : defaultValue;
