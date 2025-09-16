@@ -41,6 +41,17 @@ export const OperationViewer = (props: any) => {
     venue.getAsset(props.assetId)
       .then((asset: Asset) => {
         setAsset(asset);
+        
+        // Pre-populate defaults into valueMap
+        if (asset?.metadata?.operation?.input?.properties) {
+          const properties = asset.metadata.operation.input.properties;
+          Object.keys(properties).forEach(key => {
+            const property = properties[key];
+            if (property.default !== undefined) {
+              setKeyValue(key, property.default);
+            }
+          });
+        }
       })
       .catch((e: Error) => {
         if (e?.message && (e.message.includes('404') || e.message.toLowerCase().includes('not found'))) {
@@ -52,19 +63,40 @@ export const OperationViewer = (props: any) => {
 
   }, [props.assetId, venue]);
 
-
-
-  function setKeyValue(key, value) {
+  function setKeyValue(key: any, value: any) {
     const newMap = new Map(valueMap);
-    newMap.set(key,value);
+    newMap.set(key, value);
     setValueMap(newMap)
-
   }
+
   async function resetForm() {
     window.location.href=pathname;
   }
-  async function invokeOp(id, requiredKeys: string[] = []) {
-    const inputs = {};
+
+  async function invokeOp(id: any, requiredKeys: string[] = []) {
+    const inputs: Record<string, any> = {};
+    
+    // Helper function to process a value based on its schema type
+    const processValue = (key: string, value: any) => {
+      const schemaProperty = asset?.metadata?.operation?.input?.properties?.[key];
+      const type = schemaProperty?.type || "string";
+      
+      if (type === "json" || type === "object" || type === "any") {
+        if (typeof value === "string") {
+          try {
+            return JSON.parse(value);
+          } catch(e) {
+            throw new Error("Operation input \""+key+"\" expects a valid Json value, please verify before running the operation");
+          }
+        }
+        return value;
+      } else if (type === "number") {
+        return Number(value);
+      } else {
+        return value;
+      }
+    };
+
     //First attempt , do all validations and inform user of operation inputs
     if(buttonText == "Run" ) {
       //Check if any inputs are provided by user
@@ -75,34 +107,14 @@ export const OperationViewer = (props: any) => {
             if (!valueMap.has(requiredKeys[index])) {
               throw new Error("The input \""+requiredKeys[index]+"\" is expected as per the operation schema. please verify before running the operation");
             }
+          }
           
-          }
-          //Check if inputs are valid as per expected type mainly json 
+          //Process all values from valueMap
           for (const [key, value] of valueMap) {
-                if (value[0] == "json" || value[0] == "object" || value[0] == "any") {
-                  try {
-                    inputs[key] = JSON.parse(value[1]);
-                  }
-                  catch(e) {
-                    if(key != "none")
-                        throw new Error("Operation input \""+key+"\" expects a valid Json value, please verify before running the operation");
-                    else 
-                        throw new Error("Operation input expects a valid Json value, please verify before running the operation");
-                  }
-                }
-                else if (value[0] == "number") {
-                  try {
-                    inputs[key] = Number(value[1]);
-                  }
-                  catch(e) {
-                    throw new Error("Key "+key+" expects a number, please verify before running the operation");
-                  }
-
-                }
-                else
-                  inputs[key] = value[1];
+            inputs[key] = processValue(key, value);
           }
-          let response = "";
+          
+          let response: any = "";
         
           if (asset && asset.metadata?.operation) {
               response = await asset.run(inputs);
@@ -118,7 +130,7 @@ export const OperationViewer = (props: any) => {
           throw Error("No inputs provided for the operation, please verify before running the operation");
         }    
       }
-      catch (e: Error) {
+      catch (e: any) {
             console.log(e)
             setErrorMessage(e.message);
             setButtonText("Run anyway?")
@@ -128,9 +140,9 @@ export const OperationViewer = (props: any) => {
     //Second attempt, we do not do any validation just run the operations
     else {
           for (const [key, value] of valueMap) {      
-                   inputs[key] = value[1];
+                   inputs[key] = processValue(key, value);
           }
-          let response = "";
+          let response: any = "";
            try {
             if (asset && asset.metadata?.operation) {
                 setLoading(true)
@@ -142,10 +154,10 @@ export const OperationViewer = (props: any) => {
                throw new Error("This asset is not an operation and cannot be invoked");
             }
           }  
-          catch(e) {
-               setErrorMessage(e.message)
-               setLoading(false);
-          }
+           catch(e: any) {
+                setErrorMessage(e.message)
+                setLoading(false);
+           }
     }
     
   }
@@ -156,15 +168,14 @@ export const OperationViewer = (props: any) => {
     placeholder: string, 
     description: string, 
     isRequired: boolean,
-    setKeyValue: (key: string, value: [string, string]) => void
+    setKeyValue: (key: string, value: any) => void
   ) {
     const commonProps = {
       className: "my-2 flex-1 w-48 placeholder:text-gray-500",
       defaultValue,
       placeholder,
       onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const valueType = type === "object" || type === "any" ? "json" : type;
-        setKeyValue(key, [valueType, e.target.value]);
+        setKeyValue(key, e.target.value);
       }
     };
 
@@ -220,7 +231,7 @@ export const OperationViewer = (props: any) => {
       const exampleValue = new Array<string>();
 
       keys.map((key, index) => {
-        const jsonValue = operation[key];
+        const jsonValue = (operation as any)[key];
         type[index] = jsonValue.type;
         description[index] = jsonValue.description;
         defaultValue[index] = jsonValue.default || "";
@@ -260,7 +271,7 @@ export const OperationViewer = (props: any) => {
         <div className="flex flex-col items-center justify-center w-full space-x-2 my-2">
 
           <Textarea className="my-2 flex-1 placeholder:text-gray-500" rows={5} cols={200}
-            onChange={e => setKeyValue("none",["any",e.target.value])}
+            onChange={e => setKeyValue("none", e.target.value)}
             placeholder="e.g. Provide input here"></Textarea>
 
           <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
