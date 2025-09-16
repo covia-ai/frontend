@@ -24,7 +24,7 @@ export const OperationViewer = (props: any) => {
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [buttonText, setButtonText] = useState("Run");
-  const [input, setInput] = useState(new Map()); // input values to be passed to the operation
+  const [input, setInput] = useState<Record<string, any>>({}); // input values to be passed to the operation
   const [typeMap, setTypeMap] = useState(new Map()); // user-specified types of the values to be passed to the operation, affects parsing
   const [assetNotFound, setAssetNotFound] = useState(false);
   const router = useRouter();
@@ -44,18 +44,24 @@ export const OperationViewer = (props: any) => {
       .then((asset: Asset) => {
         setAsset(asset);
         
-        // Pre-populate defaults into valueMap and types into typeMap
+        // Pre-populate defaults into input and types into typeMap
         if (asset?.metadata?.operation?.input?.properties) {
           const properties = asset.metadata.operation.input.properties;
+          const newInput: Record<string, any> = {};
+          const newTypeMap = new Map(typeMap);
+          
           Object.keys(properties).forEach(key => {
             const property = properties[key];
             if (property.default !== undefined) {
-              setKeyValue(key, property.default);
+              newInput[key] = property.default;
             }
             if (property.type !== undefined) {
-              setKeyType(key, property.type);
+              newTypeMap.set(key, property.type);
             }
           });
+          
+          setInput(newInput);
+          setTypeMap(newTypeMap);
         }
       })
       .catch((e: Error) => {
@@ -69,15 +75,13 @@ export const OperationViewer = (props: any) => {
   }, [props.assetId, venue]);
 
   function setKeyValue(key: any, value: any) {
-    const newMap = new Map(input);
-    newMap.set(key, value);
-    setInput(newMap)
+    setInput(prev => ({ ...prev, [key]: value }));
   }
 
   function setKeyType(key: any, type: any) {
     const newMap = new Map(typeMap);
     newMap.set(key, type);
-    setTypeMap(newMap)
+    setTypeMap(newMap);
   }
 
   async function resetForm() {
@@ -85,16 +89,14 @@ export const OperationViewer = (props: any) => {
   }
 
   async function invokeOp(id: any, requiredKeys: string[] = []) {
-    const inputs: Record<string, any> = {};
-
     //First attempt , do all validations and inform user of operation inputs
     if(buttonText == "Run" ) {
       //Check if any inputs are provided by user
       try {
-        if(input ) {    
+        if(input && Object.keys(input).length > 0) {    
           //Check if all required values are provided
           for (let index = 0; index < requiredKeys.length; index++) {
-            if (!input.has(requiredKeys[index])) {
+            if (!(requiredKeys[index] in input)) {
               throw new Error("The input \""+requiredKeys[index]+"\" is expected as per the operation schema. please verify before running the operation");
             }
           }
@@ -145,13 +147,16 @@ export const OperationViewer = (props: any) => {
     
   }
   function renderInputComponent(
-    type: string, 
-    defaultValue: string, 
-    placeholder: string, 
-    description: string, 
+    key: string,
+    schema: any,
     onValueChange: (value: any) => void,
     onTypeChange: (type: any) => void
   ) {
+    const defaultValue = schema.default || "";
+    const description = schema.description || "";
+    const exampleValue = schema.examples ? `e.g. ${Array.isArray(schema.examples) ? schema.examples[0] : schema.examples}` : "";
+    const type = typeMap.get(key) || schema.type || "string";
+
     // Helper function to process a value based on its type
     const processValue = (value: any) => {
       if (type === "json" || type === "object" || type === "any") {
@@ -174,7 +179,7 @@ export const OperationViewer = (props: any) => {
     const commonProps = {
       className: "flex-1 placeholder:text-gray-500",
       defaultValue,
-      placeholder,
+      placeholder: exampleValue,
       onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const processedValue = processValue(e.target.value);
         onValueChange(processedValue);
@@ -247,18 +252,6 @@ export const OperationViewer = (props: any) => {
       const properties = inputSchema.properties;
       const requiredKeys = inputSchema.required || [];
       const keys = Object.keys(properties);
-      const type = new Array<string>();
-      const description = new Array<string>();
-      const defaultValue = new Array<string>();
-      const exampleValue = new Array<string>();
-
-      keys.map((key, index) => {
-        const jsonValue = properties[key];
-        type[index] = jsonValue.type;
-        description[index] = jsonValue.description;
-        defaultValue[index] = jsonValue.default || "";
-        exampleValue[index] = jsonValue.examples ? `e.g. ${Array.isArray(jsonValue.examples) ? jsonValue.examples[0] : jsonValue.examples}` : "";
-      });
       return (
         <div className="w-11/12 my-2">
           <div className="grid grid-cols-[min-content_1fr_1fr] gap-4 items-center">
@@ -269,14 +262,12 @@ export const OperationViewer = (props: any) => {
                   {requiredKeys?.indexOf(key) != -1 && <span className="text-red-400 ml-1">*</span>}
                 </div>
                 {renderInputComponent(
-                  typeMap.get(key) || type[index],
-                  defaultValue[index],
-                  exampleValue[index],
-                  description[index],
+                  key,
+                  properties[key],
                   (value) => setKeyValue(key, value),
                   (type) => setKeyType(key, type)
                 )}
-                {renderDescription(description[index])}
+                {renderDescription(properties[key].description || "")}
               </>
             ))}
           </div>
@@ -298,10 +289,8 @@ export const OperationViewer = (props: any) => {
               <Label className="whitespace-nowrap">Input</Label>
             </div>
             {renderInputComponent(
-              typeMap.get("none") || "any",
-              "",
-              "e.g. Provide input here",
-              "Provide input for the operation",
+              "none",
+              { type: "any", description: "Provide input for the operation" },
               (value) => setInput(value),
               (type) => setKeyType("none", type)
             )}
