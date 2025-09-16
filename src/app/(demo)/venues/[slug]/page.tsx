@@ -69,10 +69,7 @@ export default function VenuePage({ params }: VenuePageProps) {
       const fetchDID = async () => {
           const response = await fetch(venue?.baseUrl+"/.well-known/did.json");
           const body = await response.json();
-          if(body.verificationMethod[0].id)
-              setVenueDID(body.verificationMethod[0].id)
-            else 
-              setVenueDID(body.id)
+          setVenueDID(body.id)
       }
        const fetchStats = async () => {
          try {
