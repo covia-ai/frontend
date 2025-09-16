@@ -19,7 +19,8 @@ import {
   Fingerprint,
   Copy,
   FolderUpIcon,
-  ActivityIcon
+  ActivityIcon,
+  User
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useVenues } from "@/hooks/use-venues";
@@ -43,6 +44,10 @@ export default function VenuePage({ params }: VenuePageProps) {
   const [ venue, setVenue] = useState<Venue | null>(null);
   const [ venueDID, setVenueDID] = useState("");
   const [ venueMCPUrl, setVenueMCPURL] = useState("Not Found")
+  const [ noOfAssets, setNoOfAssets] = useState(0)
+  const [ noOfOps, setNoOfOps] = useState(0)
+  const [ noOfRuns, setNoOfRuns] = useState(0)
+  const [ noOfUsers, setNoOfUsers] = useState(0)
 
   useEffect(() => {
     // Find the venue by slug
@@ -69,8 +74,23 @@ export default function VenuePage({ params }: VenuePageProps) {
             else 
               setVenueDID(body.id)
       }
+       const fetchStats = async () => {
+         try {
+          const status =  await venue?.getStats();
+          if(status?.stats) {
+              setNoOfAssets(status?.stats?.assets);
+              setNoOfOps(status?.stats?.ops);
+              setNoOfRuns(status?.stats?.jobs);
+              setNoOfUsers(status?.stats?.users);
+          }
+        }
+        catch(e) {
+          console.log(e)
+        }
+      }
       fetchDID();
       fetchMCP();
+      fetchStats();
   }, [venue]);
 
   const isCurrentVenue = currentVenue?.venueId === venue?.venueId;
@@ -215,7 +235,7 @@ export default function VenuePage({ params }: VenuePageProps) {
         </Card>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="p-4 pointer-event-none">
             <div className="flex items-center space-x-3">
               <div className="bg-primary-vlight p-2 rounded-lg">
@@ -223,7 +243,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Assets</p>
-                <p className="text-2xl font-bold">-</p>
+                <p className="text-2xl font-bold">{noOfAssets}</p>
               </div>
             </div>
           </Card>
@@ -235,7 +255,19 @@ export default function VenuePage({ params }: VenuePageProps) {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Operations</p>
-                <p className="text-2xl font-bold">-</p>
+                <p className="text-2xl font-bold">{noOfOps}</p>
+              </div>
+            </div>
+          </Card>
+
+              <Card className="p-4">
+            <div className="flex items-center space-x-3">
+              <div className="bg-primary-vlight  p-2 rounded-lg">
+                <User size={20} className="text-primary" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Users</p>
+                <p className="text-2xl font-bold">{noOfUsers}</p>
               </div>
             </div>
           </Card>
@@ -247,7 +279,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Runs</p>
-                <p className="text-2xl font-bold">-</p>
+                <p className="text-2xl font-bold">{noOfRuns}</p>
               </div>
             </div>
           </Card>

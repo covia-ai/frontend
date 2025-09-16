@@ -9,7 +9,6 @@
 export function fetchWithError<T>(url: string, options?: RequestInit): Promise<T> {
   return fetch(url, options)
     .then(response => {
-      console.log(response)
       if (!response.ok) {
         throw new CoviaError(`Request failed! status: ${response.status}`);
       }

@@ -1,4 +1,4 @@
-import { CoviaError, VenueOptions, AssetMetadata, JobData, VenueInterface, AssetID } from './types';
+import { CoviaError, VenueOptions, AssetMetadata, JobData, VenueInterface, AssetID, StatsData, StatusData } from './types';
 import { Asset } from './Asset';
 import { Operation } from './Operation';
 import { DataAsset } from './DataAsset';
@@ -173,5 +173,13 @@ export class Venue implements VenueInterface {
       // Fallback if baseUrl is not a valid URL
       return `did:web:${this.baseUrl.replace(/^https?:\/\//, '')}`;
     }
+  }
+
+    /**
+   * Get the DID (Decentralized Identifier) for this venue
+   * @returns {string} DID in the format did:web:domain
+   */
+  getStats():Promise<StatusData> {
+      return fetchWithError<StatusData>(`${this.baseUrl}/api/v1/status`);
   }
 } 
