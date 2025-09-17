@@ -165,11 +165,7 @@ export const OperationViewer = (props: any) => {
     if (type === "json" || type === "object" || type === "any" || type === "array") {
       // Convert to JSON string
       if (value !== undefined && value !== null) {
-        try {
-          return JSON.stringify(value, null, 2);
-        } catch (err) {
-          return String(value);
-        }
+        return JSON.stringify(value, null, 2);
       } else {
         return type === "array" ? "[]" : "{}";
       }
@@ -223,30 +219,38 @@ export const OperationViewer = (props: any) => {
     window.location.href = pathname;
   }
 
-  async function invokeOp(id: any, requiredKeys: string[] = []) {
+  function runOperation() {
+    return asset?.run(input)
+      .then(response => {
+        if (response?.id) {
+          router.push("/history/" + response?.id);
+        }
+        return response;
+      });
+  }
+
+  function invokeOp(id: any, requiredKeys: string[] = []) {
     //First attempt , do all validations and inform user of operation inputs
     if (buttonText == "Run") {
       //Check if any inputs are provided by user
       try {
-        if (input && (typeof input === 'object' ? Object.keys(input).length > 0 : true)) {
-          //Check if all required values are provided
-          for (let index = 0; index < requiredKeys.length; index++) {
-            if (typeof input === 'object' && input !== null && !(requiredKeys[index] in input)) {
-              throw new Error("The input \"" + requiredKeys[index] + "\" is expected as per the operation schema. please verify before running the operation");
+        // Check if input exists and is not empty
+        const isObject = input !== null && input !== undefined &&
+          (typeof input === 'object' ? Object.keys(input).length > 0 : input !== '');
+
+        if (isObject) {
+          //Check if all required values are provided (only for object inputs)
+          if (typeof input === 'object' && input !== null) {
+            for (let index = 0; index < requiredKeys.length; index++) {
+              if (!(requiredKeys[index] in input)) {
+                throw new Error("The input \"" + requiredKeys[index] + "\" is expected as per the operation schema. please verify before running the operation");
+              }
             }
           }
 
           //Values are already processed by the input components
-          let response: any = "";
+          runOperation();
 
-          if (asset && asset.metadata?.operation) {
-            response = await asset.run(input);
-            if (response?.id) {
-              router.push("/history/" + response?.id);
-            }
-          } else {
-            throw new Error("This asset is not an operation and cannot be invoked");
-          }
         } else {
           //No inputs provided
           throw Error("No inputs provided for the operation, please verify before running the operation");
@@ -258,23 +262,17 @@ export const OperationViewer = (props: any) => {
         setButtonText("Run anyway?")
         setLoading(false);
       }
-    }
-    //Second attempt, we do not do any validation just run the operations
-    else {
-      let response: any = "";
-      try {
-        if (asset && asset.metadata?.operation) {
-          setLoading(true)
-          response = await asset.run(input);
-          if (response?.id) {
-            router.push("/history/" + response?.id);
-          }
-        } else {
-          throw new Error("This asset is not an operation and cannot be invoked");
-        }
-      }
-      catch (e: any) {
-        setErrorMessage(e.message)
+    } else {
+      //Second attempt for "Run Anyway?" button, we do not do any validation just run the operations
+      setLoading(true)
+      const operationPromise = runOperation();
+      if (operationPromise) {
+        operationPromise.catch(e => {
+          setErrorMessage(e.message)
+          setLoading(false);
+        });
+      } else {
+        setErrorMessage("This asset is not an operation and cannot be invoked");
         setLoading(false);
       }
     }
