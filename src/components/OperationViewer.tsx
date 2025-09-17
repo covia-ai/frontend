@@ -34,7 +34,7 @@ export const OperationViewer = (props: any) => {
 
   // Fake key to indicate top level input
   const TOP_LEVEL_INPUT_KEY = "__top__";
-  
+
   // Save input values to session storage
   const saveToSessionStorage = (inputData: any, rawInputData: Record<string, string>, typeData: Record<string, string>) => {
     try {
@@ -52,17 +52,17 @@ export const OperationViewer = (props: any) => {
       const savedInput = sessionStorage.getItem(getStorageKey('input'));
       const savedRawInput = sessionStorage.getItem(getStorageKey('rawInput'));
       const savedTypes = sessionStorage.getItem(getStorageKey('types'));
-      
+
       if (savedInput) {
         const parsedInput = JSON.parse(savedInput);
         setInput(parsedInput);
       }
-      
+
       if (savedRawInput) {
         const parsedRawInput = JSON.parse(savedRawInput);
         setRawInput(parsedRawInput);
       }
-      
+
       if (savedTypes) {
         const parsedTypes = JSON.parse(savedTypes);
         setTypeMap(parsedTypes);
@@ -89,9 +89,9 @@ export const OperationViewer = (props: any) => {
 
   if (!venueObj) return null;
   const venue = useMemo(() => {
-        // Your expensive calculation or value creation
-        return new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
-        }, []); // Dependency array
+    // Your expensive calculation or value creation
+    return new Venue({ baseUrl: venueObj.baseUrl, venueId: venueObj.venueId })
+  }, []); // Dependency array
 
   useEffect(() => {
     setAssetNotFound(false);
@@ -99,17 +99,17 @@ export const OperationViewer = (props: any) => {
     venue.getAsset(props.assetId)
       .then((asset: Asset) => {
         setAsset(asset);
-        
+
         // Try to restore from session storage first
         restoreFromSessionStorage();
-        
+
         // If no saved data and input schema specifies an object with properties
         // then pre-populate defaults into input and types into typeMap
         if (asset?.metadata?.operation?.input?.properties) {
           const properties = asset.metadata.operation.input.properties;
           const newInput: Record<string, any> = {};
           const newTypeMap: Record<string, string> = {};
-          
+
           Object.keys(properties).forEach(key => {
             const property = properties[key];
             if (property.default !== undefined) {
@@ -119,11 +119,11 @@ export const OperationViewer = (props: any) => {
               newTypeMap[key] = property.type;
             }
           });
-          
+
           // Only set defaults if no saved data exists
           const hasSavedInput = sessionStorage.getItem(getStorageKey('input'));
           const hasSavedTypes = sessionStorage.getItem(getStorageKey('types'));
-          
+
           if (!hasSavedInput) {
             setInput(newInput);
           }
@@ -149,6 +149,39 @@ export const OperationViewer = (props: any) => {
     }
   }, [input, rawInput, typeMap]);
 
+  // Helper function to process a value based on its type
+  const parseValue = (rawValue: string, type: string) => {
+    if (type === "json" || type === "object" || type === "any" || type === "array") {
+      return JSON.parse(rawValue);
+    } else if (type === "number") {
+      return Number(rawValue);
+    } else {
+      return rawValue;
+    }
+  };
+
+  // Helper function to convert a value to appropriate raw input string based on type
+  const printValue = (value: any, type: string) => {
+    if (type === "json" || type === "object" || type === "any" || type === "array") {
+      // Convert to JSON string
+      if (value !== undefined && value !== null) {
+        try {
+          return JSON.stringify(value, null, 2);
+        } catch (err) {
+          return String(value);
+        }
+      } else {
+        return type === "array" ? "[]" : "{}";
+      }
+    } else if (type === "number") {
+      // Convert to number string
+      return String(value || 0);
+    } else {
+      // For string and other types, convert to string
+      return String(value || '');
+    }
+  };
+
   function setKeyValue(key: any, value: any) {
     if (key === TOP_LEVEL_INPUT_KEY) {
       setInput(value);
@@ -171,69 +204,79 @@ export const OperationViewer = (props: any) => {
     setTypeMap(prev => ({ ...prev, [key]: type }));
   }
 
+  function setKeyTypeAndUpdateRawInput(key: any, newType: any) {
+    // Update the type
+    setTypeMap(prev => ({ ...prev, [key]: newType }));
+
+    // Update raw input based on the new type
+    const currentValue = key === TOP_LEVEL_INPUT_KEY ? input : input[key];
+    const newRawValue = printValue(currentValue, newType);
+
+    setRawInput(prev => ({ ...prev, [key]: newRawValue }));
+  }
+
   async function resetForm() {
     clearSessionStorage();
     setInput({});
     setRawInput({});
     setTypeMap({});
-    window.location.href=pathname;
+    window.location.href = pathname;
   }
 
   async function invokeOp(id: any, requiredKeys: string[] = []) {
     //First attempt , do all validations and inform user of operation inputs
-    if(buttonText == "Run" ) {
+    if (buttonText == "Run") {
       //Check if any inputs are provided by user
       try {
-        if(input && (typeof input === 'object' ? Object.keys(input).length > 0 : true)) {    
+        if (input && (typeof input === 'object' ? Object.keys(input).length > 0 : true)) {
           //Check if all required values are provided
           for (let index = 0; index < requiredKeys.length; index++) {
             if (typeof input === 'object' && input !== null && !(requiredKeys[index] in input)) {
-              throw new Error("The input \""+requiredKeys[index]+"\" is expected as per the operation schema. please verify before running the operation");
+              throw new Error("The input \"" + requiredKeys[index] + "\" is expected as per the operation schema. please verify before running the operation");
             }
           }
-          
+
           //Values are already processed by the input components
           let response: any = "";
-        
+
           if (asset && asset.metadata?.operation) {
-              response = await asset.run(input);
-              if (response?.id) {
+            response = await asset.run(input);
+            if (response?.id) {
               router.push("/history/" + response?.id);
             }
           } else {
             throw new Error("This asset is not an operation and cannot be invoked");
           }
-        } 
-         else {
-         //No inputs provided
+        } else {
+          //No inputs provided
           throw Error("No inputs provided for the operation, please verify before running the operation");
-        }    
+        }
       }
       catch (e: any) {
-            console.log(e)
-            setErrorMessage(e.message);
-            setButtonText("Run anyway?")
-            setLoading(false);
-        }
+        console.log(e)
+        setErrorMessage(e.message);
+        setButtonText("Run anyway?")
+        setLoading(false);
+      }
     }
     //Second attempt, we do not do any validation just run the operations
     else {
-          let response: any = "";
-           try {
-            if (asset && asset.metadata?.operation) {
-                setLoading(true)
-                response = await asset.run(input);
-                if (response?.id) {
-                router.push("/history/" + response?.id);
-               }
-            } else {
-               throw new Error("This asset is not an operation and cannot be invoked");
-            }
-          }  
-           catch(e: any) {
-                setErrorMessage(e.message)
-                setLoading(false);
-           }
+      let response: any = "";
+      try {
+        if (asset && asset.metadata?.operation) {
+          setLoading(true)
+          response = await asset.run(input);
+          if (response?.id) {
+            router.push("/history/" + response?.id);
+          }
+        } else {
+          throw new Error("This asset is not an operation and cannot be invoked");
+        }
+      }
+      catch (e: any) {
+        setErrorMessage(e.message)
+        setLoading(false);
+      }
     }
   }
 
@@ -248,22 +291,11 @@ export const OperationViewer = (props: any) => {
     const exampleValue = schema.examples ? `e.g. ${Array.isArray(schema.examples) ? schema.examples[0] : schema.examples}` : "";
     const type = typeMap[key] || schema.type || "string";
     const isSecret = schema.secret === true;
-    
-    // Get current raw value from rawInput state or use default
-    const currentRawValue = key == TOP_LEVEL_INPUT_KEY ? 
-      (typeof input === 'string' ? input : JSON.stringify(input, null, 2)) : 
-      (rawInput[key] !== undefined ? rawInput[key] : (typeof defaultValue === 'string' ? defaultValue : JSON.stringify(defaultValue, null, 2)));
 
-    // Helper function to process a value based on its type
-    const processValue = (rawValue: string) => {
-      if (type === "json" || type === "object" || type === "any" || type === "array") {
-        return JSON.parse(rawValue);
-      } else if (type === "number") {
-        return Number(rawValue);
-      } else {
-        return rawValue;
-      }
-    };
+    // Get current raw value from rawInput state or use default
+    const currentRawValue = key == TOP_LEVEL_INPUT_KEY ?
+      (rawInput[key] !== undefined ? rawInput[key] : printValue(input, type)) :
+      (rawInput[key] !== undefined ? rawInput[key] : printValue(defaultValue, type));
 
     const commonProps = {
       className: "flex-1 placeholder:text-gray-500",
@@ -274,9 +306,9 @@ export const OperationViewer = (props: any) => {
         const rawValue = e.target.value;
         // Always update raw input
         onRawValueChange(rawValue);
-        
+
         try {
-          const processedValue = processValue(rawValue);
+          const processedValue = parseValue(rawValue, type);
           onValueChange(processedValue);
         } catch (err) {
           // If parsing fails, still update raw input but don't update parsed input
@@ -323,18 +355,18 @@ export const OperationViewer = (props: any) => {
     if (type === "number") {
       return (
         <div className="flex flex-row space-x-2 items-center">
-          <Input {...commonProps} type={isSecret ? "password" : "text"} />
+          <Input {...commonProps} type={isSecret ? "password" : "number"} />
           {typeSelector}
         </div>
       );
     }
 
-    if (type === "json" || type === "object" || type === "any") {
+    if (type === "json" || type === "object" || type === "any" || type === "array") {
       return (
         <div className="flex flex-row space-x-2 items-center">
-          <Textarea 
-            {...commonProps} 
-            rows={5} 
+          <Textarea
+            {...commonProps}
+            rows={5}
             className={`flex-1 placeholder:text-gray-500 ${isSecret ? 'font-mono' : ''}`}
             style={isSecret ? { fontFamily: 'monospace', letterSpacing: '0.1em' } : undefined}
           />
@@ -372,7 +404,7 @@ export const OperationViewer = (props: any) => {
                   properties[key],
                   (value) => setKeyValue(key, value),
                   (value) => setKeyRawValue(key, value),
-                  (type) => setKeyType(key, type)
+                  (type) => setKeyTypeAndUpdateRawInput(key, type)
                 )}
                 {renderDescription(properties[key].description || "")}
               </>
@@ -380,7 +412,7 @@ export const OperationViewer = (props: any) => {
           </div>
           <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
           <div className="flex flex-row space-x-2">{!loading && <Button type="button" className="w-32" onClick={() => invokeOp(asset?.id, requiredKeys)}>{buttonText}</Button>}
-          {!loading && <Button type="button" className="w-32" onClick={() => resetForm()}>Reset</Button>}
+            {!loading && <Button type="button" className="w-32" onClick={() => resetForm()}>Reset</Button>}
           </div>
 
           {loading && <Button type="button" className="w-32" disabled>Please wait ...</Button>}
@@ -400,14 +432,14 @@ export const OperationViewer = (props: any) => {
               { type: "any", description: "Provide input for the operation", default: "" },
               (value) => setInput(value),
               (value) => setKeyRawValue(TOP_LEVEL_INPUT_KEY, value),
-              (type) => setKeyType(TOP_LEVEL_INPUT_KEY, type)
+              (type) => setKeyTypeAndUpdateRawInput(TOP_LEVEL_INPUT_KEY, type)
             )}
             {renderDescription("Provide input for the operation")}
           </div>
 
           <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
-           <div className="flex flex-row space-x-2">{!loading && <Button type="button" className="w-32" onClick={() => invokeOp(asset?.id, [])}>{buttonText}</Button>}
-          {!loading && <Button type="button" className="w-32" onClick={() => resetForm()}>Reset</Button>}
+          <div className="flex flex-row space-x-2">{!loading && <Button type="button" className="w-32" onClick={() => invokeOp(asset?.id, [])}>{buttonText}</Button>}
+            {!loading && <Button type="button" className="w-32" onClick={() => resetForm()}>Reset</Button>}
           </div>
           {loading && <Button type="button" className="w-32" disabled>Please wait ...</Button>}
         </div>
@@ -426,7 +458,7 @@ export const OperationViewer = (props: any) => {
             <p className="text-gray-600">The asset ID &quot;{props.assetId}&quot; does not exist on this venue.</p>
           </div>
         )}
-        
+
         {!assetNotFound && asset && <AssetHeader asset={asset} />}
         {!assetNotFound && asset && <MetadataViewer asset={asset} />}
         {!assetNotFound && asset?.metadata?.operation && (
