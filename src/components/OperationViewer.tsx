@@ -24,17 +24,22 @@ export const OperationViewer = (props: any) => {
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [buttonText, setButtonText] = useState("Run");
-  const [input, setInput] = useState<Record<string, any>>({}); // input values to be passed to the operation
+  const [input, setInput] = useState<any>({}); // actual input values to be passed to the operation, can be any JSON value
+  const [rawInput, setRawInput] = useState<Record<string, string>>({}); // raw input content before parsing per field name
   const [typeMap, setTypeMap] = useState<Record<string, string>>({}); // user-specified types of the values to be passed to the operation, affects parsing
   const [assetNotFound, setAssetNotFound] = useState(false);
 
   // Session storage key based on asset ID
   const getStorageKey = (suffix: string) => `operation_input_${props.assetId}_${suffix}`;
+
+  // Fake key to indicate top level input
+  const TOP_LEVEL_INPUT_KEY = "__top__";
   
   // Save input values to session storage
-  const saveToSessionStorage = (inputData: Record<string, any>, typeData: Record<string, string>) => {
+  const saveToSessionStorage = (inputData: any, rawInputData: Record<string, string>, typeData: Record<string, string>) => {
     try {
       sessionStorage.setItem(getStorageKey('input'), JSON.stringify(inputData));
+      sessionStorage.setItem(getStorageKey('rawInput'), JSON.stringify(rawInputData));
       sessionStorage.setItem(getStorageKey('types'), JSON.stringify(typeData));
     } catch (error) {
       console.warn('Failed to save to session storage:', error);
@@ -45,11 +50,17 @@ export const OperationViewer = (props: any) => {
   const restoreFromSessionStorage = () => {
     try {
       const savedInput = sessionStorage.getItem(getStorageKey('input'));
+      const savedRawInput = sessionStorage.getItem(getStorageKey('rawInput'));
       const savedTypes = sessionStorage.getItem(getStorageKey('types'));
       
       if (savedInput) {
         const parsedInput = JSON.parse(savedInput);
         setInput(parsedInput);
+      }
+      
+      if (savedRawInput) {
+        const parsedRawInput = JSON.parse(savedRawInput);
+        setRawInput(parsedRawInput);
       }
       
       if (savedTypes) {
@@ -65,6 +76,7 @@ export const OperationViewer = (props: any) => {
   const clearSessionStorage = () => {
     try {
       sessionStorage.removeItem(getStorageKey('input'));
+      sessionStorage.removeItem(getStorageKey('rawInput'));
       sessionStorage.removeItem(getStorageKey('types'));
     } catch (error) {
       console.warn('Failed to clear session storage:', error);
@@ -91,7 +103,8 @@ export const OperationViewer = (props: any) => {
         // Try to restore from session storage first
         restoreFromSessionStorage();
         
-        // If no saved data, pre-populate defaults into input and types into typeMap
+        // If no saved data and input schema specifies an object with properties
+        // then pre-populate defaults into input and types into typeMap
         if (asset?.metadata?.operation?.input?.properties) {
           const properties = asset.metadata.operation.input.properties;
           const newInput: Record<string, any> = {};
@@ -131,13 +144,27 @@ export const OperationViewer = (props: any) => {
 
   // Save to session storage whenever input changes
   useEffect(() => {
-    if (Object.keys(input).length > 0) {
-      saveToSessionStorage(input, typeMap);
+    if (input !== null && input !== undefined && (typeof input === 'object' ? Object.keys(input).length > 0 : true)) {
+      saveToSessionStorage(input, rawInput, typeMap);
     }
-  }, [input, typeMap]);
+  }, [input, rawInput, typeMap]);
 
   function setKeyValue(key: any, value: any) {
-    setInput(prev => ({ ...prev, [key]: value }));
+    if (key === TOP_LEVEL_INPUT_KEY) {
+      setInput(value);
+    } else {
+      setInput((prev: any) => {
+        if (typeof prev === 'object' && prev !== null) {
+          return { ...prev, [key]: value };
+        } else {
+          return { [key]: value };
+        }
+      });
+    }
+  }
+
+  function setKeyRawValue(key: any, value: string) {
+    setRawInput(prev => ({ ...prev, [key]: value }));
   }
 
   function setKeyType(key: any, type: any) {
@@ -147,6 +174,7 @@ export const OperationViewer = (props: any) => {
   async function resetForm() {
     clearSessionStorage();
     setInput({});
+    setRawInput({});
     setTypeMap({});
     window.location.href=pathname;
   }
@@ -156,10 +184,10 @@ export const OperationViewer = (props: any) => {
     if(buttonText == "Run" ) {
       //Check if any inputs are provided by user
       try {
-        if(input && Object.keys(input).length > 0) {    
+        if(input && (typeof input === 'object' ? Object.keys(input).length > 0 : true)) {    
           //Check if all required values are provided
           for (let index = 0; index < requiredKeys.length; index++) {
-            if (!(requiredKeys[index] in input)) {
+            if (typeof input === 'object' && input !== null && !(requiredKeys[index] in input)) {
               throw new Error("The input \""+requiredKeys[index]+"\" is expected as per the operation schema. please verify before running the operation");
             }
           }
@@ -207,12 +235,13 @@ export const OperationViewer = (props: any) => {
                 setLoading(false);
            }
     }
-    
   }
+
   function renderInputComponent(
     key: string,
     schema: any,
     onValueChange: (value: any) => void,
+    onRawValueChange: (value: string) => void,
     onTypeChange: (type: any) => void
   ) {
     const defaultValue = schema.default || "";
@@ -220,33 +249,39 @@ export const OperationViewer = (props: any) => {
     const type = typeMap[key] || schema.type || "string";
     const isSecret = schema.secret === true;
     
-    // Get current value from input state or use default
-    const currentValue = input[key] !== undefined ? input[key] : defaultValue;
+    // Get current raw value from rawInput state or use default
+    const currentRawValue = key == TOP_LEVEL_INPUT_KEY ? 
+      (typeof input === 'string' ? input : JSON.stringify(input, null, 2)) : 
+      (rawInput[key] !== undefined ? rawInput[key] : (typeof defaultValue === 'string' ? defaultValue : JSON.stringify(defaultValue, null, 2)));
 
     // Helper function to process a value based on its type
-    const processValue = (value: string) => {
-      if (type === "json" || type === "object" || type === "any") {
-        try {
-          return JSON.parse(value);
-        } catch(e) {
-          // If parsing fails, return the raw string value
-          return value;
-        }
+    const processValue = (rawValue: string) => {
+      if (type === "json" || type === "object" || type === "any" || type === "array") {
+        return JSON.parse(rawValue);
       } else if (type === "number") {
-        return Number(value);
+        return Number(rawValue);
       } else {
-        return value;
+        return rawValue;
       }
     };
 
     const commonProps = {
       className: "flex-1 placeholder:text-gray-500",
-      value: currentValue,
+      value: currentRawValue,
       placeholder: exampleValue,
       type: isSecret ? "password" : undefined,
       onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const processedValue = processValue(e.target.value);
-        onValueChange(processedValue);
+        const rawValue = e.target.value;
+        // Always update raw input
+        onRawValueChange(rawValue);
+        
+        try {
+          const processedValue = processValue(rawValue);
+          onValueChange(processedValue);
+        } catch (err) {
+          // If parsing fails, still update raw input but don't update parsed input
+          // This allows users to see their raw input even if it's invalid JSON
+        }
       }
     };
 
@@ -262,6 +297,7 @@ export const OperationViewer = (props: any) => {
           <SelectItem value="object">object</SelectItem>
           <SelectItem value="any">any</SelectItem>
           <SelectItem value="asset">asset</SelectItem>
+          <SelectItem value="array">array</SelectItem>
         </SelectContent>
       </Select>
     );
@@ -317,7 +353,8 @@ export const OperationViewer = (props: any) => {
   }
 
   function renderInputFields(inputSchema: any) {
-    if (inputSchema != null && inputSchema != undefined && inputSchema.properties) {
+    if (inputSchema && inputSchema.properties) {
+      // In this case the schema specifies a JSON object with properties so we render a form for each property
       const properties = inputSchema.properties;
       const requiredKeys = inputSchema.required || [];
       const keys = Object.keys(properties);
@@ -334,6 +371,7 @@ export const OperationViewer = (props: any) => {
                   key,
                   properties[key],
                   (value) => setKeyValue(key, value),
+                  (value) => setKeyRawValue(key, value),
                   (type) => setKeyType(key, type)
                 )}
                 {renderDescription(properties[key].description || "")}
@@ -355,13 +393,14 @@ export const OperationViewer = (props: any) => {
         <div className="w-11/12 my-2">
           <div className="grid grid-cols-[min-content_1fr_1fr] gap-4 items-center">
             <div className="flex flex-row items-center min-w-0">
-              <Label className="whitespace-nowrap">Input</Label>
+              <Label className="whitespace-nowrap">(Input)</Label>
             </div>
             {renderInputComponent(
-              "none",
+              TOP_LEVEL_INPUT_KEY,
               { type: "any", description: "Provide input for the operation", default: "" },
               (value) => setInput(value),
-              (type) => setKeyType("none", type)
+              (value) => setKeyRawValue(TOP_LEVEL_INPUT_KEY, value),
+              (type) => setKeyType(TOP_LEVEL_INPUT_KEY, type)
             )}
             {renderDescription("Provide input for the operation")}
           </div>
