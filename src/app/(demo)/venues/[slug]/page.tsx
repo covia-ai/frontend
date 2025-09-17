@@ -251,7 +251,7 @@ export default function VenuePage({ params }: VenuePageProps) {
                   className="w-full"
                   variant="outline"
                 >
-                  View Jobs
+                  View Assets
                   <ArrowRight size={16} className="ml-2" />
                 </Button>
               </CardContent>
