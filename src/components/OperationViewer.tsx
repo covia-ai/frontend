@@ -4,6 +4,7 @@
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 import { useEffect, useMemo, useState } from "react";
 import { Operation, Venue } from "@/lib/covia";
@@ -23,8 +24,53 @@ export const OperationViewer = (props: any) => {
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [buttonText, setButtonText] = useState("Run");
-  const [valueMap, setValueMap] = useState(new Map());
+  const [input, setInput] = useState<Record<string, any>>({}); // input values to be passed to the operation
+  const [typeMap, setTypeMap] = useState<Record<string, string>>({}); // user-specified types of the values to be passed to the operation, affects parsing
   const [assetNotFound, setAssetNotFound] = useState(false);
+
+  // Session storage key based on asset ID
+  const getStorageKey = (suffix: string) => `operation_input_${props.assetId}_${suffix}`;
+  
+  // Save input values to session storage
+  const saveToSessionStorage = (inputData: Record<string, any>, typeData: Record<string, string>) => {
+    try {
+      sessionStorage.setItem(getStorageKey('input'), JSON.stringify(inputData));
+      sessionStorage.setItem(getStorageKey('types'), JSON.stringify(typeData));
+    } catch (error) {
+      console.warn('Failed to save to session storage:', error);
+    }
+  };
+
+  // Restore input values from session storage
+  const restoreFromSessionStorage = () => {
+    try {
+      const savedInput = sessionStorage.getItem(getStorageKey('input'));
+      const savedTypes = sessionStorage.getItem(getStorageKey('types'));
+      
+      if (savedInput) {
+        const parsedInput = JSON.parse(savedInput);
+        setInput(parsedInput);
+      }
+      
+      if (savedTypes) {
+        const parsedTypes = JSON.parse(savedTypes);
+        setTypeMap(parsedTypes);
+      }
+    } catch (error) {
+      console.warn('Failed to restore from session storage:', error);
+    }
+  };
+
+  // Clear session storage
+  const clearSessionStorage = () => {
+    try {
+      sessionStorage.removeItem(getStorageKey('input'));
+      sessionStorage.removeItem(getStorageKey('types'));
+    } catch (error) {
+      console.warn('Failed to clear session storage:', error);
+    }
+  };
+
   const router = useRouter();
   const pathname = usePathname();
   const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
@@ -41,6 +87,37 @@ export const OperationViewer = (props: any) => {
     venue.getAsset(props.assetId)
       .then((asset: Asset) => {
         setAsset(asset);
+        
+        // Try to restore from session storage first
+        restoreFromSessionStorage();
+        
+        // If no saved data, pre-populate defaults into input and types into typeMap
+        if (asset?.metadata?.operation?.input?.properties) {
+          const properties = asset.metadata.operation.input.properties;
+          const newInput: Record<string, any> = {};
+          const newTypeMap: Record<string, string> = {};
+          
+          Object.keys(properties).forEach(key => {
+            const property = properties[key];
+            if (property.default !== undefined) {
+              newInput[key] = property.default;
+            }
+            if (property.type !== undefined) {
+              newTypeMap[key] = property.type;
+            }
+          });
+          
+          // Only set defaults if no saved data exists
+          const hasSavedInput = sessionStorage.getItem(getStorageKey('input'));
+          const hasSavedTypes = sessionStorage.getItem(getStorageKey('types'));
+          
+          if (!hasSavedInput) {
+            setInput(newInput);
+          }
+          if (!hasSavedTypes) {
+            setTypeMap(newTypeMap);
+          }
+        }
       })
       .catch((e: Error) => {
         if (e?.message && (e.message.includes('404') || e.message.toLowerCase().includes('not found'))) {
@@ -52,60 +129,46 @@ export const OperationViewer = (props: any) => {
 
   }, [props.assetId, venue]);
 
+  // Save to session storage whenever input changes
+  useEffect(() => {
+    if (Object.keys(input).length > 0) {
+      saveToSessionStorage(input, typeMap);
+    }
+  }, [input, typeMap]);
 
-
-  function setKeyValue(key, value) {
-    const newMap = new Map(valueMap);
-    newMap.set(key,value);
-    setValueMap(newMap)
-
+  function setKeyValue(key: any, value: any) {
+    setInput(prev => ({ ...prev, [key]: value }));
   }
+
+  function setKeyType(key: any, type: any) {
+    setTypeMap(prev => ({ ...prev, [key]: type }));
+  }
+
   async function resetForm() {
+    clearSessionStorage();
+    setInput({});
+    setTypeMap({});
     window.location.href=pathname;
   }
-  async function invokeOp(id, requiredKeys: string[] = []) {
-    const inputs = {};
+
+  async function invokeOp(id: any, requiredKeys: string[] = []) {
     //First attempt , do all validations and inform user of operation inputs
     if(buttonText == "Run" ) {
       //Check if any inputs are provided by user
       try {
-        if(valueMap && valueMap.size>0) {    
+        if(input && Object.keys(input).length > 0) {    
           //Check if all required values are provided
           for (let index = 0; index < requiredKeys.length; index++) {
-            if (!valueMap.has(requiredKeys[index])) {
+            if (!(requiredKeys[index] in input)) {
               throw new Error("The input \""+requiredKeys[index]+"\" is expected as per the operation schema. please verify before running the operation");
             }
+          }
           
-          }
-          //Check if inputs are valid as per expected type mainly json 
-          for (const [key, value] of valueMap) {
-                if (value[0] == "json" || value[0] == "object" || value[0] == "any") {
-                  try {
-                    inputs[key] = JSON.parse(value[1]);
-                  }
-                  catch(e) {
-                    if(key != "none")
-                        throw new Error("Operation input \""+key+"\" expects a valid Json value, please verify before running the operation");
-                    else 
-                        throw new Error("Operation input expects a valid Json value, please verify before running the operation");
-                  }
-                }
-                else if (value[0] == "number") {
-                  try {
-                    inputs[key] = Number(value[1]);
-                  }
-                  catch(e) {
-                    throw new Error("Key "+key+" expects a number, please verify before running the operation");
-                  }
-
-                }
-                else
-                  inputs[key] = value[1];
-          }
-          let response = "";
+          //Values are already processed by the input components
+          let response: any = "";
         
           if (asset && asset.metadata?.operation) {
-              response = await asset.run(inputs);
+              response = await asset.run(input);
               if (response?.id) {
               router.push("/history/" + response?.id);
             }
@@ -118,7 +181,7 @@ export const OperationViewer = (props: any) => {
           throw Error("No inputs provided for the operation, please verify before running the operation");
         }    
       }
-      catch (e: Error) {
+      catch (e: any) {
             console.log(e)
             setErrorMessage(e.message);
             setButtonText("Run anyway?")
@@ -127,14 +190,11 @@ export const OperationViewer = (props: any) => {
     }
     //Second attempt, we do not do any validation just run the operations
     else {
-          for (const [key, value] of valueMap) {      
-                   inputs[key] = value[1];
-          }
-          let response = "";
+          let response: any = "";
            try {
             if (asset && asset.metadata?.operation) {
                 setLoading(true)
-                response = await asset.run(inputs);
+                response = await asset.run(input);
                 if (response?.id) {
                 router.push("/history/" + response?.id);
                }
@@ -142,110 +202,145 @@ export const OperationViewer = (props: any) => {
                throw new Error("This asset is not an operation and cannot be invoked");
             }
           }  
-          catch(e) {
-               setErrorMessage(e.message)
-               setLoading(false);
-          }
+           catch(e: any) {
+                setErrorMessage(e.message)
+                setLoading(false);
+           }
     }
     
   }
   function renderInputComponent(
-    key: string, 
-    type: string, 
-    defaultValue: string, 
-    placeholder: string, 
-    description: string, 
-    isRequired: boolean,
-    setKeyValue: (key: string, value: [string, string]) => void
+    key: string,
+    schema: any,
+    onValueChange: (value: any) => void,
+    onTypeChange: (type: any) => void
   ) {
-    const commonProps = {
-      className: "my-2 flex-1 w-48 placeholder:text-gray-500",
-      defaultValue,
-      placeholder,
-      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const valueType = type === "object" || type === "any" ? "json" : type;
-        setKeyValue(key, [valueType, e.target.value]);
+    const defaultValue = schema.default || "";
+    const description = schema.description || "";
+    const exampleValue = schema.examples ? `e.g. ${Array.isArray(schema.examples) ? schema.examples[0] : schema.examples}` : "";
+    const type = typeMap[key] || schema.type || "string";
+    const isSecret = schema.secret === true;
+    
+    // Get current value from input state or use default
+    const currentValue = input[key] !== undefined ? input[key] : defaultValue;
+
+    // Helper function to process a value based on its type
+    const processValue = (value: string) => {
+      if (type === "json" || type === "object" || type === "any") {
+        try {
+          return JSON.parse(value);
+        } catch(e) {
+          // If parsing fails, return the raw string value
+          return value;
+        }
+      } else if (type === "number") {
+        return Number(value);
+      } else {
+        return value;
       }
     };
 
-    const descriptionElement = (
-      <div className="text-sm text-gray-600 ml-2 w-48">{description}</div>
+    const commonProps = {
+      className: "flex-1 placeholder:text-gray-500",
+      value: currentValue,
+      placeholder: exampleValue,
+      type: isSecret ? "password" : undefined,
+      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const processedValue = processValue(e.target.value);
+        onValueChange(processedValue);
+      }
+    };
+
+    const typeSelector = (
+      <Select value={type} onValueChange={onTypeChange}>
+        <SelectTrigger className="w-24">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="string">string</SelectItem>
+          <SelectItem value="number">number</SelectItem>
+          <SelectItem value="json">json</SelectItem>
+          <SelectItem value="object">object</SelectItem>
+          <SelectItem value="any">any</SelectItem>
+          <SelectItem value="asset">asset</SelectItem>
+        </SelectContent>
+      </Select>
     );
 
     if (type === "string") {
       return (
-        <>
-          <Input {...commonProps} required={isRequired} type="text" />
-          {descriptionElement}
-        </>
+        <div className="flex flex-row space-x-2 items-center">
+          <Input {...commonProps} type={isSecret ? "password" : "text"} />
+          {typeSelector}
+        </div>
       );
     }
 
     if (type === "asset") {
       return (
-        <>
-          <Input {...commonProps} type="text" />
-          {descriptionElement}
-        </>
+        <div className="flex flex-row space-x-2 items-center">
+          <Input {...commonProps} type={isSecret ? "password" : "text"} />
+          {typeSelector}
+        </div>
       );
     }
 
     if (type === "number") {
       return (
-        <>
-          <Input {...commonProps} type="text" />
-          {descriptionElement}
-        </>
+        <div className="flex flex-row space-x-2 items-center">
+          <Input {...commonProps} type={isSecret ? "password" : "text"} />
+          {typeSelector}
+        </div>
       );
     }
 
     if (type === "json" || type === "object" || type === "any") {
       return (
-        <>
-          <Textarea {...commonProps} rows={5} />
-          {descriptionElement}
-        </>
+        <div className="flex flex-row space-x-2 items-center">
+          <Textarea 
+            {...commonProps} 
+            rows={5} 
+            className={`flex-1 placeholder:text-gray-500 ${isSecret ? 'font-mono' : ''}`}
+            style={isSecret ? { fontFamily: 'monospace', letterSpacing: '0.1em' } : undefined}
+          />
+          {typeSelector}
+        </div>
       );
     }
 
     return null;
   }
 
-  function renderInputFields(operation: JSON, requiredKeys: string[]) {
-    if (operation != null && operation != undefined) {
-      const keys = Object.keys(operation);
-      const type = new Array<string>();
-      const description = new Array<string>();
-      const defaultValue = new Array<string>();
-      const exampleValue = new Array<string>();
+  function renderDescription(description: string) {
+    return (
+      <div className="text-sm text-gray-600">{description}</div>
+    );
+  }
 
-      keys.map((key, index) => {
-        const jsonValue = operation[key];
-        type[index] = jsonValue.type;
-        description[index] = jsonValue.description;
-        defaultValue[index] = jsonValue.default || "";
-        exampleValue[index] = jsonValue.examples ? `e.g. ${Array.isArray(jsonValue.examples) ? jsonValue.examples[0] : jsonValue.examples}` : "";
-      });
+  function renderInputFields(inputSchema: any) {
+    if (inputSchema != null && inputSchema != undefined && inputSchema.properties) {
+      const properties = inputSchema.properties;
+      const requiredKeys = inputSchema.required || [];
+      const keys = Object.keys(properties);
       return (
-        <div className="flex flex-col w-11/12 space-x-2 my-2 items-center justify-center">
-          {keys.map((key, index) => (
-            <div key={index} className="flex flex-row space-x-2 w-full items-center">
-
-              <div  className="flex flex-row w-20">
-                <Label>{key} </Label>
-                {requiredKeys != undefined && requiredKeys?.indexOf(key) != -1 && <span className="text-red-400">*</span>}
-              </div>
-              {renderInputComponent(
-                key,
-                type[index],
-                defaultValue[index],
-                exampleValue[index],
-                description[index],
-                requiredKeys?.indexOf(key) !== -1,
-                setKeyValue
-              )}
-            </div>
-          ))}
+        <div className="w-11/12 my-2">
+          <div className="grid grid-cols-[min-content_1fr_1fr] gap-4 items-center">
+            {keys.map((key, index) => (
+              <>
+                <div className="flex flex-row items-center min-w-0">
+                  <Label className="whitespace-nowrap">{key}</Label>
+                  {requiredKeys?.indexOf(key) != -1 && <span className="text-red-400 ml-1">*</span>}
+                </div>
+                {renderInputComponent(
+                  key,
+                  properties[key],
+                  (value) => setKeyValue(key, value),
+                  (type) => setKeyType(key, type)
+                )}
+                {renderDescription(properties[key].description || "")}
+              </>
+            ))}
+          </div>
           <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
           <div className="flex flex-row space-x-2">{!loading && <Button type="button" className="w-32" onClick={() => invokeOp(asset?.id, requiredKeys)}>{buttonText}</Button>}
           {!loading && <Button type="button" className="w-32" onClick={() => resetForm()}>Reset</Button>}
@@ -256,15 +351,24 @@ export const OperationViewer = (props: any) => {
       )
     }
     else {
+      // render a single input field for the whole input object
       return (
-        <div className="flex flex-col items-center justify-center w-full space-x-2 my-2">
-
-          <Textarea className="my-2 flex-1 placeholder:text-gray-500" rows={5} cols={200}
-            onChange={e => setKeyValue("none",["any",e.target.value])}
-            placeholder="e.g. Provide input here"></Textarea>
+        <div className="w-11/12 my-2">
+          <div className="grid grid-cols-[min-content_1fr_1fr] gap-4 items-center">
+            <div className="flex flex-row items-center min-w-0">
+              <Label className="whitespace-nowrap">Input</Label>
+            </div>
+            {renderInputComponent(
+              "none",
+              { type: "any", description: "Provide input for the operation", default: "" },
+              (value) => setInput(value),
+              (type) => setKeyType("none", type)
+            )}
+            {renderDescription("Provide input for the operation")}
+          </div>
 
           <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
-           <div className="flex flex-row space-x-2">{!loading && <Button type="button" className="w-32" onClick={() => invokeOp(asset?.id, requiredKeys)}>{buttonText}</Button>}
+           <div className="flex flex-row space-x-2">{!loading && <Button type="button" className="w-32" onClick={() => invokeOp(asset?.id, [])}>{buttonText}</Button>}
           {!loading && <Button type="button" className="w-32" onClick={() => resetForm()}>Reset</Button>}
           </div>
           {loading && <Button type="button" className="w-32" disabled>Please wait ...</Button>}
@@ -289,7 +393,7 @@ export const OperationViewer = (props: any) => {
         {!assetNotFound && asset && <MetadataViewer asset={asset} />}
         {!assetNotFound && asset?.metadata?.operation && (
           <>
-            {renderInputFields(asset?.metadata?.operation?.input?.properties, asset?.metadata?.operation?.input?.required)}
+            {renderInputFields(asset?.metadata?.operation?.input)}
             {asset?.metadata?.operation?.steps && <DiagramViewer metadata={asset.metadata}></DiagramViewer>}
           </>
         )}
