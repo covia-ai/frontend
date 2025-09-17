@@ -51,10 +51,19 @@ export default function VenuePage({ params }: VenuePageProps) {
 
   useEffect(() => {
     // Find the venue by slug
+    console.log(venues)
     const foundVenue = venues.find(v => v.venueId === slug);
     if (foundVenue) {
-      setVenue(foundVenue);
-      setVenueDID(foundVenue.getDID())
+      if(foundVenue instanceof Venue) {
+          setVenue(foundVenue);
+          setVenueDID(foundVenue.getDID())
+      }
+      else {
+          const foundVenue_obj = new Venue({baseUrl:foundVenue.baseUrl, venueId:foundVenue.venueId});
+          setVenue(foundVenue_obj)
+          setVenueDID(foundVenue_obj.getDID())
+      }
+     
       // Don't automatically set as current venue - only when user clicks "Make Default"
       
     }
