@@ -216,7 +216,6 @@ export const OperationViewer = (props: any) => {
     onTypeChange: (type: any) => void
   ) {
     const defaultValue = schema.default || "";
-    const description = schema.description || "";
     const exampleValue = schema.examples ? `e.g. ${Array.isArray(schema.examples) ? schema.examples[0] : schema.examples}` : "";
     const type = typeMap[key] || schema.type || "string";
     const isSecret = schema.secret === true;
@@ -351,7 +350,7 @@ export const OperationViewer = (props: any) => {
       )
     }
     else {
-      // render a single input field for the whole input object
+      // fallback: render a single input field for the whole input object
       return (
         <div className="w-11/12 my-2">
           <div className="grid grid-cols-[min-content_1fr_1fr] gap-4 items-center">
