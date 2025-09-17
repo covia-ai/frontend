@@ -51,10 +51,19 @@ export default function VenuePage({ params }: VenuePageProps) {
 
   useEffect(() => {
     // Find the venue by slug
+    console.log(venues)
     const foundVenue = venues.find(v => v.venueId === slug);
     if (foundVenue) {
-      setVenue(foundVenue);
-      setVenueDID(foundVenue.getDID())
+      if(foundVenue instanceof Venue) {
+          setVenue(foundVenue);
+          setVenueDID(foundVenue.getDID())
+      }
+      else {
+          const foundVenue_obj = new Venue({baseUrl:foundVenue.baseUrl, venueId:foundVenue.venueId});
+          setVenue(foundVenue_obj)
+          setVenueDID(foundVenue_obj.getDID())
+      }
+     
       // Don't automatically set as current venue - only when user clicks "Make Default"
       
     }
@@ -233,70 +242,104 @@ export default function VenuePage({ params }: VenuePageProps) {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="p-4 pointer-event-none">
-            <div className="flex items-center space-x-3">
-              <div className="bg-primary-vlight p-2 rounded-lg">
+         <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
+            <CardHeader className="flex-1 ">
+              <div className="flex items-center space-x-3">
+              <div className="bg-primary-vlight  p-2 rounded-lg">
                 <Database size={20} className="text-primary" />
               </div>
-              <div>
+              <div className="">
                 <p className="text-sm text-muted-foreground">Assets</p>
                 <p className="text-2xl font-bold">{noOfAssets}</p>
               </div>
             </div>
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="bg-primary-vlight p-2 rounded-lg">
+            </CardHeader>
+            <CardContent>
+                <Button 
+                  onClick={() => router.push(`/venues/${slug}/assets`)}
+                  className="w-full"
+                  variant="outline"
+                >
+                  View Assets
+                  <ArrowRight size={16} className="ml-2" />
+                </Button>
+              </CardContent>
+        </Card>
+          
+        <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
+            <CardHeader className="flex-1 ">
+              <div className="flex items-center space-x-3">
+              <div className="bg-primary-vlight  p-2 rounded-lg">
                 <Settings size={20} className="text-primary" />
               </div>
-              <div>
+              <div className="">
                 <p className="text-sm text-muted-foreground">Operations</p>
                 <p className="text-2xl font-bold">{noOfOps}</p>
               </div>
             </div>
-          </Card>
+            </CardHeader>
+            <CardContent>
+                <Button 
+                  onClick={() => router.push(`/venues/${slug}/operations`)}
+                  className="w-full"
+                  variant="outline"
+                >
+                  View Operation
+                  <ArrowRight size={16} className="ml-2" />
+                </Button>
+              </CardContent>
+        </Card>
 
-              <Card className="p-4">
-            <div className="flex items-center space-x-3">
+        <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
+            <CardHeader className="flex-1 ">
+              <div className="flex items-center space-x-3">
               <div className="bg-primary-vlight  p-2 rounded-lg">
-                <User size={20} className="text-primary" />
+                <Users size={20} className="text-primary" />
               </div>
-              <div>
+              <div className="">
                 <p className="text-sm text-muted-foreground">Users</p>
                 <p className="text-2xl font-bold">{noOfUsers}</p>
               </div>
             </div>
-          </Card>
+            </CardHeader>
+            <CardContent>
+                <Button 
+                  disabled
+                  className="w-full"
+                  variant="outline"
+                >
+                  View Users
+                  <ArrowRight size={16} className="ml-2" />
+                </Button>
+              </CardContent>
+        </Card>
 
-          <Card className="p-4">
-            <div className="flex items-center space-x-3">
+        <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
+            <CardHeader className="flex-1 ">
+              <div className="flex items-center space-x-3">
               <div className="bg-primary-vlight  p-2 rounded-lg">
                 <Activity size={20} className="text-primary" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Runs</p>
+              <div className="">
+                <p className="text-sm text-muted-foreground">Jobs</p>
                 <p className="text-2xl font-bold">{noOfRuns}</p>
               </div>
             </div>
-          </Card>
-
-       {/*   <Card className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="bg-orange-100 p-2 rounded-lg">
-                <Users size={20} className="text-orange-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Users</p>
-                <p className="text-2xl font-bold">-</p>
-              </div>
-            </div>
-          </Card>*/}
+            </CardHeader>
+            <CardContent>
+                <Button 
+                  onClick={() => router.push(`/venues/${slug}/history`)}
+                  className="w-full"
+                  variant="outline"
+                >
+                  View Jobs
+                  <ArrowRight size={16} className="ml-2" />
+                </Button>
+              </CardContent>
+        </Card>
         </div>
 
-        <Separator />
-
-        {/* Quick Actions */}
+       {/* <Separator />
         <div>
           <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -307,12 +350,12 @@ export default function VenuePage({ params }: VenuePageProps) {
                     <Database size={24} className="text-secondary" />
                   </div>
                   <div>
-                    <CardTitle>Assets</CardTitle>
-                    <p className="text-sm text-muted-foreground">Manage venue assets</p>
+                    <p className="text-sm text-muted-foreground">Assets</p>
+                   <p className="text-2xl font-bold">{noOfAssets}</p>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="bg-red-400">
                 <Button 
                   onClick={() => router.push(`/venues/${slug}/assets`)}
                   className="w-full"
@@ -373,6 +416,7 @@ export default function VenuePage({ params }: VenuePageProps) {
             </Card>
           </div>
         </div>
+        */}
       </div>
     </ContentLayout>
   );

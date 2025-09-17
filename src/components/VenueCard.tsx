@@ -3,11 +3,12 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { CopyIcon, CircleArrowRight } from "lucide-react";
+import { CopyIcon, CircleArrowRight, Trash } from "lucide-react";
 import { Venue } from "@/lib/covia";
 import { useRouter } from 'next/navigation';
 import { copyDataToClipBoard } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import { useVenues } from "@/hooks/use-venues";
 
 interface VenueCardProps {
   venue: Venue;
@@ -15,9 +16,13 @@ interface VenueCardProps {
 
 export function VenueCard({ venue }: VenueCardProps) {
   const router = useRouter();
-  const [ venueDID, setVenueDID] = useState(venue.getDID());
+   const { removeVenue } = useVenues();
+  const [ venueDID, setVenueDID] = useState("");
 
-   useEffect(() => {
+  if(!(venue instanceof Venue))
+    venue = new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId})
+  
+  useEffect(() => {
      
         const fetchDID = async () => {
             const response = await fetch(venue?.baseUrl+"/.well-known/did.json");
@@ -31,9 +36,9 @@ export function VenueCard({ venue }: VenueCardProps) {
     router.push(`/venues/${venue.venueId}`);
   };
 
-  const handleCopyClick = (e: React.MouseEvent) => {
+  const handleRemoveVenue = (e: React.MouseEvent) => {
     e.stopPropagation();
-    copyDataToClipBoard(venue.baseUrl, "Venue link copied to clipboard");
+    removeVenue(venue.venueId);
   };
 
   const handleViewVenueClick = (e: React.MouseEvent) => {
@@ -52,12 +57,12 @@ export function VenueCard({ venue }: VenueCardProps) {
         <div className="flex space-x-2">
           <Tooltip>
             <TooltipTrigger>
-              <CopyIcon 
+              <Trash 
                 size={16} 
-                onClick={handleCopyClick}
+                onClick={handleRemoveVenue}
               />
             </TooltipTrigger>
-            <TooltipContent>Copy Venue</TooltipContent>
+            <TooltipContent>Remove Venue</TooltipContent>
           </Tooltip>
         </div>
       </div>
