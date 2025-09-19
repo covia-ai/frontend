@@ -28,6 +28,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "copy-to-clipboard": "^3.3.3",
+    "did-resolver": "^4.1.0",
     "embla-carousel-autoplay": "^8.6.0",
     "embla-carousel-react": "^8.6.0",
     "file-type": "^21.0.0",
@@ -50,6 +51,7 @@
     "tailwind-merge": "^3.2.0",
     "uuid": "^11.1.0",
     "vanilla-jsoneditor": "^3.6.0",
+    "web-did-resolver": "^2.0.30",
     "zustand": "^5.0.4"
   },
   "devDependencies": {

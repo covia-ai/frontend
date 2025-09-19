@@ -103,7 +103,8 @@ export const ExecutionViewer = (props: any) => {
     function renderJSONObject(jsonObject: any, type: string) {
         if (jsonObject != undefined) {
             let keys = []; // keys of the input or output
-            let inOutType = "", assetLink = "";
+            let inOutType = ""; // type of the input or output e.g. string, number, object, array
+            let assetLink = "";
             let schema: any = {};
             if (type == "input") {
                 keys = Object.keys(executionData?.input || {});
@@ -120,7 +121,13 @@ export const ExecutionViewer = (props: any) => {
             // render function for each key within the input or output like "prompt" or "image"
             const renderContent = (key: string) => {
                 const fieldType = schema?.properties?.[key]?.type || "object";
+                const isSecret = schema?.properties?.[key]?.secret === true;
                 const value = (jsonObject as any)[key];
+
+                // Mask secret outputs
+                if (isSecret) {
+                    return <TableCell className="max-w-xs break-words whitespace-pre-wrap italic">Secret Hidden</TableCell>;
+                }
 
                 if (fieldType === "string") {
                     // Display string values as plain text with proper line breaks

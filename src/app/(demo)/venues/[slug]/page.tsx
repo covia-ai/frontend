@@ -18,7 +18,9 @@ import {
   Link as LinkIcon,
   Fingerprint,
   Copy,
-  FolderUpIcon
+  FolderUpIcon,
+  ActivityIcon,
+  User
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useVenues } from "@/hooks/use-venues";
@@ -42,14 +44,26 @@ export default function VenuePage({ params }: VenuePageProps) {
   const [ venue, setVenue] = useState<Venue | null>(null);
   const [ venueDID, setVenueDID] = useState("");
   const [ venueMCPUrl, setVenueMCPURL] = useState("Not Found")
+  const [ noOfAssets, setNoOfAssets] = useState(0)
+  const [ noOfOps, setNoOfOps] = useState(0)
+  const [ noOfRuns, setNoOfRuns] = useState(0)
+  const [ noOfUsers, setNoOfUsers] = useState(0)
 
   useEffect(() => {
     // Find the venue by slug
+    console.log(venues)
     const foundVenue = venues.find(v => v.venueId === slug);
-    console.log(foundVenue)
     if (foundVenue) {
-      setVenue(foundVenue);
-      setVenueDID(foundVenue.getDID())
+      if(foundVenue instanceof Venue) {
+          setVenue(foundVenue);
+          setVenueDID(foundVenue.getDID())
+      }
+      else {
+          const foundVenue_obj = new Venue({baseUrl:foundVenue.baseUrl, venueId:foundVenue.venueId});
+          setVenue(foundVenue_obj)
+          setVenueDID(foundVenue_obj.getDID())
+      }
+     
       // Don't automatically set as current venue - only when user clicks "Make Default"
       
     }
@@ -64,10 +78,25 @@ export default function VenuePage({ params }: VenuePageProps) {
       const fetchDID = async () => {
           const response = await fetch(venue?.baseUrl+"/.well-known/did.json");
           const body = await response.json();
-          setVenueDID(body?.id)
+          setVenueDID(body.id)
+      }
+       const fetchStats = async () => {
+         try {
+          const status =  await venue?.getStats();
+          if(status?.stats) {
+              setNoOfAssets(status?.stats?.assets);
+              setNoOfOps(status?.stats?.ops);
+              setNoOfRuns(status?.stats?.jobs);
+              setNoOfUsers(status?.stats?.users);
+          }
+        }
+        catch(e) {
+          console.log(e)
+        }
       }
       fetchDID();
       fetchMCP();
+      fetchStats();
   }, [venue]);
 
   const isCurrentVenue = currentVenue?.venueId === venue?.venueId;
@@ -213,74 +242,120 @@ export default function VenuePage({ params }: VenuePageProps) {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="p-4 pointer-event-none">
-            <div className="flex items-center space-x-3">
-              <div className="bg-blue-100 p-2 rounded-lg">
-                <Database size={20} className="text-blue-600" />
+         <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
+            <CardHeader className="flex-1 ">
+              <div className="flex items-center space-x-3">
+              <div className="bg-primary-vlight  p-2 rounded-lg">
+                <Database size={20} className="text-primary" />
               </div>
-              <div>
+              <div className="">
                 <p className="text-sm text-muted-foreground">Assets</p>
-                <p className="text-2xl font-bold">-</p>
+                <p className="text-2xl font-bold">{noOfAssets}</p>
               </div>
             </div>
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="bg-green-100 p-2 rounded-lg">
-                <Settings size={20} className="text-green-600" />
+            </CardHeader>
+            <CardContent>
+                <Button 
+                  onClick={() => router.push(`/venues/${slug}/assets`)}
+                  className="w-full"
+                  variant="outline"
+                >
+                  View Assets
+                  <ArrowRight size={16} className="ml-2" />
+                </Button>
+              </CardContent>
+        </Card>
+          
+        <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
+            <CardHeader className="flex-1 ">
+              <div className="flex items-center space-x-3">
+              <div className="bg-primary-vlight  p-2 rounded-lg">
+                <Settings size={20} className="text-primary" />
               </div>
-              <div>
+              <div className="">
                 <p className="text-sm text-muted-foreground">Operations</p>
-                <p className="text-2xl font-bold">-</p>
+                <p className="text-2xl font-bold">{noOfOps}</p>
               </div>
             </div>
-          </Card>
+            </CardHeader>
+            <CardContent>
+                <Button 
+                  onClick={() => router.push(`/venues/${slug}/operations`)}
+                  className="w-full"
+                  variant="outline"
+                >
+                  View Operation
+                  <ArrowRight size={16} className="ml-2" />
+                </Button>
+              </CardContent>
+        </Card>
 
-          <Card className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="bg-purple-100 p-2 rounded-lg">
-                <Activity size={20} className="text-purple-600" />
+        <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
+            <CardHeader className="flex-1 ">
+              <div className="flex items-center space-x-3">
+              <div className="bg-primary-vlight  p-2 rounded-lg">
+                <Users size={20} className="text-primary" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Runs</p>
-                <p className="text-2xl font-bold">-</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="bg-orange-100 p-2 rounded-lg">
-                <Users size={20} className="text-orange-600" />
-              </div>
-              <div>
+              <div className="">
                 <p className="text-sm text-muted-foreground">Users</p>
-                <p className="text-2xl font-bold">-</p>
+                <p className="text-2xl font-bold">{noOfUsers}</p>
               </div>
             </div>
-          </Card>
+            </CardHeader>
+            <CardContent>
+                <Button 
+                  disabled
+                  className="w-full"
+                  variant="outline"
+                >
+                  View Users
+                  <ArrowRight size={16} className="ml-2" />
+                </Button>
+              </CardContent>
+        </Card>
+
+        <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
+            <CardHeader className="flex-1 ">
+              <div className="flex items-center space-x-3">
+              <div className="bg-primary-vlight  p-2 rounded-lg">
+                <Activity size={20} className="text-primary" />
+              </div>
+              <div className="">
+                <p className="text-sm text-muted-foreground">Jobs</p>
+                <p className="text-2xl font-bold">{noOfRuns}</p>
+              </div>
+            </div>
+            </CardHeader>
+            <CardContent>
+                <Button 
+                  onClick={() => router.push(`/venues/${slug}/history`)}
+                  className="w-full"
+                  variant="outline"
+                >
+                  View Jobs
+                  <ArrowRight size={16} className="ml-2" />
+                </Button>
+              </CardContent>
+        </Card>
         </div>
 
-        <Separator />
-
-        {/* Quick Actions */}
+       {/* <Separator />
         <div>
           <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer h-48">
               <CardHeader className="flex-1">
                 <div className="flex items-center space-x-3">
-                  <div className="bg-blue-100 p-3 rounded-lg">
-                    <Database size={24} className="text-blue-600" />
+                  <div className="bg-secondary-vlight p-3 rounded-lg">
+                    <Database size={24} className="text-secondary" />
                   </div>
                   <div>
-                    <CardTitle>Assets</CardTitle>
-                    <p className="text-sm text-muted-foreground">Manage venue assets</p>
+                    <p className="text-sm text-muted-foreground">Assets</p>
+                   <p className="text-2xl font-bold">{noOfAssets}</p>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="bg-red-400">
                 <Button 
                   onClick={() => router.push(`/venues/${slug}/assets`)}
                   className="w-full"
@@ -295,8 +370,8 @@ export default function VenuePage({ params }: VenuePageProps) {
             <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer h-48">
               <CardHeader className="flex-1">
                 <div className="flex items-center space-x-3">
-                  <div className="bg-green-100 p-2 rounded-lg">
-                    <Settings size={24} className="text-green-600" />
+                  <div className="bg-secondary-vlight p-2 rounded-lg">
+                    <Settings size={24} className="text-secondary" />
                   </div>
                   <div>
                     <CardTitle>Operations</CardTitle>
@@ -315,8 +390,33 @@ export default function VenuePage({ params }: VenuePageProps) {
                 </Button>
               </CardContent>
             </Card>
+
+            <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer h-48">
+              <CardHeader className="flex-1">
+                <div className="flex items-center space-x-3">
+                  <div className="bg-secondary-vlight p-2 rounded-lg">
+                     <Activity size={20} className="text-secondary" />
+                  </div>
+                  <div>
+                    <CardTitle>History</CardTitle>
+                    <p className="text-sm text-muted-foreground">Manage venue history</p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Button 
+                  onClick={() => router.push(`/venues/${slug}/history`)}
+                  className="w-full"
+                  variant="outline"
+                >
+                  View History
+                  <ArrowRight size={16} className="ml-2" />
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         </div>
+        */}
       </div>
     </ContentLayout>
   );

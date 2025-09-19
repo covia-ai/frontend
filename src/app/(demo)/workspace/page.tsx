@@ -23,7 +23,7 @@ import { Spinner } from '@/components/ui/shadcn-io/spinner';
 export default function HomePage() {
 
   const [loading, setLoading] = useState(true);
-  const [assetsMetadata, setAssetsMetadata] = useState<Asset[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
   const router = useRouter();
   
   const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
@@ -34,15 +34,18 @@ export default function HomePage() {
     const fetchData = async () => {
       try {
         const res = await venue.getAssets();
-        res.forEach(( asset:Asset) => {
-          if(asset?.metadata?.operation?.info?.featured) {
-              setAssetsMetadata(prevArray => [...prevArray, asset]);
-               
+        const featured = res.filter((asset: Asset) => asset?.metadata?.operation?.info?.featured);
+        const shuffled = featured.slice(); // copy array
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          if (i !== j) {
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
           }
-         
-        })
+        }
+        setAssets(shuffled.slice(0,3));
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error fetching featured asset data:', error);
+        setAssets([]);
       } finally {
         setLoading(false);
       }
@@ -98,9 +101,9 @@ export default function HomePage() {
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 items-stretch justify-center gap-4 mt-4 mb-8 w-full">
                     
-                    {assetsMetadata.slice(0,3).map((asset, index) =>
+                    {assets.map((asset, index) =>
                   
-                     <Card key={index} className="shadow-md h-full bg-slate-100 flex flex-col rounded-md hover:border-accent hover:border-2 h-48">
+                     <Card key={asset.id} className="shadow-md h-full bg-slate-100 flex flex-col rounded-md hover:border-accent hover:border-2 h-48">
                     {/* Fixed-size header */}                
                     
                       <div className="h-14 p-2 flex flex-row items-center border-b bg-slate-50">

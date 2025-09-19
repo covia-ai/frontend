@@ -3,10 +3,12 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { CopyIcon, CircleArrowRight } from "lucide-react";
+import { CopyIcon, CircleArrowRight, Trash } from "lucide-react";
 import { Venue } from "@/lib/covia";
 import { useRouter } from 'next/navigation';
 import { copyDataToClipBoard } from "@/lib/utils";
+import { useEffect, useState } from "react";
+import { useVenues } from "@/hooks/use-venues";
 
 interface VenueCardProps {
   venue: Venue;
@@ -14,14 +16,29 @@ interface VenueCardProps {
 
 export function VenueCard({ venue }: VenueCardProps) {
   const router = useRouter();
+   const { removeVenue } = useVenues();
+  const [ venueDID, setVenueDID] = useState("");
+
+  if(!(venue instanceof Venue))
+    venue = new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId})
+  
+  useEffect(() => {
+     
+        const fetchDID = async () => {
+            const response = await fetch(venue?.baseUrl+"/.well-known/did.json");
+            const body = await response.json();
+            setVenueDID(body.id);
+        }
+        fetchDID();
+    }, []);
 
   const handleCardClick = () => {
     router.push(`/venues/${venue.venueId}`);
   };
 
-  const handleCopyClick = (e: React.MouseEvent) => {
+  const handleRemoveVenue = (e: React.MouseEvent) => {
     e.stopPropagation();
-    copyDataToClipBoard(venue.baseUrl, "Venue link copied to clipboard");
+    removeVenue(venue.venueId);
   };
 
   const handleViewVenueClick = (e: React.MouseEvent) => {
@@ -40,12 +57,12 @@ export function VenueCard({ venue }: VenueCardProps) {
         <div className="flex space-x-2">
           <Tooltip>
             <TooltipTrigger>
-              <CopyIcon 
+              <Trash 
                 size={16} 
-                onClick={handleCopyClick}
+                onClick={handleRemoveVenue}
               />
             </TooltipTrigger>
-            <TooltipContent>Copy Venue</TooltipContent>
+            <TooltipContent>Remove Venue</TooltipContent>
           </Tooltip>
         </div>
       </div>
@@ -55,8 +72,8 @@ export function VenueCard({ venue }: VenueCardProps) {
         <div className="text-xs text-slate-600 line-clamp-3 mb-2">
           {venue.metadata.description || `${venue.name} Covia Venue`}
         </div>
-        <div className="text-xs text-slate-500 font-mono bg-slate-50 p-2 rounded break-all">
-          {venue.getDID()}
+        <div className="text-xs text-slate-500 font-mono bg-slate-50 p-2 rounded break-all line-clamp-1">
+          {venueDID.length> 40 ? (venueDID.substring(0,40)+"....") : (venueDID)}
         </div>
       </div>
 

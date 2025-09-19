@@ -61,7 +61,6 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
   const prevPage = (page: number) => {
     setCurrentPage(page)
   }
-  console.log(isLoading)
   const venueObj = useStore(useVenue, (x) => x.currentVenue);
   if (!venueObj) return null;
   const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})

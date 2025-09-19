@@ -24,12 +24,19 @@ import { Label } from "@/components/ui/label";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useSearchParams } from "next/navigation";
+import { Venue } from "@/lib/covia";
 export default function VenuesPage() {
-  const { venues } = useVenues();
+  const { addVenue,venues } = useVenues();
   const [venueDid, setVenueDid] = useState("");
+  const [venueId, setVenueId] = useState("");
   const searchParams = useSearchParams()
   const search = searchParams.get('search');
   
+  console.log(venues)
+  const addVenueToList = () =>{
+    const newVenue = new Venue({baseUrl:venueDid, venueId:venueId})
+    addVenue(newVenue)
+  }
   return (
     <ContentLayout title="Venues">
       <SmartBreadcrumb />
@@ -72,11 +79,11 @@ export default function VenuesPage() {
                             </div>
                             <div className="flex flex-row items-center justify-center space-x-2 w-full">
                               <Label  className="w-28">Venue ID</Label>
-                              <Input required onChange={e => setVenueDid(e.target.value)} placeholder="Provide venue Id"></Input>
+                              <Input required onChange={e => setVenueId(e.target.value)} placeholder="Provide venue Id"></Input>
                             </div>
                           </div>
                              <DialogClose>
-                                  <Button>Connect</Button>                 
+                                  <Button onClick={(e) => addVenueToList()}>Connect</Button>                 
                             </DialogClose>
                     </DialogContent>
             </Dialog>

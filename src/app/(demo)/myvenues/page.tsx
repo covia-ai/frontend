@@ -68,7 +68,7 @@ export default function OperationsPage() {
                                           <Input placeholder="Provide a title for the venue"></Input>
                                           <Input placeholder="Provide a description for the venue"></Input>
                                           <Input placeholder="Endpoint"></Input>
-                                          <Button>Connect</Button>
+                                          <Button onClick={(e) => addVenueToList()}>Connect</Button>
                                 </div>          
                               </DialogContent>
                               </Dialog>
