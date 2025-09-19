@@ -390,7 +390,7 @@ export const OperationViewer = (props: any) => {
       const keys = Object.keys(properties);
       return (
         <div className="w-11/12 my-2">
-          <div className="grid grid-cols-[min-content_1fr_1fr] gap-4 items-center">
+          <div className="grid grid-cols-[min-content_1fr_1fr] gap-4 items-center py-2">
             {keys.map((key, index) => (
               <>
                 <div className="flex flex-row items-center min-w-0">
@@ -409,11 +409,11 @@ export const OperationViewer = (props: any) => {
             ))}
           </div>
           <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
-          <div className="flex flex-row space-x-2">{!loading && <Button type="button" className="w-32" onClick={() => invokeOp(asset?.id, requiredKeys)}>{buttonText}</Button>}
+          <div className="flex flex-row space-x-2 items-center justify-center py-2">{!loading && <Button type="button" className="w-32" onClick={() => invokeOp(asset?.id, requiredKeys)}>{buttonText}</Button>}
             {!loading && <Button type="button" className="w-32" onClick={() => resetForm()}>Reset</Button>}
           </div>
 
-          {loading && <Button type="button" className="w-32" disabled>Please wait ...</Button>}
+          <div className="flex flex-row space-x-2 items-center justify-center py-2">{loading && <Button type="button" className="w-32" disabled>Please wait ...</Button>}</div>
         </div>
       )
     }
@@ -436,10 +436,10 @@ export const OperationViewer = (props: any) => {
           </div>
 
           <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
-          <div className="flex flex-row space-x-2">{!loading && <Button type="button" className="w-32" onClick={() => invokeOp(asset?.id, [])}>{buttonText}</Button>}
+          <div className="flex flex-row space-x-2 items-center justify-center py-2">{!loading && <Button type="button" className="w-32" onClick={() => invokeOp(asset?.id, [])}>{buttonText}</Button>}
             {!loading && <Button type="button" className="w-32" onClick={() => resetForm()}>Reset</Button>}
           </div>
-          {loading && <Button type="button" className="w-32" disabled>Please wait ...</Button>}
+          <div className="flex flex-row space-x-2 items-center justify-center py-2">{loading && <Button type="button" className="w-32" disabled>Please wait ...</Button>}</div>
         </div>
       )
     }
