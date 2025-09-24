@@ -61,7 +61,7 @@ export const ExecutionViewer = (props: any) => {
                 setExecutionData(response);
                 setPollStatus(response.status || "");
         }).catch((error) => {
-            setPollStatus("")
+                setPollStatus("ERROR");
         })
     }
     
@@ -93,7 +93,7 @@ export const ExecutionViewer = (props: any) => {
     }, [venue, props.jobId]);
 
     useEffect(() => {
-        if (poll != RunStatus.FAILED && poll != RunStatus.COMPLETE && poll != RunStatus.CANCELLED) {
+        if (poll != RunStatus.FAILED && poll != RunStatus.COMPLETE && poll != RunStatus.CANCELLED  && poll != "ERROR") {
             const intervalId = setInterval(() => {
                 fetchJobStatus();
             }, 1000)
@@ -242,8 +242,7 @@ export const ExecutionViewer = (props: any) => {
                     </div>
                     <div className="flex flex-row border-1 shadow-md rounded-md border-slate-200 w-11/12 mt-8 p-4 items-center justify-between">
                         <div className="flex flex-col w-full">
-
-                             {poll && poll != 'CANCELLED' && 
+                             {poll && (poll == RunStatus.STARTED  || poll == RunStatus.PENDING) && 
                              <div className="flex flex-row-reverse">
                           
                                
