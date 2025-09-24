@@ -223,7 +223,7 @@ export const OperationViewer = (props: any) => {
     return asset?.run(input)
       .then(response => {
         if (response?.id) {
-          router.push("/history/" + response?.id);
+          router.push("/venues/"+venue.venueId+"/history/" + response?.id);
         }
         return response;
       });

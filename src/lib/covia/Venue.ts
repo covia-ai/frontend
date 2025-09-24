@@ -2,7 +2,7 @@ import { CoviaError, VenueOptions, AssetMetadata, JobData, VenueInterface, Asset
 import { Asset } from './Asset';
 import { Operation } from './Operation';
 import { DataAsset } from './DataAsset';
-import { fetchWithError } from './Utils';
+import { fetchStreamWithError, fetchWithError } from './Utils';
 import { CredentialsHTTP } from './Credentials';
 import { Resolver } from 'did-resolver'
 import { getResolver } from 'web-did-resolver'
@@ -158,6 +158,30 @@ export class Venue implements VenueInterface {
    */
   async getJob(jobId: string): Promise<JobData> {
     return fetchWithError<JobData>(`${this.baseUrl}/api/v1/jobs/${jobId}`);
+  }
+
+   /**
+   * Cancel job by ID
+   * @param jobId - Job identifier
+   * @returns {Promise<JobData>}
+   */
+  async cancelJob(jobId: string):  Promise<number> {
+     return fetchStreamWithError(`${this.baseUrl}/api/v1/jobs/${jobId}/cancel`, { method: 'PUT'})
+     .then((response) =>{
+        return response.status
+    });
+  }
+
+   /**
+   * Delete job by ID
+   * @param jobId - Job identifier
+   * @returns {Promise<JobData>}
+   */
+  async deleteJob(jobId: string):  Promise<number> {
+     return fetchStreamWithError(`${this.baseUrl}/api/v1/jobs/${jobId}/delete`, { method: 'PUT'})
+     .then((response) =>{
+        return response.status
+    });
   }
 
   /**
