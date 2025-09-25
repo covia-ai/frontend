@@ -162,9 +162,10 @@ export const OperationViewer = (props: any) => {
 
   // Helper function to convert a value to appropriate raw input string based on type
   const printValue = (value: any, type: string) => {
+    console.log(value+" : "+type)
     if (type === "json" || type === "object" || type === "any" || type === "array") {
       // Convert to JSON string
-      if (value !== undefined && value !== null) {
+      if (value !== undefined && value !== null && value != "") {
         return JSON.stringify(value, null, 2);
       } else {
         return type === "array" ? "[]" : "{}";
@@ -291,10 +292,10 @@ export const OperationViewer = (props: any) => {
     const isSecret = schema.secret === true;
 
     // Get current raw value from rawInput state or use default
+  
     const currentRawValue = key == TOP_LEVEL_INPUT_KEY ?
       (rawInput[key] !== undefined ? rawInput[key] : printValue(input, type)) :
       (rawInput[key] !== undefined ? rawInput[key] : printValue(defaultValue, type));
-
     const commonProps = {
       className: "flex-1 placeholder:text-gray-500",
       value: currentRawValue,
