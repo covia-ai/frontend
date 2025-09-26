@@ -65,7 +65,6 @@ async function example() {
 // Example usage of the Covia API
 async function webExamples() {
   const credentials = new CredentialsHTTP("grid.covia.ai", "my-api-key");
-  const credentials = new CredentialsC("grid.covia.ai", "my-api-key");
 
   // Connect to a Venue
   const venue = await Venue.connect("grid.covia.ai", credentials);
