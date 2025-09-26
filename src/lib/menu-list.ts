@@ -137,7 +137,7 @@ export function   getMenuList(): Group[] {
             icon: LocationEdit,
           },
           {
-            href: "/job",
+            href: "/jobs",
             label: "Jobs",
             icon: User
           },
