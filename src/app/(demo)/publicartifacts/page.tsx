@@ -5,7 +5,7 @@
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Search } from "@/components/search";
 import { Card } from "@/components/ui/card";
-import { CircleArrowRight, CopyIcon, Save,  } from "lucide-react";
+import { ArrowRight, CircleArrowRight, CopyIcon, Play, Save,  } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from 'next/navigation'
 import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
@@ -150,15 +150,19 @@ export default function AssetPage() {
           <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4">
             {assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset, index) =>
 
-              <Card key={index} className="shadow-md h-full bg-slate-100 flex flex-col rounded-md hover:border-accent hover:border-2 h-48">
+              <Card key={index} className="shadow-md h-full bg-slate-100 flex flex-col rounded-md hover:border-accent hover:border-2 h-48 py-2">
                 {/* Fixed-size header */}
-                <div className="h-14 p-2 flex flex-row items-center border-b bg-slate-50">
+                <div className="h-14 p-2 flex flex-row items-center bg-slate-50">
                   <div className="truncate flex-1 mr-2 font-semibold text-sm"
                   onClick={() => { router.push("/venues/"+venue.venueId+"/assets/" + asset.id) }}>{asset.metadata.name || 'Unnamed Asset'}</div>
                   <Dialog>
                     <DialogTrigger>
                       <Tooltip>
-                        <TooltipTrigger><CopyIcon size={16}></CopyIcon></TooltipTrigger>
+                        <TooltipTrigger>
+                          <div className="inline-flex items-center justify-center border-1 border-slate-300 rounded-[11px] px-2 py-2 h-8 w-8 hover:bg-muted">
+                          <CopyIcon size={20} className="h-5 w-5 text-slate-800"></CopyIcon>
+                          </div>
+                          </TooltipTrigger>
                         <TooltipContent>Copy Asset</TooltipContent>
                         </Tooltip>
                       
@@ -208,9 +212,13 @@ export default function AssetPage() {
                     ))}
                   </div>
                   <Tooltip>
-                        <TooltipTrigger>  <CircleArrowRight color="#6B46C1" onClick={() => { router.push("/venues/"+venue.venueId+"/assets/" + asset.id) }} /></TooltipTrigger>
+                        <TooltipTrigger>
+                          <div className="inline-flex items-center justify-center border-1 bg-primary border-slate-300 rounded-[11px] px-2 py-2 h-8 w-8 hover:bg-muted">
+                            <Play size={20} className="h-5 w-5 text-white" onClick={() => { router.push("/venues/"+venue.venueId+"/assets/" + asset.id) }} />
+                          </div>
+                          </TooltipTrigger>
                         <TooltipContent>View Asset</TooltipContent>
-                        </Tooltip>
+                    </Tooltip>
                 
                 </div>
               </Card>

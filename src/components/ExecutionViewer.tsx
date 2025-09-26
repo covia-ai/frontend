@@ -76,7 +76,7 @@ export const ExecutionViewer = (props: any) => {
         if (!venue) return;
         venue.deleteJob(props.jobId).then((response) => {
           if(response == 200) {
-            router.push("/venues/"+venue.venueId+"/history");
+            router.push("/venues/"+venue.venueId+"/jobs");
           }
         })
     }
@@ -121,7 +121,7 @@ export const ExecutionViewer = (props: any) => {
                             return (
                                 <TableRow key={index} >
                                     <TableCell className="text-secondary">{index}</TableCell>
-                                    <TableCell className="text-secondary font-mono underline"><Link href={`/history/${id}`}>{id}</Link></TableCell>
+                                    <TableCell className="text-secondary font-mono underline"><Link href={`/jobs/${id}`}>{id}</Link></TableCell>
                                     <TableCell>
                                         <span className={colourForStatus(status)}>{status}</span>
                                     </TableCell>
