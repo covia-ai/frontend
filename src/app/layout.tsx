@@ -4,6 +4,7 @@ import "./globals.css";
 import { siteConfig } from "@/config/site";
 import { CookieConsentComponent } from "@/components/CookieConsent";
 import localFont from 'next/font/local';
+import { GoogleAnalytics } from '@next/third-parties/google';
 
 
 const { title, description } = siteConfig;
@@ -39,6 +40,7 @@ export default function RootLayout({
         {children}
         <CookieConsentComponent />
       </body>
+      <GoogleAnalytics gaId="G-CS4QNLYT4M" />
     </html>
   );
 }

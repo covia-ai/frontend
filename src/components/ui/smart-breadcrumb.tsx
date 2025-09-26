@@ -66,7 +66,7 @@ export function SmartBreadcrumb({ assetName }: SmartBreadcrumbProps = {}) {
 
   // Check if a segment represents an asset (not a known route)
   const isAssetSegment = (segment: string): boolean => {
-    const knownRoutes = ['demo', 'venues', 'assets', 'operations', 'history', 'learning', 'workspace', 'myvenues', 'myassets', 'signup', 'privacypolicy'];
+    const knownRoutes = ['demo', 'venues', 'assets', 'operations', 'jobs', 'learning', 'workspace', 'myvenues', 'myassets', 'signup', 'privacypolicy'];
     return !knownRoutes.includes(segment) && !segment.startsWith('[') && !segment.endsWith(']');
   };
 
@@ -79,7 +79,7 @@ export function SmartBreadcrumb({ assetName }: SmartBreadcrumbProps = {}) {
       'publicartifacts': 'Public Artifacts',
       'privateartifacts': 'Private Artifacts',
       'operations': 'Operations',
-      'history': 'History',
+      'jobs': 'Jobs',
       'learning': 'Learning Corner',
       'workspace': 'Workspace',
       'myvenues': 'My Venues',

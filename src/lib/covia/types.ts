@@ -1,3 +1,5 @@
+import { CANCELLED } from "dns";
+
 export interface VenueOptions {
   baseUrl?: string;
   venueId?: string;
@@ -63,7 +65,13 @@ export enum RunStatus {
   COMPLETE = "COMPLETE",
   FAILED = "FAILED",
   PENDING = "PENDING",
-  STARTED = "STARTED"
+  STARTED = "STARTED",
+  CANCELLED = "CANCELLED",
+  TIMEOUT = "TIMEOUT",
+  REJECTED = "REJECTED",
+  INPUT_REQUIRED= "INPUT_REQUIRED",
+  AUTH_REQUIRED = "AUTH_REQUIRED",
+  PAUSED = "PAUSED"
 }
 
 export interface JobData {

@@ -61,7 +61,7 @@ export function VenueSelector() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 px-2 text-primary text-xs flex flex-row items-center justify-center gap-1">
+        <Button variant="ghost" className="border border-muted rounded-md h-8 p-2 text-primary text-xs flex flex-row items-center justify-center gap-1">
           <Building2 size={14} />
           {selectedVenue.name}
           <ChevronDown size={14} />

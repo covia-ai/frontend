@@ -1,4 +1,4 @@
-  import { CoviaError } from './types';
+  import { CoviaError, JobData, RunStatus } from './types';
 
 /**
  * Utility function to handle API calls with consistent error handling
@@ -41,3 +41,19 @@ export function fetchStreamWithError(url: string, options?: RequestInit): Promis
         : new CoviaError(`Request failed: ${(error as Error).message}`);
     });
 } 
+
+export function isJobComplete(jobData:JobData) {
+  if(jobData.status == null)
+      throw new CoviaError("Job status should never be null")
+  return jobData.status == RunStatus.COMPLETE ? true:false
+}
+
+export function isJobFinished(jobData:JobData) {
+  if(jobData.status == null)
+      throw new CoviaError("Job status should never be null")
+  
+  if (jobData.status == RunStatus.COMPLETE) return true;
+  if (jobData.status == RunStatus.FAILED) return true;
+  if (jobData.status == RunStatus.REJECTED) return true;
+  if (jobData.status == RunStatus.CANCELLED) return true;
+}

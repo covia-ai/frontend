@@ -77,8 +77,8 @@ export function   getMenuList(): Group[] {
             icon: LocationEdit,
           },
            {
-            href: "/history",
-            label: "History",
+            href: "/jobs",
+            label: "Jobs",
             icon: User
           },
           {
@@ -137,8 +137,8 @@ export function   getMenuList(): Group[] {
             icon: LocationEdit,
           },
           {
-            href: "/history",
-            label: "User History",
+            href: "/jobs",
+            label: "Jobs",
             icon: User
           },
           {

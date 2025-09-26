@@ -328,7 +328,7 @@ export default function VenuePage({ params }: VenuePageProps) {
             </CardHeader>
             <CardContent>
                 <Button 
-                  onClick={() => router.push(`/venues/${slug}/history`)}
+                  onClick={() => router.push(`/venues/${slug}/jobs`)}
                   className="w-full"
                   variant="outline"
                 >
@@ -339,84 +339,7 @@ export default function VenuePage({ params }: VenuePageProps) {
         </Card>
         </div>
 
-       {/* <Separator />
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer h-48">
-              <CardHeader className="flex-1">
-                <div className="flex items-center space-x-3">
-                  <div className="bg-secondary-vlight p-3 rounded-lg">
-                    <Database size={24} className="text-secondary" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Assets</p>
-                   <p className="text-2xl font-bold">{noOfAssets}</p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="bg-red-400">
-                <Button 
-                  onClick={() => router.push(`/venues/${slug}/assets`)}
-                  className="w-full"
-                  variant="outline"
-                >
-                  View Assets
-                  <ArrowRight size={16} className="ml-2" />
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer h-48">
-              <CardHeader className="flex-1">
-                <div className="flex items-center space-x-3">
-                  <div className="bg-secondary-vlight p-2 rounded-lg">
-                    <Settings size={24} className="text-secondary" />
-                  </div>
-                  <div>
-                    <CardTitle>Operations</CardTitle>
-                    <p className="text-sm text-muted-foreground">Manage venue operations</p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Button 
-                  onClick={() => router.push(`/venues/${slug}/operations`)}
-                  className="w-full"
-                  variant="outline"
-                >
-                  View Operations
-                  <ArrowRight size={16} className="ml-2" />
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer h-48">
-              <CardHeader className="flex-1">
-                <div className="flex items-center space-x-3">
-                  <div className="bg-secondary-vlight p-2 rounded-lg">
-                     <Activity size={20} className="text-secondary" />
-                  </div>
-                  <div>
-                    <CardTitle>History</CardTitle>
-                    <p className="text-sm text-muted-foreground">Manage venue history</p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Button 
-                  onClick={() => router.push(`/venues/${slug}/history`)}
-                  className="w-full"
-                  variant="outline"
-                >
-                  View History
-                  <ArrowRight size={16} className="ml-2" />
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-        */}
+       
       </div>
     </ContentLayout>
   );

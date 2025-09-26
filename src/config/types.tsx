@@ -55,16 +55,7 @@ export interface Value {
   type?: string | undefined; 
   description?: string | undefined;
 }
-export interface UserHistory {
-  id:string;
-  operationId:string;
-  status:string;
-  executionDate:string;
-  orchestration:boolean;
-  input?: AssetId[];
-  output?: AssetId[];
 
-}
 export interface AssetId {
   id:string;
 }
