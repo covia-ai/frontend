@@ -394,7 +394,7 @@ export const OperationViewer = (props: any) => {
           <div className="grid grid-cols-[min-content_1fr_1fr] gap-4 items-center py-2">
             {keys.map((key, index) => (
               <>
-                <div className="flex flex-row items-center min-w-0">
+                <div key={index} className="flex flex-row items-center min-w-0">
                   <Label className="whitespace-nowrap">{key}</Label>
                   {requiredKeys?.indexOf(key) != -1 && <span className="text-red-400 ml-1">*</span>}
                 </div>
