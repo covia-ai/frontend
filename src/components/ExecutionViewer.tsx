@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { isJobFinished } from "@/lib/covia/Utils";
 
 
 export const ExecutionViewer = (props: any) => {
@@ -93,7 +94,7 @@ export const ExecutionViewer = (props: any) => {
     }, [venue, props.jobId]);
 
     useEffect(() => {
-        if (poll != RunStatus.FAILED && poll != RunStatus.COMPLETE && poll != RunStatus.CANCELLED  && poll != "ERROR") {
+        if (executionData?.status != null && !isJobFinished(executionData)) {
             const intervalId = setInterval(() => {
                 fetchJobStatus();
             }, 1000)
