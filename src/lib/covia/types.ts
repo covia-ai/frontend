@@ -2,6 +2,7 @@
 export interface VenueOptions {
   baseUrl?: string;
   venueId?: string;
+  did?:string;
 }
 
 export interface VenueInterface {

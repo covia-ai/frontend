@@ -44,16 +44,24 @@ export function fetchStreamWithError(url: string, options?: RequestInit): Promis
 
 export function isJobComplete(jobData:JobData) {
   if(jobData.status == null)
-      throw new CoviaError("Job status should never be null")
+      return false;
   return jobData.status == RunStatus.COMPLETE ? true:false
+}
+
+export function isJobPaused(jobData:JobData) {
+  if(jobData.status == null)
+      return false;
+  return jobData.status == RunStatus.PAUSED ? true:false
 }
 
 export function isJobFinished(jobData:JobData) {
   if(jobData.status == null)
-      throw new CoviaError("Job status should never be null")
-  
+      return false;
+
   if (jobData.status == RunStatus.COMPLETE) return true;
   if (jobData.status == RunStatus.FAILED) return true;
   if (jobData.status == RunStatus.REJECTED) return true;
   if (jobData.status == RunStatus.CANCELLED) return true;
+
+  return false;
 }

@@ -1,6 +1,5 @@
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { ExecutionViewer } from "@/components/ExecutionViewer";
-import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 
 export default async function Page({
   params,
@@ -13,9 +12,7 @@ export default async function Page({
  
   return (
 
-     <ContentLayout title="Operations">
-          <SmartBreadcrumb />
-            
+     <ContentLayout title="Operations">            
            <ExecutionViewer jobId={id}></ExecutionViewer>
       </ContentLayout>
   )

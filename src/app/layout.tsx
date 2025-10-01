@@ -10,7 +10,8 @@ import { GoogleAnalytics } from '@next/third-parties/google';
 const { title, description } = siteConfig;
 
 const aetherFont = localFont({
-      src: '../../public/fonts/aether.woff2'
+      src: '../../public/fonts/aether.woff2',
+      variable: '--font-aether',
 });
 
 export const metadata: Metadata = {

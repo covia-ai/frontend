@@ -16,10 +16,10 @@ interface BreadcrumbItem {
 }
 
 interface SmartBreadcrumbProps {
-  assetName?: string;
+  assetOrJobName?: string;
 }
 
-export function SmartBreadcrumb({ assetName }: SmartBreadcrumbProps = {}) {
+export function SmartBreadcrumb({ assetOrJobName }: SmartBreadcrumbProps = {}) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -31,7 +31,6 @@ export function SmartBreadcrumb({ assetName }: SmartBreadcrumbProps = {}) {
     ];
 
     let currentPath = '';
-    
     segments.forEach((segment, index) => {
       currentPath += `/${segment}`;
       
@@ -48,12 +47,10 @@ export function SmartBreadcrumb({ assetName }: SmartBreadcrumbProps = {}) {
         let label = getCustomLabel(segment, currentPath) || segment
           .replace(/-/g, ' ')
           .replace(/\b\w/g, l => l.toUpperCase());
-        
-        // If this is the last segment and we have an asset name, use it instead
-        if (index === segments.length - 1 && assetName && isAssetSegment(segment)) {
-          label = assetName;
+        // If this is the last segment and we have an asset name or job name, use it instead
+        if (index === segments.length - 1 && assetOrJobName && isAssetOrJobSegment(segment)) {
+          label = assetOrJobName;
         }
-        
         breadcrumbs.push({
           label,
           href: currentPath,
@@ -65,8 +62,8 @@ export function SmartBreadcrumb({ assetName }: SmartBreadcrumbProps = {}) {
   };
 
   // Check if a segment represents an asset (not a known route)
-  const isAssetSegment = (segment: string): boolean => {
-    const knownRoutes = ['demo', 'venues', 'assets', 'operations', 'jobs', 'learning', 'workspace', 'myvenues', 'myassets', 'signup', 'privacypolicy'];
+  const isAssetOrJobSegment = (segment: string): boolean => {
+    const knownRoutes = ['demo', 'publicartificats','venues', 'assets', 'operations', 'jobs', 'learning', 'workspace', 'myvenues', 'myassets', 'signup', 'privacypolicy'];
     return !knownRoutes.includes(segment) && !segment.startsWith('[') && !segment.endsWith(']');
   };
 
@@ -92,7 +89,6 @@ export function SmartBreadcrumb({ assetName }: SmartBreadcrumbProps = {}) {
   };
 
   const breadcrumbs = generateBreadcrumbs();
-
   const handleBreadcrumbClick = (href: string) => {
     router.push(href);
   };

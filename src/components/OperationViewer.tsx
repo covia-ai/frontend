@@ -448,7 +448,7 @@ export const OperationViewer = (props: any) => {
 
   return (
     <>
-      <SmartBreadcrumb assetName={asset?.metadata?.name} />
+      <SmartBreadcrumb assetOrJobName={asset?.metadata?.name} />
 
       <div className="flex flex-col w-full items-center justify-center">
         {assetNotFound && (

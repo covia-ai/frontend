@@ -4,6 +4,7 @@ import { Asset } from "@/lib/covia";
 import { Copy } from "lucide-react";
 import { copyDataToClipBoard } from "@/lib/utils";
 import Link from "next/link";
+import { IdAndLink } from "./IdandLink";
 
 interface AssetHeaderProps {
   asset: Asset;
@@ -19,19 +20,7 @@ export const AssetHeader = ({ asset }: AssetHeaderProps) => {
       </h1>
       <p className="text-m mb-4 text-slate-600 w-3/4 text-center">{asset?.metadata?.description}</p>
 
-      <div className="flex flex-row-reverse space-x-4 space-x-reverse w-full justify-center">
-        <div className="flex flex-row ">
-          <span className="text-xs mr-1">ID: </span>
-          <span className="text-xs mr-1 font-mono">{asset?.id}</span>
-          <span>
-            <Copy
-              size={12}
-              onClick={(e) => copyDataToClipBoard(asset?.id, "AssetId copied to clipboard")}
-              className="cursor-pointer hover:text-pink-400"
-            />
-          </span>
-        </div>
-      </div>
+     <IdAndLink type="Asset" url={window.location.href} id={asset?.id}></IdAndLink>
     </div>
   );
 }; 

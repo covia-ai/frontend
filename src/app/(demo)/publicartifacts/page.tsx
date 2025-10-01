@@ -5,7 +5,7 @@
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Search } from "@/components/search";
 import { Card } from "@/components/ui/card";
-import { ArrowRight, CircleArrowRight, CopyIcon, Play, Save,  } from "lucide-react";
+import { ArrowRight, CircleArrowRight, CopyIcon, Play, Save, SquareArrowOutUpRight,  } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from 'next/navigation'
 import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
@@ -214,7 +214,7 @@ export default function AssetPage() {
                   <Tooltip>
                         <TooltipTrigger>
                           <div className="inline-flex items-center justify-center border-1 bg-primary border-slate-300 rounded-[11px] px-2 py-2 h-8 w-8 hover:bg-muted">
-                            <Play size={20} className="h-5 w-5 text-white" onClick={() => { router.push("/venues/"+venue.venueId+"/assets/" + asset.id) }} />
+                            <SquareArrowOutUpRight size={20} className="h-5 w-5 text-white" onClick={() => { router.push("/venues/"+venue.venueId+"/assets/" + asset.id) }} />
                           </div>
                           </TooltipTrigger>
                         <TooltipContent>View Asset</TooltipContent>
