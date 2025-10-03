@@ -91,7 +91,7 @@ export const ExecutionToolbar = ({jobData} : JobData) => {
                                   <AlertDialogAction onClick={(e) => cancelExecution()}>Yes</AlertDialogAction>
                                   </AlertDialogFooter>
                           </AlertDialogContent>
-                  </AlertDialog>
+                        </AlertDialog>
                     </TooltipTrigger>
                   <TooltipContent>Cancel job</TooltipContent>
                   

@@ -4,7 +4,7 @@ import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 import { Search } from "@/components/search";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import { CircleArrowRight, Copy, InfoIcon } from "lucide-react";
+import { CircleArrowRight, Copy, InfoIcon, SquareArrowOutUpRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from 'next/navigation'
 
@@ -35,6 +35,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { Iconbutton } from "./Iconbutton";
 
 interface OperationsListProps {
   venueSlug?: string; // Optional venue slug for venue-specific pages
@@ -170,14 +171,10 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
                     <div className="truncate flex-1 mr-2 font-semibold text-sm"
                     onClick={() => { router.push("/venues/"+venue.venueId+"/operations/" + asset.id) }}>{asset.metadata.name || 'Unnamed Asset'}  
                       </div>
-                      <Tooltip><TooltipTrigger>
-                        <SheetTrigger asChild>
-                        <InfoIcon size={16}></InfoIcon>
-                        
+                      <SheetTrigger>
+                        <Iconbutton icon={InfoIcon} message="Know more"></Iconbutton>
+                    
                       </SheetTrigger> 
-                      <TooltipContent>Information</TooltipContent>
-                      </TooltipTrigger> 
-                      </Tooltip> 
                     </div>
                   <SheetContent className="min-w-lg">
                     <SheetHeader className="flex flex-col items-center justify-center">
@@ -219,12 +216,7 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
                 </div>
                 {/* Fixed-size footer */}
                   <div className="p-2 h-12 flex flex-row-reverse items-center justify-between" onClick={() => { router.push("/venues/"+venue.venueId+"/operations/" + asset.id) }}>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <CircleArrowRight color="#6B46C1" onClick={() => { router.push("/venues/"+venue.venueId+"/operations/" + asset.id) }} />
-                      </TooltipTrigger> 
-                      <TooltipContent>View Operation</TooltipContent>
-                      </Tooltip> 
+                <Iconbutton icon={SquareArrowOutUpRight} message="View Operation" path="operations" pathId={asset.id}/>
                   </div>
                 </Card>
               </Sheet>

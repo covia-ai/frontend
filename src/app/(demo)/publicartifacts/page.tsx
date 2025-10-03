@@ -16,11 +16,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
@@ -43,6 +38,7 @@ import {
 } from "@/components/ui/pagination"
 import { CreateAssetComponent } from "@/components/CreateAssetComponent";
 import { Spinner } from '@/components/ui/shadcn-io/spinner';
+import { Iconbutton } from "@/components/Iconbutton";
 
 export default function AssetPage() {
   const searchParams = useSearchParams()
@@ -157,14 +153,7 @@ export default function AssetPage() {
                   onClick={() => { router.push("/venues/"+venue.venueId+"/assets/" + asset.id) }}>{asset.metadata.name || 'Unnamed Asset'}</div>
                   <Dialog>
                     <DialogTrigger>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <div className="inline-flex items-center justify-center border-1 border-slate-300 rounded-[11px] px-2 py-2 h-8 w-8 hover:bg-muted">
-                          <CopyIcon size={20} className="h-5 w-5 text-slate-800"></CopyIcon>
-                          </div>
-                          </TooltipTrigger>
-                        <TooltipContent>Copy Asset</TooltipContent>
-                        </Tooltip>
+                      <Iconbutton icon={CopyIcon} message="Copy Asset"/>
                       
                       </DialogTrigger>
                     <DialogContent className="h-11/12 min-w-10/12 ">
@@ -211,15 +200,7 @@ export default function AssetPage() {
                       index < 2 && <Badge variant="default" className="border bg-secondary text-white text-xs" key={index}>{keyword}</Badge>
                     ))}
                   </div>
-                  <Tooltip>
-                        <TooltipTrigger>
-                          <div className="inline-flex items-center justify-center border-1 bg-primary border-slate-300 rounded-[11px] px-2 py-2 h-8 w-8 hover:bg-muted">
-                            <SquareArrowOutUpRight size={20} className="h-5 w-5 text-white" onClick={() => { router.push("/venues/"+venue.venueId+"/assets/" + asset.id) }} />
-                          </div>
-                          </TooltipTrigger>
-                        <TooltipContent>View Asset</TooltipContent>
-                    </Tooltip>
-                
+                <Iconbutton icon={SquareArrowOutUpRight} message="View Asset" path="asset" pathId={asset.id}/>
                 </div>
               </Card>
 

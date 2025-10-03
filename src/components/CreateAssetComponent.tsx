@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Plus, PlusCircle, Router, User } from "lucide-react";
+import { Plus, PlusCircle, PlusCircleIcon, PlusIcon, Router, User } from "lucide-react";
 import { TbCircleDashedNumber1,  TbCircleDashedNumber2, TbCircleDashedNumber3} from "react-icons/tb";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +34,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { Iconbutton } from "./Iconbutton";
 
 export const CreateAssetComponent = ({sendDataToParent}) => {
     const [step, setStep] = useState(0);
@@ -196,173 +197,166 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
       }, [open]);
   return (
     <div className="h-48 flex flex-center items-center justify-center ">
-                  <Dialog open={open} onOpenChange={setOpen}>
-                    <DialogTrigger>
-                        <Tooltip>
-                           <TooltipTrigger>
-                             <div className="inline-flex items-center justify-center border-1 border-slate-300 rounded-[11px] px-2 py-2 h-10 w-10 hover:bg-muted">
-                                      <Plus size={24} className="h-5 w-5 text-slate-800 "/>
-                              </div>
-                             </TooltipTrigger>
-                            <TooltipContent>Create new Asset</TooltipContent>
-                          </Tooltip>  
-                    </DialogTrigger>
-                    <DialogContent className="">  
-                          <DialogTitle className="flex flex-row items-center space-x-2">
-                                  <TbCircleDashedNumber1 size={32}></TbCircleDashedNumber1>
-                                  <Label>Choose Asset Type & Upload Content </Label>
-                          </DialogTitle>
-                                
-                                 <div className="flex flex-col items-center justify-between space-y-4">
-                                    <div className="w-full flex flex-row items-center justify-evenly">                                        
-                                        <Select onValueChange={(value) => setAssetType(value)} defaultValue={assetType}>
-                                            <SelectTrigger className="w-full">
-                                             <SelectValue placeholder="Select a type" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectGroup>
-                                              <SelectLabel>Metadata Type</SelectLabel>
-                                              <SelectItem value="file">File</SelectItem>     
-                                              <SelectItem value="json">JSON</SelectItem>     
-                                              <SelectItem value="string">String</SelectItem>           
-                                            </SelectGroup>
-                                          </SelectContent>
-                                        </Select>
-                                    </div>
-                                      {assetType == "file" && <div className="w-full flex flex-row items-center justify-evenly">
-                                        <Input type="file" required onChange={e => handleFileChange (e)} accept=".csv,.txt,.json"></Input>
-                                      </div> 
-                                      }
-                                      {assetType == "string" && <div className="w-full flex flex-row items-center justify-evenly">
-                                        <Input required onChange={e => setAssetStringDate(e.target.value)} placeholder="Add string content here"></Input>
-                                      </div> 
-                                      }
-                                      {assetType == "json" && <div className="w-full flex flex-row items-center justify-evenly">
-                                           <JsonEditor
-                                          data={assetJSONData  }
-                                          setData={ setAssetJSONData }
-                                          rootName="content"
-                                          rootFontSize="1em"
-                                          collapse={2}
-                                          className="w-full"
-                                              />
-                                             
-                                        
-                                      </div> 
-                                      }
-                                       <Button type="button" onClick={(e) => uploadContent(e)}>Upload Content</Button>
-                                  </div> 
-                                          
-                    </DialogContent>
-                    {step == 2 && 
-                      <DialogContent>
-                           <DialogTitle>Provide Metadata</DialogTitle>
-                            <div>
-                              <Label>Name</Label>
-                              <Input defaultValue={name} onChange={e => setName(e.target.value)} placeholder="Name"></Input>
-                            </div>
-                            <div>
-                              <Label>Description</Label>
-                              <Input  onChange={e => setDescription(e.target.value)} placeholder="Description"></Input>
-                            </div>
-                            <div>
-                              <Label>Creator {creator}</Label>
-                              <Input defaultValue={creator}  onChange={e => setCreator(e.target.value)} placeholder="Creator"></Input>
-                            </div>
-                            <div>
-                              <Label>Notes</Label>
-                              <Input  onChange={e => setNotes(e.target.value)} placeholder="Notes"></Input>
-                            </div>
-                            <div className="flex flex-row space-x-2 items-center justify-between">
-                              <div>
-                                <Label>Content Type</Label>
-                                <Input defaultValue={contentType} onChange={e => setContentType(e.target.value)} ></Input>
-                              </div>
-                                <div>
-                                <Label>Encoding</Label>
-                                <Input defaultValue={encoding} onChange={e => setEncoding(e.target.value)} ></Input>
-                              </div>
-                            </div>
-                            <div>
-                              <Label>Keywords <span className="text-xs text-slate-400">(comma seperated)</span></Label>
-                              <Input  onChange={e => setKeywords(e.target.value)} placeholder="iris, dataset"></Input>
-                            </div>
-                            <div className="flex flex-row space-x-2 items-center justify-between">
-                             <div>
-                              <Label>Choose a language</Label>
-                              <Select  onValueChange={(value) => setLanguage(value)}>
-                              <SelectTrigger> <SelectValue placeholder="Select a language" /></SelectTrigger>
-                               <SelectContent>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger>
+                  <Iconbutton icon={PlusIcon} message="Add new asset" label="Add new asset"></Iconbutton>
+          </DialogTrigger>
+          <DialogContent className="">  
+                <DialogTitle className="flex flex-row items-center space-x-2">
+                        <TbCircleDashedNumber1 size={32}></TbCircleDashedNumber1>
+                        <Label>Choose Asset Type & Upload Content </Label>
+                </DialogTitle>
+                      
+                        <div className="flex flex-col items-center justify-between space-y-4">
+                          <div className="w-full flex flex-row items-center justify-evenly">                                        
+                              <Select onValueChange={(value) => setAssetType(value)} defaultValue={assetType}>
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select a type" />
+                                </SelectTrigger>
+                                <SelectContent>
                                   <SelectGroup>
-                                      <SelectItem value="en-us">en-us</SelectItem>
+                                    <SelectLabel>Metadata Type</SelectLabel>
+                                    <SelectItem value="file">File</SelectItem>     
+                                    <SelectItem value="json">JSON</SelectItem>     
+                                    <SelectItem value="string">String</SelectItem>           
                                   </SelectGroup>
-                               </SelectContent>
-                           </Select>
-                           </div>
-                           <div>
-                            <Label>Choose a license</Label>
-                            <Select onValueChange={(value) => setLicense(value)}>
-                              <SelectTrigger> <SelectValue placeholder="Select a license" /></SelectTrigger>
-                               <SelectContent>
-                                  <SelectGroup>
-                                      <SelectItem value="CC BY 4.0">CC BY 4.0</SelectItem>
-                                  </SelectGroup>
-                               </SelectContent>
-                           </Select>
-                           </div>
-                            </div>
-                             <div className="flex flex-row items-center justify-between ">
-                              <Button type="button" onClick={(e) => setStep(1)}>Go Back</Button>
+                                </SelectContent>
+                              </Select>
+                          </div>
+                            {assetType == "file" && <div className="w-full flex flex-row items-center justify-evenly">
+                              <Input type="file" required onChange={e => handleFileChange (e)} accept=".csv,.txt,.json"></Input>
+                            </div> 
+                            }
+                            {assetType == "string" && <div className="w-full flex flex-row items-center justify-evenly">
+                              <Input required onChange={e => setAssetStringDate(e.target.value)} placeholder="Add string content here"></Input>
+                            </div> 
+                            }
+                            {assetType == "json" && <div className="w-full flex flex-row items-center justify-evenly">
+                                  <JsonEditor
+                                data={assetJSONData  }
+                                setData={ setAssetJSONData }
+                                rootName="content"
+                                rootFontSize="1em"
+                                collapse={2}
+                                className="w-full"
+                                    />
+                                    
                               
-                              <Button type="button" onClick={(e) => createMetadata(3)}>Edit </Button>
-                              <DialogClose>
-                                <Button type="button" onClick={(e) => createMetadata(0)}>Create Asset</Button>
-                              </DialogClose>
-
-                            </div>
-                      </DialogContent>            
-                    }
-                    { step ==3  && 
-                       <DialogContent className="h-11/12 min-w-10/12">
-                        <DialogTitle className="flex flex-row items-center space-x-2">
-                                <TbCircleDashedNumber3 size={32}></TbCircleDashedNumber3> 
-                                <Label> Edit metadata </Label>
-                               
-                          </DialogTitle>
-                          
-                          { JSON.stringify(jsonData) == "{}"  && <JsonEditor
-                                          data={ baseData }
-                                          setData={ setJsonData }
-                                          rootName="metadata"
-                                          rootFontSize="1em"
-                                          collapse={false}
-                                          maxWidth="90vw"
-                                          minWidth="50vw"
-                                              />
-                                        }
-                                          { JSON.stringify(jsonData) != "{}"  && <JsonEditor
-                                          data={ jsonData }
-                                          setData={ setJsonData }
-                                          rootName="metadata"
-                                          rootFontSize="1em"
-                                          collapse={false}
-                                          maxWidth="90vw"
-                                          minWidth="50vw"
-                                          onChange={setMetadataUpdated}
-                                              />
-                                        }
-                            <div className="flex flex-row items-center justify-between ">
-                                <Button type="button" onClick={(e) => setStep(2)}>Go Back</Button>
-                              <DialogClose>
-                                {metadataUpdated && <Button type="button" className="mx-2 w-32" onClick={() => createNewAsset(jsonData)}>Create Asset</Button>}
-                                {!metadataUpdated && <Button type="button" className="mx-2 w-32" onClick={() => createNewAsset(baseData)}>Create Asset</Button>}
+                            </div> 
+                            }
+                              <Button type="button" onClick={(e) => uploadContent(e)}>Upload Content</Button>
+                        </div> 
                                 
-                              </DialogClose>
-                          
-                            </div>
-                      </DialogContent>
-                     }
-                  </Dialog>
+          </DialogContent>
+          {step == 2 && 
+            <DialogContent>
+                  <DialogTitle>Provide Metadata</DialogTitle>
+                  <div>
+                    <Label>Name</Label>
+                    <Input defaultValue={name} onChange={e => setName(e.target.value)} placeholder="Name"></Input>
+                  </div>
+                  <div>
+                    <Label>Description</Label>
+                    <Input  onChange={e => setDescription(e.target.value)} placeholder="Description"></Input>
+                  </div>
+                  <div>
+                    <Label>Creator {creator}</Label>
+                    <Input defaultValue={creator}  onChange={e => setCreator(e.target.value)} placeholder="Creator"></Input>
+                  </div>
+                  <div>
+                    <Label>Notes</Label>
+                    <Input  onChange={e => setNotes(e.target.value)} placeholder="Notes"></Input>
+                  </div>
+                  <div className="flex flex-row space-x-2 items-center justify-between">
+                    <div>
+                      <Label>Content Type</Label>
+                      <Input defaultValue={contentType} onChange={e => setContentType(e.target.value)} ></Input>
+                    </div>
+                      <div>
+                      <Label>Encoding</Label>
+                      <Input defaultValue={encoding} onChange={e => setEncoding(e.target.value)} ></Input>
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Keywords <span className="text-xs text-slate-400">(comma seperated)</span></Label>
+                    <Input  onChange={e => setKeywords(e.target.value)} placeholder="iris, dataset"></Input>
+                  </div>
+                  <div className="flex flex-row space-x-2 items-center justify-between">
+                    <div>
+                    <Label>Choose a language</Label>
+                    <Select  onValueChange={(value) => setLanguage(value)}>
+                    <SelectTrigger> <SelectValue placeholder="Select a language" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                            <SelectItem value="en-us">en-us</SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                  </Select>
+                  </div>
+                  <div>
+                  <Label>Choose a license</Label>
+                  <Select onValueChange={(value) => setLicense(value)}>
+                    <SelectTrigger> <SelectValue placeholder="Select a license" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                            <SelectItem value="CC BY 4.0">CC BY 4.0</SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                  </Select>
+                  </div>
+                  </div>
+                    <div className="flex flex-row items-center justify-between ">
+                    <Button type="button" onClick={(e) => setStep(1)}>Go Back</Button>
+                    
+                    <Button type="button" onClick={(e) => createMetadata(3)}>Edit </Button>
+                    <DialogClose>
+                      <Button type="button" onClick={(e) => createMetadata(0)}>Create Asset</Button>
+                    </DialogClose>
+
+                  </div>
+            </DialogContent>            
+          }
+          { step ==3  && 
+              <DialogContent className="h-11/12 min-w-10/12">
+              <DialogTitle className="flex flex-row items-center space-x-2">
+                      <TbCircleDashedNumber3 size={32}></TbCircleDashedNumber3> 
+                      <Label> Edit metadata </Label>
+                      
+                </DialogTitle>
+                
+                { JSON.stringify(jsonData) == "{}"  && <JsonEditor
+                                data={ baseData }
+                                setData={ setJsonData }
+                                rootName="metadata"
+                                rootFontSize="1em"
+                                collapse={false}
+                                maxWidth="90vw"
+                                minWidth="50vw"
+                                    />
+                              }
+                                { JSON.stringify(jsonData) != "{}"  && <JsonEditor
+                                data={ jsonData }
+                                setData={ setJsonData }
+                                rootName="metadata"
+                                rootFontSize="1em"
+                                collapse={false}
+                                maxWidth="90vw"
+                                minWidth="50vw"
+                                onChange={setMetadataUpdated}
+                                    />
+                              }
+                  <div className="flex flex-row items-center justify-between ">
+                      <Button type="button" onClick={(e) => setStep(2)}>Go Back</Button>
+                    <DialogClose>
+                      {metadataUpdated && <Button type="button" className="mx-2 w-32" onClick={() => createNewAsset(jsonData)}>Create Asset</Button>}
+                      {!metadataUpdated && <Button type="button" className="mx-2 w-32" onClick={() => createNewAsset(baseData)}>Create Asset</Button>}
+                      
+                    </DialogClose>
+                
+                  </div>
+            </DialogContent>
+            }
+        </Dialog>
     </div>
   );
 };
