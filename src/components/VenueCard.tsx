@@ -54,14 +54,14 @@ export function VenueCard({ venue }: VenueCardProps) {
 
   return (
     <Card 
-      className="shadow-md bg-slate-100 flex flex-col rounded-md hover:border-accent hover:border cursor-pointer h-48 overflow-hidden"
+      className="shadow-md border-2 bg-slate-100 flex flex-col rounded-md hover:border-accent cursor-pointer h-48 overflow-hidden"
       
     >
       {/* Fixed-size header */}
       <div className="h-14 p-3 flex flex-row items-center justify-between border-b bg-slate-50">
         <div className="truncate flex-1 mr-2 font-semibold text-sm" onClick={handleCardClick}>{venue.name}</div>
             <AlertDialog>
-                    <AlertDialogTrigger  className="flex flex-row  hover:text-red-400">
+                    <AlertDialogTrigger  className="flex flex-row ">
                         <Iconbutton icon={X} message="Disconnect Venue" />
                     </AlertDialogTrigger>
                     <AlertDialogContent>

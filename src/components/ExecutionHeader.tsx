@@ -10,7 +10,7 @@ interface ExecutionHeaderProps {
 
 export const ExecutionHeader = ({ jobData }: ExecutionHeaderProps) => {
   return (
-    <div className="flex flex-col w-full items-center justify-center mb-2 mt-2 border-2 border-slate-200 rounded-md p-4">
+    <div className="flex flex-col w-full items-center justify-center mb-2 mt-2 border border-slate-200 rounded-md p-4">
       <h1 className="text-xl text-bold">
         <Link href={window.location.href} className="hover:text-pink-400 hover:underline">
           {jobData?.name}

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { CircleArrowRight } from "lucide-react";
+import { CircleArrowRight, SquareArrowOutUpRight } from "lucide-react";
 import { MagicWandIcon } from "@radix-ui/react-icons";
 import {
   Tooltip,
@@ -19,6 +19,7 @@ import { useVenue } from "@/hooks/use-venue";
 import { Asset, Operation, Venue } from "@/lib/covia";
 import { useRouter } from "next/navigation";
 import { Spinner } from '@/components/ui/shadcn-io/spinner';
+import { Iconbutton } from "@/components/Iconbutton";
 
 export default function HomePage() {
 
@@ -98,7 +99,7 @@ export default function HomePage() {
 
             {assets.map((asset, index) =>
 
-              <Card key={asset.id} className="shadow-md h-full bg-slate-100 flex flex-col rounded-md hover:border-accent hover:border-2 h-48">
+              <Card key={index} className="shadow-md border-2 h-full bg-slate-100 flex flex-col rounded-md hover:border-accent hover:border-2 h-48">
                 {/* Fixed-size header */}
 
                 <div className="h-14 p-2 flex flex-row items-center border-b bg-slate-50">
@@ -112,12 +113,8 @@ export default function HomePage() {
                 </div>
                 {/* Fixed-size footer */}
                 <div className="p-2 h-12 flex flex-row-reverse items-center justify-between" onClick={() => { router.push("/venues/" + venue.venueId + "/operations/" + asset.id) }}>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <CircleArrowRight color="#6B46C1" onClick={() => { router.push("/venues/" + venue.venueId + "/operations/" + asset.id) }} />
-                    </TooltipTrigger>
-                    <TooltipContent>View Operation</TooltipContent>
-                  </Tooltip>
+                  <Iconbutton icon={SquareArrowOutUpRight} message="View Operation" path="operations" pathId={asset.id}/>
+                 
                 </div>
               </Card>
             )}

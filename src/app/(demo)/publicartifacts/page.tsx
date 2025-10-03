@@ -146,7 +146,7 @@ export default function AssetPage() {
           <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4">
             {assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset, index) =>
 
-              <Card key={index} className="shadow-md h-full bg-slate-100 flex flex-col rounded-md hover:border-accent hover:border-2 h-48 py-2">
+              <Card key={index} className="shadow-md border-2 h-full bg-slate-100 flex flex-col rounded-md hover:border-accent hover:border-2 h-48 py-2">
                 {/* Fixed-size header */}
                 <div className="h-14 p-2 flex flex-row items-center bg-slate-50">
                   <div className="truncate flex-1 mr-2 font-semibold text-sm"
