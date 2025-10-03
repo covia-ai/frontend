@@ -32,6 +32,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { getExecutionTime } from "@/lib/utils";
+import { Label } from "@/components/ui/label";
 
 export default function OperationsPage() {
   const [statusFilter, setStatusFilter] = useState("All");
@@ -97,32 +98,30 @@ export default function OperationsPage() {
       <SmartBreadcrumb />
       <div className="flex flex-col items-center justify-center  mt-2">
         <div className="flex flex-row w-full  items-start justify-start mt-4 space-x-4 ">
-          <Select onValueChange={value => setStatusFilter(value)} defaultValue="All">
-            <SelectTrigger className="w-[180px] text-semibold">
-              <SelectValue className="text-semibold" placeholder="Run Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="All">All</SelectItem>
-                <SelectItem value={RunStatus.PENDING}>{RunStatus.PENDING}</SelectItem>
-                <SelectItem value={RunStatus.STARTED}>{RunStatus.STARTED}</SelectItem>
-                <SelectItem value={RunStatus.COMPLETE}>{RunStatus.COMPLETE}</SelectItem>
-                <SelectItem value={RunStatus.FAILED}>{RunStatus.FAILED}</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-          <Select onValueChange={value => setDateFilter(value)} defaultValue="today">
-            <SelectTrigger className="w-[180px] text-semibold">
-              <SelectValue placeholder="Date" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="All">All</SelectItem>
-                <SelectItem value="today">Today</SelectItem>
-
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+            <div className="flex flex-row items-center justify-start w-1/3  space-x-4">
+              <Label>Job Status</Label>
+              <Select onValueChange={value => setStatusFilter(value)} defaultValue="All">
+              <SelectTrigger className="w-[180px] text-semibold">
+                <SelectValue className="text-semibold" placeholder="Run Status" />
+              </SelectTrigger>    
+              <SelectContent>
+                <SelectGroup>
+                  
+                  <SelectItem value="All">All</SelectItem>
+                  <SelectItem value={RunStatus.PENDING}>{RunStatus.PENDING}</SelectItem>
+                  <SelectItem value={RunStatus.STARTED}>{RunStatus.STARTED}</SelectItem>
+                  <SelectItem value={RunStatus.PAUSED}>{RunStatus.PAUSED}</SelectItem>
+                  <SelectItem value={RunStatus.CANCELLED}>{RunStatus.CANCELLED}</SelectItem>
+                  <SelectItem value={RunStatus.TIMEOUT}>{RunStatus.TIMEOUT}</SelectItem>
+                  <SelectItem value={RunStatus.REJECTED}>{RunStatus.REJECTED}</SelectItem>
+                  <SelectItem value={RunStatus.AUTH_REQUIRED}>{RunStatus.AUTH_REQUIRED}</SelectItem>
+                  <SelectItem value={RunStatus.INPUT_REQUIRED}>{RunStatus.INPUT_REQUIRED}</SelectItem>
+                  <SelectItem value={RunStatus.COMPLETE}>{RunStatus.COMPLETE}</SelectItem>
+                  <SelectItem value={RunStatus.FAILED}>{RunStatus.FAILED}</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <div className="text-slate-600 text-xs flex flex-row ">Page {currentPage} : Showing {filteredData.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of {jobsData.length} </div>
         <Pagination>
