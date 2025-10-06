@@ -43,7 +43,6 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
     const [assetJSONData, setAssetJSONData] = useState({});
     const [assetStringData, setAssetStringDate] = useState("");
     const [assetFileData, setAssetFileDate] = useState("");
-    //Metadata
     const [name, setName] = useState("");
     const [creator, setCreator] = useState("");
     const [description, setDescription] = useState("");
@@ -56,11 +55,10 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
     const [hash, setHash] = useState("");
     const [baseData, setBaseData] = useState<AssetMetadata>({});
     const [metadataUpdated, setMetadataUpdated] = useState(false);
-
     const [open, setOpen] = useState(false)
 
     const venueObj = useStore(useVenue, (x) => x.currentVenue);
-      if (!venueObj) return null;
+    if (!venueObj) return null;
     const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
 
     function createNewAsset(jsonData: AssetMetadata) {
@@ -195,7 +193,8 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
           if(open == false)
               setStep(1)
       }, [open]);
-  return (
+    
+    return (
     <div className="h-48 flex flex-center items-center justify-center ">
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger>
@@ -358,5 +357,5 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
             }
         </Dialog>
     </div>
-  );
+    );
 };

@@ -34,6 +34,7 @@ import {
 import { getExecutionTime } from "@/lib/utils";
 import { SelectLabel } from "@radix-ui/react-select";
 import { Label } from "@/components/ui/label";
+import { PaginationHeader } from "@/components/PaginationHeader";
 
 export default function OperationsPage() {
   const [statusFilter, setStatusFilter] = useState("All");
@@ -45,11 +46,12 @@ export default function OperationsPage() {
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
-  const handlePageChange = (page: number) => {
-    if (page >= 1)
-      setCurrentPage(page)
+  const nextPage = (page: number) => {
+    setCurrentPage(page)
   }
-
+  const prevPage = (page: number) => {
+    setCurrentPage(page)
+  }
   function isInRange(date: string) {
     if (dateFilter == "today") {
       const x = new Date().getDay();
@@ -126,17 +128,7 @@ export default function OperationsPage() {
           </div>
         </div>
         <div className="text-slate-600 text-xs flex flex-row ">Page {currentPage} : Showing {filteredData.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of {jobsData.length} </div>
-        <Pagination>
-          <PaginationContent className=" flex flex-row-reverse w-full">
-            {currentPage != 1 && <PaginationItem>
-              <PaginationPrevious href="#" onClick={() => handlePageChange(currentPage - 1)} />
-            </PaginationItem>}
-            {currentPage != totalPages && <PaginationItem>
-              <PaginationNext href="#" onClick={() => handlePageChange(currentPage + 1)} />
-            </PaginationItem>}
-          </PaginationContent>
-        </Pagination>
-
+        <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>
         <Table className="  border border-slate-200 rounded-lg shadow-md">
           <TableHeader >
             <TableRow className="hover:bg-slate-800 bg-slate-800 rounded-full text-white ">
@@ -171,11 +163,8 @@ export default function OperationsPage() {
             )}
           </TableBody>
         </Table>
-
-
-
+        <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>
       </div>
-
     </ContentLayout>
   );
 }
