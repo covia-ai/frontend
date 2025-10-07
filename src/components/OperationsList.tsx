@@ -52,7 +52,7 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
   const venueObj = useStore(useVenue, (x) => x.currentVenue);
   if (!venueObj) return null;
   const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
-
+  console.log(venue)
   function fetchAssets(offset, limit) {
     setAssetsMetadata([]);
       try {
@@ -88,7 +88,7 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
 
   return (
     <ContentLayout title="Operations">
-      <SmartBreadcrumb />
+      <SmartBreadcrumb venueName={venue.name}/>
       <div className="flex flex-col items-center justify-center">
          <div className="flex flex-row items-center justify-center w-full space-x-2 ">
           <Search />
