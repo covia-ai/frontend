@@ -31,7 +31,7 @@ export function AssetCard({ asset,type,venueSlug }: AssetCardProps) {
     const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
     const router = useRouter();
     const [newJsonData, setNewJsonData] = useState({});
-
+    
     function renderJSONMap(jsonObject: JSON, requiredKeys: string[] = []) {
         const keys = Object.keys(jsonObject);
         const type = new Array<string>();
@@ -62,12 +62,9 @@ export function AssetCard({ asset,type,venueSlug }: AssetCardProps) {
           </Table>
         )
       }
-    // Determine the base path for navigation
-    const getPath = (assetId: string) => {
-          if (venueSlug) {
-            return `/venues/${venueSlug}/${type}/${assetId}`;
-          }
-          return `/venues/${venue.venueId}/${type}/${assetId}`;
+    const handleCardClick = (assetId:string) => {
+        const encodedUrl = "/venues/"+encodeURIComponent(venue.venueId)+"/"+type+"/"+assetId;
+        router.push(encodedUrl);
     };
     function copyAsset(jsonData: JSON) {
         try {
@@ -88,7 +85,7 @@ export function AssetCard({ asset,type,venueSlug }: AssetCardProps) {
                 {/* Fixed-size header */}
                 <div className="h-14 p-2 flex flex-row items-center border-b bg-slate-50">
                     <div className="truncate flex-1 mr-2 font-semibold text-sm"
-                    onClick={() => { router.push(getPath(asset.id)) }}>{asset.metadata.name || 'Unnamed Asset'}
+                    onClick={() => handleCardClick(asset.id)}>{asset.metadata.name || 'Unnamed Asset'}
                     </div>
                     {type == "operations" && 
                        <Sheet>
@@ -124,7 +121,7 @@ export function AssetCard({ asset,type,venueSlug }: AssetCardProps) {
                                 )}
                                 <SheetFooter>
                                 <SheetClose asChild>
-                                    {asset.id && asset.metadata?.operation?.input && <Button type="submit" onClick={() => { router.push(getOperationPath(asset.id)) }}>Run</Button>}
+                                    {asset.id && asset.metadata?.operation?.input && <Button type="submit" onClick={() => { handleCardClick(asset.id) }}>Run</Button>}
                                 </SheetClose>
                                 </SheetFooter>
                             </SheetContent>
@@ -169,12 +166,12 @@ export function AssetCard({ asset,type,venueSlug }: AssetCardProps) {
                 </div>
 
                 {/* Flexible middle section */}
-                <div className="flex-1 p-2 flex flex-col justify-between" onClick={() => { router.push("/venues/" + venue.venueId + "/"+type+"/" + asset.id) }}>
+                <div className="flex-1 p-2 flex flex-col justify-between" onClick={() => handleCardClick(asset.id)}>
                     <div className="text-xs text-slate-600 line-clamp-3 mb-2">{asset.metadata.description || 'No description available'}</div>
                 </div>
 
                 {/* Fixed-size footer */}
-                <div className="p-2 h-12 flex flex-row-reverse items-center justify-between" onClick={() => { router.push("/venues/" + venue.venueId + "/"+type+"/" + asset.id) }}>
+                <div className="p-2 h-12 flex flex-row-reverse items-center justify-between" onClick={() => handleCardClick(asset.id)}>
                     <Iconbutton icon={SquareArrowOutUpRight} message="View Asset" path={type} pathId={asset.id}/>
                     
                 </div>

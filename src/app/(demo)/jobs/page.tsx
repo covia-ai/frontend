@@ -97,6 +97,10 @@ export default function OperationsPage() {
     filteredData.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
   }, [statusFilter]);
 
+  const encodedPath = (jobId:string) => {
+        return "/venues/"+encodeURIComponent(venue.venueId)+"/jobs/"+jobId;
+        
+    };
   return (
     <ContentLayout title="Operations">
       <SmartBreadcrumb />
@@ -146,7 +150,7 @@ export default function OperationsPage() {
 
               isInRange(job.created) && 
               <TableRow key={index}>
-                <TableCell><Link className="text-secondary font-mono underline" href={`/venues/${venue.venueId}/jobs/${job.id}`}>{job.id}</Link></TableCell>
+                <TableCell><Link className="text-secondary font-mono underline" href={encodedPath(job.id)}>{job.id}</Link></TableCell>
                 <TableCell>{job.name}</TableCell>
                 <TableCell className="text-center">{new Date(job.created).toLocaleString()}</TableCell>
                 {(job.status == RunStatus.COMPLETE || job.status == RunStatus.FAILED) && (<TableCell className="text-center">{getExecutionTime(job.created, job.updated)}</TableCell>)}

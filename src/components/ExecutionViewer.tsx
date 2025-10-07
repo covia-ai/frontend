@@ -204,7 +204,7 @@ export const ExecutionViewer = (props: any) => {
 
     return (
         <>
-             <SmartBreadcrumb assetOrJobName={executionData?.name} />
+             <SmartBreadcrumb assetOrJobName={executionData?.name} venueName={venueObj.name} />
              <ExecutionHeader jobData={executionData}></ExecutionHeader>
             {executionData && (
 

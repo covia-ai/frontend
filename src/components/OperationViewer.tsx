@@ -162,7 +162,6 @@ export const OperationViewer = (props: any) => {
 
   // Helper function to convert a value to appropriate raw input string based on type
   const printValue = (value: any, type: string) => {
-    console.log(value+" : "+type)
     if (type === "json" || type === "object" || type === "any" || type === "array") {
       // Convert to JSON string
       if (value !== undefined && value !== null && value != "") {
@@ -448,7 +447,7 @@ export const OperationViewer = (props: any) => {
 
   return (
     <>
-      <SmartBreadcrumb assetOrJobName={asset?.metadata?.name} />
+      <SmartBreadcrumb assetOrJobName={asset?.metadata?.name} venueName={venueObj.name}/>
 
       <div className="flex flex-col w-full items-center justify-center">
         {assetNotFound && (

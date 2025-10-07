@@ -15,15 +15,15 @@ if(process.env.NEXT_PUBLIC_IS_ENV_PROD == "true") {
   defaultVenues = [
      new Venue({
       baseUrl: "https://venue-1.covia.ai",
-      venueId: "venue-1"
+      venueId: "did:web:venue-1.covia.ai"
     }),
     new Venue({
       baseUrl: "https://venue-2.covia.ai",
-      venueId: "venue-2"
+      venueId: "did:web:venue-2.covia.ai"
     }),
     new Venue({
       baseUrl: "https://venue-test.covia.ai",
-      venueId: "test-venue"
+      venueId: "did:web:venue-test.covia.ai"
     })
  ];
   // Set names for the default venues
@@ -35,17 +35,17 @@ if(process.env.NEXT_PUBLIC_IS_ENV_PROD == "true") {
   defaultVenues[2].metadata.description = "Test Covia Venue ";
 } else {
   defaultVenues = [
-   new Venue({
+     new Venue({
       baseUrl: "https://venue-1.covia.ai",
-      venueId: "venue-1"
+      venueId: "did:web:venue-1.covia.ai"
     }),
     new Venue({
       baseUrl: "https://venue-2.covia.ai",
-      venueId: "venue-2"
+      venueId: "did:web:venue-2.covia.ai"
     }),
     new Venue({
       baseUrl: "https://venue-test.covia.ai",
-      venueId: "test-venue"
+      venueId: "did:web:venue-test.covia.ai"
     }),
     new Venue({
       baseUrl: "http://localhost:8080",

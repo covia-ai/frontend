@@ -44,7 +44,8 @@ export function VenueCard({ venue }: VenueCardProps) {
     }, []);
 
   const handleCardClick = () => {
-    router.push(`/venues/${venue.venueId}`);
+    const encodedUrl = "/venues/"+encodeURIComponent(venue.venueId);
+    router.push(encodedUrl);
   };
 
   const handleRemoveVenue = (e: React.MouseEvent) => {

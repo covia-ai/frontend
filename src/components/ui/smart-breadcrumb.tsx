@@ -17,9 +17,10 @@ interface BreadcrumbItem {
 
 interface SmartBreadcrumbProps {
   assetOrJobName?: string;
+  venueName?:string;
 }
 
-export function SmartBreadcrumb({ assetOrJobName }: SmartBreadcrumbProps = {}) {
+export function SmartBreadcrumb({ assetOrJobName, venueName }: SmartBreadcrumbProps = {}) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -47,8 +48,13 @@ export function SmartBreadcrumb({ assetOrJobName }: SmartBreadcrumbProps = {}) {
         let label = getCustomLabel(segment, currentPath) || segment
           .replace(/-/g, ' ')
           .replace(/\b\w/g, l => l.toUpperCase());
+
+        // If this segment represent a venue DID, use the venue name instead
+        if ( venueName && isVenueSegment(segment, segments[index-1])) {
+           label = venueName;
+        }
         // If this is the last segment and we have an asset name or job name, use it instead
-        if (index === segments.length - 1 && assetOrJobName && isAssetOrJobSegment(segment)) {
+        else if (index === segments.length - 1 && assetOrJobName && isAssetOrJobSegment(segment)) {
           label = assetOrJobName;
         }
         breadcrumbs.push({
@@ -67,6 +73,12 @@ export function SmartBreadcrumb({ assetOrJobName }: SmartBreadcrumbProps = {}) {
     return !knownRoutes.includes(segment) && !segment.startsWith('[') && !segment.endsWith(']');
   };
 
+  // Check if a segment represents an venue (not a known route)
+  const isVenueSegment = (segment: string, prevSegment: string): boolean => {
+    const knownRoutes = ['demo', 'publicartificats','venues', 'assets', 'operations', 'jobs', 'learning', 'workspace', 'myvenues', 'myassets', 'signup', 'privacypolicy'];
+    const isPrevSegmentVenues = prevSegment == "venues"? true:false;
+    return !knownRoutes.includes(segment) && !segment.startsWith('[') && !segment.endsWith(']') && isPrevSegmentVenues;
+  };
   // Custom label mapping for better UX
   const getCustomLabel = (segment: string, path: string): string | null => {
     const labelMap: Record<string, string> = {
@@ -97,16 +109,16 @@ export function SmartBreadcrumb({ assetOrJobName }: SmartBreadcrumbProps = {}) {
     <Breadcrumb>
       <BreadcrumbList>
                  {breadcrumbs.map((item, index) => (
-           <BreadcrumbItem key={index}>
-             <BreadcrumbLink 
-               asChild
-               onClick={() => item.href && handleBreadcrumbClick(item.href)}
-               className="cursor-pointer hover:underline"
-             >
-               <span>{item.label}</span>
-             </BreadcrumbLink>
-             {index < breadcrumbs.length - 1 && <BreadcrumbSeparator />}
-           </BreadcrumbItem>
+                    <BreadcrumbItem key={index}>
+                      <BreadcrumbLink 
+                        asChild
+                        onClick={() => item.href && handleBreadcrumbClick(item.href)}
+                        className="cursor-pointer hover:underline"
+                      >
+                        <span>{item.label}</span>
+                      </BreadcrumbLink>
+                      {index < breadcrumbs.length - 1 && <BreadcrumbSeparator />}
+                    </BreadcrumbItem>
          ))}
       </BreadcrumbList>
     </Breadcrumb>
