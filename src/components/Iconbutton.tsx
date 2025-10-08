@@ -29,14 +29,14 @@ export const Iconbutton = (props:any) => {
               (
               (props.pathId && props.pathId !="" ) ?
 
-              (<div className="inline-flex items-center justify-center border-1 border-slate-300 rounded-[11px] px-2 py-2 h-8 w-8 hover:bg-muted">
+              (<div className="inline-flex items-center justify-center border-1 border-slate-300 rounded-[11px] px-2 py-2 h-8 w-8 bg-primary text-white">
                   <Icon size={20} onClick={() => router.push("/venue/"+encodeURIComponent(venue.venueId)+"/"+props.path+"/" + props.pathId) }></Icon>
               </div>
               ):
               (
                 <div className="inline-flex items-center justify-center border-1 border-slate-300 rounded-[11px] px-2 py-2 h-8 w-8 hover:bg-muted">
                   <Icon size={20}></Icon> 
-              </div>
+                </div>
               )
               )
             }
