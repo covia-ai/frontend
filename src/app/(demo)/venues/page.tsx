@@ -31,8 +31,9 @@ export default function VenuesPage() {
   const search = searchParams.get('search');
   
   const addVenueToList = () =>{
-    const newVenue = new Venue({baseUrl:venueDid, venueId:venueId})
-    addVenue(newVenue)
+    Venue.connect(venueDid).then((venue)=> {
+        addVenue(venue)
+    })
   }
   return (
     <ContentLayout title="Venues">
@@ -67,13 +68,10 @@ export default function VenuesPage() {
                     
                     <div className="flex flex-col items-center justify-between space-y-4">
                       <div className="flex flex-row items-center justify-center space-x-2 w-full">
-                      <Label className="w-28">Venue DID or Url</Label>
-                      <Input required onChange={e => setVenueDid(e.target.value)} placeholder="Provide venue DID or url"></Input>
+                      <Label className="w-32">Venue Url/DID</Label>
+                      <Input required onChange={e => setVenueDid(e.target.value)} placeholder="Provide venue Url/DID"></Input>
                     </div>
-                    <div className="flex flex-row items-center justify-center space-x-2 w-full">
-                      <Label  className="w-28">Venue ID</Label>
-                      <Input required onChange={e => setVenueId(e.target.value)} placeholder="Provide venue Id"></Input>
-                    </div>
+                   
                   </div>
                       <DialogClose>
                           <Button onClick={(e) => addVenueToList()}>Connect</Button>                 

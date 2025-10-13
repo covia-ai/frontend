@@ -13,7 +13,7 @@ export const Iconbutton = (props:any) => {
   const router = useRouter();
   const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
   if (!venueObj) return null;
-  const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
+  const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name})
   
   return (
      <Tooltip>

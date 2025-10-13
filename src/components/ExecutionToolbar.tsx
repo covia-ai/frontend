@@ -21,6 +21,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ResumeIcon } from "@radix-ui/react-icons";
 import { isJobFinished, isJobPaused } from "@/lib/covia/Utils";
+import { Button } from "./ui/button";
 
 export const ExecutionToolbar = ({jobData} : JobData) => {
 
@@ -30,7 +31,7 @@ export const ExecutionToolbar = ({jobData} : JobData) => {
       if (!venueObj) return null;
       const venue = useMemo(() => {
         // Your expensive calculation or value creation
-        return new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
+        return new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name})
         }, []); // Dependency array
   
       const [isFinished, setFinished] = useState<boolean>(false);
@@ -69,14 +70,15 @@ export const ExecutionToolbar = ({jobData} : JobData) => {
       }
 
   return (
-     <div className="flex flex-row  items-center justify-center border border-slate-200 shadow-md w-full mt-4 p-2 text-xs space-x-4">          
+     <div className="flex flex-row items-center space-x-4 py-2 w-1/2">          
      {!isFinished && 
             <>
             <Tooltip>
                   <TooltipTrigger>
                         <AlertDialog>
-                          <AlertDialogTrigger className="flex flex-row hover:text-red-400">
-                              Cancel<StopCircle className="text-secondary mx-2 hover:text-red-400" size={20} ></StopCircle>
+                          <AlertDialogTrigger className="flex flex-row ">
+                              <Button variant={"outline"} className="text-xs justify-center h-8 bg-primary text-primary-foreground text-sm">
+                                <StopCircle/>Cancel</Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
 
@@ -100,8 +102,9 @@ export const ExecutionToolbar = ({jobData} : JobData) => {
            {!isPaused && <Tooltip>
                   <TooltipTrigger>
                         <AlertDialog>
-                          <AlertDialogTrigger  className="flex flex-row  hover:text-red-400">
-                              Pause <PauseCircleIcon size={20} className="text-secondary mx-2 hover:text-red-400"></PauseCircleIcon>
+                          <AlertDialogTrigger  className="flex flex-row">
+                              <Button variant={"outline"} className="text-xs justify-center h-8 bg-primary text-primary-foreground text-sm">
+                              <PauseCircleIcon/>Pause </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
 
@@ -126,7 +129,8 @@ export const ExecutionToolbar = ({jobData} : JobData) => {
                   <TooltipTrigger>
                         <AlertDialog>
                           <AlertDialogTrigger  className="flex flex-row hover:text-red-400">
-                              Resume <PauseCircleIcon size={20} className="text-secondary mx-2 hover:text-red-400"></PauseCircleIcon>
+                               <Button variant={"outline"} className="text-xs justify-center h-8 bg-primary text-primary-foreground text-sm">
+                                <PauseCircleIcon />Resume</Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
 
@@ -154,7 +158,10 @@ export const ExecutionToolbar = ({jobData} : JobData) => {
                   <TooltipTrigger>
                         <AlertDialog>
                           <AlertDialogTrigger className="flex flex-row">
-                              Delete<Trash2 size={20} className="text-secondary mx-2"></Trash2>
+                               <Button variant={"outline"} className="text-xs justify-center h-8  bg-primary text-primary-foreground text-sm">
+                                <Trash2/>Delete
+                                </Button>
+
                           </AlertDialogTrigger>
                           <AlertDialogContent>
 

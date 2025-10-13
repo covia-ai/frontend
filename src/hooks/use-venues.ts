@@ -10,58 +10,25 @@ type VenuesStore = {
 };
 
 // Default venues
-let defaultVenues: Venue[] = [];
-if(process.env.NEXT_PUBLIC_IS_ENV_PROD == "true") {
-  defaultVenues = [
-     new Venue({
-      baseUrl: "https://venue-1.covia.ai",
-      venueId: "did:web:venue-1.covia.ai"
-    }),
-    new Venue({
-      baseUrl: "https://venue-2.covia.ai",
-      venueId: "did:web:venue-2.covia.ai"
-    }),
-    new Venue({
-      baseUrl: "https://venue-test.covia.ai",
-      venueId: "did:web:venue-test.covia.ai"
-    })
- ];
-  // Set names for the default venues
-  defaultVenues[0].name = "Venue 1";
-  defaultVenues[0].metadata.description = "Covia Venue 1";
-  defaultVenues[1].name = "Venue 2";
-  defaultVenues[1].metadata.description = "Covia Venue 2";
-  defaultVenues[2].name = "Test Venue";
-  defaultVenues[2].metadata.description = "Test Covia Venue ";
-} else {
-  defaultVenues = [
-     new Venue({
-      baseUrl: "https://venue-1.covia.ai",
-      venueId: "did:web:venue-1.covia.ai"
-    }),
-    new Venue({
-      baseUrl: "https://venue-2.covia.ai",
-      venueId: "did:web:venue-2.covia.ai"
-    }),
-    new Venue({
-      baseUrl: "https://venue-test.covia.ai",
-      venueId: "did:web:venue-test.covia.ai"
-    }),
-    new Venue({
-      baseUrl: "http://localhost:8080",
-      venueId: "local-venue"
-    })
- ];
- // Set names for the default venues
-  defaultVenues[0].name = "Venue 1";
-  defaultVenues[0].metadata.description = "Covia Venue 1";
-  defaultVenues[1].name = "Venue 2";
-  defaultVenues[1].metadata.description = "Covia Venue 2";
-  defaultVenues[2].name = "Test Venue";
-  defaultVenues[2].metadata.description = "Test Covia Venue ";
-  defaultVenues[3].name = "Local Venue";
-  defaultVenues[3].metadata.description = "Local Venue ";
+const defaultVenueUrls = 
+["https://venue-1.covia.ai",
+      "https://venue-2.covia.ai",
+      "https://venue-test.covia.ai"
+];
+const defaultVenues: Venue[] = [];
 
+if(process.env.NEXT_PUBLIC_IS_ENV_PROD != "true") {
+    defaultVenueUrls.push("http://localhost:8080");
+    
+defaultVenueUrls.map((venueUrl => {
+    Venue.connect(venueUrl).then((venue => {
+         defaultVenues.push(venue)
+         console.log(defaultVenues)
+  }))
+}))
+
+
+ 
 }
 
 export const useVenues = create(

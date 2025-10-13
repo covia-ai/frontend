@@ -90,7 +90,7 @@ export const OperationViewer = (props: any) => {
   if (!venueObj) return null;
   const venue = useMemo(() => {
     // Your expensive calculation or value creation
-    return new Venue({ baseUrl: venueObj.baseUrl, venueId: venueObj.venueId })
+    return new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name})
   }, []); // Dependency array
 
   useEffect(() => {

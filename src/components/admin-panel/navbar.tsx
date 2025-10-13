@@ -2,6 +2,7 @@
 import { SheetMenu } from "@/components/admin-panel/sheet-menu";
 import { SignInButton } from "./signin-button";
 import { VenueSelector } from "@/components/VenueSelector";
+import { DarkLightToggle } from "../DarkLightToggle";
 
 interface NavbarProps {
   title: string;
@@ -14,10 +15,9 @@ export function Navbar({ title }: NavbarProps) {
         <div className="flex items-center space-x-4 lg:space-x-0">
           <SheetMenu />
         </div>
-        <div className="flex flex-1 items-center justify-end">
-          <div className="flex flex-row items-center mr-4">
-            <VenueSelector />
-          </div>
+        <div className="flex flex-1 items-center justify-end space-x-4">
+          <DarkLightToggle/>
+          <VenueSelector />
           <SignInButton/>
         </div>
       </div>

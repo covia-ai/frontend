@@ -20,7 +20,7 @@ export function AssetViewer(props: AssetViewerProps) {
   if (!venueObj) return null;
 
   useEffect(() => {
-    new Venue({baseUrl: venueObj.baseUrl,venueId: venueObj.venueId }).getAsset(props.assetId).then((asset: Asset) => {
+    new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name}).getAsset(props.assetId).then((asset: Asset) => {
       setAsset(asset);
     })
   }, [props.assetId]);

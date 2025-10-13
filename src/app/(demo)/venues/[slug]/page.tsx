@@ -59,7 +59,7 @@ export default function VenuePage({ params }: VenuePageProps) {
           setVenueDID(foundVenue.getDID())
       }
       else {
-          const foundVenue_obj = new Venue({baseUrl:foundVenue.baseUrl, venueId:foundVenue.venueId});
+          const foundVenue_obj = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name});
           setVenue(foundVenue_obj)
           setVenueDID(foundVenue_obj.getDID())
       }
@@ -79,7 +79,10 @@ export default function VenuePage({ params }: VenuePageProps) {
        const fetchMCP = async () => {
           const response = await fetch(venue?.baseUrl+"/.well-known/mcp");
           const body = await response.json();
-          setVenueMCPURL(body?.server_url)
+          if(body?.error)
+             setVenueMCPURL("Not Available")
+          else
+              setVenueMCPURL(body?.server_url)
       }
        const fetchStats = async () => {
          try {

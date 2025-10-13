@@ -5,6 +5,7 @@ import { siteConfig } from "@/config/site";
 import { CookieConsentComponent } from "@/components/CookieConsent";
 import localFont from 'next/font/local';
 import { GoogleAnalytics } from '@next/third-parties/google';
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 
 const { title, description } = siteConfig;
@@ -35,10 +36,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
+      <body suppressHydrationWarning
         className={`${aetherFont.className} antialiased`}
       >
-        {children}
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem
+            disableTransitionOnChange
+          >{children}
+          </ThemeProvider>
         <CookieConsentComponent />
       </body>
       <GoogleAnalytics gaId="G-CS4QNLYT4M" />

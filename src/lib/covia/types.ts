@@ -2,7 +2,7 @@
 export interface VenueOptions {
   baseUrl?: string;
   venueId?: string;
-  did?:string;
+  name?:string;
 }
 
 export interface VenueInterface {
@@ -80,6 +80,7 @@ export interface StatusData {
   ts?:string;
   status?:string;
   did?:string;
+  name?:string;
   stats?:StatsData;
 
 }

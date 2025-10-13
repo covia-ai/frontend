@@ -28,7 +28,7 @@ export const ExecutionViewer = (props: any) => {
     if (!venueObj) return null;
     const venue = useMemo(() => {
       // Your expensive calculation or value creation
-      return new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
+      return new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name})
       }, []); // Dependency array
 
     // Function to determine text color based on status
@@ -214,7 +214,7 @@ export const ExecutionViewer = (props: any) => {
                         <div className="flex flex-col w-full">
                              
                            <div className="flex flex-row items-start w-full">
-                                <div className="flex flex-row items-center space-x-4 py-2 w-1.2">
+                                <div className="flex flex-row items-center space-x-4 py-2 w-1/2">
                                     {executionData?.status == RunStatus.COMPLETE && <Check></Check>}
                                     {executionData?.status == RunStatus.FAILED && <X></X>}
                                     {executionData?.status == RunStatus.PENDING && <RotateCcw />}
@@ -223,6 +223,8 @@ export const ExecutionViewer = (props: any) => {
                                     <span className="w-28"><strong>Status:</strong></span>
                                     <span className={colourForStatus(executionData?.status as RunStatus)}>{executionData?.status}</span>
                                 </div>
+                                 <ExecutionToolbar jobData={executionData}></ExecutionToolbar>
+
                             </div>
                              
                             <div className="flex flex-row items-center space-x-4  py-2">
@@ -281,7 +283,7 @@ export const ExecutionViewer = (props: any) => {
                         </div>
 
                     </div>
-                    <ExecutionToolbar jobData={executionData}></ExecutionToolbar>
+                   
                   
                 </div>
             )

@@ -24,7 +24,7 @@ export class Venue implements VenueInterface {
     
     this.baseUrl = options.baseUrl || 'https://venue-test.covia.ai';
     this.venueId = options.venueId || "default";
-    this.name = options.venueId || "default";
+    this.name = options.name || "default";
     this.metadata = {};
   }
 
@@ -40,25 +40,21 @@ export class Venue implements VenueInterface {
       // If it's already a Venue instance, return a new instance with the same configuration
       return new Venue({
         baseUrl: venueId.baseUrl,
-        venueId: venueId.venueId
+        venueId: venueId.venueId,
+        name: venueId.name
       });
     }
 
     // If it's a string, determine if it's a URL or DNS name
     if (typeof venueId === 'string') {
       let baseUrl: string;
-      let venueIdStr: string;
-
       // Check if it's a valid HTTP/HTTPS URL
       if (venueId.startsWith('http:') || venueId.startsWith('https:')) {
         baseUrl = venueId;
-        // Extract venue ID from URL (could be domain name or path)
-        try {
-          const url = new URL(venueId);
-          venueIdStr = url.hostname || url.pathname || 'default';
-        } catch {
-          venueIdStr = 'default';
-        }
+        //If baseUrl ends with  / remove it
+        if(baseUrl.endsWith("/"))
+          baseUrl = baseUrl.substring(0, baseUrl.length - 1);
+           
       } else if (venueId.startsWith('did:web:')) {
         // Resolve the DID document
         const didDoc = await resolver.resolve(venueId);
@@ -70,18 +66,19 @@ export class Venue implements VenueInterface {
           throw new CoviaError('No endpoint found for DID');
         }
         baseUrl = endpoint.toString().replace(/\/api\/v1/, '');
-        venueIdStr = venueId;
       } else {
         // Assume it's a DNS name or venue identifier
         baseUrl = `https://${venueId}`;
-        venueIdStr = venueId;
       }
-
-      return new Venue({
-        baseUrl,
-
-        venueId: venueIdStr
-      });
+    console.log(baseUrl)
+    const data = await fetchWithError<StatusData>(baseUrl+'/api/v1/status');
+    console.log(data)
+    return new Venue({
+            baseUrl,
+            venueId: data.did,
+            name: data.name
+    });
+      
     }
 
     throw new CoviaError('Invalid venue ID parameter. Must be a string (URL/DNS) or Venue instance.');

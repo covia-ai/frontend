@@ -51,7 +51,7 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
   }
   const venueObj = useStore(useVenue, (x) => x.currentVenue);
   if (!venueObj) return null;
-  const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
+  const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name})
   console.log(venue)
   function fetchAssets(offset, limit) {
     setAssetsMetadata([]);

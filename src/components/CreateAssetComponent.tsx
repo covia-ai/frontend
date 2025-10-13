@@ -59,7 +59,7 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
 
     const venueObj = useStore(useVenue, (x) => x.currentVenue);
     if (!venueObj) return null;
-    const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
+    const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name})
 
     function createNewAsset(jsonData: AssetMetadata) {
         try {

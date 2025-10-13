@@ -28,21 +28,9 @@ interface VenueCardProps {
 export function VenueCard({ venue }: VenueCardProps) {
   const router = useRouter();
   const { removeVenue } = useVenues();
-  const [ venueDID, setVenueDID] = useState("");
 
   if(!(venue instanceof Venue))
-    venue = new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId})
-  
-  useEffect(() => {
-     
-        const fetchDID = async () => {
-            const response = await fetch(venue?.baseUrl+"/.well-known/did.json");
-            const body = await response.json();
-            setVenueDID(body.id);
-        }
-        fetchDID();
-    }, []);
-
+    venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name})
   const handleCardClick = () => {
     const encodedUrl = "/venues/"+encodeURIComponent(venue.venueId);
     router.push(encodedUrl);
@@ -55,11 +43,11 @@ export function VenueCard({ venue }: VenueCardProps) {
 
   return (
     <Card 
-      className="shadow-md border-2 bg-slate-100 flex flex-col rounded-md hover:border-accent cursor-pointer h-48 overflow-hidden"
+      className="shadow-md border-2  bg-card flex flex-col rounded-md hover:border-accent cursor-pointer h-48 overflow-hidden"
       
     >
       {/* Fixed-size header */}
-      <div className="h-14 p-3 flex flex-row items-center justify-between border-b bg-slate-50">
+      <div className="h-14 p-3 flex flex-row items-center justify-between border-b ">
         <div className="truncate flex-1 mr-2 font-semibold text-sm" onClick={handleCardClick}>{venue.name}</div>
             <AlertDialog>
                     <AlertDialogTrigger  className="flex flex-row ">
@@ -86,7 +74,7 @@ export function VenueCard({ venue }: VenueCardProps) {
       {/* Flexible middle section */}
       <div className="flex-1 p-3 flex flex-col justify-between" onClick={handleCardClick}>
         <div className="text-xs text-slate-600 line-clamp-3 mb-2">
-          {venue.metadata.description || `${venue.name} Covia Venue`}
+          {venue.metadata.description || venue.venueId }
         </div>
       
       </div>
@@ -94,9 +82,7 @@ export function VenueCard({ venue }: VenueCardProps) {
       {/* Fixed-size footer */}
       <div className="p-2 h-12 flex flex-row items-center justify-between" onClick={handleCardClick}>
         <div className="flex flex-row items-center space-x-2">
-          <Badge variant="default" className="border bg-secondary text-white text-xs">
-            covia
-          </Badge>
+         
         </div>
         
           <Iconbutton icon={SquareArrowOutUpRight} message="View Venue" path="venues" pathId={venue.venueId}/>
