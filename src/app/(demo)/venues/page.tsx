@@ -6,11 +6,7 @@ import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 import { Search } from "@/components/search";
 import { VenueCard } from "@/components/VenueCard";
 import { useVenues } from "@/hooks/use-venues";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+
 import {
   Dialog,
   DialogClose,
@@ -18,13 +14,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import {  PlusCircleIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useEffect, useState } from "react";
+import {  useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useSearchParams } from "next/navigation";
 import { Venue } from "@/lib/covia";
+import { Iconbutton } from "@/components/Iconbutton";
+import { PlusCircledIcon } from "@radix-ui/react-icons";
+
 export default function VenuesPage() {
   const { addVenue,venues } = useVenues();
   const [venueDid, setVenueDid] = useState("");
@@ -32,7 +30,6 @@ export default function VenuesPage() {
   const searchParams = useSearchParams()
   const search = searchParams.get('search');
   
-  console.log(venues)
   const addVenueToList = () =>{
     const newVenue = new Venue({baseUrl:venueDid, venueId:venueId})
     addVenue(newVenue)
@@ -46,7 +43,7 @@ export default function VenuesPage() {
           <Search />
 
         </div>
-        <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4 ">
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4 mb-4">
           {venues.map((venue) => ( 
             
               ( search && search.length > 0 ? 
@@ -57,36 +54,32 @@ export default function VenuesPage() {
              
               )
            ))}
-
-             <Dialog>
-                    <DialogTrigger>
-                        <Tooltip>
-                           <TooltipTrigger>
-                           <PlusCircleIcon size={32} color="#636363"></PlusCircleIcon>
-                             </TooltipTrigger>
-                            <TooltipContent>Create new Asset</TooltipContent>
-                          </Tooltip>  
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogTitle className="flex flex-row items-center space-x-2">
-                              <Label>Connect to a venue </Label>
-                      </DialogTitle>
-                            
-                            <div className="flex flex-col items-center justify-between space-y-4">
-                              <div className="flex flex-row items-center justify-center space-x-2 w-full">
-                              <Label className="w-28">Venue DID</Label>
-                              <Input required onChange={e => setVenueDid(e.target.value)} placeholder="Provide venue DID"></Input>
-                            </div>
-                            <div className="flex flex-row items-center justify-center space-x-2 w-full">
-                              <Label  className="w-28">Venue ID</Label>
-                              <Input required onChange={e => setVenueId(e.target.value)} placeholder="Provide venue Id"></Input>
-                            </div>
-                          </div>
-                             <DialogClose>
-                                  <Button onClick={(e) => addVenueToList()}>Connect</Button>                 
-                            </DialogClose>
-                    </DialogContent>
-            </Dialog>
+        </div>
+        <div className="h-48 flex flex-center items-center justify-center ">
+          <Dialog>
+            <DialogTrigger>
+                  <Iconbutton icon={PlusCircledIcon} message="Connect to new venue" label="Connect to venue"/> 
+            </DialogTrigger>
+            <DialogContent>
+                <DialogTitle className="flex flex-row items-center space-x-2">
+                      <Label>Connect to a venue </Label>
+              </DialogTitle>
+                    
+                    <div className="flex flex-col items-center justify-between space-y-4">
+                      <div className="flex flex-row items-center justify-center space-x-2 w-full">
+                      <Label className="w-28">Venue DID or Url</Label>
+                      <Input required onChange={e => setVenueDid(e.target.value)} placeholder="Provide venue DID or url"></Input>
+                    </div>
+                    <div className="flex flex-row items-center justify-center space-x-2 w-full">
+                      <Label  className="w-28">Venue ID</Label>
+                      <Input required onChange={e => setVenueId(e.target.value)} placeholder="Provide venue Id"></Input>
+                    </div>
+                  </div>
+                      <DialogClose>
+                          <Button onClick={(e) => addVenueToList()}>Connect</Button>                 
+                    </DialogClose>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </ContentLayout>

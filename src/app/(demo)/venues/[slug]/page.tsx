@@ -51,8 +51,7 @@ export default function VenuePage({ params }: VenuePageProps) {
 
   useEffect(() => {
     // Find the venue by slug
-    console.log(venues)
-    const foundVenue = venues.find(v => v.venueId === slug);
+    const foundVenue = venues.find(v => v.venueId === decodeURIComponent(slug));
     if (foundVenue) {
       if(foundVenue instanceof Venue) {
           setVenue(foundVenue);
@@ -103,7 +102,7 @@ export default function VenuePage({ params }: VenuePageProps) {
   if (!venue) {
     return (
       <ContentLayout title="Venue Not Found">
-        <SmartBreadcrumb />
+        <SmartBreadcrumb assetOrJobName={slug}/>
         <div className="flex items-center justify-center h-64">
           <p className="text-muted-foreground">Venue not found</p>
         </div>
@@ -113,7 +112,7 @@ export default function VenuePage({ params }: VenuePageProps) {
 
   return (
     <ContentLayout title={venue.name}>
-      <SmartBreadcrumb />
+      <SmartBreadcrumb  venueName={venue.name}/>
       
       <div className="flex flex-col space-y-6">
         {/* Venue Header */}

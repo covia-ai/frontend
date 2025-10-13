@@ -162,7 +162,6 @@ export const OperationViewer = (props: any) => {
 
   // Helper function to convert a value to appropriate raw input string based on type
   const printValue = (value: any, type: string) => {
-    console.log(value+" : "+type)
     if (type === "json" || type === "object" || type === "any" || type === "array") {
       // Convert to JSON string
       if (value !== undefined && value !== null && value != "") {
@@ -394,7 +393,7 @@ export const OperationViewer = (props: any) => {
           <div className="grid grid-cols-[min-content_1fr_1fr] gap-4 items-center py-2">
             {keys.map((key, index) => (
               <>
-                <div className="flex flex-row items-center min-w-0">
+                <div key={index} className="flex flex-row items-center min-w-0">
                   <Label className="whitespace-nowrap">{key}</Label>
                   {requiredKeys?.indexOf(key) != -1 && <span className="text-red-400 ml-1">*</span>}
                 </div>
@@ -448,7 +447,7 @@ export const OperationViewer = (props: any) => {
 
   return (
     <>
-      <SmartBreadcrumb assetName={asset?.metadata?.name} />
+      <SmartBreadcrumb assetOrJobName={asset?.metadata?.name} venueName={venueObj.name}/>
 
       <div className="flex flex-col w-full items-center justify-center">
         {assetNotFound && (

@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Asset, RunStatus, Venue } from "@/lib/covia";
 import { JobData } from "@/lib/covia/types";
-import { Check, CircleX, Clock, Copy, FileInput, FileOutput, Hash, RotateCcw, Timer, Trash2, X } from "lucide-react";
+import { Check, CircleX, Clock, Copy, FileInput, FileOutput, Hash, RotateCcw, Settings, Timer, Trash2, X } from "lucide-react";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
@@ -12,22 +12,14 @@ import { useRouter } from "next/navigation";
 import { copyDataToClipBoard, getExecutionTime } from "@/lib/utils";
 import { TbSubtask } from "react-icons/tb";
 import Link from "next/link";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+
+import { isJobFinished } from "@/lib/covia/Utils";
+import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
+import { ExecutionHeader } from "./ExecutionHeader";
+import { ExecutionToolbar } from "./ExecutionToolbar";
 
 
 export const ExecutionViewer = (props: any) => {
-    const router = useRouter()
     const [executionData, setExecutionData] = useState<JobData>({})
     const [poll, setPollStatus] = useState("");
     const [assetsMetadata, setAssetsMetadata] = useState<Asset>();
@@ -65,21 +57,7 @@ export const ExecutionViewer = (props: any) => {
         })
     }
     
-    function cancelExecution() {
-        if (!venue) return;
-        venue.cancelJob(props.jobId).then((response) => {
-           console.log(response)
-        })
-    }
-   
-     function deleteExecution() {
-        if (!venue) return;
-        venue.deleteJob(props.jobId).then((response) => {
-          if(response == 200) {
-            router.push("/venues/"+venue.venueId+"/jobs");
-          }
-        })
-    }
+ 
 
     useEffect(() => {
         if (!venue) return;
@@ -93,7 +71,7 @@ export const ExecutionViewer = (props: any) => {
     }, [venue, props.jobId]);
 
     useEffect(() => {
-        if (poll != RunStatus.FAILED && poll != RunStatus.COMPLETE && poll != RunStatus.CANCELLED  && poll != "ERROR") {
+        if (!isJobFinished(executionData)) {
             const intervalId = setInterval(() => {
                 fetchJobStatus();
             }, 1000)
@@ -226,87 +204,27 @@ export const ExecutionViewer = (props: any) => {
 
     return (
         <>
+             <SmartBreadcrumb assetOrJobName={executionData?.name} venueName={venueObj.name} />
+             <ExecutionHeader jobData={executionData}></ExecutionHeader>
             {executionData && (
 
                 <div className="flex flex-col w-full items-center justify-center">
-                    <div className="flex flex-row-reverse space-x-2 space-x-reverse w-full">
-                        <div className="flex flex-row text-xs ">
-                            <span> {(window.location.href).slice(0, 60) + "..."} </span>
-                            <span><Copy size={12} onClick={(e) => copyDataToClipBoard(window.location.href, "Job Link copied to clipboard")}></Copy></span>
-
-                        </div>
-                        <div className="flex flex-row ">
-                            <span className="text-xs">{props.jobId.slice(0, 60) + "..."} </span>
-                            <span><Copy size={12} onClick={(e) => copyDataToClipBoard(props.jobId, "Job Id copied to clipboard")}></Copy></span>
-                        </div>
-                    </div>
-                    <div className="flex flex-row border-1 shadow-md rounded-md border-slate-200 w-11/12 mt-8 p-4 items-center justify-between">
+                  
+                    <div className="flex flex-row border-1 shadow-md rounded-md border-slate-200 w-full  p-4 items-center justify-between">
                         <div className="flex flex-col w-full">
-                             {poll && (poll == RunStatus.STARTED  || poll == RunStatus.PENDING) && 
-                             <div className="flex flex-row-reverse">
-                          
-                               
-                                <Tooltip>
-                                        <TooltipTrigger>
-                                             <AlertDialog>
-                                                <AlertDialogTrigger>
-                                                    <CircleX size={20} className="text-secondary mx-2"></CircleX>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent>
+                             
+                           <div className="flex flex-row items-start w-full">
+                                <div className="flex flex-row items-center space-x-4 py-2 w-1.2">
+                                    {executionData?.status == RunStatus.COMPLETE && <Check></Check>}
+                                    {executionData?.status == RunStatus.FAILED && <X></X>}
+                                    {executionData?.status == RunStatus.PENDING && <RotateCcw />}
+                                    {executionData?.status == RunStatus.STARTED && < RotateCcw />}
 
-                                                    <AlertDialogHeader>
-                                                        <AlertDialogTitle>Are you sure you want to cancel the operation?</AlertDialogTitle>
-                                                        <AlertDialogDescription>
-                                                            This action cannot be undone. 
-                                                        </AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                        <AlertDialogCancel>No</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={(e) => cancelExecution()}>Yes</AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                        </AlertDialog>
-                                         </TooltipTrigger>
-                                        <TooltipContent>Cancel operation</TooltipContent>
-                                        
-                                 </Tooltip> 
-                            
-                                  <Tooltip>
-                                        <TooltipTrigger>
-                                             <AlertDialog>
-                                                <AlertDialogTrigger>
-                                                    <Trash2 size={20} className="text-secondary mx-2"></Trash2>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent>
-
-                                                    <AlertDialogHeader>
-                                                        <AlertDialogTitle>Are you sure you want to delete the operation?</AlertDialogTitle>
-                                                        <AlertDialogDescription>
-                                                            This action cannot be undone. 
-                                                        </AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                        <AlertDialogCancel>No</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={(e) => deleteExecution()}>Yes</AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                        </AlertDialog>
-                                         </TooltipTrigger>
-                                        <TooltipContent>Delete operation</TooltipContent>
-                                        
-                                 </Tooltip> 
-                           </div>
-                           }
-                            <div className="flex flex-row items-center space-x-4 py-2">
-                                {executionData?.status == RunStatus.COMPLETE && <Check></Check>}
-                                {executionData?.status == RunStatus.FAILED && <X></X>}
-                                {executionData?.status == RunStatus.PENDING && <RotateCcw />}
-                                {executionData?.status == RunStatus.STARTED && < RotateCcw />}
-
-                                <span className="w-28"><strong>Status:</strong></span>
-                                <span className={colourForStatus(executionData?.status as RunStatus)}>{executionData?.status}</span>
+                                    <span className="w-28"><strong>Status:</strong></span>
+                                    <span className={colourForStatus(executionData?.status as RunStatus)}>{executionData?.status}</span>
+                                </div>
                             </div>
-
+                             
                             <div className="flex flex-row items-center space-x-4  py-2">
                                 <Clock></Clock>
                                 <span className="w-28"><strong>Created Date:</strong></span>
@@ -363,7 +281,8 @@ export const ExecutionViewer = (props: any) => {
                         </div>
 
                     </div>
-
+                    <ExecutionToolbar jobData={executionData}></ExecutionToolbar>
+                  
                 </div>
             )
             }

@@ -32,6 +32,9 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { getExecutionTime } from "@/lib/utils";
+import { SelectLabel } from "@radix-ui/react-select";
+import { Label } from "@/components/ui/label";
+import { PaginationHeader } from "@/components/PaginationHeader";
 
 export default function OperationsPage() {
   const [statusFilter, setStatusFilter] = useState("All");
@@ -43,11 +46,12 @@ export default function OperationsPage() {
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
-  const handlePageChange = (page: number) => {
-    if (page >= 1)
-      setCurrentPage(page)
+  const nextPage = (page: number) => {
+    setCurrentPage(page)
   }
-
+  const prevPage = (page: number) => {
+    setCurrentPage(page)
+  }
   function isInRange(date: string) {
     if (dateFilter == "today") {
       const x = new Date().getDay();
@@ -57,6 +61,7 @@ export default function OperationsPage() {
       return false;
 
     }
+    return true;
   }
  const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
   if (!venueObj) return null;
@@ -92,50 +97,42 @@ export default function OperationsPage() {
     filteredData.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
   }, [statusFilter]);
 
+  const encodedPath = (jobId:string) => {
+        return "/venues/"+encodeURIComponent(venue.venueId)+"/jobs/"+jobId;
+        
+    };
   return (
-    <ContentLayout title="Operations">
-      <SmartBreadcrumb />
+    <ContentLayout title="Jobs">
+      <SmartBreadcrumb venueName={venue.name}/>
       <div className="flex flex-col items-center justify-center  mt-2">
         <div className="flex flex-row w-full  items-start justify-start mt-4 space-x-4 ">
-          <Select onValueChange={value => setStatusFilter(value)} defaultValue="All">
-            <SelectTrigger className="w-[180px] text-semibold">
-              <SelectValue className="text-semibold" placeholder="Run Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="All">All</SelectItem>
-                <SelectItem value={RunStatus.PENDING}>{RunStatus.PENDING}</SelectItem>
-                <SelectItem value={RunStatus.STARTED}>{RunStatus.STARTED}</SelectItem>
-                <SelectItem value={RunStatus.COMPLETE}>{RunStatus.COMPLETE}</SelectItem>
-                <SelectItem value={RunStatus.FAILED}>{RunStatus.FAILED}</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-          <Select onValueChange={value => setDateFilter(value)} defaultValue="today">
-            <SelectTrigger className="w-[180px] text-semibold">
-              <SelectValue placeholder="Date" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="All">All</SelectItem>
-                <SelectItem value="today">Today</SelectItem>
-
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+            <div className="flex flex-row items-center justify-start w-1/3  space-x-4">
+              <Label>Job Status</Label>
+              <Select onValueChange={value => setStatusFilter(value)} defaultValue="All">
+              <SelectTrigger className="w-[180px] text-semibold">
+                <SelectValue className="text-semibold" placeholder="Run Status" />
+              </SelectTrigger>    
+              <SelectContent>
+                <SelectGroup>
+                  
+                  <SelectItem value="All">All</SelectItem>
+                  <SelectItem value={RunStatus.PENDING}>{RunStatus.PENDING}</SelectItem>
+                  <SelectItem value={RunStatus.STARTED}>{RunStatus.STARTED}</SelectItem>
+                  <SelectItem value={RunStatus.PAUSED}>{RunStatus.PAUSED}</SelectItem>
+                  <SelectItem value={RunStatus.CANCELLED}>{RunStatus.CANCELLED}</SelectItem>
+                  <SelectItem value={RunStatus.TIMEOUT}>{RunStatus.TIMEOUT}</SelectItem>
+                  <SelectItem value={RunStatus.REJECTED}>{RunStatus.REJECTED}</SelectItem>
+                  <SelectItem value={RunStatus.AUTH_REQUIRED}>{RunStatus.AUTH_REQUIRED}</SelectItem>
+                  <SelectItem value={RunStatus.INPUT_REQUIRED}>{RunStatus.INPUT_REQUIRED}</SelectItem>
+                  <SelectItem value={RunStatus.COMPLETE}>{RunStatus.COMPLETE}</SelectItem>
+                  <SelectItem value={RunStatus.FAILED}>{RunStatus.FAILED}</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <div className="text-slate-600 text-xs flex flex-row ">Page {currentPage} : Showing {filteredData.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of {jobsData.length} </div>
-        <Pagination>
-          <PaginationContent className=" flex flex-row-reverse w-full">
-            {currentPage != 1 && <PaginationItem>
-              <PaginationPrevious href="#" onClick={() => handlePageChange(currentPage - 1)} />
-            </PaginationItem>}
-            {currentPage != totalPages && <PaginationItem>
-              <PaginationNext href="#" onClick={() => handlePageChange(currentPage + 1)} />
-            </PaginationItem>}
-          </PaginationContent>
-        </Pagination>
-
+        <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>
         <Table className="  border border-slate-200 rounded-lg shadow-md">
           <TableHeader >
             <TableRow className="hover:bg-slate-800 bg-slate-800 rounded-full text-white ">
@@ -151,8 +148,9 @@ export default function OperationsPage() {
           <TableBody>
             {filteredData.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((job, index) =>
 
+              isInRange(job.created) && 
               <TableRow key={index}>
-                <TableCell><Link className="text-secondary font-mono underline" href={`/venues/${venue.venueId}/jobs/${job.id}`}>{job.id}</Link></TableCell>
+                <TableCell><Link className="text-secondary font-mono underline" href={encodedPath(job.id)}>{job.id}</Link></TableCell>
                 <TableCell>{job.name}</TableCell>
                 <TableCell className="text-center">{new Date(job.created).toLocaleString()}</TableCell>
                 {(job.status == RunStatus.COMPLETE || job.status == RunStatus.FAILED) && (<TableCell className="text-center">{getExecutionTime(job.created, job.updated)}</TableCell>)}
@@ -165,15 +163,12 @@ export default function OperationsPage() {
                 {job.status == RunStatus.STARTED && <TableCell className="text-blue-600 text-center">{RunStatus.STARTED}</TableCell>}
 
               </TableRow>
-
+              
             )}
           </TableBody>
         </Table>
-
-
-
+        <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>
       </div>
-
     </ContentLayout>
   );
 }

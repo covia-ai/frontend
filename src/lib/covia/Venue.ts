@@ -18,8 +18,10 @@ export class Venue implements VenueInterface {
   public venueId: string;
   public name: string;
   public metadata: AssetMetadata;
-
+  
   constructor(options: VenueOptions = {}) {
+    
+    
     this.baseUrl = options.baseUrl || 'https://venue-test.covia.ai';
     this.venueId = options.venueId || "default";
     this.name = options.venueId || "default";

@@ -1,8 +1,8 @@
-import { CANCELLED } from "dns";
 
 export interface VenueOptions {
   baseUrl?: string;
   venueId?: string;
+  did?:string;
 }
 
 export interface VenueInterface {
@@ -74,15 +74,6 @@ export enum RunStatus {
   PAUSED = "PAUSED"
 }
 
-export interface JobData {
-  id?: string;
-  status?: string;
-  created?: string;
-  updated?: string;
-  input?: any;
-  output?: any;
-  [key: string]: any;
-}
 
 export interface StatusData {
   url?:string;

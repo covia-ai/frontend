@@ -2,13 +2,24 @@
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { CopyIcon, CircleArrowRight, Trash } from "lucide-react";
 import { Venue } from "@/lib/covia";
 import { useRouter } from 'next/navigation';
-import { copyDataToClipBoard } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useVenues } from "@/hooks/use-venues";
+import { Iconbutton } from "./Iconbutton";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Cross, CrossIcon, SquareArrowOutUpRight, X } from "lucide-react";
 
 interface VenueCardProps {
   venue: Venue;
@@ -16,7 +27,7 @@ interface VenueCardProps {
 
 export function VenueCard({ venue }: VenueCardProps) {
   const router = useRouter();
-   const { removeVenue } = useVenues();
+  const { removeVenue } = useVenues();
   const [ venueDID, setVenueDID] = useState("");
 
   if(!(venue instanceof Venue))
@@ -33,7 +44,8 @@ export function VenueCard({ venue }: VenueCardProps) {
     }, []);
 
   const handleCardClick = () => {
-    router.push(`/venues/${venue.venueId}`);
+    const encodedUrl = "/venues/"+encodeURIComponent(venue.venueId);
+    router.push(encodedUrl);
   };
 
   const handleRemoveVenue = (e: React.MouseEvent) => {
@@ -41,61 +53,54 @@ export function VenueCard({ venue }: VenueCardProps) {
     removeVenue(venue.venueId);
   };
 
-  const handleViewVenueClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    window.open(venue.baseUrl, '_blank');
-  };
-
   return (
     <Card 
-      className="shadow-md bg-slate-100 flex flex-col rounded-md hover:border-accent hover:border-2 cursor-pointer h-48 overflow-hidden"
-      onClick={handleCardClick}
+      className="shadow-md border-2 bg-slate-100 flex flex-col rounded-md hover:border-accent cursor-pointer h-48 overflow-hidden"
+      
     >
       {/* Fixed-size header */}
       <div className="h-14 p-3 flex flex-row items-center justify-between border-b bg-slate-50">
-        <div className="truncate flex-1 mr-2 font-semibold text-sm">{venue.name}</div>
-        <div className="flex space-x-2">
-          <Tooltip>
-            <TooltipTrigger>
-              <Trash 
-                size={16} 
-                onClick={handleRemoveVenue}
-              />
-            </TooltipTrigger>
-            <TooltipContent>Remove Venue</TooltipContent>
-          </Tooltip>
-        </div>
+        <div className="truncate flex-1 mr-2 font-semibold text-sm" onClick={handleCardClick}>{venue.name}</div>
+            <AlertDialog>
+                    <AlertDialogTrigger  className="flex flex-row ">
+                        <Iconbutton icon={X} message="Disconnect Venue" />
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure you want to disconnect this venue?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action cannot be undone. 
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel>No</AlertDialogCancel>
+                            <AlertDialogAction onClick={(e) => handleRemoveVenue(e)}>Yes</AlertDialogAction>
+                            </AlertDialogFooter>
+                    </AlertDialogContent>
+            </AlertDialog>
+                    
+           
       </div>
 
       {/* Flexible middle section */}
-      <div className="flex-1 p-3 flex flex-col justify-between">
+      <div className="flex-1 p-3 flex flex-col justify-between" onClick={handleCardClick}>
         <div className="text-xs text-slate-600 line-clamp-3 mb-2">
           {venue.metadata.description || `${venue.name} Covia Venue`}
         </div>
-        <div className="text-xs text-slate-500 font-mono bg-slate-50 p-2 rounded break-all line-clamp-1">
-          {venueDID.length> 40 ? (venueDID.substring(0,40)+"....") : (venueDID)}
-        </div>
+      
       </div>
 
       {/* Fixed-size footer */}
-      <div className="p-2 h-12 flex flex-row items-center justify-between">
+      <div className="p-2 h-12 flex flex-row items-center justify-between" onClick={handleCardClick}>
         <div className="flex flex-row items-center space-x-2">
           <Badge variant="default" className="border bg-secondary text-white text-xs">
             covia
           </Badge>
         </div>
         
-        <Tooltip>
-          <TooltipTrigger>
-            <CircleArrowRight 
-              color="#6B46C1" 
-              onClick={handleCardClick}
-            />
-          </TooltipTrigger>
-          <TooltipContent>
-            View Venue
-          </TooltipContent>
-        </Tooltip>
+          <Iconbutton icon={SquareArrowOutUpRight} message="View Venue" path="venues" pathId={venue.venueId}/>
+
       </div>
     </Card>
   );
