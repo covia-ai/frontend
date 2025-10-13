@@ -59,7 +59,7 @@ export default function VenuePage({ params }: VenuePageProps) {
           setVenueDID(foundVenue.getDID())
       }
       else {
-          const foundVenue_obj = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name});
+          const foundVenue_obj = new Venue({baseUrl:foundVenue.baseUrl, venueId:foundVenue.venueId, name:foundVenue.name});
           setVenue(foundVenue_obj)
           setVenueDID(foundVenue_obj.getDID())
       }
