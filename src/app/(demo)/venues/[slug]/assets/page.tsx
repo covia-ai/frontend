@@ -69,7 +69,7 @@ export default function AssetPage() {
   }
   const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
   if (!venueObj) return null;
-  const venue = {baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
+  const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
   console.log(venue)
   function fetchAssets() {
     setAssetsMetadata([]);
