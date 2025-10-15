@@ -37,7 +37,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body suppressHydrationWarning
-        className={`${aetherFont.className} antialiased`}
+        className={`${aetherFont.className}  antialiased`}
       >
           <ThemeProvider
             attribute="class"

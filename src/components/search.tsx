@@ -16,12 +16,12 @@ export const Search: React.FC = (   ) => {
      
   }
   return (
-    <div className="flex flex-col items-center justify-center w-1/2">
-        <div className="flex flex-row items-center py-2 w-full">
+    <div className="flex flex-col items-center justify-center w-1/2 ">
+        <div className="flex flex-row items-center py-2 w-full ">
         
         <Input
           placeholder="Type keyword to search..."
-          className="w-full pl-10"
+          className="w-full pl-10 bg-card text-card-foreground"
           value={searchValue}
           onChange= {(e) => setSearchValue(e.target.value)}
         />

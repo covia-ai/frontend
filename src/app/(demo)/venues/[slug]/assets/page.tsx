@@ -134,7 +134,7 @@ export default function AssetPage() {
         </div>
 
          {!isLoading && <>
-          <div className="text-slate-600 text-xs flex flex-row my-2 ">Page {currentPage} : Showing {assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of {assetsMetadata.length} </div>
+          <div className="text-card-foreground text-xs flex flex-row my-2 ">Page {currentPage} : Showing {assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of {assetsMetadata.length} </div>
           <Pagination>
             <PaginationContent className="flex flex-row-reverse w-full">
               {currentPage != totalPages && currentPage < totalPages && <PaginationItem>

@@ -126,7 +126,7 @@ export default function OperationsPage() {
             </Select>
           </div>
         </div>
-        <div className="text-slate-600 text-xs flex flex-row ">Page {currentPage} : Showing {filteredData.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of {jobsData.length} </div>
+        <div className="text-card-foreground text-xs flex flex-row ">Page {currentPage} : Showing {filteredData.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of {jobsData.length} </div>
           <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>
 
 

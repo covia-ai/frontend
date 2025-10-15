@@ -125,8 +125,8 @@ export default function VenuePage({ params }: VenuePageProps) {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="bg-secondary-vlight p-3 rounded-lg">
-                <Building2 size={32} className="text-secondary" />
+              <div className="bg-primary-vlight  p-3 rounded-lg">
+                <Building2 size={32} className="text-primary  " />
               </div>
               <div>
                 <h1 className="text-2xl font-bold">{venueName}</h1>
@@ -154,7 +154,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               <Button 
                 onClick={() => setCurrentVenue(venue)}
                 variant={isCurrentVenue ? "default" : "secondary"}
-                className="flex items-center space-x-2"
+                className="flex items-center space-x-2 bg-secondary text-secondary-foreground border border-muted"
                 disabled={isCurrentVenue}
               >
                 <Settings size={16} />
@@ -183,7 +183,7 @@ export default function VenuePage({ params }: VenuePageProps) {
                   <Link 
                     href={venue.baseUrl} 
                     target="_blank"
-                    className="font-mono text-sm bg-gray-100 p-2 rounded break-all"
+                    className="font-mono text-sm bg-muted p-2 rounded break-all"
                   >
                     {venue.baseUrl}
                   </Link>
@@ -202,7 +202,7 @@ export default function VenuePage({ params }: VenuePageProps) {
                     onClick={(e) => copyDataToClipBoard(venueDID, "Venue DID copied to clipboard")}
                     className="cursor-pointer hover:text-pink-400"></Copy>
                     </p>
-                  <p className="font-mono text-sm bg-gray-100 p-2 rounded break-all">
+                  <p className="font-mono text-sm bg-muted p-2 rounded break-all">
                     {venueDID}
                   </p>
                 </div>
@@ -220,7 +220,7 @@ export default function VenuePage({ params }: VenuePageProps) {
                     onClick={(e) => copyDataToClipBoard(venueMCPUrl, "MCP URL copied to clipboard")}
                     className="cursor-pointer hover:text-pink-400"></Copy>
                     </p>
-                  <p className="font-mono text-sm bg-gray-100 p-2 rounded break-all">
+                  <p className="font-mono text-sm bg-muted p-2 rounded break-all">
                     {venueMCPUrl}
                   </p>
                 </div>

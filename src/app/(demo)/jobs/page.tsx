@@ -104,7 +104,7 @@ export default function OperationsPage() {
   return (
     <ContentLayout title="Jobs">
       <SmartBreadcrumb venueName={venue.name}/>
-      <div className="flex flex-col items-center justify-center  mt-2">
+      <div className="flex flex-col items-center justify-center  mt-2 bg-background">
         <div className="flex flex-row w-full  items-start justify-start mt-4 space-x-4 ">
             <div className="flex flex-row items-center justify-start w-1/3  space-x-4">
               <Label>Job Status</Label>
@@ -131,7 +131,7 @@ export default function OperationsPage() {
             </Select>
           </div>
         </div>
-        <div className="text-slate-600 text-xs flex flex-row ">Page {currentPage} : Showing {filteredData.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of {jobsData.length} </div>
+        <div className="text-card-foreground text-xs flex flex-row my-2">Page {currentPage} : Showing {filteredData.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of {jobsData.length} </div>
         <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>
         <Table className="  border border-slate-200 rounded-lg shadow-md">
           <TableHeader >
