@@ -93,19 +93,17 @@ export class Venue implements VenueInterface {
     if(userEmail && userEmail != "") {
         customHeader = {
           'Content-Type': 'application/json',
+          'X-Covia-User' : userEmail,
         }
     }
     else {
          customHeader = {
-          'Content-Type': 'application/json',
-          'X-Covia-User' : userEmail,
+          'Content-Type': 'application/json'
         }
     }
     return fetchWithError<any>(`${this.baseUrl}/api/v1/assets/`, {
       method: 'POST',
-      headers: {
-          'Content-Type': 'application/json',
-        },
+      headers: customHeader,
       body: JSON.stringify(assetData),
     }).then(response=>{return this.getAsset(response)});
   }

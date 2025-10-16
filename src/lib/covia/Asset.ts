@@ -97,16 +97,17 @@ export abstract class Asset {
     if(userEmail && userEmail != "") {
         customHeader = {
           'Content-Type': 'application/json',
+          'X-Covia-User' : userEmail,
         }
     }
     else {
          customHeader = {
-          'Content-Type': 'application/json',
-          'X-Covia-User' : userEmail,
+          'Content-Type': 'application/json'
         }
     }
+    console.log(customHeader)
     return fetchWithError<any>(`${this.venue.baseUrl}/api/v1/invoke/`, {
-      method: 'POST',
+      method: 'POST', 
       headers: customHeader,
       body: JSON.stringify(payload),
     }).catch(error => {
