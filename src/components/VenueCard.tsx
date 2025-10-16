@@ -73,7 +73,7 @@ export function VenueCard({ venue }: VenueCardProps) {
 
       {/* Flexible middle section */}
       <div className="flex-1 p-3 flex flex-col justify-between" onClick={handleCardClick}>
-        <div className="text-xs text-muted-foreground line-clamp-3 mb-2">
+        <div className="text-xs text-card-foreground line-clamp-3 mb-2">
           {venue.metadata.description || venue.venueId }
         </div>
       

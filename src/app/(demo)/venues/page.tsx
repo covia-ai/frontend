@@ -6,6 +6,7 @@ import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 import { Search } from "@/components/search";
 import { VenueCard } from "@/components/VenueCard";
 import { useVenues } from "@/hooks/use-venues";
+import { toast } from "sonner"
 
 import {
   Dialog,
@@ -25,15 +26,31 @@ import { PlusCircledIcon } from "@radix-ui/react-icons";
 
 export default function VenuesPage() {
   const { addVenue,venues } = useVenues();
-  const [venueDid, setVenueDid] = useState("");
+  const [venueDidOrUrl, setVenueDidOrUrl] = useState("");
   const [venueId, setVenueId] = useState("");
   const searchParams = useSearchParams()
   const search = searchParams.get('search');
   
   const addVenueToList = () =>{
-    Venue.connect(venueDid).then((venue)=> {
+    let venueExist = false;
+    venues.map((venue => {
+        
+        if(venue.venueId == venueDidOrUrl) {
+          venueExist = true;
+        }
+        else if ((venueDidOrUrl.startsWith('http:') || venueDidOrUrl.startsWith('https:')) && (venue.baseUrl == venueDidOrUrl)) {
+            venueExist = true;
+        }
+        
+    }))
+    if(!venueExist) {
+      Venue.connect(venueDidOrUrl).then((venue)=> {
         addVenue(venue)
-    })
+      })
+    }
+    else {
+      toast("This venue is already connected. Please check the URL/DID provided")
+    }
   }
   return (
     <ContentLayout title="Venues">
@@ -69,7 +86,7 @@ export default function VenuesPage() {
                     <div className="flex flex-col items-center justify-between space-y-4">
                       <div className="flex flex-row items-center justify-center space-x-2 w-full">
                       <Label className="w-32">Venue Url/DID</Label>
-                      <Input required onChange={e => setVenueDid(e.target.value)} placeholder="Provide venue Url/DID"></Input>
+                      <Input required onChange={e => setVenueDidOrUrl(e.target.value)} placeholder="Provide venue Url/DID"></Input>
                     </div>
                    
                   </div>

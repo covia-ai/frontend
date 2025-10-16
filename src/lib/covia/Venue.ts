@@ -70,7 +70,6 @@ export class Venue implements VenueInterface {
         // Assume it's a DNS name or venue identifier
         baseUrl = `https://${venueId}`;
       }
-    console.log(baseUrl)
     const data = await fetchWithError<StatusData>(baseUrl+'/api/v1/status');
     console.log(data)
     return new Venue({

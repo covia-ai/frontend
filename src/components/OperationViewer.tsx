@@ -18,6 +18,7 @@ import { MetadataViewer } from "./MetadataViewer";
 import { AssetHeader } from "./AssetHeader";
 import { Asset } from "@/lib/covia";
 import { usePathname } from "next/navigation";
+import { getParsedAssetId } from "@/lib/covia/Utils";
 
 export const OperationViewer = (props: any) => {
   const [asset, setAsset] = useState<Asset>();
@@ -155,7 +156,9 @@ export const OperationViewer = (props: any) => {
       return JSON.parse(rawValue);
     } else if (type === "number") {
       return Number(rawValue);
-    } else {
+    } else if (type === "asset") {
+      return getParsedAssetId(rawValue);
+    }  else {
       return rawValue;
     }
   };
@@ -220,6 +223,7 @@ export const OperationViewer = (props: any) => {
   }
 
   function runOperation() {
+    console.log(input)
     return asset?.run(input)
       .then(response => {
         if (response?.id) {
