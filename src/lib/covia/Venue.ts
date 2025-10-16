@@ -103,7 +103,9 @@ export class Venue implements VenueInterface {
     }
     return fetchWithError<any>(`${this.baseUrl}/api/v1/assets/`, {
       method: 'POST',
-      headers: customHeader,
+      headers: {
+          'Content-Type': 'application/json',
+        },
       body: JSON.stringify(assetData),
     }).then(response=>{return this.getAsset(response)});
   }

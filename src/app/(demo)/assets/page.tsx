@@ -53,7 +53,6 @@ export default function AssetPage() {
   const search = searchParams.get('search');
   const router = useRouter();
 
-  const [assetCreated, setAssetCreated] = useState(false);
   const [assetsMetadata, setAssetsMetadata] = useState<Asset[]>([]);
   const [newJsonData, setNewJsonData] = useState({});
 
@@ -102,20 +101,7 @@ export default function AssetPage() {
 
   }, [assetsMetadata]);
 
-  function copyAsset(jsonData: JSON) {
-    try {
-      venue?.createAsset(jsonData).then((asset: Asset) => {
-        if (asset != undefined && asset != null) {
-          setNewJsonData({})
-          setAssetCreated(true);
-          fetchAssets();
-        }
-      })
-    }
-    catch (error) {
-      setAssetCreated(false);
-    }
-  }
+  
   function handleDataFromChild(status: boolean) {
     fetchAssets();
   }

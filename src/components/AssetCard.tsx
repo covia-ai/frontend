@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { useState } from "react";
 import { JsonEditor } from "json-edit-react";
+import  { useSession } from "next-auth/react";
 
 interface AssetCardProps {
   asset: Asset;
@@ -31,7 +32,9 @@ export function AssetCard({ asset,type,venueSlug }: AssetCardProps) {
     const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name})
     const router = useRouter();
     const [newJsonData, setNewJsonData] = useState({});
-    
+    const [assetCreated, setAssetCreated] = useState(false);
+    const { data: session } = useSession()
+
     function renderJSONMap(jsonObject: JSON, requiredKeys: string[] = []) {
         const keys = Object.keys(jsonObject);
         const type = new Array<string>();
@@ -68,11 +71,11 @@ export function AssetCard({ asset,type,venueSlug }: AssetCardProps) {
     };
     function copyAsset(jsonData: JSON) {
         try {
-          venue?.createAsset(jsonData).then((asset: Asset) => {
+          venue?.createAsset(jsonData,session?.user?.email || "").then((asset: Asset) => {
             if (asset != undefined && asset != null) {
               setNewJsonData({})
               setAssetCreated(true);
-              fetchAssets();
+              window.location.reload()
             }
           })
         }
