@@ -22,6 +22,7 @@ import { useRouter } from "next/navigation";
 import { ResumeIcon } from "@radix-ui/react-icons";
 import { isJobFinished, isJobPaused } from "@/lib/covia/Utils";
 import { Button } from "./ui/button";
+import { toast } from "sonner";
 
 export const ExecutionToolbar = ({jobData} : JobData) => {
 
@@ -46,7 +47,12 @@ export const ExecutionToolbar = ({jobData} : JobData) => {
       function cancelExecution() {
           if (!venue) return;
           venue.cancelJob(jobData.id).then((response) => {
-             console.log(response)
+             if(response != 200) {
+                toast("Unable to cancel job right now")
+             }
+             else {
+              toast("Job cancelled")
+             }
           })
       }
       function deleteExecution() {

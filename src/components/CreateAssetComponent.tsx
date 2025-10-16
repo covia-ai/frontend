@@ -35,6 +35,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { Iconbutton } from "./Iconbutton";
+import { useSession } from "next-auth/react";
 
 export const CreateAssetComponent = ({sendDataToParent}) => {
     const [step, setStep] = useState(0);
@@ -61,10 +62,12 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
     if (!venueObj) return null;
     const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name})
 
+    const { data: session } = useSession()
+    
     function createNewAsset(jsonData: AssetMetadata) {
         try {
-       
-          venue?.createAsset(jsonData).then( (asset: Asset) => {
+          
+          venue?.createAsset(jsonData, session?.user?.email || "").then( (asset: Asset) => {
                 if(assetType == "string") {
                       asset.uploadContent(assetStringData).then((response) =>{
                       sendDataToParent(true)

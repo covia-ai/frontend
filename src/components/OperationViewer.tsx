@@ -19,6 +19,7 @@ import { AssetHeader } from "./AssetHeader";
 import { Asset } from "@/lib/covia";
 import { usePathname } from "next/navigation";
 import { getParsedAssetId } from "@/lib/covia/Utils";
+import { useSession } from "next-auth/react";
 
 export const OperationViewer = (props: any) => {
   const [asset, setAsset] = useState<Asset>();
@@ -29,6 +30,7 @@ export const OperationViewer = (props: any) => {
   const [rawInput, setRawInput] = useState<Record<string, string>>({}); // raw input content before parsing per field name
   const [typeMap, setTypeMap] = useState<Record<string, string>>({}); // user-specified types of the values to be passed to the operation, affects parsing
   const [assetNotFound, setAssetNotFound] = useState(false);
+  const { data: session } = useSession()
 
   // Session storage key based on asset ID
   const getStorageKey = (suffix: string) => `operation_input_${props.assetId}_${suffix}`;
@@ -223,8 +225,7 @@ export const OperationViewer = (props: any) => {
   }
 
   function runOperation() {
-    console.log(input)
-    return asset?.run(input)
+    return asset?.run(input, session?.user?.email || "")
       .then(response => {
         if (response?.id) {
           router.push("/venues/"+venue.venueId+"/jobs/" + response?.id);

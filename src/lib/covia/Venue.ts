@@ -88,12 +88,22 @@ export class Venue implements VenueInterface {
    * @param assetData - Asset configuration
    * @returns {Promise<Asset>}
    */
-  async createAsset(assetData: any): Promise<Asset> {
+  async createAsset(assetData: any, userEmail: string): Promise<Asset> {
+    let customHeader = {}
+    if(userEmail && userEmail != "") {
+        customHeader = {
+          'Content-Type': 'application/json',
+        }
+    }
+    else {
+         customHeader = {
+          'Content-Type': 'application/json',
+          'X-Covia-User' : userEmail,
+        }
+    }
     return fetchWithError<any>(`${this.baseUrl}/api/v1/assets/`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: customHeader,
       body: JSON.stringify(assetData),
     }).then(response=>{return this.getAsset(response)});
   }
