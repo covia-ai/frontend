@@ -84,8 +84,8 @@ export const ExecutionViewer = (props: any) => {
         const steps = executionData.steps as any[];
         return (
             <Table className="border border-slate-200 rounded-md py-2 ">
-                <TableHeader>
-                    <TableRow className="bg-slate-200">
+                <TableHeader className="">
+                    <TableRow className="bg-secondary-light">
                         <TableCell>#</TableCell>
                         <TableCell>Job Id</TableCell>
                         <TableCell>Status</TableCell>
@@ -98,7 +98,7 @@ export const ExecutionViewer = (props: any) => {
                             const id = step?.id || "";
                             return (
                                 <TableRow key={index} >
-                                    <TableCell className="text-secondary">{index}</TableCell>
+                                    <TableCell className="text-secondary-light dark:text-card-foreground">{index}</TableCell>
                                     <TableCell className="text-secondary font-mono underline"><Link href={`/jobs/${id}`}>{id}</Link></TableCell>
                                     <TableCell>
                                         <span className={colourForStatus(status)}>{status}</span>
@@ -136,23 +136,23 @@ export const ExecutionViewer = (props: any) => {
 
                 // Mask secret outputs
                 if (isSecret) {
-                    return <TableCell className="max-w-xs break-words whitespace-pre-wrap italic">Secret Hidden</TableCell>;
+                    return <TableCell className="max-w-xs break-words whitespace-pre-wrap italic text-card-foreground">Secret Hidden</TableCell>;
                 }
 
                 if (fieldType === "string") {
                     // Display string values as plain text with proper line breaks
-                    return <TableCell className="max-w-xs break-words whitespace-pre-wrap">{value}</TableCell>;
+                    return <TableCell className="max-w-xs break-words whitespace-pre-wrap text-card-foreground">{value}</TableCell>;
                 } else {
                     // For non-string types, use JSON.stringify
                     const text = JSON.stringify(value);
-                    return <TableCell className="max-w-xs break-words whitespace-normal">{text}</TableCell>;
+                    return <TableCell className="max-w-xs break-words whitespace-normal text-card-foreground">{text}</TableCell>;
                 }
             }
 
             // render function for the type each key within the input or output like "string" or "asset"
             const renderType = (key: string) => {
                 const fieldType = schema?.properties?.[key]?.type || "object";
-                return <TableCell className="text-slate-600">{fieldType}</TableCell>;
+                return <TableCell className="text-card-foreground">{fieldType}</TableCell>;
             }
 
             if (keys == undefined || keys == null) {
@@ -161,7 +161,7 @@ export const ExecutionViewer = (props: any) => {
                 return (
                     <Table className="border border-slate-200 rounded-md py-2">
                         <TableHeader>
-                            <TableRow className="bg-slate-200">
+                            <TableRow className="bg-secondary-light">
                                 <TableCell >Name</TableCell>
                                 <TableCell >Value</TableCell>
                                 <TableCell>Type</TableCell>
@@ -171,8 +171,8 @@ export const ExecutionViewer = (props: any) => {
                             {keys.map((key, index) => (
                                 <TableRow key={index}>
                                     {type == "input" 
-                                        ? <TableCell key={index} className="font-semibold bg-yellow-100">{key}</TableCell>
-                                        : <TableCell key={index} className="font-semibold bg-blue-100">{key}</TableCell>}
+                                        ? <TableCell key={index} className="text-md bg-input-color text-io-foreground">{key}</TableCell>
+                                        : <TableCell key={index} className="text-md bg-output-color text-io-foreground">{key}</TableCell>}
                                     {renderContent(key)}
                                     {renderType(key)}
                                 </TableRow>
@@ -220,7 +220,7 @@ export const ExecutionViewer = (props: any) => {
                                     {executionData?.status == RunStatus.PENDING && <RotateCcw />}
                                     {executionData?.status == RunStatus.STARTED && < RotateCcw />}
 
-                                    <span className="w-28"><strong>Status:</strong></span>
+                                    <span className="w-28">Status:</span>
                                     <span className={colourForStatus(executionData?.status as RunStatus)}>{executionData?.status}</span>
                                 </div>
                                  <ExecutionToolbar jobData={executionData}></ExecutionToolbar>
@@ -229,24 +229,24 @@ export const ExecutionViewer = (props: any) => {
                              
                             <div className="flex flex-row items-center space-x-4  py-2">
                                 <Clock></Clock>
-                                <span className="w-28"><strong>Created Date:</strong></span>
-                                <span>{executionData?.created ? new Date(executionData.created).toLocaleString() : 'N/A'}</span>
+                                <span className="w-28">Created Date</span>
+                                <span className="text-card-foreground">{executionData?.created ? new Date(executionData.created).toLocaleString() : 'N/A'}</span>
                             </div>
                             <div className="flex flex-row items-center space-x-4  py-2">
                                 <Clock></Clock>
-                                <span className="w-28"><strong>Updated Date:</strong></span>
-                                <span>{executionData?.updated ? new Date(executionData.updated).toLocaleString() : 'N/A'}</span>
+                                <span className="w-28">Updated Date:</span>
+                                <span className="text-card-foreground">{executionData?.updated ? new Date(executionData.updated).toLocaleString() : 'N/A'}</span>
                             </div>
                             <div className="flex flex-row items-center space-x-4  py-2">
                                 <Timer></Timer>
-                                <span className="w-28"><strong>Time:</strong></span>
-                                <span>{executionData?.created && executionData?.updated ? getExecutionTime(executionData.created, executionData.updated) : 'N/A'}</span>
+                                <span className="w-28">Time:</span>
+                                <span className="text-card-foreground">{executionData?.created && executionData?.updated ? getExecutionTime(executionData.created, executionData.updated) : 'N/A'}</span>
                             </div>
                             <div className="flex flex-col py-2 space-x-4 w-3/4 ">{executionData?.steps &&
                                 <div className="flex flex-row space-x-4  py-2">
                                     <div className="flex flex-row space-x-4 my-2 ">
                                         <TbSubtask size={20}></TbSubtask>
-                                        <span className="w-28"><strong>Steps:</strong></span>
+                                        <span className="w-28">Steps:</span>
                                     </div>
                                     {renderChildJobs(executionData?.steps)}
                                 </div>
@@ -256,7 +256,7 @@ export const ExecutionViewer = (props: any) => {
                                 <div className="flex flex-col py-2 space-x-4 w-1/2 ">
                                     <div className="flex flex-row space-x-4 my-2 ">
                                         <FileInput></FileInput>
-                                        <span className="w-28"><strong>Input:</strong></span>
+                                        <span className="w-28">Input:</span>
                                     </div>
                                     {renderJSONObject(executionData?.input, "input",)}
                                 </div>
@@ -264,7 +264,7 @@ export const ExecutionViewer = (props: any) => {
                                     <div className="flex flex-col  py-2 space-x-4 w-1/2">
                                         <div className="flex flex-row space-x-4 my-2 ">
                                             <FileOutput></FileOutput>
-                                            <span className="w-28"><strong>Output:</strong></span>
+                                            <span className="w-28">Output:</span>
                                         </div>
                                         {renderJSONObject(executionData?.output, "output")}
                                         {executionData?.status == RunStatus.FAILED && <div>{executionData?.error}</div>}
@@ -274,9 +274,9 @@ export const ExecutionViewer = (props: any) => {
                                     <div className="flex flex-row  py-2 space-x-4 w-1/2 my-2">
                                         <div className="flex flex-row space-x-4 ">
                                             <FileOutput></FileOutput>
-                                            <span className="w-28"><strong>Error:</strong></span>
+                                            <span className="w-28">Error:</span>
                                         </div>
-                                        <div>{executionData?.error}</div>
+                                        <div className="text-card-foreground">{executionData?.error}</div>
                                     </div>
                                 }
                             </div>

@@ -383,7 +383,7 @@ export const OperationViewer = (props: any) => {
 
   function renderDescription(description: string) {
     return (
-      <div className="text-sm text-gray-600">{description}</div>
+      <div className="text-sm text-card-foreground">{description}</div>
     );
   }
 
