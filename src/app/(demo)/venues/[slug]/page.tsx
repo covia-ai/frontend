@@ -39,10 +39,11 @@ interface VenuePageProps {
 export default function VenuePage({ params }: VenuePageProps) {
   const router = useRouter();
   const { slug } = params;
-  const { venues } = useVenues();
+  const { venues, addVenue } = useVenues();
   const { currentVenue, setCurrentVenue } = useVenue();
   const [ venue, setVenue] = useState<Venue | null>(null);
   const [ venueDID, setVenueDID] = useState("");
+  const [ venueName, setVenueName] = useState("");
   const [ venueMCPUrl, setVenueMCPURL] = useState("Not Found")
   const [ noOfAssets, setNoOfAssets] = useState(0)
   const [ noOfOps, setNoOfOps] = useState(0)
@@ -58,7 +59,7 @@ export default function VenuePage({ params }: VenuePageProps) {
           setVenueDID(foundVenue.getDID())
       }
       else {
-          const foundVenue_obj = new Venue({baseUrl:foundVenue.baseUrl, venueId:foundVenue.venueId});
+          const foundVenue_obj = new Venue({baseUrl:foundVenue.baseUrl, venueId:foundVenue.venueId, name:foundVenue.name});
           setVenue(foundVenue_obj)
           setVenueDID(foundVenue_obj.getDID())
       }
@@ -66,18 +67,22 @@ export default function VenuePage({ params }: VenuePageProps) {
       // Don't automatically set as current venue - only when user clicks "Make Default"
       
     }
+    else {
+       Venue.connect(decodeURIComponent(slug)).then((venue) => {
+         addVenue(venue)
+       }
+      )
+    }
   }, [slug, venues]);
 
     useEffect(() => {
        const fetchMCP = async () => {
           const response = await fetch(venue?.baseUrl+"/.well-known/mcp");
           const body = await response.json();
-          setVenueMCPURL(body?.server_url)
-      }
-      const fetchDID = async () => {
-          const response = await fetch(venue?.baseUrl+"/.well-known/did.json");
-          const body = await response.json();
-          setVenueDID(body.id)
+          if(body?.error)
+             setVenueMCPURL("Not Available")
+          else
+              setVenueMCPURL(body?.server_url)
       }
        const fetchStats = async () => {
          try {
@@ -87,13 +92,14 @@ export default function VenuePage({ params }: VenuePageProps) {
               setNoOfOps(status?.stats?.ops);
               setNoOfRuns(status?.stats?.jobs);
               setNoOfUsers(status?.stats?.users);
+              setVenueDID(status?.did)
+              setVenueName(status?.name)
           }
         }
         catch(e) {
           console.log(e)
         }
       }
-      fetchDID();
       fetchMCP();
       fetchStats();
   }, [venue]);
@@ -119,11 +125,11 @@ export default function VenuePage({ params }: VenuePageProps) {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="bg-secondary-vlight p-3 rounded-lg">
-                <Building2 size={32} className="text-secondary" />
+              <div className="bg-primary-vlight  p-3 rounded-lg">
+                <Building2 size={32} className="text-primary  " />
               </div>
               <div>
-                <h1 className="text-2xl font-bold">{venue.name}</h1>
+                <h1 className="text-2xl font-bold">{venueName}</h1>
                 <p className="text-muted-foreground">
                   {venue.metadata.description || "A Covia venue for managing assets and operations"}
                 </p>
@@ -148,7 +154,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               <Button 
                 onClick={() => setCurrentVenue(venue)}
                 variant={isCurrentVenue ? "default" : "secondary"}
-                className="flex items-center space-x-2"
+                className="flex items-center space-x-2 bg-secondary text-secondary-foreground border border-muted"
                 disabled={isCurrentVenue}
               >
                 <Settings size={16} />
@@ -177,7 +183,7 @@ export default function VenuePage({ params }: VenuePageProps) {
                   <Link 
                     href={venue.baseUrl} 
                     target="_blank"
-                    className="font-mono text-sm bg-gray-100 p-2 rounded break-all"
+                    className="font-mono text-sm bg-muted p-2 rounded break-all"
                   >
                     {venue.baseUrl}
                   </Link>
@@ -196,31 +202,15 @@ export default function VenuePage({ params }: VenuePageProps) {
                     onClick={(e) => copyDataToClipBoard(venueDID, "Venue DID copied to clipboard")}
                     className="cursor-pointer hover:text-pink-400"></Copy>
                     </p>
-                  <p className="font-mono text-sm bg-gray-100 p-2 rounded break-all">
+                  <p className="font-mono text-sm bg-muted p-2 rounded break-all">
                     {venueDID}
                   </p>
                 </div>
               </div>
             </div>
             
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <div className="bg-primary-vlight p-2 rounded-lg">
-                  <Building2 size={20} className="text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground flex flex-row space-x-2">Venue ID <Copy
-                    size={12}
-                    onClick={(e) => copyDataToClipBoard(venue.venueId, "Venue ID copied to clipboard")}
-                    className="cursor-pointer hover:text-pink-400"></Copy>
-                    </p>
-                  <p className="font-mono text-sm bg-gray-100 p-2 rounded">
-                    {venue.venueId}
-                  </p>
-                </div>
-              </div>
               
-              <div className="flex items-center space-x-3">
+              <div className="flex items-start space-x-3">
                 <div className="bg-primary-vlight p-2 rounded-lg">
                   <Globe size={20} className="text-primary" />
                 </div>
@@ -230,12 +220,11 @@ export default function VenuePage({ params }: VenuePageProps) {
                     onClick={(e) => copyDataToClipBoard(venueMCPUrl, "MCP URL copied to clipboard")}
                     className="cursor-pointer hover:text-pink-400"></Copy>
                     </p>
-                  <p className="font-mono text-sm bg-gray-100 p-2 rounded break-all">
+                  <p className="font-mono text-sm bg-muted p-2 rounded break-all">
                     {venueMCPUrl}
                   </p>
                 </div>
               </div>
-            </div>
           </div>
         </Card>
 

@@ -5,16 +5,19 @@ import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { useStore } from "@/hooks/use-store";
 import { cn } from "@/lib/utils";
-import  Image  from "next/image";
+import { useTheme } from "next-themes";
+import Image from "next/image";
 import Link from "next/link";
 export function Sidebar() {
   const sidebar = useStore(useSidebar, (x) => x);
   if (!sidebar) return null;
   const { isOpen, toggleOpen, getOpenState, setIsHover, settings } = sidebar;
+  const { theme  } = useTheme();
+
   return (
     <aside
       className={cn(
-        "fixed top-0 left-0 z-20 bg-linear-to-b from-white from-60% via-primary-light via-75% to-secondary-light to-90% shadow-lg h-screen -translate-x-full lg:translate-x-0 transition-[width] ease-in-out duration-300",
+        "fixed top-0 left-0 z-20 text-sidebar-foreground text-md bg-linear-to-b from-sidebar from-60% via-primary-light via-75% to-secondary-light to-90% shadow-lg h-screen -translate-x-full lg:translate-x-0 transition-[width] ease-in-out duration-300",
         !getOpenState() ? "w-[90px]" : "w-56  ",
         settings.disabled && "hidden"
       )}
@@ -23,7 +26,7 @@ export function Sidebar() {
       <div
         onMouseEnter={() => setIsHover(true)}
         onMouseLeave={() => setIsHover(false)}
-        className="relative h-full flex flex-col px-3 py-4 overflow-y-auto shadow-md dark:shadow-zinc-800"
+        className="relative h-full flex flex-col px-3 py-4 overflow-y-auto shadow-md "
       >
         <Button
           className={cn(
@@ -44,9 +47,11 @@ export function Sidebar() {
             >
 
               <Link href="https://www.covia.ai">
-               <div className="flex flex-row items-center justify-center">
+               <div className="flex flex-row items-center justify-center space-x-4">
                 <Image src="/Covia_logo_icon_transparent.png" width={25} height={0} alt="covia"></Image>
-                <Image src="/covia.ai_dark_blue.png" width={100} height={0} alt="Covia" ></Image>
+                {theme == "light" && <Image src="/covia.ai_dark_blue.png" width={100} height={0} alt="Covia" ></Image>}
+                {theme == "dark" && <Image src="/covia.ai_dark_mode.png" width={100} height={0} alt="Covia" ></Image>}
+
               </div>
               </Link>
 

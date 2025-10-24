@@ -86,19 +86,32 @@ export abstract class Asset {
    * @param input - Operation input parameters
    * @returns {Promise<any>}
    */
-  run(input: any): Promise<any> {
+  run(input: any, userEmail : string): Promise<any> {
     const payload = {
       operation: this.id,
       input: input
     };
 
+    let customHeader = {};
+
+    if(userEmail && userEmail != "") {
+        customHeader = {
+          'Content-Type': 'application/json',
+          'X-Covia-User' : userEmail,
+        }
+    }
+    else {
+         customHeader = {
+          'Content-Type': 'application/json'
+        }
+    }
+    console.log(customHeader)
     return fetchWithError<any>(`${this.venue.baseUrl}/api/v1/invoke/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      method: 'POST', 
+      headers: customHeader,
       body: JSON.stringify(payload),
     }).catch(error => {
+      console.log(error)
       this.status = RunStatus.FAILED;
       this.error = (error as Error).message;
       throw error;

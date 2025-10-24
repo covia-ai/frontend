@@ -1,4 +1,5 @@
   import { CoviaError, JobData, RunStatus } from './types';
+import { Venue } from './Venue';
 
 /**
  * Utility function to handle API calls with consistent error handling
@@ -64,4 +65,16 @@ export function isJobFinished(jobData:JobData) {
   if (jobData.status == RunStatus.CANCELLED) return true;
 
   return false;
+}
+export function getParsedAssetId(assetId: string) {
+  if(assetId.startsWith("did:web")) {
+    const parts = assetId.split("/");
+    return  parts[parts.length - 1];
+  }
+  return assetId;
+}
+export function getCompleteAssetId(assetHex: string, assetPath:string) {
+  //Get did from path and append to asset for full id
+  const venueDid = decodeURIComponent(assetPath.split("/")[4]);   
+  return venueDid+":"+assetHex;
 }

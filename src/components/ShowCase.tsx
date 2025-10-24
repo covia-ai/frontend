@@ -1,69 +1,61 @@
 "use client";
 
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-} from "@/components/ui/carousel"
-import { Card, CardContent, CardFooter } from "./ui/card";
-import Autoplay from "embla-carousel-autoplay"
-import { Button } from "./ui/button";
-import Ops from "@/data/operations.json"
-import { OperationDetails } from "@/config/types";
+
+import { useStore } from "zustand";
+import { useVenue } from "@/hooks/use-venue";
+import { Asset, Operation, Venue } from "@/lib/covia";
+import React, { useEffect, useState } from 'react'
+import { Spinner } from '@/components/ui/shadcn-io/spinner';
+import { AssetCard } from "./AssetCard";
 
 export const ShowCase = () => {
+   const [loading, setLoading] = useState(true);
+   const [assets, setAssets] = useState<Asset[]>([]);
+
+   const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
+   if (!venueObj) return null;
+   const venue = new Venue({ baseUrl: venueObj.baseUrl, venueId: venueObj.venueId })
  
-  const opsData: OperationDetails[] = Ops;
+   useEffect(() => {
+     const fetchData = async () => {
+       try {
+         const res = await venue.getAssets();
+         const featured = res.filter((asset: Asset) => asset?.metadata?.operation?.info?.featured);
+         const shuffled = featured.slice(); // copy array
+         for (let i = shuffled.length - 1; i > 0; i--) {
+           const j = Math.floor(Math.random() * (i + 1));
+           if (i !== j) {
+             [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+           }
+         }
+         setAssets(shuffled.slice(0, 3));
+       } catch (error) {
+         console.error('Error fetching featured asset data:', error);
+         setAssets([]);
+       } finally {
+         setLoading(false);
+       }
+     };
+     fetchData();
+   }, []); // Empty dependency array to run once on mount
+ 
   
-  return (
-    <section id="newsletter">
-      <div className=" py-24 sm:py-32 justify-center items-center bg-slate-100 px-10 lg:px-0 md:px-0">
-        <h3 className="text-center text-4xl md:text-5xl font-bold lg:px-10 md:px-10">
-        See what you can {" "}
-          <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
-            create
-          </span>
-        </h3>
-        <p className="text-xl text-muted-foreground text-center mt-4 mb-8">
-          Lorem ipsum dolor sit amet consectetur.
-        </p>
+  if(loading) {
+    return (
+     <div className="flex flex-row items-center justify-center w-full mt-4">
+            <Spinner variant="ellipsis" className="text-primary" size={32} />
+          </div>
+    )
+  }
+  else {
+      return (
+          <div className="grid grid-cols-1 md:grid-cols-3 items-stretch justify-center gap-4 mt-4 mb-8 w-full">
 
-        <Carousel
-        opts={{ loop: true }}
-        plugins={[
-          Autoplay({
-            delay: 4000,
-          }),
-        ]}
-        >
-        <CarouselContent className="">
-                {opsData.map((op) => ( 
+              {assets.map((asset, index) =>
 
-                  <CarouselItem key={op.id} className="md:basis-1/3 lg:basis-1/4  ">
-                    <div className='p-1 '>
-                      <Card className="w-64">
-                        <CardContent className="flex flex-col items-center justify-center aspect-square">
-                          <div className="text-lg font-semibold text-center">{op.name}</div>
-                          <p className="text-md text-muted-foreground text-center mt-4 mb-8">
-                           {op.description}
-                          </p>
-                        </CardContent>
-                        <CardFooter className="flex flex-col itemsitems-center justify-center text-sm"> <Button>Execute this operation </Button></CardFooter>
-                      
-                      </Card>
-                </div>
-                </CarouselItem>
-
-              ))}
-         
-        </CarouselContent>
-       
-      </Carousel>
-       
-
-
-      </div>
-      <hr className="w-11/12 mx-auto" />
-    </section>
-  );
+                <AssetCard key={index} asset={asset} type="operations" venueSlug={venue.venueId}/>
+              )}
+          </div>
+      )
+  }
 };

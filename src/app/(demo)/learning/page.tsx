@@ -31,44 +31,44 @@ export default function OperationsPage() {
                 <Separator className="my-6" />
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl">
-                  <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer group h-64">
+                  <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer group h-64 bg-card ">
                     <CardHeader className="flex-1">
                       <div className="flex items-center space-x-3">
-                        <div className="bg-[#5865F2] p-3 rounded-lg">
+                        <div className="bg-primary-light p-3 rounded-lg">
                           <MessagesSquare size={32} color="white" />
                         </div>
                         <div>
                           <CardTitle className="flex items-center space-x-2">
-                            Covia AI Discord
-                            <ExternalLink size={16} className="text-muted-foreground" />
+                            <span>Covia AI Discord</span>
+                            <ExternalLink size={16} className="text-card-foreground" />
                           </CardTitle>
                           <p className="text-sm text-muted-foreground">Join our community</p>
                         </div>
                       </div>
                     </CardHeader>
                     <CardContent className="flex flex-col justify-between">
-                      <p className="text-sm text-slate-600 mb-4">
+                      <p className="text-sm text-foreground mb-4">
                         Connect with the Covia AI community, get help, share ideas, and stay updated with the latest developments.
                       </p>
                       <Button 
                         onClick={() => window.open('https://discord.gg/fywdrKd8QT', '_blank')}
-                        className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white"
+                        className="w-full bg-primary-light  text-white hover:text-black"
                       >
                         Join Discord Server
                       </Button>
                     </CardContent>
                   </Card>
 
-                  <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer group h-64">
+                  <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer group h-64 text-card-foreground">
                     <CardHeader className="flex-1">
                       <div className="flex items-center space-x-3">
-                        <div className="bg-blue-600 p-3 rounded-lg">
+                        <div className="bg-secondary-light p-3 rounded-lg">
                           <LibraryBigIcon size={32} color="white" />
                         </div>
                         <div>
                           <CardTitle className="flex items-center space-x-2">
-                            Covia Documentation
-                            <ExternalLink size={16} className="text-muted-foreground" />
+                            <span>Covia Documentation</span>
+                            <ExternalLink size={16} className="text-card-foreground" />
                           </CardTitle>
                           <p className="text-sm text-muted-foreground">Learn and explore</p>
                         </div>
@@ -80,7 +80,7 @@ export default function OperationsPage() {
                       </p>
                       <Button 
                         onClick={() => window.open('https://docs.covia.ai', '_blank')}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        className="w-full bg-secondary-light  text-white hover:text-black hover:bg-secondary-light"
                       >
                         View Documentation
                       </Button>

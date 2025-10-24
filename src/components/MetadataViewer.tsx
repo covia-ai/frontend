@@ -97,9 +97,9 @@ const renderMetadataFields = (asset: Asset, fields: MetadataFieldConfig[]) => {
           <React.Fragment key={field.key}>
             <div className="flex items-center space-x-2">
               <IconComponent size={18} />
-              <span className="font-medium whitespace-nowrap"><strong>{field.label}</strong></span>
+              <span className="whitespace-nowrap text-md">{field.label}</span>
             </div>
-            <div >
+            <div className="text-card-foreground">
               {field.renderValue ? field.renderValue(value) : value}
             </div>
           </React.Fragment>
@@ -123,7 +123,7 @@ export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
           {contentURL &&  contentURL !='NA'  && (
             <div className="flex flex-row items-center space-x-2 my-2">
               <Download size={18}></Download>
-              <span><strong>Data:</strong></span>
+              <span className="text-md">Data:</span>
               <span>
                 <Link href={contentURL} className="text-secondary underline" download={true}>
                   Download
@@ -139,11 +139,11 @@ export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
           )}
           <div className="flex flex-row items-center space-x-2">
             <Info size={18}></Info>
-            <span><strong>Metadata:</strong></span>
+            <span className="text-md">Metadata:</span>
             <span>
               <Dialog>
                 <DialogTrigger>
-                  <span className="text-secondary underline"> View metadata</span>
+                  <span className="text-card-foreground  underline"> View metadata</span>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogTitle>Asset Metadata</DialogTitle>

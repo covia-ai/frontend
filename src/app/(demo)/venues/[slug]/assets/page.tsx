@@ -70,7 +70,6 @@ export default function AssetPage() {
   const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
   if (!venueObj) return null;
   const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
-
   function fetchAssets() {
     setAssetsMetadata([]);
     venue.getAssets().then((assets) => {
@@ -134,7 +133,7 @@ export default function AssetPage() {
         </div>
 
          {!isLoading && <>
-          <div className="text-slate-600 text-xs flex flex-row my-2 ">Page {currentPage} : Showing {assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of {assetsMetadata.length} </div>
+          <div className="text-card-foreground text-xs flex flex-row my-2 ">Page {currentPage} : Showing {assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of {assetsMetadata.length} </div>
           <Pagination>
             <PaginationContent className="flex flex-row-reverse w-full">
               {currentPage != totalPages && currentPage < totalPages && <PaginationItem>

@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { useState } from "react";
 import { JsonEditor } from "json-edit-react";
+import  { useSession } from "next-auth/react";
 
 interface AssetCardProps {
   asset: Asset;
@@ -28,10 +29,12 @@ interface AssetCardProps {
 export function AssetCard({ asset,type,venueSlug }: AssetCardProps) {
     const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
     if (!venueObj) return null;
-    const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
+    const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name})
     const router = useRouter();
     const [newJsonData, setNewJsonData] = useState({});
-    
+    const [assetCreated, setAssetCreated] = useState(false);
+    const { data: session } = useSession()
+
     function renderJSONMap(jsonObject: JSON, requiredKeys: string[] = []) {
         const keys = Object.keys(jsonObject);
         const type = new Array<string>();
@@ -68,11 +71,11 @@ export function AssetCard({ asset,type,venueSlug }: AssetCardProps) {
     };
     function copyAsset(jsonData: JSON) {
         try {
-          venue?.createAsset(jsonData).then((asset: Asset) => {
+          venue?.createAsset(jsonData,session?.user?.email || "").then((asset: Asset) => {
             if (asset != undefined && asset != null) {
               setNewJsonData({})
               setAssetCreated(true);
-              fetchAssets();
+              window.location.reload()
             }
           })
         }
@@ -81,10 +84,10 @@ export function AssetCard({ asset,type,venueSlug }: AssetCardProps) {
         }
     }
     return (
-         <Card key={asset.id} className="shadow-md border-2 h-full bg-slate-100 flex flex-col rounded-md hover:border-accent hover:border-2 h-48">
+         <Card key={asset.id} className="shadow-md border-2 h-full bg-card flex flex-col rounded-md hover:border-accent hover:border-2 h-48">
                 {/* Fixed-size header */}
-                <div className="h-14 p-2 flex flex-row items-center border-b bg-slate-50">
-                    <div className="truncate flex-1 mr-2 font-semibold text-sm"
+                <div className="h-14 p-2 flex flex-row items-center border-b bg-card-banner">
+                    <div className="truncate flex-1 mr-2 text-md text-foreground"
                     onClick={() => handleCardClick(asset.id)}>{asset.metadata.name || 'Unnamed Asset'}
                     </div>
                     {type == "operations" && 
@@ -166,8 +169,8 @@ export function AssetCard({ asset,type,venueSlug }: AssetCardProps) {
                 </div>
 
                 {/* Flexible middle section */}
-                <div className="flex-1 p-2 flex flex-col justify-between" onClick={() => handleCardClick(asset.id)}>
-                    <div className="text-xs text-slate-600 line-clamp-3 mb-2">{asset.metadata.description || 'No description available'}</div>
+                <div className="flex-1 p-2 flex flex-col justify-between text-sm" onClick={() => handleCardClick(asset.id)}>
+                    <div className="text-xs text-card-foreground line-clamp-3 mb-2">{asset.metadata.description || 'No description available'}</div>
                 </div>
 
                 {/* Fixed-size footer */}

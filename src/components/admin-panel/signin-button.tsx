@@ -27,8 +27,8 @@ export function SignInButton(props:any) {
         <div className="flex items-center justify-center" key={props.index}>
           <Button
                     onClick={() => {router.push("/signUp")}}
-                    variant="outline"
-                    className="justify-center h-8 my-5 bg-primary text-primary-foreground text-sm"
+                    variant="default"
+                    className="justify-center h-8 my-5 text-sm hover:bg-accent hover:text-muted-foreground"
                   >
                     <LogInIcon/>
                     <p

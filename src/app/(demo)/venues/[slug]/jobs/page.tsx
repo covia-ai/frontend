@@ -64,7 +64,7 @@ export default function OperationsPage() {
   }
  const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
   if (!venueObj) return null;
-  const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
+  const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name});
 
   useEffect(() => {
     venue.getJobs().then((jobs) => {
@@ -126,7 +126,7 @@ export default function OperationsPage() {
             </Select>
           </div>
         </div>
-        <div className="text-slate-600 text-xs flex flex-row ">Page {currentPage} : Showing {filteredData.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of {jobsData.length} </div>
+        <div className="text-card-foreground text-xs flex flex-row ">Page {currentPage} : Showing {filteredData.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of {jobsData.length} </div>
           <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>
 
 
