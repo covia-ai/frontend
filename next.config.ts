@@ -21,7 +21,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/',
-        destination: '/workspace', // Replace with your internal page path
+        destination: '/venues', // Replace with your internal page path
         permanent: false, // Use false for temporary redirects
       },
     ];

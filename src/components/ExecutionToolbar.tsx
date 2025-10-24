@@ -83,7 +83,7 @@ export const ExecutionToolbar = ({jobData} : JobData) => {
                   <TooltipTrigger>
                         <AlertDialog>
                           <AlertDialogTrigger className="flex flex-row ">
-                              <Button variant={"outline"} className="text-xs justify-center h-8 bg-primary text-primary-foreground text-sm">
+                              <Button variant={"outline"} className="text-xs justify-center h-8text-sm">
                                 <StopCircle/>Cancel</Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
@@ -109,7 +109,7 @@ export const ExecutionToolbar = ({jobData} : JobData) => {
                   <TooltipTrigger>
                         <AlertDialog>
                           <AlertDialogTrigger  className="flex flex-row">
-                              <Button variant={"outline"} className="text-xs justify-center h-8 bg-primary text-primary-foreground text-sm">
+                              <Button variant={"outline"} className="text-xs justify-center h-8 text-sm">
                               <PauseCircleIcon/>Pause </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
@@ -135,7 +135,7 @@ export const ExecutionToolbar = ({jobData} : JobData) => {
                   <TooltipTrigger>
                         <AlertDialog>
                           <AlertDialogTrigger  className="flex flex-row hover:text-red-400">
-                               <Button variant={"outline"} className="text-xs justify-center h-8 bg-primary text-primary-foreground text-sm">
+                               <Button variant={"outline"} className="text-xs justify-center h-8 bg-primary text-sm">
                                 <PauseCircleIcon />Resume</Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
@@ -164,7 +164,7 @@ export const ExecutionToolbar = ({jobData} : JobData) => {
                   <TooltipTrigger>
                         <AlertDialog>
                           <AlertDialogTrigger className="flex flex-row">
-                               <Button variant={"outline"} className="text-xs justify-center h-8  bg-primary text-primary-foreground text-sm">
+                               <Button variant={"outline"} className="text-xs justify-center h-8 text-sm">
                                 <Trash2/>Delete
                                 </Button>
 

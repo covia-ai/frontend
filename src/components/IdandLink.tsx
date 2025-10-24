@@ -11,7 +11,7 @@ export const IdAndLink = (props: any) => {
          <div className="flex flex-row items-start justify-center space-x-2 space-x-reverse w-1/3  text-xs mt-4  ">
             <Tooltip>
                 <TooltipTrigger>
-                    <div className="flex flex-row  mr-2 border border-slate-200 rounded-md p-2 hover:bg-slate-100"> {url.slice(0, 15) + "..."} 
+                    <div className="flex flex-row  mr-2 border border-slate-400 rounded-md p-2 "> {url.slice(0, 15) + "..."} 
                     <Copy size={12} onClick={(e) => copyDataToClipBoard(url, type+" Link copied to clipboard")}></Copy>
                     </div>
                 </TooltipTrigger>
@@ -19,7 +19,7 @@ export const IdAndLink = (props: any) => {
             </Tooltip>
             <Tooltip>
                 <TooltipTrigger>
-                    <div className="flex flex-row  mr-2 border border-slate-200 rounded-md p-2 hover:bg-slate-100"> 
+                    <div className="flex flex-row  mr-2 border border-slate-400 rounded-md p-2 "> 
                     {id?.slice(0, 25) + "..."} 
                     <Copy size={12} onClick={(e) => copyDataToClipBoard(id, type+"Id copied to clipboard")}></Copy>
                     </div>

@@ -20,6 +20,7 @@ import { Asset } from "@/lib/covia";
 import { usePathname } from "next/navigation";
 import { getParsedAssetId } from "@/lib/covia/Utils";
 import { useSession } from "next-auth/react";
+import { useVenues } from "@/hooks/use-venues";
 
 export const OperationViewer = (props: any) => {
   const [asset, setAsset] = useState<Asset>();
@@ -31,6 +32,9 @@ export const OperationViewer = (props: any) => {
   const [typeMap, setTypeMap] = useState<Record<string, string>>({}); // user-specified types of the values to be passed to the operation, affects parsing
   const [assetNotFound, setAssetNotFound] = useState(false);
   const { data: session } = useSession()
+
+  const { venues, addVenue } = useVenues();
+  const [venue, setVenue] = useState<Venue>();
 
   // Session storage key based on asset ID
   const getStorageKey = (suffix: string) => `operation_input_${props.assetId}_${suffix}`;
@@ -91,15 +95,28 @@ export const OperationViewer = (props: any) => {
   const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
 
   if (!venueObj) return null;
-  const venue = useMemo(() => {
-    // Your expensive calculation or value creation
-    return new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name})
-  }, []); // Dependency array
-
+   useEffect(() => {
+      if(props.venueId != venueObj.venueId) {
+        const venue = venues.find(v => v.venueId === props.venueId);
+        if (venue) {
+            setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.name}))
+         }
+         else {
+          Venue.connect(decodeURIComponent(props.venueId)).then((venue) => {
+            addVenue(venue)
+            setVenue(venue)
+          });
+         }
+    }
+    else {
+        setVenue(new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name}));  
+    }  
+   }, []); 
   useEffect(() => {
     setAssetNotFound(false);
     setErrorMessage("");
-    venue.getAsset(props.assetId)
+    console.log(venue)
+    venue?.getAsset(props.assetId)
       .then((asset: Asset) => {
         setAsset(asset);
 
@@ -383,7 +400,7 @@ export const OperationViewer = (props: any) => {
 
   function renderDescription(description: string) {
     return (
-      <div className="text-sm text-gray-600">{description}</div>
+      <div className="text-sm text-card-foreground">{description}</div>
     );
   }
 
@@ -452,7 +469,7 @@ export const OperationViewer = (props: any) => {
 
   return (
     <>
-      <SmartBreadcrumb assetOrJobName={asset?.metadata?.name} venueName={venueObj.name}/>
+      <SmartBreadcrumb assetOrJobName={asset?.metadata?.name} venueName={venue?.name}/>
 
       <div className="flex flex-col w-full items-center justify-center">
         {assetNotFound && (

@@ -20,7 +20,6 @@ export function VenueSelector() {
   const { currentVenue, setCurrentVenue } = useVenue();
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
   useEffect(() => {
-    console.log(venues)
     // If we already have a current venue, use it
     if (currentVenue) {
       setSelectedVenue(currentVenue);

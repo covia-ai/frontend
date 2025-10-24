@@ -28,7 +28,7 @@ export function SignInButton(props:any) {
           <Button
                     onClick={() => {router.push("/signUp")}}
                     variant="default"
-                    className="justify-center h-8 my-5 text-sm"
+                    className="justify-center h-8 my-5 text-sm hover:bg-accent hover:text-muted-foreground"
                   >
                     <LogInIcon/>
                     <p

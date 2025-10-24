@@ -135,7 +135,7 @@ export default function OperationsPage() {
         <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>
         <Table className="  border border-slate-200 rounded-lg shadow-md">
           <TableHeader >
-            <TableRow className="hover:bg-slate-800 bg-slate-800 rounded-full text-white ">
+            <TableRow className="bg-secondary hover:bg-secondary rounded-full text-white ">
               <TableCell className="border border-slate-400">Job Id</TableCell>
               <TableCell className="border border-slate-400">Name</TableCell>
               <TableCell className="text-center border border-slate-400">Created Date</TableCell>
@@ -150,7 +150,7 @@ export default function OperationsPage() {
 
               isInRange(job.created) && 
               <TableRow key={index}>
-                <TableCell><Link className="text-secondary font-mono underline" href={encodedPath(job.id)}>{job.id}</Link></TableCell>
+                <TableCell><Link className="text-foreground font-mono underline" href={encodedPath(job.id)}>{job.id}</Link></TableCell>
                 <TableCell>{job.name}</TableCell>
                 <TableCell className="text-center">{new Date(job.created).toLocaleString()}</TableCell>
                 {(job.status == RunStatus.COMPLETE || job.status == RunStatus.FAILED) && (<TableCell className="text-center">{getExecutionTime(job.created, job.updated)}</TableCell>)}
