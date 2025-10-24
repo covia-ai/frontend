@@ -4,7 +4,7 @@
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { Asset, Operation, Venue } from "@/lib/covia";
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Spinner } from '@/components/ui/shadcn-io/spinner';
 import { AssetCard } from "./AssetCard";
 
@@ -14,7 +14,9 @@ export const ShowCase = () => {
 
    const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
    if (!venueObj) return null;
-   const venue = new Venue({ baseUrl: venueObj.baseUrl, venueId: venueObj.venueId })
+   const venue = useMemo(() => {
+    return new Venue({ baseUrl: venueObj.baseUrl, venueId: venueObj.venueId })
+   },[]);
  
    useEffect(() => {
      const fetchData = async () => {
@@ -37,7 +39,7 @@ export const ShowCase = () => {
        }
      };
      fetchData();
-   }, []); // Empty dependency array to run once on mount
+   }, [venue]); // Empty dependency array to run once on mount
  
   
   if(loading) {
