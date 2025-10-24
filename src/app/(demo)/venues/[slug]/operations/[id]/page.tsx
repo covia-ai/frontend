@@ -6,13 +6,14 @@ import { OperationViewer } from "@/components/OperationViewer";
 export default async function Page({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string , slug: string}>
 }) {
   const { id } = await params;
+  const { slug } = await params;
   return (
 
      <ContentLayout title="Operations">
-             <OperationViewer assetId= {id}></OperationViewer>
+             <OperationViewer assetId= {id} venueId={decodeURIComponent(slug)}></OperationViewer>
       </ContentLayout>
   )
 }

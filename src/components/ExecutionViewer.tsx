@@ -17,19 +17,38 @@ import { isJobFinished } from "@/lib/covia/Utils";
 import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 import { ExecutionHeader } from "./ExecutionHeader";
 import { ExecutionToolbar } from "./ExecutionToolbar";
+import { useVenues } from "@/hooks/use-venues";
 
 
 export const ExecutionViewer = (props: any) => {
     const [executionData, setExecutionData] = useState<JobData>({})
     const [poll, setPollStatus] = useState("");
     const [assetsMetadata, setAssetsMetadata] = useState<Asset>();
+    const { venues, addVenue } = useVenues();
+    const [venue, setVenue] = useState<Venue>();
 
     const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
     if (!venueObj) return null;
-    const venue = useMemo(() => {
-      // Your expensive calculation or value creation
-      return new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name})
-      }, []); // Dependency array
+
+    useEffect(() => {
+      console.log(props.venueId )
+      console.log(venueObj.venueId)
+      if(props.venueId != venueObj.venueId) {
+        const venue = venues.find(v => v.venueId === props.venueId);
+        if (venue) {
+            setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.name}))
+         }
+         else {
+          Venue.connect(decodeURIComponent(props.venueId)).then((venue) => {
+            addVenue(venue)
+            setVenue(venue)
+          });
+         }
+    }
+    else {
+        setVenue(new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name}));  
+    }  
+   }, []); 
 
     // Function to determine text color based on status
     function colourForStatus(status: RunStatus): string {
@@ -47,7 +66,7 @@ export const ExecutionViewer = (props: any) => {
     }
 
     function fetchJobStatus() {
-        if (!venue) return;
+        console.log(venue)
         venue.getJob(props.jobId).then((response) => {
                 
                 setExecutionData(response);
@@ -56,8 +75,6 @@ export const ExecutionViewer = (props: any) => {
                 setPollStatus("ERROR");
         })
     }
-    
- 
 
     useEffect(() => {
         if (!venue) return;
@@ -126,7 +143,7 @@ export const ExecutionViewer = (props: any) => {
                 keys = Object.keys(executionData?.output || {});
             }
             if (inOutType == "asset")
-                assetLink = window.location.href + "/venues/"+venue.venueId+"/assets/" + assetsMetadata?.id;
+                assetLink = window.location.href + "/venues/"+venue?.venueId+"/assets/" + assetsMetadata?.id;
 
             // render function for each key within the input or output like "prompt" or "image"
             const renderContent = (key: string) => {
@@ -204,7 +221,7 @@ export const ExecutionViewer = (props: any) => {
 
     return (
         <>
-             <SmartBreadcrumb assetOrJobName={executionData?.name} venueName={venueObj.name} />
+             <SmartBreadcrumb assetOrJobName={executionData?.name} venueName={venue?.name} />
              <ExecutionHeader jobData={executionData}></ExecutionHeader>
             {executionData && (
 
