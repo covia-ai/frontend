@@ -20,7 +20,9 @@ if(!process.env.NEXT_PUBLIC_IS_ENV_PROD)
     defaultVenueUrls.push("http://localhost:8080");
     
 defaultVenueUrls.map((venueUrl => {
+    console.log(venueUrl)
     Venue.connect(venueUrl).then((venue => {
+      console.log(venue)
          defaultVenues.push(venue)
   }))
 }))

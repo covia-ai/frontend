@@ -56,17 +56,7 @@ export function VenueSelector() {
   };
 
   if (!selectedVenue || venues.length === 0) {
-    return  (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" disabled>
-           Loading venues
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="start">
-        </DropdownMenuContent>;
-        </DropdownMenu>
-    )
+     return null;
   }
 
   return (

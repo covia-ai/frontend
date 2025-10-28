@@ -33,6 +33,7 @@ export default function VenuesPage() {
   
   const addVenueToList = () =>{
     let venueExist = false;
+    console.log(venues)
     venues.map((venue => {
         
         if(venue.venueId == venueDidOrUrl) {

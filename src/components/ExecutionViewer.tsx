@@ -1,15 +1,13 @@
 
 'use client'
 
-import { useEffect, useMemo, useState } from "react";
-import { Asset, RunStatus, Venue } from "@/lib/covia";
-import { JobData } from "@/lib/covia/types";
+import { useEffect, useState } from "react";
+import { Asset, JobMetadata, RunStatus, Venue } from "@/lib/covia";
 import { Check, CircleX, Clock, Copy, FileInput, FileOutput, Hash, RotateCcw, Settings, Timer, Trash2, X } from "lucide-react";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { useRouter } from "next/navigation";
-import { copyDataToClipBoard, getExecutionTime } from "@/lib/utils";
+import {  getExecutionTime } from "@/lib/utils";
 import { TbSubtask } from "react-icons/tb";
 import Link from "next/link";
 
@@ -18,10 +16,11 @@ import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 import { ExecutionHeader } from "./ExecutionHeader";
 import { ExecutionToolbar } from "./ExecutionToolbar";
 import { useVenues } from "@/hooks/use-venues";
+import { Job } from "@/lib/covia/Job";
 
 
 export const ExecutionViewer = (props: any) => {
-    const [executionData, setExecutionData] = useState<JobData>({})
+    const [jobMetadata, setJobMetadata] = useState<JobMetadata>()
     const [poll, setPollStatus] = useState("");
     const [assetsMetadata, setAssetsMetadata] = useState<Asset>();
     const { venues, addVenue } = useVenues();
@@ -31,8 +30,7 @@ export const ExecutionViewer = (props: any) => {
     if (!venueObj) return null;
 
     useEffect(() => {
-      console.log(props.venueId )
-      console.log(venueObj.venueId)
+    
       if(props.venueId != venueObj.venueId) {
         const venue = venues.find(v => v.venueId === props.venueId);
         if (venue) {
@@ -66,11 +64,9 @@ export const ExecutionViewer = (props: any) => {
     }
 
     function fetchJobStatus() {
-        console.log(venue)
-        venue.getJob(props.jobId).then((response) => {
-                
-                setExecutionData(response);
-                setPollStatus(response.status || "");
+        venue.getJob(props.jobId).then((job:Job) => {
+                setJobMetadata(job.metadata);
+                setPollStatus(job.metadata.status || "");
         }).catch((error) => {
                 setPollStatus("ERROR");
         })
@@ -78,17 +74,11 @@ export const ExecutionViewer = (props: any) => {
 
     useEffect(() => {
         if (!venue) return;
-        venue.getJob(props.jobId).then((response) => {
-            setExecutionData(response);
-            setPollStatus(response.status || "");
-            venue.getAsset(response?.op).then((asset: Asset) => {
-                setAssetsMetadata(asset);
-            })
-        })
+        fetchJobStatus();
     }, [venue, props.jobId]);
 
     useEffect(() => {
-        if (!isJobFinished(executionData)) {
+        if (!isJobFinished(jobMetadata?.status)) {
             const intervalId = setInterval(() => {
                 fetchJobStatus();
             }, 1000)
@@ -98,7 +88,7 @@ export const ExecutionViewer = (props: any) => {
     }, [poll])
 
     function renderChildJobs(jsonObject: JSON) {
-        const steps = executionData.steps as any[];
+        const steps = jobMetadata?.steps as any[];
         return (
             <Table className="border border-slate-200 rounded-md py-2 ">
                 <TableHeader className="">
@@ -131,16 +121,15 @@ export const ExecutionViewer = (props: any) => {
         if (jsonObject != undefined) {
             let keys = []; // keys of the input or output
             let inOutType = ""; // type of the input or output e.g. string, number, object, array
-            let assetLink = "";
             let schema: any = {};
             if (type == "input") {
-                keys = Object.keys(executionData?.input || {});
+                keys = Object.keys(jobMetadata?.input || {});
                 schema = assetsMetadata?.metadata?.operation?.input;
                 inOutType = schema?.type;
             } else {
                 schema = assetsMetadata?.metadata?.operation?.output;
                 inOutType = schema?.type;
-                keys = Object.keys(executionData?.output || {});
+                keys = Object.keys(jobMetadata?.output || {});
             }
             if (inOutType == "asset")
                 assetLink = window.location.href + "/venues/"+venue?.venueId+"/assets/" + assetsMetadata?.id;
@@ -221,9 +210,10 @@ export const ExecutionViewer = (props: any) => {
 
     return (
         <>
-             <SmartBreadcrumb assetOrJobName={executionData?.name} venueName={venue?.name} />
-             <ExecutionHeader jobData={executionData}></ExecutionHeader>
-            {executionData && (
+             <SmartBreadcrumb assetOrJobName={jobMetadata?.name} venueName={venue?.name} />
+           
+             <ExecutionHeader  jobData={jobMetadata}></ExecutionHeader>
+            {jobMetadata && (
 
                 <div className="flex flex-col w-full items-center justify-center">
                   
@@ -232,40 +222,40 @@ export const ExecutionViewer = (props: any) => {
                              
                            <div className="flex flex-row items-start w-full">
                                 <div className="flex flex-row items-center space-x-4 py-2 w-1/2">
-                                    {executionData?.status == RunStatus.COMPLETE && <Check></Check>}
-                                    {executionData?.status == RunStatus.FAILED && <X></X>}
-                                    {executionData?.status == RunStatus.PENDING && <RotateCcw />}
-                                    {executionData?.status == RunStatus.STARTED && < RotateCcw />}
+                                    {jobMetadata?.status == RunStatus.COMPLETE && <Check></Check>}
+                                    {jobMetadata?.status == RunStatus.FAILED && <X></X>}
+                                    {jobMetadata?.status == RunStatus.PENDING && <RotateCcw />}
+                                    {jobMetadata?.status == RunStatus.STARTED && < RotateCcw />}
 
                                     <span className="w-28">Status:</span>
-                                    <span className={colourForStatus(executionData?.status as RunStatus)}>{executionData?.status}</span>
+                                    <span className={colourForStatus(jobMetadata?.status as RunStatus)}>{jobMetadata?.status}</span>
                                 </div>
-                                 <ExecutionToolbar jobData={executionData}></ExecutionToolbar>
+                                 <ExecutionToolbar jobData={jobMetadata}></ExecutionToolbar>
 
                             </div>
                              
                             <div className="flex flex-row items-center space-x-4  py-2">
                                 <Clock></Clock>
                                 <span className="w-28">Created Date</span>
-                                <span className="text-card-foreground">{executionData?.created ? new Date(executionData.created).toLocaleString() : 'N/A'}</span>
+                                <span className="text-card-foreground">{jobMetadata?.created ? new Date(jobMetadata.created).toLocaleString() : 'N/A'}</span>
                             </div>
                             <div className="flex flex-row items-center space-x-4  py-2">
                                 <Clock></Clock>
                                 <span className="w-28">Updated Date:</span>
-                                <span className="text-card-foreground">{executionData?.updated ? new Date(executionData.updated).toLocaleString() : 'N/A'}</span>
+                                <span className="text-card-foreground">{jobMetadata?.updated ? new Date(jobMetadata.updated).toLocaleString() : 'N/A'}</span>
                             </div>
                             <div className="flex flex-row items-center space-x-4  py-2">
                                 <Timer></Timer>
                                 <span className="w-28">Time:</span>
-                                <span className="text-card-foreground">{executionData?.created && executionData?.updated ? getExecutionTime(executionData.created, executionData.updated) : 'N/A'}</span>
+                                <span className="text-card-foreground">{jobMetadata?.created && jobMetadata?.updated ? getExecutionTime(jobMetadata.created, jobMetadata.updated) : 'N/A'}</span>
                             </div>
-                            <div className="flex flex-col py-2 space-x-4 w-3/4 ">{executionData?.steps &&
+                            <div className="flex flex-col py-2 space-x-4 w-3/4 ">{jobMetadata?.steps &&
                                 <div className="flex flex-row space-x-4  py-2">
                                     <div className="flex flex-row space-x-4 my-2 ">
                                         <TbSubtask size={20}></TbSubtask>
                                         <span className="w-28">Steps:</span>
                                     </div>
-                                    {renderChildJobs(executionData?.steps)}
+                                    {renderChildJobs(jobMetadata?.steps)}
                                 </div>
                             }
                             </div>
@@ -275,25 +265,25 @@ export const ExecutionViewer = (props: any) => {
                                         <FileInput></FileInput>
                                         <span className="w-28">Input:</span>
                                     </div>
-                                    {renderJSONObject(executionData?.input, "input",)}
+                                    {renderJSONObject(jobMetadata?.input, "input",)}
                                 </div>
-                                {executionData?.status != RunStatus.FAILED &&
+                                {jobMetadata?.status != RunStatus.FAILED &&
                                     <div className="flex flex-col  py-2 space-x-4 w-1/2">
                                         <div className="flex flex-row space-x-4 my-2 ">
                                             <FileOutput></FileOutput>
                                             <span className="w-28">Output:</span>
                                         </div>
-                                        {renderJSONObject(executionData?.output, "output")}
-                                        {executionData?.status == RunStatus.FAILED && <div>{executionData?.error}</div>}
+                                        {renderJSONObject(jobMetadata?.output, "output")}
+                                        {jobMetadata?.status == RunStatus.FAILED && <div>{jobMetadata?.error}</div>}
                                     </div>
                                 }
-                                {executionData?.status == RunStatus.FAILED &&
+                                {jobMetadata?.status == RunStatus.FAILED &&
                                     <div className="flex flex-row  py-2 space-x-4 w-1/2 my-2">
                                         <div className="flex flex-row space-x-4 ">
                                             <FileOutput></FileOutput>
                                             <span className="w-28">Error:</span>
                                         </div>
-                                        <div className="text-card-foreground">{executionData?.error}</div>
+                                        <div className="text-card-foreground">{jobMetadata?.error}</div>
                                     </div>
                                 }
                             </div>
