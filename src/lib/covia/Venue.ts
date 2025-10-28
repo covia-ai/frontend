@@ -71,7 +71,6 @@ export class Venue implements VenueInterface {
         baseUrl = `https://${venueId}`;
       }
     const data = await fetchWithError<StatusData>(baseUrl+'/api/v1/status');
-    console.log(data)
     return new Venue({
             baseUrl,
             venueId: data.did,
