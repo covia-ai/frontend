@@ -5,7 +5,6 @@ import Link from "next/link";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 
-import { Search } from "@/components/search";
 import {
   Select,
   SelectContent,
@@ -20,7 +19,7 @@ import { useEffect, useState } from "react";
 
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { RunStatus, Venue } from "@/lib/covia";
+import { JobMetadata, RunStatus, Venue } from "@/lib/covia";
 
 import {
   Pagination,
@@ -35,12 +34,13 @@ import { getExecutionTime } from "@/lib/utils";
 import { SelectLabel } from "@radix-ui/react-select";
 import { Label } from "@/components/ui/label";
 import { PaginationHeader } from "@/components/PaginationHeader";
+import { Job } from "@/lib/covia/Job";
 
 export default function OperationsPage() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState("All");
-  const [jobsData, setJobsData] = useState<object[]>([]);
-  const [filteredData, setFilteredData] = useState<object[]>([]);
+  const [jobsData, setJobsData] = useState<JobMetadata[]>([]);
+  const [filteredData, setFilteredData] = useState<JobMetadata[]>([]);
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
   const [totalItems, setTotalItems] = useState(0);
@@ -72,9 +72,9 @@ export default function OperationsPage() {
       setTotalItems(jobs.length)
       setTotalPages(Math.ceil(jobs.length / itemsPerPage))
       jobs.forEach((jobId) => {
-        venue.getJob(jobId).then((metadata) => {
-          setJobsData(prevArray => [...prevArray, metadata]);
-          setFilteredData(prevArray => [...prevArray, metadata])
+        venue.getJob(jobId).then((job:Job) => {
+          setJobsData(prevArray => [...prevArray, job.metadata]);
+          setFilteredData(prevArray => [...prevArray, job.metadata])
         })
       })
 

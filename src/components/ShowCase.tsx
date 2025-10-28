@@ -13,10 +13,11 @@ export const ShowCase = () => {
    const [assets, setAssets] = useState<Asset[]>([]);
 
    const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
+   console.log(venueObj)
    if (!venueObj) return null;
    const venue = useMemo(() => {
     return new Venue({ baseUrl: venueObj.baseUrl, venueId: venueObj.venueId })
-   },[]);
+   },[venueObj.baseUrl, venueObj.venueId]);
  
    useEffect(() => {
      const fetchData = async () => {
@@ -41,15 +42,7 @@ export const ShowCase = () => {
      fetchData();
    }, [venue]); // Empty dependency array to run once on mount
  
-  
-  if(loading) {
-    return (
-     <div className="flex flex-row items-center justify-center w-full mt-4">
-            <Spinner variant="ellipsis" className="text-primary" size={32} />
-          </div>
-    )
-  }
-  else {
+
       return (
           <div className="grid grid-cols-1 md:grid-cols-3 items-stretch justify-center gap-4 mt-4 mb-8 w-full">
 
@@ -59,5 +52,5 @@ export const ShowCase = () => {
               )}
           </div>
       )
-  }
+  
 };

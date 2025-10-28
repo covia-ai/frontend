@@ -6,6 +6,7 @@ import { fetchStreamWithError, fetchWithError } from './Utils';
 import { CredentialsHTTP } from './Credentials';
 import { Resolver } from 'did-resolver'
 import { getResolver } from 'web-did-resolver'
+import { Job } from './Job';
 
 const webResolver = getResolver()
 const resolver = new Resolver(webResolver)
@@ -152,25 +153,27 @@ export class Venue implements VenueInterface {
 
   /**
    * Get all jobs
-   * @returns {Promise<JobData[]>}
+   * @returns {Promise<string[]>}
    */
-  async getJobs(): Promise<JobData[]> {
-    return fetchWithError<JobData[]>(`${this.baseUrl}/api/v1/jobs`);
+  async getJobs(): Promise<string[]> {
+    return fetchWithError<string[]>(`${this.baseUrl}/api/v1/jobs`);
   }
 
   /**
    * Get job by ID
    * @param jobId - Job identifier
-   * @returns {Promise<JobData>}
+   * @returns {Promise<Job>}
    */
-  async getJob(jobId: string): Promise<JobData> {
-    return fetchWithError<JobData>(`${this.baseUrl}/api/v1/jobs/${jobId}`);
+  async getJob(jobId: string): Promise<Job> {
+    return fetchWithError<Job>(`${this.baseUrl}/api/v1/jobs/${jobId}`).then(data => {
+            return new Job(jobId, this, data);
+    });
   }
 
    /**
    * Cancel job by ID
    * @param jobId - Job identifier
-   * @returns {Promise<JobData>}
+   * @returns {Promise<number>}
    */
   async cancelJob(jobId: string):  Promise<number> {
      return fetchStreamWithError(`${this.baseUrl}/api/v1/jobs/${jobId}/cancel`, { method: 'PUT'})
@@ -182,7 +185,7 @@ export class Venue implements VenueInterface {
    /**
    * Delete job by ID
    * @param jobId - Job identifier
-   * @returns {Promise<JobData>}
+   * @returns {Promise<number>}
    */
   async deleteJob(jobId: string):  Promise<number> {
      return fetchStreamWithError(`${this.baseUrl}/api/v1/jobs/${jobId}/delete`, { method: 'PUT'})
