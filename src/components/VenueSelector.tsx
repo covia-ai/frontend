@@ -19,6 +19,7 @@ export function VenueSelector() {
   const { venues } = useVenues();
   const { currentVenue, setCurrentVenue } = useVenue();
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
+
   useEffect(() => {
     // If we already have a current venue, use it
     if (currentVenue) {
@@ -55,7 +56,7 @@ export function VenueSelector() {
   };
 
   if (!selectedVenue || venues.length === 0) {
-    return null;
+     return null;
   }
 
   return (

@@ -1,11 +1,12 @@
 'use client'
 
-import { JobData } from "@/lib/covia";
 import Link from "next/link";
 import { IdAndLink } from "./IdandLink";
+import { Job } from "@/lib/covia/Job";
+import { JobMetadata } from "@/lib/covia";
 
 interface ExecutionHeaderProps {
-  jobData: JobData;
+  jobData: JobMetadata;
 }
 
 export const ExecutionHeader = ({ jobData }: ExecutionHeaderProps) => {

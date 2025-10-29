@@ -1,5 +1,5 @@
-  import { CoviaError, JobData, RunStatus } from './types';
-import { Venue } from './Venue';
+  import { Job } from './Job';
+import { CoviaError, JobData, JobMetadata, RunStatus } from './types';
 
 /**
  * Utility function to handle API calls with consistent error handling
@@ -43,26 +43,26 @@ export function fetchStreamWithError(url: string, options?: RequestInit): Promis
     });
 } 
 
-export function isJobComplete(jobData:JobData) {
-  if(jobData.status == null)
+export function isJobComplete(jobStatus:RunStatus) {
+  if(jobStatus == null)
       return false;
-  return jobData.status == RunStatus.COMPLETE ? true:false
+  return jobStatus == RunStatus.COMPLETE ? true:false
 }
 
-export function isJobPaused(jobData:JobData) {
-  if(jobData.status == null)
+export function isJobPaused(jobStatus:RunStatus) {
+  if(jobStatus == null)
       return false;
-  return jobData.status == RunStatus.PAUSED ? true:false
+  return jobStatus == RunStatus.PAUSED ? true:false
 }
 
-export function isJobFinished(jobData:JobData) {
-  if(jobData.status == null)
+export function isJobFinished(jobStatus:RunStatus) {
+  if(jobStatus == null)
       return false;
 
-  if (jobData.status == RunStatus.COMPLETE) return true;
-  if (jobData.status == RunStatus.FAILED) return true;
-  if (jobData.status == RunStatus.REJECTED) return true;
-  if (jobData.status == RunStatus.CANCELLED) return true;
+  if (jobStatus == RunStatus.COMPLETE) return true;
+  if (jobStatus == RunStatus.FAILED) return true;
+  if (jobStatus == RunStatus.REJECTED) return true;
+  if (jobStatus== RunStatus.CANCELLED) return true;
 
   return false;
 }

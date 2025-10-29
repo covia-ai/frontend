@@ -20,26 +20,18 @@ import { useEffect, useState } from "react";
 
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { RunStatus, Venue } from "@/lib/covia";
+import { JobMetadata, RunStatus, Venue } from "@/lib/covia";
 
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination"
 import { getExecutionTime } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { PaginationHeader } from "@/components/PaginationHeader";
+import { Job } from "@/lib/covia/Job";
 
 export default function OperationsPage() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState("All");
-  const [jobsData, setJobsData] = useState<object[]>([]);
-  const [filteredData, setFilteredData] = useState<object[]>([]);
+  const [jobsData, setJobsData] = useState<JobMetadata[]>([]);
+  const [filteredData, setFilteredData] = useState<JobMetadata[]>([]);
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
   const [totalItems, setTotalItems] = useState(0);
@@ -71,9 +63,9 @@ export default function OperationsPage() {
       setTotalItems(jobs.length)
       setTotalPages(Math.ceil(jobs.length / itemsPerPage))
       jobs.forEach((jobId) => {
-        venue.getJob(jobId).then((metadata) => {
-          setJobsData(prevArray => [...prevArray, metadata]);
-          setFilteredData(prevArray => [...prevArray, metadata])
+        venue.getJob(jobId).then((job:Job) => {
+          setJobsData(prevArray => [...prevArray, job.metadata]);
+          setFilteredData(prevArray => [...prevArray, job.metadata])
         })
       })
 
@@ -132,7 +124,7 @@ export default function OperationsPage() {
 
         <Table className="  border border-slate-200 rounded-lg shadow-md">
           <TableHeader >
-            <TableRow className="hover:bg-slate-800 bg-slate-800 rounded-full text-white ">
+            <TableRow className="bg-secondary hover:bg-secondary rounded-full text-white ">
               <TableCell className="border border-slate-400">Job Id</TableCell>
               <TableCell className="border border-slate-400">Name</TableCell>
               <TableCell className="text-center border border-slate-400">Created Date</TableCell>
@@ -146,7 +138,7 @@ export default function OperationsPage() {
             {filteredData.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((job, index) =>
 
               <TableRow key={index}>
-                <TableCell><Link className="text-secondary font-mono underline" href={`/venues/${venue.venueId}/jobs/${job.id}`}>{job.id}</Link></TableCell>
+                <TableCell><Link className="text-foreground font-mono underline" href={`/venues/${venue.venueId}/jobs/${job.id}`}>{job.id}</Link></TableCell>
                 <TableCell>{job.name}</TableCell>
                 <TableCell className="text-center">{new Date(job.created).toLocaleString()}</TableCell>
                 {(job.status == RunStatus.COMPLETE || job.status == RunStatus.FAILED) && (<TableCell className="text-center">{getExecutionTime(job.created, job.updated)}</TableCell>)}

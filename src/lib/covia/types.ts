@@ -46,9 +46,9 @@ export interface OperationPayload {
   [key: string]: any;
 }
 
-export interface JobData {
-  id?: string;
-  status?: string;
+export interface JobMetadata {
+  id:string;
+  status?: RunStatus;
   created?: string;
   updated?: string;
   input?: any;

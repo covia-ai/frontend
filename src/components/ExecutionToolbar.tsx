@@ -1,6 +1,6 @@
 'use client'
 
-import {  JobData, RunStatus, Venue } from "@/lib/covia";
+import {  JobMetadata, Venue } from "@/lib/covia";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import {
@@ -19,15 +19,16 @@ import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { ResumeIcon } from "@radix-ui/react-icons";
 import { isJobFinished, isJobPaused } from "@/lib/covia/Utils";
 import { Button } from "./ui/button";
 import { toast } from "sonner";
 
-export const ExecutionToolbar = ({jobData} : JobData) => {
+interface ExecutionToolBarProps {
+  jobData: JobMetadata;
+}
+export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
 
      const router = useRouter()
-
      const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
       if (!venueObj) return null;
       const venue = useMemo(() => {
@@ -39,13 +40,15 @@ export const ExecutionToolbar = ({jobData} : JobData) => {
       const [isPaused, setPaused] = useState<boolean>(false);
 
        useEffect(() => {
-         if(jobData?.status != null)
-            setFinished(isJobFinished(jobData))
-            setPaused(isJobPaused(jobData));
-       },[jobData])
+         if(jobData?.status != null) {
+            setFinished(isJobFinished(jobData.status))
+            setPaused(isJobPaused(jobData.status));
+         }
+       },[jobData?.status])
       
       function cancelExecution() {
           if (!venue) return;
+          console.log(jobData)
           venue.cancelJob(jobData.id).then((response) => {
              if(response != 200) {
                 toast("Unable to cancel job right now")
@@ -76,7 +79,7 @@ export const ExecutionToolbar = ({jobData} : JobData) => {
       }
 
   return (
-     <div className="flex flex-row items-center space-x-4 py-2 w-1/2">          
+     <div className="flex flex-row items-center space-x-4 py-2 w-1/2">     
      {!isFinished && 
             <>
             <Tooltip>
