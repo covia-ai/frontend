@@ -21,6 +21,7 @@ import { usePathname } from "next/navigation";
 import { getParsedAssetId } from "@/lib/covia/Utils";
 import { useSession } from "next-auth/react";
 import { useVenues } from "@/hooks/use-venues";
+import { AssetLookup } from "./AssetLookup";
 
 export const OperationViewer = (props: any) => {
   const [asset, setAsset] = useState<Asset>();
@@ -112,10 +113,10 @@ export const OperationViewer = (props: any) => {
         setVenue(new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name}));  
     }  
    }, []); 
+
   useEffect(() => {
     setAssetNotFound(false);
     setErrorMessage("");
-    console.log(venue)
     venue?.getAsset(props.assetId)
       .then((asset: Asset) => {
         setAsset(asset);
@@ -184,6 +185,7 @@ export const OperationViewer = (props: any) => {
 
   // Helper function to convert a value to appropriate raw input string based on type
   const printValue = (value: any, type: string) => {
+   
     if (type === "json" || type === "object" || type === "any" || type === "array") {
       // Convert to JSON string
       if (value !== undefined && value !== null && value != "") {
@@ -193,10 +195,15 @@ export const OperationViewer = (props: any) => {
       }
     } else if (type === "number") {
       // Convert to number string
+      if(typeof(value) == "object")
+          return  0;
       return String(value || 0);
     } else {
       // For string and other types, convert to string
-      return String(value || '');
+      if(typeof(value) == "object")
+          return  ''
+      return String(value) || '';
+      
     }
   };
 
@@ -313,15 +320,26 @@ export const OperationViewer = (props: any) => {
     const isSecret = schema.secret === true;
 
     // Get current raw value from rawInput state or use default
-  
     const currentRawValue = key == TOP_LEVEL_INPUT_KEY ?
       (rawInput[key] !== undefined ? rawInput[key] : printValue(input, type)) :
       (rawInput[key] !== undefined ? rawInput[key] : printValue(defaultValue, type));
+
+    function setAssetIdFromSelection(assetId: string) {
+        onRawValueChange(assetId);
+        try {
+          const processedValue = parseValue(assetId, type);
+          onValueChange(processedValue);
+        } catch (err) {
+          // If parsing fails, still update raw input but don't update parsed input
+          // This allows users to see their raw input even if it's invalid JSON
+        }
+      }
     const commonProps = {
-      className: "flex-1 placeholder:text-gray-500",
+      className: "flex-1 placeholder:text-gray-500 min-w-64 max-w-112",
       value: currentRawValue,
       placeholder: exampleValue,
       type: isSecret ? "password" : undefined,
+     
       onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const rawValue = e.target.value;
         // Always update raw input
@@ -339,7 +357,7 @@ export const OperationViewer = (props: any) => {
 
     const typeSelector = (
       <Select value={type} onValueChange={onTypeChange}>
-        <SelectTrigger className="w-24">
+        <SelectTrigger className="w-32">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -365,9 +383,11 @@ export const OperationViewer = (props: any) => {
 
     if (type === "asset") {
       return (
-        <div className="flex flex-row space-x-2 items-center">
+        <div className="flex flex-row space-x-2 items-center ">
           <Input {...commonProps} type={isSecret ? "password" : "text"} />
+          <AssetLookup sendAssetIdBackToForm={setAssetIdFromSelection}/>
           {typeSelector}
+        
         </div>
       );
     }
