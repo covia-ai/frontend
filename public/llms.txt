@@ -1,0 +1,15 @@
+# Covia Web Application
+
+A modern, production-grade TypeScript + Next.js web application providing an intuitive GUI for interacting with the Covia federated AI grid.
+
+## Key features
+
+- Connect to decentralised / federated venues with decentralised IDs (W3C DIDs)
+- View assets and operations available on the grid
+- Invoke operations with arbitrary inputs and get results
+- View historical jobs / audit history
+
+## Resources
+
+- [Covia Website](https://covia.AI)
+- [Documentation](https://docs.covia.ai)
