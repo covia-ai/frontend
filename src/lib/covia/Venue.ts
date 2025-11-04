@@ -216,4 +216,18 @@ export class Venue implements VenueInterface {
   getStats():Promise<StatusData> {
       return fetchWithError<StatusData>(`${this.baseUrl}/api/v1/status`);
   }
+
+  
+    /**
+     * Get asset metadata
+     * @returns {Promise<AssetMetadata>}
+     */
+    async getAssetMetadata(assetId:string): Promise<AssetMetadata> {
+      return await fetchWithError<AssetMetadata>(`${this.baseUrl}/api/v1/assets/${assetId}`);
+    }
+
+      /**
+   * Upload content to asset
+   * @param content - Content to upload
+   * @returns {Promise<ReadableStream<Uint8Array> | null>}
 } 

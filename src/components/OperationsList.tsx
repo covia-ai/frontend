@@ -61,7 +61,7 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
           asset.getMetadata().then((metadata: object) => {
             if (metadata.operation != undefined) 
               if(search && search.length>0 ) {
-                    if(metadata?.name?.toLowerCase().indexOf(search.toLowerCase()) != -1)
+                  if(metadata?.name?.toLowerCase().indexOf(search.toLowerCase()) != -1 || asset.id?.toLowerCase().indexOf(search.toLowerCase()) != -1)
                       setAssetsMetadata(prevArray => [...prevArray, new Operation(asset.id, asset.venue, metadata)]);
                 }
                 else {
