@@ -249,6 +249,7 @@ export const OperationViewer = (props: any) => {
   }
 
   function runOperation() {
+    console.log(input)
     return asset?.run(input, session?.user?.email || "")
       .then(response => {
         if (response?.id) {
