@@ -1,3 +1,7 @@
+import { Asset } from "./Asset";
+import { CredentialsHTTP } from "./Credentials";
+import { Job } from "./Job";
+import { Venue } from "./Venue";
 
 export interface VenueOptions {
   baseUrl?: string;
@@ -10,6 +14,20 @@ export interface VenueInterface {
   venueId: string;
   name: string;
   metadata: AssetMetadata;
+  connect(venueId: string | Venue, credentials?: CredentialsHTTP):Promise<Venue>;
+  cancelJob(jobId:string):Promise<number>;
+  deleteJob(jobId:string):Promise<number>;
+  getStats():Promise<StatusData>;
+  getJob(jobId:string):Promise<Job>;
+  getJobs():Promise<string[]>;
+  getAsset(assetId: AssetID): Promise<Asset>;
+  createAsset(assetData: any, userEmail: string): Promise<Asset>;
+  getAssets(): Promise<Asset[]>;
+  getAssetMetadata(assetId:string): Promise<AssetMetadata>;
+  uploadContentToAsset(content:BodyInit, assetId:string):Promise<ReadableStream<Uint8Array> | null>;
+  getAssetContent(assetId:string):Promise<ReadableStream<Uint8Array> | null>;
+  run(input:any, userId:string,assetId:string):Promise<any>;
+
 }
 
 export type AssetID = string;

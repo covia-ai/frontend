@@ -1,5 +1,4 @@
 import { CoviaError, AssetMetadata, RunStatus, OperationPayload, VenueInterface, AssetID } from './types';
-import { fetchWithError, fetchStreamWithError } from './Utils';
 
 // Cache for storing asset data
 const cache = new Map<AssetID, AssetMetadata>();
@@ -21,17 +20,15 @@ export abstract class Asset {
    * Get asset metadata
    * @returns {Promise<AssetMetadata>}
    */
-  getMetadata(): Promise<AssetMetadata> {
+  async getMetadata(): Promise<AssetMetadata> {
     if (cache.has(this.id)) {
       return Promise.resolve(cache.get(this.id)!);
     } else {
-      return fetchWithError<AssetMetadata>(`${this.venue.baseUrl}/api/v1/assets/${this.id}`)
-        .then(data => {
-          if (data) {
-            cache.set(this.id, data);
-          }
-          return data;
-        });
+      const data = this.venue.getAssetMetadata(this.id)
+      if (data) {
+        cache.set(this.id, data);
+      }
+      return data;
     }
   }
 
@@ -55,13 +52,7 @@ export abstract class Asset {
    * @returns {Promise<ReadableStream<Uint8Array> | null>}
    */
   uploadContent(content: BodyInit): Promise<ReadableStream<Uint8Array> | null> {
-    return fetchStreamWithError(`${this.venue.baseUrl}/api/v1/assets/${this.id}/content`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/octet-stream',
-      },
-      body: content,
-    }).then(response => response.body);
+    return this.venue.uploadContentToAsset(content, this.id);
   }
 
   /**
@@ -69,8 +60,7 @@ export abstract class Asset {
    * @returns {Promise<ReadableStream<Uint8Array> | null>}
    */
   getContent(): Promise<ReadableStream<Uint8Array> | null> {
-    return fetchStreamWithError(`${this.venue.baseUrl}/api/v1/assets/${this.id}/content`)
-      .then(response => response.body);
+    return this.venue.getAssetContent(this.id);
   }
 
   /**
@@ -86,37 +76,9 @@ export abstract class Asset {
    * @param input - Operation input parameters
    * @returns {Promise<any>}
    */
-  run(input: any, userEmail : string): Promise<any> {
-    const payload = {
-      operation: this.id,
-      input: input
-    };
+  run(input: any, userId : string): Promise<any> {
 
-    let customHeader = {};
-
-    if(userEmail && userEmail != "") {
-        customHeader = {
-          'Content-Type': 'application/json',
-          'X-Covia-User' : userEmail,
-        }
-    }
-    else {
-         customHeader = {
-          'Content-Type': 'application/json'
-        }
-    }
-    console.log(customHeader)
-    return fetchWithError<any>(`${this.venue.baseUrl}/api/v1/invoke/`, {
-      method: 'POST', 
-      headers: customHeader,
-      body: JSON.stringify(payload),
-    }).catch(error => {
-      console.log(error)
-      this.status = RunStatus.FAILED;
-      this.error = (error as Error).message;
-      throw error;
-    });
+    return this.venue.run(input,userId, this.id);
   }
 }
 
-import { Venue } from './Venue'; 

@@ -230,4 +230,56 @@ export class Venue implements VenueInterface {
    * Upload content to asset
    * @param content - Content to upload
    * @returns {Promise<ReadableStream<Uint8Array> | null>}
+   */
+  uploadContentToAsset(content: BodyInit, assetId:string): Promise<ReadableStream<Uint8Array> | null> {
+    return fetchStreamWithError(`${this.baseUrl}/api/v1/assets/${assetId}/content`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/octet-stream',
+      },
+      body: content,
+    }).then(response => response.body);
+  }
+
+  /**
+   * Get asset content
+   * @returns {Promise<ReadableStream<Uint8Array> | null>}
+   */
+  getAssetContent(assetId:string): Promise<ReadableStream<Uint8Array> | null> {
+    return fetchStreamWithError(`${this.baseUrl}/api/v1/assets/${assetId}/content`)
+      .then(response => response.body);
+  }
+
+  /**
+     * Execute the operation
+     * @param input - Operation input parameters
+     * @returns {Promise<any>}
+     */
+    run(input: any, userId : string, assetId:string): Promise<any> {
+      const payload = {
+        operation: assetId,
+        input: input
+      };
+  
+      let customHeader = {};
+  
+      if(userId && userId != "") {
+          customHeader = {
+            'Content-Type': 'application/json',
+            'X-Covia-User' : userId,
+          }
+      }
+      else {
+           customHeader = {
+            'Content-Type': 'application/json'
+          }
+      }
+      return fetchWithError<any>(`${this.baseUrl}/api/v1/invoke/`, {
+        method: 'POST', 
+        headers: customHeader,
+        body: JSON.stringify(payload),
+      }).catch(error => {
+        throw error;
+      });
+    }
 } 
