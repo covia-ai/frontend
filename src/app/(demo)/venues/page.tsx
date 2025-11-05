@@ -33,19 +33,23 @@ export default function VenuesPage() {
   
   const addVenueToList = () =>{
     let venueExist = false;
-    console.log(venues)
+    let processVenueDidOrUrl = venueDidOrUrl;
     venues.map((venue => {
-        
-        if(venue.venueId == venueDidOrUrl) {
+        if(processVenueDidOrUrl.endsWith("/"))
+            processVenueDidOrUrl = processVenueDidOrUrl.substring(0,processVenueDidOrUrl.length-1);
+        console.log(processVenueDidOrUrl)
+        if(venue.venueId == processVenueDidOrUrl) {
           venueExist = true;
         }
-        else if ((venueDidOrUrl.startsWith('http:') || venueDidOrUrl.startsWith('https:')) && (venue.baseUrl == venueDidOrUrl)) {
+      
+        else if ((processVenueDidOrUrl.startsWith('http:') || processVenueDidOrUrl.startsWith('https:')) && (venue.baseUrl.indexOf(processVenueDidOrUrl) != -1)) {
             venueExist = true;
         }
         
     }))
+    console.log(venueExist)
     if(!venueExist) {
-      Venue.connect(venueDidOrUrl).then((venue)=> {
+      Venue.connect(processVenueDidOrUrl).then((venue)=> {
         addVenue(venue)
       })
     }
