@@ -19,10 +19,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {  useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Venue } from "@/lib/covia";
 import { Iconbutton } from "@/components/Iconbutton";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
+import { RefreshCw, RefreshCwIcon } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 export default function VenuesPage() {
   const { addVenue,venues } = useVenues();
@@ -30,7 +32,8 @@ export default function VenuesPage() {
   const [venueId, setVenueId] = useState("");
   const searchParams = useSearchParams()
   const search = searchParams.get('search');
-  
+  const router = useRouter();
+
   const addVenueToList = () =>{
     let venueExist = false;
     let processVenueDidOrUrl = venueDidOrUrl;
@@ -66,7 +69,16 @@ export default function VenuesPage() {
           <Search />
 
         </div>
+         <div className="flex flex-row-reverse w-full mb-2">
+          <Tooltip>
+            <TooltipTrigger>
+              <RefreshCwIcon className="text-foreground" size={14} onClick={() => location.reload()}></RefreshCwIcon>
+            </TooltipTrigger>
+            <TooltipContent>Refresh Venues</TooltipContent>
+          </Tooltip>
+          </div>
         <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4 mb-4">
+         
           {venues.map((venue) => ( 
             
               ( search && search.length > 0 ? 
