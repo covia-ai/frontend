@@ -19,10 +19,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {  useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Venue } from "@/lib/covia";
 import { Iconbutton } from "@/components/Iconbutton";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
+import { RefreshCw, RefreshCwIcon } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 export default function VenuesPage() {
   const { addVenue,venues } = useVenues();
@@ -30,22 +32,27 @@ export default function VenuesPage() {
   const [venueId, setVenueId] = useState("");
   const searchParams = useSearchParams()
   const search = searchParams.get('search');
-  
+  const router = useRouter();
+
   const addVenueToList = () =>{
     let venueExist = false;
-    console.log(venues)
+    let processVenueDidOrUrl = venueDidOrUrl;
     venues.map((venue => {
-        
-        if(venue.venueId == venueDidOrUrl) {
+        if(processVenueDidOrUrl.endsWith("/"))
+            processVenueDidOrUrl = processVenueDidOrUrl.substring(0,processVenueDidOrUrl.length-1);
+        console.log(processVenueDidOrUrl)
+        if(venue.venueId == processVenueDidOrUrl) {
           venueExist = true;
         }
-        else if ((venueDidOrUrl.startsWith('http:') || venueDidOrUrl.startsWith('https:')) && (venue.baseUrl == venueDidOrUrl)) {
+      
+        else if ((processVenueDidOrUrl.startsWith('http:') || processVenueDidOrUrl.startsWith('https:')) && (venue.baseUrl.indexOf(processVenueDidOrUrl) != -1)) {
             venueExist = true;
         }
         
     }))
+    console.log(venueExist)
     if(!venueExist) {
-      Venue.connect(venueDidOrUrl).then((venue)=> {
+      Venue.connect(processVenueDidOrUrl).then((venue)=> {
         addVenue(venue)
       })
     }
@@ -62,7 +69,16 @@ export default function VenuesPage() {
           <Search />
 
         </div>
+         <div className="flex flex-row-reverse w-full mb-2">
+          <Tooltip>
+            <TooltipTrigger>
+              <RefreshCwIcon className="text-foreground" size={14} onClick={() => location.reload()}></RefreshCwIcon>
+            </TooltipTrigger>
+            <TooltipContent>Refresh Venues</TooltipContent>
+          </Tooltip>
+          </div>
         <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4 mb-4">
+         
           {venues.map((venue) => ( 
             
               ( search && search.length > 0 ? 

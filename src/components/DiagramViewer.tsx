@@ -22,6 +22,7 @@ import OutputNode from '@/components/diagram/OutputNode';
 import { parseOpMetadata } from '@/lib/diagramutils';
 import { useCallback } from 'react';
 import { redirect } from 'next/navigation';
+import { useTheme } from 'next-themes';
 
 const nodeTypes = {
   TaskNode: TaskNode,
@@ -38,7 +39,8 @@ export const DiagramViewer = (props:any) => {
        const parseJson = parseOpMetadata(props.metadata);
        const [nodes, setNodes, onNodesChange] = useNodesState(parseJson[0]);
        const [edges, setEdges, onEdgesChange] = useEdgesState(parseJson[1]);
-      
+      const { theme  } = useTheme();
+
         const onNodeClick = useCallback(
             (event: React.MouseEvent, node: Node) => {
               redirect("https://venue-test.covia.ai/venues/"+venue.venueId+"/operations/"+node.op);
@@ -58,6 +60,7 @@ export const DiagramViewer = (props:any) => {
                 nodesConnectable={false}
                 className="bg-slate-800"
                 onNodeClick={onNodeClick}
+                colorMode={theme || "light"}
                 fitView
               >
                 <Background/>

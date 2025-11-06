@@ -156,3 +156,11 @@
     @apply bg-background text-foreground;
   }
 }
+  @font-face {
+      font-family: 'AetherFont';
+      src: local('AetherFont'), url('./../../public/fonts/aether.woff2');
+      
+    }
+    .react-flow__node {
+      font-family: 'AetherFont';
+    }

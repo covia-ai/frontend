@@ -1,5 +1,4 @@
 import { JobMetadata,  VenueInterface } from "./types";
-import { fetchStreamWithError } from "./Utils";
 
 export class Job {
   public id: string;
@@ -13,16 +12,10 @@ export class Job {
   }
 
   async cancelJob(): Promise<number> {
-    return fetchStreamWithError(`${this.venue.baseUrl}/api/v1/jobs/${this.id}/cancel`, { method: 'PUT'})
-         .then((response) =>{
-            return response.status
-        });
+   return this.venue.cancelJob(this.id);
   }
   
   async deleteJob():  Promise<number> {
-     return fetchStreamWithError(`${this.venue.baseUrl}/api/v1/jobs/${this.id}/delete`, { method: 'PUT'})
-     .then((response) =>{
-        return response.status
-  });
+     return this.venue.deleteJob(this.id);
   }
 }

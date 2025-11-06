@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { LibraryBigIcon, MessagesSquare, Play, ExternalLink } from "lucide-react";
+import { VideoSlideShow } from "@/components/VideoSlideShow";
 
 export default function OperationsPage() {
 
@@ -24,9 +25,7 @@ export default function OperationsPage() {
             
              <div className="flex flex-col items-center justify-center py-10 px-10 my-4">
               
-                <div className="flex flex-row space-x-4 items-center mb-8">
-                  <ReactPlayer url='https://www.youtube.com/embed/b0HwKymJbnA?si=w5aKxeNECLn5JuAE' />
-                </div>
+                <VideoSlideShow/>
 
                 <Separator className="my-6" />
                 
