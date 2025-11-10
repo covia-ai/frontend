@@ -125,15 +125,13 @@ export const ExecutionViewer = (props: any) => {
             if (type == "input") {
                 keys = Object.keys(jobMetadata?.input || {});
                 schema = assetsMetadata?.metadata?.operation?.input;
-                inOutType = schema?.type;
+                inOutType = schema?.type ;
             } else {
                 schema = assetsMetadata?.metadata?.operation?.output;
                 inOutType = schema?.type;
                 keys = Object.keys(jobMetadata?.output || {});
             }
-            if (inOutType == "asset")
-                assetLink = window.location.href + "/venues/"+venue?.venueId+"/assets/" + assetsMetadata?.id;
-
+            
             // render function for each key within the input or output like "prompt" or "image"
             const renderContent = (key: string) => {
                 const fieldType = schema?.properties?.[key]?.type || "object";
@@ -157,7 +155,7 @@ export const ExecutionViewer = (props: any) => {
 
             // render function for the type each key within the input or output like "string" or "asset"
             const renderType = (key: string) => {
-                const fieldType = schema?.properties?.[key]?.type || "object";
+                const fieldType = schema?.properties?.[key]?.type || typeof key;
                 return <TableCell className="text-card-foreground">{fieldType}</TableCell>;
             }
 

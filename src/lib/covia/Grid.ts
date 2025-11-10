@@ -1,4 +1,5 @@
 import { Venue } from "./Venue";
+
 const cache = new Map<string, Venue>();
 
 export class Grid {
@@ -6,17 +7,13 @@ export class Grid {
    /**
    * Static method to connect to a venue
    * @param venueId - Can be a HTTP base URL, DNS name, or existing Venue instance
-   * @returns {Venue} A new Venue instance configured appropriately
+   * @returns {Promise<Venue>} A new Venue instance configured appropriately
    */
-  static  connectToVenue(venueId:string) {
+  static async connectAsync(venueId:string): Promise<Venue> {
     if (cache.has(venueId)) 
-        return cache.get(venueId);
-    else {
-      Venue.connect(venueId).then((venue:Venue) => {
-        cache.set(venueId, venue);
-        return venue;
-      })
-   } 
+        return Promise.resolve(cache.get(venueId)!);
+    const connectedVenue = await Venue.connect(venueId);
+    cache.set(venueId, connectedVenue);
+    return Promise.resolve(connectedVenue);
   }
-  
 } 

@@ -1,9 +1,9 @@
-import { CoviaError, VenueOptions, AssetMetadata, JobData, VenueInterface, AssetID, StatsData, StatusData } from './types';
+import { CoviaError, VenueOptions, AssetMetadata, VenueInterface, AssetID, StatsData, StatusData, VenueContructor, VenueConstructor } from './types';
 import { Asset } from './Asset';
 import { Operation } from './Operation';
 import { DataAsset } from './DataAsset';
 import { fetchStreamWithError, fetchWithError } from './Utils';
-import { CredentialsHTTP } from './Credentials';
+import { Credentials, CredentialsHTTP } from './Credentials';
 import { Resolver } from 'did-resolver'
 import { getResolver } from 'web-did-resolver'
 import { Job } from './Job';
@@ -17,7 +17,8 @@ const cache = new Map<AssetID, any>();
 export class Venue implements VenueInterface {
   public baseUrl: string;
   public venueId: string;
-  public name: string;
+  public name: string;  
+  public credentials: Credentials;
   public metadata: AssetMetadata;
   
   constructor(options: VenueOptions = {}) {
@@ -26,8 +27,11 @@ export class Venue implements VenueInterface {
     this.baseUrl = options.baseUrl || 'https://venue-test.covia.ai';
     this.venueId = options.venueId || "default";
     this.name = options.name || "default";
+    this.credentials  = options.credentials || new CredentialsHTTP(this.venueId,"","");
     this.metadata = {};
   }
+ 
+  
 
   /**
    * Static method to connect to a venue
@@ -42,7 +46,8 @@ export class Venue implements VenueInterface {
       return new Venue({
         baseUrl: venueId.baseUrl,
         venueId: venueId.venueId,
-        name: venueId.name
+        name: venueId.name,
+        credentials: credentials
       });
     }
 
@@ -75,7 +80,8 @@ export class Venue implements VenueInterface {
     return new Venue({
             baseUrl,
             venueId: data.did,
-            name: data.name
+            name: data.name,
+            credentials: credentials
     });
       
     }
@@ -88,26 +94,29 @@ export class Venue implements VenueInterface {
    * @param assetData - Asset configuration
    * @returns {Promise<Asset>}
    */
-  async createAsset(assetData: any, userEmail: string): Promise<Asset> {
-    let customHeader = {}
-    if(userEmail && userEmail != "") {
-        customHeader = {
-          'Content-Type': 'application/json',
-          'X-Covia-User' : userEmail,
-        }
-    }
-    else {
-         customHeader = {
-          'Content-Type': 'application/json'
-        }
-    }
+  async createAsset(assetData: any): Promise<Asset> {
     return fetchWithError<any>(`${this.baseUrl}/api/v1/assets/`, {
       method: 'POST',
-      headers: customHeader,
+      headers: this.setCredentialsInHeader(),
       body: JSON.stringify(assetData),
     }).then(response=>{return this.getAsset(response)});
   }
 
+  
+  /**
+   * Read stream from asset
+   * @param reader - ReadableStreamDefaultReader
+   */
+  async readStream(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<void> {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      // Process the 'value' (data chunk) here
+    }
+  }
+  
   /**
    * Get asset by ID
    * @param assetId - Asset identifier
@@ -222,7 +231,7 @@ export class Venue implements VenueInterface {
      * Get asset metadata
      * @returns {Promise<AssetMetadata>}
      */
-    async getAssetMetadata(assetId:string): Promise<AssetMetadata> {
+    async getMetadata(assetId:string): Promise<AssetMetadata> {
       return await fetchWithError<AssetMetadata>(`${this.baseUrl}/api/v1/assets/${assetId}`);
     }
 
@@ -231,23 +240,22 @@ export class Venue implements VenueInterface {
    * @param content - Content to upload
    * @returns {Promise<ReadableStream<Uint8Array> | null>}
    */
-  uploadContentToAsset(content: BodyInit, assetId:string): Promise<ReadableStream<Uint8Array> | null> {
-    return fetchStreamWithError(`${this.baseUrl}/api/v1/assets/${assetId}/content`, {
+  async uploadContent(content: BodyInit, assetId:string): Promise<ReadableStream<Uint8Array> | null> {
+    const response = await fetchStreamWithError(`${this.baseUrl}/api/v1/assets/${assetId}/content`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/octet-stream',
-      },
+      headers: this.setCredentialsInHeader(),
       body: content,
-    }).then(response => response.body);
+    });
+    return response.body;
   }
 
   /**
    * Get asset content
    * @returns {Promise<ReadableStream<Uint8Array> | null>}
    */
-  getAssetContent(assetId:string): Promise<ReadableStream<Uint8Array> | null> {
-    return fetchStreamWithError(`${this.baseUrl}/api/v1/assets/${assetId}/content`)
-      .then(response => response.body);
+  async getContent(assetId:string): Promise<ReadableStream<Uint8Array> | null> {
+    const response = await fetchStreamWithError(`${this.baseUrl}/api/v1/assets/${assetId}/content`);
+    return response.body;
   }
 
   /**
@@ -255,7 +263,7 @@ export class Venue implements VenueInterface {
      * @param input - Operation input parameters
      * @returns {Promise<any>}
      */
-    run(input: any, userId : string, assetId:string): Promise<any> {
+    async run(assetId:string,input: any ): Promise<any> {
       const payload = {
         operation: assetId,
         input: input
@@ -263,10 +271,10 @@ export class Venue implements VenueInterface {
   
       let customHeader = {};
   
-      if(userId && userId != "") {
+      if(this.credentials.userId && this.credentials.userId != "") {
           customHeader = {
             'Content-Type': 'application/json',
-            'X-Covia-User' : userId,
+            'X-Covia-User' : this.credentials.userId,
           }
       }
       else {
@@ -274,12 +282,48 @@ export class Venue implements VenueInterface {
             'Content-Type': 'application/json'
           }
       }
+      try {
+        return await fetchWithError<any>(`${this.baseUrl}/api/v1/invoke/`, {
+          method: 'POST',
+          headers: customHeader,
+          body: JSON.stringify(payload),
+        });
+      } catch (error) {
+        throw error;
+      }
+    }
+
+     /**
+     * Execute the operation
+     * @param input - Operation input parameters
+     * @returns {Promise<any>}
+     */
+    async invoke(assetId:string,input: any ): Promise<any> {
+      const payload = {
+        operation: assetId,
+        input: input
+      };
       return fetchWithError<any>(`${this.baseUrl}/api/v1/invoke/`, {
         method: 'POST', 
-        headers: customHeader,
+        headers: this.setCredentialsInHeader(),
         body: JSON.stringify(payload),
       }).catch(error => {
         throw error;
       });
     }
+
+    private setCredentialsInHeader() : any{  
+      if(this.credentials.userId && this.credentials.userId != "") {
+          return  (
+            {
+              'Content-Type': 'application/json',
+              'X-Covia-User' : this.credentials.userId
+            }
+          )
+      }
+      else {
+           return ( {'Content-Type': 'application/json'})
+          }
+    }
 } 
+const _MyVenueCheck: VenueConstructor = Venue;

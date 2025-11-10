@@ -7,8 +7,20 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { MagicWandIcon } from "@radix-ui/react-icons";
 import { ShowCase } from "@/components/ShowCase";
-
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 export default function Workspace() {
+const [selectedOption, setSelectedOption] = useState('chatgpt')
 
 
   return (
@@ -25,11 +37,34 @@ export default function Workspace() {
         </p>
         <div className="flex flex-row items-center justify-center w-full space-x-4">
           <Input
-            placeholder="Build me an orchestration ....."
-            className="bg-muted/50 dark:bg-muted/80 w-8/12"
+            placeholder="Build me an orchestration....."
+            className="bg-card text-card-foreground w-8/12"
             aria-label="email"
           />
-          <Button variant="default" disabled className="my-4"><MagicWandIcon></MagicWandIcon>Coming Soon</Button>
+          <Select onValueChange={value => setSelectedOption(value)} defaultValue="chatgpt">
+                      <SelectTrigger className="w-[120px] text-semibold bg-card text-card-foreground">
+                        <SelectValue className="text-semibold" placeholder="Run Status" />
+                      </SelectTrigger>    
+                      <SelectContent>
+                        <SelectGroup>
+                          
+                          <SelectItem value="chatgpt">ChatGPT</SelectItem>
+                          <SelectItem value="claude">Claude</SelectItem>
+                          <SelectItem value="grok">Grok</SelectItem>
+                          <SelectItem value="perplexity">Perplexity</SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+          <Dialog>
+            
+             <DialogTrigger><Button variant="default" className="my-4"><MagicWandIcon></MagicWandIcon></Button>
+             </DialogTrigger>
+             <DialogContent className="flex flex-col items-center justify-center">
+                  <DialogHeader>Connect to AI Model</DialogHeader>
+                  <Input placeholder="Provide api key"></Input>
+                  <Button>Connect</Button>
+             </DialogContent>
+          </Dialog>
         </div>
 
       </div>

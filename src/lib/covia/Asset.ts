@@ -1,4 +1,4 @@
-import { CoviaError, AssetMetadata, RunStatus, OperationPayload, VenueInterface, AssetID } from './types';
+import {  AssetMetadata, RunStatus, VenueInterface, AssetID } from './types';
 
 // Cache for storing asset data
 const cache = new Map<AssetID, AssetMetadata>();
@@ -24,7 +24,7 @@ export abstract class Asset {
     if (cache.has(this.id)) {
       return Promise.resolve(cache.get(this.id)!);
     } else {
-      const data = this.venue.getAssetMetadata(this.id)
+      const data = this.venue.getMetadata(this.id)
       if (data) {
         cache.set(this.id, data);
       }
@@ -37,13 +37,7 @@ export abstract class Asset {
    * @param reader - ReadableStreamDefaultReader
    */
   async readStream(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<void> {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
-      // Process the 'value' (data chunk) here
-    }
+    return this.readStream(reader);
   }
 
   /**
@@ -52,7 +46,7 @@ export abstract class Asset {
    * @returns {Promise<ReadableStream<Uint8Array> | null>}
    */
   uploadContent(content: BodyInit): Promise<ReadableStream<Uint8Array> | null> {
-    return this.venue.uploadContentToAsset(content, this.id);
+    return this.venue.uploadContent(this.id, content);
   }
 
   /**
@@ -60,7 +54,7 @@ export abstract class Asset {
    * @returns {Promise<ReadableStream<Uint8Array> | null>}
    */
   getContent(): Promise<ReadableStream<Uint8Array> | null> {
-    return this.venue.getAssetContent(this.id);
+    return this.venue.getContent(this.id);
   }
 
   /**
@@ -76,9 +70,9 @@ export abstract class Asset {
    * @param input - Operation input parameters
    * @returns {Promise<any>}
    */
-  run(input: any, userId : string): Promise<any> {
+  run(input: any): Promise<any> {
 
-    return this.venue.run(input,userId, this.id);
+    return this.venue.run( this.id, input);
   }
 }
 
