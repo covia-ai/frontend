@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { Venue } from "@/lib/covia";
+import { Venue,Grid } from "@/lib/covia";
+import { CredentialsHTTP } from "@/lib/covia/Credentials";
 
 type VenuesStore = {
   venues: Venue[];
@@ -19,8 +20,8 @@ const defaultVenues: Venue[] = [];
 if(!process.env.NEXT_PUBLIC_IS_ENV_PROD) 
     defaultVenueUrls.push("http://localhost:8080");
 
-defaultVenueUrls.map((venueUrl => {
-    Venue.connect(venueUrl).then((venue => {
+defaultVenueUrls.map((venueId => {
+    Grid.connect(venueId, new CredentialsHTTP(venueId,"","")).then((venue => {
          defaultVenues.push(venue)
   }))
 }))

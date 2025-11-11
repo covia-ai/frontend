@@ -203,20 +203,6 @@ export class Venue implements VenueInterface {
     });
   }
 
-  /**
-   * Get the DID (Decentralized Identifier) for this venue
-   * @returns {string} DID in the format did:web:domain
-   */
-  getDID(): string {
-    try {
-      const url = new URL(this.baseUrl);
-      const domain = url.hostname;
-      return `did:web:${domain}`;
-    } catch {
-      // Fallback if baseUrl is not a valid URL
-      return `did:web:${this.baseUrl.replace(/^https?:\/\//, '')}`;
-    }
-  }
 
     /**
    * Get the DID (Decentralized Identifier) for this venue
@@ -283,11 +269,13 @@ export class Venue implements VenueInterface {
           }
       }
       try {
-        return await fetchWithError<any>(`${this.baseUrl}/api/v1/invoke/`, {
+        const res =  await fetchWithError<any>(`${this.baseUrl}/api/v1/invoke/`, {
           method: 'POST',
           headers: customHeader,
           body: JSON.stringify(payload),
         });
+        console.log(res)
+        return res;
       } catch (error) {
         throw error;
       }

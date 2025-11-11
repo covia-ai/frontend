@@ -16,7 +16,9 @@ import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 import { ExecutionHeader } from "./ExecutionHeader";
 import { ExecutionToolbar } from "./ExecutionToolbar";
 import { useVenues } from "@/hooks/use-venues";
-import { Job } from "@/lib/covia/Job";
+import { Grid,Job } from "@/lib/covia";
+import { CredentialsHTTP } from "@/lib/covia/Credentials";
+import { useSession } from "next-auth/react";
 
 
 export const ExecutionViewer = (props: any) => {
@@ -25,6 +27,7 @@ export const ExecutionViewer = (props: any) => {
     const [assetsMetadata, setAssetsMetadata] = useState<Asset>();
     const { venues, addVenue } = useVenues();
     const [venue, setVenue] = useState<Venue>();
+    const { data: session } = useSession();
 
     const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
     if (!venueObj) return null;
@@ -37,7 +40,8 @@ export const ExecutionViewer = (props: any) => {
             setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.name}))
          }
          else {
-          Venue.connect(decodeURIComponent(props.venueId)).then((venue) => {
+          Grid.connect(decodeURIComponent(props.venueId), 
+            new CredentialsHTTP(decodeURIComponent(props.venueId),"",session?.user?.email || "")).then((venue) => {
             addVenue(venue)
             setVenue(venue)
           });

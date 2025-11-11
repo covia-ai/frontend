@@ -9,6 +9,9 @@ import { useVenue } from "@/hooks/use-venue";
 import { MetadataViewer } from "./MetadataViewer";
 import { AssetHeader } from "./AssetHeader";
 import { useVenues } from "@/hooks/use-venues";
+import { Grid } from "@/lib/covia";
+import { CredentialsHTTP } from "@/lib/covia/Credentials";
+import { useSession } from "next-auth/react";
 
 interface AssetViewerProps {
   assetId: string;
@@ -16,6 +19,7 @@ interface AssetViewerProps {
 }
 
 export function AssetViewer(props: AssetViewerProps) {
+  const { data: session } = useSession();
   const [asset, setAsset] = useState<Asset>();
   const venueObj = useStore(useVenue, (x) => x.currentVenue);
   const { venues, addVenue } = useVenues();
@@ -32,7 +36,7 @@ export function AssetViewer(props: AssetViewerProps) {
           setVenueName(venue.name)
          }
          else {
-          Venue.connect(decodeURIComponent(props.venueId)).then((venue) => {
+          Grid.connect(decodeURIComponent(props.venueId),new CredentialsHTTP(props.venueId,"",session?.user?.email || "")).then((venue) => {
             addVenue(venue)
              venue.getAsset(props.assetId).then((asset: Asset) => {
              setAsset(asset);

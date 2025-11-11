@@ -19,22 +19,12 @@ import { useEffect, useState } from "react";
 
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { JobMetadata, RunStatus, Venue } from "@/lib/covia";
+import { Job, JobMetadata, RunStatus, Venue } from "@/lib/covia";
 
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination"
+
 import { getExecutionTime } from "@/lib/utils";
-import { SelectLabel } from "@radix-ui/react-select";
 import { Label } from "@/components/ui/label";
 import { PaginationHeader } from "@/components/PaginationHeader";
-import { Job } from "@/lib/covia/Job";
 
 export default function OperationsPage() {
   const [statusFilter, setStatusFilter] = useState("All");
