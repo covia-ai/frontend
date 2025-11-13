@@ -20,10 +20,7 @@ describe('Chat Component', () => {
     expect(screen.getByTestId('chat-button')).toBeInTheDocument();
   });
 });
-
-
   // ==================== OPENING DIALOG ====================
-  
   describe('Opening Dialog', () => {
     test('opens dialog when trigger button is clicked', async () => {
       const user = userEvent.setup();

@@ -48,7 +48,7 @@ export function VenueCard({ venue }: VenueCardProps) {
     >
       {/* Fixed-size header */}
       <div className="h-14 p-3 flex flex-row items-center justify-between border-b ">
-        <div className="truncate flex-1 mr-2 text-md text-foreground" onClick={handleCardClick}>{venue.name}</div>
+        <div data-testid="venue-name" className="truncate flex-1 mr-2 text-md text-foreground" onClick={handleCardClick}>{venue.name}</div>
             <AlertDialog>
                     <AlertDialogTrigger  className="flex flex-row ">
                         <Iconbutton icon={X} message="Disconnect Venue" />
@@ -73,7 +73,7 @@ export function VenueCard({ venue }: VenueCardProps) {
 
       {/* Flexible middle section */}
       <div className="flex-1 p-3 flex flex-col justify-between" onClick={handleCardClick}>
-        <div className="text-xs text-card-foreground line-clamp-3 mb-2">
+        <div data-testid="venue-desc" className="text-xs text-card-foreground line-clamp-3 mb-2">
           {venue.metadata.description || venue.venueId }
         </div>
       
@@ -85,7 +85,7 @@ export function VenueCard({ venue }: VenueCardProps) {
          
         </div>
         
-          <Iconbutton icon={SquareArrowOutUpRight} message="View Venue" path="venues" pathId={venue.venueId}/>
+          <Iconbutton icon={SquareArrowOutUpRight} message="View Venue" path="venues" pathId={venue.venueId} venueId={venue.venueId}/>
 
       </div>
     </Card>

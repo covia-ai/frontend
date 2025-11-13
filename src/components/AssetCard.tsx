@@ -174,7 +174,7 @@ export function AssetCard({ asset,type }: AssetCardProps) {
 
                 {/* Fixed-size footer */}
                 <div className="p-2 h-12 flex flex-row-reverse items-center justify-between" onClick={() => handleCardClick(asset.id)}>
-                    <Iconbutton icon={SquareArrowOutUpRight} message="View Asset" path={type} pathId={asset.id}/>
+                    <Iconbutton icon={SquareArrowOutUpRight} message="View Asset" path={type} pathId={asset.id} venueId={venue.venueId}/>
                     
                 </div>
         </Card>
