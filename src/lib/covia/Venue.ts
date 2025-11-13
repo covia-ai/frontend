@@ -269,13 +269,11 @@ export class Venue implements VenueInterface {
           }
       }
       try {
-        const res =  await fetchWithError<any>(`${this.baseUrl}/api/v1/invoke/`, {
+        return  await fetchWithError<any>(`${this.baseUrl}/api/v1/invoke/`, {
           method: 'POST',
           headers: customHeader,
           body: JSON.stringify(payload),
         });
-        console.log(res)
-        return res;
       } catch (error) {
         throw error;
       }
@@ -284,9 +282,9 @@ export class Venue implements VenueInterface {
      /**
      * Execute the operation
      * @param input - Operation input parameters
-     * @returns {Promise<any>}
+     * @returns {Promise<Job>}
      */
-    async invoke(assetId:string,input: any ): Promise<any> {
+    async invoke(assetId:string,input: any ): Promise<Job> {
       const payload = {
         operation: assetId,
         input: input
