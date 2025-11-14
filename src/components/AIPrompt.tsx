@@ -49,7 +49,7 @@ export const AIPrompt = () => {
                       </SelectContent>
           </Select>
           <Dialog >     
-              <DialogDescription>Connect to AI Model</DialogDescription>
+              
              <DialogTrigger>
               <Button  data-testid="chat-button" variant="default" className="my-4"><MagicWandIcon></MagicWandIcon>
               </Button>
