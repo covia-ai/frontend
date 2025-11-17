@@ -54,7 +54,7 @@ export function VenueSelector() {
 
     
   };
-
+  console.log(venues)
   if (!selectedVenue || venues.length === 0) {
      return null;
   }

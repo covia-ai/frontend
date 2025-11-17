@@ -33,8 +33,9 @@ export const AIPrompt = () => {
             placeholder="Build me an orchestration....."
             className="bg-card text-card-foreground w-8/12"
             aria-label="email"
+            disabled
           />
-          <Select onValueChange={value => setSelectedOption(value)} defaultValue="chatgpt">
+          <Select disabled onValueChange={value => setSelectedOption(value)} defaultValue="chatgpt">
                       <SelectTrigger className="w-[120px] text-semibold bg-card text-card-foreground">
                         <SelectValue className="text-semibold" placeholder="Run Status" />
                       </SelectTrigger>    
@@ -51,7 +52,7 @@ export const AIPrompt = () => {
           <Dialog >     
               
              <DialogTrigger>
-              <Button  data-testid="chat-button" variant="default" className="my-4"><MagicWandIcon></MagicWandIcon>
+              <Button disabled data-testid="chat-button" variant="default" className="my-4"><MagicWandIcon></MagicWandIcon>
               </Button>
              </DialogTrigger>
              <DialogContent data-testid="chat-dialog" className="flex flex-col items-center justify-center">

@@ -91,6 +91,15 @@ export default function OperationsPage() {
         return "/venues/"+encodeURIComponent(venue.venueId)+"/jobs/"+jobId;
         
     };
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: 'UTC', // Key setting for UTC time
+   });
   return (
     <ContentLayout title="Jobs">
       <SmartBreadcrumb venueName={venue.name}/>
@@ -142,7 +151,7 @@ export default function OperationsPage() {
               <TableRow key={index}>
                 <TableCell><Link className="text-foreground font-mono underline" href={encodedPath(job.id)}>{job.id}</Link></TableCell>
                 <TableCell>{job.name}</TableCell>
-                <TableCell className="text-center">{new Date(job.created).toLocaleString()}</TableCell>
+                <TableCell className="text-center">{formatter.format(new Date(job.created)).replace(', ', 'T') + 'Z'}</TableCell>
                 {(job.status == RunStatus.COMPLETE || job.status == RunStatus.FAILED) && (<TableCell className="text-center">{getExecutionTime(job.created, job.updated)}</TableCell>)}
                 {(job.status == RunStatus.PENDING || job.status == RunStatus.STARTED) && (<TableCell className="text-center">--</TableCell>)}
 
