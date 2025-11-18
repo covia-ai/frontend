@@ -20,11 +20,13 @@ import { Label } from "@/components/ui/label";
 import {  useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Venue } from "@/lib/covia";
 import { Iconbutton } from "@/components/Iconbutton";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
-import { RefreshCw, RefreshCwIcon } from "lucide-react";
+import { RefreshCwIcon } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Grid } from "@/lib/covia/Grid";
+import { CredentialsHTTP } from "@/lib/covia/Credentials";
+import { useSession } from "next-auth/react";
 
 export default function VenuesPage() {
   const { addVenue,venues } = useVenues();
@@ -33,6 +35,7 @@ export default function VenuesPage() {
   const searchParams = useSearchParams()
   const search = searchParams.get('search');
   const router = useRouter();
+  const { data: session } = useSession();
 
   const addVenueToList = () =>{
     let venueExist = false;
@@ -50,9 +53,8 @@ export default function VenuesPage() {
         }
         
     }))
-    console.log(venueExist)
     if(!venueExist) {
-      Venue.connect(processVenueDidOrUrl).then((venue)=> {
+      Grid.connect(processVenueDidOrUrl,new CredentialsHTTP(venueId,"",session?.user?.email || "")).then((venue)=> {
         addVenue(venue)
       })
     }

@@ -22,6 +22,8 @@ import { getParsedAssetId } from "@/lib/covia/Utils";
 import { useSession } from "next-auth/react";
 import { useVenues } from "@/hooks/use-venues";
 import { AssetLookup } from "./AssetLookup";
+import { Grid } from "@/lib/covia/Grid";
+import { CredentialsHTTP } from "@/lib/covia/Credentials";
 
 export const OperationViewer = (props: any) => {
   const [asset, setAsset] = useState<Asset>();
@@ -103,7 +105,8 @@ export const OperationViewer = (props: any) => {
             setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.name}))
          }
          else {
-          Venue.connect(decodeURIComponent(props.venueId)).then((venue) => {
+          Grid.connect(decodeURIComponent(props.venueId),new CredentialsHTTP(decodeURIComponent(props.venueId),"",session?.user?.email || ""))
+          .then((venue) => {
             addVenue(venue)
             setVenue(venue)
           });
@@ -250,10 +253,10 @@ export const OperationViewer = (props: any) => {
 
   function runOperation() {
     console.log(input)
-    return asset?.run(input, session?.user?.email || "")
+    return asset?.run(input)
       .then(response => {
         if (response?.id) {
-          router.push("/venues/"+venue.venueId+"/jobs/" + response?.id);
+          router.push("/venues/"+venue?.venueId+"/jobs/" + response?.id);
         }
         return response;
       });

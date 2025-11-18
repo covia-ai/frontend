@@ -4,9 +4,10 @@
 export interface Credentials {
   venueId: string;
   apiKey: string;
+  userId: string;
 }
-
+ 
 export class CredentialsHTTP implements Credentials {
 
-  constructor(public venueId: string, public apiKey: string) {}
+  constructor(public venueId: string, public apiKey: string, public userId: string) {}
 } 

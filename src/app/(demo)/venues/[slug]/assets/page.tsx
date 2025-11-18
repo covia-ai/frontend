@@ -124,6 +124,7 @@ export default function AssetPage() {
 
   return (
     <ContentLayout title="Assets">
+    
       <SmartBreadcrumb venueName={venue.name}/>
 
       <div className="flex flex-col items-center justify-center">

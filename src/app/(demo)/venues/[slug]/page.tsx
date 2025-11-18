@@ -5,7 +5,6 @@ import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { 
   Building2, 
   Database, 
@@ -20,15 +19,17 @@ import {
   Copy,
   FolderUpIcon,
   ActivityIcon,
-  User
+  User,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useVenues } from "@/hooks/use-venues";
 import { useVenue } from "@/hooks/use-venue";
 import { useEffect, useState } from "react";
-import { Venue } from "@/lib/covia";
+import { Venue, Grid } from "@/lib/covia";
 import Link from "next/link";
 import { copyDataToClipBoard } from "@/lib/utils";
+import { CredentialsHTTP } from "@/lib/covia/Credentials";
+import { useSession } from "next-auth/react";
 
 interface VenuePageProps {
   params: {
@@ -49,26 +50,27 @@ export default function VenuePage({ params }: VenuePageProps) {
   const [ noOfOps, setNoOfOps] = useState(0)
   const [ noOfRuns, setNoOfRuns] = useState(0)
   const [ noOfUsers, setNoOfUsers] = useState(0)
-
+  const { data: session } = useSession();
+  
   useEffect(() => {
     // Find the venue by slug
     const foundVenue = venues.find(v => v.venueId === decodeURIComponent(slug));
     if (foundVenue) {
       if(foundVenue instanceof Venue) {
           setVenue(foundVenue);
-          setVenueDID(foundVenue.getDID())
+          setVenueDID(foundVenue.venueId)
       }
       else {
           const foundVenue_obj = new Venue({baseUrl:foundVenue.baseUrl, venueId:foundVenue.venueId, name:foundVenue.name});
           setVenue(foundVenue_obj)
-          setVenueDID(foundVenue_obj.getDID())
+          setVenueDID(foundVenue_obj.venueId)
       }
      
       // Don't automatically set as current venue - only when user clicks "Make Default"
       
     }
     else {
-       Venue.connect(decodeURIComponent(slug)).then((venue) => {
+       Grid.connect(decodeURIComponent(slug),new CredentialsHTTP(decodeURIComponent(slug),"",session?.user?.email || "")).then((venue) => {
          addVenue(venue)
        }
       )

@@ -10,11 +10,17 @@ export class Job {
     this.venue = venue;
     this.metadata = metadata;
   }
-
+   /**
+   * Cancels the execution of the job
+   * @returns {Promise<number>}
+   */
   async cancelJob(): Promise<number> {
    return this.venue.cancelJob(this.id);
   }
-  
+  /**
+   * Delete the job
+   * @returns {Promise<number>}
+   */
   async deleteJob():  Promise<number> {
      return this.venue.deleteJob(this.id);
   }

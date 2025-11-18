@@ -16,7 +16,11 @@ import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 import { ExecutionHeader } from "./ExecutionHeader";
 import { ExecutionToolbar } from "./ExecutionToolbar";
 import { useVenues } from "@/hooks/use-venues";
-import { Job } from "@/lib/covia/Job";
+import { Grid,Job } from "@/lib/covia";
+import { CredentialsHTTP } from "@/lib/covia/Credentials";
+import { useSession } from "next-auth/react";
+import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 
 export const ExecutionViewer = (props: any) => {
@@ -25,6 +29,17 @@ export const ExecutionViewer = (props: any) => {
     const [assetsMetadata, setAssetsMetadata] = useState<Asset>();
     const { venues, addVenue } = useVenues();
     const [venue, setVenue] = useState<Venue>();
+    const { data: session } = useSession();
+
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: 'UTC', // Key setting for UTC time
+   });
 
     const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
     if (!venueObj) return null;
@@ -37,7 +52,8 @@ export const ExecutionViewer = (props: any) => {
             setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.name}))
          }
          else {
-          Venue.connect(decodeURIComponent(props.venueId)).then((venue) => {
+          Grid.connect(decodeURIComponent(props.venueId), 
+            new CredentialsHTTP(decodeURIComponent(props.venueId),"",session?.user?.email || "")).then((venue) => {
             addVenue(venue)
             setVenue(venue)
           });
@@ -125,15 +141,13 @@ export const ExecutionViewer = (props: any) => {
             if (type == "input") {
                 keys = Object.keys(jobMetadata?.input || {});
                 schema = assetsMetadata?.metadata?.operation?.input;
-                inOutType = schema?.type;
+                inOutType = schema?.type ;
             } else {
                 schema = assetsMetadata?.metadata?.operation?.output;
                 inOutType = schema?.type;
                 keys = Object.keys(jobMetadata?.output || {});
             }
-            if (inOutType == "asset")
-                assetLink = window.location.href + "/venues/"+venue?.venueId+"/assets/" + assetsMetadata?.id;
-
+            
             // render function for each key within the input or output like "prompt" or "image"
             const renderContent = (key: string) => {
                 const fieldType = schema?.properties?.[key]?.type || "object";
@@ -157,7 +171,24 @@ export const ExecutionViewer = (props: any) => {
 
             // render function for the type each key within the input or output like "string" or "asset"
             const renderType = (key: string) => {
-                const fieldType = schema?.properties?.[key]?.type || "object";
+                const fieldType = schema?.properties?.[key]?.type;
+                if(fieldType == undefined) {
+                    return (
+                    <TableCell className="text-card-foreground flex flex-row space-x-1">
+                        
+                        <span>{typeof key}</span>
+                        <Tooltip>
+                            <TooltipTrigger>
+                                <QuestionMarkCircledIcon></QuestionMarkCircledIcon>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                The type is not specified in the schema or the data was interpretted as {typeof key}
+                            </TooltipContent>
+                        </Tooltip>
+                        </TableCell>
+                    )
+                }
+
                 return <TableCell className="text-card-foreground">{fieldType}</TableCell>;
             }
 
@@ -237,12 +268,12 @@ export const ExecutionViewer = (props: any) => {
                             <div className="flex flex-row items-center space-x-4  py-2">
                                 <Clock></Clock>
                                 <span className="w-28">Created Date</span>
-                                <span className="text-card-foreground">{jobMetadata?.created ? new Date(jobMetadata.created).toLocaleString() : 'N/A'}</span>
+                                <span className="text-card-foreground">{jobMetadata?.created ? formatter.format(new Date(jobMetadata.created)).replace(', ', 'T') + 'Z' : 'N/A'}</span>
                             </div>
                             <div className="flex flex-row items-center space-x-4  py-2">
                                 <Clock></Clock>
                                 <span className="w-28">Updated Date:</span>
-                                <span className="text-card-foreground">{jobMetadata?.updated ? new Date(jobMetadata.updated).toLocaleString() : 'N/A'}</span>
+                                <span className="text-card-foreground">{jobMetadata?.updated ? formatter.format(new Date(jobMetadata.updated)).replace(', ', 'T') + 'Z' : 'N/A'}</span>
                             </div>
                             <div className="flex flex-row items-center space-x-4  py-2">
                                 <Timer></Timer>
