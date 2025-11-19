@@ -12,7 +12,8 @@ import {
   MapPinCheck,
   MapPinHouse,
   Book,
-  LibraryBig
+  LibraryBig,
+  Activity
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 
@@ -139,7 +140,7 @@ export function   getMenuList(): Group[] {
           {
             href: "/jobs",
             label: "Jobs",
-            icon: User
+            icon: Activity
           },
           {
             href: "/learning",

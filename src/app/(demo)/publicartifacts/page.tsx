@@ -15,6 +15,8 @@ import { CreateAssetComponent } from "@/components/CreateAssetComponent";
 import { Spinner } from '@/components/ui/shadcn-io/spinner';
 import { AssetCard } from "@/components/AssetCard";
 import { PaginationHeader } from "@/components/PaginationHeader";
+import { useVenues } from "@/hooks/use-venues";
+import { Database, FileKey } from "lucide-react";
 
 export default function AssetPage() {
   const searchParams = useSearchParams()
@@ -30,6 +32,8 @@ export default function AssetPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [isLoading, setLoading] = useState(true);
 
+  const { venues } = useVenues();
+
   const nextPage = (page: number) => {
     setCurrentPage(page)
 
@@ -38,10 +42,27 @@ export default function AssetPage() {
     setCurrentPage(page)
 
   }
+  if(venues.length == 0)
+     return (
+      <ContentLayout title="Assets">
+      <SmartBreadcrumb />
+
+      <div className="flex flex-col items-center justify-center">
+        <div className="flex flex-row items-center justify-center w-full space-x-2 ">
+          <Search />
+        </div>
+      </div>
+      <div className="flex flex-col items-center justify-center w-full h-100 space-y-2">
+            <FileKey size={64} className="text-primary"></FileKey>
+            <div className="text-primary text-lg">Get Started with Assets</div>
+            <div className="text-card-foreground text-sm">Connect to a venue to get started and see the available assets</div>
+
+        </div>
+      </ContentLayout>
+    )
   const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
   if (!venueObj) return null;
   const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name})
-  console.log(venue);
 
   function fetchAssets() {
     setAssetsMetadata([]);
