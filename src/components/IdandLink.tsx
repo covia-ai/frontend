@@ -1,12 +1,12 @@
 import { copyDataToClipBoard } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { Copy} from "lucide-react";
-import { getCompleteAssetId } from "@/lib/covia/Utils";
+import { getAssetIdFromPath } from "@/lib/covia/Utils";
 
 export const IdAndLink = (props: any) => {
     const type = props.type;
     const url = props.url;
-    const id = getCompleteAssetId(props.id, url);
+    const id = getAssetIdFromPath(props.id, url);
     return (
          <div className="flex flex-row items-start justify-center space-x-2 space-x-reverse w-1/3  text-xs mt-4  ">
             <Tooltip>

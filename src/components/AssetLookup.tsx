@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useVenues } from "@/hooks/use-venues";
 import { Router, useRouter } from "next/navigation";
+import { getAssetIdFromVenueId } from "@/lib/covia/Utils";
 
 export const AssetLookup = ({sendAssetIdBackToForm}) => {
  
@@ -42,9 +43,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}) => {
 
   useEffect( () => {
       setAssetsMetadata([]);
-      console.log(selectedVenue)
       selectedVenue?.getAssets().then((assets) => {
-        console.log(assets?.length)
           setAssetsMetadata(assets);
           setFilteredAsset(assets)
       })
@@ -72,7 +71,8 @@ export const AssetLookup = ({sendAssetIdBackToForm}) => {
   },[filterValue, assetsMetadata])
 
   const handleVenueSelect = (venue: Venue) => {
-    setSelectedVenue(venue);
+    console.log(venue)
+    setSelectedVenue(new Venue({baseUrl: venue.baseUrl, venueId: venue.venueId, name:venue.name}));
     //router.refresh();
   };
   return (
@@ -99,7 +99,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}) => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="start">
-                    {venues.map((venue) => (
+                    {venues.map((venue:Venue) => (
                       <DropdownMenuItem
                         key={venue.venueId}
                         onClick={() => handleVenueSelect(venue)}
@@ -148,7 +148,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}) => {
             </ScrollArea>
          
 
-             <DialogClose><Button onClick={(e) => sendAssetIdBackToForm(assetId)}>Select</Button></DialogClose>
+             <DialogClose><Button onClick={(e) => sendAssetIdBackToForm(getAssetIdFromVenueId(assetId!,selectedVenue?.venueId))}>Select</Button></DialogClose>
       </DialogContent>
       
      </Dialog>

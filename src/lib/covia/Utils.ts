@@ -95,9 +95,13 @@ export function getParsedAssetId(assetId: string): string {
  * @param assetPath - The asset path
  * @returns {string} - Returns the complete assetId
  */
-export function getCompleteAssetId(assetHex: string, assetPath:string): string {
+export function getAssetIdFromPath(assetHex: string, assetPath:string): string {
   //Get did from path and append to asset for full id
   const venueDid = decodeURIComponent(assetPath.split("/")[4]);   
-  return venueDid+":"+assetHex;
+  return venueDid+"/a/"+assetHex;
+}
+export function getAssetIdFromVenueId(assetHex: string, venueId:string): string {
+  //Get did from path and append to asset for full id
+  return venueId+"/a/"+assetHex;
 }
 
