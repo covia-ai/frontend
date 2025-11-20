@@ -1,10 +1,8 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Venue } from "@/lib/covia";
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from "react";
 import { useVenues } from "@/hooks/use-venues";
 import { Iconbutton } from "./Iconbutton";
 
@@ -19,7 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Cross, CrossIcon, SquareArrowOutUpRight, X } from "lucide-react";
+import {  SquareArrowOutUpRight, X } from "lucide-react";
 
 interface VenueCardProps {
   venue: Venue;
@@ -31,6 +29,7 @@ export function VenueCard({ venue }: VenueCardProps) {
 
   if(!(venue instanceof Venue))
     venue = new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.name})
+  
   const handleCardClick = () => {
     const encodedUrl = "/venues/"+encodeURIComponent(venue.venueId);
     router.push(encodedUrl);

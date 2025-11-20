@@ -54,9 +54,17 @@ export function VenueSelector() {
 
     
   };
-  console.log(venues)
   if (!selectedVenue || venues.length === 0) {
-     return null;
+     return (
+      <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline">
+          <Building2 size={14} />
+          No venues
+        </Button>
+      </DropdownMenuTrigger>
+    </DropdownMenu>
+     )
   }
 
   return (

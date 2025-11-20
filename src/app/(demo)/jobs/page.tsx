@@ -25,6 +25,8 @@ import { Job, JobMetadata, RunStatus, Venue } from "@/lib/covia";
 import { getExecutionTime } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { PaginationHeader } from "@/components/PaginationHeader";
+import { useVenues } from "@/hooks/use-venues";
+import { Activity, Database, User } from "lucide-react";
 
 export default function OperationsPage() {
   const [statusFilter, setStatusFilter] = useState("All");
@@ -35,6 +37,7 @@ export default function OperationsPage() {
   const itemsPerPage = 10
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const { venues } = useVenues();
 
   const nextPage = (page: number) => {
     setCurrentPage(page)
@@ -53,6 +56,45 @@ export default function OperationsPage() {
     }
     return true;
   }
+  if(venues.length == 0)
+      return (
+      <ContentLayout title="Assets">
+      <SmartBreadcrumb />
+        <div className="flex flex-col items-center justify-center  mt-2 bg-background">
+      <div className="flex flex-row w-full  items-start justify-start mt-4 space-x-4 ">
+          <div className="flex flex-row items-center justify-start w-1/3  space-x-4">
+            <Label>Job Status</Label>
+            <Select onValueChange={value => setStatusFilter(value)} defaultValue="All">
+            <SelectTrigger className="w-[180px] text-semibold">
+              <SelectValue className="text-semibold" placeholder="Run Status" />
+            </SelectTrigger>    
+            <SelectContent>
+              <SelectGroup>
+                
+                <SelectItem value="All">All</SelectItem>
+                <SelectItem value={RunStatus.PENDING}>{RunStatus.PENDING}</SelectItem>
+                <SelectItem value={RunStatus.STARTED}>{RunStatus.STARTED}</SelectItem>
+                <SelectItem value={RunStatus.PAUSED}>{RunStatus.PAUSED}</SelectItem>
+                <SelectItem value={RunStatus.CANCELLED}>{RunStatus.CANCELLED}</SelectItem>
+                <SelectItem value={RunStatus.TIMEOUT}>{RunStatus.TIMEOUT}</SelectItem>
+                <SelectItem value={RunStatus.REJECTED}>{RunStatus.REJECTED}</SelectItem>
+                <SelectItem value={RunStatus.AUTH_REQUIRED}>{RunStatus.AUTH_REQUIRED}</SelectItem>
+                <SelectItem value={RunStatus.INPUT_REQUIRED}>{RunStatus.INPUT_REQUIRED}</SelectItem>
+                <SelectItem value={RunStatus.COMPLETE}>{RunStatus.COMPLETE}</SelectItem>
+                <SelectItem value={RunStatus.FAILED}>{RunStatus.FAILED}</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+  <div className="flex flex-col items-center justify-center w-full h-100 space-y-2">
+          <Activity size={64} className="text-primary"></Activity>
+          <div className="text-primary text-lg">Get Started with Operations</div>
+          <div className="text-card-foreground text-sm">Connect to a venue to get started and see the available operations</div>
+      </div>     
+    </div>
+      </ContentLayout>
+  )
  const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
   if (!venueObj) return null;
   const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
@@ -97,6 +139,7 @@ export default function OperationsPage() {
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
+     second:'2-digit',
     hourCycle: 'h23',
     timeZone: 'UTC', // Key setting for UTC time
    });

@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/pagination"
 import { AssetCard } from "./AssetCard";
 import { PaginationHeader } from "./PaginationHeader";
+import { useVenues } from "@/hooks/use-venues";
+import { PlayCircle } from "lucide-react";
 
 interface OperationsListProps {
   venueSlug?: string; // Optional venue slug for venue-specific pages
@@ -43,12 +45,32 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
   const [totalPages, setTotalPages] = useState(10);
   const [currentPage, setCurrentPage] = useState(1)
 
+  const { venues } = useVenues();
+  
   const nextPage = (page: number) => {
     setCurrentPage(page)
   }
   const prevPage = (page: number) => {
     setCurrentPage(page)
   }
+   if(venues.length == 0)
+     return (
+      <ContentLayout title="Assets">
+      <SmartBreadcrumb />
+
+      <div className="flex flex-col items-center justify-center">
+        <div className="flex flex-row items-center justify-center w-full space-x-2 ">
+          <Search />
+        </div>
+      </div>
+       <div className="flex flex-col items-center justify-center w-full h-100 space-y-2">
+            <PlayCircle size={64} className="text-primary"></PlayCircle>
+            <div className="text-primary text-lg">Get Started with Operations</div>
+            <div className="text-card-foreground text-sm">Connect to a venue to get started and see the available operations</div>
+
+        </div>
+      </ContentLayout>
+    )
   const venueObj = useStore(useVenue, (x) => x.currentVenue);
   if (!venueObj) return null;
   const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name})
