@@ -1,13 +1,10 @@
 import { Card } from "@/components/ui/card";
 import { Iconbutton } from "./Iconbutton";
-import { Badge, CopyIcon, InfoIcon, Save, SquareArrowOutUpRight } from "lucide-react";
+import {  CopyIcon,  Save, SquareArrowOutUpRight } from "lucide-react";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { Asset, DataAsset, Venue } from "@/lib/covia";
+import { Asset, Venue } from "@/lib/covia";
 import { useRouter } from "next/navigation";
-import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Separator } from "./ui/separator";
-import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -18,7 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { useState } from "react";
 import { JsonEditor } from "json-edit-react";
-import  { useSession } from "next-auth/react";
+import { AssetInfoSheet } from "./AssetInfoSheet";
 
 interface AssetCardProps {
   asset: Asset;
@@ -28,49 +25,20 @@ interface AssetCardProps {
 export function AssetCard({ asset,type }: AssetCardProps) {
     const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
     if (!venueObj) return null;
+
     const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name})
     const router = useRouter();
     const [newJsonData, setNewJsonData] = useState({});
     const [assetCreated, setAssetCreated] = useState(false);
-    const { data: session } = useSession()
 
-    function renderJSONMap(jsonObject: JSON, requiredKeys: string[] = []) {
-        const keys = Object.keys(jsonObject);
-        const type = new Array<string>();
-        const description = new Array<string>();
-        keys.map((key, index) => {
-          const jsonValue = jsonObject[key];
-          type[index] = jsonValue.type;
-          description[index] = jsonValue.description;
-        });
-        return (
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-secondary text-white">
-                <TableCell>Name</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Description</TableCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {keys.map((key, index) => (
-                <TableRow key={index}>
-                  <TableCell>{key} {requiredKeys != undefined && requiredKeys?.indexOf(key) != -1 && <span className="text-red-400">*</span>}</TableCell>
-                  <TableCell>{type[index]}</TableCell>
-                  <TableCell>{description[index]}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )
-      }
+    
     const handleCardClick = (assetId:string) => {
         const encodedUrl = "/venues/"+encodeURIComponent(venue.venueId)+"/"+type+"/"+assetId;
         router.push(encodedUrl);
     };
     function copyAsset(jsonData: JSON) {
         try {
-          venue?.createAsset(jsonData,session?.user?.email || "").then((asset: Asset) => {
+          venue?.createAsset(jsonData).then((asset: Asset) => {
             if (asset != undefined && asset != null) {
               setNewJsonData({})
               setAssetCreated(true);
@@ -90,44 +58,7 @@ export function AssetCard({ asset,type }: AssetCardProps) {
                     onClick={() => handleCardClick(asset.id)}>{asset.metadata.name || 'Unnamed Asset'}
                     </div>
                     {type == "operations" && 
-                       <Sheet>
-                           <SheetTrigger>
-                              <Iconbutton icon={InfoIcon} message="Know more"></Iconbutton>
-                           </SheetTrigger>
-                            <SheetContent className="min-w-lg">
-                                <SheetHeader className="flex flex-col items-center justify-center">
-                                <SheetTitle>{asset.metadata.name}</SheetTitle>
-                                {asset.metadata.description && <SheetDescription>
-                                    {asset.metadata.description}
-                                </SheetDescription>}
-                                </SheetHeader>
-                                {asset.metadata.operation?.input?.properties && (
-                                <div className="flex flex-center flex-col mx-4">
-                                    <div className="p-2">Inputs</div>
-                                    <Separator />
-                                    <div className="grid grid-cols-1">{asset.metadata.operation?.input?.properties &&
-                                    renderJSONMap(asset.metadata.operation?.input?.properties, asset.metadata.operation?.input?.required)
-                                    }
-                                    </div>
-                                </div>
-                                )}
-                                {asset.metadata.operation?.output?.properties && (
-                                <div className="flex flex-center flex-col mx-4">
-                                    <div className="p-2">Outputs</div>
-                                    <Separator />
-                                    <div className="grid grid-cols-1">{asset.metadata.operation?.output?.properties &&
-                                    renderJSONMap(asset.metadata.operation?.output?.properties)
-                                    }
-                                    </div>
-                                </div>
-                                )}
-                                <SheetFooter>
-                                <SheetClose asChild>
-                                    {asset.id && asset.metadata?.operation?.input && <Button type="submit" onClick={() => { handleCardClick(asset.id) }}>Run</Button>}
-                                </SheetClose>
-                                </SheetFooter>
-                            </SheetContent>
-                       </Sheet>  
+                       <AssetInfoSheet asset={asset} venueId={venue?.venueId}/> 
                     }
                     {type == "assets" && 
                         <Dialog>

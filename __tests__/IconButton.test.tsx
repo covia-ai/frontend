@@ -41,7 +41,7 @@ describe('IconButton Component', () => {
      const triggerButton = screen.getByTestId('btn-icon');
      expect(triggerButton).toBeInTheDocument();
      await user.click(triggerButton);
-      expect(pushMock).toHaveBeenCalledWith(expect.stringContaining('xyz'));
+     expect(pushMock).toHaveBeenCalledWith(expect.stringContaining('xyz'));
      
   });
 

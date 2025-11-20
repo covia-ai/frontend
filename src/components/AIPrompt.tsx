@@ -20,9 +20,9 @@ export const AIPrompt = () => {
   return (
     <div data-testid="chat-container" className="flex flex-col items-center justify-center py-10 px-10  my-4 ">
         <h3 className="text-center text-4xl  font-bold">
-          How can I help you in  {" "}
+          Do anything on   {" "}
           <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
-            being more productive
+            the Grid ...
           </span>
         </h3>
         <p className="text-xl text-muted-foreground text-center mt-4 mb-8">
