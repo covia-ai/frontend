@@ -13,6 +13,7 @@ import { Label } from "./ui/label";
 import { useState } from "react";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from "./ui/checkbox";
 
 
 export function ChangeLLMProvider(props:any) {
@@ -65,11 +66,15 @@ export function ChangeLLMProvider(props:any) {
             {/* Note Alert */}
             <Alert className="bg-yellow-50 border-yellow-200">
               <AlertDescription className="text-yellow-800 text-sm">
-                <span className="font-thin">Note:</span>
-                Next state will use the new provider. All history is preserved.
+                <span className="font-thin">Note: Next state will use the new provider.</span>
+                
               </AlertDescription>
             </Alert>
 
+             <div className="flex items-start gap-3">
+              <Checkbox defaultChecked id="history" />
+              <Label htmlFor="history">Complete history will be preserved</Label>
+            </div>
             {/* Action Buttons */}
             <div className="flex gap-2 pt-2">
            

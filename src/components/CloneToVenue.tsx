@@ -6,6 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from "sonner"
 import { useVenues } from '@/hooks/use-venues';
+import { Checkbox } from './ui/checkbox';
+import { Label } from './ui/label';
 
 export default function CloneToVenue(props:any) {
   const [cloneName, setCloneName] = useState('');
@@ -71,11 +73,10 @@ export default function CloneToVenue(props:any) {
           </div>
 
           {/* Note */}
-          <Alert className="bg-amber-50 border-amber-200">
-            <AlertDescription className="text-sm text-gray-700 flex flex-row">
-              Complete history will be maintained at the new venue
-            </AlertDescription>
-          </Alert>
+          <div className="flex items-start gap-3">
+              <Checkbox defaultChecked id="history" />
+              <Label htmlFor="history">Complete history will be preserved at the new venue</Label>
+            </div>
         </div>
 
          {/* Action Buttons */}

@@ -35,7 +35,7 @@ const TimelinePanel = (props:any) => {
      const mockData = [
         {
           id: 9,
-          title: "Step 9",
+          title: "Task 9",
           updated: "2025-11-24T10:23:00",
           description: "Help customer with refund request.",
           head:true
@@ -43,21 +43,21 @@ const TimelinePanel = (props:any) => {
         },
         {
           id: 8,
-          title: "Step 8",
+          title: "Task 8",
           updated: "2025-11-24T10:15:00",
           description: "Check order status for customer 4564.",
           head:false
         },
         {
           id: 7,
-          title: "Step 7",
+          title: "Task 7",
           updated: "2025-11-24T10:05:00",
           description: "Process return authorization.",
           head:false
         },
         {
           id: 6,
-          title: "Step 6",
+          title: "Task 6",
           updated: "2025-11-24T10:00:00",
           description: "Answer shipping question.",
           head:false

@@ -17,6 +17,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Textarea } from "./ui/textarea";
 import { Separator } from "./ui/separator";
 import { toast } from "sonner"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 
 export function AddNewAgent() {
         const [agentName, setAgentName] = useState("");
@@ -34,7 +40,7 @@ export function AddNewAgent() {
                   <DialogTrigger>
                     <Iconbutton icon={PlusCircledIcon} message="Create a new agent" label="Create a new agent"/> 
                   </DialogTrigger>
-                  <DialogContent className="flex flex-col h-148 bg-card">
+                  <DialogContent className="flex flex-col bg-card">
                       <DialogTitle className="space-y-2">
                             <Label className="text-md">Create a new agent </Label>
                             <Separator></Separator>
@@ -79,42 +85,48 @@ export function AddNewAgent() {
       
                         {/* State Transition Function */}
                         <div className="space-y-2 w-full">
-                          <Label htmlFor="transition-function">State Transition Function:</Label>
+                          <Label htmlFor="transition-function">Agent Engine:</Label>
                           <Select  value={transitionFunction} onValueChange={setTransitionFunction}>
                             <SelectTrigger id="transition-function">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent >
-                              <SelectItem value="standard">Standard LLM Call</SelectItem>
-                              <SelectItem value="custom">Custom Function</SelectItem>
-                              <SelectItem value="workflow">Workflow Based</SelectItem>
+                              <SelectItem value="standard">Claude Engine</SelectItem>
+                              <SelectItem value="custom">Gemini Pro Engine</SelectItem>
+                              <SelectItem value="workflow">OpenAI GPT-4 Engine</SelectItem>
                             </SelectContent>
                           </Select>
-                          <p className="text-xs text-gray-500">
-                            Simple prompt/response with selected LLM
-                          </p>
+                          
                         </div>
       
                         {/* Initial State */}
-                        <div className="space-y-2 w-96">
-                          <Label htmlFor="initial-state">Initial State (optional):</Label>
-                          <Textarea
-                            id="initial-state"
-                            value={JSON.stringify(initialState)}
-                            onChange={(e) => setInitialState(e.target.value)}
-                            className="font-mono text-sm w-full"
-                            rows={4}
-                          />
-                          <p className="text-xs text-gray-500">
-                            Must be valid JSON. Leave as {'{}'} for empty initial state.
-                          </p>
-                        </div>
-      
-          
-          </div>
-                            <DialogClose>
-                                  <Button  onClick={() => handleNewAgent()} className="btn-sm">Create</Button>              
-                          </DialogClose>
+                          <Accordion
+      type="single"
+      collapsible
+      className="w-full"
+      defaultValue="item-1"
+    >
+            <AccordionItem value="advanced">
+              <AccordionTrigger>Advanced Options</AccordionTrigger>
+              <AccordionContent className="flex flex-col gap-4 text-balance">
+                <Label htmlFor="initial-state">Initial State (optional):</Label>
+                  <Textarea
+                    id="initial-state"
+                    value={JSON.stringify(initialState)}
+                    onChange={(e) => setInitialState(e.target.value)}
+                    className="font-mono text-sm w-full"
+                    rows={4}
+                  />
+                  <p className="text-xs text-gray-500">
+                    Must be valid JSON. Leave as {'{}'} for empty initial state.
+                  </p>
+              </AccordionContent>
+            </AccordionItem>
+            </Accordion>
+                     </div>
+                    <DialogClose>
+                          <Button  onClick={() => handleNewAgent()} className="btn-sm">Create</Button>              
+                  </DialogClose>
                   </DialogContent>
               </Dialog>
       )
