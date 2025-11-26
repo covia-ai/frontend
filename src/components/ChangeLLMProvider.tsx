@@ -17,6 +17,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export function ChangeLLMProvider(props:any) {
     const [selectedProvider, setSelectedProvider] = useState('claude-3.5');
+    const [currentProvider, setCurrentProvider] = useState('claude-3.5');
 
     return (
       <Dialog >
@@ -74,6 +75,7 @@ export function ChangeLLMProvider(props:any) {
            
               <DialogClose>
               <Button
+               disabled={currentProvider == selectedProvider}
                 className="flex-1"
               >
                 Change Provider

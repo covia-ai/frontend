@@ -13,9 +13,9 @@ export function AgentHeader(props:any) {
                 <div className="text-lg">Agent Name: {props.agentId}</div>
                 <div className="flex flex-row my-2 space-x-2">
                     <SendRequest agentId={props.id}/>
-                     <ForkAgent step={props.step} agentId={props.id}/> 
+                     <ForkAgent step={props.step} agentId={props.id }/> 
                      <ChangeLLMProvider agentId={props.id}/>
-                      <CloneToVenue agentId={props.id} venueName={props.venueName}/>
+                     <CloneToVenue agentId={props.id} venueName={props.venueName}/>
                 </div>
         </Card>
     )

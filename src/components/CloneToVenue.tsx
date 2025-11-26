@@ -83,6 +83,7 @@ export default function CloneToVenue(props:any) {
            
               <DialogClose>
               <Button
+                 disabled={!targetVenue.trim()}
                 className="flex-1"
                 onClick={() => handleClone()}
               >

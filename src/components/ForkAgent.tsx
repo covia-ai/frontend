@@ -17,6 +17,7 @@ import { Separator } from "./ui/separator";
 export function ForkAgent(props:any) {
 
     const [newAgentName, setNewAgentName] = useState("");
+    const [isProcessing, setIsProcessing] = useState(false);
 
      const handleFork = () => {
      toast("Success !!", {
@@ -44,12 +45,13 @@ export function ForkAgent(props:any) {
 
             {/* New Agent Name */}
             <div className="space-y-2">
-              <Label htmlFor="new-agent-name" className="font-thin">
-                New Agent Name:
+              <Label htmlFor="new-agent-name"  className="font-thin">
+                New Agent Name: 
               </Label>
               <Input
                 id="new-agent-name"
                 value={newAgentName}
+                placeholder={props.agentId}
                 onChange={(e) => setNewAgentName(e.target.value)}
                 className="w-full"
               />
@@ -57,7 +59,9 @@ export function ForkAgent(props:any) {
 
             {/* Action Buttons */}
               <DialogClose>
-              <Button onClick={() => handleFork()}>
+              <Button 
+                disabled={isProcessing || !newAgentName.trim()}
+                onClick={() => handleFork()}>
                 Create Fork
               </Button>
               </DialogClose>
