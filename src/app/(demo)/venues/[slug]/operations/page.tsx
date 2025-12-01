@@ -6,7 +6,7 @@ interface VenueOperationsPageProps {
   }>;
 }
 
-export default async function VenueOperationsPage({ params }: VenueOperationsPageProps) {
+export default async function OperationsPage({ params }: VenueOperationsPageProps) {
   const { slug } = await params;
-  return <OperationsList venueSlug={slug} />;
+  return <OperationsList/>;
 } 

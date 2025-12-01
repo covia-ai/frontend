@@ -17,11 +17,9 @@ import { PaginationHeader } from "./PaginationHeader";
 import { useVenues } from "@/hooks/use-venues";
 import { PlayCircle } from "lucide-react";
 
-interface OperationsListProps {
-  venueSlug?: string; // Optional venue slug for venue-specific pages
-}
 
-export function OperationsList({ venueSlug }: OperationsListProps) {
+
+export function OperationsList() {
   const searchParams = useSearchParams()
   const search = searchParams.get('search');
   const [assetsMetadata, setAssetsMetadata] = useState<Asset[]>([]);
@@ -112,7 +110,7 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
           <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4">
             {
             assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset, index) => (
-              <AssetCard key={index} asset={asset} type="operations" venueSlug={venueSlug}/>
+              <AssetCard key={index} asset={asset} type="operations"/>
             ))}
           </div>
           <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>
