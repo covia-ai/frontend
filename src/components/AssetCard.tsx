@@ -24,7 +24,7 @@ interface AssetCardProps {
 
 export function AssetCard({ asset,type }: AssetCardProps) {
     const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
-    if (!venueObj) return null;
+
 
     const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name})
     const router = useRouter();

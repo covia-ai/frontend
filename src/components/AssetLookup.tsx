@@ -17,24 +17,21 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useVenues } from "@/hooks/use-venues";
-import { Router, useRouter } from "next/navigation";
 import { getAssetIdFromVenueId } from "@/lib/covia/Utils";
 
 export const AssetLookup = ({sendAssetIdBackToForm}) => {
  
   const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
-   if (!venueObj) return null;
   const venue = useMemo(() => {
     // Your expensive calculation or value creation
-    return new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name})
-    }, [venueObj.baseUrl, venueObj.name, venueObj.venueId]); // Dependency array
+    return new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name})
+    }, [venueObj]); // Dependency array
 
   const [assetsMetadata, setAssetsMetadata] = useState<Asset[]>([]);
   const [filteredAsset, setFilteredAsset] = useState<Asset[]>([]);
-  const [assetId, setAssetId] =  useState();
+  const [assetId, setAssetId] =  useState("");
   const [filterValue, setFilterValue] =  useState("");
   const [selectedVenue, setSelectedVenue]=  useState<Venue>();
-  const router = useRouter();
   const { venues } = useVenues();
 
    useEffect( () => {
@@ -73,7 +70,6 @@ export const AssetLookup = ({sendAssetIdBackToForm}) => {
   const handleVenueSelect = (venue: Venue) => {
     console.log(venue)
     setSelectedVenue(new Venue({baseUrl: venue.baseUrl, venueId: venue.venueId, name:venue.name}));
-    //router.refresh();
   };
   return (
      <Dialog>

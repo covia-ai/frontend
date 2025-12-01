@@ -30,6 +30,7 @@ export const ExecutionViewer = (props: any) => {
     const { venues, addVenue } = useVenues();
     const [venue, setVenue] = useState<Venue>();
     const { data: session } = useSession();
+    const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
 
     const formatter = new Intl.DateTimeFormat('en-CA', {
     year: 'numeric',
@@ -42,12 +43,10 @@ export const ExecutionViewer = (props: any) => {
     timeZone: 'UTC', // Key setting for UTC time
    });
 
-    const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
-    if (!venueObj) return null;
 
     useEffect(() => {
     
-      if(props.venueId != venueObj.venueId) {
+      if(props.venueId != venueObj?.venueId) {
         const venue = venues.find(v => v.venueId === props.venueId);
         if (venue) {
             setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.name}))
@@ -61,9 +60,9 @@ export const ExecutionViewer = (props: any) => {
          }
     }
     else {
-        setVenue(new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name}));  
+        setVenue(new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name}));  
     }  
-   }, []); 
+   }, [addVenue, props.venueId, session?.user?.email, venueObj?.baseUrl, venueObj?.name, venueObj?.venueId, venues]); 
 
     // Function to determine text color based on status
     function colourForStatus(status: RunStatus): string {
@@ -81,7 +80,7 @@ export const ExecutionViewer = (props: any) => {
     }
 
     function fetchJobStatus() {
-        venue.getJob(props.jobId).then((job:Job) => {
+        venue?.getJob(props.jobId).then((job:Job) => {
                 setJobMetadata(job.metadata);
                 setPollStatus(job.metadata.status || "");
         }).catch((error) => {
