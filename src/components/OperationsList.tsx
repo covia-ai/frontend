@@ -55,7 +55,7 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
   }
    if(venues.length == 0)
      return (
-      <ContentLayout title="Assets">
+      <ContentLayout title="Operations">
       <SmartBreadcrumb />
 
       <div className="flex flex-col items-center justify-center">

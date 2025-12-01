@@ -13,7 +13,8 @@ import {
   MapPinHouse,
   Book,
   LibraryBig,
-  Activity
+  Activity,
+  Bot
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 
@@ -72,6 +73,7 @@ export function   getMenuList(): Group[] {
             ]
           
           },
+           
           {
             href: "/venues",
             label: "Venues",
@@ -132,6 +134,7 @@ export function   getMenuList(): Group[] {
             ]
           
           },
+          
           {
             href: "/venues",
             label: "Venues",
