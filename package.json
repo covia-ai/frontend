@@ -61,7 +61,8 @@
     "uuid": "^11.1.0",
     "vanilla-jsoneditor": "^3.10.0",
     "web-did-resolver": "^2.0.31",
-    "zustand": "^5.0.8"
+    "zustand": "^5.0.8",
+    "covialib": "github:covia-ai/covialib"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",

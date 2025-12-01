@@ -16,11 +16,15 @@ import { Venue } from "@/lib/covia";
 
 export function VenueSelector() {
   const pathname = usePathname();
-  const { venues } = useVenues();
+  const  venues = useVenues().getVenue();
   const { currentVenue, setCurrentVenue } = useVenue();
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
+;
 
   useEffect(() => {  
+  
+    console.log(venues);
+    console.log(currentVenue)
     // If we already have a current venue, use it
     if (currentVenue) {
       setSelectedVenue(currentVenue);
@@ -41,7 +45,7 @@ export function VenueSelector() {
 
     // Default to first venue if no specific venue is found
     if (venues.length > 0) {
-      const defaultVenue = venues[0];
+      const defaultVenue = venues[0]
       setCurrentVenue(defaultVenue);
       setSelectedVenue(defaultVenue);
     }
@@ -55,12 +59,13 @@ export function VenueSelector() {
     
   };
   if (!selectedVenue || venues.length === 0) {
+      
      return (
       <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline">
           <Building2 size={14} />
-          No venues
+          No venues {venues.length}
         </Button>
       </DropdownMenuTrigger>
     </DropdownMenu>

@@ -33,6 +33,7 @@ export default function AssetPage() {
   const [isLoading, setLoading] = useState(true);
 
   const { venues } = useVenues();
+  const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
 
   const nextPage = (page: number) => {
     setCurrentPage(page)
@@ -42,9 +43,9 @@ export default function AssetPage() {
     setCurrentPage(page)
 
   }
-  if(venues.length == 0)
+  if(venues.length == 0) {
      return (
-      <ContentLayout title="Assets">
+      <ContentLayout>
       <SmartBreadcrumb />
 
       <div className="flex flex-col items-center justify-center">
@@ -60,11 +61,43 @@ export default function AssetPage() {
         </div>
       </ContentLayout>
     )
-  const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
-  if (!venueObj) return null;
-  const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name})
+  }
+  useEffect(() => {
+    if(venueObj) {
+       const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name})
+        setAssetsMetadata([]);
+        venue.getAssets().then((assets) => {
+          assets.forEach((asset: Asset) => {
+            asset.getMetadata().then((metadata: object) => {
+              if (metadata.name != undefined && metadata.operation == undefined) {
+                  if(search && search.length>0 ) {
+                      if(metadata?.name?.toLowerCase().indexOf(search.toLowerCase()) != -1 || asset.id?.toLowerCase().indexOf(search.toLowerCase()) != -1)
+                        setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
+                  }
+                  else {
+                      setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
+                
+                  }
+              }
+            })
+            setLoading(false)
 
-  function fetchAssets() {
+
+          })
+
+        })
+    }
+  }, [search, venueObj]);
+  
+  useEffect(() => {
+    setTotalItems(assetsMetadata.length)
+    setTotalPages(Math.ceil(assetsMetadata.length / itemsPerPage))
+
+  }, [assetsMetadata]);
+
+ 
+  function handleDataFromChild(status: boolean) {
+    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name})
     setAssetsMetadata([]);
     venue.getAssets().then((assets) => {
       assets.forEach((asset: Asset) => {
@@ -86,25 +119,10 @@ export default function AssetPage() {
       })
 
     })
-
-  }
-  useEffect(() => {
-    fetchAssets()
-
-  }, []);
-  useEffect(() => {
-    setTotalItems(assetsMetadata.length)
-    setTotalPages(Math.ceil(assetsMetadata.length / itemsPerPage))
-
-  }, [assetsMetadata]);
-
- 
-  function handleDataFromChild(status: boolean) {
-    fetchAssets();
   }
 
   return (
-    <ContentLayout title="Assets">
+    <ContentLayout>
       <SmartBreadcrumb />
 
       <div className="flex flex-col items-center justify-center">
@@ -118,7 +136,7 @@ export default function AssetPage() {
             <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>
             <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4">
               {assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset, index) =>
-                <AssetCard key={index} asset={asset} type="assets" venueSlug={encodeURIComponent(venue.venueId)}/>
+                <AssetCard key={index} asset={asset} type="assets"/>
               )}
             </div>
             <CreateAssetComponent sendDataToParent={handleDataFromChild} ></CreateAssetComponent>

@@ -77,6 +77,9 @@ importers:
       copy-to-clipboard:
         specifier: ^3.3.3
         version: 3.3.3
+      covialib:
+        specifier: github:covia-ai/covialib
+        version: https://codeload.github.com/covia-ai/covialib/tar.gz/4f517165236a8ad0c00c63cbde52b0c8fb95b83a(@babel/core@7.28.5)(@jest/transform@30.2.0)(@jest/types@30.2.0)(@types/node@20.19.24)(babel-jest@30.2.0(@babel/core@7.28.5))(jest-util@30.2.0)(ts-node@10.9.2(@types/node@20.19.24)(typescript@5.9.3))(typescript@5.9.3)
       did-resolver:
         specifier: ^4.1.0
         version: 4.1.0
@@ -2159,6 +2162,10 @@ packages:
 
   copy-to-clipboard@3.3.3:
     resolution: {integrity: sha512-2KV8NhB5JqC3ky0r9PMCAZKbUHSwtEo4CwCs0KXgruG43gX5PMqDEBbVU4OUzw2MuAWUfsuFmWvEKG5QRfSnJA==}
+
+  covialib@https://codeload.github.com/covia-ai/covialib/tar.gz/4f517165236a8ad0c00c63cbde52b0c8fb95b83a:
+    resolution: {tarball: https://codeload.github.com/covia-ai/covialib/tar.gz/4f517165236a8ad0c00c63cbde52b0c8fb95b83a}
+    version: 1.0.0
 
   create-require@1.1.1:
     resolution: {integrity: sha512-dcKFX3jn0MpIaXjisoRvexIJVEKzaq7z2rZKxf+MSr9TkdmHmsU4m2lcLojrj/FHl8mk5VxMmYA+ftRkP/3oKQ==}
@@ -6515,6 +6522,28 @@ snapshots:
   copy-to-clipboard@3.3.3:
     dependencies:
       toggle-selection: 1.0.6
+
+  covialib@https://codeload.github.com/covia-ai/covialib/tar.gz/4f517165236a8ad0c00c63cbde52b0c8fb95b83a(@babel/core@7.28.5)(@jest/transform@30.2.0)(@jest/types@30.2.0)(@types/node@20.19.24)(babel-jest@30.2.0(@babel/core@7.28.5))(jest-util@30.2.0)(ts-node@10.9.2(@types/node@20.19.24)(typescript@5.9.3))(typescript@5.9.3):
+    dependencies:
+      did-resolver: 4.1.0
+      jest: 30.2.0(@types/node@20.19.24)(ts-node@10.9.2(@types/node@20.19.24)(typescript@5.9.3))
+      ts-jest: 29.4.5(@babel/core@7.28.5)(@jest/transform@30.2.0)(@jest/types@30.2.0)(babel-jest@30.2.0(@babel/core@7.28.5))(jest-util@30.2.0)(jest@30.2.0(@types/node@20.19.24)(ts-node@10.9.2(@types/node@20.19.24)(typescript@5.9.3)))(typescript@5.9.3)
+      web-did-resolver: 2.0.31
+    transitivePeerDependencies:
+      - '@babel/core'
+      - '@jest/transform'
+      - '@jest/types'
+      - '@types/node'
+      - babel-jest
+      - babel-plugin-macros
+      - encoding
+      - esbuild
+      - esbuild-register
+      - jest-util
+      - node-notifier
+      - supports-color
+      - ts-node
+      - typescript
 
   create-require@1.1.1: {}
 

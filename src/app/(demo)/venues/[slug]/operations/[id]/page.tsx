@@ -12,7 +12,7 @@ export default async function Page({
   const { slug } = await params;
   return (
 
-     <ContentLayout title="Operations">
+     <ContentLayout>
              <OperationViewer assetId= {id} venueId={decodeURIComponent(slug)}></OperationViewer>
       </ContentLayout>
   )

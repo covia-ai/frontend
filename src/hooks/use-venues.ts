@@ -8,6 +8,7 @@ type VenuesStore = {
   addVenue: (venue: Venue) => void;
   removeVenue: (venueId: string) => void;
   updateVenue: (venueId: string, updates: Partial<Venue>) => void;
+  getVenue:() => Venue[];
 };
 
 // Default venues
@@ -16,22 +17,23 @@ const defaultVenueUrls =
       "did:web:venue-2.covia.ai",
       "did:web:venue-test.covia.ai"
 ];
-const defaultVenues: Venue[] = [];
 if(!process.env.NEXT_PUBLIC_IS_ENV_PROD) 
     defaultVenueUrls.push("http://localhost:8080");
 
-defaultVenueUrls.map((venueId => {
-    Grid.connect(venueId, new CredentialsHTTP(venueId,"","")).then((venue => {
-         defaultVenues.push(venue)
-  }))
-}))
-
+const defaultVenues: Venue[] = await Promise.all(
+    defaultVenueUrls.map(venueId => 
+        Grid.connect(venueId, new CredentialsHTTP(venueId, "", ""))
+    )
+);
 
 export const useVenues = create(
   persist<VenuesStore>(
     (set, get) => ({
       venues: defaultVenues,
-      
+       getVenue: () => {
+        const state = get();
+        return state.venues;
+      },
       addVenue: (venue: Venue) => {
         set((state) => ({
           venues: [...state.venues, venue]

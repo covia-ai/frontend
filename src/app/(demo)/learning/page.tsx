@@ -17,7 +17,7 @@ import { VideoSlideShow } from "@/components/VideoSlideShow";
 export default function OperationsPage() {
 
   return (
-    <ContentLayout title="Operations">
+    <ContentLayout>
       <SmartBreadcrumb />
        
         <div id="" className=" ">

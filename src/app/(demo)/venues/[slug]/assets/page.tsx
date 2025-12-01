@@ -123,7 +123,7 @@ export default function AssetPage() {
   }
 
   return (
-    <ContentLayout title="Assets">
+    <ContentLayout>
     
       <SmartBreadcrumb venueName={venue.name}/>
 

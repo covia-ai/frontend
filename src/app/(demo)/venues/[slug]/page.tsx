@@ -109,7 +109,7 @@ export default function VenuePage({ params }: VenuePageProps) {
   const isCurrentVenue = currentVenue?.venueId === venue?.venueId;
   if (!venue) {
     return (
-      <ContentLayout title="Venue Not Found">
+      <ContentLayout>
         <SmartBreadcrumb assetOrJobName={slug}/>
         <div className="flex items-center justify-center h-64">
           <p className="text-muted-foreground">Venue not found</p>
@@ -119,7 +119,7 @@ export default function VenuePage({ params }: VenuePageProps) {
   }
 
   return (
-    <ContentLayout title={venue.name}>
+    <ContentLayout>
       <SmartBreadcrumb  venueName={venue.name}/>
       
       <div className="flex flex-col space-y-6">

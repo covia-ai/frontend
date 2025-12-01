@@ -120,7 +120,7 @@ export default function AssetPage() {
   }
 
   return (
-    <ContentLayout title="Assets">
+    <ContentLayout>
       <SmartBreadcrumb />
 
       <div className="flex flex-col items-center justify-center">

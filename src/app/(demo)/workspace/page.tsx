@@ -7,7 +7,7 @@ import { ShowCase } from "@/components/ShowCase";
 import { AIPrompt } from "@/components/AIPrompt";
 export default function Workspace() {
   return (
-    <ContentLayout title="Workspace">
+    <ContentLayout>
       <AIPrompt/>
       <Separator/>
       <ShowCase/>

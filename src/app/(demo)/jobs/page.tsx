@@ -38,6 +38,7 @@ export default function OperationsPage() {
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const { venues } = useVenues();
+  const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
 
   const nextPage = (page: number) => {
     setCurrentPage(page)
@@ -58,7 +59,7 @@ export default function OperationsPage() {
   }
   if(venues.length == 0)
       return (
-      <ContentLayout title="Assets">
+      <ContentLayout>
       <SmartBreadcrumb />
         <div className="flex flex-col items-center justify-center  mt-2 bg-background">
       <div className="flex flex-row w-full  items-start justify-start mt-4 space-x-4 ">
@@ -95,11 +96,9 @@ export default function OperationsPage() {
     </div>
       </ContentLayout>
   )
- const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
-  if (!venueObj) return null;
-  const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId})
 
   useEffect(() => {
+    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId})
     venue.getJobs().then((jobs) => {
       setTotalItems(jobs.length)
       setTotalPages(Math.ceil(jobs.length / itemsPerPage))
@@ -127,10 +126,10 @@ export default function OperationsPage() {
     }
     // Apply sorting by created date
     filteredData.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
-  }, [statusFilter]);
+  }, [filteredData, jobsData, statusFilter]);
 
-  const encodedPath = (jobId:string) => {
-        return "/venues/"+encodeURIComponent(venue.venueId)+"/jobs/"+jobId;
+    const encodedPath = (jobId:string) => {
+        return "/venues/"+encodeURIComponent(venueObj?.venueId || "")+"/jobs/"+jobId;
         
     };
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -144,8 +143,8 @@ export default function OperationsPage() {
     timeZone: 'UTC', // Key setting for UTC time
    });
   return (
-    <ContentLayout title="Jobs">
-      <SmartBreadcrumb venueName={venue.name}/>
+    <ContentLayout >
+      <SmartBreadcrumb />
       <div className="flex flex-col items-center justify-center  mt-2 bg-background">
         <div className="flex flex-row w-full  items-start justify-start mt-4 space-x-4 ">
             <div className="flex flex-row items-center justify-start w-1/3  space-x-4">
