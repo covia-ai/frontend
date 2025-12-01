@@ -73,11 +73,7 @@ export function   getMenuList(): Group[] {
             ]
           
           },
-           {
-            href: "/agents",
-            label: "Agents",
-            icon: Bot,
-          },
+           
           {
             href: "/venues",
             label: "Venues",
@@ -138,11 +134,7 @@ export function   getMenuList(): Group[] {
             ]
           
           },
-          {
-            href: "/agents",
-            label: "Agents",
-            icon: Bot,
-          },
+          
           {
             href: "/venues",
             label: "Venues",
