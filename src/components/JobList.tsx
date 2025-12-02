@@ -104,27 +104,34 @@ export function JobList() {
 
 
     })
-  }, []);
+  }, [venueObj]);
 
   useEffect(() => {
     setFilteredData([]);
-    if (statusFilter == 'All')
-      setFilteredData(jobsData)
-    else {
+    if (statusFilter != 'All')
       jobsData.forEach((job) => {
         if (job.status == statusFilter) {
           setFilteredData(prevArray => [...prevArray, job])
         }
       })
-    }
     // Apply sorting by created date
     filteredData.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
-  }, [filteredData, jobsData, statusFilter]);
+  }, [ statusFilter]);
 
     const encodedPath = (jobId:string) => {
         return "/venues/"+encodeURIComponent(venueObj?.venueId || "")+"/jobs/"+jobId;
         
     };
+    const getStatusColor = (status:string) => {
+          if(status == (RunStatus.COMPLETE || RunStatus.FAILED || RunStatus.AUTH_REQUIRED || RunStatus.INPUT_REQUIRED || RunStatus.CANCELLED || RunStatus.REJECTED))
+            return "text-red-400 text-center"
+          if(status == (RunStatus.PENDING || RunStatus.STARTED || RunStatus.PAUSED ))
+            return "text-blue-400 text-center"
+          if(status == (RunStatus.COMPLETE))
+            return "text-green-400 text-center"
+          return  "text-grey-400 text-center"
+    }
+
     const formatter = new Intl.DateTimeFormat('en-CA', {
     year: 'numeric',
     month: '2-digit',
@@ -187,15 +194,12 @@ export function JobList() {
                 <TableCell><Link className="text-foreground font-mono underline" href={encodedPath(job.id)}>{job.id}</Link></TableCell>
                 <TableCell>{job.name}</TableCell>
                 <TableCell className="text-center">{formatter.format(new Date(job.created)).replace(', ', 'T') + 'Z'}</TableCell>
-                {(job.status == RunStatus.COMPLETE || job.status == RunStatus.FAILED) && (<TableCell className="text-center">{getExecutionTime(job.created, job.updated)}</TableCell>)}
-                {(job.status == RunStatus.PENDING || job.status == RunStatus.STARTED) && (<TableCell className="text-center">--</TableCell>)}
+                {(job.status == RunStatus.COMPLETE || job.status == RunStatus.FAILED) ? 
+                 (<TableCell className="text-center">{getExecutionTime(job.created, job.updated)}</TableCell>) : 
+                 (<TableCell className="text-center">--</TableCell>)
+                 }
 
-
-                {job.status == RunStatus.COMPLETE && <TableCell className="text-green-600 text-center">{RunStatus.COMPLETE}</TableCell>}
-                {job.status == RunStatus.FAILED && <TableCell className="text-red-600 text-center">{RunStatus.FAILED}</TableCell>}
-                {job.status == RunStatus.PENDING && <TableCell className="text-blue-600 text-center">{RunStatus.PENDING}</TableCell>}
-                {job.status == RunStatus.STARTED && <TableCell className="text-blue-600 text-center">{RunStatus.STARTED}</TableCell>}
-
+                <TableCell className={getStatusColor(job.status || "All")}>{job.status}</TableCell>
               </TableRow>
               
             )}

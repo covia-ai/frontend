@@ -69,9 +69,15 @@ export const ExecutionViewer = (props: any) => {
         switch (status) {
             case RunStatus.COMPLETE:
                 return "text-green-600";
+            case RunStatus.CANCELLED:
+            case RunStatus.REJECTED:
+            case RunStatus.INPUT_REQUIRED:
+            case RunStatus.AUTH_REQUIRED:
+            case RunStatus.TIMEOUT:
             case RunStatus.FAILED:
                 return "text-red-600";
             case RunStatus.PENDING:
+            case RunStatus.PAUSED:
             case RunStatus.STARTED:
                 return "text-blue-600";
             default:
