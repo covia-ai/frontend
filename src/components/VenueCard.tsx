@@ -43,7 +43,7 @@ export function VenueCard({ venue }: VenueCardProps) {
 
   return (
     <Card 
-      className="shadow-md border-2 bg-card flex flex-col rounded-md hover:border-accent cursor-pointer h-48 overflow-hidden"
+      className="shadow-md border-2 bg-card flex flex-col rounded-md border-muted hover:border-accent cursor-pointer h-48 overflow-hidden"
       
     >
       {/* Fixed-size header */}
