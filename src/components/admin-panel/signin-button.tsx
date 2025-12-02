@@ -28,7 +28,7 @@ export function SignInButton(props:any) {
           <Button
                     onClick={() => {router.push("/signUp")}}
                     variant="default"
-                    className="justify-center h-8 my-5 text-sm hover:bg-accent hover:text-muted-foreground"
+                    className="justify-center h-8 my-5 text-sm hover:bg-accent hover:text-muted-foreground dark:hover:bg-primary-light dark:hover:text-foreground"
                   >
                     <LogInIcon/>
                     <p
@@ -50,28 +50,21 @@ export function SignInButton(props:any) {
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Avatar>
-                           <AvatarImage src={session?.user.image!} alt="avatar" className="hover:bg-slate-400"/>
+                           <AvatarImage src={session?.user.image!} alt="avatar" className="border-red-400"/>
                            <AvatarFallback>{session?.user.name?.charAt(0)}</AvatarFallback></Avatar>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="w-fit mr-8">
                           <DropdownMenuLabel>{session?.user.name}</DropdownMenuLabel>
                            <DropdownMenuLabel >{session?.user.email}</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                              <DropdownMenuGroup>
-                           
-                            <DropdownMenuItem>
-                              Settings
-                            </DropdownMenuItem>
-                          </DropdownMenuGroup>
+                             
                            <DropdownMenuSeparator />
-                             <DropdownMenuItem className="items-center text-center">
-                              <Button
+                             <DropdownMenuItem className="items-start text-center dark:hover:bg-primary-light">
+                              <div
                                 onClick={() => signOut({ callbackUrl: "/" })}
-                                variant="ghost"
-                                className="text-sm mx-0"
+                                className="text-sm "
                               >                              
                                 Sign Out
-                             </Button>
+                             </div>
                              </DropdownMenuItem>
                         </DropdownMenuContent>
                         </DropdownMenu>

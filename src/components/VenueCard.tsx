@@ -18,6 +18,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import {  SquareArrowOutUpRight, X } from "lucide-react";
+import { Badge } from "./ui/badge";
 
 interface VenueCardProps {
   venue: Venue;
@@ -73,15 +74,15 @@ export function VenueCard({ venue }: VenueCardProps) {
       {/* Flexible middle section */}
       <div className="flex-1 p-3 flex flex-col justify-between" onClick={handleCardClick}>
         <div data-testid="venue-desc" className="text-xs text-card-foreground line-clamp-3 mb-2">
-          {venue.metadata.description || venue.venueId }
+          {venue.metadata.ven || "A Covia venue for managing assets and operations" }
         </div>
       
       </div>
 
       {/* Fixed-size footer */}
       <div className="p-2 h-12 flex flex-row items-center justify-between" onClick={handleCardClick}>
-        <div className="flex flex-row items-center space-x-2">
-         
+        <div className="text-xs flex flex-row items-center space-x-2">
+          <Badge variant="outline" className="bg-muted text-muted-foreground">{venue.venueId }</Badge>
         </div>
         
           <Iconbutton icon={SquareArrowOutUpRight} message="View Venue" path="venues" pathId={venue.venueId} venueId={venue.venueId}/>

@@ -26,7 +26,7 @@ export function AssetCard({ asset,type }: AssetCardProps) {
     const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
 
 
-    const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name})
+    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name})
     const router = useRouter();
     const [newJsonData, setNewJsonData] = useState({});
     const [assetCreated, setAssetCreated] = useState(false);
@@ -51,7 +51,7 @@ export function AssetCard({ asset,type }: AssetCardProps) {
         }
     }
     return (
-         <Card key={asset.id} className="shadow-md border-2 h-full bg-card flex flex-col rounded-md hover:border-accent hover:border-2 h-48">
+         <Card key={asset.id} className="shadow-md border-2 h-full bg-card flex flex-col rounded-md  hover:border-accent hover:border-2 h-48">
                 {/* Fixed-size header */}
                 <div className="h-14 p-2 flex flex-row items-center border-b bg-card-banner">
                     <div data-testid = "asset-header" className="truncate flex-1 mr-2 text-md text-foreground"

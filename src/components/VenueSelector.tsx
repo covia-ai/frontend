@@ -23,8 +23,6 @@ export function VenueSelector() {
 
   useEffect(() => {  
   
-    console.log(venues);
-    console.log(currentVenue)
     // If we already have a current venue, use it
     if (currentVenue) {
       setSelectedVenue(currentVenue);
@@ -75,18 +73,18 @@ export function VenueSelector() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline">
+        <Button variant="outline" className="dark:hover:bg-primary-light dark:hover:text-foreground">
           <Building2 size={14} />
           {selectedVenue.name}
           <ChevronDown size={14} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="start">
+      <DropdownMenuContent className="w-56 " align="start">
         {venues.map((venue) => (
           <DropdownMenuItem
             key={venue.venueId}
             onClick={() => handleVenueSelect(venue)}
-            className="flex items-center justify-between cursor-pointer"
+            className="flex items-center justify-between cursor-pointer dark:hover:bg-primary-light dark:hover:text-foreground"
           >
             <div className="flex items-center gap-2">
               <Building2 size={16} />

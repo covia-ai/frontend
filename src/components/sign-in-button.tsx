@@ -6,7 +6,7 @@ import { login } from "@/lib/actions/auth"
 
 export const SignInButton = () => {
     return (    
-      <div className="flex flex-col items-center justify-center">
+      <div className="flex flex-col items-center justify-center dark:bg-background">
         <Button variant={"outline"} className = "bg-black text-white my-2 w-64" onClick={() => login("github")} > 
             <BsGithub  className="h-32" />Sign in with Github
        </Button>

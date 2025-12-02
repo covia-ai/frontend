@@ -1,10 +1,12 @@
 "use server"
 import { auth } from "@/auth"
+import { Iconbutton } from "@/components/Iconbutton";
 import { SignInButton } from "@/components/sign-in-button"
 import {
   Avatar,
   AvatarImage,
 } from "@/components/ui/avatar"
+import { ArrowBigLeft } from "lucide-react";
 
 export default async function  SignUp() {
 
@@ -12,15 +14,15 @@ export default async function  SignUp() {
   const session = await auth();
   if (!session?.user) {
     return (  
-      <div className=" flex lg:flex-row justify-center items-center  min-h-screen">  
-        <div className=" flex flex-col justify-center items-center px-10 lg:w-1/2 bg-white">
+      <div className=" flex lg:flex-row justify-center items-center  min-h-screen bg-background :text-foreground">  
+        <div className=" flex flex-col justify-center items-center px-10 lg:w-1/2">
           
-            <h3 className="text-center text-4xl md:text-5xl font-bold ">
+            <h3 className="text-center text-4xl md:text-5xl font-thin ">
               {}
                 Log In {" "}
               
               </h3>
-              <p className="text-xl text-muted-foreground text-center mt-8 mb-8">
+              <p className="text-xl text-muted-foreground text-center mt-8 mb-8 dark:bg-background">
                 Welcome back to Covia app! Log in with Google or Github to continue to your account.
               </p>
               
@@ -37,10 +39,10 @@ export default async function  SignUp() {
  }
  else {
     return (  
-        <div className=" flex lg:flex-row justify-center items-center  min-h-screen">  
-        <div className=" flex flex-col justify-center items-center px-10 lg:w-1/2 bg-white">
+        <div className=" flex lg:flex-row justify-center items-center  min-h-screen bg-background text-foreground">  
+        <div className=" flex flex-col justify-center items-center px-10 lg:w-1/2">
           
-            <h2 className="text-center text-xl md:text-2xl  ">
+            <h2 className="text-center text-xl font-thin md:text-2xl  ">
               {}
                 You are logged in as  {" "}
                  <div>{session?.user.email}</div>
@@ -55,9 +57,7 @@ export default async function  SignUp() {
                                 </Avatar>
                             }
                            </>                  
-                  </div>
-                 <div>{session?.user.name}</div>
-              </h2>
+                  </div>              </h2>
               
         
         </div>
