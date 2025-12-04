@@ -60,7 +60,7 @@ const METADATA_FIELDS: MetadataFieldConfig[] = [
     renderValue: (value) => (
       <div className="flex space-x-1">
         {value?.map((keyword: string, index: number) => (
-          <Badge variant="secondary" key={index}>{keyword}</Badge>
+          <Badge variant="secondary" className="text-white dark:bg-muted" key={index}>{keyword}</Badge>
         ))}
       </div>
     )
@@ -97,9 +97,9 @@ const renderMetadataFields = (asset: Asset, fields: MetadataFieldConfig[]) => {
           <React.Fragment key={field.key}>
             <div className="flex items-center space-x-2">
               <IconComponent size={18} />
-              <span className="whitespace-nowrap text-md">{field.label}</span>
+              <span data-testid={field.key+"_label"} className="whitespace-nowrap text-md">{field.label}</span>
             </div>
-            <div className="text-card-foreground">
+            <div className="text-card-foreground" data-testid={field.key+"_value"}>
               {field.renderValue ? field.renderValue(value) : value}
             </div>
           </React.Fragment>
@@ -125,13 +125,13 @@ export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
               <Download size={18}></Download>
               <span className="text-md">Data:</span>
               <span>
-                <Link href={contentURL} className="text-secondary underline" download={true}>
+                <Link href={contentURL} className="text-secondary dark:text-secondary-light underline" download={true}>
                   Download
                 </Link>
               </span>
               <span>
                 <a href={contentURL + '?inline=true'} 
-                target="_blank" rel="noopener noreferrer" className="text-secondary underline" >
+                target="_blank" rel="noopener noreferrer" className="text-secondary dark:text-secondary-light underline" >
                   View
                 </a>
               </span>
@@ -143,7 +143,7 @@ export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
             <span>
               <Dialog>
                 <DialogTrigger>
-                  <span className="text-card-foreground  underline"> View metadata</span>
+                  <span className="text-card-foreground dark:text-secondary-light underline underline"> View metadata</span>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogTitle>Asset Metadata</DialogTitle>
