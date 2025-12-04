@@ -37,7 +37,7 @@ export default function OperationsPage() {
   
   
   return (
-    <ContentLayout title="Operations">
+    <ContentLayout>
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>

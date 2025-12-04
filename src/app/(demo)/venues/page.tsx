@@ -43,7 +43,6 @@ export default function VenuesPage() {
     venues.map((venue => {
         if(processVenueDidOrUrl.endsWith("/"))
             processVenueDidOrUrl = processVenueDidOrUrl.substring(0,processVenueDidOrUrl.length-1);
-        console.log(processVenueDidOrUrl)
         if(venue.venueId == processVenueDidOrUrl) {
           venueExist = true;
         }
@@ -63,7 +62,7 @@ export default function VenuesPage() {
     }
   }
   return (
-    <ContentLayout title="Venues">
+    <ContentLayout>
       <SmartBreadcrumb />
 
       <div className="flex flex-col items-center justify-center">

@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent,  DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { MagicWandIcon } from "@radix-ui/react-icons";
 
 export const AIPrompt = () => {
@@ -19,9 +19,9 @@ export const AIPrompt = () => {
 
   return (
     <div data-testid="chat-container" className="flex flex-col items-center justify-center py-10 px-10  my-4 ">
-        <h3 className="text-center text-4xl  font-bold">
+        <h3 className="text-center text-4xl  font-thin">
           Do anything on   {" "}
-          <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
+          <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent dark:text-primary-light bg-clip-text">
             the Grid ...
           </span>
         </h3>
@@ -36,8 +36,8 @@ export const AIPrompt = () => {
             disabled
           />
           <Select disabled onValueChange={value => setSelectedOption(value)} defaultValue="chatgpt">
-                      <SelectTrigger className="w-[120px] text-semibold bg-card text-card-foreground">
-                        <SelectValue className="text-semibold" placeholder="Run Status" />
+                      <SelectTrigger className="w-[120px] text-thin bg-card text-card-foreground">
+                        <SelectValue className="text-thin" placeholder="Run Status" />
                       </SelectTrigger>    
                       <SelectContent>
                         <SelectGroup>

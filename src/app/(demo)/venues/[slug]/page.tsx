@@ -109,7 +109,7 @@ export default function VenuePage({ params }: VenuePageProps) {
   const isCurrentVenue = currentVenue?.venueId === venue?.venueId;
   if (!venue) {
     return (
-      <ContentLayout title="Venue Not Found">
+      <ContentLayout>
         <SmartBreadcrumb assetOrJobName={slug}/>
         <div className="flex items-center justify-center h-64">
           <p className="text-muted-foreground">Venue not found</p>
@@ -119,7 +119,7 @@ export default function VenuePage({ params }: VenuePageProps) {
   }
 
   return (
-    <ContentLayout title={venue.name}>
+    <ContentLayout>
       <SmartBreadcrumb  venueName={venue.name}/>
       
       <div className="flex flex-col space-y-6">
@@ -131,7 +131,7 @@ export default function VenuePage({ params }: VenuePageProps) {
                 <Building2 size={32} className="text-primary  " />
               </div>
               <div>
-                <h1 className="text-2xl font-bold">{venueName}</h1>
+                <h1 className="text-2xl font-thin">{venueName}</h1>
                 <p className="text-muted-foreground">
                   {venue.metadata.description || "A Covia venue for managing assets and operations"}
                 </p>
@@ -168,7 +168,7 @@ export default function VenuePage({ params }: VenuePageProps) {
 
         {/* Venue Information */}
         <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4">Venue Information</h2>
+          <h2 className="text-xl font-thin mb-4">Venue Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="flex items-center space-x-3">
@@ -240,7 +240,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               </div>
               <div className="">
                 <p className="text-sm text-muted-foreground">Assets</p>
-                <p className="text-2xl font-bold">{noOfAssets}</p>
+                <p className="text-2xl font-thin">{noOfAssets}</p>
               </div>
             </div>
             </CardHeader>
@@ -264,7 +264,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               </div>
               <div className="">
                 <p className="text-sm text-muted-foreground">Operations</p>
-                <p className="text-2xl font-bold">{noOfOps}</p>
+                <p className="text-2xl font-thin">{noOfOps}</p>
               </div>
             </div>
             </CardHeader>
@@ -288,7 +288,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               </div>
               <div className="">
                 <p className="text-sm text-muted-foreground">Users</p>
-                <p className="text-2xl font-bold">{noOfUsers}</p>
+                <p className="text-2xl font-thin">{noOfUsers}</p>
               </div>
             </div>
             </CardHeader>
@@ -312,7 +312,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               </div>
               <div className="">
                 <p className="text-sm text-muted-foreground">Jobs</p>
-                <p className="text-2xl font-bold">{noOfRuns}</p>
+                <p className="text-2xl font-thin">{noOfRuns}</p>
               </div>
             </div>
             </CardHeader>

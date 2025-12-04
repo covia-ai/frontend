@@ -12,7 +12,7 @@ export default async function Page({
  
   return (
 
-     <ContentLayout title="Operations">            
+     <ContentLayout>            
            <ExecutionViewer jobId={id} venueId={decodeURIComponent(slug)}></ExecutionViewer>
       </ContentLayout>
   )

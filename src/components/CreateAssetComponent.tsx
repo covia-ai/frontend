@@ -57,17 +57,12 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
     const [baseData, setBaseData] = useState<AssetMetadata>({});
     const [metadataUpdated, setMetadataUpdated] = useState(false);
     const [open, setOpen] = useState(false)
-
     const venueObj = useStore(useVenue, (x) => x.currentVenue);
-    if (!venueObj) return null;
-    const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name})
-
-    const { data: session } = useSession()
+    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name})
     
     function createNewAsset(jsonData: AssetMetadata) {
-        try {
-          
-          venue?.createAsset(jsonData, session?.user?.email || "").then( (asset: Asset) => {
+        try {    
+          venue?.createAsset(jsonData).then( (asset: Asset) => {
                 if(assetType == "string") {
                       asset.uploadContent(assetStringData).then((response) =>{
                       sendDataToParent(true)
@@ -98,7 +93,7 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
         }
     }
   
-    const getSHA256Hash = async (input) => {
+    const getSHA256Hash = async (input:any) => {
       const textAsBuffer = new TextEncoder().encode(input);
       const hashBuffer = await window.crypto.subtle.digest("SHA-256", textAsBuffer);
       const hashArray = Array.from(new Uint8Array(hashBuffer));

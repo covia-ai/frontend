@@ -11,7 +11,7 @@ export default async function Page({
   const { id } = await params;
   return (
 
-     <ContentLayout title="Agents">
+      <ContentLayout>
       <SmartBreadcrumb/>
      
       <TimelinePanel agentId={id}></TimelinePanel>

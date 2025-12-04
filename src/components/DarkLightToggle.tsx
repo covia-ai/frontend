@@ -8,8 +8,8 @@ export function DarkLightToggle() {
   const { setTheme, theme  } = useTheme();
   return (
     <div>
-      {theme =="light" && <Button data-testid="btn_toggle_light" variant={"outline"} onClick={() => setTheme("dark")}><Moon/></Button>}
-      {theme =="dark" &&  <Button  data-testid="btn_toggle_dark" variant={"outline"}  onClick={() => setTheme("light")}><Sun/></Button>}
+      {theme =="light" && <Button  data-testid="btn_toggle_light" variant={"outline"} onClick={() => setTheme("dark")}><Moon/></Button>}
+      {theme =="dark" &&  <Button  className="dark:hover:border dark:hover:bg-primary-light" data-testid="btn_toggle_dark" variant={"outline"}  onClick={() => setTheme("light")}><Sun/></Button>}
     </div>
   );
 }

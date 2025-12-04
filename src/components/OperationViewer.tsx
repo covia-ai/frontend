@@ -38,6 +38,7 @@ export const OperationViewer = (props: any) => {
 
   const { venues, addVenue } = useVenues();
   const [venue, setVenue] = useState<Venue>();
+  const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
 
   // Session storage key based on asset ID
   const getStorageKey = (suffix: string) => `operation_input_${props.assetId}_${suffix}`;
@@ -95,11 +96,9 @@ export const OperationViewer = (props: any) => {
 
   const router = useRouter();
   const pathname = usePathname();
-  const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
 
-  if (!venueObj) return null;
    useEffect(() => {
-      if(props.venueId != venueObj.venueId) {
+      if(props.venueId != venueObj?.venueId) {
         const venue = venues.find(v => v.venueId === props.venueId);
         if (venue) {
             setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.name}))
@@ -113,7 +112,7 @@ export const OperationViewer = (props: any) => {
          }
     }
     else {
-        setVenue(new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name}));  
+        setVenue(new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name}));  
     }  
    }, []); 
 

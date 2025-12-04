@@ -62,6 +62,8 @@ export default function AssetPage() {
   const [totalPages, setTotalPages] = useState(10);
   const [currentPage, setCurrentPage] = useState(1)
   const [noOfItemsOnPage, setNoOfItemsOnPage] = useState(0);
+   const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
+
   const nextPage = (page: number) => {
     setCurrentPage(page)
 
@@ -70,9 +72,7 @@ export default function AssetPage() {
     setCurrentPage(page)
 
   }
- const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
-  if (!venueObj) return null;
-  const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name})
+  const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name})
 
 
   function fetchAssets() {
@@ -120,7 +120,7 @@ export default function AssetPage() {
   }
 
   return (
-    <ContentLayout title="Assets">
+    <ContentLayout>
       <SmartBreadcrumb />
 
       <div className="flex flex-col items-center justify-center">

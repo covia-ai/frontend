@@ -16,11 +16,13 @@ import { Venue } from "@/lib/covia";
 
 export function VenueSelector() {
   const pathname = usePathname();
-  const { venues } = useVenues();
+  const  venues = useVenues().getVenue();
   const { currentVenue, setCurrentVenue } = useVenue();
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
+;
 
   useEffect(() => {  
+  
     // If we already have a current venue, use it
     if (currentVenue) {
       setSelectedVenue(currentVenue);
@@ -41,7 +43,7 @@ export function VenueSelector() {
 
     // Default to first venue if no specific venue is found
     if (venues.length > 0) {
-      const defaultVenue = venues[0];
+      const defaultVenue = venues[0]
       setCurrentVenue(defaultVenue);
       setSelectedVenue(defaultVenue);
     }
@@ -55,12 +57,13 @@ export function VenueSelector() {
     
   };
   if (!selectedVenue || venues.length === 0) {
+      
      return (
       <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline">
           <Building2 size={14} />
-          No venues
+          No venues {venues.length}
         </Button>
       </DropdownMenuTrigger>
     </DropdownMenu>
@@ -70,18 +73,18 @@ export function VenueSelector() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline">
+        <Button variant="outline" className="dark:hover:bg-primary-light dark:hover:text-foreground">
           <Building2 size={14} />
           {selectedVenue.name}
           <ChevronDown size={14} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="start">
+      <DropdownMenuContent className="w-56 " align="start">
         {venues.map((venue) => (
           <DropdownMenuItem
             key={venue.venueId}
             onClick={() => handleVenueSelect(venue)}
-            className="flex items-center justify-between cursor-pointer"
+            className="flex items-center justify-between cursor-pointer dark:hover:bg-primary-light dark:hover:text-foreground"
           >
             <div className="flex items-center gap-2">
               <Building2 size={16} />

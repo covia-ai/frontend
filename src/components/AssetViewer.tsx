@@ -24,10 +24,9 @@ export function AssetViewer(props: AssetViewerProps) {
   const venueObj = useStore(useVenue, (x) => x.currentVenue);
   const { venues, addVenue } = useVenues();
   const [venueName, setVenueName] = useState("")
-  if (!venueObj) return null;
 
   useEffect(() => {
-    if(props.venueId != venueObj.venueId) {
+    if(props.venueId != venueObj?.venueId) {
         const venue = venues.find(v => v.venueId === props.venueId);
         if (venue) {
             new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.name}).getAsset(props.assetId).then((asset: Asset) => {
@@ -51,7 +50,7 @@ export function AssetViewer(props: AssetViewerProps) {
      })
       setVenueName(venueObj.name)
     }  
-  }, [props.assetId]);
+  }, [addVenue, props.assetId, props.venueId, session?.user?.email, venueObj, venues]);
 
   return (
     <> 
@@ -62,7 +61,7 @@ export function AssetViewer(props: AssetViewerProps) {
           <MetadataViewer asset={asset} />
           <div className="flex flex-row items-center space-x-2 my-2 text-xs text-slate-800">
             <span>Venue:</span>
-            <span><Link href={`/venues/${venueObj.venueId}`} className="underline text-secondary"> {venueObj.venueId}</Link></span>
+            <span><Link href={`/venues/${venueObj?.venueId}`} className="underline text-secondary"> {venueObj?.venueId}</Link></span>
           </div>
         </div>
       )}

@@ -3,7 +3,7 @@
 
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { Asset, Operation, Venue } from "@/lib/covia";
+import { Asset, Venue } from "@/lib/covia";
 import React, { useEffect, useMemo, useState } from 'react'
 import { AssetCard } from "./AssetCard";
 import { useVenues } from "@/hooks/use-venues";
@@ -13,10 +13,11 @@ export const ShowCase = () => {
    const [loading, setLoading] = useState(true);
    const [assets, setAssets] = useState<Asset[]>([]);
    const { venues } = useVenues();
+   const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
 
     if(venues.length == 0)
       return (
-    <div className="flex flex-col items-center justify-center py-10 px-10  my-4">
+       <div className="flex flex-col items-center justify-center py-10 px-10  my-4">
           <h3 className="text-center text-4xl  font-bold">
             Try some   {" "}
             <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
@@ -29,15 +30,10 @@ export const ShowCase = () => {
         </div>
       );
     
-      const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
-   if (!venueObj) return null;
-
-   const venue = useMemo(() => {
-    return new Venue({ baseUrl: venueObj.baseUrl, venueId: venueObj.venueId })
-   },[venueObj.baseUrl, venueObj.venueId]);
- 
    useEffect(() => {
      const fetchData = async () => {
+      const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId})
+      
        try {
          const res = await venue.getAssets();
          const featured = res.filter((asset: Asset) => asset?.metadata?.operation?.info?.featured);
@@ -57,7 +53,7 @@ export const ShowCase = () => {
        }
      };
      fetchData();
-   }, [venue]); // Empty dependency array to run once on mount
+   }, [venueObj?.baseUrl, venueObj?.venueId]); // Empty dependency array to run once on mount
  
 
       return (
@@ -72,7 +68,7 @@ export const ShowCase = () => {
 
               {assets.map((asset, index) =>
 
-                <AssetCard key={index} asset={asset} type="operations" venueSlug={venue.venueId}/>
+                <AssetCard key={index} asset={asset} type="operations"/>
               )}
         </div>
         </div>

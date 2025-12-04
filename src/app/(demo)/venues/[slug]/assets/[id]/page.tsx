@@ -12,7 +12,7 @@ export default async function Page({
 
   return (
 
-     <ContentLayout title="Assets">
+     <ContentLayout >
          
            <AssetViewer assetId={id} venueId={decodeURIComponent(slug)}></AssetViewer>
       </ContentLayout>

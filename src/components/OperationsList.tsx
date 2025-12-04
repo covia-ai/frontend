@@ -12,26 +12,14 @@ import { Asset, Operation, Venue } from "@/lib/covia";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { Spinner } from '@/components/ui/shadcn-io/spinner';
-
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination"
 import { AssetCard } from "./AssetCard";
 import { PaginationHeader } from "./PaginationHeader";
 import { useVenues } from "@/hooks/use-venues";
 import { PlayCircle } from "lucide-react";
 
-interface OperationsListProps {
-  venueSlug?: string; // Optional venue slug for venue-specific pages
-}
 
-export function OperationsList({ venueSlug }: OperationsListProps) {
+
+export function OperationsList() {
   const searchParams = useSearchParams()
   const search = searchParams.get('search');
   const [assetsMetadata, setAssetsMetadata] = useState<Asset[]>([]);
@@ -46,16 +34,17 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
   const [currentPage, setCurrentPage] = useState(1)
 
   const { venues } = useVenues();
-  
+  const venueObj = useStore(useVenue, (x) => x.currentVenue);
+
   const nextPage = (page: number) => {
     setCurrentPage(page)
   }
   const prevPage = (page: number) => {
     setCurrentPage(page)
   }
-   if(venues.length == 0)
+  if(venues.length == 0 ) {
      return (
-      <ContentLayout title="Operations">
+      <ContentLayout>
       <SmartBreadcrumb />
 
       <div className="flex flex-col items-center justify-center">
@@ -70,38 +59,37 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
 
         </div>
       </ContentLayout>
-    )
-  const venueObj = useStore(useVenue, (x) => x.currentVenue);
-  if (!venueObj) return null;
-  const venue = new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name})
-  
-  function fetchAssets(offset, limit) {
-    setAssetsMetadata([]);
-      try {
-        venue?.getAssets().then((assets) => {
-        assets.forEach((asset) => {
-          asset.getMetadata().then((metadata: object) => {
-            if (metadata.operation != undefined) 
-              if(search && search.length>0 ) {
-                  if(metadata?.name?.toLowerCase().indexOf(search.toLowerCase()) != -1 || asset.id?.toLowerCase().indexOf(search.toLowerCase()) != -1)
-                      setAssetsMetadata(prevArray => [...prevArray, new Operation(asset.id, asset.venue, metadata)]);
-                }
-                else {
-                    setAssetsMetadata(prevArray => [...prevArray, new Operation(asset.id, asset.venue, metadata)]);
-                }
-          })
-          setLoading(false)
-        })
-      })
-    }
-   catch (error) {
-        console.error('Error fetching data:', error);
-   } 
+     ) 
   }
   
   useEffect(() => {
-    fetchAssets(offset, limit);
-  }, []);
+     const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name})
+     function fetchAssets() {
+        setAssetsMetadata([]);
+          try {
+            venue?.getAssets().then((assets) => {
+            assets.forEach((asset) => {
+              asset.getMetadata().then((metadata: object) => {
+                if (metadata.operation != undefined) 
+                  if(search && search.length>0 ) {
+                      if(metadata?.name?.toLowerCase().indexOf(search.toLowerCase()) != -1 || asset.id?.toLowerCase().indexOf(search.toLowerCase()) != -1)
+                          setAssetsMetadata(prevArray => [...prevArray, new Operation(asset.id, asset.venue, metadata)]);
+                    }
+                    else {
+                        setAssetsMetadata(prevArray => [...prevArray, new Operation(asset.id, asset.venue, metadata)]);
+                    }
+              })
+              setLoading(false)
+            })
+          })
+        }
+      catch (error) {
+            console.error('Error fetching data:', error);
+      } 
+      }
+     if(venueObj != null)
+        fetchAssets();
+  }, [search, venueObj]);
 
   useEffect(() => {
     setTotalItems(assetsMetadata.length)
@@ -109,8 +97,8 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
   }, [assetsMetadata])
 
   return (
-    <ContentLayout title="Operations">
-      <SmartBreadcrumb venueName={venue.name}/>
+    <ContentLayout>
+      <SmartBreadcrumb venueName={venueObj?.name}/>
       <div className="flex flex-col items-center justify-center">
          <div className="flex flex-row items-center justify-center w-full space-x-2 ">
           <Search />
@@ -122,7 +110,7 @@ export function OperationsList({ venueSlug }: OperationsListProps) {
           <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4">
             {
             assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset, index) => (
-              <AssetCard key={index} asset={asset} type="operations" venueSlug={venueSlug}/>
+              <AssetCard key={index} asset={asset} type="operations"/>
             ))}
           </div>
           <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>

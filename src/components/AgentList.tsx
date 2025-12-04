@@ -69,7 +69,7 @@ export function AgentList() {
     };
 
 
-   return (<ContentLayout title="Agents">
+   return (<ContentLayout>
      <SmartBreadcrumb/>
      {agentData.length == 0 &&  <div className="flex flex-col items-center justify-center w-full h-100 space-y-2">
             <Bot size={64} className="text-primary"></Bot>

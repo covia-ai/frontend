@@ -4,11 +4,9 @@ import { SignInButton } from "./signin-button";
 import { VenueSelector } from "@/components/VenueSelector";
 import { DarkLightToggle } from "../DarkLightToggle";
 
-interface NavbarProps {
-  title: string;
-}
 
-export function Navbar({ title }: NavbarProps) {
+
+export function Navbar(s) {
   return (   
     <header className="sticky top-0 z-10 w-full bg-card shadow backdrop-blur supports-[backdrop-filter]:bg-card">
       <div className="mx-4 sm:mx-8 flex h-14 items-center">

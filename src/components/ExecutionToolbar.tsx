@@ -30,11 +30,10 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
 
      const router = useRouter()
      const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
-      if (!venueObj) return null;
-      const venue = useMemo(() => {
+     const venue = useMemo(() => {
         // Your expensive calculation or value creation
-        return new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name})
-        }, []); // Dependency array
+        return new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name})
+        }, [venueObj]); // Dependency array
   
       const [isFinished, setFinished] = useState<boolean>(false);
       const [isPaused, setPaused] = useState<boolean>(false);
@@ -48,7 +47,6 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
       
       function cancelExecution() {
           if (!venue) return;
-          console.log(jobData)
           venue.cancelJob(jobData.id).then((response) => {
              if(response != 200) {
                 toast("Unable to cancel job right now")
@@ -67,7 +65,6 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
           })
       }
       function pauseExecution() {
-         
       }
       function resumeExecution() {
           if (!venue) return;
