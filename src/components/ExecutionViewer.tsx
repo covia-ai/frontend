@@ -7,7 +7,7 @@ import { Check, CircleX, Clock, Copy, FileInput, FileOutput, Hash, RotateCcw, Se
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import {  getExecutionTime } from "@/lib/utils";
+import {  colourForStatus, getExecutionTime } from "@/lib/utils";
 import { TbSubtask } from "react-icons/tb";
 import Link from "next/link";
 
@@ -62,28 +62,7 @@ export const ExecutionViewer = (props: any) => {
     else {
         setVenue(new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name}));  
     }  
-   }, [addVenue, props.venueId, session?.user?.email, venueObj?.baseUrl, venueObj?.name, venueObj?.venueId, venues]); 
-
-    // Function to determine text color based on status
-    function colourForStatus(status: RunStatus): string {
-        switch (status) {
-            case RunStatus.COMPLETE:
-                return "text-green-600";
-            case RunStatus.CANCELLED:
-            case RunStatus.REJECTED:
-            case RunStatus.INPUT_REQUIRED:
-            case RunStatus.AUTH_REQUIRED:
-            case RunStatus.TIMEOUT:
-            case RunStatus.FAILED:
-                return "text-red-600";
-            case RunStatus.PENDING:
-            case RunStatus.PAUSED:
-            case RunStatus.STARTED:
-                return "text-blue-600";
-            default:
-                return "text-gray-600";
-        }
-    }
+   }, [addVenue, props.venueId, session?.user?.email, venueObj?.baseUrl, venueObj?.name, venueObj?.venueId, venues]);
 
     function fetchJobStatus() {
         venue?.getJob(props.jobId).then((job:Job) => {

@@ -3,6 +3,7 @@ import { twMerge } from "tailwind-merge"
 import * as mime from 'mime-types'
 import copy from 'copy-to-clipboard';
 import { toast } from "sonner"
+import { RunStatus } from "./covia";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -45,3 +46,23 @@ export function copyDataToClipBoard(entityId:string, message:string) {
             toast(message)
        }
       }
+
+export function  colourForStatus(status: RunStatus): string {
+        switch (status) {
+            case RunStatus.COMPLETE:
+                return "text-green-600";
+            case RunStatus.CANCELLED:
+            case RunStatus.REJECTED:
+            case RunStatus.INPUT_REQUIRED:
+            case RunStatus.AUTH_REQUIRED:
+            case RunStatus.TIMEOUT:
+            case RunStatus.FAILED:
+                return "text-red-600";
+            case RunStatus.PENDING:
+            case RunStatus.PAUSED:
+            case RunStatus.STARTED:
+                return "text-blue-600";
+            default:
+                return "text-gray-600";
+        }
+    }
