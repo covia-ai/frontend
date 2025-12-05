@@ -47,12 +47,12 @@ describe('MetadataViewer Component with only inputs', () => {
     expect(screen.getByTestId('keywords_label')).toBeInTheDocument();
     expect(screen.getByTestId('notes_label')).toBeInTheDocument();
 
-    expect(screen.getByTestId('creator_value')).toBe('William Shakespeare');
-    expect(screen.getByTestId('license_value')).toHaveDisplayValue('Public Domain');
-    expect(screen.getByTestId('dateCreated_value')).toBe('2025-06-05T06:53:59Z')
-    expect(screen.getByTestId('dateModified_value')).toBe('2025-06-05T06:53:59Z')
+    expect(screen.getByTestId('creator_value')).toHaveTextContent('William Shakespeare');
+    expect(screen.getByTestId('license_value')).toHaveTextContent('Public Domain');
+    expect(screen.getByTestId('dateCreated_value')).toHaveTextContent('2025-06-05T06:53:59Z')
+    expect(screen.getByTestId('dateModified_value')).toHaveTextContent('2025-06-05T06:53:59Z')
     expect(screen.getByTestId('keywords_value')).toBeInTheDocument()
-    expect(screen.getByTestId('notes_value')).toBe('Uploaded by Mike Anderson for use as an example Covia Asset')
+    expect(screen.getByTestId('notes_value')).toHaveTextContent('Uploaded by Mike Anderson for use as an example Covia Asset')
 
     
   });

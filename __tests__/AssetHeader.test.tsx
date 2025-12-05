@@ -41,8 +41,8 @@ describe('AssetHeader Component', () => {
     render( <AssetHeader asset={mockAsset}/>);
      expect(screen.getByTestId('assetH_name')).toBeInTheDocument();
      expect(screen.getByTestId('assetH_descr')).toBeInTheDocument();
-     expect(screen.getByTestId('assetH_name')).toBe('Delay Operation');
-     expect(screen.getByTestId('assetH_descr')).toBe('Runs another op after a delay');
+     expect(screen.getByTestId('assetH_name')).toHaveTextContent('Delay Operation');
+     expect(screen.getByTestId('assetH_descr')).toHaveTextContent('Runs another op after a delay');
   });
 
 
