@@ -1,6 +1,3 @@
-import { useVenue } from "@/hooks/use-venue";
-import { useStore } from "zustand";
-
 export function parseOpMetadata(metadata: JSON) {
 	const inputArray = Object.keys(metadata.operation.input.properties);
 	const outputArray = Object.keys(metadata.operation.output.properties)
@@ -44,16 +41,16 @@ function processOutput(results, nodes, edges, posX, posY, outputArray) {
 					sourceHandle = results[output][1]
 				else
 					sourceHandle = getResultOfStep(results, stepId)[0];
-				edges.push(
-					{
-						id: "e" + edges.length,
-						source: (stepId + 1) + "",
-						target: (nodes.length - 1) + "",
-						animated: true,
-						sourceHandle: sourceHandle,
-						targetHandle: output,
-						type: "customEdge",
-					}
+					edges.push(
+						{
+							id: "e" + edges.length,
+							source: (stepId + 1) + "",
+							target: (nodes.length - 1) + "",
+							animated: true,
+							sourceHandle: sourceHandle,
+							targetHandle: output,
+							type: "customEdge",
+						}
 				)
 			}
 			else if (stepId == "input") {

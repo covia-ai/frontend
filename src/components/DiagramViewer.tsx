@@ -39,17 +39,11 @@ export const DiagramViewer = (props:any) => {
        const parseJson = parseOpMetadata(props.metadata);
        const [nodes, setNodes, onNodesChange] = useNodesState(parseJson[0]);
        const [edges, setEdges, onEdgesChange] = useEdgesState(parseJson[1]);
-      const { theme  } = useTheme();
+       const { theme  } = useTheme();
 
-        const onNodeClick = useCallback(
-            (event: React.MouseEvent, node: Node) => {
-              redirect("https://venue-test.covia.ai/venues/"+venue.venueId+"/operations/"+node.op);
-            },
-            []
-          );
-          
+      const defaultViewport = { x: 0, y: 0, zoom: 1.5 };
        return (
-        <div style={{ width: '80%', height: '500px' , border: '1px solid #ccc'}}>
+        <div className="w-full h-100">
            <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -59,9 +53,9 @@ export const DiagramViewer = (props:any) => {
                 edgeTypes={edgeTypes}
                 nodesConnectable={false}
                 className="bg-slate-800"
-                onNodeClick={onNodeClick}
-                colorMode={theme || "light"}
+                colorMode={theme || "dark"}
                 fitView
+                defaultViewport={defaultViewport}
               >
                 <Background/>
                 <Controls />

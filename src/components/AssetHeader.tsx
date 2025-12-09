@@ -16,7 +16,7 @@ export const AssetHeader = ({ asset }: AssetHeaderProps) => {
           {asset?.metadata?.name}
         </Link>
       </h1>
-      <p data-testid="assetH_descr"  className="text-m mb-4 text-card-foreground w-3/4 text-center">{asset?.metadata?.description}</p>
+      <p data-testid="assetH_descr"  className="text-sm text-card-foreground w-3/4 text-center">{asset?.metadata?.description}</p>
 
      <IdAndLink type="Asset" url={window.location.href} id={asset?.id}></IdAndLink>
     </div>

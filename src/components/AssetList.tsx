@@ -17,6 +17,7 @@ import { PaginationHeader } from "./PaginationHeader";
 import { useVenues } from "@/hooks/use-venues";
 import { FileKey, PlayCircle } from "lucide-react";
 import { CreateAssetComponent } from "./CreateAssetComponent";
+import { TopBar } from "./admin-panel/TopBar";
 
 
 export function AssetList() {
@@ -128,7 +129,7 @@ export function AssetList() {
 
   return (
     <ContentLayout>
-        <SmartBreadcrumb venueName={venueObj?.name}/>
+        <TopBar venueName={venueObj?.name}/>
   
         <div className="flex flex-col items-center justify-center">
           <div className="flex flex-row items-center justify-center w-full space-x-2 ">

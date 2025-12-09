@@ -2,23 +2,19 @@
 "use client";
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
-import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 import React from 'react'
-import ReactPlayer from 'react-player'
-
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { LibraryBigIcon, MessagesSquare, Play, ExternalLink } from "lucide-react";
 import { VideoSlideShow } from "@/components/VideoSlideShow";
+import { TopBar } from "@/components/admin-panel/TopBar";
 
 export default function OperationsPage() {
 
   return (
     <ContentLayout>
-      <SmartBreadcrumb />
+      <TopBar />
        
         <div id="" className=" ">
 

@@ -27,6 +27,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { Grid } from "@/lib/covia/Grid";
 import { CredentialsHTTP } from "@/lib/covia/Credentials";
 import { useSession } from "next-auth/react";
+import { TopBar } from "@/components/admin-panel/TopBar";
 
 export default function VenuesPage() {
   const { addVenue,venues } = useVenues();
@@ -63,7 +64,7 @@ export default function VenuesPage() {
   }
   return (
     <ContentLayout>
-      <SmartBreadcrumb />
+      <TopBar />
 
       <div className="flex flex-col items-center justify-center">
         <div className="flex flex-row items-center justify-center w-full space-x-2 mb-2">

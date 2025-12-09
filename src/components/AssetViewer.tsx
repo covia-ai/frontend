@@ -12,6 +12,8 @@ import { useVenues } from "@/hooks/use-venues";
 import { Grid } from "@/lib/covia";
 import { CredentialsHTTP } from "@/lib/covia/Credentials";
 import { useSession } from "next-auth/react";
+import { ContentLayout } from "./admin-panel/content-layout";
+import { TopBar } from "./admin-panel/TopBar";
 
 interface AssetViewerProps {
   assetId: string;
@@ -53,8 +55,8 @@ export function AssetViewer(props: AssetViewerProps) {
   }, [addVenue, props.assetId, props.venueId, session?.user?.email, venueObj, venues]);
 
   return (
-    <> 
-      <SmartBreadcrumb assetOrJobName={asset?.metadata?.name} venueName={venueName} />
+    <ContentLayout> 
+      <TopBar assetOrJobName={asset?.metadata?.name} venueName={venueName} />
       {asset && (
         <div className="flex flex-col w-full items-center justify-center">
           <AssetHeader asset={asset} />
@@ -65,7 +67,7 @@ export function AssetViewer(props: AssetViewerProps) {
           </div>
         </div>
       )}
-    </>
+    </ContentLayout>
   );
 }
 

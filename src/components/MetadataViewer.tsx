@@ -7,9 +7,13 @@ import Link from "next/link";
 import { Badge } from "./ui/badge";
 import { JsonEditor } from "json-edit-react";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "./ui/dialog";
-import { copyDataToClipBoard } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
-
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 interface MetadataViewerProps {
   asset: Asset;
 }
@@ -114,55 +118,66 @@ export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
   if(asset.metadata.operation != undefined) 
     contentURL = 'NA'
   return (
-    <div className="text-sm border-1 shadow-md rounded-md border-slate-200 p-2 items-center justify-between min-w-lg w-full">
-      <div className="flex flex-row">
-        <div className="flex flex-col flex-3 border-r-2 border-slate-200 px-2 ">
-          {renderMetadataFields(asset, METADATA_FIELDS)}
-        </div>
-        <div className="flex flex-col flex-2 px-2 ">
-          {contentURL &&  contentURL !='NA'  && (
-            <div className="flex flex-row items-center space-x-2 my-2">
-              <Download size={18}></Download>
-              <span className="text-md">Data:</span>
-              <span>
-                <Link href={contentURL} className="text-secondary dark:text-secondary-light underline" download={true}>
-                  Download
-                </Link>
-              </span>
-              <span>
-                <a href={contentURL + '?inline=true'} 
-                target="_blank" rel="noopener noreferrer" className="text-secondary dark:text-secondary-light underline" >
-                  View
-                </a>
-              </span>
+     <Accordion
+      type="single"
+      collapsible
+      className=" w-full "
+    >
+       <AccordionItem value="metadata">
+         <AccordionTrigger className="py-1 px-2 bg-card rounded-none">Asset Metadata</AccordionTrigger>
+         <AccordionContent>
+          <div className="text-sm  bg-card p-2 items-center justify-between min-w-lg w-full">
+            <div className="flex flex-row">
+              <div className="flex flex-col flex-3 border-r-2 border-slate-200 px-2 ">
+                {renderMetadataFields(asset, METADATA_FIELDS)}
+              </div>
+              <div className="flex flex-col flex-2 px-2 ">
+                {contentURL &&  contentURL !='NA'  && (
+                  <div className="flex flex-row items-center space-x-2 my-2">
+                    <Download size={18}></Download>
+                    <span className="text-md">Data:</span>
+                    <span>
+                      <Link href={contentURL} className="text-secondary dark:text-secondary-light underline" download={true}>
+                        Download
+                      </Link>
+                    </span>
+                    <span>
+                      <a href={contentURL + '?inline=true'} 
+                      target="_blank" rel="noopener noreferrer" className="text-secondary dark:text-secondary-light underline" >
+                        View
+                      </a>
+                    </span>
+                  </div>
+                )}
+                <div className="flex flex-row items-center space-x-2">
+                  <Info size={18}></Info>
+                  <span className="text-md">Metadata:</span>
+                  <span>
+                    <Dialog>
+                      <DialogTrigger>
+                        <span className="text-card-foreground dark:text-secondary-light underline underline"> View metadata</span>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogTitle>Asset Metadata</DialogTitle>
+                        <JsonEditor 
+                          data={asset.metadata}
+                          rootName="metadata"
+                          rootFontSize="1em"
+                          maxWidth="120vw"
+                          restrictEdit={true}
+                          restrictAdd={true}
+                          restrictDelete={true}
+                          collapse={3}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                  </span>
+                </div>
+              </div>
             </div>
-          )}
-          <div className="flex flex-row items-center space-x-2">
-            <Info size={18}></Info>
-            <span className="text-md">Metadata:</span>
-            <span>
-              <Dialog>
-                <DialogTrigger>
-                  <span className="text-card-foreground dark:text-secondary-light underline underline"> View metadata</span>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogTitle>Asset Metadata</DialogTitle>
-                  <JsonEditor 
-                    data={asset.metadata}
-                    rootName="metadata"
-                    rootFontSize="1em"
-                    maxWidth="120vw"
-                    restrictEdit={true}
-                    restrictAdd={true}
-                    restrictDelete={true}
-                    collapse={3}
-                  />
-                </DialogContent>
-              </Dialog>
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
+  </div>
+         </AccordionContent>
+    </AccordionItem>
+    </Accordion>
   );
 }; 

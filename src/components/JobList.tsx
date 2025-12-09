@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { PaginationHeader } from "@/components/PaginationHeader";
 import { useVenues } from "@/hooks/use-venues";
 import { Activity, Database, User } from "lucide-react";
+import { TopBar } from "./admin-panel/TopBar";
 
 export function JobList() {
  const [statusFilter, setStatusFilter] = useState("All");
@@ -135,7 +136,7 @@ export function JobList() {
    });
   return (
     <ContentLayout >
-      <SmartBreadcrumb venueName={venueObj?.name}/>
+      <TopBar venueName={venueObj?.name}/>
       <div className="flex flex-col items-center justify-center  mt-2 bg-background">
         <div className="flex flex-row w-full  items-start justify-start mt-4 space-x-4 ">
             <div className="flex flex-row items-center justify-start w-1/3  space-x-4">

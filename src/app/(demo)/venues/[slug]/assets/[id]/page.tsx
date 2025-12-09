@@ -11,10 +11,6 @@ export default async function Page({
   const { slug } = await params
 
   return (
-
-     <ContentLayout >
-         
-           <AssetViewer assetId={id} venueId={decodeURIComponent(slug)}></AssetViewer>
-      </ContentLayout>
+          <AssetViewer assetId={id} venueId={decodeURIComponent(slug)}></AssetViewer>
   )
 }
