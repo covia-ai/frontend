@@ -20,15 +20,13 @@ const defaultVenueUrls =
 if(!process.env.NEXT_PUBLIC_IS_ENV_PROD) 
     defaultVenueUrls.push("http://localhost:8080");
 
-let defaultVenues: Venue[];
+const defaultVenues: Venue[] =
 
- (async () => {
-  defaultVenues = await Promise.all(
+await Promise.all(
     defaultVenueUrls.map(venueId => 
         Grid.connect(venueId, new CredentialsHTTP(venueId, "", ""))
     )
-  )
-  })();
+);
 
 export const useVenues = create(
   persist<VenuesStore>(
