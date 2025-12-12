@@ -30,6 +30,7 @@ import Link from "next/link";
 import { copyDataToClipBoard } from "@/lib/utils";
 import { CredentialsHTTP } from "@/lib/covia/Credentials";
 import { useSession } from "next-auth/react";
+import { TopBar } from "@/components/admin-panel/TopBar";
 
 interface VenuePageProps {
   params: {
@@ -120,7 +121,7 @@ export default function VenuePage({ params }: VenuePageProps) {
 
   return (
     <ContentLayout>
-      <SmartBreadcrumb  venueName={venue.name}/>
+      <TopBar  venueName={venue.name}/>
       
       <div className="flex flex-col space-y-6">
         {/* Venue Header */}

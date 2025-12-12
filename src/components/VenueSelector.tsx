@@ -63,7 +63,7 @@ export function VenueSelector() {
       <DropdownMenuTrigger asChild>
         <Button variant="outline">
           <Building2 size={14} />
-          No venues {venues.length}
+          No venues
         </Button>
       </DropdownMenuTrigger>
     </DropdownMenu>

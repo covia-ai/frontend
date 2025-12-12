@@ -12,6 +12,8 @@ import { useVenues } from "@/hooks/use-venues";
 import { Grid } from "@/lib/covia";
 import { CredentialsHTTP } from "@/lib/covia/Credentials";
 import { useSession } from "next-auth/react";
+import { ContentLayout } from "./admin-panel/content-layout";
+import { TopBar } from "./admin-panel/TopBar";
 
 interface AssetViewerProps {
   assetId: string;
@@ -53,19 +55,19 @@ export function AssetViewer(props: AssetViewerProps) {
   }, [addVenue, props.assetId, props.venueId, session?.user?.email, venueObj, venues]);
 
   return (
-    <> 
-      <SmartBreadcrumb assetOrJobName={asset?.metadata?.name} venueName={venueName} />
+    <ContentLayout> 
+      <TopBar assetOrJobName={asset?.metadata?.name} venueName={venueName} />
       {asset && (
         <div className="flex flex-col w-full items-center justify-center">
           <AssetHeader asset={asset} />
           <MetadataViewer asset={asset} />
-          <div className="flex flex-row items-center space-x-2 my-2 text-xs text-slate-800">
+          <div className="flex flex-row items-center space-x-2 my-2 text-xs text-slate-800 dark:text-secondary-light">
             <span>Venue:</span>
-            <span><Link href={`/venues/${venueObj?.venueId}`} className="underline text-secondary"> {venueObj?.venueId}</Link></span>
+            <span><Link href={`/venues/${venueObj?.venueId}`} className="underline text-secondary dark:text-secondary-light"> {venueObj?.venueId}</Link></span>
           </div>
         </div>
       )}
-    </>
+    </ContentLayout>
   );
 }
 

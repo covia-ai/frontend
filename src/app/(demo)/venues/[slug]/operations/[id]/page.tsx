@@ -1,6 +1,4 @@
 
-import { ContentLayout } from "@/components/admin-panel/content-layout";
-
 import { OperationViewer } from "@/components/OperationViewer";
 
 export default async function Page({
@@ -12,8 +10,7 @@ export default async function Page({
   const { slug } = await params;
   return (
 
-     <ContentLayout>
+   
              <OperationViewer assetId= {id} venueId={decodeURIComponent(slug)}></OperationViewer>
-      </ContentLayout>
   )
 }

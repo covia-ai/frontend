@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { useEffect, useMemo, useState } from "react";
 import { Operation, Venue } from "@/lib/covia";
 import { useRouter } from "next/navigation";
-import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb"
 import { Textarea } from "./ui/textarea";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
@@ -24,6 +23,10 @@ import { useVenues } from "@/hooks/use-venues";
 import { AssetLookup } from "./AssetLookup";
 import { Grid } from "@/lib/covia/Grid";
 import { CredentialsHTTP } from "@/lib/covia/Credentials";
+import { TopBar } from "./admin-panel/TopBar";
+import { ContentLayout } from "./admin-panel/content-layout";
+import { Card, CardContent } from "./ui/card";
+
 
 export const OperationViewer = (props: any) => {
   const [asset, setAsset] = useState<Asset>();
@@ -434,7 +437,9 @@ export const OperationViewer = (props: any) => {
       const requiredKeys = inputSchema.required || [];
       const keys = Object.keys(properties);
       return (
-        <div className="w-11/12 my-2">
+        <Card className="bg-background border-muted w-full my-2 rounded-md">
+          <CardContent className=" ">
+        <div >
           <div className="grid grid-cols-[min-content_1fr_1fr] gap-4 items-center py-2">
             {keys.map((key, index) => (
               <>
@@ -460,6 +465,8 @@ export const OperationViewer = (props: any) => {
 
           <div className="flex flex-row space-x-2 items-center justify-center py-2">{loading && <Button type="button" className="w-32" disabled>Please wait ...</Button>}</div>
         </div>
+        </CardContent>
+        </Card>
       )
     }
     else {
@@ -491,9 +498,8 @@ export const OperationViewer = (props: any) => {
   }
 
   return (
-    <>
-      <SmartBreadcrumb assetOrJobName={asset?.metadata?.name} venueName={venue?.name}/>
-
+    <ContentLayout>
+      <TopBar assetOrJobName={asset?.metadata?.name} venueName={venue?.name}/>
       <div className="flex flex-col w-full items-center justify-center">
         {assetNotFound && (
           <div className="text-center p-8">
@@ -506,6 +512,7 @@ export const OperationViewer = (props: any) => {
         {!assetNotFound && asset && <MetadataViewer asset={asset} />}
         {!assetNotFound && asset?.metadata?.operation && (
           <>
+            
             {renderInputFields(asset?.metadata?.operation?.input)}
             {asset?.metadata?.operation?.steps && <DiagramViewer metadata={asset.metadata}></DiagramViewer>}
           </>
@@ -516,7 +523,7 @@ export const OperationViewer = (props: any) => {
           </div>
         )}
       </div>
-    </>
+    </ContentLayout>
   );
 };
 

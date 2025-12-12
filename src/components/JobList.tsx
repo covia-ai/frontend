@@ -15,11 +15,12 @@ import { useEffect, useState } from "react";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { Job, JobMetadata, RunStatus, Venue } from "@/lib/covia";
-import { getExecutionTime } from "@/lib/utils";
+import { colourForStatus, getExecutionTime } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { PaginationHeader } from "@/components/PaginationHeader";
 import { useVenues } from "@/hooks/use-venues";
 import { Activity, Database, User } from "lucide-react";
+import { TopBar } from "./admin-panel/TopBar";
 
 export function JobList() {
  const [statusFilter, setStatusFilter] = useState("All");
@@ -122,15 +123,6 @@ export function JobList() {
         return "/venues/"+encodeURIComponent(venueObj?.venueId || "")+"/jobs/"+jobId;
         
     };
-    const getStatusColor = (status:string) => {
-          if(status == (RunStatus.COMPLETE || RunStatus.FAILED || RunStatus.AUTH_REQUIRED || RunStatus.INPUT_REQUIRED || RunStatus.CANCELLED || RunStatus.REJECTED))
-            return "text-red-400 text-center"
-          if(status == (RunStatus.PENDING || RunStatus.STARTED || RunStatus.PAUSED ))
-            return "text-blue-400 text-center"
-          if(status == (RunStatus.COMPLETE))
-            return "text-green-400 text-center"
-          return  "text-grey-400 text-center"
-    }
 
     const formatter = new Intl.DateTimeFormat('en-CA', {
     year: 'numeric',
@@ -144,7 +136,7 @@ export function JobList() {
    });
   return (
     <ContentLayout >
-      <SmartBreadcrumb venueName={venueObj?.name}/>
+      <TopBar venueName={venueObj?.name}/>
       <div className="flex flex-col items-center justify-center  mt-2 bg-background">
         <div className="flex flex-row w-full  items-start justify-start mt-4 space-x-4 ">
             <div className="flex flex-row items-center justify-start w-1/3  space-x-4">
@@ -182,7 +174,7 @@ export function JobList() {
               <TableCell className="text-center border border-slate-400">Created Date</TableCell>
               <TableCell className="text-center border border-slate-400">Execution Time</TableCell>
 
-              <TableCell className="text-center">Status</TableCell>
+              <TableCell className="text-center border border-slate-400">Status</TableCell>
             </TableRow>
           </TableHeader>
 
@@ -193,13 +185,13 @@ export function JobList() {
               <TableRow key={index}>
                 <TableCell><Link className="text-foreground font-mono underline" href={encodedPath(job.id)}>{job.id}</Link></TableCell>
                 <TableCell>{job.name}</TableCell>
-                <TableCell className="text-center">{formatter.format(new Date(job.created)).replace(', ', 'T') + 'Z'}</TableCell>
+                <TableCell>{formatter.format(new Date(job.created)).replace(', ', 'T') + 'Z'}</TableCell>
                 {(job.status == RunStatus.COMPLETE || job.status == RunStatus.FAILED) ? 
-                 (<TableCell className="text-center">{getExecutionTime(job.created, job.updated)}</TableCell>) : 
-                 (<TableCell className="text-center">--</TableCell>)
+                 (<TableCell >{getExecutionTime(job.created, job.updated)}</TableCell>) : 
+                 (<TableCell >--</TableCell>)
                  }
 
-                <TableCell className={getStatusColor(job.status || "All")}>{job.status}</TableCell>
+                <TableCell className={colourForStatus(job.status)}>{job.status}</TableCell>
               </TableRow>
               
             )}
