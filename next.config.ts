@@ -1,6 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Fix for top-level await
+  webpack: (config) => {
+    config.experiments = {
+      ...config.experiments,
+      topLevelAwait: true,
+    };
+    return config;
+  },
+  
   typescript: {
     // !! WARN !!
     // Dangerously allow production builds to successfully complete even if
@@ -8,6 +17,7 @@ const nextConfig: NextConfig = {
     // !! WARN !!
     ignoreBuildErrors: true,
   },
+  
   images: {
     remotePatterns: [
       {
@@ -16,13 +26,15 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  
   reactStrictMode: false,
+  
   async redirects() {
     return [
       {
         source: '/',
-        destination: '/workspace', // Replace with your internal page path
-        permanent: false, // Use false for temporary redirects
+        destination: '/workspace',
+        permanent: false,
       },
     ];
   },
