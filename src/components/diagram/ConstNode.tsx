@@ -10,7 +10,7 @@ import {
 function ConstNode({ data }) {
   return (
 
-    <div className="rounded-md  border-2  border-slate-300 dark:border-slate-700 bg-slate-200/50  p-2">
+    <div className="rounded-md  dark:border-slate-700 bg-slate-200/50 dark:bg-slate-600/50 bg-slate-200/50  p-2">
        
                   <Handle
                   type="source"

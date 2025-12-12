@@ -20,7 +20,9 @@ const defaultVenueUrls =
 if(!process.env.NEXT_PUBLIC_IS_ENV_PROD) 
     defaultVenueUrls.push("http://localhost:8080");
 
-const defaultVenues: Venue[] = await Promise.all(
+const defaultVenues: Venue[] =
+
+await Promise.all(
     defaultVenueUrls.map(venueId => 
         Grid.connect(venueId, new CredentialsHTTP(venueId, "", ""))
     )

@@ -1,12 +1,10 @@
 "use server"
 import { auth } from "@/auth"
-import { Iconbutton } from "@/components/Iconbutton";
 import { SignInButton } from "@/components/sign-in-button"
 import {
   Avatar,
   AvatarImage,
 } from "@/components/ui/avatar"
-import { ArrowBigLeft } from "lucide-react";
 
 export default async function  SignUp() {
 
