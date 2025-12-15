@@ -1,7 +1,7 @@
 import { copyDataToClipBoard } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { Copy} from "lucide-react";
-import { getAssetIdFromPath } from "@/lib/covia/Utils";
+import { getAssetIdFromPath } from "@covia-ai/covialib";
 
 export const IdAndLink = (props: any) => {
     const type = props.type;

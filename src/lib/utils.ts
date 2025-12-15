@@ -3,7 +3,7 @@ import { twMerge } from "tailwind-merge"
 import * as mime from 'mime-types'
 import copy from 'copy-to-clipboard';
 import { toast } from "sonner"
-import { RunStatus } from "./covia";
+import { RunStatus } from "@covia-ai/covialib";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))

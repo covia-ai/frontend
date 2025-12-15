@@ -1,6 +1,6 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { RunStatus } from "@/lib/covia";
+import { RunStatus } from "@covia-ai/covialib";
 
 export function usePolling(ms: number, status: string) {
     const router = useRouter()

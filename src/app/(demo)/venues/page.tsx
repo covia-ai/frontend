@@ -2,7 +2,6 @@
 "use client";
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
-import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 import { Search } from "@/components/search";
 import { VenueCard } from "@/components/VenueCard";
 import { useVenues } from "@/hooks/use-venues";
@@ -24,8 +23,7 @@ import { Iconbutton } from "@/components/Iconbutton";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { RefreshCwIcon } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Grid } from "@/lib/covia/Grid";
-import { CredentialsHTTP } from "@/lib/covia/Credentials";
+import { Grid,CredentialsHTTP } from "@covia-ai/covialib";
 import { useSession } from "next-auth/react";
 import { TopBar } from "@/components/admin-panel/TopBar";
 

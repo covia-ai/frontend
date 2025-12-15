@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 import { useEffect, useMemo, useState } from "react";
-import { Operation, Venue } from "@/lib/covia";
+import {  Venue, Asset, Grid, CredentialsHTTP, getParsedAssetId } from "@covia-ai/covialib";
 import { useRouter } from "next/navigation";
 import { Textarea } from "./ui/textarea";
 import { useStore } from "zustand";
@@ -15,14 +15,10 @@ import { useVenue } from "@/hooks/use-venue";
 import { DiagramViewer } from "./DiagramViewer";
 import { MetadataViewer } from "./MetadataViewer";
 import { AssetHeader } from "./AssetHeader";
-import { Asset } from "@/lib/covia";
 import { usePathname } from "next/navigation";
-import { getParsedAssetId } from "@/lib/covia/Utils";
 import { useSession } from "next-auth/react";
 import { useVenues } from "@/hooks/use-venues";
 import { AssetLookup } from "./AssetLookup";
-import { Grid } from "@/lib/covia/Grid";
-import { CredentialsHTTP } from "@/lib/covia/Credentials";
 import { TopBar } from "./admin-panel/TopBar";
 import { ContentLayout } from "./admin-panel/content-layout";
 import { Card, CardContent } from "./ui/card";

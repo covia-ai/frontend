@@ -4,7 +4,7 @@ import { Iconbutton } from "./Iconbutton";
 import { InfoIcon } from "lucide-react";
 import { Separator } from "./ui/separator";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
-import { Asset } from "@/lib/covia";
+import { Asset } from "@covia-ai/covialib";
 import { Button } from "./ui/button";
 import { useRouter } from "next/navigation";
 

@@ -1,7 +1,6 @@
 "use client";
 
 
-import Link from "next/link";
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
@@ -32,7 +31,7 @@ import {  useRouter, useSearchParams } from 'next/navigation'
 
 
 import { JsonEditor } from 'json-edit-react'
-import { Venue } from "@/lib/covia";
+import { Venue } from "@covia-ai/covialib";
 import { DialogClose } from "@radix-ui/react-dialog";
 import { useSession } from "next-auth/react";
 import { Input } from "@/components/ui/input";

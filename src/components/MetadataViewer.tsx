@@ -1,7 +1,7 @@
 'use client'
 
 import React from "react";
-import { Asset } from "@/lib/covia";
+import { Asset } from "@covia-ai/covialib";
 import { Calendar, Copy, Copyright, Download, Info, InfoIcon, Tag, User } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "./ui/badge";

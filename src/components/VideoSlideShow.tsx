@@ -6,7 +6,6 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel"
-import { PlayCircle } from 'lucide-react'
 
 export const VideoSlideShow = () => {
     const demoVideos = [

@@ -9,7 +9,7 @@ import { Bot } from "lucide-react";
 import { Card } from "./ui/card";
 import { useRouter } from "next/navigation";
 import { Badge } from "./ui/badge";
-import { RunStatus } from "@/lib/covia";
+import { RunStatus } from "@covia-ai/covialib";
 import { useEffect, useState } from "react";
 
  interface Agent {

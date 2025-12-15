@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components
 import { useEffect, useState } from "react";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { Job, JobMetadata, RunStatus, Venue } from "@/lib/covia";
+import { Job, JobMetadata, RunStatus, Venue } from "@covia-ai/covialib";
 import { colourForStatus, getExecutionTime } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { PaginationHeader } from "@/components/PaginationHeader";
