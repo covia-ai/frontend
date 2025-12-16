@@ -1,7 +1,7 @@
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
+import { TopBar } from "@/components/admin-panel/TopBar";
 import TimelinePanel from "@/components/Timelinepanel";
-import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 
 export default async function Page({
   params,
@@ -12,7 +12,7 @@ export default async function Page({
   return (
 
       <ContentLayout>
-      <SmartBreadcrumb/>
+      <TopBar/>
      
       <TimelinePanel agentId={id}></TimelinePanel>
       </ContentLayout>

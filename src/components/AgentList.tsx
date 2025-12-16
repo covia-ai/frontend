@@ -2,15 +2,13 @@
 
 import { AddNewAgent } from "./AddNewAgent";
 import { ContentLayout } from "./admin-panel/content-layout";
-
-import { SmartBreadcrumb } from "./ui/smart-breadcrumb";
-
 import { Bot } from "lucide-react";
 import { Card } from "./ui/card";
 import { useRouter } from "next/navigation";
 import { Badge } from "./ui/badge";
 import { RunStatus } from "@covia-ai/covialib";
 import { useEffect, useState } from "react";
+import { TopBar } from "./admin-panel/TopBar";
 
  interface Agent {
   id:string;
@@ -70,7 +68,7 @@ export function AgentList() {
 
 
    return (<ContentLayout>
-     <SmartBreadcrumb/>
+     <TopBar/>
      {agentData.length == 0 &&  <div className="flex flex-col items-center justify-center w-full h-100 space-y-2">
             <Bot size={64} className="text-primary"></Bot>
             <div className="text-primary text-lg">Get Started with Agents</div>
@@ -88,8 +86,8 @@ export function AgentList() {
                                  {agent.state == RunStatus.STARTED &&   <Badge className="bg-blue-400 h-2 min-w-2 rounded-full px-1 "></Badge>}
                                  {agent.state == RunStatus.FAILED &&   <Badge className="bg-red-400 h-2 min-w-2 rounded-full px-1 "></Badge>}
 
-                                 <div data-testid = "agent-header" className="truncate flex-1 mr-2 text-md text-foreground"
-                                 >{agent.name || 'Unnamed Agent'}
+                                 <div data-testid = "agent-header" className="truncate flex-1 mr-2 text-md text-foreground">
+                                    {agent.name || 'Unnamed Agent'}
                                  </div>      
                               </div>
                
