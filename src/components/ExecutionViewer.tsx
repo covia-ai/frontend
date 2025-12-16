@@ -2,7 +2,7 @@
 'use client'
 
 import { useEffect, useState } from "react";
-import { Asset, JobMetadata, RunStatus, Venue } from "@/lib/covia";
+import { Asset, JobMetadata, RunStatus, Venue, isJobFinished,Grid,Job,CredentialsHTTP } from "@covia-ai/covialib";
 import { Check, CircleX, Clock, Copy, FileInput, FileOutput, Hash, RotateCcw, Settings, Timer, Trash2, X } from "lucide-react";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { useStore } from "zustand";
@@ -10,17 +10,14 @@ import { useVenue } from "@/hooks/use-venue";
 import {  colourForStatus, getExecutionTime } from "@/lib/utils";
 import { TbSubtask } from "react-icons/tb";
 import Link from "next/link";
-
-import { isJobFinished } from "@/lib/covia/Utils";
 import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 import { ExecutionHeader } from "./ExecutionHeader";
 import { ExecutionToolbar } from "./ExecutionToolbar";
 import { useVenues } from "@/hooks/use-venues";
-import { Grid,Job } from "@/lib/covia";
-import { CredentialsHTTP } from "@/lib/covia/Credentials";
 import { useSession } from "next-auth/react";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { TopBar } from "./admin-panel/TopBar";
 
 
 export const ExecutionViewer = (props: any) => {
@@ -226,7 +223,7 @@ export const ExecutionViewer = (props: any) => {
 
     return (
         <>
-             <SmartBreadcrumb assetOrJobName={jobMetadata?.name} venueName={venue?.name} />
+             <TopBar assetOrJobName={jobMetadata?.name} venueName={venue?.name} />
            
              <ExecutionHeader  jobData={jobMetadata}></ExecutionHeader>
             {jobMetadata && (

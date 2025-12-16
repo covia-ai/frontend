@@ -1,16 +1,13 @@
 'use client'
 
 import { useEffect, useState } from "react";
-import { Asset, Venue } from "@/lib/covia";
+import { Asset, Venue, Grid, CredentialsHTTP } from "@covia-ai/covialib";
 import Link from "next/link";
-import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { MetadataViewer } from "./MetadataViewer";
 import { AssetHeader } from "./AssetHeader";
 import { useVenues } from "@/hooks/use-venues";
-import { Grid } from "@/lib/covia";
-import { CredentialsHTTP } from "@/lib/covia/Credentials";
 import { useSession } from "next-auth/react";
 import { ContentLayout } from "./admin-panel/content-layout";
 import { TopBar } from "./admin-panel/TopBar";

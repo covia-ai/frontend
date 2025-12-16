@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import {MetadataViewer} from '@/components/MetadataViewer';
-import { DataAsset, Venue } from '@/lib/covia';
+import { DataAsset, Venue } from '@covia-ai/covialib';
 
 
 describe('MetadataViewer Component with only inputs', () => {

@@ -23,19 +23,11 @@ import { Label } from "@/components/ui/label";
 import { useEffect, useState } from "react";
 import { JsonEditor } from "json-edit-react";
 import { Button } from "./ui/button";
-
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { Asset, AssetMetadata, Venue } from "@/lib/covia";
- 
+import { Asset, AssetMetadata, Venue } from "@covia-ai/covialib";
 import { getContentTypeForFile, getLicenseUrl } from "@/lib/utils";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { Iconbutton } from "./Iconbutton";
-import { useSession } from "next-auth/react";
 
 export const CreateAssetComponent = ({sendDataToParent}) => {
     const [step, setStep] = useState(0);

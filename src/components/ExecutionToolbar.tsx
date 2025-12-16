@@ -1,6 +1,6 @@
 'use client'
 
-import {  JobMetadata, Venue } from "@/lib/covia";
+import {  JobMetadata, Venue, isJobFinished, isJobPaused } from "@covia-ai/covialib";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import {
@@ -19,7 +19,6 @@ import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { isJobFinished, isJobPaused } from "@/lib/covia/Utils";
 import { Button } from "./ui/button";
 import { toast } from "sonner";
 

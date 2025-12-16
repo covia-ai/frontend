@@ -61,6 +61,41 @@ const TimelinePanel = (props:any) => {
           updated: "2025-11-24T10:00:00",
           description: "Answer shipping question.",
           head:false
+        },
+         {
+          id: 5,
+          title: "Task 5",
+          updated: "2025-11-24T10:00:00",
+          description: "Reply to customer request.",
+          head:false
+        },
+        {
+          id: 4,
+          title: "Task 4",
+          updated: "2025-11-24T10:00:00",
+          description: "Reply to customer request.",
+          head:false
+        },
+        {
+          id: 3,
+          title: "Task 3",
+          updated: "2025-11-24T10:00:00",
+          description: "Reply to customer request.",
+          head:false
+        },
+        {
+          id: 2,
+          title: "Task 2",
+          updated: "2025-11-24T10:00:00",
+          description: "Reply to customer request.",
+          head:false
+        },
+         {
+          id: 1,
+          title: "Task 1",
+          updated: "2025-11-24T10:00:00",
+          description: "Reply to customer request.",
+          head:false
         }
     ];
      setTimelineData(mockData);
@@ -73,18 +108,18 @@ const TimelinePanel = (props:any) => {
        <AgentHeader agentId={props.id} step={selectedEntry?.id} venueName="Test Venue"/>
        <div className="flex flex-row">
           {/* Left Panel - Timeline */}
-          <div className="w-1/3 border-r border-gray-200 overflow-y-auto">
-            <div className="p-4">
+          <div className="w-2/5 border-r border-gray-200 overflow-y-auto">
+            <div className="p-2">
               <div className=" flex  mb-2">Timeline</div>
               <div className="relative">
                 {/* Timeline line */}
                 <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
                 
-                 <ScrollArea className="h-148 w-80 ">
+                 <ScrollArea className="h-screen w-100">
                   {timelineData.map((entry, index) => (
                     <div
                       key={entry.id}
-                      className={`relative pl-12 pb-8 cursor-pointer transition-all w-11/12 ${
+                      className={`relative pl-8 pb-4 cursor-pointer transition-all w-11/12 ${
                         selectedEntry?.id === entry.id ? 'opacity-100' : 'opacity-80 hover:opacity-100'
                       }`}
                       onClick={() => setSelectedEntry(entry)}
@@ -92,20 +127,18 @@ const TimelinePanel = (props:any) => {
                       {/* Timeline dot */}
                       <div className={`absolute left-2.5 top-2 w-3 h-3 rounded-full ${getTypeColor(entry.head, selectedEntry?.id === entry.id )} ring-4 ring-white`}></div>
                       
-                      <Card className={`${selectedEntry?.id === entry.id ? 'border-blue-500 shadow-md' : 'border-gray-200'}` }>
-                        <CardHeader className="pb-3">
+                      <Card className={`${selectedEntry?.id === entry.id ? 'border-blue-500 shadow-md p-2' : 'border-gray-200 p-2'}` }>
+                        <CardHeader className="">
                           <div className="flex items-start justify-between">
-                            <CardTitle className="text-lg font-thin">{entry.title}</CardTitle>
-                            {entry.head && <Badge className={`${getTypeColor(selectedEntry?.head,selectedEntry?.id === entry.id)} w-fit`}>
-                              HEAD
-                            </Badge>}
-                          </div>
-                          <CardDescription className="flex flex-col  gap-2 mt-2 bg-card text-card-foreground">
-                            <div className="flex flex-row space-x-1 text-sm text-slate-400">
+                            <CardTitle className="text-sm font-thin">{entry.title}</CardTitle>
+                           <div className="flex flex-row space-x-1 text-xs text-slate-400">
                                 <Clock1 className="w-4 h-4" />
                                 <span>{getExecutionTime(entry.updated, new Date().toDateString())}</span>
                               </div>
-                            <div> {entry.description}</div>
+                          </div>
+                          <CardDescription className="flex flex-col  gap-2  bg-card text-card-foreground">
+                            
+                                <div className="text-sm text-muted-foreground"> {entry.description}</div>
                           </CardDescription>
                         </CardHeader>
                       </Card>
@@ -118,7 +151,7 @@ const TimelinePanel = (props:any) => {
 
           {/* Right Panel - Details */}
           <div className="flex-1 overflow-y-auto p-8 mt-2 h-screen">
-              <Card className="max-w-3xl mx-auto">
+              <Card className="max-w-3xl mx-auto h-screen">
               <CardHeader>
                 <div className="flexflex-col items-start  mb-4 bg-card text-card-foreground">
                   <div className="flex flex-row items-start justify-between">

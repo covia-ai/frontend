@@ -1,6 +1,6 @@
 'use client'
 
-import { Asset } from "@/lib/covia";
+import { Asset } from "@covia-ai/covialib";
 import Link from "next/link";
 import { IdAndLink } from "./IdandLink";
 

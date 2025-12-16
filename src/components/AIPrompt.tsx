@@ -21,11 +21,11 @@ export const AIPrompt = () => {
   const [prompt, setPrompt] = useState('')
   const [key, setKey] = useState('')
   const promptSamples = [
-    'Lorem Ipsum is simply dummy text of the printing1',
-    'Lorem Ipsum is simply dummy text of the printing2',
-    'Lorem Ipsum is simply dummy text of the printing3',
-    'Lorem Ipsum is simply dummy text of the printing4',
-    'Lorem Ipsum is simply dummy text of the printing5',
+    'Customer onboarding automation',
+    'Contract review and signature',
+    'Automate the security patching process for servers',
+    'Define a multi-agent orchestration strategy for a Content Publishing',
+    'Migrate a static HTML website to a modern React framework'
   ]
   return (
     <div data-testid="chat-container" className="flex flex-col items-center justify-center py-10 px-10 ">
@@ -59,7 +59,7 @@ export const AIPrompt = () => {
               </SelectContent>
           </Select>
           <Dialog >         
-             <DialogTrigger>
+             <DialogTrigger disabled>
             <EllipsisVertical className="text-card-foreground" size={20}/>
              </DialogTrigger>
              <DialogContent data-testid="chat-dialog" className="flex flex-col items-center justify-center bg-card text-card-foreground ">
