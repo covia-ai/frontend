@@ -108,7 +108,7 @@ const TimelinePanel = (props:any) => {
        <AgentHeader agentId={props.id} step={selectedEntry?.id} venueName="Test Venue"/>
        <div className="flex flex-row">
           {/* Left Panel - Timeline */}
-          <div className="w-1/3 border-r border-gray-200 overflow-y-auto">
+          <div className="w-2/5 border-r border-gray-200 overflow-y-auto">
             <div className="p-2">
               <div className=" flex  mb-2">Timeline</div>
               <div className="relative">
