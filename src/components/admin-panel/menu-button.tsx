@@ -9,7 +9,7 @@ export function MenuButton(props:any) {
   
     return (
         <div className="w-full" key={props.index}>
-          <Button  variant={
+          <Button  aria-label="menu" role="button" variant={
            (props.active === undefined &&
             pathname.startsWith(props.href)) ||
             props.active

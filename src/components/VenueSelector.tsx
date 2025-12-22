@@ -61,7 +61,7 @@ export function VenueSelector() {
      return (
       <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline">
+        <Button aria-label="venue" variant="outline" >
           <Building2 size={14} />
           No venues
         </Button>
@@ -73,7 +73,7 @@ export function VenueSelector() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="dark:hover:bg-primary-light dark:hover:text-foreground">
+        <Button aria-label="venue" variant="outline" className="dark:hover:bg-primary-light dark:hover:text-foreground">
           <Building2 size={14} />
           {selectedVenue.name}
           <ChevronDown size={14} />

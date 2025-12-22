@@ -36,10 +36,10 @@ export const AIPrompt = () => {
           </span>
         </h3>
         
-        <div className="flex flex-row items-center justify-center w-full space-x-2 mb-0">
+        <div className="flex flex-row items-center justify-center w-full space-x-2 mb-0 ">
             <Input
             placeholder="Add a prompt, select LLM and configure API Key....."
-            className="bg-card text-card-foreground "
+            className="bg-card placeholder:text-gray-400 "
             aria-label="prompt"
             value={prompt}
             onChange={ (e) => setPrompt(e.target.value)}
@@ -68,8 +68,8 @@ export const AIPrompt = () => {
                   <DialogClose><Button data-testid="chat-connect-to-model" >Save</Button></DialogClose>
              </DialogContent>
           </Dialog>
-           {key != '' && <Button data-testid="chat-button" variant="default" className="my-4 btn btn-xs mx-0 bg-primary dark:bg-primary-light text-white"><MagicWandIcon/></Button>}
-           {key == '' && <Button disabled data-testid="chat-button" variant="default" className="my-4 btn btn-xs mx-0 bg-primary dark:bg-primary-light text-white "><MagicWandIcon/></Button>}
+           {key != '' && <Button  aria-label="Run" role="button" data-testid="chat-button" variant="default" className="my-4 btn btn-xs mx-0 bg-primary dark:bg-primary-light text-white"><MagicWandIcon/></Button>}
+           {key == '' && <Button  aria-label="Run" role="button" disabled data-testid="chat-button" variant="default" className="my-4 btn btn-xs mx-0 bg-primary dark:bg-primary-light text-white "><MagicWandIcon/></Button>}
 
         </div>
    

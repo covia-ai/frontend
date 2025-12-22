@@ -27,7 +27,7 @@ export function ForkAgent(props:any) {
     return (
           <Dialog >
             <DialogTrigger asChild>
-              <Button>Fork Agent</Button>
+              <Button  aria-label="fork agent" role="button">Fork Agent</Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md bg-card text-card-foreground">
               <DialogHeader>
@@ -60,6 +60,7 @@ export function ForkAgent(props:any) {
             {/* Action Buttons */}
               <DialogClose>
               <Button 
+                aria-label="create fork" role="button"
                 disabled={isProcessing || !newAgentName.trim()}
                 onClick={() => handleFork()}>
                 Create Fork

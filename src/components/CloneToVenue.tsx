@@ -23,7 +23,7 @@ export default function CloneToVenue(props:any) {
   return (
     <Dialog >
       <DialogTrigger asChild>
-          <Button>Clone To Venue</Button>
+          <Button  aria-label='clone to venue' role="button">Clone To Venue</Button>
         </DialogTrigger>
       <DialogContent className="h-140 bg-card text-card-foreground">
         <DialogHeader className="pt-6 pb-4">
@@ -87,6 +87,7 @@ export default function CloneToVenue(props:any) {
                  disabled={!targetVenue.trim()}
                 className="flex-1"
                 onClick={() => handleClone()}
+                aria-label='clone to venue' role="button"
               >
                 Clone
               </Button>

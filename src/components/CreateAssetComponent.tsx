@@ -179,6 +179,19 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
       
     }
   
+     useEffect(() => {
+      const handleKeyDown = (e) => {
+       
+        // Ctrl/Cmd + K: Search
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+        e.preventDefault();
+        setOpen(true)
+      }
+      }
+  
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
     useEffect(() => {
           if(open == false)
               setStep(1)
@@ -190,7 +203,7 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
           <DialogTrigger>
                   <Iconbutton icon={PlusIcon} message="Add new asset" label="Add new asset"></Iconbutton>
           </DialogTrigger>
-          <DialogContent className="">  
+          <DialogContent className="bg-card text-card-forground">  
                 <DialogTitle className="flex flex-row items-center space-x-2">
                         <TbCircleDashedNumber1 size={32}></TbCircleDashedNumber1>
                         <Label>Choose Asset Type & Upload Content </Label>
@@ -233,12 +246,12 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
                               
                             </div> 
                             }
-                              <Button type="button" onClick={(e) => uploadContent(e)}>Upload Content</Button>
+                              <Button aria-label="upload" role="button" type="button" onClick={(e) => uploadContent(e)}>Upload Content</Button>
                         </div> 
                                 
           </DialogContent>
           {step == 2 && 
-            <DialogContent>
+            <DialogContent className="bg-card text-card-foreground">
                   <DialogTitle>Provide Metadata</DialogTitle>
                   <div>
                     <Label>Name</Label>
@@ -295,11 +308,11 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
                   </div>
                   </div>
                     <div className="flex flex-row items-center justify-between ">
-                    <Button type="button" onClick={(e) => setStep(1)}>Go Back</Button>
+                    <Button aria-label="back" role="button" type="button" onClick={(e) => setStep(1)}>Go Back</Button>
                     
-                    <Button type="button" onClick={(e) => createMetadata(3)}>Edit </Button>
+                    <Button aria-label="edit" role="button" type="button" onClick={(e) => createMetadata(3)}>Edit </Button>
                     <DialogClose>
-                      <Button type="button" onClick={(e) => createMetadata(0)}>Create Asset</Button>
+                      <Button aria-label="create asset" role="button" type="button" onClick={(e) => createMetadata(0)}>Create Asset</Button>
                     </DialogClose>
 
                   </div>
@@ -335,10 +348,10 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
                                     />
                               }
                   <div className="flex flex-row items-center justify-between ">
-                      <Button type="button" onClick={(e) => setStep(2)}>Go Back</Button>
+                      <Button aria-label="back" role="button" type="button" onClick={(e) => setStep(2)}>Go Back</Button>
                     <DialogClose>
-                      {metadataUpdated && <Button type="button" className="mx-2 w-32" onClick={() => createNewAsset(jsonData)}>Create Asset</Button>}
-                      {!metadataUpdated && <Button type="button" className="mx-2 w-32" onClick={() => createNewAsset(baseData)}>Create Asset</Button>}
+                      {metadataUpdated && <Button aria-label="create asset" role="button" type="button" className="mx-2 w-32" onClick={() => createNewAsset(jsonData)}>Create Asset</Button>}
+                      {!metadataUpdated && <Button aria-label="create asset" role="button" type="button" className="mx-2 w-32" onClick={() => createNewAsset(baseData)}>Create Asset</Button>}
                       
                     </DialogClose>
                 

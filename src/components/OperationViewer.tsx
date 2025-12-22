@@ -455,11 +455,11 @@ export const OperationViewer = (props: any) => {
             ))}
           </div>
           <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
-          <div className="flex flex-row space-x-2 items-center justify-center py-2">{!loading && <Button type="button" className="w-32" onClick={() => invokeOp(asset?.id, requiredKeys)}>{buttonText}</Button>}
-            {!loading && <Button type="button" className="w-32" onClick={() => resetForm()}>Reset</Button>}
+          <div className="flex flex-row space-x-2 items-center justify-center py-2">{!loading && <Button  aria-label="invoke operation" role="button" type="button" className="w-32" onClick={() => invokeOp(asset?.id, requiredKeys)}>{buttonText}</Button>}
+            {!loading && <Button type="button"  aria-label="reset" role="button" className="w-32" onClick={() => resetForm()}>Reset</Button>}
           </div>
 
-          <div className="flex flex-row space-x-2 items-center justify-center py-2">{loading && <Button type="button" className="w-32" disabled>Please wait ...</Button>}</div>
+          <div className="flex flex-row space-x-2 items-center justify-center py-2">{loading && <Button  aria-label="invoke operation" role="button" type="button" className="w-32" disabled>Please wait ...</Button>}</div>
         </div>
         </CardContent>
         </Card>
@@ -484,10 +484,10 @@ export const OperationViewer = (props: any) => {
           </div>
 
           <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
-          <div className="flex flex-row space-x-2 items-center justify-center py-2">{!loading && <Button type="button" className="w-32" onClick={() => invokeOp(asset?.id, [])}>{buttonText}</Button>}
-            {!loading && <Button type="button" className="w-32" onClick={() => resetForm()}>Reset</Button>}
+          <div className="flex flex-row space-x-2 items-center justify-center py-2">{!loading && <Button  aria-label="invoke operation" role="button" type="button" className="w-32" onClick={() => invokeOp(asset?.id, [])}>{buttonText}</Button>}
+            {!loading && <Button type="button"  aria-label="reset" role="button" className="w-32" onClick={() => resetForm()}>Reset</Button>}
           </div>
-          <div className="flex flex-row space-x-2 items-center justify-center py-2">{loading && <Button type="button" className="w-32" disabled>Please wait ...</Button>}</div>
+          <div className="flex flex-row space-x-2 items-center justify-center py-2">{loading && <Button  aria-label="invoke operation" role="button" type="button" className="w-32" disabled>Please wait ...</Button>}</div>
         </div>
       )
     }

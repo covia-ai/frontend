@@ -15,15 +15,15 @@ export function SheetMenu() {
   return (
     <Sheet>
       <SheetTrigger className="lg:hidden" asChild>
-        <Button className="h-8" variant="outline" size="icon">
+        <Button aria-label="menu"  className="h-8" variant="outline" size="icon">
           <MenuIcon size={20} />
         </Button>
       </SheetTrigger>
       <SheetContent className="sm:w-56 px-3 h-full flex flex-col" side="left">
         <SheetHeader>
           <Button
+            aria-label="venue" role="button" variant="outline" 
             className="flex justify-center items-center pb-2 pt-1"
-            variant="link"
             asChild
           >
             <Link href="/workspace" className="flex items-center gap-2">

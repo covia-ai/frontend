@@ -19,12 +19,14 @@ import {
 } from "@/components/ui/alert-dialog"
 import {  SquareArrowOutUpRight, X } from "lucide-react";
 import { Badge } from "./ui/badge";
+import { useEffect, useState } from "react";
 
 interface VenueCardProps {
   venue: Venue;
 }
 
 export function VenueCard({ venue }: VenueCardProps) {
+  const [open, setOpen] = useState(false)
   const router = useRouter();
   const { removeVenue } = useVenues();
 
@@ -41,19 +43,18 @@ export function VenueCard({ venue }: VenueCardProps) {
     removeVenue(venue.venueId);
   };
 
+
   return (
     <Card 
-      className="shadow-md border-2 bg-card flex flex-col rounded-md border-muted hover:border-accent cursor-pointer h-48 overflow-hidden"
-      
-    >
+      className="shadow-md border-2 bg-card flex flex-col rounded-md border-muted hover:border-accent cursor-pointer h-48 overflow-hidden">
       {/* Fixed-size header */}
       <div className="h-14 p-3 flex flex-row items-center justify-between border-b ">
         <div data-testid="venue-name" className="truncate flex-1 mr-2 text-md text-foreground" onClick={handleCardClick}>{venue.name}</div>
-            <AlertDialog>
+            <AlertDialog open={open} onOpenChange={setOpen}>
                     <AlertDialogTrigger  className="flex flex-row ">
                         <Iconbutton icon={X} message="Disconnect Venue" />
                     </AlertDialogTrigger>
-                    <AlertDialogContent>
+                    <AlertDialogContent className="bg-card text-card-foreground">
 
                         <AlertDialogHeader>
                             <AlertDialogTitle>Are you sure you want to disconnect this venue?</AlertDialogTitle>

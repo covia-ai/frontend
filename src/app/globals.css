@@ -49,6 +49,8 @@
   --color-input-color: var(--input-color);
   --color-output-color: var(--output-color);
   --color-io-foreground: var(--io-foreground);
+  --color-inputbox_muted_foreground: var(--inputbox_muted_foreground);
+  --color-description_muted_foreground: var(--description_muted_foreground);
 }
 
 :root {
@@ -112,6 +114,8 @@
   --secondary-vlight:oklch(64.82% 0.14137 253.415 / 0.342); 
   --muted: oklch(0.40 0 0);
   --muted-foreground: oklch(83.67% 0.00109 12.357);
+  --inputbox_muted_foreground: oklch(0.7668 0.0118 269.52);
+  --description_muted_foreground: oklch(0.9248 0.0071 268.54);
   --accent:oklch(70.4% 0.04 256.788);
   --accent-foreground: oklch(0.99 0 0);
   --destructive: oklch(0.70 0.19 22.31);

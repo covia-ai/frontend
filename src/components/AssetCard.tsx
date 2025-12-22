@@ -71,10 +71,10 @@ export function AssetCard({ asset,type }: AssetCardProps) {
                                 Copy asset
                                 <DialogClose>
                                 {JSON.stringify(newJsonData) != "{}" &&
-                                    <Button type="button" onClick={() => copyAsset(newJsonData)}> <Save></Save></Button>
+                                    <Button aria-label="save" role="button" type="button" onClick={() => copyAsset(newJsonData)}> <Save></Save></Button>
                                 }
                                 {JSON.stringify(newJsonData) == "{}" &&
-                                    <Button type="button" disabled><Save></Save></Button>
+                                    <Button aria-label="save" role="button" type="button" disabled><Save></Save></Button>
                                 }
 
                                 </DialogClose>

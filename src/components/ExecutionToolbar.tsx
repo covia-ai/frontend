@@ -82,7 +82,9 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
                   <TooltipTrigger>
                         <AlertDialog>
                           <AlertDialogTrigger className="flex flex-row ">
-                              <Button variant={"outline"} className="text-xs justify-center h-8text-sm">
+                              <Button 
+                              aria-label="cancel" role="button"
+                              variant={"outline"} className="text-xs justify-center h-8text-sm">
                                 <StopCircle/>Cancel</Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
@@ -108,7 +110,8 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
                   <TooltipTrigger>
                         <AlertDialog>
                           <AlertDialogTrigger  className="flex flex-row">
-                              <Button variant={"outline"} className="text-xs justify-center h-8 text-sm">
+                              <Button  aria-label="pause" role="button"
+                              variant={"outline"} className="text-xs justify-center h-8 text-sm">
                               <PauseCircleIcon/>Pause </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
@@ -134,7 +137,8 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
                   <TooltipTrigger>
                         <AlertDialog>
                           <AlertDialogTrigger  className="flex flex-row hover:text-red-400">
-                               <Button variant={"outline"} className="text-xs justify-center h-8 bg-primary text-sm">
+                               <Button  aria-label="resume" role="button"
+                               variant={"outline"} className="text-xs justify-center h-8 bg-primary text-sm">
                                 <PauseCircleIcon />Resume</Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
@@ -163,7 +167,8 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
                   <TooltipTrigger>
                         <AlertDialog>
                           <AlertDialogTrigger className="flex flex-row">
-                               <Button variant={"outline"} className="text-xs justify-center h-8 text-sm">
+                               <Button  aria-label="delete" role="button"
+                               variant={"outline"} className="text-xs justify-center h-8 text-sm">
                                 <Trash2/>Delete
                                 </Button>
 

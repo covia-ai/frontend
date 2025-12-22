@@ -56,10 +56,11 @@ export const AssetInfoSheet = ({asset,venueId}:AssetInfoSheetProps) => {
                 <SheetTrigger>
                   <Iconbutton icon={InfoIcon} message="Know more"></Iconbutton>
                 </SheetTrigger>
-                  <SheetContent data-testid="info_sheet" className="min-w-lg">
+                  <SheetContent data-testid="info_sheet" className="min-w-lg text-card-foreground bg-card">
                       <SheetHeader className="flex flex-col items-center justify-center">
                       <SheetTitle data-testid="info_assetname">{asset.metadata.name}</SheetTitle>
-                      {asset.metadata.description && <SheetDescription data-testid="info_assetdesc">
+                      {asset.metadata.description && <SheetDescription data-testid="info_assetdesc"
+                      className="text-slate-400 text-center">
                           {asset.metadata.description}
                       </SheetDescription>}
                       </SheetHeader>
@@ -86,7 +87,7 @@ export const AssetInfoSheet = ({asset,venueId}:AssetInfoSheetProps) => {
                       <SheetFooter>
                       <SheetClose asChild>
                           {asset.id && asset.metadata?.operation?.input && 
-                          <Button data-testid="info_runbtn" type="submit" onClick={() => { handleCardClick(asset.id) }}>Run</Button>}
+                          <Button aria-label="run" role="button" data-testid="info_runbtn" type="submit" onClick={() => { handleCardClick(asset.id) }}>Run</Button>}
                       </SheetClose>
                       </SheetFooter>
                   </SheetContent>

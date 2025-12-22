@@ -125,7 +125,7 @@ export function AddNewAgent() {
             </Accordion>
                      </div>
                     <DialogClose>
-                          <Button  onClick={() => handleNewAgent()} className="btn-sm">Create</Button>              
+                          <Button aria-label="create agent" role="button"  onClick={() => handleNewAgent()} className="btn-sm">Create</Button>              
                   </DialogClose>
                   </DialogContent>
               </Dialog>

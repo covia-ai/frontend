@@ -48,6 +48,7 @@ export default function OperationsPage() {
                       <Button 
                         onClick={() => window.open('https://discord.gg/fywdrKd8QT', '_blank')}
                         className="w-full bg-primary-light  text-white hover:text-black"
+                        aria-label="join discord" role="button"
                       >
                         Join Discord Server
                       </Button>

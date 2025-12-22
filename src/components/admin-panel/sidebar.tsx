@@ -29,6 +29,7 @@ export function Sidebar() {
         className="relative h-full flex flex-col px-3 py-4 overflow-y-auto shadow-md "
       >
         <Button
+          aria-label="sidebar" role="button"
           className={cn(
             "transition-transform ease-in-out duration-300 mb-1",
             !getOpenState() ? "translate-x-1" : "translate-x-0"

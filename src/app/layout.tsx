@@ -6,6 +6,7 @@ import { CookieConsentComponent } from "@/components/CookieConsent";
 import localFont from 'next/font/local';
 import { GoogleAnalytics } from '@next/third-parties/google';
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { ShortcutModal } from "@/components/ShortCutModal";
 
 
 const { title, description } = siteConfig;
@@ -45,7 +46,9 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >{children}
+         
           </ThemeProvider>
+           <ShortcutModal align="right"/>
         <CookieConsentComponent />
       </body>
       <GoogleAnalytics gaId="G-CS4QNLYT4M" />

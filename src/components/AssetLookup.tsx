@@ -87,7 +87,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}) => {
                         onChange={ (e) =>setFilterValue(e.target.value)}/>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline">
+                  <Button variant="outline" >
                     <Building2 size={14} />
                       {selectedVenue?.name}
                     <ChevronDown size={14} />
