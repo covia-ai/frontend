@@ -115,13 +115,17 @@ const renderMetadataFields = (asset: Asset, fields: MetadataFieldConfig[]) => {
 
 export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
   let contentURL = asset.getContentURL();
-  if(asset.metadata.operation != undefined) 
+  let defaultValue = "metadata"
+  if(asset.metadata.operation != undefined) {
     contentURL = 'NA'
+    defaultValue = 'NA'
+  }
   return (
      <Accordion
       type="single"
       collapsible
       className=" w-full "
+      defaultValue={defaultValue}
     >
        <AccordionItem value="metadata">
          <AccordionTrigger className="py-1 px-2 bg-card rounded-none">Asset Metadata</AccordionTrigger>

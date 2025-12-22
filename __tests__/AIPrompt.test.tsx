@@ -11,7 +11,7 @@ describe('Chat Component', () => {
 
   test('renders input field', () => {
     render(<AIPrompt />);
-    expect(screen.getByPlaceholderText('Build me an orchestration.....')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Add a prompt, select LLM and configure API Key.....')).toBeInTheDocument();
   });
 
   test('renders chat button', () => {
