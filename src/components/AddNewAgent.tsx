@@ -51,7 +51,7 @@ export function AddNewAgent() {
                         <div className="space-y-2 w-full">
                           <Label htmlFor="agent-name"className="w-32 text-sm">Agent Name:</Label>
                           <Input
-                            id="agent-name"
+                            data-testid="agent-name"
                             placeholder="e.g., Customer Support Agent"
                             value={agentName}
                             onChange={(e) => setAgentName(e.target.value)}
@@ -125,7 +125,7 @@ export function AddNewAgent() {
             </Accordion>
                      </div>
                     <DialogClose>
-                          <Button aria-label="create agent" role="button"  onClick={() => handleNewAgent()} className="btn-sm">Create</Button>              
+                          <Button aria-label="create agent" role="button" data-testid="create-agent"  onClick={() => handleNewAgent()} className="btn-sm">Create</Button>              
                   </DialogClose>
                   </DialogContent>
               </Dialog>
