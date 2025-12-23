@@ -63,7 +63,7 @@ export function AssetCard({ asset,type }: AssetCardProps) {
                     {type == "assets" && 
                         <Dialog>
                             <DialogTrigger>
-                            <Iconbutton icon={CopyIcon} message="Copy Asset"/>
+                            <Iconbutton data-testid="copy_btn" icon={CopyIcon} message="Copy Asset"/>
                             
                             </DialogTrigger>
                             <DialogContent className="h-11/12 min-w-10/12 ">
@@ -71,10 +71,10 @@ export function AssetCard({ asset,type }: AssetCardProps) {
                                 Copy asset
                                 <DialogClose>
                                 {JSON.stringify(newJsonData) != "{}" &&
-                                    <Button type="button" onClick={() => copyAsset(newJsonData)}> <Save></Save></Button>
+                                    <Button aria-label="save" role="button" type="button" onClick={() => copyAsset(newJsonData)}> <Save></Save></Button>
                                 }
                                 {JSON.stringify(newJsonData) == "{}" &&
-                                    <Button type="button" disabled><Save></Save></Button>
+                                    <Button aria-label="save" role="button" type="button" disabled><Save></Save></Button>
                                 }
 
                                 </DialogClose>
@@ -105,7 +105,7 @@ export function AssetCard({ asset,type }: AssetCardProps) {
 
                 {/* Fixed-size footer */}
                 <div className="p-2 h-12 flex flex-row-reverse items-center justify-between" onClick={() => handleCardClick(asset.id)}>
-                    <Iconbutton icon={SquareArrowOutUpRight} message="View Asset" path={type} pathId={asset.id} venueId={venue.venueId}/>
+                    <Iconbutton data-testid="view_btn" icon={SquareArrowOutUpRight} message="View Asset" path={type} pathId={asset.id} venueId={venue.venueId}/>
                     
                 </div>
         </Card>

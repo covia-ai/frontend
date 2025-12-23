@@ -23,7 +23,7 @@ export function ChangeLLMProvider(props:any) {
     return (
       <Dialog >
         <DialogTrigger asChild>
-          <Button>Change Provider</Button>
+          <Button aria-label="change llm" role="button"> Change Provider</Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-md bg-card text-card-foreground">
           <DialogHeader>
@@ -80,6 +80,7 @@ export function ChangeLLMProvider(props:any) {
            
               <DialogClose>
               <Button
+              aria-label="change provider" role="button"
                disabled={currentProvider == selectedProvider}
                 className="flex-1"
               >

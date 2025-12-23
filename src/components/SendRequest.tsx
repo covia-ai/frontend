@@ -27,7 +27,7 @@ export default function SendRequest(props:any) {
   return (
       <Dialog>
         <DialogTrigger asChild>
-          <Button>Send Request</Button>
+          <Button  aria-label="send request" role="button">Send Request</Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-lg bg-card text-card-foreground">
           <DialogHeader>
@@ -65,6 +65,7 @@ export default function SendRequest(props:any) {
             <div className="flex gap-2 pt-2">
               
               <Button
+                aria-label="send request" role="button"
                 onClick={handleSend}
                 disabled={isProcessing || !request.trim()}
               >

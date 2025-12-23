@@ -147,6 +147,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               <Button 
                 onClick={() => window.open(venue.baseUrl, '_blank')}
                 variant="outline"
+                aria-label="open venue" role="button"
                 className="flex items-center space-x-2"
               >
                 <ExternalLink size={16} />
@@ -156,6 +157,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               <Button 
                 onClick={() => setCurrentVenue(venue)}
                 variant={isCurrentVenue ? "default" : "secondary"}
+                aria-label="make default" role="button"
                 className="flex items-center space-x-2 bg-secondary text-secondary-foreground border border-muted"
                 disabled={isCurrentVenue}
               >
@@ -249,6 +251,7 @@ export default function VenuePage({ params }: VenuePageProps) {
                   onClick={() => router.push(`/venues/${slug}/assets`)}
                   className="w-full"
                   variant="outline"
+                  aria-label="view asset" role="button"
                 >
                   View Assets
                   <ArrowRight size={16} className="ml-2" />
@@ -273,6 +276,7 @@ export default function VenuePage({ params }: VenuePageProps) {
                   onClick={() => router.push(`/venues/${slug}/operations`)}
                   className="w-full"
                   variant="outline"
+                  aria-label="view operation" role="button"
                 >
                   View Operation
                   <ArrowRight size={16} className="ml-2" />
@@ -297,6 +301,7 @@ export default function VenuePage({ params }: VenuePageProps) {
                   disabled
                   className="w-full"
                   variant="outline"
+                    aria-label="view users" role="button"
                 >
                   View Users
                   <ArrowRight size={16} className="ml-2" />
@@ -321,6 +326,7 @@ export default function VenuePage({ params }: VenuePageProps) {
                   onClick={() => router.push(`/venues/${slug}/jobs`)}
                   className="w-full"
                   variant="outline"
+                  aria-label="view jobs" role="button"
                 >
                   View Jobs
                   <ArrowRight size={16} className="ml-2" />

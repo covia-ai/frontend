@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {  useState } from "react";
+import {  useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Iconbutton } from "@/components/Iconbutton";
@@ -35,6 +35,7 @@ export default function VenuesPage() {
   const search = searchParams.get('search');
   const router = useRouter();
   const { data: session } = useSession();
+  const [open, setOpen] = useState(false)
 
   const addVenueToList = () =>{
     let venueExist = false;
@@ -60,6 +61,19 @@ export default function VenuesPage() {
       toast("This venue is already connected. Please check the URL/DID provided")
     }
   }
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+         
+          // Ctrl/Cmd + K: Search
+        if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+          e.preventDefault();
+          setOpen(true)
+        }
+        }
+       window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
   return (
     <ContentLayout>
       <TopBar />
@@ -91,7 +105,7 @@ export default function VenuesPage() {
            ))}
         </div>
         <div className="h-48 flex flex-center items-center justify-center ">
-          <Dialog>
+          <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger>
                   <Iconbutton icon={PlusCircledIcon} message="Connect to new venue" label="Connect to venue"/> 
             </DialogTrigger>
@@ -108,7 +122,7 @@ export default function VenuesPage() {
                    
                   </div>
                       <DialogClose>
-                          <Button onClick={(e) => addVenueToList()}>Connect</Button>                 
+                          <Button aria-label="connect" role="button" onClick={(e) => addVenueToList()}>Connect</Button>                 
                     </DialogClose>
             </DialogContent>
           </Dialog>
