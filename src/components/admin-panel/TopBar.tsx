@@ -1,4 +1,6 @@
 
+"use client"
+
 import { SheetMenu } from "@/components/admin-panel/sheet-menu";
 import { SignInButton } from "./signin-button";
 import { VenueSelector } from "@/components/VenueSelector";
