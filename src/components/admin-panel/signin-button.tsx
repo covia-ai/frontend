@@ -33,7 +33,7 @@ export function SignInButton(props:any) {
                     <LogInIcon/>
                     <p
                       className={cn(
-                        "whitespace-nowrap ",
+                        "whitespace-nowrap hidden md:block lg:block",
                         props.isOpen === false ? "opacity-0 hidden" : "opacity-100"
                       )}
                     >

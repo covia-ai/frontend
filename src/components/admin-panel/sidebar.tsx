@@ -31,13 +31,12 @@ export function Sidebar() {
         <Button
           aria-label="sidebar" role="button"
           className={cn(
-            "transition-transform ease-in-out duration-300 mb-1",
+            "transition-transform ease-in-out duration-300 mb-1 ",
             !getOpenState() ? "translate-x-1" : "translate-x-0"
           )}
           variant="link"
           asChild
         >
-          <Link href="/workspace" className="flex items-center gap-2">
             <h1
               className={cn(
                 "font-bold text-lg whitespace-nowrap transition-[transform,opacity,display] ease-in-out duration-300",
@@ -57,7 +56,6 @@ export function Sidebar() {
               </Link>
 
             </h1>
-          </Link>
         </Button>
         <Menu isOpen={getOpenState()} />
       </div>

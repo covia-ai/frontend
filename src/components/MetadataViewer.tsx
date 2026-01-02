@@ -14,6 +14,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
+import { ScrollArea } from "@radix-ui/react-scroll-area";
+import { ScrollBar } from "./ui/scroll-area";
 interface MetadataViewerProps {
   asset: Asset;
 }
@@ -130,56 +132,57 @@ export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
        <AccordionItem value="metadata">
          <AccordionTrigger className="py-1 px-2 bg-card rounded-none">Asset Metadata</AccordionTrigger>
          <AccordionContent>
-          <div className="text-sm  bg-card p-2 items-center justify-between min-w-lg w-full">
-            <div className="flex flex-row">
-              <div className="flex flex-col flex-3 border-r-2 border-slate-200 px-2 ">
-                {renderMetadataFields(asset, METADATA_FIELDS)}
-              </div>
-              <div className="flex flex-col flex-2 px-2 ">
-                {contentURL &&  contentURL !='NA'  && (
-                  <div className="flex flex-row items-center space-x-2 my-2">
-                    <Download size={18}></Download>
-                    <span className="text-md">Data:</span>
-                    <span>
-                      <Link href={contentURL} className="text-secondary dark:text-secondary-light underline" download={true}>
-                        Download
-                      </Link>
-                    </span>
-                    <span>
-                      <a href={contentURL + '?inline=true'} 
-                      target="_blank" rel="noopener noreferrer" className="text-secondary dark:text-secondary-light underline" >
-                        View
-                      </a>
-                    </span>
+              <div className="text-sm p-2 items-center justify-between min-w-lg w-full">
+                <div className="flex flex-col md:flex-row lg:flex-row">
+                  <div className="flex flex-col flex-3 md:border-r-2 lg:border-r-2 border-slate-200 px-2 ">
+                    {renderMetadataFields(asset, METADATA_FIELDS)}
                   </div>
-                )}
-                <div className="flex flex-row items-center space-x-2">
-                  <Info size={18}></Info>
-                  <span className="text-md">Metadata:</span>
-                  <span>
-                    <Dialog>
-                      <DialogTrigger>
-                        <span className="text-card-foreground dark:text-secondary-light underline underline"> View metadata</span>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogTitle>Asset Metadata</DialogTitle>
-                        <JsonEditor 
-                          data={asset.metadata}
-                          rootName="metadata"
-                          rootFontSize="1em"
-                          maxWidth="120vw"
-                          restrictEdit={true}
-                          restrictAdd={true}
-                          restrictDelete={true}
-                          collapse={3}
-                        />
-                      </DialogContent>
-                    </Dialog>
-                  </span>
+                  <div className="flex flex-col flex-2 px-2 ">
+                    {contentURL &&  contentURL !='NA'  && (
+                      <div className="flex flex-row items-center space-x-2 my-2">
+                        <Download size={18}></Download>
+                        <span className="text-md">Data:</span>
+                        <span>
+                          <Link href={contentURL} className="text-secondary dark:text-secondary-light underline" download={true}>
+                            Download
+                          </Link>
+                        </span>
+                        <span>
+                          <a href={contentURL + '?inline=true'} 
+                          target="_blank" rel="noopener noreferrer" className="text-secondary dark:text-secondary-light underline" >
+                            View
+                          </a>
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex flex-row items-center space-x-2">
+                      <Info size={18}></Info>
+                      <span className="text-md">Metadata:</span>
+                      <span>
+                        <Dialog>
+                          <DialogTrigger>
+                            <span className="text-card-foreground dark:text-secondary-light underline underline"> View metadata</span>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogTitle>Asset Metadata</DialogTitle>
+                            <JsonEditor 
+                              data={asset.metadata}
+                              rootName="metadata"
+                              rootFontSize="1em"
+                              maxWidth="120vw"
+                              restrictEdit={true}
+                              restrictAdd={true}
+                              restrictDelete={true}
+                              collapse={3}
+                            />
+                          </DialogContent>
+                        </Dialog>
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-  </div>
+         
          </AccordionContent>
     </AccordionItem>
     </Accordion>
