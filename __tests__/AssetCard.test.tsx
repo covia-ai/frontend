@@ -4,7 +4,6 @@ import { render, screen, fireEvent, within, getByRole, waitFor } from '@testing-
 import '@testing-library/jest-dom';
 import { AssetCard } from '@/components/AssetCard';
 import { Asset, DataAsset, Operation, Venue } from '@covia-ai/covialib';
-import { Iconbutton } from '@/components/Iconbutton';
 
 // Mock child components
 jest.mock('@/components/Iconbutton', () => ({
