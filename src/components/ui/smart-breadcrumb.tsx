@@ -115,7 +115,7 @@ export function SmartBreadcrumb({ assetOrJobName, venueName }: SmartBreadcrumbPr
                         onClick={() => item.href && handleBreadcrumbClick(item.href)}
                         className="cursor-pointer hover:underline"
                       >
-                        <span>{item.label}</span>
+                        <span>{index}</span>
                       </BreadcrumbLink>
                       {index < breadcrumbs.length - 1 && <BreadcrumbSeparator />}
                     </BreadcrumbItem>

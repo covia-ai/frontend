@@ -64,7 +64,7 @@ export const ShowCase = () => {
               sample Grid operations
             </span>
           </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 items-stretch justify-center gap-4 mt-4 mb-8 w-full">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4 mt-4 mb-8">
 
               {assets.map((asset, index) =>
 

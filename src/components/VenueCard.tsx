@@ -5,21 +5,10 @@ import { Venue } from "@covia-ai/covialib";
 import { useRouter } from 'next/navigation';
 import { useVenues } from "@/hooks/use-venues";
 import { Iconbutton } from "./Iconbutton";
-
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
 import {  SquareArrowOutUpRight, X } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { useEffect, useState } from "react";
+import { RemoveVenueModal } from "./RemoveVenueModal";
 
 interface VenueCardProps {
   venue: Venue;
@@ -28,7 +17,6 @@ interface VenueCardProps {
 export function VenueCard({ venue }: VenueCardProps) {
   const [open, setOpen] = useState(false)
   const router = useRouter();
-  const { removeVenue } = useVenues();
 
   if(!(venue instanceof Venue))
     venue = new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.name})
@@ -38,11 +26,7 @@ export function VenueCard({ venue }: VenueCardProps) {
     router.push(encodedUrl);
   };
 
-  const handleRemoveVenue = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    removeVenue(venue.venueId);
-  };
-
+ 
 
   return (
     <Card 
@@ -50,32 +34,12 @@ export function VenueCard({ venue }: VenueCardProps) {
       {/* Fixed-size header */}
       <div className="h-14 p-3 flex flex-row items-center justify-between border-b ">
         <div data-testid="venue-name" className="truncate flex-1 mr-2 text-md text-foreground" onClick={handleCardClick}>{venue.name}</div>
-            <AlertDialog open={open} onOpenChange={setOpen}>
-                    <AlertDialogTrigger  className="flex flex-row ">
-                        <Iconbutton icon={X} message="Disconnect Venue" />
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="bg-card text-card-foreground">
-
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure you want to disconnect this venue?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                This action cannot be undone. 
-                            </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                            <AlertDialogCancel>No</AlertDialogCancel>
-                            <AlertDialogAction onClick={(e) => handleRemoveVenue(e)}>Yes</AlertDialogAction>
-                            </AlertDialogFooter>
-                    </AlertDialogContent>
-            </AlertDialog>
-                    
-           
-      </div>
-
+            <RemoveVenueModal venueId={venue.venueId}/>
+        </div>
       {/* Flexible middle section */}
       <div className="flex-1 p-3 flex flex-col justify-between" onClick={handleCardClick}>
         <div data-testid="venue-desc" className="text-xs text-card-foreground line-clamp-3 mb-2">
-          {venue.metadata.ven || "A Covia venue for managing assets and operations" }
+          {venue.metadata.description || "A Covia venue for managing assets and operations" }
         </div>
       
       </div>

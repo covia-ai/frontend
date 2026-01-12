@@ -17,7 +17,7 @@ export const Search: React.FC = (   ) => {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center w-1/2 mt-4">
+    <div className="flex flex-col items-center justify-center w-2/3 mt-4">
         <div className="flex flex-row items-center py-2 w-full ">
         
         <Input
@@ -34,6 +34,7 @@ export const Search: React.FC = (   ) => {
         <div className="flex flex-row items-center">
           <MagnifyingGlassIcon className=" relative ml-4 right-10 "   onClick={() => {
             window.location.href = pathname+"?search="+searchValue}}/>
+            
           <Button  aria-label="Clear search" role="button" onClick={() => {clearAndSetFilter("")}}>Clear</Button>
         </div>
        

@@ -22,7 +22,7 @@ export function SheetMenu() {
       <SheetContent className="sm:w-56 px-3 h-full flex flex-col" side="left">
         <SheetHeader>
           <Button
-            aria-label="venue" role="button" variant="outline" 
+            aria-label="venue" role="button" variant="ghost" 
             className="flex justify-center items-center pb-2 pt-1"
             asChild
           >

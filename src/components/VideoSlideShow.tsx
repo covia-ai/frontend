@@ -16,7 +16,7 @@ export const VideoSlideShow = () => {
        <div className="w-full max-w-4xl mx-auto space-y-8">
       {/* Carousel */}
       <div className="relative group">
-        <Carousel className="w-full" opts={{ align: "center", loop: true }}>
+        <Carousel className="w-10/12" opts={{ align: "center", loop: true }}>
           <CarouselContent className="m-0">
             {demoVideos.map((video,index) => (
               <CarouselItem key={index} className="pl-0">

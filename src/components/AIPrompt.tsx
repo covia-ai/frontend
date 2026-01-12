@@ -36,16 +36,17 @@ export const AIPrompt = () => {
           </span>
         </h3>
         
-        <div className="flex flex-row items-center justify-center w-full space-x-2 mb-0 ">
+        <div className="flex flex-col md:flex-row lg:flex-row items-center justify-center w-full space-x-2 space-y-2 ">
             <Input
             placeholder="Add a prompt, select LLM and configure API Key....."
-            className="bg-card placeholder:text-gray-400 "
+            className="bg-card placeholder:text-gray-400 my-2"
             aria-label="prompt"
             value={prompt}
             onChange={ (e) => setPrompt(e.target.value)}
           />
            
-          <Select onValueChange={value => setSelectedOption(value)} defaultValue="chatgpt">
+          <div className="flex flex-row items-center justify-center w-fit">
+            <Select onValueChange={value => setSelectedOption(value)} defaultValue="chatgpt">
               <SelectTrigger className="w-32px text-thin bg-card text-card-foreground mx-0">
                 <SelectValue className="text-thin" placeholder="Choose an LLM" />
               </SelectTrigger>    
@@ -70,7 +71,7 @@ export const AIPrompt = () => {
           </Dialog>
            {key != '' && <Button  aria-label="Run" role="button" data-testid="chat-button" variant="default" className="my-4 btn btn-xs mx-0 bg-primary dark:bg-primary-light text-white"><MagicWandIcon/></Button>}
            {key == '' && <Button  aria-label="Run" role="button" disabled data-testid="chat-button" variant="default" className="my-4 btn btn-xs mx-0 bg-primary dark:bg-primary-light text-white "><MagicWandIcon/></Button>}
-
+</div>
         </div>
    
          <div className="flex flex-row flex-wrap items-center justify-center w-full space-x-2 space-y-2 mt-4">

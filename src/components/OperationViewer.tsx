@@ -422,7 +422,7 @@ export const OperationViewer = (props: any) => {
 
   function renderDescription(description: string) {
     return (
-      <div className="text-sm text-card-foreground">{description}</div>
+      <div className="text-sm text-gray-400">{description}</div>
     );
   }
 
@@ -435,32 +435,76 @@ export const OperationViewer = (props: any) => {
       return (
         <Card className="bg-background border-muted w-full my-2 rounded-md">
           <CardContent className=" ">
-        <div >
-          <div className="grid grid-cols-[min-content_1fr_1fr] gap-4 items-center py-2">
-            {keys.map((key, index) => (
-              <>
-                <div key={index} className="flex flex-row items-center min-w-0">
-                  <Label className="whitespace-nowrap">{key}</Label>
-                  {requiredKeys?.indexOf(key) != -1 && <span className="text-red-400 ml-1">*</span>}
-                </div>
-                {renderInputComponent(
-                  key,
-                  properties[key],
-                  (value) => setKeyValue(key, value),
-                  (value) => setKeyRawValue(key, value),
-                  (type) => setKeyTypeAndUpdateRawInput(key, type)
-                )}
-                {renderDescription(properties[key].description || "")}
-              </>
-            ))}
-          </div>
-          <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
-          <div className="flex flex-row space-x-2 items-center justify-center py-2">{!loading && <Button  aria-label="invoke operation" role="button" type="button" className="w-32" onClick={() => invokeOp(asset?.id, requiredKeys)}>{buttonText}</Button>}
-            {!loading && <Button type="button"  aria-label="reset" role="button" className="w-32" onClick={() => resetForm()}>Reset</Button>}
-          </div>
-
-          <div className="flex flex-row space-x-2 items-center justify-center py-2">{loading && <Button  aria-label="invoke operation" role="button" type="button" className="w-32" disabled>Please wait ...</Button>}</div>
+           <div>
+  <div className="grid grid-cols-1 md:grid-cols-[min-content_1fr_1fr] lg:grid-cols-[min-content_1fr_1fr] md:gap-4 lg:gap-4 py-2">
+    {keys.map((key, index) => (
+      <>
+        {/* Label - full width on mobile, min-content on desktop */}
+        <div className="flex flex-row items-center min-w-0 my-2">
+          <Label className="whitespace-nowrap">{key}</Label>
+          {requiredKeys?.indexOf(key) !== -1 && <span className="text-red-400 ml-1">*</span>}
         </div>
+        
+        {/* Input - full width on mobile, normal column on desktop */}
+        <div className="w-full">
+          {renderInputComponent(
+            key,
+            properties[key],
+            (value) => setKeyValue(key, value),
+            (value) => setKeyRawValue(key, value),
+            (type) => setKeyTypeAndUpdateRawInput(key, type)
+          )}
+        </div>
+        
+        {/* Description - below input on mobile, third column on desktop */}
+        <div className="md:contents lg:contents">
+          {renderDescription(properties[key].description || "")}
+        </div>
+      </>
+    ))}
+  </div>
+  
+  <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
+  
+  <div className="flex flex-row space-x-2 items-center justify-center py-2">
+    {!loading && (
+      <>
+        <Button 
+          aria-label="invoke operation" 
+          role="button" 
+          type="button" 
+          className="w-32" 
+          onClick={() => invokeOp(asset?.id, requiredKeys)}
+        >
+          {buttonText}
+        </Button>
+        <Button 
+          type="button" 
+          aria-label="reset" 
+          role="button" 
+          className="w-32" 
+          onClick={() => resetForm()}
+        >
+          Reset
+        </Button>
+      </>
+    )}
+  </div>
+
+  <div className="flex flex-row space-x-2 items-center justify-center py-2">
+    {loading && (
+      <Button 
+        aria-label="invoke operation" 
+        role="button" 
+        type="button" 
+        className="w-32" 
+        disabled
+      >
+        Please wait ...
+      </Button>
+    )}
+  </div>
+</div>
         </CardContent>
         </Card>
       )
@@ -469,10 +513,8 @@ export const OperationViewer = (props: any) => {
       // fallback: render a single input field for the whole input object
       return (
         <div className="w-11/12 my-2">
-          <div className="grid grid-cols-[min-content_1fr_1fr] gap-4 items-center">
-            <div className="flex flex-row items-center min-w-0">
-              <Label className="whitespace-nowrap">(Input)</Label>
-            </div>
+          <div className="grid  grid-cols-2 md:grid-cols-[min-content_1fr_1fr] lg:grid-cols-[min-content_1fr_1fr] gap-4 items-center">
+            <Label className="whitespace-nowrap">(Input)</Label>
             {renderInputComponent(
               TOP_LEVEL_INPUT_KEY,
               { type: "any", description: "Provide input for the operation", default: "" },
@@ -480,7 +522,9 @@ export const OperationViewer = (props: any) => {
               (value) => setKeyRawValue(TOP_LEVEL_INPUT_KEY, value),
               (type) => setKeyTypeAndUpdateRawInput(TOP_LEVEL_INPUT_KEY, type)
             )}
-            {renderDescription("Provide input for the operation")}
+            <div className="lg:contents">
+                   {renderDescription("Provide input for the operation")}
+            </div>
           </div>
 
           <span className="text-xs text-red-400 mb-4">{errorMessage}</span>

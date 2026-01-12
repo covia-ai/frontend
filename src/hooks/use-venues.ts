@@ -19,13 +19,26 @@ const defaultVenueUrls =
 if(!process.env.NEXT_PUBLIC_IS_ENV_PROD) 
     defaultVenueUrls.push("http://localhost:8080");
 
-const defaultVenues: Venue[] =
+// Connect to venues with error handling
+const connectToVenues = async (): Promise<Venue[]> => {
+  const venues = await Promise.allSettled(
+    defaultVenueUrls.map(async (venueId) => {
+      try {
+        return await Grid.connect(venueId, new CredentialsHTTP(venueId, "", ""));
+      } catch (error) {
+        console.error(`Failed to connect to venue ${venueId}:`, error);
+        throw error;
+      }
+    })
+  );
 
-await Promise.all(
-    defaultVenueUrls.map(venueId => 
-        Grid.connect(venueId, new CredentialsHTTP(venueId, "", ""))
-    )
-);
+  // Filter out failed connections and return only successful venues
+  return venues
+    .filter((result): result is PromiseFulfilledResult<Venue> => result.status === "fulfilled")
+    .map((result) => result.value);
+};
+
+const defaultVenues: Venue[] = await connectToVenues();
 
 export const useVenues = create(
   persist<VenuesStore>(
