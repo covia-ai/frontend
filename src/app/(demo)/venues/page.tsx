@@ -73,9 +73,9 @@ export default function VenuesPage() {
             
               ( search && search.length > 0 ? 
                 ( (venue.name.toLowerCase().indexOf(search.toLowerCase()) != -1 || venue.venueId.toLowerCase().indexOf(search.toLowerCase()) != -1)
-                 && <VenueCard key={venue.venueId} venue={venue} />)
+                 && <VenueCard key={venue.venueId} venue={venue} compact={true}/>)
                 :
-                (  <VenueCard key={venue.venueId} venue={venue} /> )
+                (  <VenueCard key={venue.venueId} venue={venue} compact={true} /> )
              
               )
            ))}

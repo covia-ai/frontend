@@ -5,6 +5,9 @@ import copy from 'copy-to-clipboard';
 import { toast } from "sonner"
 import { RunStatus } from "@covia-ai/covialib";
 
+export function getViewerType() {
+    
+}
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }

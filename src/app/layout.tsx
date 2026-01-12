@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { siteConfig } from "@/config/site";
 import { CookieConsentComponent } from "@/components/CookieConsent";
 import localFont from 'next/font/local';
 import { GoogleAnalytics } from '@next/third-parties/google';
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { ShortcutModal } from "@/components/ShortCutModal";
 
 
 const { title, description } = siteConfig;
@@ -48,7 +46,7 @@ export default function RootLayout({
           >{children}
          
           </ThemeProvider>
-           <ShortcutModal align="right"/>
+           
         <CookieConsentComponent />
       </body>
       <GoogleAnalytics gaId="G-CS4QNLYT4M" />

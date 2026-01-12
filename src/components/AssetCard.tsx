@@ -20,9 +20,10 @@ import { AssetInfoSheet } from "./AssetInfoSheet";
 interface AssetCardProps {
   asset: Asset;
   type: string;
+  compact:boolean;
 }
 
-export function AssetCard({ asset,type }: AssetCardProps) {
+export function AssetCard({ asset,type,compact }: AssetCardProps) {
     const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
 
 
@@ -51,9 +52,10 @@ export function AssetCard({ asset,type }: AssetCardProps) {
         }
     }
     return (
-         <Card key={asset.id} className="shadow-md border-2 h-full bg-card flex flex-col rounded-md border-muted hover:border-accent hover:border-2 h-48">
+         <Card key={asset.id} className={`shadow-md border-2 h-full bg-card flex flex-col rounded-md border-muted hover:border-accent hover:border-2 
+          ${ compact ? 'h-36 p-1' : 'h-48 p-2' }`}>
                 {/* Fixed-size header */}
-                <div className="h-14 p-2 flex flex-row items-center border-b bg-card-banner">
+                <div className={` ${ compact ? 'h-10' : 'h-14' } p-2 flex flex-row items-center border-b bg-card-banner`}>
                     <div data-testid = "asset-header" className="truncate flex-1 mr-2 text-md text-foreground"
                     onClick={() => handleCardClick(asset.id)}>{asset.metadata.name || 'Unnamed Asset'}
                     </div>
@@ -63,7 +65,7 @@ export function AssetCard({ asset,type }: AssetCardProps) {
                     {type == "assets" && 
                         <Dialog>
                             <DialogTrigger>
-                            <Iconbutton data-testid="copy_btn" icon={CopyIcon} message="Copy Asset"/>
+                            <Iconbutton data-testid="copy_btn" icon={CopyIcon} message="Copy Asset" compact={compact}/>
                             
                             </DialogTrigger>
                             <DialogContent className="h-11/12 min-w-10/12 ">
@@ -100,12 +102,12 @@ export function AssetCard({ asset,type }: AssetCardProps) {
 
                 {/* Flexible middle section */}
                 <div className="flex-1 p-2 flex flex-col justify-between text-sm" onClick={() => handleCardClick(asset.id)}>
-                    <div data-testid="asset-description" className="text-xs text-card-foreground line-clamp-3 mb-2">{asset.metadata.description || 'No description available'}</div>
+                    <div data-testid="asset-description" className={` ${ compact ? 'line-clamp-2' : 'line-clamp-3' } text-xs text-card-foreground `}>{asset.metadata.description || 'No description available'}</div>
                 </div>
 
                 {/* Fixed-size footer */}
                 <div className="p-2 h-12 flex flex-row-reverse items-center justify-between" onClick={() => handleCardClick(asset.id)}>
-                    <Iconbutton data-testid="view_btn" icon={SquareArrowOutUpRight} message="View Asset" path={type} pathId={asset.id} venueId={venue.venueId}/>
+                    <Iconbutton compact={compact} data-testid="view_btn" icon={SquareArrowOutUpRight} message="View Asset" path={type} pathId={asset.id} venueId={venue.venueId}/>
                     
                 </div>
         </Card>
