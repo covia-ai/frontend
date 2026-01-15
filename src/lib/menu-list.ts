@@ -1,4 +1,3 @@
-import { auth } from "@/auth";
 import {
 
   LocationEdit,
@@ -9,14 +8,10 @@ import {
   User,
   BookKey,
   FileKey,
-  MapPinCheck,
-  MapPinHouse,
-  Book,
   LibraryBig,
   Activity,
-  Bot
+  BotIcon
 } from "lucide-react";
-import { useSession } from "next-auth/react";
 
 type Submenu = {
   href: string;
@@ -39,10 +34,8 @@ type Group = {
 };
 
 export function   getMenuList(): Group[] {
-  const { data: session } = useSession();
    
-  if (!session?.user) {
-    return [
+  const menusDev =  [
       {
         groupLabel: "",
         menus: [
@@ -73,7 +66,11 @@ export function   getMenuList(): Group[] {
             ]
           
           },
-           
+          {
+            href: "/agents",
+            label: "Agents",
+            icon: BotIcon,
+          } ,
           {
             href: "/venues",
             label: "Venues",
@@ -90,22 +87,20 @@ export function   getMenuList(): Group[] {
             icon: LibraryBig
           },
           
+          
         ]
       },
     
-    ];
-  }
-  else {
-    return [
+  ];
+  const menusProd =  [
       {
         groupLabel: "",
         menus: [
           {
             href: "/workspace",
             label: "Workspace",
-            icon: Home,
+            icon: Home
           },
-          
           {
             href: "/assets",
             label: "Assets",
@@ -118,12 +113,6 @@ export function   getMenuList(): Group[] {
                 active: false
               },
               {
-                href: "/privateartifacts",
-                label: "Private Artifacts",
-                icon: FileKey,
-                active: false
-              },
-              {
                 href: "/operations",
                 label: "Operations",
                 icon: PlayCircle,
@@ -132,18 +121,16 @@ export function   getMenuList(): Group[] {
               },
 
             ]
-          
           },
-          
           {
             href: "/venues",
             label: "Venues",
             icon: LocationEdit,
           },
-          {
+           {
             href: "/jobs",
             label: "Jobs",
-            icon: Activity
+            icon: User
           },
           {
             href: "/learning",
@@ -151,9 +138,15 @@ export function   getMenuList(): Group[] {
             icon: LibraryBig
           },
           
+          
         ]
       },
     
-    ];
+  ];
+  console.log(typeof(process.env.NEXT_PUBLIC_IS_ENV_PROD))
+if(process.env.NEXT_PUBLIC_IS_ENV_PROD == "false") {
+    return menusDev;
   }
+  else 
+    return menusProd;
 }
