@@ -143,7 +143,6 @@ export function   getMenuList(): Group[] {
       },
     
   ];
-  console.log(typeof(process.env.NEXT_PUBLIC_IS_ENV_PROD))
 if(process.env.NEXT_PUBLIC_IS_ENV_PROD == "false") {
     return menusDev;
   }

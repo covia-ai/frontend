@@ -2,6 +2,38 @@ export type TimelineSize = 'sm' | 'md' | 'lg';
 export type TimelineStatus = 'completed' | 'in-progress' | 'pending';
 export type TimelineColor = 'primary' | 'secondary' | 'muted' | 'accent' | 'destructive';
 
+export interface Agent {
+   agent: AgentData;
+   steps: AgentSteps[];
+}
+export interface AgentData {
+  id:string;
+  name:string;
+  description:string;
+  status:string;
+  lastRun:string;
+  provider:string;
+  totalSteps:string;
+  executionTime:string;
+  venueId:string;
+}
+export interface AgentSteps {
+  stepNumber:number,
+  stepId:string,
+  stepName:string,
+  stepType:string,
+  description:string,
+  timestamp:string,
+  output: {
+    [key: string]: string;
+  },
+   input: {
+    [key: string]: string;
+  }
+  status: string;
+  venueId: string;
+  jobId: string;
+}
 
 export interface VenueDetails {
   name: string;

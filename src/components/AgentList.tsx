@@ -2,70 +2,40 @@
 
 import { AddNewAgent } from "./AddNewAgent";
 import { ContentLayout } from "./admin-panel/content-layout";
-import { Bot } from "lucide-react";
-import { Card } from "./ui/card";
+import { Bot, Clock, Footprints, MapPin } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { useRouter } from "next/navigation";
-import { Badge } from "./ui/badge";
-import { RunStatus } from "@covia-ai/covialib";
+import { Badge } from '@/components/ui/badge';
 import { useEffect, useState } from "react";
 import { TopBar } from "./admin-panel/TopBar";
+import agentsJson from "@/components/public/mockAgent.json"
+import { Agent } from "@/config/types";
 
- interface Agent {
-  id:string;
-  name:string;
-  noOfStates:number;
-  created:string;
-  lastUpdated:string;
-  llm:string;
-  state:RunStatus;
-  venueId:string;
-
-}
 export function AgentList() {
   const router = useRouter();
   const [agentData, setAgentData] = useState<Agent[]>([]);
 
   useEffect(() => {
-
-    const mockData = [
-      {
-        "id" : "agent1",
-        "name" : "Customer Support Agent",
-        "noOfStates" : 12,
-        "created" : "Nov 24 12:10 pm",
-        "lastUpdated" : "Nov 24 12:40 am",
-        "llm" : "Claude 3.5",
-        "state" : RunStatus.COMPLETE,
-        "venueId" : "did:web:venue-test.covia.ai"
-      },
-      {
-         "id" : "agent2",
-        "name" : "Data Analysis Agent",
-        "noOfStates" : 47,
-         "created" : "Nov 24 8:10 pm",
-         "lastUpdated" : "Nov 24 9:10pm",
-         "llm" : "Gemini Pro",
-         "state" : RunStatus.STARTED,
-        "venueId" : "did:web:venue-test.covia.ai"
-      },
-      {
-         "id" : "agent3",
-        "name" : "Code Review Agent",
-        "noOfStates" : 8,
-         "created" : "Nov 24 4:10 pm",
-        "lastUpdated" : "Nov 24 4:35pm",
-        "llm" : "Claude 3.5",
-        "state" : RunStatus.FAILED,
-        "venueId" : "did:web:venue-test.covia.ai"
-      },
-    ]
-    setAgentData(mockData);
-  },[])
+    setAgentData(agentsJson as any);
+  },[agentData])
+  
   const handleCardClick = (agentId:string) => {
         const encodedUrl = "/agents/"+agentId;
         router.push(encodedUrl);
     };
 
+  const getStatusConfig = (status) => {
+    switch(status) {
+      case 'ACTIVE':
+        return { variant: 'default', className: 'bg-blue-500 hover:bg-blue-600' };
+      case 'COMPLETED':
+        return { variant: 'default', className: 'bg-green-500 hover:bg-green-600' };
+      case 'TERMINATED':
+        return { variant: 'destructive', className: '' };
+      default:
+        return { variant: 'secondary', className: '' };
+    }
+  };
 
    return (<ContentLayout>
      <TopBar/>
@@ -77,38 +47,63 @@ export function AgentList() {
       {agentData.length > 0 && <div className="flex flex-col items-center justify-center space-y-4">
          <div className="mt-10 w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4">
             {agentData.map((agent) => (
-               <Card key={agent.id}
-               onClick={() => handleCardClick(agent.id)}
-               className="shadow-md border-2 h-full bg-card flex flex-col rounded-md hover:border-accent hover:border-2 h-48">
-                              {/* Fixed-size header */}
-                              <div className="h-14 p-2 flex flex-row items-center border-b bg-card-banner space-x-2">
-                                 {agent.state == RunStatus.COMPLETE &&   <Badge className="bg-green-400 h-2 min-w-2 rounded-full px-1 "></Badge>}
-                                 {agent.state == RunStatus.STARTED &&   <Badge className="bg-blue-400 h-2 min-w-2 rounded-full px-1 "></Badge>}
-                                 {agent.state == RunStatus.FAILED &&   <Badge className="bg-red-400 h-2 min-w-2 rounded-full px-1 "></Badge>}
-
-                                 <div data-testid = "agent-header" className="truncate flex-1 mr-2 text-md text-foreground">
-                                    {agent.name || 'Unnamed Agent'}
-                                 </div>      
-                              </div>
                
-                              {/* Flexible middle section */}
-                              <div className="flex-1 p-2 flex flex-col justify-between text-sm" >
-                                 <div data-testid="asset-description" className="p-1 text-xs text-slate-300 line-clamp-3">{agent.created}</div>
-                              </div>
-               
-                              {/* Fixed-size footer */}
-                              <div className="p-2 h-12 flex flex-row items-center justify-between text-sm" onClick={() => handleCardClick(agent.id)}>
-                                 {agent.state == RunStatus.COMPLETE && <Badge variant="outline" className="bg-green-600/50 rounded-sm text-slate-300">{agent.state}</Badge>}
-                                 {agent.state == RunStatus.STARTED && <Badge variant="outline" className="bg-blue-600/50 rounded-sm text-slate-300">{agent.state}</Badge>}
-                                 {agent.state == RunStatus.FAILED && <Badge variant="outline" className="bg-red-600/50 rounded-sm text-slate-300">{agent.state}</Badge>}
+                  <Card
+                     key={agent.agent.id}
+                     onClick={() => handleCardClick(agent.agent.id)}
+                     className="h-full bg-card border-slate-800 hover:border-slate-600 hover:shadow-xl hover:shadow-slate-900/50 transition-all duration-200 cursor-pointer group overflow-hidden"
+                  >
+                <CardHeader className="pb-1 bg-card border-b border-slate-800">
+                  <div className="flex items-start justify-between gap-3">
+                    <CardTitle className="text-lg font-medium text-white  transition-colors line-clamp-1">
+                      {agent.agent.name || 'Unnamed Agent'}
+                    </CardTitle>
+                   
+                      <Badge
+                      variant={getStatusConfig(agent.agent.status).variant}
+                      className={`shrink-0 text-xs font-medium ${getStatusConfig(agent.agent.status).className}`}
+                    >
+                      {agent.agent.status}
+                    </Badge>
+                    
+                  </div>
+                  <CardDescription className="text-slate-400 text-sm line-clamp-2 mt-2">
+                    {agent.agent.description}
+                  </CardDescription>
+                </CardHeader>
 
-                                 <span className="text-xs p-1"> {agent.llm} </span>
-                                 
-                              </div>
-                              <div className="p-2 h-12 flex flex-row items-center justify-between text-sm">
-                                 <span className="text-xs text-foreground p-1">{agent.noOfStates} <span className="text-slate-400">steps</span> </span>
-                              </div>
-                     </Card>
+                <CardContent className="">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center gap-2  rounded-lg p-1 border border-slate-800">
+                      <Bot size={16} className="text-blue-400 shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-slate-200 truncate">{agent.agent.provider}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2  rounded-lg p-1 border border-slate-800">
+                      <MapPin size={16} className="text-emerald-400 shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-slate-200 truncate">{agent.agent.venueId}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2  rounded-lg p-1 border border-slate-800">
+                      <Footprints size={16} className="text-purple-400 shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-slate-200">{agent.agent.totalSteps.toLocaleString()}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2  rounded-lg p-1 border border-slate-800">
+                      <Clock size={16} className="text-amber-400 shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-slate-200 truncate">{agent.agent.lastRun}</div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
       
          </div>

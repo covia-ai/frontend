@@ -68,7 +68,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}) => {
 
   const handleVenueSelect = (venue: Venue) => {
     console.log(venue)
-    setSelectedVenue(new Venue({baseUrl: venue.baseUrl, venueId: venue.venueId, name:venue.name}));
+    setSelectedVenue(new Venue({baseUrl: venue.baseUrl, venueId: venue.venueId, name:venue.metadata.name}));
   };
   return (
      <Dialog>
@@ -102,7 +102,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}) => {
                       >
                         <div className="flex items-center gap-2">
                           <Building2 size={16} />
-                          <span className="truncate">{venue.name}</span>
+                          <span className="truncate">{venue.metadata.name}</span>
                         </div>
                       
                         {selectedVenue?.venueId === venue.venueId && (
