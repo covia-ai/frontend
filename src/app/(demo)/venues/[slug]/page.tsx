@@ -134,7 +134,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               <div>
                 <h1 className="text-2xl font-thin">{venueName}</h1>
                 <p className="text-muted-foreground">
-                  {venue..description || "A Covia venue for managing assets and operations"}
+                  {venue.metadata.description || "A Covia venue for managing assets and operations"}
                 </p>
                 <div className="flex items-center space-x-2 mt-2">
                   <Badge variant="default" className="bg-green-100 text-green-800">
