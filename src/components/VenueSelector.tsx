@@ -75,7 +75,7 @@ export function VenueSelector() {
       <DropdownMenuTrigger asChild>
         <Button aria-label="venue" variant="outline" className="dark:hover:bg-primary-light dark:hover:text-foreground">
           <Building2 size={14} />
-          <span className="hidden md:block lg:block">{selectedVenue.metadata.name}</span>
+          <span className="hidden md:block lg:block">{selectedVenue.name}</span>
           <ChevronDown size={14} />
         </Button>
       </DropdownMenuTrigger>
@@ -88,7 +88,7 @@ export function VenueSelector() {
           >
             <div className="flex items-center gap-2">
               <Building2 size={16} />
-              <span className="truncate">{venue.metadata.name}</span>
+              <span className="truncate">{venue.name}</span>
             </div>
             {selectedVenue?.venueId === venue.venueId && (
               <Check size={16} className="text-primary" />

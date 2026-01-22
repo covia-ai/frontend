@@ -72,7 +72,7 @@ export default function VenuesPage() {
           {venues.map((venue) => ( 
             
               ( search && search.length > 0 ? 
-                ( (venue.metadata?.name?.toLowerCase().indexOf(search.toLowerCase()) != -1 || venue.venueId.toLowerCase().indexOf(search.toLowerCase()) != -1)
+                ( (venue.name?.toLowerCase().indexOf(search.toLowerCase()) != -1 || venue.venueId.toLowerCase().indexOf(search.toLowerCase()) != -1)
                  && <VenueCard key={venue.venueId} venue={venue} compact={true}/>)
                 :
                 (  <VenueCard key={venue.venueId} venue={venue} compact={true} /> )

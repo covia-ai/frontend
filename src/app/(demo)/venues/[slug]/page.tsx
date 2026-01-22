@@ -62,7 +62,7 @@ export default function VenuePage({ params }: VenuePageProps) {
           setVenueDID(foundVenue.venueId)
       }
       else {
-          const foundVenue_obj = new Venue({baseUrl:foundVenue.baseUrl, venueId:foundVenue.venueId, name:foundVenue.metadata.name});
+          const foundVenue_obj = new Venue({baseUrl:foundVenue.baseUrl, venueId:foundVenue.venueId, name:foundVenue.name});
           setVenue(foundVenue_obj)
           setVenueDID(foundVenue_obj.venueId)
       }
@@ -121,7 +121,7 @@ export default function VenuePage({ params }: VenuePageProps) {
 
   return (
     <ContentLayout>
-      <TopBar  venueName={venue.metadata.name}/>
+      <TopBar  venueName={venue.name}/>
       
       <div className="flex flex-col space-y-6">
         {/* Venue Header */}
@@ -134,7 +134,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               <div>
                 <h1 className="text-2xl font-thin">{venueName}</h1>
                 <p className="text-muted-foreground">
-                  {venue.metadata.description || "A Covia venue for managing assets and operations"}
+                  {venue..description || "A Covia venue for managing assets and operations"}
                 </p>
                 <div className="flex items-center space-x-2 mt-2">
                   <Badge variant="default" className="bg-green-100 text-green-800">

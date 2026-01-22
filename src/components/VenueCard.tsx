@@ -19,7 +19,7 @@ export function VenueCard({ venue, compact }: VenueCardProps) {
   const router = useRouter();
 
   if(!(venue instanceof Venue))
-    venue = new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name})
+    venue = new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.name})
   
   const handleCardClick = () => {
     const encodedUrl = "/venues/"+encodeURIComponent(venue.venueId);

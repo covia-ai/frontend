@@ -46,7 +46,7 @@ export const ExecutionViewer = (props: any) => {
       if(props.venueId != venueObj?.venueId) {
         const venue = venues.find(v => v.venueId === props.venueId);
         if (venue) {
-            setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name}))
+            setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.name}))
          }
          else {
           Grid.connect(decodeURIComponent(props.venueId), 

@@ -3,7 +3,7 @@ import "./globals.css";
 import { siteConfig } from "@/config/site";
 import { CookieConsentComponent } from "@/components/CookieConsent";
 import localFont from 'next/font/local';
-import { GoogleAnalytics } from '@next/third-parties/google';
+import { GoogleTagManager } from '@next/third-parties/google'
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 
@@ -49,7 +49,7 @@ export default function RootLayout({
            
         <CookieConsentComponent />
       </body>
-      <GoogleAnalytics gaId="G-CS4QNLYT4M" />
+       <GoogleTagManager gtmId="GT-NM24GS8H" />
     </html>
   );
 }
