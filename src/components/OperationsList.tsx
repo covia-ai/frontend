@@ -111,7 +111,7 @@ export function OperationsList() {
           <div className="w-full grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4">
             {
             assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset, index) => (
-              <AssetCard key={index} asset={asset} type="operations"/>
+              <AssetCard key={index} asset={asset} type="operations" compact={true}/>
             ))}
           </div>
           <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>

@@ -19,7 +19,7 @@ export function TopBar(props:any) {
           <SheetMenu />
         </div>
         <div className="flex flex-1 items-center justify-between space-x-4 w-full ml-4">
-          <SmartBreadcrumb onNavigate={(href) => router.push(href)} pathname={usePathname()} assetOrJobName= {props.assetOrJobName} venueName={props.venueName}/>
+          <SmartBreadcrumb onNavigate={(href) => router.push(href)} pathname={usePathname()} assetOrJobName= {props.assetOrJobName} venueName={props.venueName} agentName={props.agentName}/>
           <div className="flex flex-1 items-center justify-end space-x-4">
               <DarkLightToggle/>
               <VenueSelector />

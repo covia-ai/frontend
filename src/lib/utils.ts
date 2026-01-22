@@ -5,6 +5,22 @@ import copy from 'copy-to-clipboard';
 import { toast } from "sonner"
 import { RunStatus } from "@covia-ai/covialib";
 
+export  const getStatusConfig = (status) => {
+    switch(status) {
+      case 'ACTIVE':
+        return { variant: 'default', className: 'bg-blue-600 hover:bg-blue-700' };
+      case 'COMPLETED':
+        return { variant: 'default', className: 'bg-green-600 hover:bg-green-700' };
+      case 'TERMINATED':
+        return { variant: 'destructive', className: '' };
+      default:
+        return { variant: 'secondary', className: '' };
+    }
+  };
+  
+export function getViewerType() {
+    
+}
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }

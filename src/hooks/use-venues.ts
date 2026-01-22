@@ -16,7 +16,7 @@ const defaultVenueUrls =
       "did:web:venue-2.covia.ai",
       "did:web:venue-test.covia.ai"
 ];
-if(!process.env.NEXT_PUBLIC_IS_ENV_PROD) 
+if(process.env.NEXT_PUBLIC_IS_ENV_PROD == "false") 
     defaultVenueUrls.push("http://localhost:8080");
 
 // Connect to venues with error handling
