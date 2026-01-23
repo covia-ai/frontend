@@ -2,7 +2,7 @@
 
 import { Play } from "lucide-react";
 import { useState } from "react";
-import { useRouter } from "next/Navigation";
+import { useRouter } from "next/navigation";
 export const VideoThumbnails = () => {
   const router = useRouter()
   const [selectedVideo, setSelectedVideo] = useState(null);
