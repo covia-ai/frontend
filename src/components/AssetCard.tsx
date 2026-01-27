@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Iconbutton } from "./Iconbutton";
-import {  CopyIcon,  Save, SquareArrowOutUpRight } from "lucide-react";
+import {  Copy, CopyIcon,  Save, SquareArrowOutUpRight } from "lucide-react";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { Asset, Venue } from "@covia-ai/covialib";
@@ -16,6 +16,7 @@ import {
 import { useState } from "react";
 import { JsonEditor } from "json-edit-react";
 import { AssetInfoSheet } from "./AssetInfoSheet";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 interface AssetCardProps {
   asset: Asset;
@@ -53,7 +54,7 @@ export function AssetCard({ asset,type,compact }: AssetCardProps) {
     }
     return (
          <Card key={asset.id} className={`shadow-md border-2 h-full bg-card flex flex-col rounded-md border-muted hover:border-accent hover:border-2 
-          ${ compact ? 'h-36 p-1' : 'h-48 p-2' }`}>
+          ${ compact ? 'h-32 p-1' : 'h-48 p-2' }`}>
                 {/* Fixed-size header */}
                 <div className={` ${ compact ? 'h-10' : 'h-14' } p-2 flex flex-row items-center border-b bg-card-banner`}>
                     <div data-testid = "asset-header" className="truncate flex-1 mr-2 text-md text-foreground"
@@ -65,8 +66,12 @@ export function AssetCard({ asset,type,compact }: AssetCardProps) {
                     {type == "assets" && 
                         <Dialog>
                             <DialogTrigger>
-                            <Iconbutton data-testid="copy_btn" icon={CopyIcon} message="Copy Asset" compact={compact}/>
-                            
+                            <Tooltip>
+                            <TooltipTrigger>
+                                 <Copy size={16} data-testid="copy_btn"/>
+                            </TooltipTrigger>
+                            <TooltipContent data-testid="btn-tootip">Copy Asset</TooltipContent>
+                             </Tooltip>
                             </DialogTrigger>
                             <DialogContent className="h-11/12 min-w-10/12 ">
                             <DialogTitle className="flex flex-row items-center justify-between mr-4">
@@ -102,14 +107,10 @@ export function AssetCard({ asset,type,compact }: AssetCardProps) {
 
                 {/* Flexible middle section */}
                 <div className="flex-1 p-2 flex flex-col justify-between text-sm" onClick={() => handleCardClick(asset.id)}>
-                    <div data-testid="asset-description" className={` ${ compact ? 'line-clamp-2' : 'line-clamp-3' } text-xs text-card-foreground `}>{asset.metadata.description || 'No description available'}</div>
+                    <div data-testid="asset-description" className={` ${ compact ? 'line-clamp-3' : 'line-clamp-4' } text-xs text-card-foreground `}>{asset.metadata.description || 'No description available'}</div>
                 </div>
 
-                {/* Fixed-size footer */}
-                <div className="p-2 h-12 flex flex-row-reverse items-center justify-between" onClick={() => handleCardClick(asset.id)}>
-                    <Iconbutton compact={compact} data-testid="view_btn" icon={SquareArrowOutUpRight} message="View Asset" path={type} pathId={asset.id} venueId={venue.venueId}/>
-                    
-                </div>
+                
         </Card>
     )
 }
