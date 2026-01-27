@@ -68,7 +68,7 @@ export const ShowCase = () => {
 
               {assets.map((asset, index) =>
 
-                <AssetCard key={index} asset={asset} type="operations"/>
+                <AssetCard key={index} asset={asset} type="operations" compact={true}/>
               )}
         </div>
         </div>
