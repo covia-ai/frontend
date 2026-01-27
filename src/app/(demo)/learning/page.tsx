@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { LibraryBigIcon, MessagesSquare, Play, ExternalLink } from "lucide-react";
 import { VideoSlideShow } from "@/components/VideoSlideShow";
 import { TopBar } from "@/components/admin-panel/TopBar";
+import { VideoThumbnails } from "@/components/VideoThumbnails";
 
 export default function OperationsPage() {
 
@@ -21,7 +22,7 @@ export default function OperationsPage() {
             
              <div className="flex flex-col items-center justify-center py-10 px-10 my-4">
               
-                <VideoSlideShow/>
+                <VideoThumbnails/>
 
                 <Separator className="my-6" />
                 

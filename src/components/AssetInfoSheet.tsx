@@ -1,12 +1,13 @@
 "use client";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Iconbutton } from "./Iconbutton";
-import { InfoIcon } from "lucide-react";
+import { Info, InfoIcon } from "lucide-react";
 import { Separator } from "./ui/separator";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { Asset } from "@covia-ai/covialib";
 import { Button } from "./ui/button";
 import { useRouter } from "next/navigation";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 interface AssetInfoSheetProps {
   asset: Asset;
@@ -27,18 +28,11 @@ export const AssetInfoSheet = ({asset,venueId}:AssetInfoSheetProps) => {
         });
         return (
           <Table>
-            <TableHeader>
-              <TableRow className="bg-secondary text-white">
-                <TableCell>Name</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Description</TableCell>
-              </TableRow>
-            </TableHeader>
+           
             <TableBody>
               {keys.map((key, index) => (
                 <TableRow key={index}>
                   <TableCell>{key} {requiredKeys != undefined && requiredKeys?.indexOf(key) != -1 && <span className="text-red-400">*</span>}</TableCell>
-                  <TableCell>{type[index]}</TableCell>
                   <TableCell>{description[index]}</TableCell>
                 </TableRow>
               ))}
@@ -54,15 +48,17 @@ export const AssetInfoSheet = ({asset,venueId}:AssetInfoSheetProps) => {
   return (
      <Sheet>
                 <SheetTrigger>
-                  <Iconbutton icon={InfoIcon} message="Know more"></Iconbutton>
+                  <Tooltip>
+                            <TooltipTrigger>
+                                 <Info size={16} data-testid="info_btn"/>
+                            </TooltipTrigger>
+                            <TooltipContent data-testid="btn-tootip">Know More</TooltipContent>
+                             </Tooltip>
                 </SheetTrigger>
-                  <SheetContent data-testid="info_sheet" className="min-w-lg text-card-foreground bg-card">
+                  <SheetContent data-testid="info_sheet" className="min-w-2xl text-card-foreground bg-card">
                       <SheetHeader className="flex flex-col items-center justify-center">
                       <SheetTitle data-testid="info_assetname">{asset.metadata.name}</SheetTitle>
-                      {asset.metadata.description && <SheetDescription data-testid="info_assetdesc"
-                      className="text-slate-400 text-center">
-                          {asset.metadata.description}
-                      </SheetDescription>}
+                     
                       </SheetHeader>
                       {asset.metadata.operation?.input?.properties && (
                       <div className="flex flex-center flex-col mx-4" >
@@ -84,12 +80,7 @@ export const AssetInfoSheet = ({asset,venueId}:AssetInfoSheetProps) => {
                           </div>
                       </div>
                       )}
-                      <SheetFooter>
-                      <SheetClose asChild>
-                          {asset.id && asset.metadata?.operation?.input && 
-                          <Button aria-label="run" role="button" data-testid="info_runbtn" type="submit" onClick={() => { handleCardClick(asset.id) }}>Run</Button>}
-                      </SheetClose>
-                      </SheetFooter>
+                      
                   </SheetContent>
     </Sheet>  
   );
