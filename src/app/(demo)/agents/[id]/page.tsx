@@ -14,7 +14,7 @@ export default async function Page({
 
       <ContentLayout>
       <TopBar/>
-      <AgentTree2/>
+      <TreeStructure/>
       </ContentLayout>
   )
 }
