@@ -2,7 +2,7 @@
 
 import { AddNewAgent } from "./AddNewAgent";
 import { ContentLayout } from "./admin-panel/content-layout";
-import { Bot, Clock, Footprints, MapPin } from "lucide-react";
+import { Bot, Clock, Clock1, Footprints, MapPin } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -13,6 +13,7 @@ import { Input } from "./ui/input";
 import { MagicWandIcon } from "@radix-ui/react-icons";
 import { SeperatorWithText } from "@/components/SeperatorWithText";
 import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
 
 export function AgentList() {
   const router = useRouter();
@@ -72,33 +73,31 @@ export function AgentList() {
             <AddNewAgent></AddNewAgent>
       </div>}
       {agentData.length > 0 && <div className="flex flex-col items-center justify-center space-y-4">
-         <div className="mt-10 w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4">
+         <div className="mt-10 w-full grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 items-stretch justify-center gap-4">
             {agentData.map((agent) => (   
-              <Card
-                     key={agent.agent.id}
-                     onClick={() => handleCardClick(agent.agent.id)}
-                     className={` shadow-md border-2 h-full bg-card flex flex-col rounded-md border-muted hover:border-accent hover:border-2 
-          ${ compact ? 'h-32 p-2' : 'h-48 p-2' }`}>
-                <CardHeader className={` ${ compact ? 'h-10' : 'h-14' } p-2 flex flex-row items-center border-b bg-card-banner`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <CardTitle className="flex flex-row">
-                      <div className="text-lg font-medium text-white  transition-colors line-clamp-1">Customer Support</div>
+              <Card 
+                   key={agent.agent.id}  onClick={() => handleCardClick(agent.agent.id)}
+                   className={`shadow-md border-2 h-full bg-card flex flex-col rounded-md border-muted hover:border-accent hover:border-2 
+                       ${ compact ? 'h-32 p-1' : 'h-48 p-2'  }`}>
+                   {/* Fixed-size header */}
+                   <div className={` ${ compact ? 'h-10' : 'h-14'  } p-2 flex flex-row items-center border-b bg-card-banner`}>
+                     <div data-testid="venue-name" className="truncate flex-1 mr-2 text-md text-foreground">Customer Support</div>
                       <div className={`w-3 h-3 rounded-full shadow-lg ml-1 ${getStatusConfig(agent.agent.status).className}`}></div>
-                    </CardTitle>  
-                  </div>
-                  
-                </CardHeader>
-                <CardContent className="flex flex-col space-x-2 px-1">
-                  <div className="flex-1 flex flex-col justify-between text-sm">
-                    {agent.agent.description}
-                  </div>
-                      <div className="flex flex-row-reverse space-x-4 bottom-0 ">
-                        
-                        <div className="text-xs font-thin text-slate-200 truncate">{agent.agent.lastRun}</div>
-                        <Clock size={14} className="text-amber-400 shrink-0" />
-                      </div>
-                </CardContent>
-              </Card>
+                     </div>
+                   {/* Flexible middle section */}
+                   <div className="flex-1 p-2 flex flex-col justify-between">
+                     <div data-testid="venue-desc" className={` ${ compact ? 'line-clamp-2' : 'line-clamp-3' } text-xs text-card-foreground `}>
+                         {agent.agent.description}
+                     </div>
+                   
+                   </div>
+             
+                   {/* Fixed-size footer */}
+                   <div className="p-1 h-8 flex flex-row-reverse" >
+                       <Badge variant="outline" className="bg-muted text-muted-foreground text-[10px]"><Clock size={14} className="text-amber-400 ml-2 " /> {agent.agent.lastRun }</Badge>
+                       
+                   </div>
+                 </Card>
             ))}
       
          </div>

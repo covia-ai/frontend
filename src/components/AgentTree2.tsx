@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, Home, Users, CreditCard, FileText, Shield } from 'lucide-react';
+import TreeStructure from './AgentTree';
 
 const agentData = {
   name: "Customer Support Agent",
@@ -36,7 +37,11 @@ const agentData = {
     {
       name: "Security Audit Compliance",
       icon: "shield",
-      children: []
+      children: [
+        { name: "Compliance Documentation Agent", icon: "agent" },
+        { name: "Security Review Agent", icon: "agent" },
+        { name: "Client Reporting Agent", icon: "agent" }
+      ]
     }
   ]
 };
@@ -69,14 +74,6 @@ const AccordionView = () => {
 
   return (
     <div className="space-y-2">
-      <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white">
-            <Home size={20} />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-800">{agentData.name}</h3>
-        </div>
-      </div>
 
       {agentData.children.map((category) => (
         <div key={category.name} className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
@@ -173,27 +170,7 @@ const BreadcrumbView = () => {
         ))}
       </div>
 
-      {/* Current Level Header */}
-      <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-lg mb-6 border border-blue-200">
-        <div className="flex items-center gap-3">
-          {currentLevel.icon && (
-            <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center text-white">
-              <IconComponent iconName={currentLevel.icon} size={24} />
-            </div>
-          )}
-          {!currentLevel.icon && currentPath.length === 0 && (
-            <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white">
-              <Home size={24} />
-            </div>
-          )}
-          <div>
-            <h3 className="text-xl font-bold text-gray-800">{currentLevel.title}</h3>
-            <p className="text-sm text-gray-600 mt-1">
-              {currentLevel.type === 'categories' ? `${currentLevel.items.length} categories` : `${currentLevel.items.length} agents`}
-            </p>
-          </div>
-        </div>
-      </div>
+    
 
       {/* Items Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -243,21 +220,30 @@ const BreadcrumbView = () => {
 
 // Main App Component
 export default function AgentTree2() {
-  const [activeView, setActiveView] = useState('accordion');
+  const [activeView, setActiveView] = useState('tree');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+    <div className="min-h-screen">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Agent Hierarchy UI Patterns</h1>
-          <p className="text-gray-600">Compare different ways to visualize nested agent structures</p>
+          <h1 className="text-3xl font-bold">Customer Support</h1>
         </div>
 
         {/* View Toggle */}
         <div className="flex gap-3 mb-6">
           <button
+            onClick={() => setActiveView('tree')}
+            className={`p-2 rounded-lg font-medium transition-all ${
+              activeView === 'tree'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-white text-gray-700 border border-gray-300 hover:border-blue-300'
+            }`}
+          >
+            Tree View
+          </button>
+          <button
             onClick={() => setActiveView('accordion')}
-            className={`px-6 py-3 rounded-lg font-medium transition-all ${
+            className={`p-2 rounded-lg font-medium transition-all ${
               activeView === 'accordion'
                 ? 'bg-blue-600 text-white shadow-md'
                 : 'bg-white text-gray-700 border border-gray-300 hover:border-blue-300'
@@ -267,7 +253,7 @@ export default function AgentTree2() {
           </button>
           <button
             onClick={() => setActiveView('breadcrumb')}
-            className={`px-6 py-3 rounded-lg font-medium transition-all ${
+            className={`p-2 rounded-lg font-medium transition-all ${
               activeView === 'breadcrumb'
                 ? 'bg-blue-600 text-white shadow-md'
                 : 'bg-white text-gray-700 border border-gray-300 hover:border-blue-300'
@@ -278,9 +264,10 @@ export default function AgentTree2() {
         </div>
 
         {/* Active View */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className=" rounded-xl shadow-lg p-6">
           {activeView === 'accordion' && <AccordionView />}
           {activeView === 'breadcrumb' && <BreadcrumbView />}
+          {activeView === 'tree' && <TreeStructure />}
         </div>
 
         
