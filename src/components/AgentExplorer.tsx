@@ -1,18 +1,16 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronRight, Folder, UserCircle, GripVertical, Bot, Activity, Clock, Cpu, MapPin, Zap, ChartNoAxesGantt } from 'lucide-react';
+import { ChevronRight, Folder, UserCircle, GripVertical, Bot, Activity, Clock, Cpu, MapPin, Zap, ChartNoAxesGantt, ChartGanttIcon, ChartGantt, ArrowRight } from 'lucide-react';
 import agentsJson from "@/components/public/mockAgent.json"
 import { Agent } from '@/config/types';
-import { Button } from './ui/button';
-import Link from 'next/link';
-import { TbTimelineEvent } from 'react-icons/tb';
+import { useRouter } from 'next/navigation';
 
 const AgentExplorer = (props:any) => {
   const [agentData, setAgentData] = useState<Agent>()
   const [selectedProject, setSelectedProject] = useState(null);
   const [selectedAgentId, setSelectedAgentId] = useState(null);
-  
+  const router = useRouter();
   // Resizing State for both columns
   const [leftWidth, setLeftWidth] = useState(320); // Initial width in pixels
   const [middleWidth, setMiddleWidth] = useState(400); // Initial width for middle column
@@ -20,7 +18,6 @@ const AgentExplorer = (props:any) => {
   const isResizingMiddle = useRef(false);
 
   useEffect(() => {
-      console.log(props.agentId)
       const foundObject = agentsJson.find(item => item.id === props.agentId);
       setAgentData(foundObject);
       setSelectedProject(foundObject)
@@ -142,19 +139,45 @@ const AgentExplorer = (props:any) => {
                 <div
                   key={agent.id}
                   onClick={() => setSelectedAgentId(agent.id)}
-                  className={`p-4 cursor-pointer transition-all hover:bg-slate-50 
-                    ${selectedAgentId === agent.id ? 'bg-blue-50/50 border-l-4 border-blue-500' : 'border-l-4 border-transparent'}`}
+                  className={`p-4 cursor-pointer transition-all duration-200 border-l-4 group
+                    ${selectedAgentId === agent.id 
+                      ? 'bg-gradient-to-r from-blue-50 to-blue-50/30 border-blue-500 shadow-sm' 
+                      : 'border-transparent hover:border-blue-300 hover:bg-slate-50/80 hover:shadow-sm'
+                    }`}
                 >
                   <div className="flex justify-between items-start mb-1">
                     <div className="flex items-center gap-2">
-                      <Bot size={16} className="text-slate-400" />
-                      <h4 className="font-semibold text-sm text-slate-300">{agent.name}</h4>
+                      <Bot 
+                        size={16} 
+                        className={`transition-colors duration-200 
+                          ${selectedAgentId === agent.id 
+                            ? 'text-blue-600' 
+                            : 'text-slate-400 group-hover:text-blue-500'
+                          }`} 
+                      />
+                      <h4 className={`font-semibold text-sm transition-colors duration-200
+                        ${selectedAgentId === agent.id 
+                          ? 'text-slate-800' 
+                          : 'text-slate-600 group-hover:text-slate-800'
+                        }`}>
+                        {agent.name}
+                      </h4>
                     </div>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-bold">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold transition-all duration-200
+                      ${selectedAgentId === agent.id 
+                        ? 'bg-green-500 text-white shadow-sm' 
+                        : 'bg-green-100 text-green-700 group-hover:bg-green-200'
+                      }`}>
                       {agent.status}
                     </span>
                   </div>
-                  <p className="text-sm text-slate-500 ml-6">{agent.description}</p>
+                  <p className={`text-sm ml-6 transition-colors duration-200
+                    ${selectedAgentId === agent.id 
+                      ? 'text-slate-600' 
+                      : 'text-slate-500 group-hover:text-slate-600'
+                    }`}>
+                    {agent.description}
+                  </p>
                 </div>
               ))}
             </div>
@@ -193,7 +216,7 @@ const AgentExplorer = (props:any) => {
               {/* Status */}
               <div className="bg-slate-200 rounded-lg p-1 border border-slate-200">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 my-2">
                     <Activity size={18} className="text-green-600" />
                     <span className="font-semibold text-sm text-slate-700 ">Status</span>
                   </div>
@@ -206,7 +229,7 @@ const AgentExplorer = (props:any) => {
               {/* Steps */}
               <div className="bg-slate-200 rounded-lg p-1 border border-slate-200">
                 <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2 my-2">
                   <Zap size={18} className="text-amber-600" />
                   <span className="font-semibold text-sm text-slate-700">Total Steps</span>
                 </div>
@@ -219,7 +242,7 @@ const AgentExplorer = (props:any) => {
               {/* Last Run */}
                <div className="bg-slate-200 rounded-lg p-1 border border-slate-200">
                  <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2 my-2">
                   <Clock size={18} className="text-blue-600" />
                   <span className="font-semibold text-sm text-slate-700">Last Run</span>
                 </div>
@@ -232,7 +255,7 @@ const AgentExplorer = (props:any) => {
               {/* LLM Model */}
               <div className="bg-slate-200 rounded-lg p-1 border border-slate-200">
                 <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2 my-2">
                   <Cpu size={18} className="text-purple-600" />
                   <span className="font-semibold text-sm text-slate-700">LLM Model</span>
                 </div>
@@ -246,7 +269,7 @@ const AgentExplorer = (props:any) => {
               {/* Venue Location */}
               <div className="bg-slate-200 rounded-lg p-1 border border-slate-200">
                 <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1 mb-2">
+                <div className="flex items-center gap-2 my-2">
                   <MapPin size={18} className="text-red-600" />
                   <span className="font-semibold text-sm text-slate-700">Venue</span>
                </div>
@@ -255,14 +278,28 @@ const AgentExplorer = (props:any) => {
                 </p>
                  </div>
               </div>
-            </div>
-            
-             <div className="flex flex-reverse items-end mt-4">
-                <ChartNoAxesGantt  className="mt-2 border border-slate-200 rounded-md"/>
+
+                {/* Timeline */}
+               <div className="bg-blue-600 rounded-lg p-1 border border-slate-200">
+                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-center my-2 gap-2">
+                  <ChartGantt size={18} className="text-white-600" />
+                  <span className="font-thin text-sm text-slate-200">View Timeline</span>
+               </div>
+                <p className="mr-2">
+                  <ArrowRight  onClick={() => router.push(`/agents/${props.agentId}/agent/${selectedAgent.id}`)} className="text-white-600 "/>
+                </p>
+                 </div>
               </div>
+
+              </div>
+            
+             
           </div>
         ) 
         }
+
+      
       </div>
      
   );

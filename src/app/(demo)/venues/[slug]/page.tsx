@@ -55,7 +55,6 @@ export default function VenuePage({ params }: VenuePageProps) {
   useEffect(() => {
     // Find the venue by slug
     const foundVenue = venues.find(v => v.venueId === decodeURIComponent(slug));
-    console.log(foundVenue)
     if (foundVenue) {
       if(foundVenue instanceof Venue) {
           setVenue(foundVenue);
