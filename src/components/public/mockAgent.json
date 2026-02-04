@@ -1,60 +1,169 @@
 [
   {
-    "agent": {
-      "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f7d",
-      "name": "Customer Support Agent",
-      "description": "Process customer query raised through support",
+  
+      "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f0d",
+      "name": "Build & Launch MVP",
+      "description": "Product Development & Launch",
       "status": "ACTIVE",
-      "lastRun": "Today, 12:10 pm"
-    },
-    "steps": [
-      {
-        "stepNumber": 1,
-        "stepId": "webhook-trigger",
-        "stepName": "Webhook Trigger",
-        "stepType": "trigger",
-        "description": "Received customer inquiry via support portal webhook.",
-        "timestamp": "12:10:05 PM",
-        "venueId": "us-east-1",
-        "jobId": "#8918",
-        "status": "COMPLETED",
-        "input": {
-          "webhookUrl": "https://api.support.company.com/webhook",
-          "method": "POST",
-          "Content-Type": "application/json"
-        },
-        "output": {
-          "customerId": "CUST-8821",
-          "subject": "Unable to login to account",
-          "message": "I've been trying to reset my password but not receiving the email",
-          "priority": "medium",
-          "channel": "web"
-        }
-      },
-      {
-        "stepNumber": 2,
-        "stepId": "intent-classification",
-        "stepName": "Intent Classification",
-        "stepType": "processing",
-        "description": "Classified user intent as 'Technical Support' with 98% confidence.",
-        "timestamp": "12:10:15 PM",
-        "venueId": "us-east-1",
-        "jobId": "#8919",
-        "status": "ACTIVE",
-        "input": {
-          "text": "I've been trying to reset my password but not receiving the email",
-          "customerId": "CUST-8821",
-          "previousInteractions": 2
-        },
-        "output": {
-          "primaryIntent": "Technical Support",
-          "subCategory": "Account Access",
-          "confidence": 0.98,
-          "suggestedActions": ["password_reset", "email_verification"],
-          "routingQueue": "tech-support-tier-1"
-        }
-      }
-    ]
+      "lastRun": "Today, 1:50 pm",
+      "agents" : [
+           {
+            "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f1d",
+            "name": "Requirements Gathering Agent",
+            "description": "Define core features and user stories",
+            "status": "ACTIVE",
+            "lastRun": "Today, 1:50 pm"
+           },
+           {
+            "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f2d",
+            "name": "Tech Stack Selection Agent",
+            "description": "Evaluate and recommend technology choices",
+            "status": "ACTIVE",
+            "lastRun": "Today, 1:50 pm"
+           },
+           {
+             "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f3d",
+            "name": " UI/UX Design Agent",
+            "description": "Create wireframes and design system",
+            "status": "ACTIVE",
+            "lastRun": "Today, 1:50 pm"
+           },
+           {
+              "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f4d",
+              "name": "Backend Development Agent",
+              "description": "Build API and database",
+              "status": "ACTIVE",
+              "lastRun": "Today, 1:50 pm"
+           },
+            {
+              "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f5d",
+              "name": "Frontend Development Agent",
+              "description": "Build user interface",
+              "status": "ACTIVE",
+              "lastRun": "Today, 1:50 pm"
+           }
+      ]
+  },
+  {
+  
+      "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f0e",
+      "name": "Marketing",
+      "description": "Campaign management with budget",
+      "status": "ACTIVE",
+      "lastRun": "Today, 1:50 pm",
+      "agents" : [
+           {
+            "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f1e",
+            "name": "Market Research Agent",
+            "description": "Analyze target audience and competitors",
+            "status": "ACTIVE",
+            "lastRun": "Today, 1:50 pm"
+           },
+           {
+            "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f2e",
+            "name": "Brand Strategy Agent",
+            "description": "Define brand identity and positioning",
+            "status": "ACTIVE",
+            "lastRun": "Today, 1:50 pm"
+           },
+           {
+             "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f3e",
+            "name": "Content Marketing Agent",
+            "description": "Create blog posts and articles",
+            "status": "ACTIVE",
+            "lastRun": "Today, 1:50 pm"
+           },
+           {
+              "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f4e",
+              "name": "SEO Optimization Agent",
+              "description": "Improve search rankings",
+              "status": "ACTIVE",
+              "lastRun": "Today, 1:50 pm"
+           },
+            {
+              "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f5e",
+              "name": "Social Media Agent",
+              "description": "Manage social media presence",
+              "status": "ACTIVE",
+              "lastRun": "Today, 1:50 pm"
+           }
+      ]
+  },
+  {
+  
+      "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f0f",
+      "name": "Recruiter",
+      "description": "Hiring pipeline with candidate stages",
+      "status": "ACTIVE",
+      "lastRun": "Today, 1:50 pm",
+      "agents" : [
+           {
+            "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f1f",
+            "name": "Job Description Writer Agent",
+            "description": "Create compelling job postings",
+            "status": "ACTIVE",
+            "lastRun": "Today, 1:50 pm"
+           },
+           {
+            "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f2f",
+            "name": "Sourcing Agent",
+            "description": "Find and attract qualified candidates",
+            "status": "ACTIVE",
+            "lastRun": "Today, 1:50 pm"
+           },
+           {
+            "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f3f",
+            "name": "Resume Screening Agent",
+            "description": "Contact and engage potential candidates",
+            "status": "ACTIVE",
+            "lastRun": "Today, 1:50 pm"
+           },
+           {
+              "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f4f",
+              "name": "Technical Assessment Agent",
+              "description": "Administer coding tests and skills assessments",
+              "status": "ACTIVE",
+              "lastRun": "Today, 1:50 pm"
+           }
+      ]
+  },
+  {
+  
+      "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f0g",
+      "name": "Finance Manager",
+      "description": "Budget vs actual tracking with variance calculations",
+      "status": "ACTIVE",
+      "lastRun": "Today, 1:50 pm",
+      "agents" : [
+           {
+            "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f1g",
+            "name": "Budget Planning Agent",
+            "description": "Create annual and quarterly budgets",
+            "status": "ACTIVE",
+            "lastRun": "Today, 1:50 pm"
+           },
+           {
+            "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f2g",
+            "name": "Expense Tracking Agent",
+            "description": "Find and attract qualified candidates",
+            "status": "ACTIVE",
+            "lastRun": "Today, 1:50 pm"
+           },
+           {
+            "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f3g",
+            "name": "Resume Screening Agent",
+            "description": "Monitor and categorize all company expenses",
+            "status": "ACTIVE",
+            "lastRun": "Today, 1:50 pm"
+           },
+           {
+              "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f4g",
+              "name": "Invoice Processing Agent",
+              "description": "Handle accounts payable and vendor payments",
+              "status": "ACTIVE",
+              "lastRun": "Today, 1:50 pm"
+           }
+      ]
   }
  
 ]

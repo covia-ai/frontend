@@ -13,8 +13,8 @@ export const IdAndLink = (props: any) => {
             <Tooltip>
                 <TooltipTrigger >
                     <div data-testid="idcopy_btn" className="p-1 flex flex-row  mr-1 border border-gray-300 text-muted-foreground rounded-md w-full space-x-2"> 
-                    <span className="text-[10px] w-full">{id} </span>
-                    <Copy  size={10} onClick={(e) => copyDataToClipBoard(url, type+" path copied to clipboard")}></Copy>
+                    <div className="select-text text-[10px] w-full">{id} </div>
+                    <Copy  size={10} onClick={(e) => copyDataToClipBoard(id, "Asset Id copied to clipboard")}></Copy>
                     </div>
                 </TooltipTrigger>
                     <TooltipContent>{props.type} Id</TooltipContent>

@@ -1,8 +1,7 @@
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
-import  TreeStructure  from "@/components/AgentTree";
-import AgentTree2 from "@/components/AgentTree2";
+import AgentExplorer from "@/components/AgentExplorer";
 
 export default async function Page({
   params,
@@ -14,7 +13,7 @@ export default async function Page({
 
       <ContentLayout>
       <TopBar/>
-      <AgentTree2/>
+      <AgentExplorer agentId={id}/>
       </ContentLayout>
   )
 }

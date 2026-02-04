@@ -3,8 +3,12 @@ export type TimelineStatus = 'completed' | 'in-progress' | 'pending';
 export type TimelineColor = 'primary' | 'secondary' | 'muted' | 'accent' | 'destructive';
 
 export interface Agent {
-   agent: AgentData;
-   steps: AgentSteps[];
+   id:string,
+   name: string;
+   children: Agent[];
+   status:string;
+   lastRun:string;
+   description:string;
 }
 export interface AgentData {
   id:string;
