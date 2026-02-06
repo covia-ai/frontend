@@ -64,7 +64,7 @@ export function OperationsList() {
   }
   
   useEffect(() => {
-     const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name})
+     const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name})
      function fetchAssets() {
         setAssetsMetadata([]);
           try {
@@ -99,7 +99,7 @@ export function OperationsList() {
 
   return (
     <ContentLayout>
-      <TopBar venueName={venueObj?.name}/>
+      <TopBar venueName={venueObj?.metadata.name}/>
       <div className="flex flex-col items-center justify-center">
          <div className="flex flex-row items-center justify-center w-full space-x-2 ">
           <Search />

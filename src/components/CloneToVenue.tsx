@@ -49,7 +49,7 @@ export default function CloneToVenue(props:any) {
               </SelectTrigger>
               <SelectContent>
                 {venues.map((venue) =>  (
-                  <SelectItem key={venue.venueId} value={venue.venueId}>{venue.name}</SelectItem>
+                  <SelectItem key={venue.venueId} value={venue.venueId}>{venue.metadata.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

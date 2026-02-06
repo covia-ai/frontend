@@ -31,7 +31,7 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
      const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
      const venue = useMemo(() => {
         // Your expensive calculation or value creation
-        return new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name})
+        return new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name})
         }, [venueObj]); // Dependency array
   
       const [isFinished, setFinished] = useState<boolean>(false);

@@ -26,7 +26,7 @@ interface AssetCardProps {
 
 export function AssetCard({ asset,type,compact }: AssetCardProps) {
     const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
-    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name})
+    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name})
     const router = useRouter();
     const [newJsonData, setNewJsonData] = useState({});
     const [assetCreated, setAssetCreated] = useState(false);

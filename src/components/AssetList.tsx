@@ -36,7 +36,6 @@ export function AssetList() {
 
   const { venues } = useVenues();
   const venueObj = useStore(useVenue, (x) => x.currentVenue);
-
   const nextPage = (page: number) => {
     setCurrentPage(page)
   }
@@ -46,7 +45,7 @@ export function AssetList() {
   if(venues.length == 0 ) {
      return (
       <ContentLayout>
-      <SmartBreadcrumb />
+      <SmartBreadcrumb venueName={venueObj?.metadata.name}/>
 
       <div className="flex flex-col items-center justify-center">
         <div className="flex flex-row items-center justify-center w-full space-x-2 ">
@@ -64,7 +63,7 @@ export function AssetList() {
   }
   
   useEffect(() => {
-     const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name})
+     const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name})
      function fetchAssets() {
         setAssetsMetadata([]);
           try {
@@ -103,7 +102,7 @@ export function AssetList() {
   }, [assetsMetadata])
 
   function handleDataFromChild(status: boolean) {
-    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name})
+    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name})
     setAssetsMetadata([]);
     venue.getAssets().then((assets) => {
       assets.forEach((asset: Asset) => {
@@ -129,7 +128,7 @@ export function AssetList() {
 
   return (
     <ContentLayout>
-        <TopBar venueName={venueObj?.name}/>
+        <TopBar venueName={venueObj?.metadata.name}/>
   
         <div className="flex flex-col items-center justify-center">
           <div className="flex flex-row items-center justify-center w-full space-x-2 ">

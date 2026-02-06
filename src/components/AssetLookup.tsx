@@ -23,7 +23,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}) => {
   const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
   const venue = useMemo(() => {
     // Your expensive calculation or value creation
-    return new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name})
+    return new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name})
     }, [venueObj]); // Dependency array
 
   const [assetsMetadata, setAssetsMetadata] = useState<Asset[]>([]);
@@ -68,7 +68,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}) => {
 
   const handleVenueSelect = (venue: Venue) => {
     console.log(venue)
-    setSelectedVenue(new Venue({baseUrl: venue.baseUrl, venueId: venue.venueId, name:venue.name}));
+    setSelectedVenue(new Venue({baseUrl: venue.baseUrl, venueId: venue.venueId, name:venue.metadata.name}));
   };
   return (
      <Dialog>
@@ -102,7 +102,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}) => {
                       >
                         <div className="flex items-center gap-2">
                           <Building2 size={16} />
-                          <span className="truncate">{venue.name}</span>
+                          <span className="truncate">{venue.metadata.name}</span>
                         </div>
                       
                         {selectedVenue?.venueId === venue.venueId && (

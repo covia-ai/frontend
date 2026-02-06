@@ -50,7 +50,7 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
     const [metadataUpdated, setMetadataUpdated] = useState(false);
     const [open, setOpen] = useState(false)
     const venueObj = useStore(useVenue, (x) => x.currentVenue);
-    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name})
+    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name})
     
     function createNewAsset(jsonData: AssetMetadata) {
         try {    

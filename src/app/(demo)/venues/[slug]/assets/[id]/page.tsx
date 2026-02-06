@@ -1,4 +1,3 @@
-import { ContentLayout } from "@/components/admin-panel/content-layout";
 
 import { AssetViewer } from "@/components/AssetViewer";
 

@@ -28,10 +28,10 @@ export function AssetViewer(props: AssetViewerProps) {
     if(props.venueId != venueObj?.venueId) {
         const venue = venues.find(v => v.venueId === props.venueId);
         if (venue) {
-            new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.name}).getAsset(props.assetId).then((asset: Asset) => {
+            new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name}).getAsset(props.assetId).then((asset: Asset) => {
           setAsset(asset);
           })
-          setVenueName(venue.name)
+          setVenueName(venue.metadata.name)
          }
          else {
           Grid.connect(decodeURIComponent(props.venueId),new CredentialsHTTP(props.venueId,"",session?.user?.email || "")).then((venue) => {
@@ -39,15 +39,15 @@ export function AssetViewer(props: AssetViewerProps) {
              venue.getAsset(props.assetId).then((asset: Asset) => {
              setAsset(asset);
             })
-            setVenueName(venue.name)
+            setVenueName(venue.metadata.name)
           });
          }
     }
     else {
-      new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.name}).getAsset(props.assetId).then((asset: Asset) => {
+      new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.metadata.name}).getAsset(props.assetId).then((asset: Asset) => {
       setAsset(asset);
      })
-      setVenueName(venueObj.name)
+      setVenueName(venueObj.metadata.name)
     }  
   }, [addVenue, props.assetId, props.venueId, session?.user?.email, venueObj, venues]);
 

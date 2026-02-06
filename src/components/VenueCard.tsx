@@ -17,8 +17,8 @@ export function VenueCard({ venue, compact }: VenueCardProps) {
   const router = useRouter();
 
   if(!(venue instanceof Venue))
-    venue = new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.name})
-  
+    venue = new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name})
+  console.log(venue)
   const handleCardClick = () => {
     const encodedUrl = "/venues/"+encodeURIComponent(venue.venueId);
     router.push(encodedUrl);
@@ -30,7 +30,7 @@ export function VenueCard({ venue, compact }: VenueCardProps) {
           ${ compact ? 'h-32 p-1' : 'h-48 p-2'  }`}>
       {/* Fixed-size header */}
       <div className={` ${ compact ? 'h-10' : 'h-14'  } p-2 flex flex-row items-center border-b bg-card-banner`}>
-        <div data-testid="venue-name" className="truncate flex-1 mr-2 text-md text-foreground" onClick={handleCardClick}>{venue.name}</div>
+        <div data-testid="venue-name" className="truncate flex-1 mr-2 text-md text-foreground" onClick={handleCardClick}>{venue.metadata.name}</div>
             <RemoveVenueModal venueId={venue.venueId}/>
         </div>
       {/* Flexible middle section */}

@@ -72,7 +72,7 @@ export default function AssetPage() {
     setCurrentPage(page)
 
   }
-  const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name})
+  const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name})
 
 
   function fetchAssets() {

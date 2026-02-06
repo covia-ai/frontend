@@ -136,7 +136,7 @@ export function JobList() {
    });
   return (
     <ContentLayout >
-      <TopBar venueName={venueObj?.name}/>
+      <TopBar venueName={venueObj?.metadata.name}/>
       <div className="flex flex-col items-center justify-center  mt-2 bg-background">
         <div className="flex flex-row w-full  items-start justify-start mt-4 space-x-4 ">
             <div className="flex flex-row items-center justify-start w-1/3  space-x-4">

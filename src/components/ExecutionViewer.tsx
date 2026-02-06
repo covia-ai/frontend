@@ -46,7 +46,7 @@ export const ExecutionViewer = (props: any) => {
       if(props.venueId != venueObj?.venueId) {
         const venue = venues.find(v => v.venueId === props.venueId);
         if (venue) {
-            setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.name}))
+            setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name}))
          }
          else {
           Grid.connect(decodeURIComponent(props.venueId), 
@@ -57,9 +57,9 @@ export const ExecutionViewer = (props: any) => {
          }
     }
     else {
-        setVenue(new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name}));  
+        setVenue(new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name}));  
     }  
-   }, [addVenue, props.venueId, session?.user?.email, venueObj?.baseUrl, venueObj?.name, venueObj?.venueId, venues]);
+   }, [addVenue, props.venueId, session?.user?.email, venueObj?.baseUrl, venueObj?.metadata.name, venueObj?.venueId, venues]);
 
     function fetchJobStatus() {
         venue?.getJob(props.jobId).then((job:Job) => {
