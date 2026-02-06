@@ -1,6 +1,6 @@
 'use client'
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Asset } from "@covia-ai/covialib";
 import { Calendar, Copy, Copyright, Download, Info, InfoIcon, Tag, User } from "lucide-react";
 import Link from "next/link";
@@ -116,12 +116,24 @@ const renderMetadataFields = (asset: Asset, fields: MetadataFieldConfig[]) => {
 };
 
 export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
-  let contentURL = asset.getContentURL();
-  let defaultValue = "metadata"
+  const [contentURL, setContentUrl] = useState("");
+  const [defaultValue, setDefaultValue] = useState("metadata");
+
+  useEffect(() => { 
   if(asset.metadata.operation != undefined) {
-    contentURL = 'NA'
-    defaultValue = 'NA'
+    setContentUrl('NA');
+    setDefaultValue('NA');
   }
+  else {
+    asset.getContent().then((response) => {
+    console.log(response)
+    }).catch((error) => {
+      console.log(error)
+     setContentUrl('NA');
+    })
+  }
+  },[])
+  
   return (
      <Accordion
       type="single"
