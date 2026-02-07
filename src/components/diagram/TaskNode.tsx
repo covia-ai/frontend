@@ -33,7 +33,6 @@ function TaskNode({ data }) {
        if(input.length > maxLengthOfInputs)
           maxLengthOfInputs = input.length
      });
-     console.log(maxLengthOfInputs)
     
      switch (true) {
                 case (maxLengthOfInputs <= 8):

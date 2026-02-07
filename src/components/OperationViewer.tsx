@@ -250,8 +250,7 @@ export const OperationViewer = (props: any) => {
   }
 
   function runOperation() {
-    console.log(input)
-    return asset?.run(input)
+    return asset?.invoke(input)
       .then(response => {
         if (response?.id) {
           router.push("/venues/"+venue?.venueId+"/jobs/" + response?.id);

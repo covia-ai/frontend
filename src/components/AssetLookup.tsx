@@ -67,7 +67,6 @@ export const AssetLookup = ({sendAssetIdBackToForm}) => {
   },[filterValue, assetsMetadata])
 
   const handleVenueSelect = (venue: Venue) => {
-    console.log(venue)
     setSelectedVenue(new Venue({baseUrl: venue.baseUrl, venueId: venue.venueId, name:venue.metadata.name}));
   };
   return (

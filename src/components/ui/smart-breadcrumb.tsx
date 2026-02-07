@@ -24,7 +24,6 @@ export function SmartBreadcrumb({ assetOrJobName, venueName }: SmartBreadcrumbPr
   const pathname = usePathname();
   const router = useRouter();
 
-  console.log(venueName)
   // Generate breadcrumb items based on pathname
   const generateBreadcrumbs = (): BreadcrumbItem[] => {
     const segments = pathname.split('/').filter(Boolean);

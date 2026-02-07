@@ -19,7 +19,6 @@ export default function CloneToVenue(props:any) {
          description: "Agent clones on "+targetVenue
     })
   };
-  console.log(props)
   return (
     <Dialog >
       <DialogTrigger asChild>

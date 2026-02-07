@@ -43,8 +43,6 @@ export function getExecutionTime(date1:string, date2:string) {
   const differenceInSeconds = differenceInMilliseconds / 1000;
   const differenceInMinutes = differenceInMilliseconds / 60000;
   const differenceInHours = differenceInMilliseconds / 3600000;
-  console.log(differenceInMinutes);
-  console.log(differenceInHours)
 
   if(differenceInHours > 1)
     return Math.floor(differenceInHours) +" h"
