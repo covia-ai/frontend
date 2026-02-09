@@ -126,9 +126,10 @@ export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
   }
   else {
     asset.getContent().then((response) => {
+     setContentUrl(asset.getContentURL())
     }).catch((error) => {
       console.log(error)
-     setContentUrl('NA');
+      setContentUrl('NA');
     })
   }
   },[])
