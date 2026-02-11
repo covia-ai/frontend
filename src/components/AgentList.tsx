@@ -2,7 +2,7 @@
 
 import { AddNewAgent } from "./AddNewAgent";
 import { ContentLayout } from "./admin-panel/content-layout";
-import { Bot, Clock, Clock1, EqualApproximatelyIcon, Footprints, MapPin } from "lucide-react";
+import { Bot, Clock, Clock1, EqualApproximatelyIcon, Footprints, MapPin, PanelRightClose, SquareChevronRight } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -14,6 +14,8 @@ import { MagicWandIcon } from "@radix-ui/react-icons";
 import { SeperatorWithText } from "@/components/SeperatorWithText";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import { Tooltip, TooltipTrigger } from "./ui/tooltip";
+import { TooltipContent } from "@radix-ui/react-tooltip";
 
 export function AgentList() {
   const router = useRouter();
@@ -21,6 +23,7 @@ export function AgentList() {
   const compact = true;
   useEffect(() => {
     setAgentData(agentsJson as any);
+    
   },[agentData])
   
   const handleCardClick = (agentId:string) => {
@@ -71,9 +74,13 @@ export function AgentList() {
             <div className="text-primary text-lg">Get Started with Agents</div>
             <AddNewAgent></AddNewAgent>
       </div>}
+      <div className="flex flex-row-reverse w-full">
+       <SquareChevronRight onClick={() => router.push('/agents/explorer')}/>
+      </div>
       {agentData.length > 0 && <div className="flex flex-col items-center justify-center space-y-4">
+         
          <div className="mt-10 w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 items-stretch justify-center gap-4">
-          
+            
             {agentData.map((agent) => (   
               <Card 
                    key={agent.id}  onClick={() => handleCardClick(agent.id)}

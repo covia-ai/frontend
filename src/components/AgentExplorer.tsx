@@ -7,8 +7,8 @@ import { Agent } from '@/config/types';
 import { useRouter } from 'next/navigation';
 
 const AgentExplorer = (props:any) => {
-  const [agentData, setAgentData] = useState<Agent>()
-  const [selectedProject, setSelectedProject] = useState(null);
+  const [agentData, setAgentData] = useState<Agent[]>()
+  const [selectedProject, setSelectedProject] = useState<Agent>(null);
   const [selectedAgentId, setSelectedAgentId] = useState(null);
   const router = useRouter();
   // Resizing State for both columns
@@ -18,10 +18,22 @@ const AgentExplorer = (props:any) => {
   const isResizingMiddle = useRef(false);
 
   useEffect(() => {
-      const foundObject = agentsJson.find(item => item.id === props.agentId);
-      setAgentData(foundObject);
-      setSelectedProject(foundObject)
+      if(props.agentId != null) {
+        const foundObject = agentsJson.find(item => item.id === props.agentId);
+        setAgentData(agentsJson);
+        setSelectedProject(foundObject)
+      }
+      else {
+         setAgentData(agentsJson);
+         
+      }
     },[])
+
+     useEffect(() => {
+        if(agentData && agentData.length >0 && props.agentId == null)
+            setSelectedProject(agentData[0])
+  
+    },[agentData])
 
   // Get selected agent data
   const selectedAgent = selectedProject?.agents?.find(agent => agent.id === selectedAgentId);
@@ -92,29 +104,35 @@ const AgentExplorer = (props:any) => {
         style={{ width: `${leftWidth}px` }} 
         className="flex-shrink-0 border-r border-slate-200 overflow-y-auto"
       >
-        <div className="p-3 text-xs font-semibold text-slate-200 uppercase tracking-wider">
-          {agentData?.name}
+      {agentData?.map((agent) => (
+        <>
+           <div className="p-3 text-xs font-semibold text-slate-200 uppercase tracking-wider">
+          {agent?.name}
         </div>
         {
           <button
-            key={agentData?.id}
+            key={agent?.id}
             onClick={() => {
-              setSelectedProject(agentData!);
+              setSelectedProject(agent!);
               setSelectedAgentId(null);
             }}
             className={`w-full flex items-center justify-between p-4 text-left transition-colors border-b border-slate-100 last:border-0
-              ${selectedProject?.id === agentData?.id ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-100 text-slate-700'}`}
+              ${selectedProject?.id === agent?.id ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-100 text-slate-700'}`}
           >
             <div className="flex items-center gap-3 min-w-0">
               
               <div className="truncate">
-                <p className="font-medium text-sm truncate">{agentData?.name}</p>
-                <p className="text-xs opacity-70 truncate">{agentData?.description}</p>
+                <p className="font-medium text-sm truncate">{agent?.name}</p>
+                <p className="text-xs opacity-70 truncate">{agent?.description}</p>
               </div>
             </div>
             <ChevronRight size={16} className="flex-shrink-0 ml-2" />
           </button>
         }
+        </>
+
+      ))}
+       
       </div>
 
       {/* Resize Handle - Left */}
