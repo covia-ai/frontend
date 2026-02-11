@@ -14,8 +14,11 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import { ScrollArea } from "@radix-ui/react-scroll-area";
-import { ScrollBar } from "./ui/scroll-area";
+import { ContentViewer } from "./ContentViewer";
+import { getViewerType } from "@/lib/utils";
+import { CsvViewer } from "./CSVViewer";
+import { JsonViewer } from "./JSONViewer";
+import { TextViewer } from "./TextViewer";
 interface MetadataViewerProps {
   asset: Asset;
 }
@@ -118,19 +121,13 @@ const renderMetadataFields = (asset: Asset, fields: MetadataFieldConfig[]) => {
 export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
   const [contentURL, setContentUrl] = useState("");
   const [defaultValue, setDefaultValue] = useState("metadata");
-
   useEffect(() => { 
   if(asset.metadata.operation != undefined) {
     setContentUrl('NA');
     setDefaultValue('NA');
   }
   else {
-    asset.getContent().then((response) => {
-     setContentUrl(asset.getContentURL())
-    }).catch((error) => {
-      console.log(error)
-      setContentUrl('NA');
-    })
+    setContentUrl(asset.getContentURL());
   }
   },[])
   
@@ -155,16 +152,15 @@ export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
                         <Download size={18}></Download>
                         <span className="text-md">Data:</span>
                         <span>
-                          <Link href={contentURL} className="text-secondary dark:text-secondary-light underline" download={true}>
+                          <Link href={contentURL} className="text-sm text-secondary dark:text-secondary-light underline" download={true}>
                             Download
                           </Link>
                         </span>
-                        <span>
-                          <a href={contentURL + '?inline=true'} 
-                          target="_blank" rel="noopener noreferrer" className="text-secondary dark:text-secondary-light underline" >
-                            View
-                          </a>
-                        </span>
+                          
+                          {asset.metadata?.content?.contentType?.split(";")[0] == "text/csv" && <CsvViewer assetId={asset.id} />}
+                          {asset.metadata?.content?.contentType?.split(";")[0] == "application/json" && <JsonViewer assetId={asset.id} />}
+                          {asset.metadata?.content?.contentType?.split(";")[0] == "text/plain" && <TextViewer assetId={asset.id} />}
+                          
                       </div>
                     )}
                     <div className="flex flex-row items-center space-x-2">
