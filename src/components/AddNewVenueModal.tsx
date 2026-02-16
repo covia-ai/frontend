@@ -15,6 +15,7 @@ import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { Label } from "@radix-ui/react-dropdown-menu";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
+import { gtmEvent } from "@/lib/utils";
 
 export const AddNewVenueModal = (props:any) => {
     const [open, setOpen] = useState(false)
@@ -25,6 +26,8 @@ export const AddNewVenueModal = (props:any) => {
     const addVenueToList = () =>{
     let venueExist = false;
     let processVenueDidOrUrl = venueDidOrUrl;
+    gtmEvent.buttonClick('Add Venue', venueDidOrUrl);
+
     venues.map((venue => {
         if(processVenueDidOrUrl.endsWith("/"))
             processVenueDidOrUrl = processVenueDidOrUrl.substring(0,processVenueDidOrUrl.length-1);

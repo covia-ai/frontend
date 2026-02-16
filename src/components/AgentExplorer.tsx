@@ -12,8 +12,8 @@ const AgentExplorer = (props:any) => {
   const [selectedAgentId, setSelectedAgentId] = useState(null);
   const router = useRouter();
   // Resizing State for both columns
-  const [leftWidth, setLeftWidth] = useState(320); // Initial width in pixels
-  const [middleWidth, setMiddleWidth] = useState(400); // Initial width for middle column
+  const [leftWidth, setLeftWidth] = useState(250); // Initial width in pixels
+  const [middleWidth, setMiddleWidth] = useState(300); // Initial width for middle column
   const isResizingLeft = useRef(false);
   const isResizingMiddle = useRef(false);
 
@@ -85,7 +85,7 @@ const AgentExplorer = (props:any) => {
     if (!isResizingMiddle.current) return;
     // Calculate the starting position of the middle column (left column width + left resize handle width)
     const middleColumnStart = leftWidth + 6; // 6px is approximately the resize handle width (1.5 * 4)
-    const newWidth = Math.min(Math.max(250, e.clientX - middleColumnStart), 700);
+    const newWidth = Math.min(Math.max(200, e.clientX - middleColumnStart), 400);
     setMiddleWidth(newWidth);
   };
 

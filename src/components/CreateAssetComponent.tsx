@@ -28,6 +28,7 @@ import { useVenue } from "@/hooks/use-venue";
 import { Asset, AssetMetadata, Venue } from "@covia-ai/covialib";
 import { getContentTypeForFile, getLicenseUrl } from "@/lib/utils";
 import { Iconbutton } from "./Iconbutton";
+import { gtmEvent } from "@/lib/utils";
 
 export const CreateAssetComponent = ({sendDataToParent}) => {
     const [step, setStep] = useState(0);
@@ -53,6 +54,8 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
     const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name})
     
     function createNewAsset(jsonData: AssetMetadata) {
+        gtmEvent.buttonClick('Create Asset', jsonData.name!);
+        
         try {    
           venue?.createAsset(jsonData).then( (asset: Asset) => {
                 if(assetType == "string") {
