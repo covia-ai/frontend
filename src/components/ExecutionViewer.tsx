@@ -10,7 +10,6 @@ import { useVenue } from "@/hooks/use-venue";
 import {  colourForStatus, getExecutionTime } from "@/lib/utils";
 import { TbSubtask } from "react-icons/tb";
 import Link from "next/link";
-import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 import { ExecutionHeader } from "./ExecutionHeader";
 import { ExecutionToolbar } from "./ExecutionToolbar";
 import { useVenues } from "@/hooks/use-venues";
@@ -115,9 +114,7 @@ export const ExecutionViewer = (props: any) => {
             </Table>
         )
     }
-    function renderJSONObject(jsonObject: any, type: string) {
-    console.log(jobMetadata)
-    
+    function renderJSONObject(jsonObject: any, type: string) {    
     if (jsonObject === undefined || jsonObject === null) {
         return <div>No Data</div>
     }
@@ -271,7 +268,7 @@ export const ExecutionViewer = (props: any) => {
 
     return (
         <>
-             <TopBar assetOrJobName={jobMetadata?.name} venueName={venue?.name} />
+             <TopBar assetOrJobName={jobMetadata?.name} venueName={venue?.metadata.name} />
            
              <ExecutionHeader  jobData={jobMetadata}></ExecutionHeader>
             {jobMetadata && (

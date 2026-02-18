@@ -47,7 +47,7 @@ export function AssetViewer(props: AssetViewerProps) {
       new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.metadata.name}).getAsset(props.assetId).then((asset: Asset) => {
       setAsset(asset);
      })
-      setVenueName(venueObj.metadata.name)
+      setVenueName(venueObj?.metadata.name!)
     }  
   }, [addVenue, props.assetId, props.venueId, session?.user?.email, venueObj, venues]);
 

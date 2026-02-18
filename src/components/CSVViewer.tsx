@@ -30,7 +30,6 @@ export const CsvViewer = (props:any) => {
      
       venue.getContent(props.assetId).then((response) => {
         
-        console.log(response)
         response?.getReader().read().then(({done, value}) => {
           const decoder = new TextDecoder();
           const result = decoder.decode(value);

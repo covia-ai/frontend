@@ -88,7 +88,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}) => {
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" >
                     <Building2 size={14} />
-                      {selectedVenue?.name}
+                      {selectedVenue?.metadata.name}
                     <ChevronDown size={14} />
                   </Button>
                 </DropdownMenuTrigger>

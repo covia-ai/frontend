@@ -45,7 +45,7 @@ export function AssetList() {
   if(venues.length == 0 ) {
      return (
       <ContentLayout>
-      <SmartBreadcrumb venueName={venueObj?.metadata.name}/>
+      <TopBar venueName={venueObj?.metadata.name}/>
 
       <div className="flex flex-col items-center justify-center">
         <div className="flex flex-row items-center justify-center w-full space-x-2 ">

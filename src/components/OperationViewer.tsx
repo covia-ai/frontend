@@ -538,7 +538,7 @@ export const OperationViewer = (props: any) => {
 
   return (
     <ContentLayout>
-      <TopBar assetOrJobName={asset?.metadata?.name} venueName={venue?.name}/>
+      <TopBar assetOrJobName={asset?.metadata?.name} venueName={venue?.metadata.name}/>
       <div className="flex flex-col w-full items-center justify-center">
         {assetNotFound && (
           <div className="text-center p-8">

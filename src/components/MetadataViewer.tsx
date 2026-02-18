@@ -14,11 +14,11 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import { ContentViewer } from "./ContentViewer";
-import { getViewerType } from "@/lib/utils";
+
 import { CsvViewer } from "./CSVViewer";
 import { JsonViewer } from "./JSONViewer";
 import { TextViewer } from "./TextViewer";
+import DocumentViewer from "./DocViewer";
 interface MetadataViewerProps {
   asset: Asset;
 }
@@ -160,7 +160,7 @@ export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
                           {asset.metadata?.content?.contentType?.split(";")[0] == "text/csv" && <CsvViewer assetId={asset.id} />}
                           {asset.metadata?.content?.contentType?.split(";")[0] == "application/json" && <JsonViewer assetId={asset.id} />}
                           {asset.metadata?.content?.contentType?.split(";")[0] == "text/plain" && <TextViewer assetId={asset.id} />}
-                          
+
                       </div>
                     )}
                     <div className="flex flex-row items-center space-x-2">

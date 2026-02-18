@@ -23,12 +23,10 @@ export const JsonViewer = (props:any) => {
    useEffect(() => { 
      
       venue.getContent(props.assetId).then((response) => {
-        console.log(response)
         response?.getReader().read().then(({done, value}) => {
           const decoder = new TextDecoder();
           const text = decoder.decode(value);
           const jsonData = JSON.parse(text);
-          console.log(jsonData);
           setRenderData(jsonData)
       });
       

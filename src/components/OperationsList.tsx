@@ -1,7 +1,7 @@
 "use client";
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
-import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
+
 import { Search } from "@/components/search";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from 'next/navigation'
@@ -46,8 +46,7 @@ export function OperationsList() {
   if(venues.length == 0 ) {
      return (
       <ContentLayout>
-      <SmartBreadcrumb />
-
+      <TopBar/>
       <div className="flex flex-col items-center justify-center">
         <div className="flex flex-row items-center justify-center w-full space-x-2 ">
           <Search />

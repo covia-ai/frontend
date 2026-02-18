@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
-import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 
 import {
   Select,
@@ -54,7 +53,7 @@ export function JobList() {
   if(venues.length == 0)
       return (
       <ContentLayout>
-      <SmartBreadcrumb />
+      <TopBar />
         <div className="flex flex-col items-center justify-center  mt-2 bg-background">
       <div className="flex flex-row w-full  items-start justify-start mt-4 space-x-4 ">
           <div className="flex flex-row items-center justify-start w-1/3  space-x-4">

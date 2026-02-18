@@ -13,11 +13,9 @@ export const TextViewer = (props:any) => {
 
    useEffect(() => { 
       venue.getContent(props.assetId).then((response) => {
-        console.log(response)
         response?.getReader().read().then(({done, value}) => {
           const decoder = new TextDecoder();
           const text = decoder.decode(value);
-          console.log(text)
           setRenderData(text)
       });
       
