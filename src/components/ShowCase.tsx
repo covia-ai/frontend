@@ -3,7 +3,7 @@
 
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { Asset, Venue } from "@covia-ai/covialib";
+import { Asset, Venue } from "@covia/covialib";
 import React, { useEffect, useMemo, useState } from 'react'
 import { AssetCard } from "./AssetCard";
 import { useVenues } from "@/hooks/use-venues";

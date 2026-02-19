@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useVenue } from "@/hooks/use-venue";
 import { useVenues } from "@/hooks/use-venues";
-import { Venue } from "@covia-ai/covialib";
+import { Venue } from "@covia/covialib";
 
 export function VenueSelector() {
   const pathname = usePathname();

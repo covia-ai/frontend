@@ -3,7 +3,7 @@ import React from 'react';
 import { render, screen, fireEvent, within, getByRole, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { AssetCard } from '@/components/AssetCard';
-import { Asset, DataAsset, Operation, Venue } from '@covia-ai/covialib';
+import { Asset, DataAsset, Operation, Venue } from '@covia/covialib';
 import { VenueCard } from '@/components/VenueCard';
 
 // Mock child components

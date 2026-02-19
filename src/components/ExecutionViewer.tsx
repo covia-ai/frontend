@@ -2,7 +2,7 @@
 'use client'
 
 import { useEffect, useState } from "react";
-import { Asset, JobMetadata, RunStatus, Venue, isJobFinished,Grid,Job,CredentialsHTTP } from "@covia-ai/covialib";
+import { Asset, JobMetadata, RunStatus, Venue, isJobFinished,Grid,Job,CredentialsHTTP } from "@covia/covialib";
 import { Check, CircleX, Clock, Copy, FileInput, FileOutput, Hash, RotateCcw, Settings, Timer, Trash2, X } from "lucide-react";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { useStore } from "zustand";

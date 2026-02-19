@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Asset, Venue } from "@covia-ai/covialib";
+import { Asset, Venue } from "@covia/covialib";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { Dialog, DialogContent, DialogHeader, DialogTrigger } from "./ui/dialog";

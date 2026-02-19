@@ -1,7 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
-import { Venue } from "@covia-ai/covialib";
+import { Venue } from "@covia/covialib";
 import { useRouter } from 'next/navigation';
 import { useVenues } from "@/hooks/use-venues";
 import { Badge } from "./ui/badge";

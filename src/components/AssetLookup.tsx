@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTrigger } from
 import { useEffect, useMemo, useState } from "react";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { Asset, Venue,getAssetIdFromVenueId } from "@covia-ai/covialib";
+import { Asset, Venue,getAssetIdFromVenueId } from "@covia/covialib";
 import { ScrollArea } from "./ui/scroll-area";
 import { DialogClose } from "@radix-ui/react-dialog";
 import { Button } from "./ui/button";

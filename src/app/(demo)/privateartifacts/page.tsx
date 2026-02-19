@@ -30,7 +30,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
-import { Venue, Asset, DataAsset } from "@covia-ai/covialib";
+import { Venue, Asset, DataAsset } from "@covia/covialib";
 import { JsonEditor } from "json-edit-react";
 
 import { useStore } from "zustand";

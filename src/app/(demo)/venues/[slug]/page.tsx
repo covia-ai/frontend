@@ -25,7 +25,7 @@ import { useRouter } from "next/navigation";
 import { useVenues } from "@/hooks/use-venues";
 import { useVenue } from "@/hooks/use-venue";
 import { useEffect, useState } from "react";
-import { Venue, Grid, CredentialsHTTP } from "@covia-ai/covialib";
+import { Venue, Grid, CredentialsHTTP } from "@covia/covialib";
 import Link from "next/link";
 import { copyDataToClipBoard } from "@/lib/utils";
 import { useSession } from "next-auth/react";

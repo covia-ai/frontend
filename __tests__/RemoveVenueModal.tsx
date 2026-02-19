@@ -2,7 +2,7 @@
 import React from 'react';
 import { render, screen, fireEvent, within, getByRole, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { Asset, DataAsset, Operation, Venue } from '@covia-ai/covialib';
+import { Asset, DataAsset, Operation, Venue } from '@covia/covialib';
 import { VenueCard } from '@/components/VenueCard';
 import { RemoveVenueModal } from '@/components/RemoveVenueModal';
 

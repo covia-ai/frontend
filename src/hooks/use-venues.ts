@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { Venue,Grid,CredentialsHTTP } from "@covia-ai/covialib";
+import { Venue,Grid,CredentialsHTTP } from "@covia/covialib";
 
 type VenuesStore = {
   venues: Venue[];

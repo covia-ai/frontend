@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from "react";
-import { Asset, Venue, Grid, CredentialsHTTP } from "@covia-ai/covialib";
+import { Asset, Venue, Grid, CredentialsHTTP } from "@covia/covialib";
 import Link from "next/link";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";

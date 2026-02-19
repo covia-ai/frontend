@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { IdAndLink } from "./IdandLink";
-import { Job,  JobMetadata } from "@covia-ai/covialib";
+import { Job,  JobMetadata } from "@covia/covialib";
 
 interface ExecutionHeaderProps {
   jobData: JobMetadata;
