@@ -8,7 +8,7 @@ import { useSearchParams } from 'next/navigation'
 
 import { useEffect, useState } from "react";
 
-import { Asset, Operation, Venue } from "@covia/covialib";
+import { Asset, Operation, Venue } from "@covia/covia-sdk";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { Spinner } from '@/components/ui/shadcn-io/spinner';

@@ -23,7 +23,7 @@ import { Iconbutton } from "@/components/Iconbutton";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { RefreshCwIcon } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Grid,CredentialsHTTP } from "@covia/covialib";
+import { Grid,CredentialsHTTP } from "@covia/covia-sdk";
 import { useSession } from "next-auth/react";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { AddNewVenueModal } from "@/components/AddNewVenueModal";

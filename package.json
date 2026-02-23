@@ -11,7 +11,7 @@
     "jest:clear": "jest --clearCache"
   },
   "dependencies": {
-    "@covia/covialib": "^1.0.0",
+    "@covia/covia-sdk": "github:covia-ai/covia-sdk",
     "@next/third-parties": "^16.1.6",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",

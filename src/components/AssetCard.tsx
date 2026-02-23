@@ -3,7 +3,7 @@ import { Iconbutton } from "./Iconbutton";
 import {  Copy, CopyIcon,  Save, SquareArrowOutUpRight } from "lucide-react";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { Asset, Venue } from "@covia/covialib";
+import { Asset, Venue } from "@covia/covia-sdk";
 import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 import {

@@ -1,6 +1,6 @@
 'use client'
 
-import {  JobMetadata, Venue, isJobFinished, isJobPaused } from "@covia/covialib";
+import {  JobMetadata, Venue, isJobFinished, isJobPaused } from "@covia/covia-sdk";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import {

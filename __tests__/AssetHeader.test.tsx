@@ -3,7 +3,7 @@ import React from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { AssetHeader } from '@/components/AssetHeader';
-import { DataAsset, Venue } from '@covia/covialib';
+import { DataAsset, Venue } from '@covia/covia-sdk';
 
 describe('AssetHeader Component', () => {
   test('renders AssetHeader', () => {

@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import {AssetInfoSheet} from '@/components/AssetInfoSheet';
-import { DataAsset, Venue } from '@covia/covialib';
+import { DataAsset, Venue } from '@covia/covia-sdk';
 import userEvent from '@testing-library/user-event';
 
 

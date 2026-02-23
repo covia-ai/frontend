@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 import { useEffect, useMemo, useState } from "react";
-import {  Venue, Asset, Grid, CredentialsHTTP, getParsedAssetId } from "@covia/covialib";
+import {  Venue, Asset, Grid, CredentialsHTTP, getParsedAssetId } from "@covia/covia-sdk";
 import { useRouter } from "next/navigation";
 import { Textarea } from "./ui/textarea";
 import { useStore } from "zustand";

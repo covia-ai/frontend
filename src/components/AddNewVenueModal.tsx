@@ -8,7 +8,7 @@ import {
 import { useState } from "react"
 import { useVenues } from "@/hooks/use-venues";
 import { Iconbutton } from "./Iconbutton";
-import { CredentialsHTTP, Grid } from "@covia/covialib";
+import { CredentialsHTTP, Grid } from "@covia/covia-sdk";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { PlusCircledIcon } from "@radix-ui/react-icons";

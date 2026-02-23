@@ -25,7 +25,7 @@ import { JsonEditor } from "json-edit-react";
 import { Button } from "./ui/button";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { Asset, AssetMetadata, Venue } from "@covia/covialib";
+import { Asset, AssetMetadata, Venue } from "@covia/covia-sdk";
 import { getContentTypeForFile, getLicenseUrl } from "@/lib/utils";
 import { Iconbutton } from "./Iconbutton";
 import { gtmEvent } from "@/lib/utils";
