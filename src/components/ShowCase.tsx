@@ -3,7 +3,7 @@
 
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { Asset, Venue } from "@covia-ai/covialib";
+import { Asset, Venue } from "@covia/covia-sdk";
 import React, { useEffect, useMemo, useState } from 'react'
 import { AssetCard } from "./AssetCard";
 import { useVenues } from "@/hooks/use-venues";
@@ -68,7 +68,7 @@ export const ShowCase = () => {
 
               {assets.map((asset, index) =>
 
-                <AssetCard key={index} asset={asset} type="operations"/>
+                <AssetCard key={index} asset={asset} type="operations" compact={true}/>
               )}
         </div>
         </div>

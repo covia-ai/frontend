@@ -19,7 +19,6 @@ export default function CloneToVenue(props:any) {
          description: "Agent clones on "+targetVenue
     })
   };
-  console.log(props)
   return (
     <Dialog >
       <DialogTrigger asChild>
@@ -49,7 +48,7 @@ export default function CloneToVenue(props:any) {
               </SelectTrigger>
               <SelectContent>
                 {venues.map((venue) =>  (
-                  <SelectItem key={venue.venueId} value={venue.venueId}>{venue.name}</SelectItem>
+                  <SelectItem key={venue.venueId} value={venue.venueId}>{venue.metadata.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

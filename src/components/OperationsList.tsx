@@ -1,14 +1,14 @@
 "use client";
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
-import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
+
 import { Search } from "@/components/search";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from 'next/navigation'
 
 import { useEffect, useState } from "react";
 
-import { Asset, Operation, Venue } from "@covia-ai/covialib";
+import { Asset, Operation, Venue } from "@covia/covia-sdk";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { Spinner } from '@/components/ui/shadcn-io/spinner';
@@ -46,8 +46,7 @@ export function OperationsList() {
   if(venues.length == 0 ) {
      return (
       <ContentLayout>
-      <SmartBreadcrumb />
-
+      <TopBar/>
       <div className="flex flex-col items-center justify-center">
         <div className="flex flex-row items-center justify-center w-full space-x-2 ">
           <Search />
@@ -64,7 +63,7 @@ export function OperationsList() {
   }
   
   useEffect(() => {
-     const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name})
+     const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name})
      function fetchAssets() {
         setAssetsMetadata([]);
           try {
@@ -99,7 +98,7 @@ export function OperationsList() {
 
   return (
     <ContentLayout>
-      <TopBar venueName={venueObj?.name}/>
+      <TopBar venueName={venueObj?.metadata.name}/>
       <div className="flex flex-col items-center justify-center">
          <div className="flex flex-row items-center justify-center w-full space-x-2 ">
           <Search />
@@ -108,7 +107,7 @@ export function OperationsList() {
         <>
           <div className="text-card-foreground text-xs flex flex-row my-2">Page {currentPage} : Showing {assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of {assetsMetadata.length} </div>
           <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>
-          <div className="w-full grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4">
+          <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 items-stretch justify-center gap-4">
             {
             assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset, index) => (
               <AssetCard key={index} asset={asset} type="operations" compact={true}/>

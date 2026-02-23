@@ -23,7 +23,7 @@ import { Iconbutton } from "@/components/Iconbutton";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { RefreshCwIcon } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Grid,CredentialsHTTP } from "@covia-ai/covialib";
+import { Grid,CredentialsHTTP } from "@covia/covia-sdk";
 import { useSession } from "next-auth/react";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { AddNewVenueModal } from "@/components/AddNewVenueModal";
@@ -67,12 +67,12 @@ export default function VenuesPage() {
             <TooltipContent>Refresh Venues</TooltipContent>
           </Tooltip>
           </div>
-        <div className="w-full grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4 mb-4">
+        <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 items-stretch justify-center gap-4 mb-4">
          
           {venues.map((venue) => ( 
             
               ( search && search.length > 0 ? 
-                ( (venue.name?.toLowerCase().indexOf(search.toLowerCase()) != -1 || venue.venueId.toLowerCase().indexOf(search.toLowerCase()) != -1)
+                ( (venue.metadata.name?.toLowerCase().indexOf(search.toLowerCase()) != -1 || venue.venueId.toLowerCase().indexOf(search.toLowerCase()) != -1)
                  && <VenueCard key={venue.venueId} venue={venue} compact={true}/>)
                 :
                 (  <VenueCard key={venue.venueId} venue={venue} compact={true} /> )

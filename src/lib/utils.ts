@@ -3,7 +3,8 @@ import { twMerge } from "tailwind-merge"
 import * as mime from 'mime-types'
 import copy from 'copy-to-clipboard';
 import { toast } from "sonner"
-import { RunStatus } from "@covia-ai/covialib";
+import { RunStatus } from "@covia/covia-sdk";
+import { sendGTMEvent } from '@next/third-parties/google'
 
 export  const getStatusConfig = (status) => {
     switch(status) {
@@ -43,8 +44,6 @@ export function getExecutionTime(date1:string, date2:string) {
   const differenceInSeconds = differenceInMilliseconds / 1000;
   const differenceInMinutes = differenceInMilliseconds / 60000;
   const differenceInHours = differenceInMilliseconds / 3600000;
-  console.log(differenceInMinutes);
-  console.log(differenceInHours)
 
   if(differenceInHours > 1)
     return Math.floor(differenceInHours) +" h"
@@ -82,3 +81,41 @@ export function  colourForStatus(status: RunStatus): string {
                 return "text-gray-600";
         }
     }
+
+
+export const gtmEvent = {
+  // Button clicks
+  buttonClick: (buttonName: string, param:string) => {
+    sendGTMEvent({
+      event: 'button_click',
+      button_name: buttonName,
+      custom_param : param
+    })
+  },
+
+  // Page views (for custom page tracking)
+  pageView: (pagePath: string, pageTitle: string) => {
+    sendGTMEvent({
+      event: 'page_view',
+      page_path: pagePath,
+      page_title: pageTitle,
+    })
+  },
+
+  // Form submissions
+  formSubmit: (formName: string, formId?: string) => {
+    sendGTMEvent({
+      event: 'form_submit',
+      form_name: formName,
+      form_id: formId,
+    })
+  },
+
+
+  custom: (eventName: string, params?: Record<string, any>) => {
+    sendGTMEvent({
+      event: eventName,
+      ...params,
+    })
+  },
+}

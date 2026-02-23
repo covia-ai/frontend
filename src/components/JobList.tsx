@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
-import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 
 import {
   Select,
@@ -14,7 +13,7 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components
 import { useEffect, useState } from "react";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { Job, JobMetadata, RunStatus, Venue } from "@covia-ai/covialib";
+import { Job, JobMetadata, RunStatus, Venue } from "@covia/covia-sdk";
 import { colourForStatus, getExecutionTime } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { PaginationHeader } from "@/components/PaginationHeader";
@@ -54,7 +53,7 @@ export function JobList() {
   if(venues.length == 0)
       return (
       <ContentLayout>
-      <SmartBreadcrumb />
+      <TopBar />
         <div className="flex flex-col items-center justify-center  mt-2 bg-background">
       <div className="flex flex-row w-full  items-start justify-start mt-4 space-x-4 ">
           <div className="flex flex-row items-center justify-start w-1/3  space-x-4">
@@ -136,7 +135,7 @@ export function JobList() {
    });
   return (
     <ContentLayout >
-      <TopBar venueName={venueObj?.name}/>
+      <TopBar venueName={venueObj?.metadata.name}/>
       <div className="flex flex-col items-center justify-center  mt-2 bg-background">
         <div className="flex flex-row w-full  items-start justify-start mt-4 space-x-4 ">
             <div className="flex flex-row items-center justify-start w-1/3  space-x-4">

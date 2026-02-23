@@ -2,21 +2,28 @@
 
 import { AddNewAgent } from "./AddNewAgent";
 import { ContentLayout } from "./admin-panel/content-layout";
-import { Bot, Clock, Footprints, MapPin } from "lucide-react";
+import { Bot, Clock, Clock1, EqualApproximatelyIcon, Footprints, MapPin, PanelRightClose, SquareChevronRight } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { useRouter } from "next/navigation";
-import { Badge } from '@/components/ui/badge';
 import { useEffect, useState } from "react";
 import { TopBar } from "./admin-panel/TopBar";
 import agentsJson from "@/components/public/mockAgent.json"
 import { Agent } from "@/config/types";
+import { Input } from "./ui/input";
+import { MagicWandIcon } from "@radix-ui/react-icons";
+import { SeperatorWithText } from "@/components/SeperatorWithText";
+import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
+import { Tooltip, TooltipTrigger } from "./ui/tooltip";
+import { TooltipContent } from "@radix-ui/react-tooltip";
 
 export function AgentList() {
   const router = useRouter();
   const [agentData, setAgentData] = useState<Agent[]>([]);
-
+  const compact = true;
   useEffect(() => {
     setAgentData(agentsJson as any);
+    
   },[agentData])
   
   const handleCardClick = (agentId:string) => {
@@ -31,85 +38,79 @@ export function AgentList() {
       case 'COMPLETED':
         return { variant: 'default', className: 'bg-green-500 hover:bg-green-600' };
       case 'TERMINATED':
-        return { variant: 'destructive', className: '' };
+        return { variant: 'destructive', className: 'bg-red-500 hover:bg-red-600' };
       default:
-        return { variant: 'secondary', className: '' };
+        return { variant: 'secondary', className: 'bg-gray-500 hover:bg-gray-600' };
     }
   };
 
    return (<ContentLayout>
      <TopBar/>
+      <div data-testid="chat-container" className="flex flex-col items-center justify-center py-10 px-10"> 
+        <h3 className="text-center text-4xl  font-thin">
+          Locate your  {" "}
+           <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
+              agent ..
+            </span>   
+        </h3>
+        <div className="flex flex-col md:flex-row lg:flex-row items-center justify-center w-full space-x-2 space-y-2 ">
+          <Input
+              placeholder="What is thy bidding, my master"
+              className="bg-card placeholder:text-gray-400 my-2"
+              aria-label="prompt"
+         />    
+         <Button  aria-label="Run" role="button" data-testid="chat-button" variant="default" className="my-4 btn btn-xs mx-0 bg-primary dark:bg-primary-light text-white"><MagicWandIcon/></Button>
+        </div>
+</div>
+ <SeperatorWithText text="or"/>
+     <h3 className="text-center text-4xl  font-thin pt-10">
+          Choose an existing  {" "}
+          <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
+             agent ...
+            </span> 
+        </h3>
      {agentData.length == 0 &&  <div className="flex flex-col items-center justify-center w-full h-100 space-y-2">
             <Bot size={64} className="text-primary"></Bot>
             <div className="text-primary text-lg">Get Started with Agents</div>
             <AddNewAgent></AddNewAgent>
       </div>}
+      <div className="flex flex-row-reverse w-full">
+       <SquareChevronRight onClick={() => router.push('/agents/explorer')}/>
+      </div>
       {agentData.length > 0 && <div className="flex flex-col items-center justify-center space-y-4">
-         <div className="mt-10 w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4">
-            {agentData.map((agent) => (
-               
-                  <Card
-                     key={agent.agent.id}
-                     onClick={() => handleCardClick(agent.agent.id)}
-                     className="h-full bg-card border-slate-800 hover:border-slate-600 hover:shadow-xl hover:shadow-slate-900/50 transition-all duration-200 cursor-pointer group overflow-hidden"
-                  >
-                <CardHeader className="pb-1 bg-card border-b border-slate-800">
-                  <div className="flex items-start justify-between gap-3">
-                    <CardTitle className="text-lg font-medium text-white  transition-colors line-clamp-1">
-                      {agent.agent.name || 'Unnamed Agent'}
-                    </CardTitle>
+         
+         <div className="mt-10 w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 items-stretch justify-center gap-4">
+            
+            {agentData.map((agent) => (   
+              <Card 
+                   key={agent.id}  onClick={() => handleCardClick(agent.id)}
+                   className={`shadow-md border-2 h-full bg-card flex flex-col rounded-md border-muted hover:border-accent hover:border-2 
+                       ${ compact ? 'h-32 p-1' : 'h-48 p-2'  }`}>
+                   {/* Fixed-size header */}
+                   <div className={` ${ compact ? 'h-10' : 'h-14'  } p-2 flex flex-row items-start border-b`}>
+                      <div data-testid="agent-name" className="truncate flex-1 mr-2 text-md text-foreground"> {agent.name}</div>
+                      <div className={`w-2 h-2 rounded-full shadow-lg ml-1 ${getStatusConfig(agent.status).className}`}></div>
+                    </div>
+                   {/* Flexible middle section */}
+                   <div className="flex-1 p-2 flex flex-col justify-between">
+                     <div data-testid="agent-desc" className={` ${ compact ? 'line-clamp-2' : 'line-clamp-3' } text-xs text-card-foreground `}>
+                         {agent.description}
+                     </div>
                    
-                      <Badge
-                      variant={getStatusConfig(agent.agent.status).variant}
-                      className={`shrink-0 text-xs font-medium ${getStatusConfig(agent.agent.status).className}`}
-                    >
-                      {agent.agent.status}
-                    </Badge>
-                    
-                  </div>
-                  <CardDescription className="text-slate-400 text-sm line-clamp-2 mt-2">
-                    {agent.agent.description}
-                  </CardDescription>
-                </CardHeader>
-
-                <CardContent className="">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex items-center gap-2  rounded-lg p-1 border border-slate-800">
-                      <Bot size={16} className="text-blue-400 shrink-0" />
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium text-slate-200 truncate">{agent.agent.provider}</div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2  rounded-lg p-1 border border-slate-800">
-                      <MapPin size={16} className="text-emerald-400 shrink-0" />
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium text-slate-200 truncate">{agent.agent.venueId}</div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2  rounded-lg p-1 border border-slate-800">
-                      <Footprints size={16} className="text-purple-400 shrink-0" />
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium text-slate-200">{agent.agent.totalSteps.toLocaleString()}</div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2  rounded-lg p-1 border border-slate-800">
-                      <Clock size={16} className="text-amber-400 shrink-0" />
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium text-slate-200 truncate">{agent.agent.lastRun}</div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                   </div>
+             
+                   {/* Fixed-size footer */}
+                   <div className="p-1 h-8 flex flex-row-reverse" >
+                       <Badge variant="outline" className="bg-muted text-muted-foreground text-[10px]"><Clock size={14} className="text-amber-400 ml-2 " /> {agent.lastRun }</Badge>
+                       
+                   </div>
+                 </Card>
             ))}
       
          </div>
          <AddNewAgent></AddNewAgent>
       </div>
-         }
+      }
      
      </ContentLayout>
   );

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { Venue } from "@covia-ai/covialib";
+import { Venue } from "@covia/covia-sdk";
 
 type VenueStore = {
   currentVenue: Venue | null;

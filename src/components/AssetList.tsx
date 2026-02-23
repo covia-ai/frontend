@@ -8,7 +8,7 @@ import { useSearchParams } from 'next/navigation'
 
 import { useEffect, useState } from "react";
 
-import { Asset, DataAsset, Operation, Venue } from "@covia-ai/covialib";
+import { Asset, DataAsset, Operation, Venue } from "@covia/covia-sdk";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { Spinner } from '@/components/ui/shadcn-io/spinner';
@@ -36,7 +36,6 @@ export function AssetList() {
 
   const { venues } = useVenues();
   const venueObj = useStore(useVenue, (x) => x.currentVenue);
-
   const nextPage = (page: number) => {
     setCurrentPage(page)
   }
@@ -46,7 +45,7 @@ export function AssetList() {
   if(venues.length == 0 ) {
      return (
       <ContentLayout>
-      <SmartBreadcrumb />
+      <TopBar venueName={venueObj?.metadata.name}/>
 
       <div className="flex flex-col items-center justify-center">
         <div className="flex flex-row items-center justify-center w-full space-x-2 ">
@@ -64,7 +63,7 @@ export function AssetList() {
   }
   
   useEffect(() => {
-     const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name})
+     const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name})
      function fetchAssets() {
         setAssetsMetadata([]);
           try {
@@ -103,7 +102,7 @@ export function AssetList() {
   }, [assetsMetadata])
 
   function handleDataFromChild(status: boolean) {
-    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name})
+    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name})
     setAssetsMetadata([]);
     venue.getAssets().then((assets) => {
       assets.forEach((asset: Asset) => {
@@ -129,7 +128,7 @@ export function AssetList() {
 
   return (
     <ContentLayout>
-        <TopBar venueName={venueObj?.name}/>
+        <TopBar venueName={venueObj?.metadata.name}/>
   
         <div className="flex flex-col items-center justify-center">
           <div className="flex flex-row items-center justify-center w-full space-x-2 ">
@@ -140,7 +139,7 @@ export function AssetList() {
             <>
               <div className="text-card-foreground text-xs flex flex-row my-2 ">Page {currentPage} : Showing {assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of {assetsMetadata.length} </div>
               <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>
-              <div className=" grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4">
+              <div className=" grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 items-stretch justify-center gap-4">
                 {assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset, index) =>
                   <AssetCard key={index} asset={asset} type="assets" compact={true}/>
                 )}

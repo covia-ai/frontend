@@ -30,7 +30,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
-import { Venue, Asset, DataAsset } from "@covia-ai/covialib";
+import { Venue, Asset, DataAsset } from "@covia/covia-sdk";
 import { JsonEditor } from "json-edit-react";
 
 import { useStore } from "zustand";
@@ -72,7 +72,7 @@ export default function AssetPage() {
     setCurrentPage(page)
 
   }
-  const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name})
+  const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name})
 
 
   function fetchAssets() {

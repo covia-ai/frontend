@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 import { useEffect, useMemo, useState } from "react";
-import {  Venue, Asset, Grid, CredentialsHTTP, getParsedAssetId } from "@covia-ai/covialib";
+import {  Venue, Asset, Grid, CredentialsHTTP, getParsedAssetId } from "@covia/covia-sdk";
 import { useRouter } from "next/navigation";
 import { Textarea } from "./ui/textarea";
 import { useStore } from "zustand";
@@ -100,7 +100,7 @@ export const OperationViewer = (props: any) => {
       if(props.venueId != venueObj?.venueId) {
         const venue = venues.find(v => v.venueId === props.venueId);
         if (venue) {
-            setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.name}))
+            setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name}))
          }
          else {
           Grid.connect(decodeURIComponent(props.venueId),new CredentialsHTTP(decodeURIComponent(props.venueId),"",session?.user?.email || ""))
@@ -111,7 +111,7 @@ export const OperationViewer = (props: any) => {
          }
     }
     else {
-        setVenue(new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name}));  
+        setVenue(new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name}));  
     }  
    }, []); 
 
@@ -250,8 +250,7 @@ export const OperationViewer = (props: any) => {
   }
 
   function runOperation() {
-    console.log(input)
-    return asset?.run(input)
+    return asset?.invoke(input)
       .then(response => {
         if (response?.id) {
           router.push("/venues/"+venue?.venueId+"/jobs/" + response?.id);
@@ -539,7 +538,7 @@ export const OperationViewer = (props: any) => {
 
   return (
     <ContentLayout>
-      <TopBar assetOrJobName={asset?.metadata?.name} venueName={venue?.name}/>
+      <TopBar assetOrJobName={asset?.metadata?.name} venueName={venue?.metadata.name}/>
       <div className="flex flex-col w-full items-center justify-center">
         {assetNotFound && (
           <div className="text-center p-8">

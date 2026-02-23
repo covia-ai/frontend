@@ -249,7 +249,6 @@ function convertToSingleReactFlow(
       }
     });
   });
-  console.log(allNodes)
   return { nodes: allNodes, edges: allEdges };
 }
 

@@ -1,227 +1,739 @@
 [
   {
-    "agent": {
-      "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f7d",
-      "name": "Customer Support Agent",
-      "description": "Process customer query raised through support",
-      "status": "ACTIVE",
-      "lastRun": "Today, 12:10 pm",
-      "provider": "Claude 3.5",
-      "totalSteps": 2,
-      "executionTime": "249ms",
-      "venueId": "us-east-1"
-    },
-    "steps": [
+    "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f0d",
+    "name": "Build & Launch MVP",
+    "description": "Product Development & Launch",
+    "status": "ACTIVE",
+    "lastRun": "Today, 1:50 pm",
+    "agents": [
       {
-        "stepNumber": 1,
-        "stepId": "webhook-trigger",
-        "stepName": "Webhook Trigger",
-        "stepType": "trigger",
-        "description": "Received customer inquiry via support portal webhook.",
-        "timestamp": "12:10:05 PM",
-        "venueId": "us-east-1",
-        "jobId": "#8918",
-        "status": "COMPLETED",
-        "input": {
-          "webhookUrl": "https://api.support.company.com/webhook",
-          "method": "POST",
-          "Content-Type": "application/json"
-        },
-        "output": {
-          "customerId": "CUST-8821",
-          "subject": "Unable to login to account",
-          "message": "I've been trying to reset my password but not receiving the email",
-          "priority": "medium",
-          "channel": "web"
-        }
+        "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f1d",
+        "name": "Requirements Gathering Agent",
+        "description": "Define core features and user stories",
+        "status": "ACTIVE",
+        "lastRun": "Today, 1:50 pm",
+        "tasks": [
+          {
+            "name": "Identify and engage key stakeholders for discovery sessions",
+            "duration": "2-3 days",
+            "input": "Project brief, organizational chart, initial business requirements",
+            "output": "Stakeholder list, meeting schedule, communication plan"
+          },
+          {
+            "name": "Conduct user research and create target user personas",
+            "duration": "1 week",
+            "input": "Market data, user demographics, stakeholder interviews",
+            "output": "User personas, user journey maps, pain points analysis"
+          },
+          {
+            "name": "Write detailed user stories with acceptance criteria for MVP features",
+            "duration": "1-2 weeks",
+            "input": "Feature list, user personas, business objectives",
+            "output": "User story backlog, acceptance criteria, story point estimates"
+          },
+          {
+            "name": "Prioritize features using MoSCoW framework and document dependencies",
+            "duration": "3-5 days",
+            "input": "Complete user stories, business priorities, technical constraints",
+            "output": "Prioritized feature list, dependency matrix, MVP scope definition"
+          },
+          {
+            "name": "Create Product Requirements Document and obtain stakeholder sign-off",
+            "duration": "1 week",
+            "input": "All gathered requirements, user stories, stakeholder feedback",
+            "output": "Product Requirements Document (PRD), signed approval, requirements baseline"
+          }
+        ]
       },
       {
-        "stepNumber": 2,
-        "stepId": "intent-classification",
-        "stepName": "Intent Classification",
-        "stepType": "processing",
-        "description": "Classified user intent as 'Technical Support' with 98% confidence.",
-        "timestamp": "12:10:15 PM",
-        "venueId": "us-east-1",
-        "jobId": "#8919",
+        "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f2d",
+        "name": "Tech Stack Selection Agent",
+        "description": "Evaluate and recommend technology choices",
         "status": "ACTIVE",
-        "input": {
-          "text": "I've been trying to reset my password but not receiving the email",
-          "customerId": "CUST-8821",
-          "previousInteractions": 2
-        },
-        "output": {
-          "primaryIntent": "Technical Support",
-          "subCategory": "Account Access",
-          "confidence": 0.98,
-          "suggestedActions": ["password_reset", "email_verification"],
-          "routingQueue": "tech-support-tier-1"
-        }
+        "lastRun": "Today, 1:50 pm",
+        "tasks": [
+          {
+            "name": "Analyze project requirements and technical constraints",
+            "duration": "2-3 days",
+            "input": "Product Requirements Document, business objectives, scalability needs",
+            "output": "Technical requirements analysis, constraint documentation"
+          },
+          {
+            "name": "Research and evaluate frontend frameworks (React, Vue, Angular)",
+            "duration": "3-4 days",
+            "input": "Technical requirements, team skills assessment, project timeline",
+            "output": "Frontend framework comparison matrix, recommendation report"
+          },
+          {
+            "name": "Assess backend technologies and database options (Node.js, Python, PostgreSQL, MongoDB)",
+            "duration": "3-4 days",
+            "input": "Data model requirements, performance needs, integration points",
+            "output": "Backend technology evaluation, database selection rationale"
+          },
+          {
+            "name": "Evaluate cloud platforms and hosting solutions (AWS, Azure, GCP)",
+            "duration": "2-3 days",
+            "input": "Infrastructure requirements, budget constraints, compliance needs",
+            "output": "Cloud platform comparison, hosting architecture diagram"
+          },
+          {
+            "name": "Create technology recommendation report with pros, cons, and cost analysis",
+            "duration": "3-5 days",
+            "input": "All evaluation reports, budget data, timeline constraints",
+            "output": "Technology stack proposal, cost-benefit analysis, implementation roadmap"
+          }
+        ]
+      },
+      {
+        "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f3d",
+        "name": "UI/UX Design Agent",
+        "description": "Create wireframes and design system",
+        "status": "ACTIVE",
+        "lastRun": "Today, 1:50 pm",
+        "tasks": [
+          {
+            "name": "Create user flow diagrams and information architecture",
+            "duration": "4-5 days",
+            "input": "User stories, user personas, feature requirements",
+            "output": "User flow diagrams, sitemap, information architecture documentation"
+          },
+          {
+            "name": "Design low-fidelity wireframes for all core screens",
+            "duration": "1 week",
+            "input": "User flows, content requirements, UI patterns",
+            "output": "Low-fidelity wireframes, screen layout documentation"
+          },
+          {
+            "name": "Develop high-fidelity mockups with brand colors and typography",
+            "duration": "2 weeks",
+            "input": "Wireframes, brand guidelines, design assets",
+            "output": "High-fidelity mockups, design specifications, interactive prototypes"
+          },
+          {
+            "name": "Build component library and design system documentation",
+            "duration": "1 week",
+            "input": "Approved mockups, UI components, design patterns",
+            "output": "Component library, design system documentation, style guide"
+          },
+          {
+            "name": "Conduct usability testing and iterate based on feedback",
+            "duration": "1 week",
+            "input": "Interactive prototypes, test participants, testing scenarios",
+            "output": "Usability test report, design revisions, final design handoff package"
+          }
+        ]
+      },
+      {
+        "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f4d",
+        "name": "Backend Development Agent",
+        "description": "Build API and database",
+        "status": "ACTIVE",
+        "lastRun": "Today, 1:50 pm",
+        "tasks": [
+          {
+            "name": "Design database schema and entity relationships",
+            "duration": "3-5 days",
+            "input": "Data requirements, user stories, business rules",
+            "output": "Database schema, ERD diagrams, data dictionary"
+          },
+          {
+            "name": "Develop RESTful API endpoints with proper authentication",
+            "duration": "2-3 weeks",
+            "input": "API specifications, database schema, security requirements",
+            "output": "API endpoints, authentication system, API documentation"
+          },
+          {
+            "name": "Implement business logic and data validation layer",
+            "duration": "2 weeks",
+            "input": "Business rules, data models, validation requirements",
+            "output": "Business logic modules, validation layer, error handling system"
+          },
+          {
+            "name": "Set up error handling, logging, and monitoring systems",
+            "duration": "4-5 days",
+            "input": "Application code, infrastructure setup, monitoring requirements",
+            "output": "Error handling framework, logging system, monitoring dashboards"
+          },
+          {
+            "name": "Write unit tests and integration tests for backend services",
+            "duration": "1 week",
+            "input": "Completed backend code, test scenarios, acceptance criteria",
+            "output": "Test suite, test coverage report, CI/CD pipeline configuration"
+          }
+        ]
+      },
+      {
+        "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f5d",
+        "name": "Frontend Development Agent",
+        "description": "Build user interface",
+        "status": "ACTIVE",
+        "lastRun": "Today, 1:50 pm",
+        "tasks": [
+          {
+            "name": "Set up project structure and development environment",
+            "duration": "2-3 days",
+            "input": "Technology stack selection, project requirements, development tools",
+            "output": "Project scaffolding, development environment, configuration files"
+          },
+          {
+            "name": "Implement responsive UI components based on design system",
+            "duration": "2-3 weeks",
+            "input": "Design mockups, component library, style guide",
+            "output": "Reusable UI components, responsive layouts, component documentation"
+          },
+          {
+            "name": "Integrate frontend with backend API endpoints",
+            "duration": "1-2 weeks",
+            "input": "API documentation, authentication tokens, data models",
+            "output": "API integration layer, data fetching services, error handling"
+          },
+          {
+            "name": "Implement state management and client-side routing",
+            "duration": "1 week",
+            "input": "Application architecture, user flows, data requirements",
+            "output": "State management setup, routing configuration, navigation system"
+          },
+          {
+            "name": "Optimize performance and ensure cross-browser compatibility",
+            "duration": "1 week",
+            "input": "Completed application, performance metrics, browser requirements",
+            "output": "Optimized build, performance report, browser compatibility matrix"
+          }
+        ]
       }
     ]
   },
   {
-    "agent": {
-      "id": "oia-3c8f1d92-7a5e-4b2f-8d3c-1e9a6f4b2d8c",
-      "name": "Order Invoice Agent",
-      "description": "Automatically generates and sends invoices for completed orders",
-      "status": "COMPLETED",
-      "lastRun": "Today, 11:45 am",
-      "provider": "Claude 3.5",
-      "totalSteps": 3,
-      "executionTime": "1353ms",
-      "venueId": "us-west-2"
-    },
-    "steps": [
+    "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f0e",
+    "name": "Marketing",
+    "description": "Campaign management with budget",
+    "status": "ACTIVE",
+    "lastRun": "Today, 1:50 pm",
+    "agents": [
       {
-        "stepNumber": 1,
-        "stepId": "api-trigger",
-        "stepName": "API Trigger",
-        "stepType": "trigger",
-        "description": "Received order completion event from e-commerce platform.",
-        "timestamp": "11:45:12 AM",
-        "venueId": "us-west-2",
-        "jobId": "#7821",
-        "status": "COMPLETED",
-        "input": {
-          "eventType": "order-completed",
-          "orderId": "ORD-2024-9834",
-          "timestamp": "2024-01-19T11:45:12Z"
-        },
-        "output": {
-          "orderId": "ORD-2024-9834",
-          "customerId": "CUST-5521",
-          "orderStatus": "COMPLETED",
-          "paymentStatus": "paid"
-        }
-      },
-      {
-        "stepNumber": 2,
-        "stepId": "data-extraction",
-        "stepName": "Data Extraction",
-        "stepType": "processing",
-        "description": "Extracted order details, customer info, and line items.",
-        "timestamp": "11:45:12 AM",
-        "venueUId": "us-west-2",
-        "jobId": "#7822",
-        "status": "COMPLETED",
-        "input": {
-          "orderId": "ORD-2024-9834"
-        },
-        "output": {
-          "customerName": "Sarah Johnson",
-          "customerEmail": "sarah.j@email.com",
-          "sku": "PROD-001",
-          "total": 249.99
-        }
-      },
-      {
-        "stepNumber": 3,
-        "stepId": "invoice-generation",
-        "stepName": "Invoice Generation",
-        "stepType": "action",
-        "description": "Generated PDF invoice and sent to customer email.",
-        "timestamp": "11:45:13 AM",
-        "venueId": "us-west-2",
-         "jobId": "#7823",
+        "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f1e",
+        "name": "Market Research Agent",
+        "description": "Analyze target audience and competitors",
         "status": "ACTIVE",
-        "input": {
-          "templateId": "standard-invoice-v2",
-          "customerEmail": "sarah.j@email.com"
-        },
-        "output": {
-          "invoiceId": "INV-2024-9834",
-          "pdfUrl": "https://storage.company.com/invoices/INV-2024-9834.pdf",
-          "emailSent": true
-        }
+        "lastRun": "Today, 1:50 pm",
+        "tasks": [
+          {
+            "name": "Conduct demographic and psychographic analysis of target audience",
+            "duration": "1 week",
+            "input": "Market data sources, customer surveys, analytics data",
+            "output": "Demographic report, psychographic profiles, audience segmentation"
+          },
+          {
+            "name": "Perform competitive analysis and identify market gaps",
+            "duration": "1-2 weeks",
+            "input": "Competitor list, industry reports, product offerings",
+            "output": "Competitive analysis matrix, SWOT analysis, market gap opportunities"
+          },
+          {
+            "name": "Analyze industry trends and customer pain points",
+            "duration": "1 week",
+            "input": "Industry publications, customer feedback, market surveys",
+            "output": "Trend analysis report, pain points documentation, opportunity assessment"
+          },
+          {
+            "name": "Create customer personas with detailed behavioral insights",
+            "duration": "4-5 days",
+            "input": "Demographic data, behavioral patterns, interview transcripts",
+            "output": "Customer persona documents, behavioral profiles, use case scenarios"
+          },
+          {
+            "name": "Develop market research report with actionable recommendations",
+            "duration": "1 week",
+            "input": "All research findings, analysis data, stakeholder requirements",
+            "output": "Comprehensive market research report, strategic recommendations, executive summary"
+          }
+        ]
+      },
+      {
+        "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f2e",
+        "name": "Brand Strategy Agent",
+        "description": "Define brand identity and positioning",
+        "status": "ACTIVE",
+        "lastRun": "Today, 1:50 pm",
+        "tasks": [
+          {
+            "name": "Define brand mission, vision, and core values",
+            "duration": "1 week",
+            "input": "Company objectives, stakeholder interviews, market positioning",
+            "output": "Mission statement, vision statement, core values documentation"
+          },
+          {
+            "name": "Develop unique value proposition and positioning statement",
+            "duration": "4-5 days",
+            "input": "Competitive analysis, customer insights, brand differentiators",
+            "output": "Value proposition, positioning statement, brand promise"
+          },
+          {
+            "name": "Create brand voice, tone, and messaging guidelines",
+            "duration": "1 week",
+            "input": "Target audience personas, brand values, communication objectives",
+            "output": "Brand voice guide, tone of voice examples, messaging framework"
+          },
+          {
+            "name": "Design brand visual identity (logo, color palette, typography)",
+            "duration": "2 weeks",
+            "input": "Brand strategy, competitor designs, target audience preferences",
+            "output": "Logo design, color palette, typography system, brand style guide"
+          },
+          {
+            "name": "Establish brand differentiation strategy and competitive positioning",
+            "duration": "1 week",
+            "input": "Market analysis, brand assets, competitive landscape",
+            "output": "Differentiation strategy, positioning map, brand architecture"
+          }
+        ]
+      },
+      {
+        "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f3e",
+        "name": "Content Marketing Agent",
+        "description": "Create blog posts and articles",
+        "status": "ACTIVE",
+        "lastRun": "Today, 1:50 pm",
+        "tasks": [
+          {
+            "name": "Develop content strategy and editorial calendar",
+            "duration": "1 week",
+            "input": "Marketing goals, audience insights, SEO keywords",
+            "output": "Content strategy document, 3-month editorial calendar, content pillars"
+          },
+          {
+            "name": "Research trending topics and keywords for content creation",
+            "duration": "2-3 days",
+            "input": "Industry trends, keyword tools, competitor content",
+            "output": "Topic ideas list, keyword research report, content opportunities"
+          },
+          {
+            "name": "Write engaging blog posts, articles, and thought leadership pieces",
+            "duration": "Ongoing (3-5 days per piece)",
+            "input": "Editorial calendar, research data, brand guidelines",
+            "output": "Published blog posts, articles, content performance tracking"
+          },
+          {
+            "name": "Create compelling headlines and meta descriptions",
+            "duration": "1-2 hours per piece",
+            "input": "Article content, SEO guidelines, target keywords",
+            "output": "Optimized headlines, meta descriptions, social media snippets"
+          },
+          {
+            "name": "Repurpose content across multiple formats (infographics, videos, podcasts)",
+            "duration": "1 week per campaign",
+            "input": "Original content, design assets, distribution channels",
+            "output": "Multi-format content package, distribution schedule, performance metrics"
+          }
+        ]
+      },
+      {
+        "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f4e",
+        "name": "SEO Optimization Agent",
+        "description": "Improve search rankings",
+        "status": "ACTIVE",
+        "lastRun": "Today, 1:50 pm",
+        "tasks": [
+          {
+            "name": "Conduct comprehensive keyword research and analysis",
+            "duration": "1 week",
+            "input": "Business goals, target audience, competitor websites",
+            "output": "Keyword research report, priority keyword list, search volume analysis"
+          },
+          {
+            "name": "Perform technical SEO audit and fix website issues",
+            "duration": "1-2 weeks",
+            "input": "Website URL, crawl data, site architecture",
+            "output": "Technical SEO audit report, issue prioritization, implementation roadmap"
+          },
+          {
+            "name": "Optimize on-page elements (titles, headers, meta tags, content)",
+            "duration": "Ongoing (2-3 days per page)",
+            "input": "Target keywords, existing content, SEO best practices",
+            "output": "Optimized page elements, content recommendations, metadata updates"
+          },
+          {
+            "name": "Build quality backlink strategy and execute outreach campaigns",
+            "duration": "2-3 weeks per campaign",
+            "input": "Domain authority metrics, outreach targets, content assets",
+            "output": "Backlink strategy, outreach templates, acquired backlinks report"
+          },
+          {
+            "name": "Monitor search rankings and generate SEO performance reports",
+            "duration": "Ongoing (weekly/monthly)",
+            "input": "Ranking data, traffic analytics, conversion metrics",
+            "output": "SEO performance dashboard, ranking reports, optimization recommendations"
+          }
+        ]
+      },
+      {
+        "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f5e",
+        "name": "Social Media Agent",
+        "description": "Manage social media presence",
+        "status": "ACTIVE",
+        "lastRun": "Today, 1:50 pm",
+        "tasks": [
+          {
+            "name": "Develop platform-specific social media strategy",
+            "duration": "1 week",
+            "input": "Brand guidelines, audience demographics, business objectives",
+            "output": "Social media strategy document, platform selection, KPI framework"
+          },
+          {
+            "name": "Create and schedule engaging posts across all social channels",
+            "duration": "Ongoing (daily/weekly)",
+            "input": "Content calendar, brand assets, trending topics",
+            "output": "Scheduled posts, content library, posting schedule"
+          },
+          {
+            "name": "Monitor brand mentions and engage with audience comments",
+            "duration": "Ongoing (daily)",
+            "input": "Social listening tools, brand mentions, community feedback",
+            "output": "Response log, engagement metrics, sentiment analysis"
+          },
+          {
+            "name": "Run paid social media campaigns and A/B test ad creatives",
+            "duration": "2-4 weeks per campaign",
+            "input": "Campaign budget, target audience, ad creatives",
+            "output": "Campaign performance report, A/B test results, ROI analysis"
+          },
+          {
+            "name": "Analyze social media metrics and optimize content performance",
+            "duration": "Weekly/Monthly",
+            "input": "Analytics data, engagement metrics, conversion tracking",
+            "output": "Performance reports, optimization recommendations, strategy adjustments"
+          }
+        ]
       }
     ]
   },
   {
-    "agent": {
-      "id": "ira-4d8c2f7e-9a3b-4e6f-7c1d-5b9e8a2f3d6c",
-      "name": "Inventory Replenishment Agent",
-      "description": "Monitors stock levels and creates purchase orders when inventory is low",
-      "status": "ACTIVE",
-      "lastRun": "Today, 3:45 pm",
-      "provider": "Claude 3.5",
-      "totalSteps": 4,
-      "executionTime": "2156ms",
-      "venueId": "us-east-1"
-    },
-    "steps": [
+    "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f0f",
+    "name": "Recruiter",
+    "description": "Hiring pipeline with candidate stages",
+    "status": "ACTIVE",
+    "lastRun": "Today, 1:50 pm",
+    "agents": [
       {
-        "stepNumber": 1,
-        "stepId": "inventory-check",
-        "stepName": "Inventory Check",
-        "stepType": "trigger",
-        "description": "Detected low stock levels for multiple SKUs.",
-        "timestamp": "3:45:10 PM",
-        "venueId": "us-east-1",
-        "jobId": "#6734",
-        "status": "COMPLETED",
-        "input": {
-          "schedule": "hourly",
-          "warehouses": "WH-EAST-01"
-        },
-        "output": {
-            "sku": "PROD-234"
-        }
+        "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f1f",
+        "name": "Job Description Writer Agent",
+        "description": "Create compelling job postings",
+        "status": "ACTIVE",
+        "lastRun": "Today, 1:50 pm",
+        "tasks": [
+          {
+            "name": "Collaborate with hiring managers to understand role requirements",
+            "duration": "2-3 days",
+            "input": "Role objectives, team structure, success criteria",
+            "output": "Role requirements document, competency matrix, hiring criteria"
+          },
+          {
+            "name": "Write clear and compelling job titles and summaries",
+            "duration": "1-2 days",
+            "input": "Role requirements, industry standards, SEO keywords",
+            "output": "Job title variations, compelling job summary, hook statement"
+          },
+          {
+            "name": "Define key responsibilities, qualifications, and success criteria",
+            "duration": "2-3 days",
+            "input": "Role requirements, performance expectations, skill requirements",
+            "output": "Detailed responsibilities list, qualifications breakdown, success metrics"
+          },
+          {
+            "name": "Highlight company culture, benefits, and growth opportunities",
+            "duration": "1-2 days",
+            "input": "Company culture docs, benefits package, career paths",
+            "output": "Culture description, benefits section, growth narrative"
+          },
+          {
+            "name": "Optimize job descriptions for SEO and applicant tracking systems",
+            "duration": "1 day",
+            "input": "Complete job description, SEO keywords, ATS requirements",
+            "output": "Optimized job posting, ATS-friendly format, multi-channel versions"
+          }
+        ]
       },
       {
-        "stepNumber": 2,
-        "stepId": "demand-forecast",
-        "stepName": "Demand Forecasting",
-        "stepType": "processing",
-        "description": "Analyzed trends and forecasted demand for next 30 days.",
-        "timestamp": "3:45:11 PM",
-        "venueId": "us-east-1",
-        "jobId": "#6735",
-        "status": "COMPLETED",
-        "input": {
-          "skus": "PROD-234",
-          "historicalPeriod": "90 days"
-        },
-        "output": {
-          "forecasts": 
-            "PROD-234"
-        }
+        "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f2f",
+        "name": "Sourcing Agent",
+        "description": "Find and attract qualified candidates",
+        "status": "ACTIVE",
+        "lastRun": "Today, 1:50 pm",
+        "tasks": [
+          {
+            "name": "Identify and map talent pools across multiple channels",
+            "duration": "1 week",
+            "input": "Job requirements, target industries, skill requirements",
+            "output": "Talent pool map, channel strategy, sourcing plan"
+          },
+          {
+            "name": "Search for candidates on LinkedIn, GitHub, and job boards",
+            "duration": "Ongoing (daily/weekly)",
+            "input": "Boolean search strings, target profiles, sourcing tools",
+            "output": "Candidate pipeline, profile database, engagement list"
+          },
+          {
+            "name": "Build and maintain talent pipeline for current and future roles",
+            "duration": "Ongoing",
+            "input": "Candidate profiles, future hiring needs, relationship notes",
+            "output": "Talent pipeline database, candidate segmentation, nurture sequences"
+          },
+          {
+            "name": "Conduct initial outreach and build relationships with passive candidates",
+            "duration": "Ongoing (2-3 hours daily)",
+            "input": "Candidate profiles, outreach templates, value propositions",
+            "output": "Outreach log, response rates, qualified candidate leads"
+          },
+          {
+            "name": "Track sourcing metrics and optimize channel effectiveness",
+            "duration": "Weekly/Monthly",
+            "input": "Sourcing data, conversion rates, channel performance",
+            "output": "Sourcing metrics dashboard, channel ROI analysis, optimization plan"
+          }
+        ]
       },
       {
-        "stepNumber": 3,
-        "stepId": "po-generation",
-        "stepName": "PO Generation",
-        "stepType": "processing",
-        "description": "Created purchase orders for approved suppliers.",
-        "timestamp": "3:45:12 PM",
-        "venueId": "us-east-1",
-         "jobId": "#6736",
-        "status": "COMPLETED",
-        "input": {
-          "sku": "PROD-234"
-        },
-        "output": {
-          "purchaseOrders": 
-           "PO-2024-5621"
-        }
+        "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f3f",
+        "name": "Resume Screening Agent",
+        "description": "Contact and engage potential candidates",
+        "status": "ACTIVE",
+        "lastRun": "Today, 1:50 pm",
+        "tasks": [
+          {
+            "name": "Review and parse resumes against job requirements",
+            "duration": "15-30 minutes per resume",
+            "input": "Candidate resumes, job requirements, screening criteria",
+            "output": "Parsed resume data, initial assessment, qualification match score"
+          },
+          {
+            "name": "Score candidates based on skills, experience, and qualifications",
+            "duration": "10-15 minutes per candidate",
+            "input": "Resume data, scoring rubric, must-have vs nice-to-have criteria",
+            "output": "Candidate scorecards, ranking matrix, qualification ratings"
+          },
+          {
+            "name": "Identify red flags and verify employment history",
+            "duration": "20-30 minutes per candidate",
+            "input": "Resume details, LinkedIn profiles, reference data",
+            "output": "Red flag report, employment verification notes, background check requests"
+          },
+          {
+            "name": "Create shortlist of qualified candidates for interviews",
+            "duration": "2-3 hours per role",
+            "input": "All candidate assessments, hiring manager preferences, diversity goals",
+            "output": "Shortlisted candidate pool, ranking rationale, interview recommendations"
+          },
+          {
+            "name": "Document screening decisions and feedback for hiring team",
+            "duration": "1-2 hours per batch",
+            "input": "Screening notes, assessment scores, candidate comparisons",
+            "output": "Screening summary report, candidate profiles, decision documentation"
+          }
+        ]
       },
       {
-        "stepNumber": 4,
-        "stepId": "notification",
-        "stepName": "Notification",
-        "stepType": "action",
-        "description": "Sent PO to suppliers and notified procurement team.",
-        "timestamp": "3:45:13 PM",
-        "venueId": "us-east-1",
-        "jobId": "#6737",
-        "status": "COMPLETED",
-        "input": {
-          "purchaseOrders": ["PO-2024-5621", "PO-2024-5622"],
-          "recipients": ["procurement@company.com"]
-        },
-        "output": {
-          "erpRecordIds": "ERP-5621"
-        }
+        "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f4f",
+        "name": "Technical Assessment Agent",
+        "description": "Administer coding tests and skills assessments",
+        "status": "ACTIVE",
+        "lastRun": "Today, 1:50 pm",
+        "tasks": [
+          {
+            "name": "Design role-specific technical assessments and coding challenges",
+            "duration": "1 week per role",
+            "input": "Job requirements, technical skills needed, difficulty level",
+            "output": "Assessment blueprints, coding challenges, evaluation rubrics"
+          },
+          {
+            "name": "Administer online tests and monitor candidate performance",
+            "duration": "1-2 hours per candidate",
+            "input": "Assessment materials, candidate information, testing platform",
+            "output": "Test completion records, performance data, integrity reports"
+          },
+          {
+            "name": "Evaluate code quality, problem-solving approach, and best practices",
+            "duration": "1-2 hours per submission",
+            "input": "Candidate code submissions, evaluation criteria, best practices checklist",
+            "output": "Code review report, quality assessment, technical feedback"
+          },
+          {
+            "name": "Conduct live coding sessions and technical interviews",
+            "duration": "1-2 hours per session",
+            "input": "Interview questions, coding problems, evaluation framework",
+            "output": "Interview notes, live coding assessment, candidate rating"
+          },
+          {
+            "name": "Provide detailed assessment reports and hiring recommendations",
+            "duration": "2-3 hours per candidate",
+            "input": "All assessment data, interview notes, scoring results",
+            "output": "Comprehensive assessment report, hire/no-hire recommendation, skill gap analysis"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f0g",
+    "name": "Finance Manager",
+    "description": "Budget vs actual tracking with variance calculations",
+    "status": "ACTIVE",
+    "lastRun": "Today, 1:50 pm",
+    "agents": [
+      {
+        "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f1g",
+        "name": "Budget Planning Agent",
+        "description": "Create annual and quarterly budgets",
+        "status": "ACTIVE",
+        "lastRun": "Today, 1:50 pm",
+        "tasks": [
+          {
+            "name": "Gather historical financial data and forecast future expenses",
+            "duration": "1 week",
+            "input": "Past financial statements, expense trends, growth projections",
+            "output": "Historical analysis report, expense forecasts, trend analysis"
+          },
+          {
+            "name": "Collaborate with department heads to determine budget needs",
+            "duration": "2 weeks",
+            "input": "Department plans, resource requests, strategic initiatives",
+            "output": "Department budget requests, justification documents, priority rankings"
+          },
+          {
+            "name": "Allocate resources across departments and cost centers",
+            "duration": "1 week",
+            "input": "Total budget envelope, department requests, strategic priorities",
+            "output": "Budget allocation model, resource distribution plan, variance scenarios"
+          },
+          {
+            "name": "Create detailed budget spreadsheets with line-item breakdowns",
+            "duration": "1-2 weeks",
+            "input": "Allocation decisions, chart of accounts, budget templates",
+            "output": "Detailed budget workbooks, line-item budgets, summary reports"
+          },
+          {
+            "name": "Present budget proposal to leadership and incorporate feedback",
+            "duration": "1 week",
+            "input": "Complete budget package, presentation materials, leadership feedback",
+            "output": "Approved budget, presentation deck, revision documentation"
+          }
+        ]
+      },
+      {
+        "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f2g",
+        "name": "Expense Tracking Agent",
+        "description": "Find and attract qualified candidates",
+        "status": "ACTIVE",
+        "lastRun": "Today, 1:50 pm",
+        "tasks": [
+          {
+            "name": "Monitor and record all company expenses in real-time",
+            "duration": "Ongoing (daily)",
+            "input": "Expense receipts, invoices, credit card transactions",
+            "output": "Expense log, transaction records, real-time expense dashboard"
+          },
+          {
+            "name": "Categorize expenses by department, project, and cost center",
+            "duration": "Ongoing (daily)",
+            "input": "Expense data, chart of accounts, allocation rules",
+            "output": "Categorized expense database, allocation reports, cost center summaries"
+          },
+          {
+            "name": "Flag unusual spending patterns and potential budget overruns",
+            "duration": "Weekly",
+            "input": "Expense data, budget baselines, anomaly detection rules",
+            "output": "Alert notifications, anomaly reports, investigation requests"
+          },
+          {
+            "name": "Generate expense reports and variance analysis",
+            "duration": "Weekly/Monthly",
+            "input": "Categorized expenses, budget data, period-over-period comparisons",
+            "output": "Expense summary reports, variance analysis, trend visualizations"
+          },
+          {
+            "name": "Ensure compliance with expense policies and approval workflows",
+            "duration": "Ongoing (daily)",
+            "input": "Expense submissions, policy guidelines, approval hierarchies",
+            "output": "Compliance reports, policy violation alerts, approval tracking logs"
+          }
+        ]
+      },
+      {
+        "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f3g",
+        "name": "Financial Reporting Agent",
+        "description": "Monitor and categorize all company expenses",
+        "status": "ACTIVE",
+        "lastRun": "Today, 1:50 pm",
+        "tasks": [
+          {
+            "name": "Prepare monthly, quarterly, and annual financial statements",
+            "duration": "3-5 days per period",
+            "input": "General ledger data, transaction records, accounting adjustments",
+            "output": "Income statement, balance sheet, cash flow statement"
+          },
+          {
+            "name": "Calculate budget vs actual variances and identify trends",
+            "duration": "2-3 days per period",
+            "input": "Budget data, actual expenses, revenue figures",
+            "output": "Variance analysis reports, trend charts, explanation narratives"
+          },
+          {
+            "name": "Create executive dashboards with key financial metrics",
+            "duration": "1 week (initial), 2-3 hours (updates)",
+            "input": "KPI definitions, data sources, executive preferences",
+            "output": "Interactive dashboards, KPI scorecards, metric visualizations"
+          },
+          {
+            "name": "Generate profit and loss statements and cash flow reports",
+            "duration": "2-3 days per period",
+            "input": "Revenue data, expense records, cash transactions",
+            "output": "P&L statements, cash flow reports, profitability analysis"
+          },
+          {
+            "name": "Provide financial insights and recommendations to leadership",
+            "duration": "1 week per reporting cycle",
+            "input": "All financial reports, variance analyses, industry benchmarks",
+            "output": "Executive summary, strategic recommendations, action items"
+          }
+        ]
+      },
+      {
+        "id": "csa-a7f9d2e1-4b8c-4a3e-9d6f-2c1e8b5a3f4g",
+        "name": "Invoice Processing Agent",
+        "description": "Handle accounts payable and vendor payments",
+        "status": "ACTIVE",
+        "lastRun": "Today, 1:50 pm",
+        "tasks": [
+          {
+            "name": "Receive and validate vendor invoices for accuracy",
+            "duration": "15-30 minutes per invoice",
+            "input": "Vendor invoices, purchase orders, pricing agreements",
+            "output": "Validated invoices, discrepancy reports, correction requests"
+          },
+          {
+            "name": "Match invoices with purchase orders and delivery receipts",
+            "duration": "10-20 minutes per invoice",
+            "input": "Invoices, purchase orders, receiving documents",
+            "output": "Three-way match report, matched invoices, exception log"
+          },
+          {
+            "name": "Route invoices for approval through proper channels",
+            "duration": "5-10 minutes per invoice",
+            "input": "Validated invoices, approval workflows, authorization limits",
+            "output": "Approval tracking records, escalation notices, pending approvals queue"
+          },
+          {
+            "name": "Schedule and process payments according to terms",
+            "duration": "2-3 hours per payment run",
+            "input": "Approved invoices, payment terms, cash flow schedule",
+            "output": "Payment batch files, payment confirmations, vendor notifications"
+          },
+          {
+            "name": "Maintain vendor relationships and resolve payment disputes",
+            "duration": "Ongoing (as needed)",
+            "input": "Vendor inquiries, dispute claims, payment history",
+            "output": "Resolution documentation, vendor communication log, relationship notes"
+          }
+        ]
       }
     ]
   }

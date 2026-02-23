@@ -25,9 +25,10 @@ import { JsonEditor } from "json-edit-react";
 import { Button } from "./ui/button";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { Asset, AssetMetadata, Venue } from "@covia-ai/covialib";
+import { Asset, AssetMetadata, Venue } from "@covia/covia-sdk";
 import { getContentTypeForFile, getLicenseUrl } from "@/lib/utils";
 import { Iconbutton } from "./Iconbutton";
+import { gtmEvent } from "@/lib/utils";
 
 export const CreateAssetComponent = ({sendDataToParent}) => {
     const [step, setStep] = useState(0);
@@ -50,9 +51,11 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
     const [metadataUpdated, setMetadataUpdated] = useState(false);
     const [open, setOpen] = useState(false)
     const venueObj = useStore(useVenue, (x) => x.currentVenue);
-    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name})
+    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name})
     
     function createNewAsset(jsonData: AssetMetadata) {
+        gtmEvent.buttonClick('Create Asset', jsonData.name!);
+        
         try {    
           venue?.createAsset(jsonData).then( (asset: Asset) => {
                 if(assetType == "string") {

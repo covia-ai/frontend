@@ -2,7 +2,7 @@
 'use client'
 
 import { useEffect, useState } from "react";
-import { Asset, JobMetadata, RunStatus, Venue, isJobFinished,Grid,Job,CredentialsHTTP } from "@covia-ai/covialib";
+import { Asset, JobMetadata, RunStatus, Venue, isJobFinished,Grid,Job,CredentialsHTTP } from "@covia/covia-sdk";
 import { Check, CircleX, Clock, Copy, FileInput, FileOutput, Hash, RotateCcw, Settings, Timer, Trash2, X } from "lucide-react";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { useStore } from "zustand";
@@ -10,7 +10,6 @@ import { useVenue } from "@/hooks/use-venue";
 import {  colourForStatus, getExecutionTime } from "@/lib/utils";
 import { TbSubtask } from "react-icons/tb";
 import Link from "next/link";
-import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 import { ExecutionHeader } from "./ExecutionHeader";
 import { ExecutionToolbar } from "./ExecutionToolbar";
 import { useVenues } from "@/hooks/use-venues";
@@ -46,7 +45,7 @@ export const ExecutionViewer = (props: any) => {
       if(props.venueId != venueObj?.venueId) {
         const venue = venues.find(v => v.venueId === props.venueId);
         if (venue) {
-            setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.name}))
+            setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name}))
          }
          else {
           Grid.connect(decodeURIComponent(props.venueId), 
@@ -57,9 +56,9 @@ export const ExecutionViewer = (props: any) => {
          }
     }
     else {
-        setVenue(new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name}));  
+        setVenue(new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name}));  
     }  
-   }, [addVenue, props.venueId, session?.user?.email, venueObj?.baseUrl, venueObj?.name, venueObj?.venueId, venues]);
+   }, [addVenue, props.venueId, session?.user?.email, venueObj?.baseUrl, venueObj?.metadata.name, venueObj?.venueId, venues]);
 
     function fetchJobStatus() {
         venue?.getJob(props.jobId).then((job:Job) => {
@@ -115,115 +114,161 @@ export const ExecutionViewer = (props: any) => {
             </Table>
         )
     }
-    function renderJSONObject(jsonObject: any, type: string) {
-        if (jsonObject != undefined) {
-            let keys = []; // keys of the input or output
-            let inOutType = ""; // type of the input or output e.g. string, number, object, array
-            let schema: any = {};
-            if (type == "input") {
-                keys = Object.keys(jobMetadata?.input || {});
-                schema = assetsMetadata?.metadata?.operation?.input;
-                inOutType = schema?.type ;
-            } else {
-                schema = assetsMetadata?.metadata?.operation?.output;
-                inOutType = schema?.type;
-                keys = Object.keys(jobMetadata?.output || {});
-            }
-            
-            // render function for each key within the input or output like "prompt" or "image"
-            const renderContent = (key: string) => {
-                const fieldType = schema?.properties?.[key]?.type || "object";
-                const isSecret = schema?.properties?.[key]?.secret === true;
-                const value = (jsonObject as any)[key];
-
-                // Mask secret outputs
-                if (isSecret) {
-                    return <TableCell className="max-w-xs break-words whitespace-pre-wrap italic text-card-foreground">Secret Hidden</TableCell>;
-                }
-
-                if (fieldType === "string") {
-                    // Display string values as plain text with proper line breaks
-                    return <TableCell className="max-w-xs break-words whitespace-pre-wrap text-card-foreground">{value}</TableCell>;
-                } else {
-                    // For non-string types, use JSON.stringify
-                    const text = JSON.stringify(value);
-                    return <TableCell className="max-w-xs break-words whitespace-normal text-card-foreground">{text}</TableCell>;
-                }
-            }
-
-            // render function for the type each key within the input or output like "string" or "asset"
-            const renderType = (key: string) => {
-                const fieldType = schema?.properties?.[key]?.type;
-                if(fieldType == undefined) {
-                    return (
-                    <TableCell className="text-card-foreground flex flex-row space-x-1">
-                        
-                        <span>{typeof key}</span>
-                        <Tooltip>
-                            <TooltipTrigger>
-                                <QuestionMarkCircledIcon></QuestionMarkCircledIcon>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                The type is not specified in the schema or the data was interpretted as {typeof key}
-                            </TooltipContent>
-                        </Tooltip>
+    function renderJSONObject(jsonObject: any, type: string) {    
+    if (jsonObject === undefined || jsonObject === null) {
+        return <div>No Data</div>
+    }
+    
+    let keys = [];
+    let inOutType = "";
+    let schema: any = {};
+    
+    if (type == "input") {
+        schema = assetsMetadata?.metadata?.operation?.input;
+        inOutType = schema?.type;
+        keys = Object.keys(jobMetadata?.input || {});
+    } else {
+        schema = assetsMetadata?.metadata?.operation?.output;
+        inOutType = schema?.type;
+        keys = Object.keys(jobMetadata?.output || {});
+    }
+    
+    // Handle primitive values (string, number, boolean) or non-object types
+    if (typeof jsonObject !== 'object' || jsonObject === null) {
+        return (
+            <Table className="border border-slate-200 rounded-md py-2">
+                <TableHeader>
+                    <TableRow className="bg-slate-200">
+                        <TableCell>Value</TableCell>
+                        <TableCell>Type</TableCell>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    <TableRow>
+                        <TableCell className="max-w-xs break-words whitespace-pre-wrap text-card-foreground">
+                            {String(jsonObject)}
                         </TableCell>
-                    )
-                }
-
-                return <TableCell className="text-card-foreground">{fieldType}</TableCell>;
-            }
-
-            if (keys == undefined || keys == null) {
-                return <div>No Data</div>
-            } else if (keys.length > 0) {
-                return (
-                    <Table className="border border-slate-200 rounded-md py-2">
-                        <TableHeader>
-                            <TableRow className="bg-secondary-light">
-                                <TableCell >Name</TableCell>
-                                <TableCell >Value</TableCell>
-                                <TableCell>Type</TableCell>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody >
-                            {keys.map((key, index) => (
-                                <TableRow key={index}>
-                                    {type == "input" 
-                                        ? <TableCell key={index} className="text-md bg-input-color text-io-foreground">{key}</TableCell>
-                                        : <TableCell key={index} className="text-md bg-output-color text-io-foreground">{key}</TableCell>}
-                                    {renderContent(key)}
-                                    {renderType(key)}
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-
-                )
-            } else {
-                /* If there are no keys, render a table with the value and type */
-                return (<Table className="border border-slate-200 rounded-md py-2">
-                    <TableHeader>
-                        <TableRow className="bg-slate-200">
-                            <TableCell >Value</TableCell>
-                            <TableCell>Type</TableCell>
+                        <TableCell className="text-card-foreground">{typeof jsonObject}</TableCell>
+                    </TableRow>
+                </TableBody>
+            </Table>
+        )
+    }
+    
+    // Handle arrays
+    if (Array.isArray(jsonObject)) {
+        return (
+            <Table className="border border-slate-200 rounded-md py-2">
+                <TableHeader>
+                    <TableRow className="bg-slate-200">
+                        <TableCell>Index</TableCell>
+                        <TableCell>Value</TableCell>
+                        <TableCell>Type</TableCell>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {jsonObject.map((item, index) => (
+                        <TableRow key={index}>
+                            <TableCell className="text-card-foreground">{index}</TableCell>
+                            <TableCell className="max-w-xs break-words whitespace-pre-wrap text-card-foreground">
+                                {typeof item === 'object' ? JSON.stringify(item) : String(item)}
+                            </TableCell>
+                            <TableCell className="text-card-foreground">{typeof item}</TableCell>
                         </TableRow>
-                    </TableHeader>
-                    <TableBody >
-                        <TableRow>
-                            <TableCell><div className="font-mono">{JSON.stringify(jsonObject)}</div></TableCell>
-                            <TableCell>{typeof jsonObject}</TableCell>
-                        </TableRow>
-                    </TableBody>
-                </Table>
-                )
-            }
+                    ))}
+                </TableBody>
+            </Table>
+        )
+    }
+
+    // render function for each key within the input or output
+    const renderContent = (key: string) => {
+        const fieldType = schema?.properties?.[key]?.type || "object";
+        const isSecret = schema?.properties?.[key]?.secret === true;
+        const value = (jsonObject as any)[key];
+        
+        // Mask secret outputs
+        if (isSecret) {
+            return <TableCell className="max-w-xs break-words whitespace-pre-wrap italic text-card-foreground">Secret Hidden</TableCell>;
+        }
+
+        if (fieldType === "string") {
+            return <TableCell className="max-w-xs break-words whitespace-pre-wrap text-card-foreground">{value}</TableCell>;
+        } else {
+            const text = JSON.stringify(value);
+            return <TableCell className="max-w-xs break-words whitespace-normal text-card-foreground">{text}</TableCell>;
         }
     }
 
+    const renderType = (key: string) => {
+        const fieldType = schema?.properties?.[key]?.type;
+        if(fieldType == undefined) {
+            const actualValue = (jsonObject as any)[key];
+            return (
+                <TableCell className="text-card-foreground flex flex-row space-x-1">
+                    <span>{typeof actualValue}</span>
+                    <Tooltip>
+                        <TooltipTrigger>
+                            <QuestionMarkCircledIcon></QuestionMarkCircledIcon>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            The type is not specified in the schema or the data was interpreted as {typeof actualValue}
+                        </TooltipContent>
+                    </Tooltip>
+                </TableCell>
+            )
+        }
+        return <TableCell className="text-card-foreground">{fieldType}</TableCell>;
+    }
+
+    // Handle empty objects
+    if (keys.length === 0) {
+        return (
+            <Table className="border border-slate-200 rounded-md py-2">
+                <TableHeader>
+                    <TableRow className="bg-slate-200">
+                        <TableCell>Value</TableCell>
+                        <TableCell>Type</TableCell>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    <TableRow>
+                        <TableCell><div className="font-mono">{JSON.stringify(jsonObject)}</div></TableCell>
+                        <TableCell>{typeof jsonObject}</TableCell>
+                    </TableRow>
+                </TableBody>
+            </Table>
+        )
+    }
+    
+    // Handle objects with keys (normal case)
+    return (
+        <Table className="border border-slate-200 rounded-md py-2">
+            <TableHeader>
+                <TableRow className="bg-secondary-light">
+                    <TableCell>Name</TableCell>
+                    <TableCell>Value</TableCell>
+                    <TableCell>Type</TableCell>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {keys.map((key, index) => (
+                    <TableRow key={index}>
+                        {type == "input" 
+                            ? <TableCell key={index} className="text-md bg-input-color text-io-foreground">{key}</TableCell>
+                            : <TableCell key={index} className="text-md bg-output-color text-io-foreground">{key}</TableCell>}
+                        {renderContent(key)}
+                        {renderType(key)}
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
+    )
+}
+
     return (
         <>
-             <TopBar assetOrJobName={jobMetadata?.name} venueName={venue?.name} />
+             <TopBar assetOrJobName={jobMetadata?.name} venueName={venue?.metadata.name} />
            
              <ExecutionHeader  jobData={jobMetadata}></ExecutionHeader>
             {jobMetadata && (

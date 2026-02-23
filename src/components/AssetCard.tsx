@@ -3,7 +3,7 @@ import { Iconbutton } from "./Iconbutton";
 import {  Copy, CopyIcon,  Save, SquareArrowOutUpRight } from "lucide-react";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { Asset, Venue } from "@covia-ai/covialib";
+import { Asset, Venue } from "@covia/covia-sdk";
 import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 import {
@@ -26,9 +26,7 @@ interface AssetCardProps {
 
 export function AssetCard({ asset,type,compact }: AssetCardProps) {
     const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
-
-
-    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.name})
+    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name})
     const router = useRouter();
     const [newJsonData, setNewJsonData] = useState({});
     const [assetCreated, setAssetCreated] = useState(false);

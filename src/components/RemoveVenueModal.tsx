@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useState } from "react"
 import { useVenues } from "@/hooks/use-venues";
-import { Iconbutton } from "./Iconbutton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { X } from "lucide-react";
 
 export const RemoveVenueModal = (props:any) => {
@@ -26,7 +26,12 @@ export const RemoveVenueModal = (props:any) => {
     return (
         <AlertDialog data-testid="remove-venue" open={open} onOpenChange={setOpen}>
                     <AlertDialogTrigger  className="flex flex-row ">
-                        <Iconbutton icon={X} message="Disconnect Venue" />
+                        <Tooltip>
+                                                   <TooltipTrigger>
+                                                        <X className="" size={16} data-testid="remove_btn"/>
+                                                   </TooltipTrigger>
+                                                   <TooltipContent data-testid="btn-tootip">Remove Venue</TooltipContent>
+                                                    </Tooltip>
                     </AlertDialogTrigger>
                     <AlertDialogContent className="bg-card text-card-foreground">
 

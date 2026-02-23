@@ -25,7 +25,7 @@ import { useRouter } from "next/navigation";
 import { useVenues } from "@/hooks/use-venues";
 import { useVenue } from "@/hooks/use-venue";
 import { useEffect, useState } from "react";
-import { Venue, Grid, CredentialsHTTP } from "@covia-ai/covialib";
+import { Venue, Grid, CredentialsHTTP } from "@covia/covia-sdk";
 import Link from "next/link";
 import { copyDataToClipBoard } from "@/lib/utils";
 import { useSession } from "next-auth/react";
@@ -55,14 +55,13 @@ export default function VenuePage({ params }: VenuePageProps) {
   useEffect(() => {
     // Find the venue by slug
     const foundVenue = venues.find(v => v.venueId === decodeURIComponent(slug));
-    console.log(foundVenue)
     if (foundVenue) {
       if(foundVenue instanceof Venue) {
           setVenue(foundVenue);
           setVenueDID(foundVenue.venueId)
       }
       else {
-          const foundVenue_obj = new Venue({baseUrl:foundVenue.baseUrl, venueId:foundVenue.venueId, name:foundVenue.name});
+          const foundVenue_obj = new Venue({baseUrl:foundVenue.baseUrl, venueId:foundVenue.venueId, name:foundVenue.metadata.name});
           setVenue(foundVenue_obj)
           setVenueDID(foundVenue_obj.venueId)
       }
@@ -121,7 +120,7 @@ export default function VenuePage({ params }: VenuePageProps) {
 
   return (
     <ContentLayout>
-      <TopBar  venueName={venue.name}/>
+      <TopBar  venueName={venue.metadata.name}/>
       
       <div className="flex flex-col space-y-6">
         {/* Venue Header */}
@@ -171,7 +170,7 @@ export default function VenuePage({ params }: VenuePageProps) {
 
         {/* Venue Information */}
         <Card className="p-6">
-          <h2 className="text-xl font-thin mb-4">Venue Information {venue.name}</h2>
+          <h2 className="text-xl font-thin mb-4">Venue Information {venue.metadata.name}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="flex items-center space-x-3">

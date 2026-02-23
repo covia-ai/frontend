@@ -5,6 +5,7 @@ import { CookieConsentComponent } from "@/components/CookieConsent";
 import localFont from 'next/font/local';
 import { GoogleTagManager } from '@next/third-parties/google'
 import { ThemeProvider } from "@/components/ThemeProvider";
+import PageViewTracker from "@/components/PageViewTracker";
 
 
 const { title, description } = siteConfig;
@@ -49,6 +50,7 @@ export default function RootLayout({
            
         <CookieConsentComponent />
       </body>
+       <PageViewTracker />
        <GoogleTagManager gtmId="GT-NM24GS8H" />
     </html>
   );
