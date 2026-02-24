@@ -15,10 +15,12 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 
-import { CsvViewer } from "./CSVViewer";
+import dynamic from "next/dynamic";
 import { JsonViewer } from "./JSONViewer";
-import { TextViewer } from "./TextViewer";
-import DocumentViewer from "./DocViewer";
+const XmlViewer = dynamic(() => import("./XmlViewer").then(mod => mod.XmlViewer), { ssr: false });
+const DocumentViewer = dynamic(() => import("./DocumentViewer").then(mod => mod.DocumentViewer), { ssr: false });
+
+const XML_CONTENT_TYPES = ["text/xml", "application/xml"];
 interface MetadataViewerProps {
   asset: Asset;
 }
@@ -157,9 +159,11 @@ export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
                           </Link>
                         </span>
                           
-                          {asset.metadata?.content?.contentType?.split(";")[0] == "text/csv" && <CsvViewer assetId={asset.id} />}
                           {asset.metadata?.content?.contentType?.split(";")[0] == "application/json" && <JsonViewer assetId={asset.id} />}
-                          {asset.metadata?.content?.contentType?.split(";")[0] == "text/plain" && <TextViewer assetId={asset.id} />}
+                          {XML_CONTENT_TYPES.includes(asset.metadata?.content?.contentType?.split(";")[0]) && <XmlViewer assetId={asset.id} />}
+                          {asset.metadata?.content?.contentType?.split(";")[0] != "application/json" && !XML_CONTENT_TYPES.includes(asset.metadata?.content?.contentType?.split(";")[0]) && (
+                            <DocumentViewer contentUrl={contentURL} contentType={asset.metadata?.content?.contentType?.split(";")[0]} />
+                          )}
 
                       </div>
                     )}
