@@ -21,6 +21,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 import { toast } from "sonner";
+import { gtmEvent } from "@/lib/utils";
 
 interface ExecutionToolBarProps {
   jobData: JobMetadata;
@@ -46,6 +47,7 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
       
       function cancelExecution() {
           if (!venue) return;
+          gtmEvent.buttonClick('Cancel Job', jobData.id);
           venue.cancelJob(jobData.id).then((response) => {
              if(response != 200) {
                 toast("Unable to cancel job right now")
@@ -57,6 +59,7 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
       }
       function deleteExecution() {
           if (!venue) return;
+          gtmEvent.buttonClick('Delete Job', jobData.id);
           venue.deleteJob(jobData.id).then((response) => {
             if(response == 200) {
               router.push("/venues/"+venue.venueId+"/jobs");
@@ -64,9 +67,11 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
           })
       }
       function pauseExecution() {
+          gtmEvent.buttonClick('Pause Job', jobData.id);
       }
       function resumeExecution() {
           if (!venue) return;
+          gtmEvent.buttonClick('Resume Job', jobData.id);
           venue.deleteJob(jobData.id).then((response) => {
             if(response == 200) {
               router.push("/venues/"+venue.venueId+"/jobs");

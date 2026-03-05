@@ -18,6 +18,7 @@ import { AssetHeader } from "./AssetHeader";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useVenues } from "@/hooks/use-venues";
+import { gtmEvent } from "@/lib/utils";
 import { AssetLookup } from "./AssetLookup";
 import { TopBar } from "./admin-panel/TopBar";
 import { ContentLayout } from "./admin-panel/content-layout";
@@ -279,6 +280,7 @@ export const OperationViewer = (props: any) => {
           }
 
           //Values are already processed by the input components
+          gtmEvent.buttonClick('Invoke Operation', asset?.metadata?.name || asset?.id || 'unknown');
           runOperation();
 
         } else {
@@ -295,6 +297,7 @@ export const OperationViewer = (props: any) => {
     } else {
       //Second attempt for "Run Anyway?" button, we do not do any validation just run the operations
       setLoading(true)
+      gtmEvent.buttonClick('Invoke Operation', asset?.metadata?.name || asset?.id || 'unknown');
       const operationPromise = runOperation();
       if (operationPromise) {
         operationPromise.catch(e => {
@@ -336,7 +339,7 @@ export const OperationViewer = (props: any) => {
         }
       }
     const commonProps = {
-      className: "flex-1 placeholder:text-gray-500 min-w-64 max-w-112",
+      className: "flex-1 placeholder:text-muted-foreground min-w-64 max-w-112",
       value: currentRawValue,
       placeholder: exampleValue,
       type: isSecret ? "password" : undefined,
@@ -408,7 +411,7 @@ export const OperationViewer = (props: any) => {
           <Textarea
             {...commonProps}
             rows={5}
-            className={`flex-1 placeholder:text-gray-500 ${isSecret ? 'font-mono' : ''}`}
+            className={`flex-1 placeholder:text-muted-foreground ${isSecret ? 'font-mono' : ''}`}
             style={isSecret ? { fontFamily: 'monospace', letterSpacing: '0.1em' } : undefined}
           />
           {typeSelector}
@@ -421,7 +424,7 @@ export const OperationViewer = (props: any) => {
 
   function renderDescription(description: string) {
     return (
-      <div className="text-sm text-gray-400">{description}</div>
+      <div className="text-sm text-muted-foreground">{description}</div>
     );
   }
 
@@ -441,7 +444,7 @@ export const OperationViewer = (props: any) => {
         {/* Label - full width on mobile, min-content on desktop */}
         <div className="flex flex-row items-center min-w-0 my-2">
           <Label className="whitespace-nowrap">{key}</Label>
-          {requiredKeys?.indexOf(key) !== -1 && <span className="text-red-400 ml-1">*</span>}
+          {requiredKeys?.indexOf(key) !== -1 && <span className="text-destructive ml-1">*</span>}
         </div>
         
         {/* Input - full width on mobile, normal column on desktop */}
@@ -463,7 +466,7 @@ export const OperationViewer = (props: any) => {
     ))}
   </div>
   
-  <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
+  <span className="text-xs text-destructive mb-4">{errorMessage}</span>
   
   <div className="flex flex-row space-x-2 items-center justify-center py-2">
     {!loading && (
@@ -526,7 +529,7 @@ export const OperationViewer = (props: any) => {
             </div>
           </div>
 
-          <span className="text-xs text-red-400 mb-4">{errorMessage}</span>
+          <span className="text-xs text-destructive mb-4">{errorMessage}</span>
           <div className="flex flex-row space-x-2 items-center justify-center py-2">{!loading && <Button  aria-label="invoke operation" role="button" type="button" className="w-32" onClick={() => invokeOp(asset?.id, [])}>{buttonText}</Button>}
             {!loading && <Button type="button"  aria-label="reset" role="button" className="w-32" onClick={() => resetForm()}>Reset</Button>}
           </div>
@@ -542,8 +545,8 @@ export const OperationViewer = (props: any) => {
       <div className="flex flex-col w-full items-center justify-center">
         {assetNotFound && (
           <div className="text-center p-8">
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">Asset Not Found</h2>
-            <p className="text-gray-600">The asset ID &quot;{props.assetId}&quot; does not exist on this venue.</p>
+            <h2 className="text-xl font-semibold text-foreground mb-2">Asset Not Found</h2>
+            <p className="text-muted-foreground">The asset ID &quot;{props.assetId}&quot; does not exist on this venue.</p>
           </div>
         )}
 
@@ -558,7 +561,7 @@ export const OperationViewer = (props: any) => {
         )}
         {!assetNotFound && asset && !asset?.metadata?.operation && (
           <div className="text-center p-4">
-            <p className="text-red-500">This asset is not an operation and cannot be executed.</p>
+            <p className="text-destructive">This asset is not an operation and cannot be executed.</p>
           </div>
         )}
       </div>

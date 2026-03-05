@@ -10,7 +10,7 @@ import {
 function ConstNode({ data }) {
   return (
 
-    <div className="rounded-md  dark:border-slate-700 bg-slate-200/50 dark:bg-slate-600/50 bg-slate-200/50  p-2">
+    <div className="rounded-md border-border bg-card/50 p-2">
        
                   <Handle
                   type="source"
@@ -25,8 +25,8 @@ function ConstNode({ data }) {
                     {data.nodeLabel}
                   </NodeTooltipContent>
                      <NodeTooltipTrigger>
-                      {data.nodeLabel?.length < 15 && <div className="text-[9px] flex items-center text-center text-black dark:text-white">{data.nodeLabel}</div>}
-                      {data.nodeLabel?.length > 15 && <div className="text-[9px] flex items-center text-center text-black dark:text-white">{data.nodeLabel.substring(0,13)+".."}</div>}
+                      {data.nodeLabel?.length < 15 && <div className="text-[9px] flex items-center text-center text-foreground">{data.nodeLabel}</div>}
+                      {data.nodeLabel?.length > 15 && <div className="text-[9px] flex items-center text-center text-foreground">{data.nodeLabel.substring(0,13)+".."}</div>}
 
                 </NodeTooltipTrigger>
                 </NodeTooltip>

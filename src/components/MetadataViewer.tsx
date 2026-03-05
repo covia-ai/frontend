@@ -15,10 +15,12 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 
-import { CsvViewer } from "./CSVViewer";
+import dynamic from "next/dynamic";
 import { JsonViewer } from "./JSONViewer";
-import { TextViewer } from "./TextViewer";
-import DocumentViewer from "./DocViewer";
+const XmlViewer = dynamic(() => import("./XmlViewer").then(mod => mod.XmlViewer), { ssr: false });
+const DocumentViewer = dynamic(() => import("./DocumentViewer").then(mod => mod.DocumentViewer), { ssr: false });
+
+const XML_CONTENT_TYPES = ["text/xml", "application/xml"];
 interface MetadataViewerProps {
   asset: Asset;
 }
@@ -69,7 +71,7 @@ const METADATA_FIELDS: MetadataFieldConfig[] = [
     renderValue: (value) => (
       <div className="flex space-x-1">
         {value?.map((keyword: string, index: number) => (
-          <Badge variant="secondary" className="text-white dark:bg-muted" key={index}>{keyword}</Badge>
+          <Badge variant="secondary" className="text-secondary-foreground" key={index}>{keyword}</Badge>
         ))}
       </div>
     )
@@ -143,7 +145,7 @@ export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
          <AccordionContent>
               <div className="text-sm p-2 items-center justify-between min-w-lg w-full">
                 <div className="flex flex-col md:flex-row lg:flex-row">
-                  <div className="flex flex-col flex-3 md:border-r-2 lg:border-r-2 border-slate-200 px-2 ">
+                  <div className="flex flex-col flex-3 md:border-r-2 lg:border-r-2 border-border px-2 ">
                     {renderMetadataFields(asset, METADATA_FIELDS)}
                   </div>
                   <div className="flex flex-col flex-2 px-2 ">
@@ -157,9 +159,11 @@ export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
                           </Link>
                         </span>
                           
-                          {asset.metadata?.content?.contentType?.split(";")[0] == "text/csv" && <CsvViewer assetId={asset.id} />}
                           {asset.metadata?.content?.contentType?.split(";")[0] == "application/json" && <JsonViewer assetId={asset.id} />}
-                          {asset.metadata?.content?.contentType?.split(";")[0] == "text/plain" && <TextViewer assetId={asset.id} />}
+                          {XML_CONTENT_TYPES.includes(asset.metadata?.content?.contentType?.split(";")[0]) && <XmlViewer assetId={asset.id} />}
+                          {asset.metadata?.content?.contentType?.split(";")[0] != "application/json" && !XML_CONTENT_TYPES.includes(asset.metadata?.content?.contentType?.split(";")[0]) && (
+                            <DocumentViewer contentUrl={contentURL} contentType={asset.metadata?.content?.contentType?.split(";")[0]} />
+                          )}
 
                       </div>
                     )}

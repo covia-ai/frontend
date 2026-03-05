@@ -9,13 +9,13 @@ import { sendGTMEvent } from '@next/third-parties/google'
 export  const getStatusConfig = (status) => {
     switch(status) {
       case 'ACTIVE':
-        return { variant: 'default', className: 'bg-blue-600 hover:bg-blue-700' };
+        return { variant: 'default', className: 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600' };
       case 'COMPLETED':
-        return { variant: 'default', className: 'bg-green-600 hover:bg-green-700' };
+        return { variant: 'default', className: 'bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600' };
       case 'TERMINATED':
-        return { variant: 'destructive', className: '' };
+        return { variant: 'destructive', className: 'dark:bg-red-600 dark:hover:bg-red-700' };
       default:
-        return { variant: 'secondary', className: '' };
+        return { variant: 'secondary', className: 'dark:bg-gray-600 dark:hover:bg-gray-700' };
     }
   };
   
@@ -65,20 +65,20 @@ export function copyDataToClipBoard(entityId:string, message:string) {
 export function  colourForStatus(status: RunStatus): string {
         switch (status) {
             case RunStatus.COMPLETE:
-                return "text-green-600";
+                return "text-green-600 dark:text-green-400";
             case RunStatus.CANCELLED:
             case RunStatus.REJECTED:
             case RunStatus.INPUT_REQUIRED:
             case RunStatus.AUTH_REQUIRED:
             case RunStatus.TIMEOUT:
             case RunStatus.FAILED:
-                return "text-red-600";
+                return "text-red-600 dark:text-red-400";
             case RunStatus.PENDING:
             case RunStatus.PAUSED:
             case RunStatus.STARTED:
-                return "text-blue-600";
+                return "text-blue-600 dark:text-blue-400";
             default:
-                return "text-gray-600";
+                return "text-gray-600 dark:text-gray-400";
         }
     }
 

@@ -26,6 +26,7 @@ interface SmartBreadcrumbProps {
   pathname: string;
   assetOrJobName?: string;
   venueName?: string;
+  agentName?:string;
   onNavigate?: (href: string) => void;
 }
 
@@ -33,6 +34,7 @@ export function SmartBreadcrumb({
   pathname, 
   assetOrJobName, 
   venueName,
+  agentName,
   onNavigate 
 }: SmartBreadcrumbProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);

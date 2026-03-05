@@ -165,15 +165,15 @@ export function JobList() {
         </div>
         <div className="text-card-foreground text-xs flex flex-row my-2">Page {currentPage} : Showing {filteredData.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of {jobsData.length} </div>
         <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>
-        <Table className="  border border-slate-200 rounded-lg shadow-md">
+        <Table className="  border border-border rounded-lg shadow-md">
           <TableHeader >
             <TableRow className="bg-secondary hover:bg-secondary rounded-full text-white ">
-              <TableCell className="border border-slate-400">Job Id</TableCell>
-              <TableCell className="border border-slate-400">Name</TableCell>
-              <TableCell className="text-center border border-slate-400">Created Date</TableCell>
-              <TableCell className="text-center border border-slate-400">Execution Time</TableCell>
+              <TableCell className="border border-border">Job Id</TableCell>
+              <TableCell className="border border-border">Name</TableCell>
+              <TableCell className="text-center border border-border">Created Date</TableCell>
+              <TableCell className="text-center border border-border">Execution Time</TableCell>
 
-              <TableCell className="text-center border border-slate-400">Status</TableCell>
+              <TableCell className="text-center border border-border">Status</TableCell>
             </TableRow>
           </TableHeader>
 

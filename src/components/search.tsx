@@ -22,7 +22,7 @@ export const Search: React.FC = (   ) => {
         
         <Input
           placeholder="Type keyword to search..."
-          className="w-full pl-10 bg-card text-card-foreground placeholder:text-gray-400"
+          className="w-full pl-10 bg-card text-card-foreground placeholder:text-muted-foreground"
           value={searchValue}
           onChange= {(e) => setSearchValue(e.target.value)}
           onKeyDown={(e) => {
