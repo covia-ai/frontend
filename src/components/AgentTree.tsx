@@ -10,20 +10,20 @@ export const AgentTree = ({ node,thisLeveOpen }) => {
     <div className="ml-4">
       <div
         onClick={() => hasChildren && setIsOpen(!isOpen)}
-        className={`flex items-start gap-2 py-1 text-black ${
+        className={`flex items-start gap-2 py-1 text-foreground ${
           hasChildren ? 'cursor-pointer' : 'cursor-default'
         }`}
       >
         {hasChildren && (
           <span className="w-4 flex items-start justify-center">
-            <span className={`w-2 h-2 rounded-full ${isOpen ? 'bg-blue-500' : 'bg-gray-400'}`}></span>
+            <span className={`w-2 h-2 rounded-full ${isOpen ? 'bg-blue-500' : 'bg-muted-foreground'}`}></span>
           </span>
         )}
         {!hasChildren && <span className="w-4"></span>}
         <span>{node.label}</span>
       </div>
       {isOpen && hasChildren && (
-        <div className="ml-4 border-l-2 border-gray-200 pl-2">
+        <div className="ml-4 border-l-2 border-border pl-2">
           {node.children.map((child, index) => (
             <AgentTree key={index} node={child} thisLeveOpen={false}/>
           ))}
@@ -109,7 +109,7 @@ export default function TreeStructure() {
   };
 
   return (
-          <div className="flex items-center gap-2 mb-6 p-4 bg-white rounded-lg border border-gray-200">
+          <div className="flex items-center gap-2 mb-6 p-4 bg-card rounded-lg border border-border">
 
                   <AgentTree node={treeData} thisLeveOpen={true}/>
          </div>

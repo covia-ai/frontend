@@ -48,7 +48,7 @@ export default function OperationsPage() {
                       </p>
                       <Button 
                         onClick={() => window.open('https://discord.gg/fywdrKd8QT', '_blank')}
-                        className="w-full bg-primary-light  text-white hover:text-black"
+                        className="w-full bg-primary-light text-white hover:opacity-90"
                         aria-label="join discord" role="button"
                       >
                         Join Discord Server
@@ -72,12 +72,12 @@ export default function OperationsPage() {
                       </div>
                     </CardHeader>
                     <CardContent className="flex flex-col justify-between">
-                      <p className="text-sm text-slate-600 mb-4">
+                      <p className="text-sm text-muted-foreground mb-4">
                         Comprehensive documentation, tutorials, API references, and guides to help you master Covia AI.
                       </p>
                       <Button 
                         onClick={() => window.open('https://docs.covia.ai', '_blank')}
-                        className="w-full bg-secondary-light  text-white hover:text-black hover:bg-secondary-light"
+                        className="w-full bg-secondary-light text-white hover:opacity-90 hover:bg-secondary-light"
                       >
                         View Documentation
                       </Button>

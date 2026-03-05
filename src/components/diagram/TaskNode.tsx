@@ -9,8 +9,8 @@ function TaskNode({ data }) {
 
   const inputSpacing = 100 / (inputs.length + 1);
   const outputSpacing = 100 / (outputs.length + 1);
-  const outputClassName = "!w-3 !h-3 !bg-primary !border-2 !bg-white !border-blue-800  !rounded-md";
-  const inputClassName = "!w-3 !h-3 !rounded-full !border-2 !bg-white !border-green-800 !rounded-md  !rounded-md";
+  const outputClassName = "!w-3 !h-3 !bg-primary !border-2 !bg-background !border-blue-800  !rounded-md";
+  const inputClassName = "!w-3 !h-3 !rounded-full !border-2 !bg-background !border-green-800 !rounded-md  !rounded-md";
 
   function getPosInput(index) {
     return inputSpacing * (index + 1) + "%"
@@ -61,10 +61,10 @@ function TaskNode({ data }) {
   }
   return (
 
-    <div className="border-2 border-slate-400 dark:border-slate-700 bg-slate-200/50 dark:bg-slate-600/50 rounded-md h-32 w-54 hover:border-primary ">
+    <div className="border-2 border-border bg-card/50 rounded-md h-32 w-54 hover:border-primary ">
       <div className=' w-full flex flex-row items-center justify-center -translate-y-4'>
                  <CustomNodeToolTip  posTop={0} toolTip={data.nodeLabel} position={Position.Top}
-                     handle={<span className="border border-2 border-amber-600 bg-amber-800 dark:bg-slate-600 text-[9px] text-white rounded-md p-1 text-center">{data.nodeLabel}</span>}
+                     handle={<span className="border border-2 border-amber-600 bg-amber-700 dark:bg-slate-600 text-[9px] text-white rounded-md p-1 text-center">{data.nodeLabel}</span>}
                  />
       </div>
       <div className="flex flex-row items-center justify-between">
@@ -93,8 +93,8 @@ function TaskNode({ data }) {
                         id={input}
                       >
                         {input.length < 20 ? 
-                                 (<div className="text-[9px] text-black dark:text-white w-[5rem] flex flex-row pl-3 ">{input}</div>) : 
-                                 (<div className="text-[9px] text-black dark:text-white w-[5rem] flex flex-row pl-3">{input.substring(0,18)+".."}</div>)
+                                 (<div className="text-[9px] text-foreground w-[5rem] flex flex-row pl-3 ">{input}</div>) : 
+                                 (<div className="text-[9px] text-foreground w-[5rem] flex flex-row pl-3">{input.substring(0,18)+".."}</div>)
                         }
                   </Handle>}/>
              

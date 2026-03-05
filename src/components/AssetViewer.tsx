@@ -58,7 +58,7 @@ export function AssetViewer(props: AssetViewerProps) {
         <div className="flex flex-col w-full items-center justify-center">
           <AssetHeader asset={asset} />
           <MetadataViewer asset={asset} />
-          <div className="flex flex-row items-center space-x-2 my-2 text-xs text-slate-800 dark:text-secondary-light">
+          <div className="flex flex-row items-center space-x-2 my-2 text-xs text-muted-foreground">
             <span>Venue:</span>
             <span><Link href={`/venues/${venueObj?.venueId}`} className="underline text-secondary dark:text-secondary-light"> {venueObj?.venueId}</Link></span>
           </div>

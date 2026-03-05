@@ -31,8 +31,8 @@ export default function CloneToVenue(props:any) {
         
         <div className=" space-y-6">
           {/* Current Location */}
-          <Alert className="bg-amber-50 border-amber-200">
-            <AlertDescription className="text-sm text-gray-700 flex flex-row">
+          <Alert className="bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
+            <AlertDescription className="text-sm text-foreground flex flex-row">
               Currently in: <span className="">{props.venueName}</span> 
             </AlertDescription>
           </Alert>
@@ -66,7 +66,7 @@ export default function CloneToVenue(props:any) {
               onChange={(e) => setCloneName(e.target.value)}
               className="w-full"
             />
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               Leave empty to use same name as original
             </p>
           </div>

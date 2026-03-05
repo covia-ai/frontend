@@ -71,7 +71,7 @@ const METADATA_FIELDS: MetadataFieldConfig[] = [
     renderValue: (value) => (
       <div className="flex space-x-1">
         {value?.map((keyword: string, index: number) => (
-          <Badge variant="secondary" className="text-white dark:bg-muted" key={index}>{keyword}</Badge>
+          <Badge variant="secondary" className="text-secondary-foreground" key={index}>{keyword}</Badge>
         ))}
       </div>
     )
@@ -145,7 +145,7 @@ export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
          <AccordionContent>
               <div className="text-sm p-2 items-center justify-between min-w-lg w-full">
                 <div className="flex flex-col md:flex-row lg:flex-row">
-                  <div className="flex flex-col flex-3 md:border-r-2 lg:border-r-2 border-slate-200 px-2 ">
+                  <div className="flex flex-col flex-3 md:border-r-2 lg:border-r-2 border-border px-2 ">
                     {renderMetadataFields(asset, METADATA_FIELDS)}
                   </div>
                   <div className="flex flex-col flex-2 px-2 ">

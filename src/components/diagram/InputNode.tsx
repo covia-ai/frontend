@@ -13,8 +13,8 @@ function InputNode({ data }) {
 
   const width  = 6;
   const height = 4*(inputs.length+1)
-  const topDivClass ="border-2 border-slate-300 dark:border-slate-700 bg-slate-200/50 dark:bg-slate-600/50 rounded-md flex flex-col justify-start items-center min-w-16 min-h-16";
-  const inputClassName = "!w-3 !h-3 !bg-white !border-green-800 !border-2 !rounded-md ";
+  const topDivClass ="border-2 border-border bg-card/50 rounded-md flex flex-col justify-start items-center min-w-16 min-h-16";
+  const inputClassName = "!w-3 !h-3 !bg-background !border-green-800 !border-2 !rounded-md ";
 
   function getPosInput(index) {
      return inputSpacing*(index+1)+"%"
@@ -51,8 +51,8 @@ function InputNode({ data }) {
                               className={inputClassName}
                               >
                                  {input.length < 20 ? 
-                                 (<div className="text-[9px] text-black dark:text-white -translate-x-20   w-[5rem] flex flex-row-reverse pr-1">{input}</div>) : 
-                                 (<div className="text-[9px] text-black dark:text-white -translate-x-20   w-[5rem] flex flex-row-reverse pr-1">{input.substring(0,18)+".."}</div>)
+                                 (<div className="text-[9px] text-foreground -translate-x-20   w-[5rem] flex flex-row-reverse pr-1">{input}</div>) : 
+                                 (<div className="text-[9px] text-foreground -translate-x-20   w-[5rem] flex flex-row-reverse pr-1">{input.substring(0,18)+".."}</div>)
                                  }
                             </Handle>
                             }

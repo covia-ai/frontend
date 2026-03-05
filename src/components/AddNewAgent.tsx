@@ -117,7 +117,7 @@ export function AddNewAgent() {
                     className="font-mono text-sm w-full"
                     rows={4}
                   />
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     Must be valid JSON. Leave as {'{}'} for empty initial state.
                   </p>
               </AccordionContent>

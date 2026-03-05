@@ -52,7 +52,7 @@ export const DiagramViewer = (props:any) => {
                 nodeTypes={nodeTypes}
                 edgeTypes={edgeTypes}
                 nodesConnectable={false}
-                className="bg-slate-800"
+                className="bg-background"
                 colorMode={theme || "dark"}
                 fitView
                 defaultViewport={defaultViewport}

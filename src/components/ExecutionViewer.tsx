@@ -87,9 +87,9 @@ export const ExecutionViewer = (props: any) => {
     function renderChildJobs(jsonObject: JSON) {
         const steps = jobMetadata?.steps as any[];
         return (
-            <Table className="border border-slate-200 rounded-md py-2 ">
+            <Table className="border border-border rounded-md py-2 ">
                 <TableHeader className="">
-                    <TableRow className="bg-secondary-light">
+                    <TableRow className="bg-secondary-light text-secondary-foreground">
                         <TableCell>#</TableCell>
                         <TableCell>Job Id</TableCell>
                         <TableCell>Status</TableCell>
@@ -136,9 +136,9 @@ export const ExecutionViewer = (props: any) => {
     // Handle primitive values (string, number, boolean) or non-object types
     if (typeof jsonObject !== 'object' || jsonObject === null) {
         return (
-            <Table className="border border-slate-200 rounded-md py-2">
+            <Table className="border border-border rounded-md py-2">
                 <TableHeader>
-                    <TableRow className="bg-slate-200">
+                    <TableRow className="bg-secondary-light text-secondary-foreground">
                         <TableCell>Value</TableCell>
                         <TableCell>Type</TableCell>
                     </TableRow>
@@ -158,9 +158,9 @@ export const ExecutionViewer = (props: any) => {
     // Handle arrays
     if (Array.isArray(jsonObject)) {
         return (
-            <Table className="border border-slate-200 rounded-md py-2">
+            <Table className="border border-border rounded-md py-2">
                 <TableHeader>
-                    <TableRow className="bg-slate-200">
+                    <TableRow className="bg-secondary-light text-secondary-foreground">
                         <TableCell>Index</TableCell>
                         <TableCell>Value</TableCell>
                         <TableCell>Type</TableCell>
@@ -224,9 +224,9 @@ export const ExecutionViewer = (props: any) => {
     // Handle empty objects
     if (keys.length === 0) {
         return (
-            <Table className="border border-slate-200 rounded-md py-2">
+            <Table className="border border-border rounded-md py-2">
                 <TableHeader>
-                    <TableRow className="bg-slate-200">
+                    <TableRow className="bg-secondary-light text-secondary-foreground">
                         <TableCell>Value</TableCell>
                         <TableCell>Type</TableCell>
                     </TableRow>
@@ -243,9 +243,9 @@ export const ExecutionViewer = (props: any) => {
     
     // Handle objects with keys (normal case)
     return (
-        <Table className="border border-slate-200 rounded-md py-2">
+        <Table className="border border-border rounded-md py-2">
             <TableHeader>
-                <TableRow className="bg-secondary-light">
+                <TableRow className="bg-secondary-light text-secondary-foreground">
                     <TableCell>Name</TableCell>
                     <TableCell>Value</TableCell>
                     <TableCell>Type</TableCell>

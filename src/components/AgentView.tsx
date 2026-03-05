@@ -28,7 +28,7 @@ export const AgentView = ({ agent }: AgentProps) => {
           <div className=" my-4 w-full flex flex-row justify-between">
              <div className="flex flex-col space-y-2 space-x-2 ">
               <div className="text-lg">{agent.agent.name}</div>
-               <div className="flex flex-row space-x-4 text-xs text-slate-400">
+               <div className="flex flex-row space-x-4 text-xs text-muted-foreground">
                   <Badge
                       variant={getStatusConfig(agent.agent.status).variant}
                       className={`shrink-0 text-xs font-medium ${getStatusConfig(agent.agent.status).className}`}

@@ -14,8 +14,7 @@ import { MagicWandIcon } from "@radix-ui/react-icons";
 import { SeperatorWithText } from "@/components/SeperatorWithText";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { Tooltip, TooltipTrigger } from "./ui/tooltip";
-import { TooltipContent } from "@radix-ui/react-tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 
 export function AgentList() {
   const router = useRouter();
@@ -27,20 +26,20 @@ export function AgentList() {
   },[agentData])
   
   const handleCardClick = (agentId:string) => {
-        const encodedUrl = "/agents/"+agentId;
+        const encodedUrl = "/agents/explorer?agentId="+agentId;
         router.push(encodedUrl);
     };
 
   const getStatusConfig = (status) => {
     switch(status) {
       case 'ACTIVE':
-        return { variant: 'default', className: 'bg-blue-500 hover:bg-blue-600' };
+        return { variant: 'default', className: 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600' };
       case 'COMPLETED':
-        return { variant: 'default', className: 'bg-green-500 hover:bg-green-600' };
+        return { variant: 'default', className: 'bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600' };
       case 'TERMINATED':
-        return { variant: 'destructive', className: 'bg-red-500 hover:bg-red-600' };
+        return { variant: 'destructive', className: 'bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600' };
       default:
-        return { variant: 'secondary', className: 'bg-gray-500 hover:bg-gray-600' };
+        return { variant: 'secondary', className: 'bg-gray-600 hover:bg-gray-700 dark:bg-gray-500 dark:hover:bg-gray-600' };
     }
   };
 
@@ -56,7 +55,7 @@ export function AgentList() {
         <div className="flex flex-col md:flex-row lg:flex-row items-center justify-center w-full space-x-2 space-y-2 ">
           <Input
               placeholder="What is thy bidding, my master"
-              className="bg-card placeholder:text-gray-400 my-2"
+              className="bg-card placeholder:text-muted-foreground my-2"
               aria-label="prompt"
          />    
          <Button  aria-label="Run" role="button" data-testid="chat-button" variant="default" className="my-4 btn btn-xs mx-0 bg-primary dark:bg-primary-light text-white"><MagicWandIcon/></Button>
