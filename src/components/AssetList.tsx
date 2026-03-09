@@ -67,25 +67,23 @@ export function AssetList() {
      function fetchAssets() {
         setAssetsMetadata([]);
           try {
-           venue.getAssets().then((assets) => {
-                 assets.forEach((asset: Asset) => {
-                   asset.getMetadata().then((metadata: object) => {
-                     if (metadata.name != undefined && metadata.operation == undefined) {
-                         if(search && search.length>0 ) {
-                             if(metadata?.name?.toLowerCase().indexOf(search.toLowerCase()) != -1 || asset.id?.toLowerCase().indexOf(search.toLowerCase()) != -1)
+           venue.listAssets().then((assetList) => {
+                 assetList.items.forEach((assetId: string) => {
+                   venue.getAsset(assetId).then((asset: Asset) => {
+                     asset.getMetadata().then((metadata: object) => {
+                       if (metadata.name != undefined && metadata.operation == undefined) {
+                           if(search && search.length>0 ) {
+                               if(metadata?.name?.toLowerCase().indexOf(search.toLowerCase()) != -1 || asset.id?.toLowerCase().indexOf(search.toLowerCase()) != -1)
+                                  setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
+                           }
+                           else {
                                 setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
-                         }
-                         else {
-                              setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
-                        
-                         }
-                     }
+                           }
+                       }
+                     })
                    })
                    setLoading(false)
-           
-           
                  })
-           
                })
         }
       catch (error) {
@@ -104,25 +102,23 @@ export function AssetList() {
   function handleDataFromChild(status: boolean) {
     const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name})
     setAssetsMetadata([]);
-    venue.getAssets().then((assets) => {
-      assets.forEach((asset: Asset) => {
-        asset.getMetadata().then((metadata: object) => {
-          if (metadata.name != undefined && metadata.operation == undefined) {
-              if(search && search.length>0 ) {
-                  if(metadata?.name?.toLowerCase().indexOf(search.toLowerCase()) != -1 || asset.id?.toLowerCase().indexOf(search.toLowerCase()) != -1)
+    venue.listAssets().then((assetList) => {
+      assetList.items.forEach((assetId: string) => {
+        venue.getAsset(assetId).then((asset: Asset) => {
+          asset.getMetadata().then((metadata: object) => {
+            if (metadata.name != undefined && metadata.operation == undefined) {
+                if(search && search.length>0 ) {
+                    if(metadata?.name?.toLowerCase().indexOf(search.toLowerCase()) != -1 || asset.id?.toLowerCase().indexOf(search.toLowerCase()) != -1)
+                       setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
+                }
+                else {
                      setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
-              }
-              else {
-                   setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
-             
-              }
-          }
+                }
+            }
+          })
         })
         setLoading(false)
-
-
       })
-
     })
   }
 

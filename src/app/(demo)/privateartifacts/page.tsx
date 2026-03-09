@@ -77,18 +77,16 @@ export default function AssetPage() {
 
   function fetchAssets() {
     setAssetsMetadata([]);
-    venue.getAssets().then((assets) => {
-      assets.forEach((asset: Asset) => {
-        asset.getMetadata().then((metadata: object) => {
-          if (metadata.name != undefined && metadata.operation == undefined) {
-
-            setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
-          }
+    venue.listAssets().then((assetList) => {
+      assetList.items.forEach((assetId: string) => {
+        venue.getAsset(assetId).then((asset: Asset) => {
+          asset.getMetadata().then((metadata: object) => {
+            if (metadata.name != undefined && metadata.operation == undefined) {
+              setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
+            }
+          })
         })
-
-
       })
-
     })
 
   }
@@ -103,7 +101,7 @@ export default function AssetPage() {
 
   function copyAsset(jsonData: JSON) {
     try {
-      venue?.createAsset(jsonData).then((asset: Asset) => {
+      venue?.register(jsonData).then((asset: Asset) => {
         if (asset != undefined && asset != null) {
           setNewJsonData({})
           setAssetCreated(true);

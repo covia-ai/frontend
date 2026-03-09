@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 import { useEffect, useMemo, useState } from "react";
-import {  Venue, Asset, Grid, CredentialsHTTP, getParsedAssetId } from "@covia/covia-sdk";
+import {  Venue, Asset, Grid, CoviaUserAuth, getParsedAssetId } from "@covia/covia-sdk";
 import { useRouter } from "next/navigation";
 import { Textarea } from "./ui/textarea";
 import { useStore } from "zustand";
@@ -104,7 +104,7 @@ export const OperationViewer = (props: any) => {
             setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name}))
          }
          else {
-          Grid.connect(decodeURIComponent(props.venueId),new CredentialsHTTP(decodeURIComponent(props.venueId),"",session?.user?.email || ""))
+          Grid.connect(decodeURIComponent(props.venueId),new CoviaUserAuth(session?.user?.email || ""))
           .then((venue) => {
             addVenue(venue)
             setVenue(venue)

@@ -35,7 +35,8 @@ export const ShowCase = () => {
       const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId})
       
        try {
-         const res = await venue.getAssets();
+         const assetList = await venue.listAssets();
+         const res = await Promise.all(assetList.items.map((assetId: string) => venue.getAsset(assetId)));
          const featured = res.filter((asset: Asset) => asset?.metadata?.operation?.info?.featured);
          const shuffled = featured.slice(); // copy array
          for (let i = shuffled.length - 1; i > 0; i--) {

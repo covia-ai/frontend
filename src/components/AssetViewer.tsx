@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from "react";
-import { Asset, Venue, Grid, CredentialsHTTP } from "@covia/covia-sdk";
+import { Asset, Venue, Grid, CoviaUserAuth } from "@covia/covia-sdk";
 import Link from "next/link";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
@@ -34,7 +34,7 @@ export function AssetViewer(props: AssetViewerProps) {
           setVenueName(venue.metadata.name)
          }
          else {
-          Grid.connect(decodeURIComponent(props.venueId),new CredentialsHTTP(props.venueId,"",session?.user?.email || "")).then((venue) => {
+          Grid.connect(decodeURIComponent(props.venueId),new CoviaUserAuth(session?.user?.email || "")).then((venue) => {
             addVenue(venue)
              venue.getAsset(props.assetId).then((asset: Asset) => {
              setAsset(asset);

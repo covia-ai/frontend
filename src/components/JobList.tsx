@@ -91,8 +91,9 @@ export function JobList() {
   )
 
   useEffect(() => {
-    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId})
-    venue.getJobs().then((jobs) => {
+    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId});
+    
+    venue.listJobs().then((jobs) => {
       setTotalItems(jobs.length)
       setTotalPages(Math.ceil(jobs.length / itemsPerPage))
       jobs.forEach((jobId) => {

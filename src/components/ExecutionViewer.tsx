@@ -2,7 +2,7 @@
 'use client'
 
 import { useEffect, useState } from "react";
-import { Asset, JobMetadata, RunStatus, Venue, isJobFinished,Grid,Job,CredentialsHTTP } from "@covia/covia-sdk";
+import { Asset, JobMetadata, RunStatus, Venue, isJobFinished,Grid,Job,CoviaUserAuth } from "@covia/covia-sdk";
 import { Check, CircleX, Clock, Copy, FileInput, FileOutput, Hash, RotateCcw, Settings, Timer, Trash2, X } from "lucide-react";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { useStore } from "zustand";
@@ -49,7 +49,7 @@ export const ExecutionViewer = (props: any) => {
          }
          else {
           Grid.connect(decodeURIComponent(props.venueId), 
-            new CredentialsHTTP(decodeURIComponent(props.venueId),"",session?.user?.email || "")).then((venue) => {
+            new CoviaUserAuth(session?.user?.email || "")).then((venue) => {
             addVenue(venue)
             setVenue(venue)
           });

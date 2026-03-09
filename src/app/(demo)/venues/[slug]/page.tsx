@@ -25,7 +25,7 @@ import { useRouter } from "next/navigation";
 import { useVenues } from "@/hooks/use-venues";
 import { useVenue } from "@/hooks/use-venue";
 import { useEffect, useState } from "react";
-import { Venue, Grid, CredentialsHTTP } from "@covia/covia-sdk";
+import { Venue, Grid, CoviaUserAuth } from "@covia/covia-sdk";
 import Link from "next/link";
 import { copyDataToClipBoard } from "@/lib/utils";
 import { useSession } from "next-auth/react";
@@ -70,7 +70,7 @@ export default function VenuePage({ params }: VenuePageProps) {
       
     }
     else {
-       Grid.connect(decodeURIComponent(slug),new CredentialsHTTP(decodeURIComponent(slug),"",session?.user?.email || "")).then((venue) => {
+       Grid.connect(decodeURIComponent(slug),new CoviaUserAuth(session?.user?.email || "")).then((venue) => {
          addVenue(venue)
        }
       )
@@ -88,7 +88,7 @@ export default function VenuePage({ params }: VenuePageProps) {
       }
        const fetchStats = async () => {
          try {
-          const status =  await venue?.getStats();
+          const status =  await venue?.status();
           if(status?.stats) {
               setNoOfAssets(status?.stats?.assets);
               setNoOfOps(status?.stats?.ops);
