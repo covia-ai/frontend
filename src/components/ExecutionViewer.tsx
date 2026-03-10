@@ -28,15 +28,14 @@ export const ExecutionViewer = (props: any) => {
     const { data: session } = useSession();
     const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
 
-    const formatter = new Intl.DateTimeFormat('en-CA', {
+    const formatter = new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
     minute: '2-digit',
-    second:'2-digit',
-    hourCycle: 'h23',
-    timeZone: 'UTC', // Key setting for UTC time
+    second: '2-digit',
+    timeZone: 'UTC',
    });
 
 
@@ -295,12 +294,12 @@ export const ExecutionViewer = (props: any) => {
                             <div className="flex flex-row items-center space-x-4  py-2">
                                 <Clock></Clock>
                                 <span className="w-28">Created Date</span>
-                                <span className="text-card-foreground">{jobMetadata?.created ? formatter.format(new Date(jobMetadata.created)).replace(', ', 'T') + 'Z' : 'N/A'}</span>
+                                <span className="text-card-foreground">{jobMetadata?.created ? formatter.format(new Date(jobMetadata.created)) : 'N/A'}</span>
                             </div>
                             <div className="flex flex-row items-center space-x-4  py-2">
                                 <Clock></Clock>
                                 <span className="w-28">Updated Date:</span>
-                                <span className="text-card-foreground">{jobMetadata?.updated ? formatter.format(new Date(jobMetadata.updated)).replace(', ', 'T') + 'Z' : 'N/A'}</span>
+                                <span className="text-card-foreground">{jobMetadata?.updated ? formatter.format(new Date(jobMetadata.updated)) : 'N/A'}</span>
                             </div>
                             <div className="flex flex-row items-center space-x-4  py-2">
                                 <Timer></Timer>

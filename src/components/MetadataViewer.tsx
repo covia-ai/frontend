@@ -33,6 +33,22 @@ interface MetadataFieldConfig {
   renderValue?: (value: any) => React.ReactNode;
 }
 
+const formatDate = (value: string) => {
+  try {
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      timeZone: 'UTC',
+    }).format(new Date(value));
+  } catch {
+    return value;
+  }
+};
+
 const METADATA_FIELDS: MetadataFieldConfig[] = [
   {
     key: 'creator',
@@ -55,13 +71,15 @@ const METADATA_FIELDS: MetadataFieldConfig[] = [
     key: 'dateCreated',
     label: 'Created on:',
     icon: Calendar,
-    path: 'metadata.dateCreated'
+    path: 'metadata.dateCreated',
+    renderValue: (value) => formatDate(value)
   },
   {
     key: 'dateModified',
     label: 'Modified on:',
     icon: Calendar,
-    path: 'metadata.dateModified'
+    path: 'metadata.dateModified',
+    renderValue: (value) => formatDate(value)
   },
   {
     key: 'keywords',
