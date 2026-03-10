@@ -7,9 +7,10 @@ import { Check, CircleX, Clock, Copy, FileInput, FileOutput, Hash, RotateCcw, Se
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import {  colourForStatus, getExecutionTime } from "@/lib/utils";
+import {  colourForStatus, formatLabel, getExecutionTime } from "@/lib/utils";
 import { TbSubtask } from "react-icons/tb";
 import Link from "next/link";
+import { ErrorDisplay } from "./ErrorDisplay";
 import { ExecutionHeader } from "./ExecutionHeader";
 import { ExecutionToolbar } from "./ExecutionToolbar";
 import { useVenues } from "@/hooks/use-venues";
@@ -254,8 +255,8 @@ export const ExecutionViewer = (props: any) => {
                 {keys.map((key, index) => (
                     <TableRow key={index}>
                         {type == "input" 
-                            ? <TableCell key={index} className="text-md bg-input-color text-io-foreground">{key}</TableCell>
-                            : <TableCell key={index} className="text-md bg-output-color text-io-foreground">{key}</TableCell>}
+                            ? <TableCell key={index} className="text-md bg-input-color text-io-foreground">{formatLabel(key)}</TableCell>
+                            : <TableCell key={index} className="text-md bg-output-color text-io-foreground">{formatLabel(key)}</TableCell>}
                         {renderContent(key)}
                         {renderType(key)}
                     </TableRow>
@@ -331,16 +332,16 @@ export const ExecutionViewer = (props: any) => {
                                             <span className="w-28">Output:</span>
                                         </div>
                                         {renderJSONObject(jobMetadata?.output, "output")}
-                                        {jobMetadata?.status == RunStatus.FAILED && <div>{jobMetadata?.error}</div>}
+                                        {jobMetadata?.status == RunStatus.FAILED && jobMetadata?.error && <ErrorDisplay error={jobMetadata.error} />}
                                     </div>
                                 }
-                                {jobMetadata?.status == RunStatus.FAILED &&
+                                {jobMetadata?.status == RunStatus.FAILED && jobMetadata?.error &&
                                     <div className="flex flex-row  py-2 space-x-4 w-1/2 my-2">
                                         <div className="flex flex-row space-x-4 ">
                                             <FileOutput></FileOutput>
                                             <span className="w-28">Error:</span>
                                         </div>
-                                        <div className="text-card-foreground">{jobMetadata?.error}</div>
+                                        <ErrorDisplay error={jobMetadata.error} />
                                     </div>
                                 }
                             </div>

@@ -5,6 +5,7 @@ import { Info, InfoIcon } from "lucide-react";
 import { Separator } from "./ui/separator";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { Asset } from "@covia/covia-sdk";
+import { formatLabel } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { useRouter } from "next/navigation";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -32,7 +33,7 @@ export const AssetInfoSheet = ({asset,venueId}:AssetInfoSheetProps) => {
             <TableBody>
               {keys.map((key, index) => (
                 <TableRow key={index}>
-                  <TableCell>{key} {requiredKeys != undefined && requiredKeys?.indexOf(key) != -1 && <span className="text-red-400">*</span>}</TableCell>
+                  <TableCell>{formatLabel(key)} {requiredKeys != undefined && requiredKeys?.indexOf(key) != -1 && <span className="text-red-400">*</span>}</TableCell>
                   <TableCell>{description[index]}</TableCell>
                 </TableRow>
               ))}

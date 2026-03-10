@@ -28,7 +28,6 @@ import { useVenue } from "@/hooks/use-venue";
 import { Asset, AssetMetadata, Venue } from "@covia/covia-sdk";
 import { getContentTypeForFile, getLicenseUrl } from "@/lib/utils";
 import { Iconbutton } from "./Iconbutton";
-import { gtmEvent } from "@/lib/utils";
 
 export const CreateAssetComponent = ({sendDataToParent}) => {
     const [step, setStep] = useState(0);
