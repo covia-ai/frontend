@@ -8,7 +8,7 @@ import {
 import { useState } from "react"
 import { useVenues } from "@/hooks/use-venues";
 import { Iconbutton } from "./Iconbutton";
-import { CredentialsHTTP, Grid } from "@covia/covia-sdk";
+import { CoviaUserAuth, Grid } from "@covia/covia-sdk";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
@@ -41,7 +41,7 @@ export const AddNewVenueModal = (props:any) => {
         
     }))
     if(!venueExist) {
-      Grid.connect(processVenueDidOrUrl,new CredentialsHTTP(venueDidOrUrl,"",session?.user?.email || "")).then((venue)=> {
+      Grid.connect(processVenueDidOrUrl,new CoviaUserAuth(session?.user?.email || "")).then((venue)=> {
         addVenue(venue)
       })
     }

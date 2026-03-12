@@ -28,7 +28,6 @@ import { useVenue } from "@/hooks/use-venue";
 import { Asset, AssetMetadata, Venue } from "@covia/covia-sdk";
 import { getContentTypeForFile, getLicenseUrl } from "@/lib/utils";
 import { Iconbutton } from "./Iconbutton";
-import { gtmEvent } from "@/lib/utils";
 
 export const CreateAssetComponent = ({sendDataToParent}) => {
     const [step, setStep] = useState(0);
@@ -57,28 +56,28 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
         gtmEvent.buttonClick('Create Asset', jsonData.name!);
         
         try {    
-          venue?.createAsset(jsonData).then( (asset: Asset) => {
+          venue?.register(jsonData).then( (asset: Asset) => {
                 if(assetType == "string") {
-                      asset.uploadContent(assetStringData).then((response) =>{
+                      asset.putContent(assetStringData).then((response) =>{
                       sendDataToParent(true)
                        setStep(1)
 
                     })
-                  
+
                   }
                   if(assetType == "json") {
-                      asset.uploadContent((JSON.stringify(assetJSONData))).then((response) =>{
+                      asset.putContent((JSON.stringify(assetJSONData))).then((response) =>{
                       sendDataToParent(true)
                        setStep(1)
                     })
-                  
+
                   }
                   if(assetType == "file") {
-                      asset.uploadContent(assetFileData).then((response) =>{
+                      asset.putContent(assetFileData).then((response) =>{
                       sendDataToParent(true)
                        setStep(1)
                     })
-                  
+
                   }
                   
           })

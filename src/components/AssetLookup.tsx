@@ -39,9 +39,11 @@ export const AssetLookup = ({sendAssetIdBackToForm}) => {
 
   useEffect( () => {
       setAssetsMetadata([]);
-      selectedVenue?.getAssets().then((assets) => {
-          setAssetsMetadata(assets);
-          setFilteredAsset(assets)
+      selectedVenue?.listAssets().then((assetList) => {
+          Promise.all(assetList.items.map((assetId: string) => selectedVenue.getAsset(assetId))).then((assets) => {
+            setAssetsMetadata(assets);
+            setFilteredAsset(assets)
+          })
       })
   },[selectedVenue]);
 

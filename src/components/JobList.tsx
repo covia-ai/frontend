@@ -91,8 +91,9 @@ export function JobList() {
   )
 
   useEffect(() => {
-    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId})
-    venue.getJobs().then((jobs) => {
+    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId});
+    
+    venue.listJobs().then((jobs) => {
       setTotalItems(jobs.length)
       setTotalPages(Math.ceil(jobs.length / itemsPerPage))
       jobs.forEach((jobId) => {
@@ -123,15 +124,14 @@ export function JobList() {
         
     };
 
-    const formatter = new Intl.DateTimeFormat('en-CA', {
+    const formatter = new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
     minute: '2-digit',
-     second:'2-digit',
-    hourCycle: 'h23',
-    timeZone: 'UTC', // Key setting for UTC time
+    second: '2-digit',
+    timeZone: 'UTC',
    });
   return (
     <ContentLayout >
@@ -184,7 +184,7 @@ export function JobList() {
               <TableRow key={index}>
                 <TableCell><Link className="text-foreground font-mono underline" href={encodedPath(job.id)}>{job.id}</Link></TableCell>
                 <TableCell>{job.name}</TableCell>
-                <TableCell>{formatter.format(new Date(job.created)).replace(', ', 'T') + 'Z'}</TableCell>
+                <TableCell>{formatter.format(new Date(job.created))}</TableCell>
                 {(job.status == RunStatus.COMPLETE || job.status == RunStatus.FAILED) ? 
                  (<TableCell >{getExecutionTime(job.created, job.updated)}</TableCell>) : 
                  (<TableCell >--</TableCell>)

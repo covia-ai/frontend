@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 import { useEffect, useMemo, useState } from "react";
-import {  Venue, Asset, Grid, CredentialsHTTP, getParsedAssetId } from "@covia/covia-sdk";
+import {  Venue, Asset, Grid, CoviaUserAuth, getParsedAssetId } from "@covia/covia-sdk";
+import { formatLabel } from "@/lib/utils";
+import { ErrorDisplay } from "./ErrorDisplay";
 import { useRouter } from "next/navigation";
 import { Textarea } from "./ui/textarea";
 import { useStore } from "zustand";
@@ -18,7 +20,6 @@ import { AssetHeader } from "./AssetHeader";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useVenues } from "@/hooks/use-venues";
-import { gtmEvent } from "@/lib/utils";
 import { AssetLookup } from "./AssetLookup";
 import { TopBar } from "./admin-panel/TopBar";
 import { ContentLayout } from "./admin-panel/content-layout";
@@ -104,7 +105,7 @@ export const OperationViewer = (props: any) => {
             setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name}))
          }
          else {
-          Grid.connect(decodeURIComponent(props.venueId),new CredentialsHTTP(decodeURIComponent(props.venueId),"",session?.user?.email || ""))
+          Grid.connect(decodeURIComponent(props.venueId),new CoviaUserAuth(session?.user?.email || ""))
           .then((venue) => {
             addVenue(venue)
             setVenue(venue)
@@ -443,7 +444,7 @@ export const OperationViewer = (props: any) => {
       <>
         {/* Label - full width on mobile, min-content on desktop */}
         <div className="flex flex-row items-center min-w-0 my-2">
-          <Label className="whitespace-nowrap">{key}</Label>
+          <Label className="whitespace-nowrap">{formatLabel(key)}</Label>
           {requiredKeys?.indexOf(key) !== -1 && <span className="text-destructive ml-1">*</span>}
         </div>
         
@@ -466,7 +467,7 @@ export const OperationViewer = (props: any) => {
     ))}
   </div>
   
-  <span className="text-xs text-destructive mb-4">{errorMessage}</span>
+  {errorMessage && <ErrorDisplay error={errorMessage} className="mb-4" />}
   
   <div className="flex flex-row space-x-2 items-center justify-center py-2">
     {!loading && (
@@ -529,7 +530,7 @@ export const OperationViewer = (props: any) => {
             </div>
           </div>
 
-          <span className="text-xs text-destructive mb-4">{errorMessage}</span>
+          {errorMessage && <ErrorDisplay error={errorMessage} className="mb-4" />}
           <div className="flex flex-row space-x-2 items-center justify-center py-2">{!loading && <Button  aria-label="invoke operation" role="button" type="button" className="w-32" onClick={() => invokeOp(asset?.id, [])}>{buttonText}</Button>}
             {!loading && <Button type="button"  aria-label="reset" role="button" className="w-32" onClick={() => resetForm()}>Reset</Button>}
           </div>

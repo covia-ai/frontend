@@ -26,7 +26,7 @@ export function SheetMenu() {
             className="flex justify-center items-center pb-2 pt-1"
             asChild
           >
-            <Link href="/workspace" className="flex items-center gap-2">
+            <Link href="/" className="flex items-center gap-2">
               <PanelsTopLeft className="w-6 h-6 mr-1" />
               <SheetTitle className="font-bold text-lg text-primary">Covia</SheetTitle>
             </Link>

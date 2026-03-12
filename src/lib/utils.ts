@@ -45,15 +45,47 @@ export function getExecutionTime(date1:string, date2:string) {
   const differenceInMinutes = differenceInMilliseconds / 60000;
   const differenceInHours = differenceInMilliseconds / 3600000;
 
-  if(differenceInHours > 1)
-    return Math.floor(differenceInHours) +" h"
-  if(differenceInMinutes > 1)
-     return differenceInMinutes +" min";
-  if(differenceInSeconds > 1)
-      return differenceInSeconds+" s";
-  return differenceInMilliseconds+" ms";
+  if(differenceInHours >= 1) {
+    const hours = Math.floor(differenceInHours);
+    const mins = Math.round((differenceInHours - hours) * 60);
+    return mins > 0 ? `${hours} hr ${mins} min` : `${hours} hr`;
+  }
+  if(differenceInMinutes >= 1) {
+    const mins = Math.floor(differenceInMinutes);
+    const secs = Math.round((differenceInMinutes - mins) * 60);
+    return secs > 0 ? `${mins} min ${secs} sec` : `${mins} min`;
+  }
+  if(differenceInSeconds >= 1)
+    return `${Math.round(differenceInSeconds)} sec`;
+  return `${Math.round(differenceInMilliseconds)} ms`;
 }
 
+export function formatLabel(key: string): string {
+  return key
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function friendlyError(error: string): { summary: string; detail: string } {
+  const lower = error?.toLowerCase() || '';
+  let summary = 'Something went wrong';
+  if (lower.includes('timeout') || lower.includes('timed out'))
+    summary = 'The operation timed out';
+  else if (lower.includes('401') || lower.includes('unauthorized'))
+    summary = 'Authentication failed';
+  else if (lower.includes('403') || lower.includes('forbidden'))
+    summary = 'Access denied';
+  else if (lower.includes('404') || lower.includes('not found'))
+    summary = 'Resource not found';
+  else if (lower.includes('500') || lower.includes('internal server'))
+    summary = 'Server error';
+  else if (lower.includes('network') || lower.includes('econnrefused') || lower.includes('fetch'))
+    summary = 'Connection error';
+  else if (lower.includes('parse') || lower.includes('json') || lower.includes('syntax'))
+    summary = 'Invalid data format';
+  return { summary, detail: error };
+}
 
 export function copyDataToClipBoard(entityId:string, message:string) {
          const result = copy(entityId)

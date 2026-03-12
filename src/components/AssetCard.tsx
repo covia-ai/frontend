@@ -38,7 +38,7 @@ export function AssetCard({ asset,type,compact }: AssetCardProps) {
     };
     function copyAsset(jsonData: JSON) {
         try {
-          venue?.createAsset(jsonData).then((asset: Asset) => {
+          venue?.register(jsonData).then((asset: Asset) => {
             if (asset != undefined && asset != null) {
               setNewJsonData({})
               setAssetCreated(true);

@@ -12,7 +12,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import { getStatusConfig } from '@/lib/utils';
+import { formatLabel, getStatusConfig } from '@/lib/utils';
 
 
 const TimelinePanel = (props:any) => {
@@ -111,7 +111,7 @@ const TimelinePanel = (props:any) => {
                         <div className="bg-muted text-muted-foreground p-2 rounded-md">
                             {selectedEntry?.input && Object.entries(selectedEntry?.input).map(([key, value]) => (
                             <div key={key} className='grid grid-cols-4  space-y-1'>
-                               <div className="text-xs text-muted-foreground col-span-1">{key} : </div> 
+                               <div className="text-xs text-muted-foreground col-span-1">{formatLabel(key)} : </div> 
                                <div className="text-xs text-foreground border-border ml-2 col-span-3">{value}</div>
                             </div>
                           ))}
@@ -119,7 +119,7 @@ const TimelinePanel = (props:any) => {
                         <div className="bg-muted text-muted-foreground p-2 rounded-md">
                           {selectedEntry?.output && Object.entries(selectedEntry?.output).map(([key, value]) => (
                             <div key={key} className='grid grid-cols-4 space-y-1'>
-                               <div className="text-xs text-muted-foreground col-span-1">{key} : </div> 
+                               <div className="text-xs text-muted-foreground col-span-1">{formatLabel(key)} : </div> 
                                <div className="text-xs text-foreground border-border ml-2 col-span-3">{value}</div>
                             </div>
                           ))}

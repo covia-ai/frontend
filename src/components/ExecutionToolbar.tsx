@@ -21,7 +21,6 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 import { toast } from "sonner";
-import { gtmEvent } from "@/lib/utils";
 
 interface ExecutionToolBarProps {
   jobData: JobMetadata;

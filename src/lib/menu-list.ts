@@ -40,7 +40,7 @@ export function   getMenuList(): Group[] {
         groupLabel: "",
         menus: [
           {
-            href: "/workspace",
+            href: "/",
             label: "Workspace",
             icon: Home
           },
@@ -97,7 +97,7 @@ export function   getMenuList(): Group[] {
         groupLabel: "",
         menus: [
           {
-            href: "/workspace",
+            href: "/",
             label: "Workspace",
             icon: Home
           },

@@ -2,14 +2,15 @@
 'use client'
 
 import { useEffect, useState } from "react";
-import { Asset, JobMetadata, RunStatus, Venue, isJobFinished,Grid,Job,CredentialsHTTP } from "@covia/covia-sdk";
+import { Asset, JobMetadata, RunStatus, Venue, isJobFinished,Grid,Job,CoviaUserAuth } from "@covia/covia-sdk";
 import { Check, CircleX, Clock, Copy, FileInput, FileOutput, Hash, RotateCcw, Settings, Timer, Trash2, X } from "lucide-react";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import {  colourForStatus, getExecutionTime } from "@/lib/utils";
+import {  colourForStatus, formatLabel, getExecutionTime } from "@/lib/utils";
 import { TbSubtask } from "react-icons/tb";
 import Link from "next/link";
+import { ErrorDisplay } from "./ErrorDisplay";
 import { ExecutionHeader } from "./ExecutionHeader";
 import { ExecutionToolbar } from "./ExecutionToolbar";
 import { useVenues } from "@/hooks/use-venues";
@@ -28,15 +29,14 @@ export const ExecutionViewer = (props: any) => {
     const { data: session } = useSession();
     const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
 
-    const formatter = new Intl.DateTimeFormat('en-CA', {
+    const formatter = new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
     minute: '2-digit',
-    second:'2-digit',
-    hourCycle: 'h23',
-    timeZone: 'UTC', // Key setting for UTC time
+    second: '2-digit',
+    timeZone: 'UTC',
    });
 
 
@@ -49,7 +49,7 @@ export const ExecutionViewer = (props: any) => {
          }
          else {
           Grid.connect(decodeURIComponent(props.venueId), 
-            new CredentialsHTTP(decodeURIComponent(props.venueId),"",session?.user?.email || "")).then((venue) => {
+            new CoviaUserAuth(session?.user?.email || "")).then((venue) => {
             addVenue(venue)
             setVenue(venue)
           });
@@ -255,8 +255,8 @@ export const ExecutionViewer = (props: any) => {
                 {keys.map((key, index) => (
                     <TableRow key={index}>
                         {type == "input" 
-                            ? <TableCell key={index} className="text-md bg-input-color text-io-foreground">{key}</TableCell>
-                            : <TableCell key={index} className="text-md bg-output-color text-io-foreground">{key}</TableCell>}
+                            ? <TableCell key={index} className="text-md bg-input-color text-io-foreground">{formatLabel(key)}</TableCell>
+                            : <TableCell key={index} className="text-md bg-output-color text-io-foreground">{formatLabel(key)}</TableCell>}
                         {renderContent(key)}
                         {renderType(key)}
                     </TableRow>
@@ -295,12 +295,12 @@ export const ExecutionViewer = (props: any) => {
                             <div className="flex flex-row items-center space-x-4  py-2">
                                 <Clock></Clock>
                                 <span className="w-28">Created Date</span>
-                                <span className="text-card-foreground">{jobMetadata?.created ? formatter.format(new Date(jobMetadata.created)).replace(', ', 'T') + 'Z' : 'N/A'}</span>
+                                <span className="text-card-foreground">{jobMetadata?.created ? formatter.format(new Date(jobMetadata.created)) : 'N/A'}</span>
                             </div>
                             <div className="flex flex-row items-center space-x-4  py-2">
                                 <Clock></Clock>
                                 <span className="w-28">Updated Date:</span>
-                                <span className="text-card-foreground">{jobMetadata?.updated ? formatter.format(new Date(jobMetadata.updated)).replace(', ', 'T') + 'Z' : 'N/A'}</span>
+                                <span className="text-card-foreground">{jobMetadata?.updated ? formatter.format(new Date(jobMetadata.updated)) : 'N/A'}</span>
                             </div>
                             <div className="flex flex-row items-center space-x-4  py-2">
                                 <Timer></Timer>
@@ -332,16 +332,16 @@ export const ExecutionViewer = (props: any) => {
                                             <span className="w-28">Output:</span>
                                         </div>
                                         {renderJSONObject(jobMetadata?.output, "output")}
-                                        {jobMetadata?.status == RunStatus.FAILED && <div>{jobMetadata?.error}</div>}
+                                        {jobMetadata?.status == RunStatus.FAILED && jobMetadata?.error && <ErrorDisplay error={jobMetadata.error} />}
                                     </div>
                                 }
-                                {jobMetadata?.status == RunStatus.FAILED &&
+                                {jobMetadata?.status == RunStatus.FAILED && jobMetadata?.error &&
                                     <div className="flex flex-row  py-2 space-x-4 w-1/2 my-2">
                                         <div className="flex flex-row space-x-4 ">
                                             <FileOutput></FileOutput>
                                             <span className="w-28">Error:</span>
                                         </div>
-                                        <div className="text-card-foreground">{jobMetadata?.error}</div>
+                                        <ErrorDisplay error={jobMetadata.error} />
                                     </div>
                                 }
                             </div>
