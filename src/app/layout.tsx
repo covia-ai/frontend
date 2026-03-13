@@ -51,7 +51,7 @@ export default function RootLayout({
         <CookieConsentComponent />
       </body>
        <PageViewTracker />
-       <GoogleTagManager gtmId="GT-NM24GS8H" />
+       <GoogleTagManager gtmId="GTM-K5CKZL5G" />
     </html>
   );
 }
