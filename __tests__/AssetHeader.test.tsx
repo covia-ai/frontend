@@ -5,6 +5,10 @@ import '@testing-library/jest-dom';
 import { AssetHeader } from '@/components/AssetHeader';
 import { DataAsset, Venue } from '@covia/covia-sdk';
 
+// Mock window.location.href used by IdAndLink
+delete (window as any).location;
+window.location = { href: 'http://localhost/test' } as any;
+
 describe('AssetHeader Component', () => {
   test('renders AssetHeader', () => {
     const mockMetadata = {
@@ -29,7 +33,7 @@ describe('AssetHeader Component', () => {
               "type":"object",
               "description":"The input to the target operation."
             }
-          }	
+          }
         },
         "output": {
           "description":"The output of the delayed operation."
@@ -39,9 +43,8 @@ describe('AssetHeader Component', () => {
     const mockVenue = new Venue({baseUrl: "https://venue-test.covia.ai", venueId:"did:web:venue-test.covia.ai", name:"TestVenue"})
     const mockAsset = new DataAsset("test-asset", mockVenue, mockMetadata)
     render( <AssetHeader asset={mockAsset}/>);
-     expect(screen.getByTestId('assetH_name')).toBeInTheDocument();
+     expect(screen.getByText('Delay Operation')).toBeInTheDocument();
      expect(screen.getByTestId('assetH_descr')).toBeInTheDocument();
-     expect(screen.getByTestId('assetH_name')).toHaveTextContent('Delay Operation');
      expect(screen.getByTestId('assetH_descr')).toHaveTextContent('Runs another op after a delay');
   });
 

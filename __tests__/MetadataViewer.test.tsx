@@ -1,9 +1,23 @@
 import React from 'react';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import {MetadataViewer} from '@/components/MetadataViewer';
 import { DataAsset, Venue } from '@covia/covia-sdk';
 
+// Mock fetch for DataAsset.getContentURL()
+global.fetch = jest.fn();
+
+// Mock json-edit-react
+jest.mock('json-edit-react', () => ({
+  JsonEditor: ({ data }: any) => <div data-testid="json-editor">JSON Editor</div>,
+}));
+
+// Mock dynamically imported components
+jest.mock('next/dynamic', () => () => {
+  const MockComponent = () => <div>Mock Dynamic Component</div>;
+  MockComponent.displayName = 'MockDynamic';
+  return MockComponent;
+});
 
 describe('MetadataViewer Component with only inputs', () => {
   test('renders MetadataViewer ',  async () => {
@@ -34,7 +48,7 @@ describe('MetadataViewer Component with only inputs', () => {
             ]
         }
     }
-    const mockVenue = new Venue({baseUrl: "https://venue-test.covia.ai", 
+    const mockVenue = new Venue({baseUrl: "https://venue-test.covia.ai",
                                 venueId:"did:web:venue-test.covia.ai", name:"TestVenue"})
     const mockAsset = new DataAsset("test-asset", mockVenue, mockMetadata)
     render(<MetadataViewer asset={mockAsset}/>);
@@ -43,18 +57,18 @@ describe('MetadataViewer Component with only inputs', () => {
     expect(screen.getByTestId('license_label')).toBeInTheDocument();
     expect(screen.getByTestId('dateCreated_label')).toBeInTheDocument();
     expect(screen.getByTestId('dateModified_label')).toBeInTheDocument();
-    expect(screen.getByTestId('dateModified_label')).toBeInTheDocument();
     expect(screen.getByTestId('keywords_label')).toBeInTheDocument();
     expect(screen.getByTestId('notes_label')).toBeInTheDocument();
 
     expect(screen.getByTestId('creator_value')).toHaveTextContent('William Shakespeare');
     expect(screen.getByTestId('license_value')).toHaveTextContent('Public Domain');
-    expect(screen.getByTestId('dateCreated_value')).toHaveTextContent('2025-06-05T06:53:59Z')
-    expect(screen.getByTestId('dateModified_value')).toHaveTextContent('2025-06-05T06:53:59Z')
-    expect(screen.getByTestId('keywords_value')).toBeInTheDocument()
-    expect(screen.getByTestId('notes_value')).toHaveTextContent('Uploaded by Mike Anderson for use as an example Covia Asset')
+    // Dates are now formatted by formatDate() using Intl.DateTimeFormat
+    expect(screen.getByTestId('dateCreated_value')).toHaveTextContent('Jun 5, 2025');
+    expect(screen.getByTestId('dateModified_value')).toHaveTextContent('Jun 5, 2025');
+    expect(screen.getByTestId('keywords_value')).toBeInTheDocument();
+    expect(screen.getByTestId('notes_value')).toHaveTextContent('Uploaded by Mike Anderson for use as an example Covia Asset');
 
-    
+
   });
 
 });

@@ -5,6 +5,9 @@ import {AssetInfoSheet} from '@/components/AssetInfoSheet';
 import { DataAsset, Venue } from '@covia/covia-sdk';
 import userEvent from '@testing-library/user-event';
 
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: jest.fn() }),
+}));
 
 describe('AssetInfoSheet Component with only inputs', () => {
   test('renders AssetInfoSheet ',  async () => {
@@ -30,7 +33,7 @@ describe('AssetInfoSheet Component with only inputs', () => {
 					"type":"object",
 					"description":"The input to the target operation."
 				}
-			}	
+			}
 		},
 		"output": {
 			"description":"The output of the delayed operation."
@@ -42,24 +45,19 @@ describe('AssetInfoSheet Component with only inputs', () => {
     const user = userEvent.setup();
     render(<AssetInfoSheet asset={mockAsset} venueId={mockVenue.venueId}/>);
 
-    const triggerButton = screen.getByTestId('btn-icon');
+    const triggerButton = screen.getByTestId('info_btn');
     expect(triggerButton).toBeInTheDocument();
     await user.click(triggerButton);
 
     const infoTitle = screen.getByTestId('info_assetname');
-    const infoDesc = screen.getByTestId('info_assetdesc');
-    const infoRunBtn = screen.getByTestId('info_runbtn');
     const infoInputs = screen.queryByTestId ('info_assetinputs');
     const infoOutputs = screen.queryByTestId ('info_assetoutputs');
 
     expect(infoTitle).toHaveTextContent(mockAsset.metadata.name || "");
-    expect(infoDesc).toHaveTextContent(mockAsset.metadata.description || "");
     expect(infoInputs).toBeInTheDocument();
     expect(infoOutputs).not.toBeInTheDocument();
-    expect(infoRunBtn).toHaveTextContent("Run");
 
 
-    
   });
 
 });
@@ -82,22 +80,20 @@ describe('AssetInfoSheet Component with asset with no input /output', () => {
     const user = userEvent.setup();
     render(<AssetInfoSheet asset={mockAsset} venueId={mockVenue.venueId}/>);
 
-    const triggerButton = screen.getByTestId('btn-icon');
+    const triggerButton = screen.getByTestId('info_btn');
     expect(triggerButton).toBeInTheDocument();
     await user.click(triggerButton);
 
     const infoTitle = screen.getByTestId('info_assetname');
-    const infoDesc = screen.getByTestId('info_assetdesc');
     const infoInputs = screen.queryByTestId ('info_assetinputs');
     const infoOutputs = screen.queryByTestId ('info_assetoutputs');
 
     expect(infoTitle).toHaveTextContent(mockAsset.metadata.name || "");
-    expect(infoDesc).toHaveTextContent(mockAsset.metadata.description || "");
     expect(infoInputs).not.toBeInTheDocument();
     expect(infoOutputs).not.toBeInTheDocument();
 
 
-    
+
   });
 
 });

@@ -1,33 +1,62 @@
 
 import React from 'react';
-import { render, screen, fireEvent, within, getByRole, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { Asset, DataAsset, Operation, Venue } from '@covia/covia-sdk';
-import { VenueCard } from '@/components/VenueCard';
-import { RemoveVenueModal } from '@/components/RemoveVenueModal';
+import userEvent from '@testing-library/user-event';
+import { AddNewVenueModal } from '@/components/AddNewVenueModal';
 
-// Mock child components
+// Mock dependencies
+jest.mock('@/hooks/use-venues', () => ({
+  useVenues: () => ({
+    addVenue: jest.fn(),
+    venues: [],
+  }),
+}));
+jest.mock('next-auth/react', () => ({
+  useSession: () => ({ data: { user: { email: 'test@test.com' } } }),
+}));
+jest.mock('sonner', () => ({
+  toast: jest.fn(),
+}));
 jest.mock('@/components/Iconbutton', () => ({
-  Iconbutton: ({ icon, message }: any) => (
-    <button data-testid="icon-button">{message}</button>
+  Iconbutton: ({ icon, message, label }: any) => (
+    <button data-testid="icon-button">{label || message}</button>
   ),
 }));
-jest.mock('next/navigation');
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: jest.fn() }),
+}));
+jest.mock('@/lib/utils', () => ({
+  cn: (...args: any[]) => args.filter(Boolean).join(' '),
+  gtmEvent: { buttonClick: jest.fn() },
+}));
 
 describe('AddNewVenueModal', () => {
-    it('should have title', () => {
-      render(<RemoveVenueModal venueId='did:web:venue-test.covia.ai' />);
-      expect(screen.getByTestId('add-title')).toHaveTextContent('Connect to a venue');
-      expect(screen.getByTestId('venue-urlid')).toBeInTheDocument();
-      expect(screen.getByTestId('venue-addbtn')).toBeInTheDocument();
+    it('should have title', async () => {
+      const user = userEvent.setup();
+      render(<AddNewVenueModal />);
+      // Click the trigger to open the dialog
+      const triggerBtn = screen.getByTestId('icon-button');
+      await user.click(triggerBtn);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('add-title')).toHaveTextContent('Connect to a venue');
+        expect(screen.getByTestId('venue-urlid')).toBeInTheDocument();
+        expect(screen.getByTestId('venue-addbtn')).toBeInTheDocument();
+      });
     });
 
-    it('should show have connect button', () => {
-        render(<RemoveVenueModal venueId='did:web:venue-test.covia.ai' />);
-        const connectBtn = screen.getByRole('button', { name: /connect/i });
+    it('should have connect button', async () => {
+        const user = userEvent.setup();
+        render(<AddNewVenueModal />);
+        const triggerBtn = screen.getByTestId('icon-button');
+        await user.click(triggerBtn);
 
-        expect(connectBtn).not.toBeNull();
+        await waitFor(() => {
+          const connectBtn = screen.getByTestId('venue-addbtn');
+          expect(connectBtn).toHaveTextContent('Connect');
+        });
     });
-   
+
 
 });

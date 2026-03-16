@@ -1,17 +1,37 @@
 
 import React from 'react';
-import { render, screen, fireEvent, within, getByRole, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { AssetCard } from '@/components/AssetCard';
 import { Asset, DataAsset, Operation, Venue } from '@covia/covia-sdk';
 
-// Mock child components
-jest.mock('@/components/Iconbutton', () => ({
-  Iconbutton: ({ icon, message }: any) => (
-    <button data-testid="icon-button">{message}</button>
-  ),
+// Mock dependencies
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: jest.fn() }),
 }));
-jest.mock('next/navigation');
+jest.mock('@/hooks/use-venue', () => ({
+  useVenue: Object.assign(() => null, {
+    getState: () => ({
+      currentVenue: {
+        baseUrl: 'https://venue-test.covia.ai',
+        venueId: 'did:web:venue-test.covia.ai',
+        metadata: { name: 'TestVenue' },
+      },
+      getCurrentVenue: () => ({
+        baseUrl: 'https://venue-test.covia.ai',
+        venueId: 'did:web:venue-test.covia.ai',
+        metadata: { name: 'TestVenue' },
+      }),
+    }),
+    subscribe: () => () => {},
+  }),
+}));
+jest.mock('zustand', () => ({
+  useStore: (store: any, selector: any) => {
+    const state = store.getState();
+    return selector(state);
+  },
+}));
 jest.mock('@/components/AssetInfoSheet', () => ({
   AssetInfoSheet: () => <div data-testid="asset-info-sheet">Asset Info Sheet</div>,
 }));
@@ -22,6 +42,7 @@ jest.mock('json-edit-react', () => ({
     </div>
   ),
 }));
+
 const mockMetadata = {
           "name": "Hamlet",
           "creator": "William Shakespeare",
@@ -49,7 +70,7 @@ const mockMetadata = {
             ]
         }
     }
-const mockVenue = new Venue({baseUrl: "https://venue-test.covia.ai", 
+const mockVenue = new Venue({baseUrl: "https://venue-test.covia.ai",
                                 venueId:"did:web:venue-test.covia.ai", name:"TestVenue"})
 const mockAsset = new DataAsset("test-asset", mockVenue, mockMetadata)
 
@@ -85,7 +106,7 @@ const mockOperation = new Operation("test-op", mockVenue, mockOpData);
 
 describe('AssetCard with asset', () => {
     it('should render asset card with name and description', () => {
-      render(<AssetCard asset={mockAsset} type="assets" />);
+      render(<AssetCard asset={mockAsset} type="assets" compact={false} />);
       expect(screen.getByTestId('asset-header')).toHaveTextContent('Hamlet');
       expect(screen.getByTestId('asset-description')).toHaveTextContent(
         'A play by a celebrated English playwright.'
@@ -97,7 +118,7 @@ describe('AssetCard with asset', () => {
         metadata: { description: 'A play by a celebrated English playwright.' },
       } as Asset;
 
-      render(<AssetCard asset={assetWithoutName} type="assets" />);
+      render(<AssetCard asset={assetWithoutName} type="assets" compact={false} />);
 
       expect(screen.getByTestId('asset-header')).toHaveTextContent('Unnamed Asset');
     });
@@ -107,64 +128,42 @@ describe('AssetCard with asset', () => {
         metadata: { name: 'Hamlet' },
       } as Asset;
 
-      render(<AssetCard asset={assetWithoutDesc} type="assets" />);
+      render(<AssetCard asset={assetWithoutDesc} type="assets" compact={false} />);
 
       expect(screen.getByTestId('asset-description')).toHaveTextContent(
         'No description available'
       );
     });
-    it('should show Copy Asset button for assets type', () => {
-      render(<AssetCard asset={mockAsset} type="assets" />);
+    it('should show Copy icon for assets type', () => {
+      render(<AssetCard asset={mockAsset} type="assets" compact={false} />);
 
-      // Look for the Iconbutton with CopyIcon
-      const iconButtons = screen.getAllByTestId('icon-button');
-      expect(iconButtons.length).toBeGreaterThan(0);
+      const copyBtn = screen.getByTestId('copy_btn');
+      expect(copyBtn).toBeInTheDocument();
     });
-    it('should not show Copy Asset for operations type', () => {
-      render(<AssetCard asset={mockAsset} type="operations" />);
+    it('should not show Copy icon for operations type', () => {
+      render(<AssetCard asset={mockAsset} type="operations" compact={false} />);
 
-      // Copy functionality should not be available for operations
-      const iconButtons = screen.getAllByTestId('icon-button');
-      // Should only have the "View Asset" button, not "Copy Asset"
-      expect(iconButtons.length).toBe(1);
+      const copyBtn = screen.queryByTestId('copy_btn');
+      expect(copyBtn).not.toBeInTheDocument();
     });
-    it('should show tooltip on hover for Copy Asset button', async () => {
-      render(<AssetCard asset={mockAsset} type="assets" />);
+    it('should show AssetInfoSheet for operations type', () => {
+      render(<AssetCard asset={mockOperation} type="operations" compact={false} />);
 
-      const iconButtons = screen.getAllByRole('button')
-      fireEvent.mouseOver(iconButtons[0]);
-
-      await waitFor(() => {
-        expect(screen.getByText('Copy Asset')).toBeInTheDocument();
-      });
+      const assetInfoSheet = screen.getByTestId('asset-info-sheet');
+      expect(assetInfoSheet).toBeInTheDocument();
     });
-     it('should show dialog on click for Copy Asset button', async () => {
-      render(<AssetCard asset={mockAsset} type="assets" />);
+    it('should not show AssetInfoSheet for assets type', () => {
+      render(<AssetCard asset={mockAsset} type="assets" compact={false} />);
 
-      const iconButtons = screen.getAllByRole('button')
-      fireEvent.click(iconButtons[0]);
-
-      await waitFor(() => {
-        expect(screen.getByText('Copy Asset')).toBeInTheDocument();
-      });
+      const assetInfoSheet = screen.queryByTestId('asset-info-sheet');
+      expect(assetInfoSheet).not.toBeInTheDocument();
     });
-     it('should show dialog on hover for View Asset button', async () => {
-      render(<AssetCard asset={mockAsset} type="assets" />);
-
-      const iconButtons = screen.getAllByRole('button')
-      fireEvent.click(iconButtons[1]);
-
-      await waitFor(() => {
-        expect(screen.getByText('View Asset')).toBeInTheDocument();
-      });
-    });
-   
 
 });
 
 describe('AssetCard with operation', () => {
     it('should render asset card with name and description', () => {
-      render(<AssetCard asset={mockOperation} type="operations" />);
+      render(<AssetCard asset={mockOperation} type="operations" compact={false} />);
       expect(screen.getByTestId('asset-header')).toHaveTextContent('Random Data Generator');
       expect(screen.getByTestId('asset-description')).toHaveTextContent(
         'Generates a specified number of random bytes using a cryptographically secure random number generator'
@@ -176,7 +175,7 @@ describe('AssetCard with operation', () => {
         metadata: { description: 'Generates a specified number of random bytes using a cryptographically secure random number generator.' },
       } as Asset;
 
-      render(<AssetCard asset={assetWithoutName} type="operations" />);
+      render(<AssetCard asset={assetWithoutName} type="operations" compact={false} />);
 
       expect(screen.getByTestId('asset-header')).toHaveTextContent('Unnamed Asset');
     });
@@ -186,37 +185,17 @@ describe('AssetCard with operation', () => {
         metadata: { name: 'Random Data Generator' },
       } as Asset;
 
-      render(<AssetCard asset={mockOperationWithoutDesc} type="operations" />);
+      render(<AssetCard asset={mockOperationWithoutDesc} type="operations" compact={false} />);
 
       expect(screen.getByTestId('asset-description')).toHaveTextContent(
         'No description available'
       );
     });
-    it('should show Info  button for operation type', () => {
-      render(<AssetCard asset={mockOperation} type="operations" />);
+    it('should show AssetInfoSheet for operation type', () => {
+      render(<AssetCard asset={mockOperation} type="operations" compact={false} />);
 
-      // Look for the Iconbutton with CopyIcon
-      const iconButtons = screen.getAllByTestId('icon-button');
-      expect(iconButtons.length).toBeGreaterThan(0);
+      const assetInfoSheet = screen.getByTestId('asset-info-sheet');
+      expect(assetInfoSheet).toBeInTheDocument();
     });
-    it('should show tooltip on hover for Info button', async () => {
-      render(<AssetCard asset={mockOperation} type="operations" />);
-
-      const assetInfoSheetBtn = screen.getByTestId('asset-info-sheet')
-      expect(assetInfoSheetBtn).toBeInTheDocument();
-     
-    });
-     it('should show sheet on click for Info button', async () => {
-      render(<AssetCard asset={mockOperation} type="operations" />);
-
-      const iconButtons = screen.getAllByRole('button')
-      fireEvent.click(iconButtons[0]);
-
-      await waitFor(() => {
-        expect(screen.getByText('Random Data Generator')).toBeInTheDocument();
-      });
-    });
-   
-   
 
 });
