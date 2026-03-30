@@ -42,7 +42,7 @@ export function VenueCard({ venue, compact }: VenueCardProps) {
 
       {/* Fixed-size footer */}
       <div className="p-1 h-8 flex flex-row-reverse" onClick={handleCardClick}>
-          <Badge variant="outline" className="bg-muted text-muted-foreground text-[10px]"><Building className="text-amber-400 ml-2" size={14}/> {venue.venueId }</Badge>
+          <Badge variant="outline" className="bg-muted text-muted-foreground text-[10px] max-w-full overflow-hidden"><Building className="text-amber-400 ml-2 flex-shrink-0" size={14}/> <span className="truncate">{venue.venueId}</span></Badge>
           
       </div>
     </Card>

@@ -1,4 +1,6 @@
 
+"use client";
+
 import {
   Dialog,
   DialogClose,
@@ -11,7 +13,7 @@ import { Iconbutton } from "./Iconbutton";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Textarea } from "./ui/textarea";
@@ -23,17 +25,51 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
+import { Venue } from "@covia/covia-sdk";
+import { useStore } from "zustand";
+import { useVenue } from "@/hooks/use-venue";
 
 export function AddNewAgent() {
         const [agentName, setAgentName] = useState("");
         const [llmProvider, setLlmProvider]= useState("claude-3.5");
         const [transitionFunction, setTransitionFunction] = useState("standard");
-        const [initialState, setInitialState] = useState({});
+        const [initialState, setInitialState] = useState("{}");
+        const [creating, setCreating] = useState(false);
+
+        const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
+        const venue = useMemo(() => {
+          if (!venueObj) return null;
+          return new Venue({baseUrl: venueObj?.baseUrl, venueId: venueObj?.venueId, name: venueObj?.metadata?.name});
+        }, [venueObj]);
 
         const handleNewAgent = () => {
-            toast("Success !!", {
-                description: "Agent "+agentName+" created"
-              })
+            if (!venue || !agentName.trim()) {
+              toast("Please enter an agent name");
+              return;
+            }
+            let parsedState: Record<string, any> = {};
+            try {
+              parsedState = JSON.parse(initialState);
+            } catch {
+              toast("Invalid JSON in initial state");
+              return;
+            }
+            setCreating(true);
+            venue.agents.create({
+              agentId: agentName,
+              config: { operation: transitionFunction },
+              state: parsedState,
+            }).then((result) => {
+              toast("Agent created", {
+                description: `Agent "${result.agentId}" is now ${result.status}`
+              });
+              setAgentName("");
+              setInitialState("{}");
+            }).catch(() => {
+              toast("Unable to create agent");
+            }).finally(() => {
+              setCreating(false);
+            });
         };
         return (
               <Dialog>
@@ -112,7 +148,7 @@ export function AddNewAgent() {
                 <Label htmlFor="initial-state">Initial State (optional):</Label>
                   <Textarea
                     id="initial-state"
-                    value={JSON.stringify(initialState)}
+                    value={initialState}
                     onChange={(e) => setInitialState(e.target.value)}
                     className="font-mono text-sm w-full"
                     rows={4}
@@ -125,7 +161,7 @@ export function AddNewAgent() {
             </Accordion>
                      </div>
                     <DialogClose>
-                          <Button aria-label="create agent" role="button" data-testid="create-agent"  onClick={() => handleNewAgent()} className="btn-sm">Create</Button>              
+                          <Button aria-label="create agent" role="button" data-testid="create-agent" onClick={() => handleNewAgent()} disabled={creating} className="btn-sm">{creating ? "Creating..." : "Create"}</Button>              
                   </DialogClose>
                   </DialogContent>
               </Dialog>

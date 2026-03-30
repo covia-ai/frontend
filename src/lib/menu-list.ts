@@ -10,7 +10,8 @@ import {
   FileKey,
   LibraryBig,
   Activity,
-  BotIcon
+  BotIcon,
+  KeyRound
 } from "lucide-react";
 
 type Submenu = {
@@ -82,15 +83,20 @@ export function   getMenuList(): Group[] {
             icon: User
           },
           {
+            href: "/secrets",
+            label: "Secrets",
+            icon: KeyRound
+          },
+          {
             href: "/learning",
             label: "Learning corner",
             icon: LibraryBig
           },
-          
-          
+
+
         ]
       },
-    
+
   ];
   const menusProd =  [
       {
@@ -133,15 +139,20 @@ export function   getMenuList(): Group[] {
             icon: User
           },
           {
+            href: "/secrets",
+            label: "Secrets",
+            icon: KeyRound
+          },
+          {
             href: "/learning",
             label: "Learning corner",
             icon: LibraryBig
           },
-          
-          
+
+
         ]
       },
-    
+
   ];
 if(process.env.NEXT_PUBLIC_IS_ENV_PROD == "false") {
     return menusDev;

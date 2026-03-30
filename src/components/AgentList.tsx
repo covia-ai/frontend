@@ -2,41 +2,60 @@
 
 import { AddNewAgent } from "./AddNewAgent";
 import { ContentLayout } from "./admin-panel/content-layout";
-import { Bot, Clock, Clock1, EqualApproximatelyIcon, Footprints, MapPin, PanelRightClose, SquareChevronRight } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
+import { Bot, Clock, Loader2, SquareChevronRight } from "lucide-react";
+import { Card } from "./ui/card";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { TopBar } from "./admin-panel/TopBar";
-import agentsJson from "@/components/public/mockAgent.json"
-import { Agent } from "@/config/types";
+import { AgentListItem } from "@/config/types";
 import { Input } from "./ui/input";
 import { MagicWandIcon } from "@radix-ui/react-icons";
 import { SeperatorWithText } from "@/components/SeperatorWithText";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
+import { Venue, AgentStatus } from "@covia/covia-sdk";
+import { useStore } from "zustand";
+import { useVenue } from "@/hooks/use-venue";
+import { toast } from "sonner";
 
 export function AgentList() {
   const router = useRouter();
-  const [agentData, setAgentData] = useState<Agent[]>([]);
+  const [agentData, setAgentData] = useState<AgentListItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const compact = true;
-  useEffect(() => {
-    setAgentData(agentsJson as any);
-    
-  },[agentData])
-  
-  const handleCardClick = (agentId:string) => {
-        const encodedUrl = "/agents/explorer?agentId="+agentId;
-        router.push(encodedUrl);
-    };
+  const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
+  const venue = useMemo(() => {
+    if (!venueObj) return null;
+    return new Venue({baseUrl: venueObj?.baseUrl, venueId: venueObj?.venueId, name: venueObj?.metadata?.name});
+  }, [venueObj]);
 
-  const getStatusConfig = (status) => {
+  useEffect(() => {
+    if (!venue) return;
+    setLoading(true);
+    venue.agents.list(true).then((result) => {
+      setAgentData(result.agents || []);
+    }).catch(() => {
+      toast("Unable to load agents");
+    }).finally(() => {
+      setLoading(false);
+    });
+  }, [venue]);
+
+  const handleCardClick = (agentId: string) => {
+    const encodedUrl = "/agents/explorer?agentId=" + agentId;
+    router.push(encodedUrl);
+  };
+
+  const getStatusConfig = (status: string) => {
     switch(status) {
-      case 'ACTIVE':
+      case AgentStatus.RUNNING:
         return { variant: 'default', className: 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600' };
-      case 'COMPLETED':
+      case AgentStatus.SLEEPING:
         return { variant: 'default', className: 'bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600' };
-      case 'TERMINATED':
+      case AgentStatus.SUSPENDED:
+        return { variant: 'default', className: 'bg-amber-600 hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600' };
+      case AgentStatus.TERMINATED:
         return { variant: 'destructive', className: 'bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600' };
       default:
         return { variant: 'secondary', className: 'bg-gray-600 hover:bg-gray-700 dark:bg-gray-500 dark:hover:bg-gray-600' };
@@ -68,7 +87,8 @@ export function AgentList() {
              agent ...
             </span> 
         </h3>
-     {agentData.length == 0 &&  <div className="flex flex-col items-center justify-center w-full h-100 space-y-2">
+     {loading && <div className="flex items-center justify-center py-10"><Loader2 className="animate-spin text-primary" size={32} /></div>}
+     {!loading && agentData.length == 0 &&  <div className="flex flex-col items-center justify-center w-full h-100 space-y-2">
             <Bot size={64} className="text-primary"></Bot>
             <div className="text-primary text-lg">Get Started with Agents</div>
             <AddNewAgent></AddNewAgent>
@@ -77,35 +97,33 @@ export function AgentList() {
        <SquareChevronRight onClick={() => router.push('/agents/explorer')}/>
       </div>
       {agentData.length > 0 && <div className="flex flex-col items-center justify-center space-y-4">
-         
+
          <div className="mt-10 w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 items-stretch justify-center gap-4">
-            
-            {agentData.map((agent) => (   
-              <Card 
-                   key={agent.id}  onClick={() => handleCardClick(agent.id)}
-                   className={`shadow-md border-2 h-full bg-card flex flex-col rounded-md border-muted hover:border-accent hover:border-2 
+
+            {agentData.map((agent) => (
+              <Card
+                   key={agent.agentId}  onClick={() => handleCardClick(agent.agentId)}
+                   className={`shadow-md border-2 h-full bg-card flex flex-col rounded-md border-muted hover:border-accent hover:border-2
                        ${ compact ? 'h-32 p-1' : 'h-48 p-2'  }`}>
                    {/* Fixed-size header */}
                    <div className={` ${ compact ? 'h-10' : 'h-14'  } p-2 flex flex-row items-start border-b`}>
-                      <div data-testid="agent-name" className="truncate flex-1 mr-2 text-md text-foreground"> {agent.name}</div>
+                      <div data-testid="agent-name" className="truncate flex-1 mr-2 text-md text-foreground"> {agent.agentId}</div>
                       <div className={`w-2 h-2 rounded-full shadow-lg ml-1 ${getStatusConfig(agent.status).className}`}></div>
                     </div>
                    {/* Flexible middle section */}
                    <div className="flex-1 p-2 flex flex-col justify-between">
-                     <div data-testid="agent-desc" className={` ${ compact ? 'line-clamp-2' : 'line-clamp-3' } text-xs text-card-foreground `}>
-                         {agent.description}
+                     <div className={` ${ compact ? 'line-clamp-2' : 'line-clamp-3' } text-xs text-card-foreground `}>
+                         {agent.status}
                      </div>
-                   
                    </div>
-             
+
                    {/* Fixed-size footer */}
                    <div className="p-1 h-8 flex flex-row-reverse" >
-                       <Badge variant="outline" className="bg-muted text-muted-foreground text-[10px]"><Clock size={14} className="text-amber-400 ml-2 " /> {agent.lastRun }</Badge>
-                       
+                       <Badge variant="outline" className="bg-muted text-muted-foreground text-[10px]">{agent.tasks} task{agent.tasks !== 1 ? 's' : ''}</Badge>
                    </div>
                  </Card>
             ))}
-      
+
          </div>
          <AddNewAgent></AddNewAgent>
       </div>

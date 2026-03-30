@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { Asset, JobMetadata, RunStatus, Venue, isJobFinished,Grid,Job,CoviaUserAuth } from "@covia/covia-sdk";
-import { Check, CircleX, Clock, Copy, FileInput, FileOutput, Hash, RotateCcw, Settings, Timer, Trash2, X } from "lucide-react";
+import { Check, CircleX, Clock, Copy, FileInput, FileOutput, Hash, MessageSquare, RotateCcw, Send, Settings, Timer, Trash2, X } from "lucide-react";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
@@ -18,6 +18,9 @@ import { useSession } from "next-auth/react";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { TopBar } from "./admin-panel/TopBar";
+import { Button } from "./ui/button";
+import { Textarea } from "./ui/textarea";
+import { toast } from "sonner";
 
 
 export const ExecutionViewer = (props: any) => {
@@ -27,6 +30,8 @@ export const ExecutionViewer = (props: any) => {
     const { venues, addVenue } = useVenues();
     const [venue, setVenue] = useState<Venue>();
     const { data: session } = useSession();
+    const [jobMessage, setJobMessage] = useState("");
+    const [sendingMessage, setSendingMessage] = useState(false);
     const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
 
     const formatter = new Intl.DateTimeFormat('en-US', {
@@ -67,6 +72,26 @@ export const ExecutionViewer = (props: any) => {
         }).catch((error) => {
                 setPollStatus("ERROR");
         })
+    }
+
+    function handleSendJobMessage() {
+        if (!venue || !jobMessage.trim()) return;
+        let message: any;
+        try {
+          message = JSON.parse(jobMessage);
+        } catch {
+          message = jobMessage;
+        }
+        setSendingMessage(true);
+        venue.sendJobMessage(props.jobId, message).then(() => {
+          toast("Message sent");
+          setJobMessage("");
+          fetchJobStatus();
+        }).catch(() => {
+          toast("Unable to send message");
+        }).finally(() => {
+          setSendingMessage(false);
+        });
     }
 
     useEffect(() => {
@@ -291,7 +316,34 @@ export const ExecutionViewer = (props: any) => {
                                  <ExecutionToolbar jobData={jobMetadata}></ExecutionToolbar>
 
                             </div>
-                             
+
+                            {/* INPUT_REQUIRED message form */}
+                            {jobMetadata?.status === RunStatus.INPUT_REQUIRED && (
+                              <div className="flex flex-col gap-3 py-3 px-4 my-2 bg-amber-50 dark:bg-amber-950 border border-amber-300 dark:border-amber-700 rounded-lg">
+                                <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
+                                  <MessageSquare size={18} />
+                                  <span className="font-semibold text-sm">This job requires input to continue</span>
+                                </div>
+                                <Textarea
+                                  placeholder="Enter your response (text or JSON)..."
+                                  value={jobMessage}
+                                  onChange={(e) => setJobMessage(e.target.value)}
+                                  className="font-mono text-sm bg-background"
+                                  rows={3}
+                                />
+                                <div className="flex flex-row-reverse">
+                                  <Button
+                                    size="sm"
+                                    onClick={handleSendJobMessage}
+                                    disabled={sendingMessage || !jobMessage.trim()}
+                                  >
+                                    <Send size={14} className="mr-1" />
+                                    {sendingMessage ? "Sending..." : "Send Response"}
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+
                             <div className="flex flex-row items-center space-x-4  py-2">
                                 <Clock></Clock>
                                 <span className="w-28">Created Date</span>

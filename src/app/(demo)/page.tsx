@@ -6,6 +6,8 @@ import { ShowCase } from "@/components/ShowCase";
 import { AIPrompt } from "@/components/AIPrompt";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { SeperatorWithText } from "@/components/SeperatorWithText";
+import { WorkspaceExplorer } from "@/components/WorkspaceExplorer";
+
 export default function Workspace() {
   return (
     <ContentLayout>
@@ -13,6 +15,8 @@ export default function Workspace() {
       <AIPrompt/>
       <SeperatorWithText text="or"/>
       <ShowCase/>
+      <SeperatorWithText text="Workspace Data"/>
+      <WorkspaceExplorer/>
     </ContentLayout>
   );
 }
