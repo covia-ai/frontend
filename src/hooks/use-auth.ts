@@ -2,7 +2,6 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { generateKeyPair, privateKeyToHex } from "@covia/covia-sdk";
 
 export type BearerVenueAuth = {
   type: "bearer";
@@ -23,7 +22,8 @@ type AuthStore = {
   deviceKeyHex: string | null;
   loginWithToken: (token: string, did: string) => void;
   loginWithKeypair: (privateKeyHex: string, did: string) => void;
-  getOrCreateDeviceKey: () => string;
+  getDeviceKeyHex: () => string | null;
+  setDeviceKeyHex: (hex: string) => void;
   logout: () => void;
   getAuth: () => VenueAuth | null;
 };
@@ -42,13 +42,12 @@ export const useAuthStore = create(
         set({ auth: { type: "keypair", privateKeyHex, did } });
       },
 
-      getOrCreateDeviceKey: () => {
-        const existing = get().deviceKeyHex;
-        if (existing) return existing;
-        const { privateKey } = generateKeyPair();
-        const hex = privateKeyToHex(privateKey);
+      getDeviceKeyHex: () => {
+        return get().deviceKeyHex;
+      },
+
+      setDeviceKeyHex: (hex: string) => {
         set({ deviceKeyHex: hex });
-        return hex;
       },
 
       logout: () => {

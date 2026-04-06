@@ -4,7 +4,7 @@ import { BsGithub, BsGoogle } from "react-icons/bs"
 import { Key } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { gtmEvent } from "@/lib/utils";
-import { KeyPairAuth } from "@covia/covia-sdk";
+import { generateKeyPair, privateKeyToHex, KeyPairAuth } from "@covia/covia-sdk";
 import { useAuthStore } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
 
@@ -12,7 +12,8 @@ const VENUE_URL = process.env.NEXT_PUBLIC_DEFAULT_VENUE_URL || "";
 
 export const SignInButton = () => {
     const loginWithKeypair = useAuthStore((x) => x.loginWithKeypair);
-    const getOrCreateDeviceKey = useAuthStore((x) => x.getOrCreateDeviceKey);
+    const getDeviceKeyHex = useAuthStore((x) => x.getDeviceKeyHex);
+    const setDeviceKeyHex = useAuthStore((x) => x.setDeviceKeyHex);
     const router = useRouter();
 
     const handleLogin = (providerName: string) => {
@@ -23,7 +24,12 @@ export const SignInButton = () => {
 
     const handleKeypairLogin = () => {
       gtmEvent.buttonClick('Sign Up', 'keypair');
-      const hex = getOrCreateDeviceKey();
+      let hex = getDeviceKeyHex();
+      if (!hex) {
+        const { privateKey } = generateKeyPair();
+        hex = privateKeyToHex(privateKey);
+        setDeviceKeyHex(hex);
+      }
       const auth = KeyPairAuth.fromHex(hex);
       loginWithKeypair(hex, auth.getDID());
       router.push("/operations");
