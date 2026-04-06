@@ -1,17 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { Venue } from "@covia/covia-sdk";
-import { useStore } from "zustand";
-import { useVenue } from "@/hooks/use-venue";
 import { useTheme } from "next-themes";
 import { Dialog, DialogContent, DialogHeader, DialogTrigger } from "./ui/dialog";
 import { ScrollArea, ScrollBar } from "./ui/scroll-area";
 import { JsonEditor, githubDarkTheme, githubLightTheme } from "json-edit-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Copy, Check } from "lucide-react";
+import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 
 export const JsonViewer = (props:any) => {
-   const venueObj = useStore(useVenue, (x) => x.currentVenue);
-   const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name})
+   const venue = useAuthenticatedVenue();
    const { theme } = useTheme();
 
    const [renderData, setRenderData] = useState({});
@@ -29,8 +26,8 @@ export const JsonViewer = (props:any) => {
    };
 
    useEffect(() => {
-
-      venue.getContent(props.assetId).then((response) => {
+      if (!venue) return;
+      venue.assets.getContent(props.assetId).then((response) => {
         response?.getReader().read().then(({done, value}) => {
           const decoder = new TextDecoder();
           const text = decoder.decode(value);

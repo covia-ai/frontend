@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 import { useEffect, useMemo, useState } from "react";
-import {  Venue, Asset, Grid, CoviaUserAuth, getParsedAssetId } from "@covia/covia-sdk";
+import {  Venue, Asset, BearerAuth, getParsedAssetId } from "@covia/covia-sdk";
 import { formatLabel } from "@/lib/utils";
 import { ErrorDisplay } from "./ErrorDisplay";
 import { useRouter } from "next/navigation";
@@ -18,8 +18,8 @@ import { DiagramViewer } from "./DiagramViewer";
 import { MetadataViewer } from "./MetadataViewer";
 import { AssetHeader } from "./AssetHeader";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { useVenues } from "@/hooks/use-venues";
+import { useAuthStore } from "@/hooks/use-auth";
 import { AssetLookup } from "./AssetLookup";
 import { TopBar } from "./admin-panel/TopBar";
 import { ContentLayout } from "./admin-panel/content-layout";
@@ -35,7 +35,7 @@ export const OperationViewer = (props: any) => {
   const [rawInput, setRawInput] = useState<Record<string, string>>({}); // raw input content before parsing per field name
   const [typeMap, setTypeMap] = useState<Record<string, string>>({}); // user-specified types of the values to be passed to the operation, affects parsing
   const [assetNotFound, setAssetNotFound] = useState(false);
-  const { data: session } = useSession()
+  const authData = useAuthStore((x) => x.auth);
 
   const { venues, addVenue } = useVenues();
   const [venue, setVenue] = useState<Venue>();
@@ -99,13 +99,14 @@ export const OperationViewer = (props: any) => {
   const pathname = usePathname();
 
    useEffect(() => {
+      const authOption = authData ? new BearerAuth(authData.token) : undefined;
       if(props.venueId != venueObj?.venueId) {
         const venue = venues.find(v => v.venueId === props.venueId);
         if (venue) {
-            setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name}))
+            setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name, auth: authOption}))
          }
          else {
-          Grid.connect(decodeURIComponent(props.venueId),new CoviaUserAuth(session?.user?.email || ""))
+          Venue.connect(decodeURIComponent(props.venueId), authOption)
           .then((venue) => {
             addVenue(venue)
             setVenue(venue)
@@ -113,9 +114,9 @@ export const OperationViewer = (props: any) => {
          }
     }
     else {
-        setVenue(new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name}));  
-    }  
-   }, []); 
+        setVenue(new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: authOption}));
+    }
+   }, [authData]); 
 
   useEffect(() => {
     setAssetNotFound(false);

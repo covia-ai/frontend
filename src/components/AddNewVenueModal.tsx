@@ -8,9 +8,9 @@ import {
 import { useState } from "react"
 import { useVenues } from "@/hooks/use-venues";
 import { Iconbutton } from "./Iconbutton";
-import { CoviaUserAuth, Grid } from "@covia/covia-sdk";
-import { useSession } from "next-auth/react";
+import { Venue, BearerAuth } from "@covia/covia-sdk";
 import { toast } from "sonner";
+import { useAuthStore } from "@/hooks/use-auth";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { Label } from "@radix-ui/react-dropdown-menu";
 import { Input } from "./ui/input";
@@ -20,7 +20,7 @@ import { gtmEvent } from "@/lib/utils";
 export const AddNewVenueModal = (props:any) => {
     const [open, setOpen] = useState(false)
     const { addVenue,venues } = useVenues();
-    const { data: session } = useSession();
+    const authData = useAuthStore((x) => x.auth);
     const [venueDidOrUrl, setVenueDidOrUrl] = useState("");
 
     const addVenueToList = () =>{
@@ -41,7 +41,7 @@ export const AddNewVenueModal = (props:any) => {
         
     }))
     if(!venueExist) {
-      Grid.connect(processVenueDidOrUrl,new CoviaUserAuth(session?.user?.email || "")).then((venue)=> {
+      Venue.connect(processVenueDidOrUrl, authData ? new BearerAuth(authData.token) : undefined).then((venue)=> {
         addVenue(venue)
       })
     }

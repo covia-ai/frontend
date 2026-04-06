@@ -13,7 +13,7 @@ import { Iconbutton } from "./Iconbutton";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Textarea } from "./ui/textarea";
@@ -25,9 +25,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import { Venue } from "@covia/covia-sdk";
-import { useStore } from "zustand";
-import { useVenue } from "@/hooks/use-venue";
+import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 
 export function AddNewAgent() {
         const [agentName, setAgentName] = useState("");
@@ -36,11 +34,7 @@ export function AddNewAgent() {
         const [initialState, setInitialState] = useState("{}");
         const [creating, setCreating] = useState(false);
 
-        const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
-        const venue = useMemo(() => {
-          if (!venueObj) return null;
-          return new Venue({baseUrl: venueObj?.baseUrl, venueId: venueObj?.venueId, name: venueObj?.metadata?.name});
-        }, [venueObj]);
+        const venue = useAuthenticatedVenue();
 
         const handleNewAgent = () => {
             if (!venue || !agentName.trim()) {

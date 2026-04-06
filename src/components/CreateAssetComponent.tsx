@@ -23,9 +23,8 @@ import { Label } from "@/components/ui/label";
 import { useEffect, useState } from "react";
 import { JsonEditor } from "json-edit-react";
 import { Button } from "./ui/button";
-import { useStore } from "zustand";
-import { useVenue } from "@/hooks/use-venue";
-import { Asset, AssetMetadata, Venue } from "@covia/covia-sdk";
+import { Asset, AssetMetadata } from "@covia/covia-sdk";
+import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { getContentTypeForFile, getLicenseUrl } from "@/lib/utils";
 import { Iconbutton } from "./Iconbutton";
 
@@ -49,8 +48,7 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
     const [baseData, setBaseData] = useState<AssetMetadata>({});
     const [metadataUpdated, setMetadataUpdated] = useState(false);
     const [open, setOpen] = useState(false)
-    const venueObj = useStore(useVenue, (x) => x.currentVenue);
-    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name})
+    const venue = useAuthenticatedVenue();
     
     function createNewAsset(jsonData: AssetMetadata) {
         gtmEvent.buttonClick('Create Asset', jsonData.name!);

@@ -2,10 +2,10 @@
 
 import { Building, Building2, Check, ChevronDown, EllipsisVertical } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTrigger } from "./ui/dialog";
-import { useEffect, useMemo, useState } from "react";
-import { useStore } from "zustand";
-import { useVenue } from "@/hooks/use-venue";
-import { Asset, Venue,getAssetIdFromVenueId } from "@covia/covia-sdk";
+import { useEffect, useState } from "react";
+import { Asset, Venue, BearerAuth, getAssetIdFromVenueId } from "@covia/covia-sdk";
+import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useAuthStore } from "@/hooks/use-auth";
 import { ScrollArea } from "./ui/scroll-area";
 import { DialogClose } from "@radix-ui/react-dialog";
 import { Button } from "./ui/button";
@@ -19,18 +19,15 @@ import {
 import { useVenues } from "@/hooks/use-venues";
 
 export const AssetLookup = ({sendAssetIdBackToForm}) => {
- 
-  const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
-  const venue = useMemo(() => {
-    // Your expensive calculation or value creation
-    return new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name})
-    }, [venueObj]); // Dependency array
+
+  const venue = useAuthenticatedVenue();
+  const authData = useAuthStore((x) => x.auth);
 
   const [assetsMetadata, setAssetsMetadata] = useState<Asset[]>([]);
   const [filteredAsset, setFilteredAsset] = useState<Asset[]>([]);
   const [assetId, setAssetId] =  useState("");
   const [filterValue, setFilterValue] =  useState("");
-  const [selectedVenue, setSelectedVenue]=  useState<Venue>();
+  const [selectedVenue, setSelectedVenue]=  useState<Venue | null>();
   const { venues } = useVenues();
 
    useEffect( () => {
@@ -69,7 +66,8 @@ export const AssetLookup = ({sendAssetIdBackToForm}) => {
   },[filterValue, assetsMetadata])
 
   const handleVenueSelect = (venue: Venue) => {
-    setSelectedVenue(new Venue({baseUrl: venue.baseUrl, venueId: venue.venueId, name:venue.metadata.name}));
+    const authOption = authData ? new BearerAuth(authData.token) : undefined;
+    setSelectedVenue(new Venue({baseUrl: venue.baseUrl, venueId: venue.venueId, name:venue.metadata.name, auth: authOption}));
   };
   return (
      <Dialog>

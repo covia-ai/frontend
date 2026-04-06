@@ -13,11 +13,12 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components
 import { useEffect, useState } from "react";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { Job, JobMetadata, RunStatus, Venue } from "@covia/covia-sdk";
+import { Job, JobMetadata, RunStatus, Venue, BearerAuth } from "@covia/covia-sdk";
 import { colourForStatus, getExecutionTime } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { PaginationHeader } from "@/components/PaginationHeader";
 import { useVenues } from "@/hooks/use-venues";
+import { useAuthStore } from "@/hooks/use-auth";
 import { Activity, Database, User } from "lucide-react";
 import { TopBar } from "./admin-panel/TopBar";
 
@@ -32,6 +33,7 @@ export function JobList() {
   const [totalPages, setTotalPages] = useState(0);
   const { venues } = useVenues();
   const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
+  const authData = useAuthStore((x) => x.auth);
 
   const nextPage = (page: number) => {
     setCurrentPage(page)
@@ -91,13 +93,13 @@ export function JobList() {
   )
 
   useEffect(() => {
-    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId});
+    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, auth: authData ? new BearerAuth(authData.token) : undefined});
     
-    venue.listJobs().then((jobs) => {
+    venue.jobs.list().then((jobs) => {
       setTotalItems(jobs.length)
       setTotalPages(Math.ceil(jobs.length / itemsPerPage))
       jobs.forEach((jobId) => {
-        venue.getJob(jobId).then((job:Job) => {
+        venue.jobs.get(jobId).then((job:Job) => {
           setJobsData(prevArray => [...prevArray, job.metadata]);
           setFilteredData(prevArray => [...prevArray, job.metadata])
         })

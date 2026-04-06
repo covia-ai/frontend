@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   ChevronRight,
   ChevronDown,
@@ -18,9 +18,7 @@ import {
   ListPlus,
   Database,
 } from "lucide-react";
-import { Venue } from "@covia/covia-sdk";
-import { useStore } from "zustand";
-import { useVenue } from "@/hooks/use-venue";
+import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
@@ -68,15 +66,7 @@ export function WorkspaceExplorer() {
 
   const { theme } = useTheme();
 
-  const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
-  const venue = useMemo(() => {
-    if (!venueObj) return null;
-    return new Venue({
-      baseUrl: venueObj?.baseUrl,
-      venueId: venueObj?.venueId,
-      name: venueObj?.metadata?.name,
-    });
-  }, [venueObj]);
+  const venue = useAuthenticatedVenue();
 
   // Resize state
   const [leftWidth, setLeftWidth] = useState(300);

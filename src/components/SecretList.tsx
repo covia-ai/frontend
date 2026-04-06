@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Venue } from "@covia/covia-sdk";
-import { useStore } from "zustand";
-import { useVenue } from "@/hooks/use-venue";
+import { useEffect, useState } from "react";
+import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -28,15 +26,7 @@ export function SecretList() {
   const [newValue, setNewValue] = useState("");
   const [adding, setAdding] = useState(false);
 
-  const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
-  const venue = useMemo(() => {
-    if (!venueObj) return null;
-    return new Venue({
-      baseUrl: venueObj?.baseUrl,
-      venueId: venueObj?.venueId,
-      name: venueObj?.metadata?.name,
-    });
-  }, [venueObj]);
+  const venue = useAuthenticatedVenue();
 
   const loadSecrets = () => {
     if (!venue) {

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { Venue,Grid } from "@covia/covia-sdk";
+import { Venue } from "@covia/covia-sdk";
 
 type VenuesStore = {
   venues: Venue[];
@@ -24,7 +24,7 @@ const connectToVenues = async (): Promise<Venue[]> => {
   const venues = await Promise.allSettled(
     defaultVenueUrls.map(async (venueId) => {
       try {
-        return await Grid.connect(venueId);
+        return await Venue.connect(venueId);
       } catch (error) {
         console.error(`Failed to connect to venue ${venueId}:`, error);
         throw error;

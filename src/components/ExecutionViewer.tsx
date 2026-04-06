@@ -2,7 +2,7 @@
 'use client'
 
 import { useEffect, useState } from "react";
-import { Asset, JobMetadata, RunStatus, Venue, isJobFinished,Grid,Job,CoviaUserAuth } from "@covia/covia-sdk";
+import { Asset, JobMetadata, RunStatus, Venue, isJobFinished,Job,BearerAuth } from "@covia/covia-sdk";
 import { Check, CircleX, Clock, Copy, FileInput, FileOutput, Hash, MessageSquare, RotateCcw, Send, Settings, Timer, Trash2, X } from "lucide-react";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { useStore } from "zustand";
@@ -14,7 +14,7 @@ import { ErrorDisplay } from "./ErrorDisplay";
 import { ExecutionHeader } from "./ExecutionHeader";
 import { ExecutionToolbar } from "./ExecutionToolbar";
 import { useVenues } from "@/hooks/use-venues";
-import { useSession } from "next-auth/react";
+import { useAuthStore } from "@/hooks/use-auth";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { TopBar } from "./admin-panel/TopBar";
@@ -29,7 +29,7 @@ export const ExecutionViewer = (props: any) => {
     const [assetsMetadata, setAssetsMetadata] = useState<Asset>();
     const { venues, addVenue } = useVenues();
     const [venue, setVenue] = useState<Venue>();
-    const { data: session } = useSession();
+    const authData = useAuthStore((x) => x.auth);
     const [jobMessage, setJobMessage] = useState("");
     const [sendingMessage, setSendingMessage] = useState(false);
     const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
@@ -47,26 +47,27 @@ export const ExecutionViewer = (props: any) => {
 
     useEffect(() => {
     
+      const authOption = authData ? new BearerAuth(authData.token) : undefined;
       if(props.venueId != venueObj?.venueId) {
         const venue = venues.find(v => v.venueId === props.venueId);
         if (venue) {
-            setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name}))
+            setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name, auth: authOption}))
          }
          else {
-          Grid.connect(decodeURIComponent(props.venueId), 
-            new CoviaUserAuth(session?.user?.email || "")).then((venue) => {
+          Venue.connect(decodeURIComponent(props.venueId),
+            authOption).then((venue) => {
             addVenue(venue)
             setVenue(venue)
           });
          }
     }
     else {
-        setVenue(new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name}));  
+        setVenue(new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: authOption}));
     }  
-   }, [addVenue, props.venueId, session?.user?.email, venueObj?.baseUrl, venueObj?.metadata.name, venueObj?.venueId, venues]);
+   }, [addVenue, props.venueId, authData, venueObj?.baseUrl, venueObj?.metadata.name, venueObj?.venueId, venues]);
 
     function fetchJobStatus() {
-        venue?.getJob(props.jobId).then((job:Job) => {
+        venue?.jobs.get(props.jobId).then((job:Job) => {
                 setJobMetadata(job.metadata);
                 setPollStatus(job.metadata.status || "");
         }).catch((error) => {
@@ -83,7 +84,7 @@ export const ExecutionViewer = (props: any) => {
           message = jobMessage;
         }
         setSendingMessage(true);
-        venue.sendJobMessage(props.jobId, message).then(() => {
+        venue.jobs.sendMessage(props.jobId, message).then(() => {
           toast("Message sent");
           setJobMessage("");
           fetchJobStatus();

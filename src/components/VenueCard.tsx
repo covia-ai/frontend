@@ -1,9 +1,10 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
-import { Venue } from "@covia/covia-sdk";
+import { Venue, BearerAuth } from "@covia/covia-sdk";
 import { useRouter } from 'next/navigation';
 import { useVenues } from "@/hooks/use-venues";
+import { useAuthStore } from "@/hooks/use-auth";
 import { Badge } from "./ui/badge";
 import { RemoveVenueModal } from "./RemoveVenueModal";
 import { Building } from "lucide-react";
@@ -15,9 +16,10 @@ interface VenueCardProps {
 
 export function VenueCard({ venue, compact }: VenueCardProps) {
   const router = useRouter();
+  const authData = useAuthStore((x) => x.auth);
 
   if(!(venue instanceof Venue))
-    venue = new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name})
+    venue = new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name, auth: authData ? new BearerAuth(authData.token) : undefined})
   const handleCardClick = () => {
     const encodedUrl = "/venues/"+encodeURIComponent(venue.venueId);
     router.push(encodedUrl);

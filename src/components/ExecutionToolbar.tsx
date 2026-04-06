@@ -1,6 +1,6 @@
 'use client'
 
-import {  JobMetadata, Venue, isJobFinished, isJobPaused } from "@covia/covia-sdk";
+import {  JobMetadata, isJobFinished, isJobPaused } from "@covia/covia-sdk";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import {
@@ -15,12 +15,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { CircleX, PauseCircle, PauseCircleIcon, StarIcon, StopCircle, Trash2 } from "lucide-react";
-import { useStore } from "zustand";
-import { useVenue } from "@/hooks/use-venue";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 import { toast } from "sonner";
+import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 
 interface ExecutionToolBarProps {
   jobData: JobMetadata;
@@ -28,11 +27,7 @@ interface ExecutionToolBarProps {
 export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
 
      const router = useRouter()
-     const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
-     const venue = useMemo(() => {
-        // Your expensive calculation or value creation
-        return new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name})
-        }, [venueObj]); // Dependency array
+     const venue = useAuthenticatedVenue();
   
       const [isFinished, setFinished] = useState<boolean>(false);
       const [isPaused, setPaused] = useState<boolean>(false);
@@ -47,7 +42,7 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
       function cancelExecution() {
           if (!venue) return;
           gtmEvent.buttonClick('Cancel Job', jobData.id);
-          venue.cancelJob(jobData.id).then((response) => {
+          venue.jobs.cancel(jobData.id).then((response) => {
              if(response != 200) {
                 toast("Unable to cancel job right now")
              }
@@ -59,23 +54,29 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
       function deleteExecution() {
           if (!venue) return;
           gtmEvent.buttonClick('Delete Job', jobData.id);
-          venue.deleteJob(jobData.id).then((response) => {
+          venue.jobs.delete(jobData.id).then((response) => {
             if(response == 200) {
               router.push("/venues/"+venue.venueId+"/jobs");
             }
           })
       }
       function pauseExecution() {
+          if (!venue) return;
           gtmEvent.buttonClick('Pause Job', jobData.id);
+          venue.jobs.pause(jobData.id).then(() => {
+            toast("Job paused");
+          }).catch(() => {
+            toast("Unable to pause job");
+          });
       }
       function resumeExecution() {
           if (!venue) return;
           gtmEvent.buttonClick('Resume Job', jobData.id);
-          venue.deleteJob(jobData.id).then((response) => {
-            if(response == 200) {
-              router.push("/venues/"+venue.venueId+"/jobs");
-            }
-          })
+          venue.jobs.resume(jobData.id).then(() => {
+            toast("Job resumed");
+          }).catch(() => {
+            toast("Unable to resume job");
+          });
       }
 
   return (

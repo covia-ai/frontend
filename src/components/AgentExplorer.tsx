@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ChevronRight, GripVertical, Bot, Activity, Zap, ListTodo, Inbox, Clock, Pause, Play, Trash2, Send, Loader2 } from 'lucide-react';
 import { Agent, AgentListItem } from '@/config/types';
 import { useRouter } from 'next/navigation';
 import { TopBar } from './admin-panel/TopBar';
-import { Venue, AgentStatus } from '@covia/covia-sdk';
-import { useStore } from 'zustand';
-import { useVenue } from '@/hooks/use-venue';
+import { AgentStatus } from '@covia/covia-sdk';
+import { useAuthenticatedVenue } from '@/hooks/use-authenticated-venue';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -33,11 +32,7 @@ const AgentExplorer = (props: any) => {
   const [messageText, setMessageText] = useState("");
   const router = useRouter();
 
-  const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
-  const venue = useMemo(() => {
-    if (!venueObj) return null;
-    return new Venue({ baseUrl: venueObj?.baseUrl, venueId: venueObj?.venueId, name: venueObj?.metadata?.name });
-  }, [venueObj]);
+  const venue = useAuthenticatedVenue();
 
   // Resizing State
   const [leftWidth, setLeftWidth] = useState(300);

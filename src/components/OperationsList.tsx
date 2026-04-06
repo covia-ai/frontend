@@ -8,9 +8,10 @@ import { useSearchParams } from 'next/navigation'
 
 import { useEffect, useState } from "react";
 
-import { Asset, Operation, Venue } from "@covia/covia-sdk";
+import { Asset, Operation, Venue, BearerAuth } from "@covia/covia-sdk";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
+import { useAuthStore } from "@/hooks/use-auth";
 import { Spinner } from '@/components/ui/shadcn-io/spinner';
 import { AssetCard } from "./AssetCard";
 import { PaginationHeader } from "./PaginationHeader";
@@ -36,6 +37,7 @@ export function OperationsList() {
 
   const { venues } = useVenues();
   const venueObj = useStore(useVenue, (x) => x.currentVenue);
+  const authData = useAuthStore((x) => x.auth);
 
   const nextPage = (page: number) => {
     setCurrentPage(page)
@@ -63,7 +65,7 @@ export function OperationsList() {
   }
   
   useEffect(() => {
-     const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name})
+     const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: authData ? new BearerAuth(authData.token) : undefined})
      function fetchAssets() {
         setAssetsMetadata([]);
           try {

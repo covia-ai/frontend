@@ -1,17 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { Venue } from "@covia/covia-sdk";
-import { useStore } from "zustand";
-import { useVenue } from "@/hooks/use-venue";
 import { Dialog, DialogContent, DialogHeader, DialogTrigger } from "./ui/dialog";
 import { ScrollArea, ScrollBar } from "./ui/scroll-area";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Copy, Check } from "lucide-react";
+import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 
 export const XmlViewer = (props: { assetId: string }) => {
-  const venueObj = useStore(useVenue, (x) => x.currentVenue);
-  const venue = new Venue({ baseUrl: venueObj?.baseUrl, venueId: venueObj?.venueId, name: venueObj?.metadata.name });
+  const venue = useAuthenticatedVenue();
 
   const [renderData, setRenderData] = useState("");
   const [copied, setCopied] = useState(false);
@@ -27,7 +24,8 @@ export const XmlViewer = (props: { assetId: string }) => {
   };
 
   useEffect(() => {
-    venue.getContent(props.assetId).then((response) => {
+    if (!venue) return;
+    venue.assets.getContent(props.assetId).then((response) => {
       const reader = response?.getReader();
       const chunks: Uint8Array[] = [];
       const read = (): void => {

@@ -5,7 +5,7 @@ import { ContentLayout } from "./admin-panel/content-layout";
 import { Bot, Clock, Loader2, SquareChevronRight } from "lucide-react";
 import { Card } from "./ui/card";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { TopBar } from "./admin-panel/TopBar";
 import { AgentListItem } from "@/config/types";
 import { Input } from "./ui/input";
@@ -14,9 +14,8 @@ import { SeperatorWithText } from "@/components/SeperatorWithText";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
-import { Venue, AgentStatus } from "@covia/covia-sdk";
-import { useStore } from "zustand";
-import { useVenue } from "@/hooks/use-venue";
+import { AgentStatus } from "@covia/covia-sdk";
+import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { toast } from "sonner";
 
 export function AgentList() {
@@ -24,11 +23,7 @@ export function AgentList() {
   const [agentData, setAgentData] = useState<AgentListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const compact = true;
-  const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
-  const venue = useMemo(() => {
-    if (!venueObj) return null;
-    return new Venue({baseUrl: venueObj?.baseUrl, venueId: venueObj?.venueId, name: venueObj?.metadata?.name});
-  }, [venueObj]);
+  const venue = useAuthenticatedVenue();
 
   useEffect(() => {
     if (!venue) return;
