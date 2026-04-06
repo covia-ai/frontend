@@ -2,7 +2,8 @@
 'use client'
 
 import { useEffect, useState } from "react";
-import { Asset, JobMetadata, RunStatus, Venue, isJobFinished,Job,BearerAuth } from "@covia/covia-sdk";
+import { Asset, JobMetadata, RunStatus, Venue, isJobFinished,Job } from "@covia/covia-sdk";
+import { createAuthProvider } from "@/lib/auth-provider";
 import { Check, CircleX, Clock, Copy, FileInput, FileOutput, Hash, MessageSquare, RotateCcw, Send, Settings, Timer, Trash2, X } from "lucide-react";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { useStore } from "zustand";
@@ -47,7 +48,7 @@ export const ExecutionViewer = (props: any) => {
 
     useEffect(() => {
     
-      const authOption = authData ? new BearerAuth(authData.token) : undefined;
+      const authOption = createAuthProvider(authData);
       if(props.venueId != venueObj?.venueId) {
         const venue = venues.find(v => v.venueId === props.venueId);
         if (venue) {

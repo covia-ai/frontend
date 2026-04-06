@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 import { useEffect, useMemo, useState } from "react";
-import {  Venue, Asset, BearerAuth, getParsedAssetId } from "@covia/covia-sdk";
+import {  Venue, Asset, getParsedAssetId } from "@covia/covia-sdk";
+import { createAuthProvider } from "@/lib/auth-provider";
 import { formatLabel } from "@/lib/utils";
 import { ErrorDisplay } from "./ErrorDisplay";
 import { useRouter } from "next/navigation";
@@ -99,7 +100,7 @@ export const OperationViewer = (props: any) => {
   const pathname = usePathname();
 
    useEffect(() => {
-      const authOption = authData ? new BearerAuth(authData.token) : undefined;
+      const authOption = createAuthProvider(authData);
       if(props.venueId != venueObj?.venueId) {
         const venue = venues.find(v => v.venueId === props.venueId);
         if (venue) {

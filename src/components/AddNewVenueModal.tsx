@@ -8,7 +8,8 @@ import {
 import { useState } from "react"
 import { useVenues } from "@/hooks/use-venues";
 import { Iconbutton } from "./Iconbutton";
-import { Venue, BearerAuth } from "@covia/covia-sdk";
+import { Venue } from "@covia/covia-sdk";
+import { createAuthProvider } from "@/lib/auth-provider";
 import { toast } from "sonner";
 import { useAuthStore } from "@/hooks/use-auth";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
@@ -41,7 +42,7 @@ export const AddNewVenueModal = (props:any) => {
         
     }))
     if(!venueExist) {
-      Venue.connect(processVenueDidOrUrl, authData ? new BearerAuth(authData.token) : undefined).then((venue)=> {
+      Venue.connect(processVenueDidOrUrl, createAuthProvider(authData)).then((venue)=> {
         addVenue(venue)
       })
     }

@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from "react";
-import { Asset, Venue, BearerAuth } from "@covia/covia-sdk";
+import { Asset, Venue } from "@covia/covia-sdk";
+import { createAuthProvider } from "@/lib/auth-provider";
 import Link from "next/link";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
@@ -25,7 +26,7 @@ export function AssetViewer(props: AssetViewerProps) {
   const [venueName, setVenueName] = useState("")
 
   useEffect(() => {
-    const authOption = authData ? new BearerAuth(authData.token) : undefined;
+    const authOption = createAuthProvider(authData);
     if(props.venueId != venueObj?.venueId) {
         const venue = venues.find(v => v.venueId === props.venueId);
         if (venue) {

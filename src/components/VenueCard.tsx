@@ -1,7 +1,8 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
-import { Venue, BearerAuth } from "@covia/covia-sdk";
+import { Venue } from "@covia/covia-sdk";
+import { createAuthProvider } from "@/lib/auth-provider";
 import { useRouter } from 'next/navigation';
 import { useVenues } from "@/hooks/use-venues";
 import { useAuthStore } from "@/hooks/use-auth";
@@ -19,7 +20,7 @@ export function VenueCard({ venue, compact }: VenueCardProps) {
   const authData = useAuthStore((x) => x.auth);
 
   if(!(venue instanceof Venue))
-    venue = new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name, auth: authData ? new BearerAuth(authData.token) : undefined})
+    venue = new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name, auth: createAuthProvider(authData)})
   const handleCardClick = () => {
     const encodedUrl = "/venues/"+encodeURIComponent(venue.venueId);
     router.push(encodedUrl);

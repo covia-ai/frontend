@@ -8,7 +8,8 @@ import { useSearchParams } from 'next/navigation'
 
 import { useEffect, useState } from "react";
 
-import { Asset, DataAsset, Operation, Venue, BearerAuth } from "@covia/covia-sdk";
+import { Asset, DataAsset, Operation, Venue } from "@covia/covia-sdk";
+import { createAuthProvider } from "@/lib/auth-provider";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { useAuthStore } from "@/hooks/use-auth";
@@ -65,7 +66,7 @@ export function AssetList() {
   }
   
   useEffect(() => {
-     const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: authData ? new BearerAuth(authData.token) : undefined})
+     const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: createAuthProvider(authData)})
      function fetchAssets() {
         setAssetsMetadata([]);
           try {
@@ -102,7 +103,7 @@ export function AssetList() {
   }, [assetsMetadata])
 
   function handleDataFromChild(status: boolean) {
-    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: authData ? new BearerAuth(authData.token) : undefined})
+    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: createAuthProvider(authData)})
     setAssetsMetadata([]);
     venue.listAssets().then((assetList) => {
       assetList.items.forEach((assetId: string) => {

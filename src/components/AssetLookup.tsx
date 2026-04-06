@@ -3,7 +3,8 @@
 import { Building, Building2, Check, ChevronDown, EllipsisVertical } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTrigger } from "./ui/dialog";
 import { useEffect, useState } from "react";
-import { Asset, Venue, BearerAuth, getAssetIdFromVenueId } from "@covia/covia-sdk";
+import { Asset, Venue, getAssetIdFromVenueId } from "@covia/covia-sdk";
+import { createAuthProvider } from "@/lib/auth-provider";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useAuthStore } from "@/hooks/use-auth";
 import { ScrollArea } from "./ui/scroll-area";
@@ -66,7 +67,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}) => {
   },[filterValue, assetsMetadata])
 
   const handleVenueSelect = (venue: Venue) => {
-    const authOption = authData ? new BearerAuth(authData.token) : undefined;
+    const authOption = createAuthProvider(authData);
     setSelectedVenue(new Venue({baseUrl: venue.baseUrl, venueId: venue.venueId, name:venue.metadata.name, auth: authOption}));
   };
   return (

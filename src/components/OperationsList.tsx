@@ -8,7 +8,8 @@ import { useSearchParams } from 'next/navigation'
 
 import { useEffect, useState } from "react";
 
-import { Asset, Operation, Venue, BearerAuth } from "@covia/covia-sdk";
+import { Asset, Operation, Venue } from "@covia/covia-sdk";
+import { createAuthProvider } from "@/lib/auth-provider";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { useAuthStore } from "@/hooks/use-auth";
@@ -65,7 +66,7 @@ export function OperationsList() {
   }
   
   useEffect(() => {
-     const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: authData ? new BearerAuth(authData.token) : undefined})
+     const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: createAuthProvider(authData)})
      function fetchAssets() {
         setAssetsMetadata([]);
           try {

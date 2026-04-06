@@ -2,10 +2,7 @@
 import { SignInButton } from "@/components/sign-in-button"
 import { useAuthStore } from "@/hooks/use-auth"
 import { useRouter } from "next/navigation"
-import {
-  Avatar,
-  AvatarImage,
-} from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 
 export default function SignUp() {
   const auth = useAuthStore((x) => x.auth);
@@ -22,7 +19,7 @@ export default function SignUp() {
 
               </h3>
               <p className="text-xl text-muted-foreground text-center mt-8 mb-8 dark:bg-background">
-                Welcome back to Covia app! Log in with Google or Github to continue to your account.
+                Welcome back to Covia app! Log in with Google or Github, or continue with a device key.
               </p>
 
               <SignInButton/>
@@ -46,6 +43,9 @@ export default function SignUp() {
                 You are logged in as  {" "}
                  <div className="truncate max-w-[300px]">{auth.did}</div>
             </h2>
+            <Badge variant="outline" className="mt-4">
+              {auth.type === "keypair" ? "Device Key" : "OAuth"}
+            </Badge>
 
         </div>
         <div className="hidden lg:block  w-1/2 flex flex-col items-center justify-center bg-slate-200 h-screen">

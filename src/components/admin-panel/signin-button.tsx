@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LogInIcon } from "lucide-react";
+import { LogInIcon, Copy, Check } from "lucide-react";
 import {
   Avatar,
   AvatarImage,
@@ -27,8 +27,15 @@ export function SignInButton(props: any) {
   const logout = useAuthStore((x) => x.logout);
   const router = useRouter();
   const [openKeyboadShortcut, setOpenKeyboardShortcut] = useState(false);
+  const [copied, setCopied] = useState(false);
   const closeDialog = () => {
     setOpenKeyboardShortcut(false);
+  };
+  const copyDid = () => {
+    if (!auth) return;
+    navigator.clipboard.writeText(auth.did);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   if (!auth) {
@@ -64,6 +71,11 @@ export function SignInButton(props: any) {
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-fit mr-8">
             <DropdownMenuLabel className="truncate max-w-[200px]">{auth.did}</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={copyDid} className="items-start text-center dark:hover:bg-primary-light">
+              {copied ? <Check size={14} className="mr-1" /> : <Copy size={14} className="mr-1" />}
+              {copied ? "Copied!" : "Copy DID"}
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setOpenKeyboardShortcut(true)} className="items-start text-center dark:hover:bg-primary-light">
               Keyboard Shortcuts

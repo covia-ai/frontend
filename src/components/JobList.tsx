@@ -13,7 +13,8 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components
 import { useEffect, useState } from "react";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import { Job, JobMetadata, RunStatus, Venue, BearerAuth } from "@covia/covia-sdk";
+import { Job, JobMetadata, RunStatus, Venue } from "@covia/covia-sdk";
+import { createAuthProvider } from "@/lib/auth-provider";
 import { colourForStatus, getExecutionTime } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { PaginationHeader } from "@/components/PaginationHeader";
@@ -93,7 +94,7 @@ export function JobList() {
   )
 
   useEffect(() => {
-    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, auth: authData ? new BearerAuth(authData.token) : undefined});
+    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, auth: createAuthProvider(authData)});
     
     venue.jobs.list().then((jobs) => {
       setTotalItems(jobs.length)
