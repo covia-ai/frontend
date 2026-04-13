@@ -6,20 +6,27 @@ import { Button } from "@/components/ui/button"
 import { gtmEvent } from "@/lib/utils";
 import { generateKeyPair, privateKeyToHex, KeyPairAuth } from "@covia/covia-sdk";
 import { useAuthStore } from "@/hooks/use-auth";
+import { useVenue } from "@/hooks/use-venue";
+import { useVenues } from "@/hooks/use-venues";
 import { useRouter } from "next/navigation";
-
-const VENUE_URL = process.env.NEXT_PUBLIC_DEFAULT_VENUE_URL || "";
 
 export const SignInButton = () => {
     const loginWithKeypair = useAuthStore((x) => x.loginWithKeypair);
     const getDeviceKeyHex = useAuthStore((x) => x.getDeviceKeyHex);
     const setDeviceKeyHex = useAuthStore((x) => x.setDeviceKeyHex);
+    const currentVenue = useVenue((x) => x.currentVenue);
+    const venues = useVenues((x) => x.venues);
     const router = useRouter();
 
     const handleLogin = (providerName: string) => {
+      const venueUrl = currentVenue?.baseUrl || venues[0]?.baseUrl;
+      if (!venueUrl) {
+        console.error("No venue available for OAuth login");
+        return;
+      }
       gtmEvent.buttonClick('Sign Up', providerName);
       const redirectUri = `${window.location.origin}/auth/callback`;
-      window.location.href = `${VENUE_URL}/auth/${providerName}?redirect_uri=${encodeURIComponent(redirectUri)}`;
+      window.location.href = `${venueUrl}/auth/${providerName}?redirect_uri=${encodeURIComponent(redirectUri)}`;
     };
 
     const handleKeypairLogin = () => {
