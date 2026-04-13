@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@covia/covia-sdk':
         specifier: github:covia-ai/covia-sdk
-        version: https://codeload.github.com/covia-ai/covia-sdk/tar.gz/790d2d83e73ddcc1dd4fc6a8ec8cf9492cd57356
+        version: https://codeload.github.com/covia-ai/covia-sdk/tar.gz/a953be299ee0bea1bf4d9a02c9e92f8f2e77fe41
       '@cyntler/react-doc-viewer':
         specifier: ^1.17.1
         version: 1.17.1(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -457,8 +457,8 @@ packages:
   '@codemirror/view@6.39.16':
     resolution: {integrity: sha512-m6S22fFpKtOWhq8HuhzsI1WzUP/hB9THbDj0Tl5KX4gbO6Y91hwBl7Yky33NdvB6IffuRFiBxf1R8kJMyXmA4Q==}
 
-  '@covia/covia-sdk@https://codeload.github.com/covia-ai/covia-sdk/tar.gz/790d2d83e73ddcc1dd4fc6a8ec8cf9492cd57356':
-    resolution: {tarball: https://codeload.github.com/covia-ai/covia-sdk/tar.gz/790d2d83e73ddcc1dd4fc6a8ec8cf9492cd57356}
+  '@covia/covia-sdk@https://codeload.github.com/covia-ai/covia-sdk/tar.gz/a953be299ee0bea1bf4d9a02c9e92f8f2e77fe41':
+    resolution: {tarball: https://codeload.github.com/covia-ai/covia-sdk/tar.gz/a953be299ee0bea1bf4d9a02c9e92f8f2e77fe41}
     version: 1.2.0
     engines: {node: '>=18'}
 
@@ -5048,7 +5048,7 @@ snapshots:
       style-mod: 4.1.3
       w3c-keyname: 2.2.8
 
-  '@covia/covia-sdk@https://codeload.github.com/covia-ai/covia-sdk/tar.gz/790d2d83e73ddcc1dd4fc6a8ec8cf9492cd57356':
+  '@covia/covia-sdk@https://codeload.github.com/covia-ai/covia-sdk/tar.gz/a953be299ee0bea1bf4d9a02c9e92f8f2e77fe41':
     dependencies:
       '@noble/ed25519': 2.3.0
       '@noble/hashes': 1.8.0
