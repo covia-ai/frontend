@@ -30,6 +30,8 @@ const AgentExplorer = (props: any) => {
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [messageText, setMessageText] = useState("");
+  const [lastReply, setLastReply] = useState<any>(null);
+  const [sending, setSending] = useState(false);
   const router = useRouter();
 
   const venue = useAuthenticatedVenue();
@@ -38,21 +40,30 @@ const AgentExplorer = (props: any) => {
   const [leftWidth, setLeftWidth] = useState(300);
   const isResizingLeft = useRef(false);
 
-  // Load agent list
+  const refreshAgentList = () => {
+    if (!venue) return Promise.resolve();
+    return venue.agents.list(true).then((result) => {
+      setAgentList(result.agents || []);
+    }).catch(() => {});
+  };
+
+  const refreshAgentDetail = () => {
+    if (!venue || !selectedAgentId) return Promise.resolve();
+    return venue.agents.query(selectedAgentId).then((result) => {
+      setSelectedAgentDetail(result as Agent);
+    }).catch(() => {});
+  };
+
+  // Initial load of agent list
   useEffect(() => {
     if (!venue) return;
     setLoading(true);
-    venue.agents.list(true).then((result) => {
-      setAgentList(result.agents || []);
-    }).catch(() => {
-      toast("Unable to load agents");
-    }).finally(() => {
-      setLoading(false);
-    });
+    refreshAgentList().finally(() => setLoading(false));
   }, [venue]);
 
-  // Load agent detail when selected
+  // Load agent detail when selection changes
   useEffect(() => {
+    setLastReply(null);
     if (!venue || !selectedAgentId) {
       setSelectedAgentDetail(null);
       return;
@@ -68,6 +79,16 @@ const AgentExplorer = (props: any) => {
     });
   }, [venue, selectedAgentId]);
 
+  // Poll list + detail every 3s to catch async state changes
+  useEffect(() => {
+    if (!venue) return;
+    const interval = setInterval(() => {
+      refreshAgentList();
+      refreshAgentDetail();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [venue, selectedAgentId]);
+
   // Auto-select first agent
   useEffect(() => {
     if (agentList.length > 0 && !selectedAgentId) {
@@ -75,18 +96,12 @@ const AgentExplorer = (props: any) => {
     }
   }, [agentList, selectedAgentId]);
 
-  const refreshAgentDetail = () => {
-    if (!venue || !selectedAgentId) return;
-    venue.agents.query(selectedAgentId).then((result) => {
-      setSelectedAgentDetail(result as Agent);
-    }).catch(() => {});
-  };
-
   const handleSuspend = () => {
     if (!venue || !selectedAgentId) return;
     venue.agents.suspend(selectedAgentId).then(() => {
       toast("Agent suspended");
       refreshAgentDetail();
+      refreshAgentList();
     }).catch(() => {
       toast("Unable to suspend agent");
     });
@@ -97,6 +112,7 @@ const AgentExplorer = (props: any) => {
     venue.agents.resume(selectedAgentId).then(() => {
       toast("Agent resumed");
       refreshAgentDetail();
+      refreshAgentList();
     }).catch(() => {
       toast("Unable to resume agent");
     });
@@ -108,10 +124,7 @@ const AgentExplorer = (props: any) => {
       toast("Agent deleted");
       setSelectedAgentId(null);
       setSelectedAgentDetail(null);
-      // Refresh list
-      venue.agents.list(true).then((result) => {
-        setAgentList(result.agents || []);
-      });
+      refreshAgentList();
     }).catch(() => {
       toast("Unable to delete agent");
     });
@@ -119,18 +132,28 @@ const AgentExplorer = (props: any) => {
 
   const handleSendMessage = () => {
     if (!venue || !selectedAgentId || !messageText.trim()) return;
-    let message: any;
+    let input: any;
     try {
-      message = JSON.parse(messageText);
+      input = JSON.parse(messageText);
     } catch {
-      message = messageText;
+      input = messageText;
     }
-    venue.agents.message(selectedAgentId, message).then((result) => {
-      toast(result.delivered ? "Message delivered" : "Message queued");
+    setSending(true);
+    setLastReply(null);
+    venue.agents.request(selectedAgentId, input, true).then((result) => {
+      if (result.status === "COMPLETE") {
+        setLastReply(result.output ?? "(empty output)");
+      } else {
+        setLastReply({ status: result.status, taskId: result.id });
+        toast(`Task ${result.status}`);
+      }
       setMessageText("");
       refreshAgentDetail();
+      refreshAgentList();
     }).catch(() => {
-      toast("Unable to send message");
+      toast("Unable to send request");
+    }).finally(() => {
+      setSending(false);
     });
   };
 
@@ -376,20 +399,34 @@ const AgentExplorer = (props: any) => {
                   <div className="bg-muted rounded-lg p-3 border border-border">
                     <div className="flex items-center gap-2 mb-2">
                       <Send size={18} className="text-primary" />
-                      <span className="font-semibold text-sm text-foreground">Send Message</span>
+                      <span className="font-semibold text-sm text-foreground">Send Request</span>
                     </div>
                     <div className="flex flex-row gap-2 ml-6">
                       <Input
-                        placeholder="Message (text or JSON)"
+                        placeholder="Request input (text or JSON)"
                         value={messageText}
                         onChange={(e) => setMessageText(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage(); }}
                         className="text-sm"
+                        disabled={sending}
                       />
-                      <Button size="sm" onClick={handleSendMessage} disabled={!messageText.trim()}>
-                        <Send size={14} />
+                      <Button size="sm" onClick={handleSendMessage} disabled={sending || !messageText.trim()}>
+                        {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
                       </Button>
                     </div>
+                    {(sending || lastReply !== null) && (
+                      <div className="mt-3 ml-6">
+                        <div className="text-xs font-semibold text-muted-foreground mb-1">Reply</div>
+                        {sending && (
+                          <div className="text-xs text-muted-foreground italic">Waiting for {selectedAgentDetail.agentId}…</div>
+                        )}
+                        {!sending && lastReply !== null && (
+                          <pre className="text-xs text-card-foreground font-mono bg-background rounded px-2 py-2 overflow-x-auto whitespace-pre-wrap">
+                            {typeof lastReply === 'string' ? lastReply : JSON.stringify(lastReply, null, 2)}
+                          </pre>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
