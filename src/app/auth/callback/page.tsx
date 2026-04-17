@@ -3,23 +3,26 @@
 import { Suspense, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/hooks/use-auth";
+import { useVenue } from "@/hooks/use-venue";
 
 function AuthCallbackInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const loginWithToken = useAuthStore((x) => x.loginWithToken);
+  const currentVenue = useVenue((x) => x.currentVenue);
 
   useEffect(() => {
     const token = searchParams.get("token");
     const did = searchParams.get("did");
 
     if (token && did) {
-      loginWithToken(token, did);
+      const venueId = currentVenue?.venueId || "_unknown";
+      loginWithToken(venueId, token, did);
       router.replace("/operations");
     } else {
       router.replace("/signUp");
     }
-  }, [searchParams, loginWithToken, router]);
+  }, [searchParams, loginWithToken, router, currentVenue]);
 
   return (
     <div className="flex items-center justify-center min-h-screen">

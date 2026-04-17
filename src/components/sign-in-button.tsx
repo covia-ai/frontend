@@ -30,6 +30,11 @@ export const SignInButton = () => {
     };
 
     const handleKeypairLogin = () => {
+      const venueId = currentVenue?.venueId || venues[0]?.venueId;
+      if (!venueId) {
+        console.error("No venue available for keypair login");
+        return;
+      }
       gtmEvent.buttonClick('Sign Up', 'keypair');
       let hex = getDeviceKeyHex();
       if (!hex) {
@@ -38,7 +43,7 @@ export const SignInButton = () => {
         setDeviceKeyHex(hex);
       }
       const auth = KeyPairAuth.fromHex(hex);
-      loginWithKeypair(hex, auth.getDID());
+      loginWithKeypair(venueId, hex, auth.getDID());
       router.push("/operations");
     };
 

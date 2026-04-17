@@ -17,29 +17,51 @@ export type KeyPairVenueAuth = {
 
 export type VenueAuth = BearerVenueAuth | KeyPairVenueAuth;
 
+function deriveAuth(authMap: Record<string, VenueAuth>, activeVenueId: string | null): VenueAuth | null {
+  if (!activeVenueId) return null;
+  return authMap[activeVenueId] ?? null;
+}
+
 type AuthStore = {
+  authMap: Record<string, VenueAuth>;
+  activeVenueId: string | null;
+  /** Derived from authMap + activeVenueId. Use this for the current venue's auth. */
   auth: VenueAuth | null;
   deviceKeyHex: string | null;
-  loginWithToken: (token: string, did: string) => void;
-  loginWithKeypair: (privateKeyHex: string, did: string) => void;
+  loginWithToken: (venueId: string, token: string, did: string) => void;
+  loginWithKeypair: (venueId: string, privateKeyHex: string, did: string) => void;
   getDeviceKeyHex: () => string | null;
   setDeviceKeyHex: (hex: string) => void;
+  setActiveVenue: (venueId: string) => void;
   logout: () => void;
   getAuth: () => VenueAuth | null;
+  getAuthForVenue: (venueId: string) => VenueAuth | null;
 };
 
 export const useAuthStore = create(
   persist<AuthStore>(
     (set, get) => ({
+      authMap: {},
+      activeVenueId: null,
       auth: null,
       deviceKeyHex: null,
 
-      loginWithToken: (token: string, did: string) => {
-        set({ auth: { type: "bearer", token, did } });
+      loginWithToken: (venueId: string, token: string, did: string) => {
+        const newMap = { ...get().authMap, [venueId]: { type: "bearer" as const, token, did } };
+        set({
+          authMap: newMap,
+          activeVenueId: venueId,
+          auth: newMap[venueId],
+        });
       },
 
-      loginWithKeypair: (privateKeyHex: string, did: string) => {
-        set({ auth: { type: "keypair", privateKeyHex, did } });
+      loginWithKeypair: (venueId: string, privateKeyHex: string, did: string) => {
+        const newMap = { ...get().authMap, [venueId]: { type: "keypair" as const, privateKeyHex, did } };
+        set({
+          authMap: newMap,
+          activeVenueId: venueId,
+          auth: newMap[venueId],
+        });
       },
 
       getDeviceKeyHex: () => {
@@ -50,12 +72,28 @@ export const useAuthStore = create(
         set({ deviceKeyHex: hex });
       },
 
+      setActiveVenue: (venueId: string) => {
+        set({
+          activeVenueId: venueId,
+          auth: deriveAuth(get().authMap, venueId),
+        });
+      },
+
       logout: () => {
-        set({ auth: null });
+        const { activeVenueId, authMap } = get();
+        if (activeVenueId && authMap[activeVenueId]) {
+          const { [activeVenueId]: _, ...rest } = authMap;
+          set({ authMap: rest, auth: null });
+        }
       },
 
       getAuth: () => {
-        return get().auth;
+        const { activeVenueId, authMap } = get();
+        return deriveAuth(authMap, activeVenueId);
+      },
+
+      getAuthForVenue: (venueId: string) => {
+        return get().authMap[venueId] ?? null;
       },
     }),
     {
@@ -63,10 +101,22 @@ export const useAuthStore = create(
       storage: createJSONStorage(() => localStorage),
       merge: (persisted, current) => {
         const state = { ...current, ...(persisted as Partial<AuthStore>) };
-        // Backward compat: old format { token, did } has no type field
-        if (state.auth && !("type" in state.auth)) {
-          state.auth = { type: "bearer", ...(state.auth as any) };
+        // Backward compat: migrate old single-auth format to authMap
+        const old = persisted as any;
+        if (old?.auth && !old?.authMap) {
+          let auth = old.auth;
+          // Old format without type field
+          if (!("type" in auth)) {
+            auth = { type: "bearer", ...auth };
+          }
+          const venueId = state.activeVenueId || "_migrated";
+          state.authMap = { [venueId]: auth };
         }
+        if (!state.authMap) {
+          state.authMap = {};
+        }
+        // Derive auth from restored state
+        state.auth = deriveAuth(state.authMap, state.activeVenueId);
         return state;
       },
     }

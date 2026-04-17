@@ -9,15 +9,17 @@ import { createAuthProvider } from "@/lib/auth-provider";
 
 export function useAuthenticatedVenue(): Venue | null {
   const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
-  const auth = useAuthStore((x) => x.auth);
+  const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
+  const authMap = useAuthStore((x) => x.authMap);
 
   return useMemo(() => {
     if (!venueObj) return null;
+    const auth = getAuthForVenue(venueObj.venueId);
     return new Venue({
       baseUrl: venueObj?.baseUrl,
       venueId: venueObj?.venueId,
       name: venueObj?.metadata?.name,
       auth: createAuthProvider(auth),
     });
-  }, [venueObj, auth]);
+  }, [venueObj, authMap, getAuthForVenue]);
 }

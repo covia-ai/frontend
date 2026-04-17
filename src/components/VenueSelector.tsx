@@ -12,12 +12,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { useVenue } from "@/hooks/use-venue";
 import { useVenues } from "@/hooks/use-venues";
+import { useAuthStore } from "@/hooks/use-auth";
 import { Venue } from "@covia/covia-sdk";
 
 export function VenueSelector() {
   const pathname = usePathname();
   const  venues = useVenues().getVenue();
   const { currentVenue, setCurrentVenue } = useVenue();
+  const setActiveVenue = useAuthStore((x) => x.setActiveVenue);
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
 ;
 
@@ -26,6 +28,7 @@ export function VenueSelector() {
     // If we already have a current venue, use it
     if (currentVenue) {
       setSelectedVenue(currentVenue);
+      setActiveVenue(currentVenue.venueId);
       return;
     }
 
@@ -37,6 +40,7 @@ export function VenueSelector() {
       if (venue) {
         setCurrentVenue(venue);
         setSelectedVenue(venue);
+        setActiveVenue(venue.venueId);
         return;
       }
     }
@@ -46,12 +50,14 @@ export function VenueSelector() {
       const defaultVenue = venues[0]
       setCurrentVenue(defaultVenue);
       setSelectedVenue(defaultVenue);
+      setActiveVenue(defaultVenue.venueId);
     }
-  }, [pathname, venues, currentVenue, setCurrentVenue]);
+  }, [pathname, venues, currentVenue, setCurrentVenue, setActiveVenue]);
 
   const handleVenueSelect = (venue: Venue) => {
     setCurrentVenue(venue);
     setSelectedVenue(venue);
+    setActiveVenue(venue.venueId);
     window.location.reload();
 
     
