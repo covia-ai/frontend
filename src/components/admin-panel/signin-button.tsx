@@ -176,7 +176,7 @@ export function SignInButton(props: any) {
                     <Plus className="h-4 w-4 shrink-0" />
                     <div className="text-left">
                       <p className="font-medium">Generate a new key</p>
-                      <p className="text-xs text-muted-foreground font-normal">We'll create a new device key for you</p>
+                      <p className="text-xs text-muted-foreground font-normal">We&apos;ll create a new device key for you</p>
                     </div>
                   </Button>
                   <Button variant="outline" className="justify-start gap-2 h-auto py-3" onClick={handleProvideKey}>
