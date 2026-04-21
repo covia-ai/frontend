@@ -37,7 +37,7 @@ export function SecretList() {
     venue.secrets
       .list()
       .then((result) => {
-        setSecrets(result || []);
+        setSecrets(Array.isArray(result) ? result : []);
       })
       .catch(() => {
         toast("Unable to load secrets");
