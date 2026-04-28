@@ -202,7 +202,7 @@ const BreadcrumbView = () => {
                 </div>
               </div>
               {item.children && item.children.length > 0 && (
-                <ChevronRight className="text-gray-400 flex-shrink-0 mt-1" size={20} />
+                <ChevronRight className="text-muted-foreground flex-shrink-0 mt-1" size={20} />
               )}
             </div>
           </div>
@@ -235,7 +235,7 @@ export default function AgentTree2() {
             onClick={() => setActiveView('tree')}
             className={`p-2 rounded-lg font-medium transition-all ${
               activeView === 'tree'
-                ? 'bg-blue-600 text-white shadow-md'
+                ? 'bg-primary text-primary-foreground shadow-md'
                 : 'bg-card text-foreground border border-border hover:border-primary'
             }`}
           >
@@ -245,7 +245,7 @@ export default function AgentTree2() {
             onClick={() => setActiveView('accordion')}
             className={`p-2 rounded-lg font-medium transition-all ${
               activeView === 'accordion'
-                ? 'bg-blue-600 text-white shadow-md'
+                ? 'bg-primary text-primary-foreground shadow-md'
                 : 'bg-card text-foreground border border-border hover:border-primary'
             }`}
           >
@@ -255,7 +255,7 @@ export default function AgentTree2() {
             onClick={() => setActiveView('breadcrumb')}
             className={`p-2 rounded-lg font-medium transition-all ${
               activeView === 'breadcrumb'
-                ? 'bg-blue-600 text-white shadow-md'
+                ? 'bg-primary text-primary-foreground shadow-md'
                 : 'bg-card text-foreground border border-border hover:border-primary'
             }`}
           >

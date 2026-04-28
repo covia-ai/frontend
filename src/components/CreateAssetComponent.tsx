@@ -280,7 +280,7 @@ export const CreateAssetComponent = ({sendDataToParent}) => {
                     </div>
                   </div>
                   <div>
-                    <Label>Keywords <span className="text-xs text-slate-400">(comma seperated)</span></Label>
+                    <Label>Keywords <span className="text-xs text-muted-foreground">(comma seperated)</span></Label>
                     <Input  onChange={e => setKeywords(e.target.value)} placeholder="iris, dataset"></Input>
                   </div>
                   <div className="flex flex-row space-x-2 items-center justify-between">

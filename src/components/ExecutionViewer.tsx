@@ -129,7 +129,7 @@ export const ExecutionViewer = (props: any) => {
                             const id = step?.id || "";
                             return (
                                 <TableRow key={index} >
-                                    <TableCell className="text-secondary-light dark:text-card-foreground">{index}</TableCell>
+                                    <TableCell className="text-muted-foreground">{index}</TableCell>
                                     <TableCell className="text-secondary font-mono underline"><Link href={`/jobs/${id}`}>{id}</Link></TableCell>
                                     <TableCell>
                                         <span className={colourForStatus(status)}>{status}</span>

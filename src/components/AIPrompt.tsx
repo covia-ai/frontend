@@ -8,15 +8,7 @@ import { Loader2 } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { toast } from "sonner";
-
-const KNOWN_LLM_KEYS: Record<string, string> = {
-  OPENAI_API_KEY: "OpenAI",
-  ANTHROPIC_API_KEY: "Anthropic",
-  GOOGLE_API_KEY: "Google Gemini",
-  MISTRAL_API_KEY: "Mistral",
-  GROQ_API_KEY: "Groq",
-  COHERE_API_KEY: "Cohere",
-};
+import { KNOWN_LLM_KEYS } from "@/config/llm-providers";
 
 export const AIPrompt = () => {
   const [prompt, setPrompt] = useState('')
@@ -97,7 +89,7 @@ export const AIPrompt = () => {
     <div data-testid="chat-container" className="flex flex-col items-center justify-center py-10 px-10 ">
         <h3 className="text-center text-4xl  font-thin">
           Do anything on   {" "}
-          <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent dark:text-primary-light bg-clip-text">
+          <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
             the Grid ...
           </span>
         </h3>
@@ -116,7 +108,7 @@ export const AIPrompt = () => {
             role="button"
             data-testid="chat-button"
             variant="default"
-            className="my-4 btn btn-xs mx-0 bg-primary dark:bg-primary-light text-primary-foreground"
+            className="my-4 btn btn-xs mx-0 bg-primary text-primary-foreground"
             disabled={!prompt.trim() || checking}
             onClick={handleMagicWand}
           >

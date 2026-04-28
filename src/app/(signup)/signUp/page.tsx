@@ -18,17 +18,17 @@ export default function SignUp() {
                 Log In {" "}
 
               </h3>
-              <p className="text-xl text-muted-foreground text-center mt-8 mb-8 dark:bg-background">
+              <p className="text-xl text-muted-foreground text-center mt-8 mb-8">
                 Welcome back to Covia app! Log in with Google or Github, or continue with a device key.
               </p>
 
               <SignInButton/>
-              <div className="flex items-center justify-center space-x-2 space-y-2 text-xs text-slate-600">
+              <div className="flex items-center justify-center space-x-2 space-y-2 text-xs text-muted-foreground">
                 By Signing up you are agreeing to Covia terms and conditions
               </div>
 
         </div>
-        <div className="hidden lg:block  w-1/2 flex flex-col items-center justify-center bg-slate-200 h-screen">
+        <div className="hidden lg:block  w-1/2 flex flex-col items-center justify-center bg-muted h-screen">
         </div>
       </div>
     )
@@ -48,7 +48,7 @@ export default function SignUp() {
             </Badge>
 
         </div>
-        <div className="hidden lg:block  w-1/2 flex flex-col items-center justify-center bg-slate-200 h-screen">
+        <div className="hidden lg:block  w-1/2 flex flex-col items-center justify-center bg-muted h-screen">
         </div>
         </div>
   )

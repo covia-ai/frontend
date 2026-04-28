@@ -47,7 +47,7 @@ export const XmlViewer = (props: { assetId: string }) => {
   return (
     <Dialog>
       <DialogTrigger className="text-sm text-secondary dark:text-secondary-light underline">View</DialogTrigger>
-      <DialogContent className="bg-background text-foreground dark:bg-zinc-900 dark:text-zinc-100 max-h-[90vh] w-full max-w-4xl p-4 flex flex-col overflow-hidden border dark:border-zinc-700">
+      <DialogContent className="bg-background text-foreground max-h-[90vh] w-full max-w-4xl p-4 flex flex-col overflow-hidden border border-border">
         <DialogHeader className="text-sm font-medium text-muted-foreground">
           XML Preview
         </DialogHeader>
@@ -74,7 +74,7 @@ export const XmlViewer = (props: { assetId: string }) => {
           <TabsContent value="raw" className="flex-1 min-h-0 relative">
             <button
               onClick={handleCopy}
-              className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors"
+              className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-muted hover:bg-muted/80 transition-colors"
               title={copied ? "Copied!" : "Copy selected or all"}
             >
               {copied ? <Check size={16} /> : <Copy size={16} />}
@@ -83,7 +83,7 @@ export const XmlViewer = (props: { assetId: string }) => {
               ref={rawRef}
               readOnly
               value={renderData}
-              className="w-full h-[450px] p-4 text-sm bg-white dark:bg-zinc-800 rounded-lg resize-none border-none outline-none font-mono"
+              className="w-full h-[450px] p-4 text-sm bg-card rounded-lg resize-none border-none outline-none font-mono"
             />
           </TabsContent>
         </Tabs>

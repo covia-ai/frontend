@@ -94,6 +94,8 @@
   --input-color:oklch(97.3% 0.071 103.193);
   --output-color:oklch(93.2% 0.032 255.585);
   --io-foreground: oklch(0.276 0.0532 270.54);
+  --inputbox_muted_foreground: oklch(0.45 0.03 270);
+  --description_muted_foreground: oklch(0.35 0.03 270);
 }
 
 .dark {
@@ -104,20 +106,20 @@
   --card-foreground:oklch(86.9% 0.022 252.894);
   --popover: oklch(0.20 0 0);
   --popover-foreground: oklch(0.99 0 0);
-  --primary: oklch(0.92 0 0);
-  --primary-foreground: oklch(0.20 0 0);
+  --primary: oklch(0.65 0.15 292.42);  /* lighter purple — retains brand hue */
+  --primary-foreground: oklch(0.98 0.003 247.858);
   --primary-light:oklch(0.5033 0.1829 292.42 / 70%);  /*#6B46C1  */
   --primary-vlight:oklch(50.33% 0.183 292.421 / 0.281);  /*#6B46C1  */
-  --secondary: oklch(0.27 0 0);
+  --secondary: oklch(0.55 0.12 253.92);  /* desaturated blue — retains brand hue */
   --secondary-foreground: oklch(0.99 0 0);
-  --secondary-light:oklch(0.646 0.1423 253.92 / 70.96%); 
-  --secondary-vlight:oklch(64.82% 0.14137 253.415 / 0.342); 
-  --muted: oklch(0.40 0 0);
+  --secondary-light:oklch(0.646 0.1423 253.92 / 70.96%);
+  --secondary-vlight:oklch(64.82% 0.14137 253.415 / 0.342);
+  --muted: oklch(0.27 0 0);
   --muted-foreground: oklch(83.67% 0.00109 12.357);
   --inputbox_muted_foreground: oklch(0.7668 0.0118 269.52);
   --description_muted_foreground: oklch(0.9248 0.0071 268.54);
-  --accent:oklch(70.4% 0.04 256.788);
-  --accent-foreground: oklch(0.99 0 0);
+  --accent: oklch(0.70 0.12 77.54);  /* warm gold — retains brand hue */
+  --accent-foreground: oklch(0.14 0 0);
   --destructive: oklch(0.70 0.19 22.31);
   --border: oklch(1.00 0 0 / 10%);
   --input: oklch(1.00 0 0 / 15%);
@@ -135,7 +137,7 @@
   --sidebar-accent-foreground: oklch(0.99 0 0);
   --sidebar-border: oklch(1.00 0 0 / 10%);
   --sidebar-ring: oklch(0.56 0 0);
-  
+
   --shadow-2xs: 0 1px 3px 0px oklch(0 0 0 / 0.05);
   --shadow-xs: 0 1px 3px 0px oklch(0 0 0 / 0.05);
   --shadow-sm: 0 1px 3px 0px oklch(0 0 0 / 0.10), 0 1px 2px -1px oklch(0 0 0 / 0.10);
@@ -145,9 +147,9 @@
   --shadow-xl: 0 1px 3px 0px oklch(0 0 0 / 0.10), 0 8px 10px -1px oklch(0 0 0 / 0.10);
   --shadow-2xl: 0 1px 3px 0px oklch(0 0 0 / 0.25);
 
-  --input-color:oklch(97.3% 0.071 103.193);
-  --output-color:oklch(93.2% 0.032 255.585);
-  --io-foreground: oklch(0.276 0.0532 270.54);
+  --input-color:oklch(30% 0.04 103.193);
+  --output-color:oklch(25% 0.02 255.585);
+  --io-foreground: oklch(0.90 0.01 270);
 }
 
 

@@ -64,7 +64,7 @@ function TaskNode({ data }) {
     <div className="border-2 border-border bg-card/50 rounded-md h-32 w-54 hover:border-primary ">
       <div className=' w-full flex flex-row items-center justify-center -translate-y-4'>
                  <CustomNodeToolTip  posTop={0} toolTip={data.nodeLabel} position={Position.Top}
-                     handle={<span className="border border-2 border-amber-600 bg-amber-700 dark:bg-slate-600 text-[9px] text-white rounded-md p-1 text-center">{data.nodeLabel}</span>}
+                     handle={<span className="border border-2 border-amber-600 bg-amber-700 text-[9px] text-white rounded-md p-1 text-center">{data.nodeLabel}</span>}
                  />
       </div>
       <div className="flex flex-row items-center justify-between">
@@ -127,8 +127,8 @@ function TaskNode({ data }) {
 
                 >
                   {output.length <20 ? 
-                     (<div className="text-[9px] text-black  dark:text-white  w-[5rem] -translate-x-20 flex flex-row-reverse pr-1 ">{output}</div>) :
-                     (<div className="text-[9px] text-black  dark:text-white  w-[5rem]  -translate-x-20 flex flex-row-reverse pr-1 ">{output.substring(0,18)+".."}</div>)
+                     (<div className="text-[9px] text-foreground w-[5rem] -translate-x-20 flex flex-row-reverse pr-1 ">{output}</div>) :
+                     (<div className="text-[9px] text-foreground w-[5rem]  -translate-x-20 flex flex-row-reverse pr-1 ">{output.substring(0,18)+".."}</div>)
                   }
                 </Handle>
                                 }/>

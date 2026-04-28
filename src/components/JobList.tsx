@@ -170,7 +170,7 @@ export function JobList() {
         <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>
         <Table className="  border border-border rounded-lg shadow-md">
           <TableHeader >
-            <TableRow className="bg-secondary hover:bg-secondary rounded-full text-white ">
+            <TableRow className="bg-secondary hover:bg-secondary rounded-full text-secondary-foreground ">
               <TableCell className="border border-border">Job Id</TableCell>
               <TableCell className="border border-border">Name</TableCell>
               <TableCell className="text-center border border-border">Created Date</TableCell>

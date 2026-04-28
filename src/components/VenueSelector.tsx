@@ -79,7 +79,7 @@ export function VenueSelector() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button aria-label="venue" variant="outline" className="dark:hover:bg-primary-light dark:hover:text-foreground">
+        <Button aria-label="venue" variant="outline" className="hover:bg-primary-vlight hover:text-foreground">
           <Building2 size={14} />
           <span className="hidden md:block lg:block">{selectedVenue.metadata.name}</span>
           <ChevronDown size={14} />
@@ -90,7 +90,7 @@ export function VenueSelector() {
           <DropdownMenuItem
             key={venue.venueId}
             onClick={() => handleVenueSelect(venue)}
-            className="flex items-center justify-between cursor-pointer dark:hover:bg-primary-light dark:hover:text-foreground"
+            className="flex items-center justify-between cursor-pointer hover:bg-primary-vlight hover:text-foreground"
           >
             <div className="flex items-center gap-2">
               <Building2 size={16} />

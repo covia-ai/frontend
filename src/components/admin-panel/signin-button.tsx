@@ -145,7 +145,7 @@ export function SignInButton(props: any) {
         <Button
           onClick={handleSignInClick}
           variant="default"
-          className="justify-center h-8 my-5 text-sm hover:bg-accent hover:text-muted-foreground dark:hover:bg-primary-light dark:hover:text-foreground"
+          className="justify-center h-8 my-5 text-sm hover:bg-primary-vlight hover:text-foreground"
         >
           <LogInIcon />
           <p
@@ -274,16 +274,16 @@ export function SignInButton(props: any) {
           <DropdownMenuContent className="w-fit mr-8">
             <DropdownMenuLabel className="truncate max-w-[200px]">{auth.did}</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={copyDid} className="items-start text-center dark:hover:bg-primary-light">
+            <DropdownMenuItem onClick={copyDid} className="items-start text-center hover:bg-primary-vlight">
               {copied ? <Check size={14} className="mr-1" /> : <Copy size={14} className="mr-1" />}
               {copied ? "Copied!" : "Copy DID"}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setOpenKeyboardShortcut(true)} className="items-start text-center dark:hover:bg-primary-light">
+            <DropdownMenuItem onClick={() => setOpenKeyboardShortcut(true)} className="items-start text-center hover:bg-primary-vlight">
               Keyboard Shortcuts
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="items-start text-center dark:hover:bg-primary-light">
+            <DropdownMenuItem className="items-start text-center hover:bg-primary-vlight">
               <div
                 onClick={() => { logout(); router.push("/"); }}
                 className="text-sm "

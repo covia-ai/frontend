@@ -14,11 +14,12 @@ import { useState } from "react";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from "./ui/checkbox";
+import { LLM_PROVIDERS } from "@/config/llm-providers";
 
 
 export function ChangeLLMProvider(props:any) {
-    const [selectedProvider, setSelectedProvider] = useState('claude-3.5');
-    const [currentProvider, setCurrentProvider] = useState('claude-3.5');
+    const [selectedProvider, setSelectedProvider] = useState('anthropic');
+    const [currentProvider, setCurrentProvider] = useState('anthropic');
 
     return (
       <Dialog >
@@ -29,12 +30,12 @@ export function ChangeLLMProvider(props:any) {
           <DialogHeader>
             <DialogTitle className="text-2xl">Change LLM Provider</DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             {/* Current Provider Alert */}
             <Alert className="bg-yellow-50 border-yellow-200">
               <AlertDescription className="flex flex-row text-yellow-800 text-sm">
-                Currently using: <span className="font-thin">Claude 3.5</span>
+                Currently using: <span className="font-thin">{LLM_PROVIDERS[currentProvider]?.label ?? currentProvider}</span>
               </AlertDescription>
             </Alert>
 
@@ -42,24 +43,14 @@ export function ChangeLLMProvider(props:any) {
             <div className="space-y-3">
               <Label className="font-thin">Select New Provider:</Label>
               <RadioGroup value={selectedProvider} onValueChange={setSelectedProvider}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="claude-3.5" id="claude" />
-                  <Label htmlFor="claude" className="font-normal cursor-pointer">
-                    Claude 3.5 (Current)
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="gemini-pro" id="gemini" />
-                  <Label htmlFor="gemini" className="font-normal cursor-pointer">
-                    Gemini Pro
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="openai-gpt-4" id="openai" />
-                  <Label htmlFor="openai" className="font-normal cursor-pointer">
-                    OpenAI GPT-4
-                  </Label>
-                </div>
+                {Object.entries(LLM_PROVIDERS).map(([id, provider]) => (
+                  <div key={id} className="flex items-center space-x-2">
+                    <RadioGroupItem value={id} id={`llm-${id}`} />
+                    <Label htmlFor={`llm-${id}`} className="font-normal cursor-pointer">
+                      {provider.label}{id === currentProvider ? " (Current)" : ""}
+                    </Label>
+                  </div>
+                ))}
               </RadioGroup>
             </div>
 
@@ -67,7 +58,7 @@ export function ChangeLLMProvider(props:any) {
             <Alert className="bg-yellow-50 border-yellow-200">
               <AlertDescription className="text-yellow-800 text-sm">
                 <span className="font-thin">Note: Next state will use the new provider.</span>
-                
+
               </AlertDescription>
             </Alert>
 
@@ -77,7 +68,7 @@ export function ChangeLLMProvider(props:any) {
             </div>
             {/* Action Buttons */}
             <div className="flex gap-2 pt-2">
-           
+
               <DialogClose>
               <Button
               aria-label="change provider" role="button"

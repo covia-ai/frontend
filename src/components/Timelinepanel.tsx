@@ -96,8 +96,8 @@ const TimelinePanel = (props:any) => {
               <CardContent className="">
                   <div className="flex flex-row space-x-2">
                      <Badge variant="primary" className="bg-muted text-muted-foreground text-xs"> Job {selectedEntry?.jobId}</Badge>
-                     <Badge variant="primary" className="bg-slate-600/50  text-slate-300 text-xs">  {agent?.agent.provider}</Badge>
-                     <Badge variant="primary" className="bg-slate-600/50  text-slate-300 text-xs">  {selectedEntry?.venueId}</Badge>
+                     <Badge variant="primary" className="bg-muted text-muted-foreground text-xs">  {agent?.agent.provider}</Badge>
+                     <Badge variant="primary" className="bg-muted text-muted-foreground text-xs">  {selectedEntry?.venueId}</Badge>
                    </div>
                     <Accordion
                       type="single"

@@ -8,9 +8,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { TopBar } from "./admin-panel/TopBar";
 import { AgentListItem } from "@/config/types";
-import { Input } from "./ui/input";
-import { MagicWandIcon } from "@radix-ui/react-icons";
 import { SeperatorWithText } from "@/components/SeperatorWithText";
+import { AgentTemplates } from "./AgentTemplates";
+import { AgentSearch } from "./AgentSearch";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
@@ -59,33 +59,17 @@ export function AgentList() {
 
    return (<ContentLayout>
      <TopBar/>
-      <div data-testid="chat-container" className="flex flex-col items-center justify-center py-10 px-10"> 
-        <h3 className="text-center text-4xl  font-thin">
-          Locate your  {" "}
-           <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
-              agent ..
-            </span>   
-        </h3>
-        <div className="flex flex-col md:flex-row lg:flex-row items-center justify-center w-full space-x-2 space-y-2 ">
-          <Input
-              placeholder="What is thy bidding, my master"
-              className="bg-card placeholder:text-muted-foreground my-2"
-              aria-label="prompt"
-         />    
-         <Button  aria-label="Run" role="button" data-testid="chat-button" variant="default" className="my-4 btn btn-xs mx-0 bg-primary dark:bg-primary-light text-white"><MagicWandIcon/></Button>
-        </div>
-</div>
+ <AgentTemplates />
  <SeperatorWithText text="or"/>
      <h3 className="text-center text-4xl  font-thin pt-10">
-          Choose an existing  {" "}
+          {agentData.length > 0 ? "Choose an existing" : "Create a new"}  {" "}
           <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
              agent ...
-            </span> 
+            </span>
         </h3>
      {loading && <div className="flex items-center justify-center py-10"><Loader2 className="animate-spin text-primary" size={32} /></div>}
-     {!loading && agentData.length == 0 &&  <div className="flex flex-col items-center justify-center w-full h-100 space-y-2">
-            <Bot size={64} className="text-primary"></Bot>
-            <div className="text-primary text-lg">Get Started with Agents</div>
+     {!loading && agentData.length == 0 &&  <div className="flex flex-col items-center justify-center w-full space-y-2 pt-4">
+            <Bot size={48} className="text-primary"></Bot>
             <AddNewAgent></AddNewAgent>
       </div>}
       <div className="flex flex-row-reverse w-full">
