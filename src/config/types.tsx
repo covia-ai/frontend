@@ -5,11 +5,11 @@ export type TimelineColor = 'primary' | 'secondary' | 'muted' | 'accent' | 'dest
 export interface Agent {
    agentId: string;
    status: string;
-   state?: Record<string, any>;
+   tasks?: number;
+   timelineLength?: number;
    config?: Record<string, any>;
-   tasks?: any[];
-   pending?: any[];
-   inbox?: any[];
+   stateConfig?: Record<string, any>;
+   state?: Record<string, any>;
    timeline?: any[];
    [key: string]: any;
 }
@@ -18,6 +18,22 @@ export interface AgentListItem {
    agentId: string;
    status: string;
    tasks: number;
+}
+
+export interface SessionMessage {
+   role: string;
+   content: any;
+   ts?: number;
+   source?: string;
+}
+
+export interface Session {
+   sessionId: string;
+   created?: number;
+   parties?: string[];
+   turns?: number;
+   pending?: any[];
+   conversation: SessionMessage[];
 }
 export interface AgentSteps {
   stepNumber:number,
