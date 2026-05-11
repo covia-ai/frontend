@@ -35,8 +35,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body suppressHydrationWarning
+    <html lang="en" suppressHydrationWarning>
+      <body
         className={`${aetherFont.className}  antialiased`}
       >
           <ThemeProvider
@@ -45,13 +45,13 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >{children}
-         
+
           </ThemeProvider>
-           
+
         <CookieConsentComponent />
+        <PageViewTracker />
+        <GoogleTagManager gtmId="GTM-K5CKZL5G" />
       </body>
-       <PageViewTracker />
-       <GoogleTagManager gtmId="GTM-K5CKZL5G" />
     </html>
   );
 }

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { useEffect, useMemo, useState } from "react";
 import {  Venue, Asset, getParsedAssetId } from "@covia/covia-sdk";
 import { createAuthProvider } from "@/lib/auth-provider";
-import { formatLabel } from "@/lib/utils";
+import { formatLabel, gtmEvent } from "@/lib/utils";
 import { ErrorDisplay } from "./ErrorDisplay";
 import { useRouter } from "next/navigation";
 import { Textarea } from "./ui/textarea";

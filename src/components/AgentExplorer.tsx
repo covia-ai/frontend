@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
-  ChevronRight, GripVertical, Bot, Pause, Play, Trash2, Send, Loader2,
+  GripVertical, Bot, Pause, Play, Trash2, Send, Loader2,
   Plus, MessageSquare, ChevronDown
 } from 'lucide-react';
 import { Agent, AgentListItem, Session, SessionMessage } from '@/config/types';
@@ -40,10 +40,13 @@ const AgentExplorer = (props: any) => {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
   const [sending, setSending] = useState(false);
+  const [pendingUserMessage, setPendingUserMessage] = useState<
+    { agentId: string; sessionId: string | null; text: string } | null
+  >(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   // Layout
-  const [leftWidth, setLeftWidth] = useState(300);
+  const [leftWidth, setLeftWidth] = useState(200);
   const isResizingLeft = useRef(false);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
 
@@ -191,21 +194,35 @@ const AgentExplorer = (props: any) => {
   const handleSend = () => {
     if (!venue || !selectedAgentId || !messageText.trim()) return;
     const text = messageText.trim();
+    const sendAgentId = selectedAgentId;
+    const sendSessionId = selectedSessionId;
     setSending(true);
     setMessageText("");
+    setPendingUserMessage({ agentId: sendAgentId, sessionId: sendSessionId, text });
     venue.agents
-      .chat(selectedAgentId, text, selectedSessionId || undefined)
-      .then((result) => {
-        if (result?.sessionId) setSelectedSessionId(result.sessionId);
-        refreshSessions(selectedAgentId);
-        refreshAgentDetail(selectedAgentId);
+      .chat(sendAgentId, text, sendSessionId || undefined)
+      .then(async (result) => {
+        if (result?.sessionId) {
+          setSelectedSessionId(result.sessionId);
+          if (sendSessionId === null) {
+            setPendingUserMessage((prev) =>
+              prev && prev.agentId === sendAgentId && prev.sessionId === null
+                ? { ...prev, sessionId: result.sessionId }
+                : prev);
+          }
+        }
+        await refreshSessions(sendAgentId);
+        refreshAgentDetail(sendAgentId);
         refreshAgentList();
       })
       .catch((err: any) => {
         toast(`Chat failed: ${err?.message || "see console"}`);
         setMessageText(text);
       })
-      .finally(() => setSending(false));
+      .finally(() => {
+        setSending(false);
+        setPendingUserMessage(null);
+      });
   };
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -231,6 +248,12 @@ const AgentExplorer = (props: any) => {
   const messageContentToString = (c: any): string => {
     if (c == null) return "";
     if (typeof c === "string") return c;
+    if (typeof c === "object") {
+      if (typeof c.text === "string") return c.text;
+      if (typeof c.message === "string") return c.message;
+      if (typeof c.content === "string") return c.content;
+      if (typeof c.input === "string") return c.input;
+    }
     return JSON.stringify(c, null, 2);
   };
 
@@ -282,21 +305,19 @@ const AgentExplorer = (props: any) => {
             <button
               key={agent.agentId}
               onClick={() => setSelectedAgentId(agent.agentId)}
-              className={`w-full flex items-center justify-between p-4 text-left transition-colors border-b border-border last:border-0
+              className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors border-b border-border last:border-0
                 ${selectedAgentId === agent.agentId ? 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300' : 'hover:bg-accent text-foreground'}`}
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <Bot size={16} className={selectedAgentId === agent.agentId ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground'} />
-                <div className="truncate">
-                  <p className="font-medium text-sm truncate">{agent.agentId}</p>
-                  <p className="text-xs opacity-70">{agent.tasks} task{agent.tasks !== 1 ? 's' : ''}</p>
+              <Bot size={14} className={`flex-shrink-0 ${selectedAgentId === agent.agentId ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground'}`} />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-base truncate">{agent.agentId}</p>
+                <div className="flex items-center gap-1.5 text-[10px] opacity-70">
+                  <span>{agent.tasks} task{agent.tasks !== 1 ? 's' : ''}</span>
+                  <span>·</span>
+                  <span className={`px-1.5 py-px rounded-full font-semibold ${getStatusBadge(agent.status)}`}>
+                    {agent.status}
+                  </span>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${getStatusBadge(agent.status)}`}>
-                  {agent.status}
-                </span>
-                <ChevronRight size={16} className="flex-shrink-0" />
               </div>
             </button>
           ))}
@@ -438,13 +459,24 @@ const AgentExplorer = (props: any) => {
                     </div>
                   );
                 })}
-                {sending && (
-                  <div className="flex justify-start">
-                    <div className="bg-muted text-foreground rounded-lg px-3 py-2 text-sm flex items-center gap-2">
-                      <Loader2 size={14} className="animate-spin" />
-                      <span className="italic text-muted-foreground">{selectedAgentDetail.agentId} is thinking…</span>
+                {pendingUserMessage
+                  && pendingUserMessage.agentId === selectedAgentId
+                  && pendingUserMessage.sessionId === selectedSessionId && (
+                  <>
+                    <div className="flex justify-end">
+                      <div className="max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words bg-blue-600 text-white">
+                        {pendingUserMessage.text}
+                      </div>
                     </div>
-                  </div>
+                    {sending && (
+                      <div className="flex justify-start">
+                        <div className="bg-muted text-foreground rounded-lg px-3 py-2 text-sm flex items-center gap-2">
+                          <Loader2 size={14} className="animate-spin" />
+                          <span className="italic text-muted-foreground">{selectedAgentDetail.agentId} is thinking…</span>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 

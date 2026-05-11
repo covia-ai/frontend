@@ -30,8 +30,7 @@ export function JobList() {
   const [filteredData, setFilteredData] = useState<JobMetadata[]>([]);
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
-  const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage));
   const { venues } = useVenues();
   const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
   const authData = useAuthStore((x) => x.auth);
@@ -42,6 +41,10 @@ export function JobList() {
   const prevPage = (page: number) => {
     setCurrentPage(page)
   }
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [totalPages, currentPage]);
   function isInRange(date: string) {
     if (dateFilter == "today") {
       const x = new Date().getDay();
@@ -97,8 +100,6 @@ export function JobList() {
     const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, auth: createAuthProvider(authData)});
     
     venue.jobs.list().then((jobs) => {
-      setTotalItems(jobs.length)
-      setTotalPages(Math.ceil(jobs.length / itemsPerPage))
       jobs.forEach((jobId) => {
         venue.jobs.get(jobId).then((job:Job) => {
           setJobsData(prevArray => [...prevArray, job.metadata]);
