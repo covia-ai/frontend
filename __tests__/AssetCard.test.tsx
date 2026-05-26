@@ -26,11 +26,18 @@ jest.mock('@/hooks/use-venue', () => ({
     subscribe: () => () => {},
   }),
 }));
-jest.mock('zustand', () => ({
-  useStore: (store: any, selector: any) => {
-    const state = store.getState();
-    return selector(state);
-  },
+jest.mock('zustand', () => {
+  const actualZustand = jest.requireActual('zustand');
+  return {
+    ...actualZustand,
+    useStore: (store: any, selector: any) => {
+      const state = store.getState();
+      return selector(state);
+    },
+  };
+});
+jest.mock('@/hooks/use-authenticated-venue', () => ({
+  useAuthenticatedVenue: () => null,
 }));
 jest.mock('@/components/AssetInfoSheet', () => ({
   AssetInfoSheet: () => <div data-testid="asset-info-sheet">Asset Info Sheet</div>,

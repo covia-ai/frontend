@@ -1,6 +1,5 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { AddNewAgent } from '@/components/AddNewAgent';
 import { toast } from 'sonner';
 
 // Mock the toast function
@@ -17,6 +16,21 @@ jest.mock('@/components/Iconbutton', () => ({
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),
 }));
+
+// Mock the authenticated venue hook
+jest.mock('@/hooks/use-authenticated-venue', () => ({
+  useAuthenticatedVenue: () => ({
+    agents: {
+      create: jest.fn().mockResolvedValue({ agentId: 'test-agent', status: 'active' }),
+      request: jest.fn().mockResolvedValue({}),
+    },
+    secrets: {
+      list: jest.fn().mockResolvedValue([]),
+    },
+  }),
+}));
+
+import { AddNewAgent } from '@/components/AddNewAgent';
 
 // Helper to open the dialog before querying form elements
 async function renderAndOpenDialog() {
@@ -42,11 +56,11 @@ describe('AddNewAgent', () => {
   it('renders the component with initial state after opening dialog', async () => {
     await renderAndOpenDialog();
 
-    // "Create a new agent" appears on both trigger button and dialog title label
     expect(screen.getAllByText(/Create a new agent/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Agent Name:')).toBeInTheDocument();
-    expect(screen.getByText('Select LLM Provider:')).toBeInTheDocument();
-    expect(screen.getByText('Agent Engine:')).toBeInTheDocument();
+    expect(screen.getByText('LLM Provider:')).toBeInTheDocument();
+    expect(screen.getByText('System Prompt:')).toBeInTheDocument();
+    expect(screen.getByText('Initial Command:')).toBeInTheDocument();
   });
 
   it('updates agent name when user types', async () => {
@@ -58,54 +72,36 @@ describe('AddNewAgent', () => {
     expect(input).toHaveValue('Test Agent');
   });
 
-  it('displays all LLM provider radio options', async () => {
+  it('renders LLM provider select with default value', async () => {
     await renderAndOpenDialog();
 
-    expect(screen.getByLabelText('Claude 3.5')).toBeInTheDocument();
-    expect(screen.getByLabelText('Gemini Pro')).toBeInTheDocument();
-    expect(screen.getByLabelText('OpenAI GPT-4')).toBeInTheDocument();
+    // The select trigger should show the default provider (Anthropic)
+    expect(screen.getByText('Anthropic (Claude)')).toBeInTheDocument();
   });
 
-  it('has Claude 3.5 selected by default', async () => {
+  it('renders create button with correct attributes', async () => {
     await renderAndOpenDialog();
 
-    const claudeRadio = screen.getByRole('radio', { name: /claude 3.5/i });
-    expect(claudeRadio).toBeChecked();
+    const createButton = screen.getByRole('button', { name: /create agent/i });
+    expect(createButton).toHaveAttribute('aria-label', 'create agent');
   });
 
-  it('allows user to select different LLM provider', async () => {
-    const user = await renderAndOpenDialog();
-
-    const geminiRadio = screen.getByRole('radio', { name: /gemini pro/i });
-    await user.click(geminiRadio);
-
-    expect(geminiRadio).toBeChecked();
-  });
-
-  it('shows advanced options accordion', async () => {
+  it('shows system prompt textarea', async () => {
     await renderAndOpenDialog();
 
-    expect(screen.getByText('Advanced Options')).toBeInTheDocument();
+    const textarea = screen.getByPlaceholderText(
+      'e.g., You are a helpful customer support agent that...'
+    );
+    expect(textarea).toBeInTheDocument();
   });
 
-  it('displays initial state textarea after expanding accordion', async () => {
-    const user = await renderAndOpenDialog();
+  it('shows initial command input', async () => {
+    await renderAndOpenDialog();
 
-    // Expand the accordion
-    const accordionTrigger = screen.getByText('Advanced Options');
-    await user.click(accordionTrigger);
-
-    const textarea = screen.getByLabelText(/initial state/i);
-    expect(textarea).toHaveValue('{}');
-  });
-
-  it('shows helper text for initial state after expanding accordion', async () => {
-    const user = await renderAndOpenDialog();
-
-    const accordionTrigger = screen.getByText('Advanced Options');
-    await user.click(accordionTrigger);
-
-    expect(screen.getByText(/Must be valid JSON/i)).toBeInTheDocument();
+    const input = screen.getByPlaceholderText(
+      'e.g., Greet the user and ask how you can help'
+    );
+    expect(input).toBeInTheDocument();
   });
 
   it('calls toast with success message when create button is clicked', async () => {
@@ -117,60 +113,28 @@ describe('AddNewAgent', () => {
     const createButton = screen.getByTestId('create-agent');
     await user.click(createButton);
 
-    expect(toast).toHaveBeenCalledWith('Success !!', {
-      description: 'Agent My Test Agent created',
+    await waitFor(() => {
+      expect(toast).toHaveBeenCalledWith('Agent created', {
+        description: 'Agent "test-agent" is now active',
+      });
     });
   });
 
-  it('creates agent with default values when no changes are made', async () => {
+  it('shows error toast when agent name is empty', async () => {
     const user = await renderAndOpenDialog();
 
     const createButton = screen.getByTestId('create-agent');
     await user.click(createButton);
 
-    expect(toast).toHaveBeenCalledWith('Success !!', {
-      description: 'Agent  created',
-    });
-  });
-
-  it('allows selecting OpenAI GPT-4 as LLM provider', async () => {
-    const user = await renderAndOpenDialog();
-
-    const openaiRadio = screen.getByRole('radio', { name: /openai gpt-4/i });
-    await user.click(openaiRadio);
-
-    expect(openaiRadio).toBeChecked();
-    expect(screen.getByRole('radio', { name: /claude 3.5/i })).not.toBeChecked();
+    expect(toast).toHaveBeenCalledWith('Please enter an agent name');
   });
 
   it('displays all form labels correctly', async () => {
     await renderAndOpenDialog();
 
     expect(screen.getByText('Agent Name:')).toBeInTheDocument();
-    expect(screen.getByText('Select LLM Provider:')).toBeInTheDocument();
-    expect(screen.getByText('Agent Engine:')).toBeInTheDocument();
-  });
-
-  it('renders create button with correct attributes', async () => {
-    await renderAndOpenDialog();
-
-    const createButton = screen.getByRole('button', { name: /create agent/i });
-    expect(createButton).toHaveAttribute('aria-label', 'create agent');
-  });
-
-  it('maintains form state across multiple interactions', async () => {
-    const user = await renderAndOpenDialog();
-
-    // Set agent name
-    const nameInput = screen.getByTestId('agent-name');
-    await user.type(nameInput, 'Multi-step Agent');
-
-    // Select different LLM
-    const geminiRadio = screen.getByRole('radio', { name: /gemini pro/i });
-    await user.click(geminiRadio);
-
-    // Verify all states are maintained
-    expect(nameInput).toHaveValue('Multi-step Agent');
-    expect(geminiRadio).toBeChecked();
+    expect(screen.getByText('LLM Provider:')).toBeInTheDocument();
+    expect(screen.getByText('System Prompt:')).toBeInTheDocument();
+    expect(screen.getByText('Initial Command:')).toBeInTheDocument();
   });
 });

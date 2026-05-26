@@ -20,6 +20,12 @@ jest.mock('@/lib/utils', () => ({
   gtmEvent: { buttonClick: jest.fn() },
 }));
 
+jest.mock('@/hooks/use-venues', () => ({
+  useVenues: Object.assign(() => ({ venues: [], addVenue: jest.fn() }), {
+    getState: () => ({ venues: [], addVenue: jest.fn() }),
+  }),
+}));
+
 // Must import after mocks are set up
 import { SignInButton } from '@/components/admin-panel/signin-button';
 import { useAuthStore } from '@/hooks/use-auth';
