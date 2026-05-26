@@ -19,6 +19,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 import { toast } from "sonner";
+import { gtmEvent } from "@/lib/utils";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 
 interface ExecutionToolBarProps {

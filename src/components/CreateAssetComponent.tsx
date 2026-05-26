@@ -25,7 +25,7 @@ import { JsonEditor } from "json-edit-react";
 import { Button } from "./ui/button";
 import { Asset, AssetMetadata } from "@covia/covia-sdk";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
-import { getContentTypeForFile, getLicenseUrl } from "@/lib/utils";
+import { getContentTypeForFile, getLicenseUrl, gtmEvent } from "@/lib/utils";
 import { Iconbutton } from "./Iconbutton";
 
 export const CreateAssetComponent = ({sendDataToParent}) => {
