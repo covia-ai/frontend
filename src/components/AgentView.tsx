@@ -8,14 +8,14 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
-import { Agent } from "@/config/types";
+import { AgentDetail } from "@/config/types";
 import { getStatusConfig } from "@/lib/utils";
 import { useState } from "react";
 import { Badge } from "./ui/badge";
 import { Bot, Clock, Footprints, MapPin } from "lucide-react";
 
 interface AgentProps {
-  agent: Agent;
+  agent: AgentDetail;
 }
 
 export const AgentView = ({ agent }: AgentProps) => {

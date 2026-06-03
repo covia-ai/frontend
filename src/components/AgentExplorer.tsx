@@ -5,9 +5,9 @@ import {
   GripVertical, Bot, Pause, Play, Trash2, Send, Loader2,
   Plus, MessageSquare, ChevronDown
 } from 'lucide-react';
-import { Agent, AgentListItem, Session, SessionMessage } from '@/config/types';
+import { AgentDetail, AgentListItem, Session, SessionMessage } from '@/config/types';
 import { TopBar } from './admin-panel/TopBar';
-import { AgentStatus } from '@covia/covia-sdk';
+import { Agent, ChatSession, AgentStatus } from '@covia/covia-sdk';
 import { useAuthenticatedVenue } from '@/hooks/use-authenticated-venue';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
@@ -31,13 +31,16 @@ const AgentExplorer = (props: any) => {
   // Agent list + selection
   const [agentList, setAgentList] = useState<AgentListItem[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(props.agentId || null);
-  const [selectedAgentDetail, setSelectedAgentDetail] = useState<Agent | null>(null);
+  const [selectedAgentDetail, setSelectedAgentDetail] = useState<AgentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
 
+  // Agent handle + chat session (OO API from SDK 1.5.0)
+  const [agentHandle, setAgentHandle] = useState<Agent | null>(null);
+  const [chatSession, setChatSession] = useState<ChatSession | null>(null);
+
   // Sessions + chat
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
   const [sending, setSending] = useState(false);
   const [pendingUserMessage, setPendingUserMessage] = useState<
@@ -60,9 +63,9 @@ const AgentExplorer = (props: any) => {
   };
 
   const refreshAgentDetail = (agentId: string | null) => {
-    if (!venue || !agentId) return Promise.resolve();
-    return venue.agents.query(agentId).then((result) => {
-      setSelectedAgentDetail(result as Agent);
+    if (!agentHandle || !agentId) return Promise.resolve();
+    return agentHandle.query().then((result) => {
+      setSelectedAgentDetail(result as AgentDetail);
     }).catch(() => {});
   };
 
@@ -112,16 +115,19 @@ const AgentExplorer = (props: any) => {
 
   // Reload detail + sessions when agent changes
   useEffect(() => {
-    setSelectedSessionId(null);
+    setChatSession(null);
     setSessions([]);
     if (!venue || !selectedAgentId) {
+      setAgentHandle(null);
       setSelectedAgentDetail(null);
       return;
     }
+    const handle = venue.agent(selectedAgentId);
+    setAgentHandle(handle);
     setDetailLoading(true);
     Promise.all([
-      venue.agents.query(selectedAgentId)
-        .then((r) => setSelectedAgentDetail(r as Agent))
+      handle.query()
+        .then((r) => setSelectedAgentDetail(r as AgentDetail))
         .catch(() => {
           toast("Unable to load agent details");
           setSelectedAgentDetail(null);
@@ -132,10 +138,10 @@ const AgentExplorer = (props: any) => {
 
   // Auto-select most recent session
   useEffect(() => {
-    if (!selectedSessionId && sessions.length > 0) {
-      setSelectedSessionId(sessions[0].sessionId);
+    if (!chatSession && sessions.length > 0 && agentHandle) {
+      setChatSession(agentHandle.chatSession(sessions[0].sessionId));
     }
-  }, [sessions, selectedSessionId]);
+  }, [sessions, chatSession, agentHandle]);
 
   // Polling for live updates
   useEffect(() => {
@@ -149,6 +155,7 @@ const AgentExplorer = (props: any) => {
   }, [venue, selectedAgentId]);
 
   // Auto-scroll transcript on update
+  const selectedSessionId = chatSession?.sessionId ?? null;
   const currentSession = useMemo(
     () => sessions.find((s) => s.sessionId === selectedSessionId) || null,
     [sessions, selectedSessionId]
@@ -162,8 +169,8 @@ const AgentExplorer = (props: any) => {
   // ─── Actions ────────────────────────────────────────────────────────────────
 
   const handleSuspend = () => {
-    if (!venue || !selectedAgentId) return;
-    venue.agents.suspend(selectedAgentId).then(() => {
+    if (!agentHandle || !selectedAgentId) return;
+    agentHandle.suspend().then(() => {
       toast("Agent suspended");
       refreshAgentDetail(selectedAgentId);
       refreshAgentList();
@@ -171,8 +178,8 @@ const AgentExplorer = (props: any) => {
   };
 
   const handleResume = () => {
-    if (!venue || !selectedAgentId) return;
-    venue.agents.resume(selectedAgentId).then(() => {
+    if (!agentHandle || !selectedAgentId) return;
+    agentHandle.resume().then(() => {
       toast("Agent resumed");
       refreshAgentDetail(selectedAgentId);
       refreshAgentList();
@@ -180,36 +187,41 @@ const AgentExplorer = (props: any) => {
   };
 
   const handleDelete = () => {
-    if (!venue || !selectedAgentId) return;
-    venue.agents.delete(selectedAgentId).then(() => {
+    if (!agentHandle || !selectedAgentId) return;
+    agentHandle.delete().then(() => {
       toast("Agent deleted");
       setSelectedAgentId(null);
       setSelectedAgentDetail(null);
+      setAgentHandle(null);
+      setChatSession(null);
       refreshAgentList();
     }).catch(() => toast("Unable to delete agent"));
   };
 
-  const handleNewChat = () => setSelectedSessionId(null);
+  const handleNewChat = () => setChatSession(null);
 
   const handleSend = () => {
-    if (!venue || !selectedAgentId || !messageText.trim()) return;
+    if (!agentHandle || !selectedAgentId || !messageText.trim()) return;
     const text = messageText.trim();
     const sendAgentId = selectedAgentId;
-    const sendSessionId = selectedSessionId;
+
+    // Create a new ChatSession if none exists (new chat)
+    const session = chatSession ?? agentHandle.chatSession();
+    const sendSessionId = session.sessionId ?? null;
+
     setSending(true);
     setMessageText("");
     setPendingUserMessage({ agentId: sendAgentId, sessionId: sendSessionId, text });
-    venue.agents
-      .chat(sendAgentId, text, sendSessionId || undefined)
+
+    session.send(text)
       .then(async (result) => {
-        if (result?.sessionId) {
-          setSelectedSessionId(result.sessionId);
-          if (sendSessionId === null) {
-            setPendingUserMessage((prev) =>
-              prev && prev.agentId === sendAgentId && prev.sessionId === null
-                ? { ...prev, sessionId: result.sessionId }
-                : prev);
-          }
+        // ChatSession auto-captures sessionId — update our state reference
+        setChatSession(session);
+        if (sendSessionId === null && result?.sessionId) {
+          setPendingUserMessage((prev) =>
+            prev && prev.agentId === sendAgentId && prev.sessionId === null
+              ? { ...prev, sessionId: result.sessionId }
+              : prev);
         }
         await refreshSessions(sendAgentId);
         refreshAgentDetail(sendAgentId);
@@ -405,7 +417,13 @@ const AgentExplorer = (props: any) => {
                 <div className="flex-1 max-w-md">
                   <Select
                     value={selectedSessionId ?? "__new__"}
-                    onValueChange={(v) => setSelectedSessionId(v === "__new__" ? null : v)}
+                    onValueChange={(v) => {
+                      if (v === "__new__") {
+                        setChatSession(null);
+                      } else if (agentHandle) {
+                        setChatSession(agentHandle.chatSession(v));
+                      }
+                    }}
                   >
                     <SelectTrigger className="h-8 text-sm">
                       <SelectValue placeholder="New chat (no session yet)">
@@ -424,7 +442,7 @@ const AgentExplorer = (props: any) => {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleNewChat} disabled={!selectedSessionId}>
+                <Button variant="outline" size="sm" onClick={handleNewChat} disabled={!chatSession}>
                   <Plus size={14} className="mr-1" /> New chat
                 </Button>
               </div>

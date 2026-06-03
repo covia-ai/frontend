@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, Clock1, MapPin, User } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
-import { Agent, AgentData, AgentSteps } from '@/config/types';
+import { AgentDetail, AgentData, AgentSteps } from '@/config/types';
 import {
   Accordion,
   AccordionContent,
@@ -24,7 +24,7 @@ const TimelinePanel = (props:any) => {
       return "bg-blue-500";
     return "bg-muted-foreground";
   };
-  const agent = props.agent as Agent;
+  const agent = props.agent as AgentDetail;
   const agentSteps = agent.steps;
 
   useEffect(() => {

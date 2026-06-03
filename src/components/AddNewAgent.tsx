@@ -69,9 +69,8 @@ export function AddNewAgent() {
       });
 
       if (initialCommand.trim()) {
-        await venue.agents.request(result.agentId, {
-          prompt: initialCommand.trim(),
-        });
+        const agent = venue.agent(result.agentId);
+        await agent.request({ prompt: initialCommand.trim() });
       }
 
       toast("Agent created", {
