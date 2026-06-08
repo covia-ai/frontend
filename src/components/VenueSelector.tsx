@@ -12,12 +12,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { useVenue } from "@/hooks/use-venue";
 import { useVenues } from "@/hooks/use-venues";
+import { useAuthStore } from "@/hooks/use-auth";
 import { Venue } from "@covia/covia-sdk";
 
 export function VenueSelector() {
   const pathname = usePathname();
   const  venues = useVenues().getVenue();
   const { currentVenue, setCurrentVenue } = useVenue();
+  const setActiveVenue = useAuthStore((x) => x.setActiveVenue);
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
 ;
 
@@ -26,6 +28,7 @@ export function VenueSelector() {
     // If we already have a current venue, use it
     if (currentVenue) {
       setSelectedVenue(currentVenue);
+      setActiveVenue(currentVenue.venueId);
       return;
     }
 
@@ -37,6 +40,7 @@ export function VenueSelector() {
       if (venue) {
         setCurrentVenue(venue);
         setSelectedVenue(venue);
+        setActiveVenue(venue.venueId);
         return;
       }
     }
@@ -46,12 +50,14 @@ export function VenueSelector() {
       const defaultVenue = venues[0]
       setCurrentVenue(defaultVenue);
       setSelectedVenue(defaultVenue);
+      setActiveVenue(defaultVenue.venueId);
     }
-  }, [pathname, venues, currentVenue, setCurrentVenue]);
+  }, [pathname, venues, currentVenue, setCurrentVenue, setActiveVenue]);
 
   const handleVenueSelect = (venue: Venue) => {
     setCurrentVenue(venue);
     setSelectedVenue(venue);
+    setActiveVenue(venue.venueId);
     window.location.reload();
 
     
@@ -73,7 +79,7 @@ export function VenueSelector() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button aria-label="venue" variant="outline" className="dark:hover:bg-primary-light dark:hover:text-foreground">
+        <Button aria-label="venue" variant="outline" className="hover:bg-primary-vlight hover:text-foreground">
           <Building2 size={14} />
           <span className="hidden md:block lg:block">{selectedVenue.metadata.name}</span>
           <ChevronDown size={14} />
@@ -84,7 +90,7 @@ export function VenueSelector() {
           <DropdownMenuItem
             key={venue.venueId}
             onClick={() => handleVenueSelect(venue)}
-            className="flex items-center justify-between cursor-pointer dark:hover:bg-primary-light dark:hover:text-foreground"
+            className="flex items-center justify-between cursor-pointer hover:bg-primary-vlight hover:text-foreground"
           >
             <div className="flex items-center gap-2">
               <Building2 size={16} />

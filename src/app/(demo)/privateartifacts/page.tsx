@@ -30,11 +30,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
-import { Venue, Asset, DataAsset } from "@covia/covia-sdk";
+import { Asset, DataAsset } from "@covia/covia-sdk";
 import { JsonEditor } from "json-edit-react";
 
-import { useStore } from "zustand";
-import { useVenue } from "@/hooks/use-venue";
+import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 
 
 import { Badge } from "@/components/ui/badge";
@@ -62,7 +61,7 @@ export default function AssetPage() {
   const [totalPages, setTotalPages] = useState(10);
   const [currentPage, setCurrentPage] = useState(1)
   const [noOfItemsOnPage, setNoOfItemsOnPage] = useState(0);
-   const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
+  const venue = useAuthenticatedVenue();
 
   const nextPage = (page: number) => {
     setCurrentPage(page)
@@ -72,10 +71,10 @@ export default function AssetPage() {
     setCurrentPage(page)
 
   }
-  const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name})
 
 
   function fetchAssets() {
+    if (!venue) return;
     setAssetsMetadata([]);
     venue.listAssets().then((assetList) => {
       assetList.items.forEach((assetId: string) => {

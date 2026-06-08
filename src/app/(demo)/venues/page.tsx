@@ -23,8 +23,6 @@ import { Iconbutton } from "@/components/Iconbutton";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { RefreshCwIcon } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Grid } from "@covia/covia-sdk";
-import { useSession } from "next-auth/react";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { AddNewVenueModal } from "@/components/AddNewVenueModal";
 
@@ -34,7 +32,6 @@ export default function VenuesPage() {
   const searchParams = useSearchParams()
   const search = searchParams.get('search');
   const router = useRouter();
-  const { data: session } = useSession();
   const [open, setOpen] = useState(false)
 
     useEffect(() => {

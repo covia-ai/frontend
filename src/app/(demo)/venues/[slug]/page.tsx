@@ -25,10 +25,11 @@ import { useRouter } from "next/navigation";
 import { useVenues } from "@/hooks/use-venues";
 import { useVenue } from "@/hooks/use-venue";
 import { useEffect, useState } from "react";
-import { Venue, Grid, CoviaUserAuth } from "@covia/covia-sdk";
+import { Venue } from "@covia/covia-sdk";
+import { createAuthProvider } from "@/lib/auth-provider";
 import Link from "next/link";
 import { copyDataToClipBoard } from "@/lib/utils";
-import { useSession } from "next-auth/react";
+import { useAuthStore } from "@/hooks/use-auth";
 import { TopBar } from "@/components/admin-panel/TopBar";
 
 interface VenuePageProps {
@@ -50,8 +51,8 @@ export default function VenuePage({ params }: VenuePageProps) {
   const [ noOfOps, setNoOfOps] = useState(0)
   const [ noOfRuns, setNoOfRuns] = useState(0)
   const [ noOfUsers, setNoOfUsers] = useState(0)
-  const { data: session } = useSession();
-  
+  const authData = useAuthStore((x) => x.auth);
+
   useEffect(() => {
     // Find the venue by slug
     const foundVenue = venues.find(v => v.venueId === decodeURIComponent(slug));
@@ -61,7 +62,8 @@ export default function VenuePage({ params }: VenuePageProps) {
           setVenueDID(foundVenue.venueId)
       }
       else {
-          const foundVenue_obj = new Venue({baseUrl:foundVenue.baseUrl, venueId:foundVenue.venueId, name:foundVenue.metadata.name});
+          const authOption = createAuthProvider(authData);
+          const foundVenue_obj = new Venue({baseUrl:foundVenue.baseUrl, venueId:foundVenue.venueId, name:foundVenue.metadata.name, auth: authOption});
           setVenue(foundVenue_obj)
           setVenueDID(foundVenue_obj.venueId)
       }
@@ -70,7 +72,8 @@ export default function VenuePage({ params }: VenuePageProps) {
       
     }
     else {
-       Grid.connect(decodeURIComponent(slug),new CoviaUserAuth(session?.user?.email || "")).then((venue) => {
+       const authOption = createAuthProvider(authData);
+       Venue.connect(decodeURIComponent(slug), authOption).then((venue) => {
          addVenue(venue)
        }
       )

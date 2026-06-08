@@ -14,10 +14,12 @@ import { useEffect, useState } from "react";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { Job, JobMetadata, RunStatus, Venue } from "@covia/covia-sdk";
+import { createAuthProvider } from "@/lib/auth-provider";
 import { colourForStatus, getExecutionTime } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { PaginationHeader } from "@/components/PaginationHeader";
 import { useVenues } from "@/hooks/use-venues";
+import { useAuthStore } from "@/hooks/use-auth";
 import { Activity, Database, User } from "lucide-react";
 import { TopBar } from "./admin-panel/TopBar";
 
@@ -28,10 +30,10 @@ export function JobList() {
   const [filteredData, setFilteredData] = useState<JobMetadata[]>([]);
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
-  const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage));
   const { venues } = useVenues();
   const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
+  const authData = useAuthStore((x) => x.auth);
 
   const nextPage = (page: number) => {
     setCurrentPage(page)
@@ -39,6 +41,10 @@ export function JobList() {
   const prevPage = (page: number) => {
     setCurrentPage(page)
   }
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [totalPages, currentPage]);
   function isInRange(date: string) {
     if (dateFilter == "today") {
       const x = new Date().getDay();
@@ -91,13 +97,11 @@ export function JobList() {
   )
 
   useEffect(() => {
-    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId});
+    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, auth: createAuthProvider(authData)});
     
-    venue.listJobs().then((jobs) => {
-      setTotalItems(jobs.length)
-      setTotalPages(Math.ceil(jobs.length / itemsPerPage))
+    venue.jobs.list().then((jobs) => {
       jobs.forEach((jobId) => {
-        venue.getJob(jobId).then((job:Job) => {
+        venue.jobs.get(jobId).then((job:Job) => {
           setJobsData(prevArray => [...prevArray, job.metadata]);
           setFilteredData(prevArray => [...prevArray, job.metadata])
         })
@@ -167,7 +171,7 @@ export function JobList() {
         <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>
         <Table className="  border border-border rounded-lg shadow-md">
           <TableHeader >
-            <TableRow className="bg-secondary hover:bg-secondary rounded-full text-white ">
+            <TableRow className="bg-secondary hover:bg-secondary rounded-full text-secondary-foreground ">
               <TableCell className="border border-border">Job Id</TableCell>
               <TableCell className="border border-border">Name</TableCell>
               <TableCell className="text-center border border-border">Created Date</TableCell>

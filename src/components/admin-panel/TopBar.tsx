@@ -12,7 +12,7 @@ import { usePathname, useRouter } from "next/navigation";
 export function TopBar(props:any) {
   const router = useRouter();
 
-  return (   
+  return (
     <header className="sticky top-0 z-10 w-full bg-background">
       <div className=" flex h-14 items-center">
         <div className="flex items-center space-x-4 lg:space-x-0">
@@ -24,11 +24,8 @@ export function TopBar(props:any) {
               <DarkLightToggle/>
               <VenueSelector />
               <SignInButton/>
-             
           </div>
-         
         </div>
-        
       </div>
        <Separator/>
     </header>

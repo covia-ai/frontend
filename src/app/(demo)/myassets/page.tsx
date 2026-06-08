@@ -31,18 +31,19 @@ import {  useRouter, useSearchParams } from 'next/navigation'
 
 
 import { JsonEditor } from 'json-edit-react'
-import { Venue } from "@covia/covia-sdk";
 import { DialogClose } from "@radix-ui/react-dialog";
-import { useSession } from "next-auth/react";
+import { useAuthStore } from "@/hooks/use-auth";
+import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { Input } from "@/components/ui/input";
- 
+
 export default function AssetPage() {
   const router = useRouter();
 
-  const { data: session } = useSession();
-  if (!session?.user) {
+  const auth = useAuthStore((x) => x.auth);
+  if (!auth) {
       router.push("/signUp");
   }
+  const venue = useAuthenticatedVenue();
   const searchParams = useSearchParams()
   const search = searchParams.get('search');
   const baseData = {
@@ -63,8 +64,11 @@ export default function AssetPage() {
 
 
   function createAsset() {
-     const venue = new Venue();
-     venue.register(jsonData).then((asset) => {
+     if (!venue) {
+       router.push("/signUp");
+       return;
+     }
+     venue.assets.register(jsonData).then((asset) => {
          if(asset) {
            router.push("/assets");
          }

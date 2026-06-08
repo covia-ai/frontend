@@ -1,72 +1,287 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
-import { ChevronRight, Folder, UserCircle, GripVertical, Bot, Activity, Clock, Cpu, MapPin, Zap, ChartNoAxesGantt, ChartGanttIcon, ChartGantt, ArrowRight } from 'lucide-react';
-import agentsJson from "@/components/public/mockAgent.json"
-import { Agent } from '@/config/types';
-import { useRouter } from 'next/navigation';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import {
+  GripVertical, Bot, Pause, Play, Trash2, Send, Loader2,
+  Plus, MessageSquare, ChevronDown
+} from 'lucide-react';
+import { AgentDetail, AgentListItem, Session, SessionMessage } from '@/config/types';
 import { TopBar } from './admin-panel/TopBar';
+import { Agent, ChatSession, AgentStatus } from '@covia/covia-sdk';
+import { useAuthenticatedVenue } from '@/hooks/use-authenticated-venue';
+import { toast } from 'sonner';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Badge } from './ui/badge';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 
-const AgentExplorer = (props:any) => {
-  const [agentData, setAgentData] = useState<Agent[]>()
-  const [selectedProject, setSelectedProject] = useState<Agent>(null);
-  const [selectedAgentId, setSelectedAgentId] = useState(null);
-  const router = useRouter();
-  // Resizing State for both columns
-  const [leftWidth, setLeftWidth] = useState(250); // Initial width in pixels
-  const [middleWidth, setMiddleWidth] = useState(300); // Initial width for middle column
+const POLL_INTERVAL_MS = 3000;
+const SESSION_LIMIT = 50;
+
+const AgentExplorer = (props: any) => {
+  const venue = useAuthenticatedVenue();
+
+  // Agent list + selection
+  const [agentList, setAgentList] = useState<AgentListItem[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(props.agentId || null);
+  const [selectedAgentDetail, setSelectedAgentDetail] = useState<AgentDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  // Agent handle + chat session (OO API from SDK 1.5.0)
+  const [agentHandle, setAgentHandle] = useState<Agent | null>(null);
+  const [chatSession, setChatSession] = useState<ChatSession | null>(null);
+
+  // Sessions + chat
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [messageText, setMessageText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [pendingUserMessage, setPendingUserMessage] = useState<
+    { agentId: string; sessionId: string | null; text: string } | null
+  >(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+
+  // Layout
+  const [leftWidth, setLeftWidth] = useState(200);
   const isResizingLeft = useRef(false);
-  const isResizingMiddle = useRef(false);
+  const transcriptRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-      if(props.agentId != null) {
-        const foundObject = agentsJson.find(item => item.id === props.agentId);
-        setAgentData(agentsJson);
-        setSelectedProject(foundObject)
-      }
-      else {
-         setAgentData(agentsJson);
-         
-      }
-    },[])
+  // ─── Loaders ────────────────────────────────────────────────────────────────
 
-     useEffect(() => {
-        if(agentData && agentData.length >0 && props.agentId == null)
-            setSelectedProject(agentData[0])
-  
-    },[agentData])
-
-  // Get selected agent data
-  const selectedAgent = selectedProject?.agents?.find(agent => agent.id === selectedAgentId);
-
-  // Mock metadata for selected agent
-  const getAgentMetadata = (agent) => {
-    if (!agent) return null;
-    
-    return {
-      steps: Math.floor(Math.random() * 50) + 10,
-      lastRun: ['15min ago', '32min ago', '2 hours ago', '45min ago'][Math.floor(Math.random() * 4)],
-      llm: ['GPT-4', 'Claude-3-Opus', 'Claude-3-Sonnet', 'Gemini-Pro'][Math.floor(Math.random() * 4)],
-      venue: ['AWS US-East-1', 'GCP Europe-West1', 'Azure West-US', 'Local Docker'][Math.floor(Math.random() * 4)],
-      runtime: `${Math.floor(Math.random() * 300) + 30}s`,
-      memoryUsage: `${Math.floor(Math.random() * 512) + 256}MB`
-    };
+  const refreshAgentList = () => {
+    if (!venue) return Promise.resolve();
+    return venue.agents.list(true).then((result) => {
+      setAgentList(result.agents || []);
+    }).catch(() => {});
   };
 
-  // Left column resize handlers
-  const startResizingLeft = (e) => {
+  const refreshAgentDetail = (agentId: string | null) => {
+    if (!agentHandle || !agentId) return Promise.resolve();
+    return agentHandle.query().then((result) => {
+      setSelectedAgentDetail(result as AgentDetail);
+    }).catch(() => {});
+  };
+
+  const refreshSessions = (agentId: string | null) => {
+    if (!venue || !agentId) return Promise.resolve();
+    return venue.workspace
+      .slice(`g/${agentId}/sessions`, 0, SESSION_LIMIT)
+      .then((res) => {
+        const items: Session[] = ((res?.values as any[]) || []).map((entry) => {
+          const sid = String(entry?.key ?? "");
+          const v = entry?.value || {};
+          const meta = v.meta || {};
+          const frames = Array.isArray(v.frames) ? v.frames : [];
+          const conversation: SessionMessage[] = frames.flatMap((f: any) =>
+            Array.isArray(f?.conversation) ? f.conversation : []
+          );
+          return {
+            sessionId: sid,
+            created: meta.created,
+            parties: meta.parties,
+            turns: meta.turns,
+            pending: Array.isArray(v.pending) ? v.pending : [],
+            conversation,
+          };
+        });
+        items.sort((a, b) => (b.created ?? 0) - (a.created ?? 0));
+        setSessions(items);
+      })
+      .catch(() => setSessions([]));
+  };
+
+  // ─── Effects ────────────────────────────────────────────────────────────────
+
+  // Initial agent list load
+  useEffect(() => {
+    if (!venue) return;
+    setLoading(true);
+    refreshAgentList().finally(() => setLoading(false));
+  }, [venue]);
+
+  // Auto-select first agent when list arrives
+  useEffect(() => {
+    if (agentList.length > 0 && !selectedAgentId) {
+      setSelectedAgentId(agentList[0].agentId);
+    }
+  }, [agentList, selectedAgentId]);
+
+  // Reload detail + sessions when agent changes
+  useEffect(() => {
+    setChatSession(null);
+    setSessions([]);
+    if (!venue || !selectedAgentId) {
+      setAgentHandle(null);
+      setSelectedAgentDetail(null);
+      return;
+    }
+    const handle = venue.agent(selectedAgentId);
+    setAgentHandle(handle);
+    setDetailLoading(true);
+    Promise.all([
+      handle.query()
+        .then((r) => setSelectedAgentDetail(r as AgentDetail))
+        .catch(() => {
+          toast("Unable to load agent details");
+          setSelectedAgentDetail(null);
+        }),
+      refreshSessions(selectedAgentId),
+    ]).finally(() => setDetailLoading(false));
+  }, [venue, selectedAgentId]);
+
+  // Auto-select most recent session
+  useEffect(() => {
+    if (!chatSession && sessions.length > 0 && agentHandle) {
+      setChatSession(agentHandle.chatSession(sessions[0].sessionId));
+    }
+  }, [sessions, chatSession, agentHandle]);
+
+  // Polling for live updates
+  useEffect(() => {
+    if (!venue) return;
+    const t = setInterval(() => {
+      refreshAgentList();
+      refreshAgentDetail(selectedAgentId);
+      refreshSessions(selectedAgentId);
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(t);
+  }, [venue, selectedAgentId]);
+
+  // Auto-scroll transcript on update
+  const selectedSessionId = chatSession?.sessionId ?? null;
+  const currentSession = useMemo(
+    () => sessions.find((s) => s.sessionId === selectedSessionId) || null,
+    [sessions, selectedSessionId]
+  );
+  useEffect(() => {
+    if (transcriptRef.current) {
+      transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
+    }
+  }, [currentSession?.conversation.length, sending]);
+
+  // ─── Actions ────────────────────────────────────────────────────────────────
+
+  const handleSuspend = () => {
+    if (!agentHandle || !selectedAgentId) return;
+    agentHandle.suspend().then(() => {
+      toast("Agent suspended");
+      refreshAgentDetail(selectedAgentId);
+      refreshAgentList();
+    }).catch(() => toast("Unable to suspend agent"));
+  };
+
+  const handleResume = () => {
+    if (!agentHandle || !selectedAgentId) return;
+    agentHandle.resume().then(() => {
+      toast("Agent resumed");
+      refreshAgentDetail(selectedAgentId);
+      refreshAgentList();
+    }).catch(() => toast("Unable to resume agent"));
+  };
+
+  const handleDelete = () => {
+    if (!agentHandle || !selectedAgentId) return;
+    agentHandle.delete().then(() => {
+      toast("Agent deleted");
+      setSelectedAgentId(null);
+      setSelectedAgentDetail(null);
+      setAgentHandle(null);
+      setChatSession(null);
+      refreshAgentList();
+    }).catch(() => toast("Unable to delete agent"));
+  };
+
+  const handleNewChat = () => setChatSession(null);
+
+  const handleSend = () => {
+    if (!agentHandle || !selectedAgentId || !messageText.trim()) return;
+    const text = messageText.trim();
+    const sendAgentId = selectedAgentId;
+
+    // Create a new ChatSession if none exists (new chat)
+    const session = chatSession ?? agentHandle.chatSession();
+    const sendSessionId = session.sessionId ?? null;
+
+    setSending(true);
+    setMessageText("");
+    setPendingUserMessage({ agentId: sendAgentId, sessionId: sendSessionId, text });
+
+    session.send(text)
+      .then(async (result) => {
+        // ChatSession auto-captures sessionId — update our state reference
+        setChatSession(session);
+        if (sendSessionId === null && result?.sessionId) {
+          setPendingUserMessage((prev) =>
+            prev && prev.agentId === sendAgentId && prev.sessionId === null
+              ? { ...prev, sessionId: result.sessionId }
+              : prev);
+        }
+        await refreshSessions(sendAgentId);
+        refreshAgentDetail(sendAgentId);
+        refreshAgentList();
+      })
+      .catch((err: any) => {
+        toast(`Chat failed: ${err?.message || "see console"}`);
+        setMessageText(text);
+      })
+      .finally(() => {
+        setSending(false);
+        setPendingUserMessage(null);
+      });
+  };
+
+  // ─── Helpers ────────────────────────────────────────────────────────────────
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case AgentStatus.RUNNING:    return "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300";
+      case AgentStatus.SLEEPING:   return "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300";
+      case AgentStatus.SUSPENDED:  return "bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300";
+      case AgentStatus.TERMINATED: return "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300";
+      default:                     return "bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-300";
+    }
+  };
+
+  const formatSessionLabel = (s: Session) => {
+    const short = s.sessionId.slice(-8);
+    const when = s.created
+      ? new Date(s.created).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+      : "—";
+    return `${when} · …${short} · ${s.turns ?? 0} turn${(s.turns ?? 0) === 1 ? "" : "s"}`;
+  };
+
+  const messageContentToString = (c: any): string => {
+    if (c == null) return "";
+    if (typeof c === "string") return c;
+    if (typeof c === "object") {
+      if (typeof c.text === "string") return c.text;
+      if (typeof c.message === "string") return c.message;
+      if (typeof c.content === "string") return c.content;
+      if (typeof c.input === "string") return c.input;
+    }
+    return JSON.stringify(c, null, 2);
+  };
+
+  // ─── Resize ─────────────────────────────────────────────────────────────────
+
+  const startResizingLeft = () => {
     isResizingLeft.current = true;
     document.addEventListener("mousemove", handleMouseMoveLeft);
     document.addEventListener("mouseup", stopResizingLeft);
     document.body.style.cursor = "col-resize";
   };
-
-  const handleMouseMoveLeft = (e) => {
+  const handleMouseMoveLeft = (e: MouseEvent) => {
     if (!isResizingLeft.current) return;
     const newWidth = Math.min(Math.max(200, e.clientX - 20), 600);
     setLeftWidth(newWidth);
   };
-
   const stopResizingLeft = () => {
     isResizingLeft.current = false;
     document.removeEventListener("mousemove", handleMouseMoveLeft);
@@ -74,256 +289,278 @@ const AgentExplorer = (props:any) => {
     document.body.style.cursor = "default";
   };
 
-  // Middle column resize handlers
-  const startResizingMiddle = (e) => {
-    isResizingMiddle.current = true;
-    document.addEventListener("mousemove", handleMouseMoveMiddle);
-    document.addEventListener("mouseup", stopResizingMiddle);
-    document.body.style.cursor = "col-resize";
-  };
+  // ─── Render ─────────────────────────────────────────────────────────────────
 
-  const handleMouseMoveMiddle = (e) => {
-    if (!isResizingMiddle.current) return;
-    // Calculate the starting position of the middle column (left column width + left resize handle width)
-    const middleColumnStart = leftWidth + 6; // 6px is approximately the resize handle width (1.5 * 4)
-    const newWidth = Math.min(Math.max(200, e.clientX - middleColumnStart), 400);
-    setMiddleWidth(newWidth);
-  };
-
-  const stopResizingMiddle = () => {
-    isResizingMiddle.current = false;
-    document.removeEventListener("mousemove", handleMouseMoveMiddle);
-    document.removeEventListener("mouseup", stopResizingMiddle);
-    document.body.style.cursor = "default";
-  };
+  const canSend = !!selectedAgentDetail
+    && selectedAgentDetail.status !== AgentStatus.TERMINATED
+    && selectedAgentDetail.status !== AgentStatus.SUSPENDED;
 
   return (
     <>
-    <TopBar />
-    <div className="flex h-[600px] w-full border border-border rounded-lg overflow-hidden shadow-sm select-none">
-      
-      {/* Column 1: Projects */}
-      <div 
-        style={{ width: `${leftWidth}px` }} 
-        className="flex-shrink-0 border-r border-border overflow-y-auto"
-      >
-      {agentData?.map((agent) => (
-        <>
-           <div className="p-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          {agent?.name}
-        </div>
-        {
-          <button
-            key={agent?.id}
-            onClick={() => {
-              setSelectedProject(agent!);
-              setSelectedAgentId(null);
-            }}
-            className={`w-full flex items-center justify-between p-4 text-left transition-colors border-b border-border last:border-0
-              ${selectedProject?.id === agent?.id ? 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300' : 'hover:bg-accent text-foreground'}`}
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              
-              <div className="truncate">
-                <p className="font-medium text-sm truncate">{agent?.name}</p>
-                <p className="text-xs opacity-70 truncate">{agent?.description}</p>
-              </div>
-            </div>
-            <ChevronRight size={16} className="flex-shrink-0 ml-2" />
-          </button>
-        }
-        </>
+      <TopBar />
+      <div className="flex h-[calc(100vh-120px)] min-h-[600px] w-full border border-border rounded-lg overflow-hidden shadow-sm select-none">
 
-      ))}
-       
-      </div>
-
-      {/* Resize Handle - Left */}
-      <div
-        onMouseDown={startResizingLeft}
-        className="w-1.5 hover:w-1.5 bg-transparent hover:bg-blue-400 cursor-col-resize transition-colors flex items-center justify-center group relative z-10"
-      >
-        <div className="hidden group-hover:block absolute bg-blue-500 rounded-full p-0.5">
-          <GripVertical size={10} className="text-white" />
-        </div>
-      </div>
-
-      {/* Column 2: Agents */}
-      <div 
-        style={selectedAgentId ? { width: `${middleWidth}px` } : {}}
-        className={`overflow-y-auto ${selectedAgentId ? 'flex-shrink-0 border-r border-border' : 'flex-1'}`}
-      >
-        {selectedProject ? (
-          <>
-            <div className="divide-y divide-border">
-              {selectedProject.agents.map((agent) => (
-                <div
-                  key={agent.id}
-                  onClick={() => setSelectedAgentId(agent.id)}
-                  className={`p-4 cursor-pointer transition-all duration-200 border-l-4 group
-                    ${selectedAgentId === agent.id
-                      ? 'bg-gradient-to-r from-blue-50 dark:from-blue-950 to-blue-50/30 dark:to-blue-950/30 border-blue-500 shadow-sm'
-                      : 'border-transparent hover:border-blue-300 hover:bg-accent/50 hover:shadow-sm'
-                    }`}
-                >
-                  <div className="flex justify-between items-start mb-1">
-                    <div className="flex items-center gap-2">
-                      <Bot 
-                        size={16} 
-                        className={`transition-colors duration-200 
-                          ${selectedAgentId === agent.id 
-                            ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-muted-foreground group-hover:text-blue-500'
-                          }`} 
-                      />
-                      <h4 className={`font-semibold text-sm transition-colors duration-200
-                        ${selectedAgentId === agent.id
-                          ? 'text-foreground'
-                          : 'text-muted-foreground group-hover:text-foreground'
-                        }`}>
-                        {agent.name}
-                      </h4>
-                    </div>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold transition-all duration-200
-                      ${selectedAgentId === agent.id 
-                        ? 'bg-green-500 text-white shadow-sm'
-                        : 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 group-hover:bg-green-200 dark:group-hover:bg-green-800'
-                      }`}>
-                      {agent.status}
-                    </span>
-                  </div>
-                  <p className={`text-sm ml-6 transition-colors duration-200
-                    ${selectedAgentId === agent.id
-                      ? 'text-muted-foreground'
-                      : 'text-muted-foreground/80 group-hover:text-muted-foreground'
-                    }`}>
-                    {agent.description}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-8 text-center">
-            <p className="text-sm">Select a project</p>
-          </div>
-        )}
-      </div>
-
-      {/* Resize Handle - Middle */}
-      {selectedAgentId && (
+        {/* Column 1: Agent List */}
         <div
-          onMouseDown={startResizingMiddle}
+          style={{ width: `${leftWidth}px` }}
+          className="flex-shrink-0 border-r border-border overflow-y-auto"
+        >
+          <div className="p-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Agents
+          </div>
+          {loading && (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="animate-spin text-primary" size={24} />
+            </div>
+          )}
+          {agentList.map((agent) => (
+            <button
+              key={agent.agentId}
+              onClick={() => setSelectedAgentId(agent.agentId)}
+              className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors border-b border-border last:border-0
+                ${selectedAgentId === agent.agentId ? 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300' : 'hover:bg-accent text-foreground'}`}
+            >
+              <Bot size={14} className={`flex-shrink-0 ${selectedAgentId === agent.agentId ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground'}`} />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-base truncate">{agent.agentId}</p>
+                <div className="flex items-center gap-1.5 text-[10px] opacity-70">
+                  <span>{agent.tasks} task{agent.tasks !== 1 ? 's' : ''}</span>
+                  <span>·</span>
+                  <span className={`px-1.5 py-px rounded-full font-semibold ${getStatusBadge(agent.status)}`}>
+                    {agent.status}
+                  </span>
+                </div>
+              </div>
+            </button>
+          ))}
+          {!loading && agentList.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
+              <Bot size={32} />
+              <p className="text-sm mt-2">No agents found</p>
+            </div>
+          )}
+        </div>
+
+        {/* Resize Handle */}
+        <div
+          onMouseDown={startResizingLeft}
           className="w-1.5 hover:w-1.5 bg-transparent hover:bg-blue-400 cursor-col-resize transition-colors flex items-center justify-center group relative z-10"
         >
           <div className="hidden group-hover:block absolute bg-blue-500 rounded-full p-0.5">
             <GripVertical size={10} className="text-white" />
           </div>
         </div>
-      )}
-  
-      {/* Column 3: Agent Metadata */}
-        {selectedAgent && (
-          <div className="p-6 flex-grow overflow-y-auto ">
-            <div className="mb-6">
-              <div className="flex items-center gap-3 mb-2">
-                <Bot size={24} className="text-blue-600 dark:text-blue-400" />
-                <h3 className="text-xl font-bold text-foreground">{selectedAgent.name}</h3>
-              </div>
-              <p className="text-sm text-muted-foreground">{selectedAgent.description}</p>
+
+        {/* Column 2: Chat panel */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+
+          {detailLoading && (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="animate-spin text-primary" size={32} />
             </div>
+          )}
 
-            <div className="space-y-4">
-              {/* Status */}
-              <div className="bg-muted rounded-lg p-1 border border-border">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 my-2">
-                    <Activity size={18} className="text-green-600" />
-                    <span className="font-semibold text-sm text-foreground ">Status</span>
+          {!detailLoading && !selectedAgentDetail && (
+            <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-8 text-center">
+              <Bot size={32} />
+              <p className="text-sm mt-2">Select an agent</p>
+            </div>
+          )}
+
+          {!detailLoading && selectedAgentDetail && (
+            <>
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-border flex flex-wrap items-center gap-3">
+                <Bot size={20} className="text-blue-600 dark:text-blue-400" />
+                <h3 className="text-lg font-bold text-foreground">{selectedAgentDetail.agentId}</h3>
+                <Badge className={getStatusBadge(selectedAgentDetail.status)}>
+                  {selectedAgentDetail.status}
+                </Badge>
+                {(selectedAgentDetail.tasks ?? 0) > 0 && (
+                  <Badge variant="outline">{selectedAgentDetail.tasks} task{selectedAgentDetail.tasks === 1 ? '' : 's'}</Badge>
+                )}
+                <div className="ml-auto flex flex-row gap-2">
+                  {(selectedAgentDetail.status === AgentStatus.RUNNING || selectedAgentDetail.status === AgentStatus.SLEEPING) && (
+                    <Button variant="outline" size="sm" onClick={handleSuspend}>
+                      <Pause size={14} className="mr-1" /> Suspend
+                    </Button>
+                  )}
+                  {selectedAgentDetail.status === AgentStatus.SUSPENDED && (
+                    <Button variant="outline" size="sm" onClick={handleResume}>
+                      <Play size={14} className="mr-1" /> Resume
+                    </Button>
+                  )}
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                        <Trash2 size={14} className="mr-1" /> Delete
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete agent &quot;{selectedAgentDetail.agentId}&quot;?</AlertDialogTitle>
+                        <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+
+              {/* Session toolbar */}
+              <div className="px-6 py-3 border-b border-border flex items-center gap-2 bg-muted/30">
+                <MessageSquare size={16} className="text-muted-foreground" />
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Session</span>
+                <div className="flex-1 max-w-md">
+                  <Select
+                    value={selectedSessionId ?? "__new__"}
+                    onValueChange={(v) => {
+                      if (v === "__new__") {
+                        setChatSession(null);
+                      } else if (agentHandle) {
+                        setChatSession(agentHandle.chatSession(v));
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="New chat (no session yet)">
+                        {selectedSessionId
+                          ? formatSessionLabel(currentSession ?? { sessionId: selectedSessionId, conversation: [] })
+                          : sessions.length === 0 ? "No sessions yet — send a message to start one" : "New chat"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__new__">+ New chat</SelectItem>
+                      {sessions.map((s) => (
+                        <SelectItem key={s.sessionId} value={s.sessionId}>
+                          {formatSessionLabel(s)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleNewChat} disabled={!chatSession}>
+                  <Plus size={14} className="mr-1" /> New chat
+                </Button>
+              </div>
+
+              {/* Transcript */}
+              <div ref={transcriptRef} className="flex-1 overflow-y-auto p-6 space-y-3 bg-background">
+                {!currentSession?.conversation.length && (
+                  <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-sm text-center">
+                    <MessageSquare size={32} className="mb-2" />
+                    {selectedSessionId
+                      ? <p>This session has no messages yet.</p>
+                      : <p>Send a message below to start a new chat session with {selectedAgentDetail.agentId}.</p>}
                   </div>
-                  <span className="text-sm px-3 py-1 rounded-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 font-semibold">
-                    {selectedAgent.status}
-                  </span>
+                )}
+                {currentSession?.conversation.map((msg, i) => {
+                  const isUser = msg.role === "user";
+                  const isAssistant = msg.role === "assistant";
+                  return (
+                    <div key={i} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+                      <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words
+                        ${isUser ? "bg-blue-600 text-white" : isAssistant ? "bg-muted text-foreground" : "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200"}`}>
+                        {!isUser && !isAssistant && (
+                          <div className="text-[10px] font-semibold uppercase tracking-wide opacity-70 mb-1">{msg.role}</div>
+                        )}
+                        {messageContentToString(msg.content)}
+                        {msg.ts && (
+                          <div className={`text-[10px] mt-1 ${isUser ? "text-blue-100" : "text-muted-foreground"}`}>
+                            {new Date(msg.ts).toLocaleTimeString()}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                {pendingUserMessage
+                  && pendingUserMessage.agentId === selectedAgentId
+                  && pendingUserMessage.sessionId === selectedSessionId && (
+                  <>
+                    <div className="flex justify-end">
+                      <div className="max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words bg-blue-600 text-white">
+                        {pendingUserMessage.text}
+                      </div>
+                    </div>
+                    {sending && (
+                      <div className="flex justify-start">
+                        <div className="bg-muted text-foreground rounded-lg px-3 py-2 text-sm flex items-center gap-2">
+                          <Loader2 size={14} className="animate-spin" />
+                          <span className="italic text-muted-foreground">{selectedAgentDetail.agentId} is thinking…</span>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Composer */}
+              <div className="px-6 py-3 border-t border-border bg-muted/20 flex flex-col gap-2">
+                <div className="flex flex-row gap-2">
+                  <Input
+                    placeholder={canSend ? `Message ${selectedAgentDetail.agentId}…` : `${selectedAgentDetail.status} — cannot send`}
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                    className="text-sm"
+                    disabled={sending || !canSend}
+                  />
+                  <Button size="sm" onClick={handleSend} disabled={sending || !canSend || !messageText.trim()}>
+                    {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                  </Button>
                 </div>
+                {!canSend && selectedAgentDetail.status === AgentStatus.SUSPENDED && (
+                  <p className="text-xs text-muted-foreground">Resume the agent to send messages.</p>
+                )}
               </div>
 
-              {/* Steps */}
-              <div className="bg-muted rounded-lg p-1 border border-border">
-                <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 my-2">
-                  <Zap size={18} className="text-amber-600" />
-                  <span className="font-semibold text-sm text-foreground">Total Steps</span>
-                </div>
-                <p className="text-sm font-semibold text-foreground mr-2">
-                  {getAgentMetadata(selectedAgent)?.steps}
-                </p>
+              {/* Collapsible details (config / state / timeline) */}
+              <div className="border-t border-border bg-background">
+                <button
+                  onClick={() => setDetailsOpen((v) => !v)}
+                  className="w-full px-6 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 hover:bg-accent"
+                >
+                  <ChevronDown size={14} className={`transition-transform ${detailsOpen ? '' : '-rotate-90'}`} />
+                  Details
+                </button>
+                {detailsOpen && (
+                  <div className="px-6 pb-4 space-y-3 text-xs">
+                    {selectedAgentDetail.config && (
+                      <div>
+                        <div className="font-semibold mb-1 text-foreground">Config</div>
+                        <pre className="font-mono bg-muted rounded px-2 py-2 overflow-x-auto">
+                          {JSON.stringify(selectedAgentDetail.config, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                    {selectedAgentDetail.stateConfig && (
+                      <div>
+                        <div className="font-semibold mb-1 text-foreground">State Config (resolved)</div>
+                        <pre className="font-mono bg-muted rounded px-2 py-2 overflow-x-auto">
+                          {JSON.stringify(selectedAgentDetail.stateConfig, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                    {selectedAgentDetail.timeline && selectedAgentDetail.timeline.length > 0 && (
+                      <div>
+                        <div className="font-semibold mb-1 text-foreground">Timeline ({selectedAgentDetail.timeline.length})</div>
+                        <pre className="font-mono bg-muted rounded px-2 py-2 overflow-x-auto max-h-48">
+                          {JSON.stringify(selectedAgentDetail.timeline, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              </div>
-
-              {/* Last Run */}
-               <div className="bg-muted rounded-lg p-1 border border-border">
-                 <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 my-2">
-                  <Clock size={18} className="text-blue-600" />
-                  <span className="font-semibold text-sm text-foreground">Last Run</span>
-                </div>
-                 <p className="text-sm font-semibold text-foreground mr-2">
-                  {getAgentMetadata(selectedAgent)?.lastRun}
-                </p>
-              </div>
-              </div>
-
-              {/* LLM Model */}
-              <div className="bg-muted rounded-lg p-1 border border-border">
-                <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 my-2">
-                  <Cpu size={18} className="text-purple-600" />
-                  <span className="font-semibold text-sm text-foreground">LLM Model</span>
-                </div>
-                <p className="text-sm font-medium text-foreground mr-2">
-                  {getAgentMetadata(selectedAgent)?.llm}
-                </p>
-               
-                </div>
-              </div>
-
-              {/* Venue Location */}
-              <div className="bg-muted rounded-lg p-1 border border-border">
-                <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 my-2">
-                  <MapPin size={18} className="text-red-600" />
-                  <span className="font-semibold text-sm text-foreground">Venue</span>
-               </div>
-                <p className="text-sm font-medium text-foreground mr-2">
-                  {getAgentMetadata(selectedAgent)?.venue}
-                </p>
-                 </div>
-              </div>
-
-                {/* Timeline */}
-               <div className="bg-blue-600 rounded-lg p-1 border border-border">
-                <div className="flex items-center justify-between">
-                <div className="flex items-center justify-center my-2 gap-2">
-                  <ChartGantt size={18} className="text-white-600" />
-                  <span className="font-thin text-sm text-white">View Timeline</span>
-               </div>
-                <p className="mr-2">
-                  <ArrowRight  onClick={() => router.push(`/agents/${props.agentId}/agent/${selectedAgent.id}`)} className="text-white-600 "/>
-                </p>
-                 </div>
-              </div>
-
-              </div>
-            
-             
-          </div>
-        ) 
-        }
-
-      
-    </div>
-      </>
-     
+            </>
+          )}
+        </div>
+      </div>
+    </>
   );
 };
 

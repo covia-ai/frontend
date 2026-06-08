@@ -1,19 +1,18 @@
 "use client";
 
 
-import { useStore } from "zustand";
-import { useVenue } from "@/hooks/use-venue";
-import { Asset, Venue } from "@covia/covia-sdk";
-import React, { useEffect, useMemo, useState } from 'react'
+import { Asset } from "@covia/covia-sdk";
+import React, { useEffect, useState } from 'react'
 import { AssetCard } from "./AssetCard";
 import { useVenues } from "@/hooks/use-venues";
+import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 
 
 export const ShowCase = () => {
    const [loading, setLoading] = useState(true);
    const [assets, setAssets] = useState<Asset[]>([]);
    const { venues } = useVenues();
-   const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
+   const venue = useAuthenticatedVenue();
 
     if(venues.length == 0)
       return (
@@ -32,8 +31,7 @@ export const ShowCase = () => {
     
    useEffect(() => {
      const fetchData = async () => {
-      const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId})
-      
+      if (!venue) return;
        try {
          const assetList = await venue.listAssets();
          const res = await Promise.all(assetList.items.map((assetId: string) => venue.getAsset(assetId)));
@@ -54,7 +52,7 @@ export const ShowCase = () => {
        }
      };
      fetchData();
-   }, [venueObj?.baseUrl, venueObj?.venueId]); // Empty dependency array to run once on mount
+   }, [venue]); // Re-fetch when venue changes
  
 
       return (

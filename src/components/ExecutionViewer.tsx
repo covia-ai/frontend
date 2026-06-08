@@ -2,8 +2,9 @@
 'use client'
 
 import { useEffect, useState } from "react";
-import { Asset, JobMetadata, RunStatus, Venue, isJobFinished,Grid,Job,CoviaUserAuth } from "@covia/covia-sdk";
-import { Check, CircleX, Clock, Copy, FileInput, FileOutput, Hash, RotateCcw, Settings, Timer, Trash2, X } from "lucide-react";
+import { Asset, JobMetadata, RunStatus, Venue, isJobFinished,Job } from "@covia/covia-sdk";
+import { createAuthProvider } from "@/lib/auth-provider";
+import { Check, CircleX, Clock, Copy, FileInput, FileOutput, Hash, MessageSquare, RotateCcw, Send, Settings, Timer, Trash2, X } from "lucide-react";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
@@ -14,10 +15,13 @@ import { ErrorDisplay } from "./ErrorDisplay";
 import { ExecutionHeader } from "./ExecutionHeader";
 import { ExecutionToolbar } from "./ExecutionToolbar";
 import { useVenues } from "@/hooks/use-venues";
-import { useSession } from "next-auth/react";
+import { useAuthStore } from "@/hooks/use-auth";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { TopBar } from "./admin-panel/TopBar";
+import { Button } from "./ui/button";
+import { Textarea } from "./ui/textarea";
+import { toast } from "sonner";
 
 
 export const ExecutionViewer = (props: any) => {
@@ -26,7 +30,9 @@ export const ExecutionViewer = (props: any) => {
     const [assetsMetadata, setAssetsMetadata] = useState<Asset>();
     const { venues, addVenue } = useVenues();
     const [venue, setVenue] = useState<Venue>();
-    const { data: session } = useSession();
+    const authData = useAuthStore((x) => x.auth);
+    const [jobMessage, setJobMessage] = useState("");
+    const [sendingMessage, setSendingMessage] = useState(false);
     const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
 
     const formatter = new Intl.DateTimeFormat('en-US', {
@@ -42,31 +48,52 @@ export const ExecutionViewer = (props: any) => {
 
     useEffect(() => {
     
+      const authOption = createAuthProvider(authData);
       if(props.venueId != venueObj?.venueId) {
         const venue = venues.find(v => v.venueId === props.venueId);
         if (venue) {
-            setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name}))
+            setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name, auth: authOption}))
          }
          else {
-          Grid.connect(decodeURIComponent(props.venueId), 
-            new CoviaUserAuth(session?.user?.email || "")).then((venue) => {
+          Venue.connect(decodeURIComponent(props.venueId),
+            authOption).then((venue) => {
             addVenue(venue)
             setVenue(venue)
           });
          }
     }
     else {
-        setVenue(new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name}));  
+        setVenue(new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: authOption}));
     }  
-   }, [addVenue, props.venueId, session?.user?.email, venueObj?.baseUrl, venueObj?.metadata.name, venueObj?.venueId, venues]);
+   }, [addVenue, props.venueId, authData, venueObj?.baseUrl, venueObj?.metadata.name, venueObj?.venueId, venues]);
 
     function fetchJobStatus() {
-        venue?.getJob(props.jobId).then((job:Job) => {
+        venue?.jobs.get(props.jobId).then((job:Job) => {
                 setJobMetadata(job.metadata);
                 setPollStatus(job.metadata.status || "");
         }).catch((error) => {
                 setPollStatus("ERROR");
         })
+    }
+
+    function handleSendJobMessage() {
+        if (!venue || !jobMessage.trim()) return;
+        let message: any;
+        try {
+          message = JSON.parse(jobMessage);
+        } catch {
+          message = jobMessage;
+        }
+        setSendingMessage(true);
+        venue.jobs.sendMessage(props.jobId, message).then(() => {
+          toast("Message sent");
+          setJobMessage("");
+          fetchJobStatus();
+        }).catch(() => {
+          toast("Unable to send message");
+        }).finally(() => {
+          setSendingMessage(false);
+        });
     }
 
     useEffect(() => {
@@ -102,7 +129,7 @@ export const ExecutionViewer = (props: any) => {
                             const id = step?.id || "";
                             return (
                                 <TableRow key={index} >
-                                    <TableCell className="text-secondary-light dark:text-card-foreground">{index}</TableCell>
+                                    <TableCell className="text-muted-foreground">{index}</TableCell>
                                     <TableCell className="text-secondary font-mono underline"><Link href={`/jobs/${id}`}>{id}</Link></TableCell>
                                     <TableCell>
                                         <span className={colourForStatus(status)}>{status}</span>
@@ -291,7 +318,34 @@ export const ExecutionViewer = (props: any) => {
                                  <ExecutionToolbar jobData={jobMetadata}></ExecutionToolbar>
 
                             </div>
-                             
+
+                            {/* INPUT_REQUIRED message form */}
+                            {jobMetadata?.status === RunStatus.INPUT_REQUIRED && (
+                              <div className="flex flex-col gap-3 py-3 px-4 my-2 bg-amber-50 dark:bg-amber-950 border border-amber-300 dark:border-amber-700 rounded-lg">
+                                <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
+                                  <MessageSquare size={18} />
+                                  <span className="font-semibold text-sm">This job requires input to continue</span>
+                                </div>
+                                <Textarea
+                                  placeholder="Enter your response (text or JSON)..."
+                                  value={jobMessage}
+                                  onChange={(e) => setJobMessage(e.target.value)}
+                                  className="font-mono text-sm bg-background"
+                                  rows={3}
+                                />
+                                <div className="flex flex-row-reverse">
+                                  <Button
+                                    size="sm"
+                                    onClick={handleSendJobMessage}
+                                    disabled={sendingMessage || !jobMessage.trim()}
+                                  >
+                                    <Send size={14} className="mr-1" />
+                                    {sendingMessage ? "Sending..." : "Send Response"}
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+
                             <div className="flex flex-row items-center space-x-4  py-2">
                                 <Clock></Clock>
                                 <span className="w-28">Created Date</span>

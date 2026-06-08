@@ -2,8 +2,10 @@
 
 import { Card } from "@/components/ui/card";
 import { Venue } from "@covia/covia-sdk";
+import { createAuthProvider } from "@/lib/auth-provider";
 import { useRouter } from 'next/navigation';
 import { useVenues } from "@/hooks/use-venues";
+import { useAuthStore } from "@/hooks/use-auth";
 import { Badge } from "./ui/badge";
 import { RemoveVenueModal } from "./RemoveVenueModal";
 import { Building } from "lucide-react";
@@ -15,9 +17,10 @@ interface VenueCardProps {
 
 export function VenueCard({ venue, compact }: VenueCardProps) {
   const router = useRouter();
+  const authData = useAuthStore((x) => x.auth);
 
   if(!(venue instanceof Venue))
-    venue = new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name})
+    venue = new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name, auth: createAuthProvider(authData)})
   const handleCardClick = () => {
     const encodedUrl = "/venues/"+encodeURIComponent(venue.venueId);
     router.push(encodedUrl);
@@ -42,7 +45,7 @@ export function VenueCard({ venue, compact }: VenueCardProps) {
 
       {/* Fixed-size footer */}
       <div className="p-1 h-8 flex flex-row-reverse" onClick={handleCardClick}>
-          <Badge variant="outline" className="bg-muted text-muted-foreground text-[10px]"><Building className="text-amber-400 ml-2" size={14}/> {venue.venueId }</Badge>
+          <Badge variant="outline" className="bg-muted text-muted-foreground text-[10px] max-w-full overflow-hidden"><Building className="text-amber-400 ml-2 flex-shrink-0" size={14}/> <span className="truncate">{venue.venueId}</span></Badge>
           
       </div>
     </Card>

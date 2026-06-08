@@ -1,10 +1,9 @@
 import { Card } from "@/components/ui/card";
 import { Iconbutton } from "./Iconbutton";
 import {  Copy, CopyIcon,  Save, SquareArrowOutUpRight } from "lucide-react";
-import { useStore } from "zustand";
-import { useVenue } from "@/hooks/use-venue";
-import { Asset, Venue } from "@covia/covia-sdk";
+import { Asset } from "@covia/covia-sdk";
 import { useRouter } from "next/navigation";
+import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -25,14 +24,14 @@ interface AssetCardProps {
 }
 
 export function AssetCard({ asset,type,compact }: AssetCardProps) {
-    const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
-    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name})
+    const venue = useAuthenticatedVenue();
     const router = useRouter();
     const [newJsonData, setNewJsonData] = useState({});
     const [assetCreated, setAssetCreated] = useState(false);
 
     
     const handleCardClick = (assetId:string) => {
+        if (!venue) return;
         const encodedUrl = "/venues/"+encodeURIComponent(venue.venueId)+"/"+type+"/"+assetId;
         router.push(encodedUrl);
     };

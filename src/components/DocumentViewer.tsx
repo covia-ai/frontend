@@ -63,7 +63,7 @@ export const DocumentViewer = ({ contentUrl, contentType }: DocumentViewerProps)
       <DialogTrigger className="text-sm text-secondary dark:text-secondary-light underline">
         View
       </DialogTrigger>
-      <DialogContent className="bg-background text-foreground dark:bg-zinc-900 dark:text-zinc-100 max-h-[90vh] w-full max-w-4xl p-4 flex flex-col overflow-hidden border dark:border-zinc-700">
+      <DialogContent className="bg-background text-foreground max-h-[90vh] w-full max-w-4xl p-4 flex flex-col overflow-hidden border border-border">
         <DialogHeader className="text-sm font-medium text-muted-foreground">
           Document Preview
         </DialogHeader>
@@ -74,7 +74,7 @@ export const DocumentViewer = ({ contentUrl, contentType }: DocumentViewerProps)
               <TabsTrigger value="raw">Raw</TabsTrigger>
             </TabsList>
             <TabsContent value="preview" className="flex-1 min-h-0">
-              <div className="h-[450px] w-full overflow-auto rounded-lg bg-white dark:bg-zinc-800">
+              <div className="h-[450px] w-full overflow-auto rounded-lg bg-card">
                 <DocViewer
                   documents={[{ uri: contentUrl, fileType }]}
                   pluginRenderers={DocViewerRenderers}
@@ -86,7 +86,7 @@ export const DocumentViewer = ({ contentUrl, contentType }: DocumentViewerProps)
             <TabsContent value="raw" className="flex-1 min-h-0 relative">
               <button
                 onClick={handleCopy}
-                className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors"
+                className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-muted hover:bg-muted/80 transition-colors"
                 title={copied ? "Copied!" : "Copy selected or all"}
               >
                 {copied ? <Check size={16} /> : <Copy size={16} />}
@@ -95,12 +95,12 @@ export const DocumentViewer = ({ contentUrl, contentType }: DocumentViewerProps)
                 ref={rawRef}
                 readOnly
                 value={rawText}
-                className="w-full h-[450px] p-4 text-sm bg-white dark:bg-zinc-800 rounded-lg resize-none border-none outline-none font-mono"
+                className="w-full h-[450px] p-4 text-sm bg-card rounded-lg resize-none border-none outline-none font-mono"
               />
             </TabsContent>
           </Tabs>
         ) : (
-          <div className="flex-1 min-h-0 h-[500px] w-full overflow-auto rounded-lg bg-white dark:bg-zinc-800">
+          <div className="flex-1 min-h-0 h-[500px] w-full overflow-auto rounded-lg bg-card">
             <DocViewer
               documents={[{ uri: contentUrl, fileType }]}
               pluginRenderers={DocViewerRenderers}

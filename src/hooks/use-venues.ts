@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { Venue,Grid } from "@covia/covia-sdk";
+import { Venue } from "@covia/covia-sdk";
 
 type VenuesStore = {
   venues: Venue[];
@@ -19,20 +19,12 @@ const defaultVenueUrls =
 if(process.env.NEXT_PUBLIC_IS_ENV_PROD == "false") 
     defaultVenueUrls.push("http://localhost:8080");
 
-// Connect to venues with error handling
+// Connect to venues, silently dropping any that are unreachable
 const connectToVenues = async (): Promise<Venue[]> => {
   const venues = await Promise.allSettled(
-    defaultVenueUrls.map(async (venueId) => {
-      try {
-        return await Grid.connect(venueId);
-      } catch (error) {
-        console.error(`Failed to connect to venue ${venueId}:`, error);
-        throw error;
-      }
-    })
+    defaultVenueUrls.map((venueId) => Venue.connect(venueId))
   );
 
-  // Filter out failed connections and return only successful venues
   return venues
     .filter((result): result is PromiseFulfilledResult<Venue> => result.status === "fulfilled")
     .map((result) => result.value);

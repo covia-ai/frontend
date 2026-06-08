@@ -1,14 +1,15 @@
 'use client'
 
 import { useEffect, useState } from "react";
-import { Asset, Venue, Grid, CoviaUserAuth } from "@covia/covia-sdk";
+import { Asset, Venue } from "@covia/covia-sdk";
+import { createAuthProvider } from "@/lib/auth-provider";
 import Link from "next/link";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { MetadataViewer } from "./MetadataViewer";
 import { AssetHeader } from "./AssetHeader";
 import { useVenues } from "@/hooks/use-venues";
-import { useSession } from "next-auth/react";
+import { useAuthStore } from "@/hooks/use-auth";
 import { ContentLayout } from "./admin-panel/content-layout";
 import { TopBar } from "./admin-panel/TopBar";
 
@@ -18,23 +19,24 @@ interface AssetViewerProps {
 }
 
 export function AssetViewer(props: AssetViewerProps) {
-  const { data: session } = useSession();
+  const authData = useAuthStore((x) => x.auth);
   const [asset, setAsset] = useState<Asset>();
   const venueObj = useStore(useVenue, (x) => x.currentVenue);
   const { venues, addVenue } = useVenues();
   const [venueName, setVenueName] = useState("")
 
   useEffect(() => {
+    const authOption = createAuthProvider(authData);
     if(props.venueId != venueObj?.venueId) {
         const venue = venues.find(v => v.venueId === props.venueId);
         if (venue) {
-            new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name}).getAsset(props.assetId).then((asset: Asset) => {
+            new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name, auth: authOption}).getAsset(props.assetId).then((asset: Asset) => {
           setAsset(asset);
           })
           setVenueName(venue.metadata.name)
          }
          else {
-          Grid.connect(decodeURIComponent(props.venueId),new CoviaUserAuth(session?.user?.email || "")).then((venue) => {
+          Venue.connect(decodeURIComponent(props.venueId), authOption).then((venue) => {
             addVenue(venue)
              venue.getAsset(props.assetId).then((asset: Asset) => {
              setAsset(asset);
@@ -44,12 +46,12 @@ export function AssetViewer(props: AssetViewerProps) {
          }
     }
     else {
-      new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.metadata.name}).getAsset(props.assetId).then((asset: Asset) => {
+      new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.metadata.name, auth: authOption}).getAsset(props.assetId).then((asset: Asset) => {
       setAsset(asset);
      })
       setVenueName(venueObj?.metadata.name!)
-    }  
-  }, [addVenue, props.assetId, props.venueId, session?.user?.email, venueObj, venues]);
+    }
+  }, [addVenue, props.assetId, props.venueId, authData, venueObj, venues]);
 
   return (
     <ContentLayout> 
