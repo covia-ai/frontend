@@ -21,7 +21,6 @@ const prodVenueUrls =
 const devVenueUrls =
 [     "https://venue-3.covia.ai",
       "https://venue-4.covia.ai",
-      "https://venue-5.covia.ai",
       "https://venue-test.covia.ai",
       "http://localhost:8080"
 ];
