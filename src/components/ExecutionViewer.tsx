@@ -8,7 +8,7 @@ import { Check, CircleX, Clock, Copy, FileInput, FileOutput, Hash, MessageSquare
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import {  colourForStatus, formatLabel, getExecutionTime } from "@/lib/utils";
+import {  colourForStatus, copyDataToClipBoard, formatLabel, getExecutionTime } from "@/lib/utils";
 import { TbSubtask } from "react-icons/tb";
 import Link from "next/link";
 import { ErrorDisplay } from "./ErrorDisplay";
@@ -317,6 +317,20 @@ export const ExecutionViewer = (props: any) => {
                                 </div>
                                  <ExecutionToolbar jobData={jobMetadata}></ExecutionToolbar>
 
+                            </div>
+
+                            <div className="flex flex-row items-center space-x-4 py-2">
+                                <Hash></Hash>
+                                <span className="w-28">Job ID:</span>
+                                <span className="text-card-foreground font-mono break-all">{props.jobId}</span>
+                                <button
+                                    type="button"
+                                    aria-label="copy job id"
+                                    onClick={() => copyDataToClipBoard(props.jobId, "Job ID copied")}
+                                    className="text-muted-foreground hover:text-foreground"
+                                >
+                                    <Copy size={14} />
+                                </button>
                             </div>
 
                             {/* INPUT_REQUIRED message form */}
