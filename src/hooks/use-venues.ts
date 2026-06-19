@@ -28,23 +28,29 @@ const devVenueUrls =
 const isProd = process.env.NEXT_PUBLIC_IS_ENV_PROD !== "false";
 const defaultVenueUrls = isProd ? prodVenueUrls : [...prodVenueUrls, ...devVenueUrls];
 
-// Connect to venues, silently dropping any that are unreachable
-const connectToVenues = async (): Promise<Venue[]> => {
-  const venues = await Promise.allSettled(
-    defaultVenueUrls.map((venueId) => Venue.connect(venueId))
-  );
+// Connect to one venue, treating a slow handshake as unreachable so a single
+// laggy or hanging venue can't stall the others (Venue.connect has no timeout).
+const CONNECT_TIMEOUT_MS = 2000;
+const connectWithTimeout = (venueId: string): Promise<Venue> =>
+  Promise.race([
+    Venue.connect(venueId),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timed out connecting to ${venueId}`)), CONNECT_TIMEOUT_MS)
+    ),
+  ]);
 
+// Connect to the default venues, silently dropping any unreachable or slow ones.
+const connectToVenues = async (): Promise<Venue[]> => {
+  const venues = await Promise.allSettled(defaultVenueUrls.map(connectWithTimeout));
   return venues
     .filter((result): result is PromiseFulfilledResult<Venue> => result.status === "fulfilled")
     .map((result) => result.value);
 };
 
-const defaultVenues: Venue[] = await connectToVenues();
-
 export const useVenues = create(
   persist<VenuesStore>(
     (set, get) => ({
-      venues: defaultVenues,
+      venues: [],
        getVenue: () => {
         const state = get();
         return state.venues;
@@ -77,3 +83,15 @@ export const useVenues = create(
     }
   )
 );
+
+// Connect to the default venues in the background — never blocks app startup or
+// navigation. Reachable venues are merged in as they resolve; persisted and
+// user-added venues are preserved (matched by venueId).
+connectToVenues().then((connected) => {
+  if (connected.length === 0) return;
+  useVenues.setState((state) => {
+    const byId = new Map<string, Venue>(state.venues.map((v): [string, Venue] => [v.venueId, v]));
+    for (const v of connected) byId.set(v.venueId, v);
+    return { venues: Array.from(byId.values()) };
+  });
+});
