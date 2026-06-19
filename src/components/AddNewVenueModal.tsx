@@ -15,7 +15,7 @@ import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { Label } from "@radix-ui/react-dropdown-menu";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { gtmEvent, normalizeVenueInput } from "@/lib/utils";
+import { gtmEvent } from "@/lib/utils";
 
 export const AddNewVenueModal = (props:any) => {
     const [open, setOpen] = useState(false)
@@ -29,25 +29,18 @@ export const AddNewVenueModal = (props:any) => {
       if (!input) return;
       gtmEvent.buttonClick('Add Venue', input);
 
-      // Normalise the free-text input into an ordered list of targets to try
-      // (handles bare host / IP / host:port, picks http vs https — see utils).
-      const candidates = normalizeVenueInput(input);
-
+      // Venue.connect is permissive about the input form (full URL, did:*, or a
+      // bare host / IP / host:port — choosing http vs https as appropriate).
       setConnecting(true);
       let connected = null;
-      let lastError: unknown = null;
-      for (const candidate of candidates) {
-        try {
-          connected = await Venue.connect(candidate, createAuthProvider(authData));
-          break;
-        } catch (err) {
-          lastError = err;
-        }
+      try {
+        connected = await Venue.connect(input, createAuthProvider(authData));
+      } catch (err) {
+        console.error("Venue connect failed", err);
       }
       setConnecting(false);
 
       if (!connected) {
-        console.error("Venue connect failed", lastError);
         toast(`Could not connect to "${input}". Check the URL/DID and that the venue is reachable.`);
         return;
       }
