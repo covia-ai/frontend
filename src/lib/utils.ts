@@ -151,3 +151,55 @@ export const gtmEvent = {
     })
   },
 }
+
+function stripTrailingSlash(value: string): string {
+  return value.replace(/\/+$/, "");
+}
+
+// True for hosts that are reachable only locally (loopback, private ranges,
+// mDNS). These default to http with an https fallback; everything else is https.
+function hostIsLocal(host: string): boolean {
+  const h = host.toLowerCase();
+  if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".local")) return true;
+  if (h === "::1" || h === "0.0.0.0") return true;
+  if (/^127\./.test(h)) return true;                      // 127.0.0.0/8 loopback
+  if (/^10\./.test(h)) return true;                       // 10.0.0.0/8
+  if (/^192\.168\./.test(h)) return true;                 // 192.168.0.0/16
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(h)) return true;  // 172.16.0.0/12
+  if (/^169\.254\./.test(h)) return true;                 // link-local
+  return false;
+}
+
+/**
+ * Normalise free-text venue input into an ordered list of connection targets
+ * to try. Permissive about what users paste — accepts full URLs, did:* ids,
+ * bare hostnames, IPs and host:port.
+ *
+ * Rules:
+ *  - did:* and explicit http(s):// inputs are honoured exactly as given.
+ *  - schemeless local hosts (localhost, loopback, private IPs) try http then https.
+ *  - schemeless public hosts use https only (type http:// to force plain http).
+ */
+export function normalizeVenueInput(raw: string): string[] {
+  const input = (raw ?? "").trim();
+  if (!input) return [];
+
+  // DID — pass through untouched.
+  if (/^did:/i.test(input)) return [input];
+
+  // Explicit scheme — honour it (lower-case the scheme, drop trailing slashes).
+  const scheme = input.match(/^(https?):\/\//i);
+  if (scheme) {
+    return [stripTrailingSlash(`${scheme[1].toLowerCase()}://${input.slice(scheme[0].length)}`)];
+  }
+
+  // Schemeless: isolate the host (drop any path, then the port) to classify it.
+  const authority = input.split("/")[0];
+  const v6 = authority.match(/^\[([^\]]+)\]/);
+  const host = v6 ? v6[1] : authority.split(":")[0];
+  const bare = stripTrailingSlash(input);
+
+  return hostIsLocal(host)
+    ? [`http://${bare}`, `https://${bare}`]
+    : [`https://${bare}`];
+}

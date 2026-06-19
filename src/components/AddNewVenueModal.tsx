@@ -1,6 +1,5 @@
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogTitle,
   DialogTrigger,
@@ -16,39 +15,52 @@ import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { Label } from "@radix-ui/react-dropdown-menu";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { gtmEvent } from "@/lib/utils";
+import { gtmEvent, normalizeVenueInput } from "@/lib/utils";
 
 export const AddNewVenueModal = (props:any) => {
     const [open, setOpen] = useState(false)
+    const [connecting, setConnecting] = useState(false)
     const { addVenue,venues } = useVenues();
     const authData = useAuthStore((x) => x.auth);
     const [venueDidOrUrl, setVenueDidOrUrl] = useState("");
 
-    const addVenueToList = () =>{
-    let venueExist = false;
-    let processVenueDidOrUrl = venueDidOrUrl;
-    gtmEvent.buttonClick('Add Venue', venueDidOrUrl);
+    const addVenueToList = async () => {
+      const input = venueDidOrUrl.trim();
+      if (!input) return;
+      gtmEvent.buttonClick('Add Venue', input);
 
-    venues.map((venue => {
-        if(processVenueDidOrUrl.endsWith("/"))
-            processVenueDidOrUrl = processVenueDidOrUrl.substring(0,processVenueDidOrUrl.length-1);
-        if(venue.venueId == processVenueDidOrUrl) {
-          venueExist = true;
+      // Normalise the free-text input into an ordered list of targets to try
+      // (handles bare host / IP / host:port, picks http vs https — see utils).
+      const candidates = normalizeVenueInput(input);
+
+      setConnecting(true);
+      let connected = null;
+      let lastError: unknown = null;
+      for (const candidate of candidates) {
+        try {
+          connected = await Venue.connect(candidate, createAuthProvider(authData));
+          break;
+        } catch (err) {
+          lastError = err;
         }
-      
-        else if ((processVenueDidOrUrl.startsWith('http:') || processVenueDidOrUrl.startsWith('https:')) && (venue.baseUrl.indexOf(processVenueDidOrUrl) != -1)) {
-            venueExist = true;
-        }
-        
-    }))
-    if(!venueExist) {
-      Venue.connect(processVenueDidOrUrl, createAuthProvider(authData)).then((venue)=> {
-        addVenue(venue)
-      })
-    }
-    else {
-      toast("This venue is already connected. Please check the URL/DID provided")
-    }
+      }
+      setConnecting(false);
+
+      if (!connected) {
+        console.error("Venue connect failed", lastError);
+        toast(`Could not connect to "${input}". Check the URL/DID and that the venue is reachable.`);
+        return;
+      }
+
+      // Dedup on the venue's actual id (DID), so equivalent inputs collapse.
+      if (venues.some((venue) => venue.venueId === connected!.venueId)) {
+        toast("This venue is already connected.");
+        return;
+      }
+
+      addVenue(connected);
+      setVenueDidOrUrl("");
+      setOpen(false);
     }
 
     return (
@@ -68,9 +80,7 @@ export const AddNewVenueModal = (props:any) => {
                     </div>
                    
                   </div>
-                      <DialogClose>
-                          <Button data-testid="venue-addbtn" aria-label="connect" role="button" onClick={(e) => addVenueToList()}>Connect</Button>                 
-                    </DialogClose>
+                      <Button data-testid="venue-addbtn" aria-label="connect" role="button" disabled={connecting} onClick={() => addVenueToList()}>{connecting ? "Connecting…" : "Connect"}</Button>
             </DialogContent>
        </Dialog>
     )

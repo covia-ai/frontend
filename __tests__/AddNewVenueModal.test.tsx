@@ -29,6 +29,7 @@ jest.mock('next/navigation', () => ({
 jest.mock('@/lib/utils', () => ({
   cn: (...args: any[]) => args.filter(Boolean).join(' '),
   gtmEvent: { buttonClick: jest.fn() },
+  normalizeVenueInput: (raw: string) => [raw],
 }));
 
 describe('AddNewVenueModal', () => {
