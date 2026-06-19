@@ -10,13 +10,15 @@ type VenuesStore = {
   getVenue:() => Venue[];
 };
 
-// Default venues
+// Default venues — unreachable ones are silently dropped by connectToVenues
 const defaultVenueUrls =
-[     "https://venue-3.covia.ai",
-      "https://venue-4.covia.ai"
+[     "https://venue-1.covia.ai",
+      "https://venue-2.covia.ai",
+      "https://venue-3.covia.ai",
+      "https://venue-4.covia.ai",
+      "https://venue-5.covia.ai",
+      "http://localhost:8080"
 ];
-if(process.env.NEXT_PUBLIC_IS_ENV_PROD == "false") 
-    defaultVenueUrls.push("http://localhost:8080");
 
 // Connect to venues, silently dropping any that are unreachable
 const connectToVenues = async (): Promise<Venue[]> => {
