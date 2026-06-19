@@ -19,6 +19,7 @@ import { PaginationHeader } from "./PaginationHeader";
 import { useVenues } from "@/hooks/use-venues";
 import { PlayCircle } from "lucide-react";
 import { TopBar } from "./admin-panel/TopBar";
+import { listCatalogOperations } from "@/lib/operations-catalog";
 
 
 
@@ -67,30 +68,28 @@ export function OperationsList() {
   
   useEffect(() => {
      const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: createAuthProvider(authData)})
-     function fetchAssets() {
+     async function fetchAssets() {
+        setLoading(true);
         setAssetsMetadata([]);
-          try {
-            venue?.listAssets().then((assetList) => {
-            assetList.items.forEach((assetId: string) => {
-              venue.getAsset(assetId).then((asset) => {
-                asset.getMetadata().then((metadata: object) => {
-                  if (metadata.operation != undefined)
-                    if(search && search.length>0 ) {
-                        if(metadata?.name?.toLowerCase().indexOf(search.toLowerCase()) != -1 || asset.id?.toLowerCase().indexOf(search.toLowerCase()) != -1)
-                            setAssetsMetadata(prevArray => [...prevArray, new Operation(asset.id, asset.venue, metadata)]);
-                      }
-                      else {
-                          setAssetsMetadata(prevArray => [...prevArray, new Operation(asset.id, asset.venue, metadata)]);
-                      }
-                })
-                setLoading(false)
-              })
-            })
-          })
+        try {
+          // Discover ops from the venue catalog (v/ops + v/test/ops) by path —
+          // one read per tree, no per-asset round trip. Each op keeps its
+          // resolvable catalog path as its id (drives the URL).
+          const ops = await listCatalogOperations(venue);
+          const term = search?.toLowerCase() ?? "";
+          const matched = term.length > 0
+            ? ops.filter(op =>
+                op.metadata?.name?.toLowerCase().includes(term) ||
+                op.path.toLowerCase().includes(term))
+            : ops;
+          matched.sort((a, b) =>
+            (a.metadata?.name ?? a.path).localeCompare(b.metadata?.name ?? b.path));
+          setAssetsMetadata(matched.map(op => new Operation(op.path, venue, op.metadata)));
+        } catch (error) {
+          console.error('Error fetching operations:', error);
+        } finally {
+          setLoading(false);
         }
-      catch (error) {
-            console.error('Error fetching data:', error);
-      } 
       }
      if(venueObj != null)
         fetchAssets();

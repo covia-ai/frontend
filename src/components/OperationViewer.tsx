@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import {  Venue, Asset, getParsedAssetId } from "@covia/covia-sdk";
 import { createAuthProvider } from "@/lib/auth-provider";
 import { formatLabel, gtmEvent } from "@/lib/utils";
+import { resolveOperationByAddress } from "@/lib/operations-catalog";
 import { ErrorDisplay } from "./ErrorDisplay";
 import { useRouter } from "next/navigation";
 import { Textarea } from "./ui/textarea";
@@ -120,9 +121,12 @@ export const OperationViewer = (props: any) => {
    }, [authData]); 
 
   useEffect(() => {
+    if (!venue) return;
     setAssetNotFound(false);
     setErrorMessage("");
-    venue?.getAsset(props.assetId)
+    // props.assetId is a namespace-explicit address (v/ops/..., v/test/ops/...,
+    // or a/<hash>) — resolve it through the catalog/CAS, not hash-only getAsset.
+    resolveOperationByAddress(venue, props.assetId)
       .then((asset: Asset) => {
         setAsset(asset);
 
