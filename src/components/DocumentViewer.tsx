@@ -1,7 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState } from "react";
-import DocViewer, { DocViewerRenderers } from "@cyntler/react-doc-viewer";
+import DocViewer, { DocViewerRenderers, TXTRenderer } from "@cyntler/react-doc-viewer";
+
+// TXTRenderer has an unpatched XSS (unsanitized file content cast to ReactNode).
+// We exclude it and rely on our own safe Raw tab for text/plain content instead.
+const SAFE_RENDERERS = DocViewerRenderers.filter((r) => r !== TXTRenderer);
 import { Dialog, DialogContent, DialogHeader, DialogTrigger } from "./ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Copy, Check } from "lucide-react";
@@ -77,7 +81,7 @@ export const DocumentViewer = ({ contentUrl, contentType }: DocumentViewerProps)
               <div className="h-[450px] w-full overflow-auto rounded-lg bg-card">
                 <DocViewer
                   documents={[{ uri: contentUrl, fileType }]}
-                  pluginRenderers={DocViewerRenderers}
+                  pluginRenderers={SAFE_RENDERERS}
                   config={{ header: { disableHeader: true } }}
                   style={{ height: "100%", backgroundColor: "transparent" }}
                 />
@@ -103,7 +107,7 @@ export const DocumentViewer = ({ contentUrl, contentType }: DocumentViewerProps)
           <div className="flex-1 min-h-0 h-[500px] w-full overflow-auto rounded-lg bg-card">
             <DocViewer
               documents={[{ uri: contentUrl, fileType }]}
-              pluginRenderers={DocViewerRenderers}
+              pluginRenderers={SAFE_RENDERERS}
               config={{ header: { disableHeader: true } }}
               style={{ height: "100%", backgroundColor: "transparent" }}
             />
