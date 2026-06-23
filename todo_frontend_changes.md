@@ -44,8 +44,9 @@ useEffect(() => {
 
 ---
 
-## P2 — Operations Catalog Page
+## P2 — Operations Catalog Page ✅ DONE
 
+**Status:** Fixed — commit `4c8b37f`, pushed to `develop` 2026-06-23.  
 **New route:** `/operations/catalog`  
 **Gap:** No page shows the full `v/ops/*` catalog. Developers cannot discover what the
 venue can do without reading docs.
