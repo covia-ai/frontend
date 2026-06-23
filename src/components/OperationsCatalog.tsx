@@ -154,12 +154,15 @@ export function OperationsCatalog() {
               className="pl-8"
             />
           </div>
-          <Select value={filterAdapter} onValueChange={setFilterAdapter}>
+          <Select
+            value={filterAdapter || "_all_"}
+            onValueChange={(v) => setFilterAdapter(v === "_all_" ? "" : v)}
+          >
             <SelectTrigger className="w-44 shrink-0">
               <SelectValue placeholder="All adapters" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All adapters</SelectItem>
+              <SelectItem value="_all_">All adapters</SelectItem>
               {adapters.map((a) => (
                 <SelectItem key={a} value={a} className="font-mono">{a}</SelectItem>
               ))}
