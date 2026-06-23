@@ -382,9 +382,12 @@ Developer Tools         ← new section, dev only
 - `fetchStats` and `fetchMCP` in the second `useEffect` use `venue` but `venue` is not
   in the dep array. Add it: `[venue]` is already there — verify linting is clean.
 
-### JobList — empty state when venue has jobs but filter returns none
-- Currently shows an empty table with no message. Add: "No jobs match the selected
-  filter." with a "Clear filter" button.
+### JobList — N+1 fetch performance + filter empty state ✅ DONE
+**Status:** Fixed — commit `c9d1205`, issue [#138](https://github.com/covia-ai/frontend/issues/138), pushed to `develop` 2026-06-23.
+- Was making 1 + N HTTP requests (one `jobs.get()` per job ID) before rendering anything; page appeared frozen with 200+ jobs.
+- Now: `jobs.list()` fetches all IDs (1 request), then only the current page's 10 IDs have their metadata fetched.
+- Loading spinner added; `Promise.allSettled` prevents one bad ID breaking the page.
+- "No jobs match this filter" empty state added (no "Clear filter" button yet).
 
 ### OperationsList — show operation count in the page header
 - After loading: "Showing N operations". Helps developers gauge venue size quickly.
