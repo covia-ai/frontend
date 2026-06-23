@@ -11,7 +11,8 @@ import {
   LibraryBig,
   Activity,
   BotIcon,
-  KeyRound
+  KeyRound,
+  BookOpen,
 } from "lucide-react";
 
 type Submenu = {
@@ -61,7 +62,12 @@ export function   getMenuList(): Group[] {
                 label: "Operations",
                 icon: PlayCircle,
                 active: false
-              
+              },
+              {
+                href: "/operations/catalog",
+                label: "Catalog",
+                icon: BookOpen,
+                active: false
               },
 
             ]
@@ -123,7 +129,12 @@ export function   getMenuList(): Group[] {
                 label: "Operations",
                 icon: PlayCircle,
                 active: false
-              
+              },
+              {
+                href: "/operations/catalog",
+                label: "Catalog",
+                icon: BookOpen,
+                active: false
               },
 
             ]
