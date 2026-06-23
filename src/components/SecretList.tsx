@@ -31,7 +31,7 @@ export function SecretList() {
   const isAuthenticated = useIsAuthenticated();
 
   const loadSecrets = () => {
-    if (!venue) {
+    if (!venue || !isAuthenticated) {
       setLoading(false);
       return;
     }
@@ -52,7 +52,7 @@ export function SecretList() {
 
   useEffect(() => {
     loadSecrets();
-  }, [venue]);
+  }, [venue, isAuthenticated]);
 
   const handleAdd = () => {
     if (!venue || !newName.trim() || !newValue.trim()) {
@@ -132,17 +132,16 @@ export function SecretList() {
         <div className="border border-border rounded-lg p-4 bg-muted/30 flex items-start gap-3">
           <Lock size={16} className="text-muted-foreground mt-0.5 shrink-0" />
           <div>
-            <p className="text-sm font-medium text-foreground">Public identity</p>
+            <p className="text-sm font-medium text-foreground">Authentication required</p>
             <p className="text-xs text-muted-foreground mt-1">
-              You&apos;re browsing as a public user. Secrets here are shared among all unauthenticated callers.
-              Sign in to store private, per-identity secrets.
+              Sign in to store and manage secrets. Secret operations require a verified identity.
             </p>
           </div>
         </div>
       )}
 
-      {/* Secrets List */}
-      <div className="border border-border rounded-lg overflow-hidden">
+      {/* Secrets List — only shown to authenticated users */}
+      {!isAuthenticated ? null : <div className="border border-border rounded-lg overflow-hidden">
         {loading && (
           <div className="flex items-center justify-center py-10">
             <Loader2 className="animate-spin text-primary" size={24} />
@@ -204,7 +203,7 @@ export function SecretList() {
             </TableBody>
           </Table>
         )}
-      </div>
+      </div>}
     </div>
   );
 }
