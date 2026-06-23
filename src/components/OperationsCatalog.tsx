@@ -184,16 +184,15 @@ export function OperationsCatalog() {
         {!loading &&
           grouped.map(([adapter, adapterOps]) => (
             <div key={adapter}>
-              <div className="flex items-center gap-2 mb-1.5">
-                <Badge variant="outline" className="font-mono text-xs px-2 py-0.5">
-                  {adapter}
-                </Badge>
-                <span className="text-xs text-muted-foreground">
-                  {adapterOps.length} op{adapterOps.length !== 1 ? "s" : ""}
-                </span>
-              </div>
-
               <div className="border border-border rounded-lg overflow-hidden mb-4">
+                <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-b border-border">
+                  <Badge variant="outline" className="font-mono text-xs px-2 py-0">
+                    {adapter}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {adapterOps.length} op{adapterOps.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
                 <Accordion type="multiple">
                   {adapterOps.map((op) => {
                     const name =
@@ -208,14 +207,9 @@ export function OperationsCatalog() {
                         value={op.path}
                         className="border-b last:border-b-0"
                       >
-                        {/* Trigger: name + one-line description only */}
-                        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/40">
-                          <div className="flex flex-col items-start text-left flex-1 mr-4 min-w-0 gap-0.5">
-                            <span className="font-mono text-sm font-semibold">{name}</span>
-                            {desc && (
-                              <span className="text-xs text-muted-foreground line-clamp-1">{desc}</span>
-                            )}
-                          </div>
+                        {/* Trigger: name only — keep rows scannable */}
+                        <AccordionTrigger className="px-4 py-2.5 hover:no-underline hover:bg-muted/40">
+                          <span className="font-mono text-sm font-medium text-left flex-1 mr-4">{name}</span>
                         </AccordionTrigger>
 
                         {/* Expanded: path + schemas + Run */}
