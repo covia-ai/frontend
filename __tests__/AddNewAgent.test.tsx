@@ -2,24 +2,24 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { toast } from 'sonner';
 
-// Mock the toast function
 jest.mock('sonner', () => ({
   toast: jest.fn(),
 }));
 
-// Mock Iconbutton used by the dialog trigger
+// Must spread ...rest so DialogTrigger asChild can forward onClick/ref.
 jest.mock('@/components/Iconbutton', () => ({
-  Iconbutton: ({ icon, message, label }: any) => (
-    <button data-testid="trigger-btn">{label || message}</button>
+  Iconbutton: ({ icon, message, label, ...rest }: any) => (
+    <button data-testid="trigger-btn" {...rest}>{label || message}</button>
   ),
 }));
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),
 }));
 
-// Mock the authenticated venue hook
-jest.mock('@/hooks/use-authenticated-venue', () => ({
-  useAuthenticatedVenue: () => ({
+// Return a stable object reference so the useEffect dep [venue] doesn't
+// fire on every render and reset controlled-input state.
+jest.mock('@/hooks/use-authenticated-venue', () => {
+  const venue = {
     agents: {
       create: jest.fn().mockResolvedValue({ agentId: 'test-agent', status: 'active' }),
       request: jest.fn().mockResolvedValue({}),
@@ -27,12 +27,12 @@ jest.mock('@/hooks/use-authenticated-venue', () => ({
     secrets: {
       list: jest.fn().mockResolvedValue([]),
     },
-  }),
-}));
+  };
+  return { useAuthenticatedVenue: () => venue };
+});
 
 import { AddNewAgent } from '@/components/AddNewAgent';
 
-// Helper to open the dialog before querying form elements
 async function renderAndOpenDialog() {
   const user = userEvent.setup();
   render(<AddNewAgent />);
@@ -48,7 +48,6 @@ describe('AddNewAgent', () => {
 
   it('renders the trigger button', () => {
     render(<AddNewAgent />);
-
     expect(screen.getByTestId('trigger-btn')).toBeInTheDocument();
     expect(screen.getByTestId('trigger-btn')).toHaveTextContent('Create a new agent');
   });
@@ -74,21 +73,17 @@ describe('AddNewAgent', () => {
 
   it('renders LLM provider select with default value', async () => {
     await renderAndOpenDialog();
-
-    // The select trigger should show the default provider (Anthropic)
     expect(screen.getByText('Anthropic (Claude)')).toBeInTheDocument();
   });
 
   it('renders create button with correct attributes', async () => {
     await renderAndOpenDialog();
-
     const createButton = screen.getByRole('button', { name: /create agent/i });
     expect(createButton).toHaveAttribute('aria-label', 'create agent');
   });
 
   it('shows system prompt textarea', async () => {
     await renderAndOpenDialog();
-
     const textarea = screen.getByPlaceholderText(
       'e.g., You are a helpful customer support agent that...'
     );
@@ -97,7 +92,6 @@ describe('AddNewAgent', () => {
 
   it('shows initial command input', async () => {
     await renderAndOpenDialog();
-
     const input = screen.getByPlaceholderText(
       'e.g., Greet the user and ask how you can help'
     );
@@ -120,13 +114,10 @@ describe('AddNewAgent', () => {
     });
   });
 
-  it('shows error toast when agent name is empty', async () => {
-    const user = await renderAndOpenDialog();
-
+  it('create button is disabled when agent name is empty', async () => {
+    await renderAndOpenDialog();
     const createButton = screen.getByTestId('create-agent');
-    await user.click(createButton);
-
-    expect(toast).toHaveBeenCalledWith('Please enter an agent name');
+    expect(createButton).toBeDisabled();
   });
 
   it('displays all form labels correctly', async () => {

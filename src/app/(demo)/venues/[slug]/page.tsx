@@ -51,34 +51,30 @@ export default function VenuePage({ params }: VenuePageProps) {
   const [ noOfOps, setNoOfOps] = useState(0)
   const [ noOfRuns, setNoOfRuns] = useState(0)
   const [ noOfUsers, setNoOfUsers] = useState(0)
-  const authData = useAuthStore((x) => x.auth);
+  const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
+  const authMap = useAuthStore((x) => x.authMap);
 
   useEffect(() => {
-    // Find the venue by slug
-    const foundVenue = venues.find(v => v.venueId === decodeURIComponent(slug));
+    const decodedSlug = decodeURIComponent(slug);
+    const authOption = createAuthProvider(getAuthForVenue(decodedSlug));
+    const foundVenue = venues.find(v => v.venueId === decodedSlug);
     if (foundVenue) {
       if(foundVenue instanceof Venue) {
           setVenue(foundVenue);
           setVenueDID(foundVenue.venueId)
       }
       else {
-          const authOption = createAuthProvider(authData);
           const foundVenue_obj = new Venue({baseUrl:foundVenue.baseUrl, venueId:foundVenue.venueId, name:foundVenue.metadata.name, auth: authOption});
           setVenue(foundVenue_obj)
           setVenueDID(foundVenue_obj.venueId)
       }
-     
-      // Don't automatically set as current venue - only when user clicks "Make Default"
-      
     }
     else {
-       const authOption = createAuthProvider(authData);
-       Venue.connect(decodeURIComponent(slug), authOption).then((venue) => {
+       Venue.connect(decodedSlug, authOption).then((venue) => {
          addVenue(venue)
-       }
-      )
+       })
     }
-  }, [slug, venues]);
+  }, [slug, venues, authMap, getAuthForVenue]);
 
     useEffect(() => {
        const fetchMCP = async () => {

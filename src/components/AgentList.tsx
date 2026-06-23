@@ -2,7 +2,7 @@
 
 import { AddNewAgent } from "./AddNewAgent";
 import { ContentLayout } from "./admin-panel/content-layout";
-import { Bot, Clock, Loader2, SquareChevronRight } from "lucide-react";
+import { Bot, Clock, Loader2, SquareChevronRight, Lock } from "lucide-react";
 import { Card } from "./ui/card";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -16,6 +16,7 @@ import { Badge } from "./ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 import { AgentStatus } from "@covia/covia-sdk";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useIsAuthenticated } from "@/hooks/use-auth";
 import { toast } from "sonner";
 
 export function AgentList() {
@@ -24,6 +25,7 @@ export function AgentList() {
   const [loading, setLoading] = useState(true);
   const compact = true;
   const venue = useAuthenticatedVenue();
+  const isAuthenticated = useIsAuthenticated();
 
   useEffect(() => {
     if (!venue) return;
@@ -70,7 +72,14 @@ export function AgentList() {
      {loading && <div className="flex items-center justify-center py-10"><Loader2 className="animate-spin text-primary" size={32} /></div>}
      {!loading && agentData.length == 0 &&  <div className="flex flex-col items-center justify-center w-full space-y-2 pt-4">
             <Bot size={48} className="text-primary"></Bot>
-            <AddNewAgent></AddNewAgent>
+            {isAuthenticated ? (
+              <AddNewAgent />
+            ) : (
+              <Button variant="outline" disabled className="gap-2 text-muted-foreground">
+                <Lock size={14} />
+                Sign in to create agents
+              </Button>
+            )}
       </div>}
       <div className="flex flex-row-reverse w-full">
        <SquareChevronRight onClick={() => router.push('/agents/explorer')}/>
@@ -104,7 +113,14 @@ export function AgentList() {
             ))}
 
          </div>
-         <AddNewAgent></AddNewAgent>
+         {isAuthenticated ? (
+           <AddNewAgent />
+         ) : (
+           <Button variant="outline" disabled className="gap-2 text-muted-foreground">
+             <Lock size={14} />
+             Sign in to create agents
+           </Button>
+         )}
       </div>
       }
      

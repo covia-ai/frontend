@@ -2,7 +2,6 @@
 
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogTitle,
   DialogTrigger,
@@ -28,10 +27,22 @@ import { LLM_PROVIDERS } from "@/config/llm-providers";
 import { Check, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
-export function AddNewAgent() {
-  const [agentName, setAgentName] = useState("");
-  const [llmProvider, setLlmProvider] = useState("anthropic");
-  const [systemPrompt, setSystemPrompt] = useState("");
+interface AddNewAgentProps {
+  trigger?: React.ReactNode;
+  initialAgentName?: string;
+  initialSystemPrompt?: string;
+  initialProvider?: string;
+}
+
+export function AddNewAgent({
+  trigger,
+  initialAgentName = "",
+  initialSystemPrompt = "",
+  initialProvider = "anthropic",
+}: AddNewAgentProps = {}) {
+  const [agentName, setAgentName] = useState(initialAgentName);
+  const [llmProvider, setLlmProvider] = useState(initialProvider);
+  const [systemPrompt, setSystemPrompt] = useState(initialSystemPrompt);
   const [initialCommand, setInitialCommand] = useState("");
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState(false);
@@ -40,16 +51,23 @@ export function AddNewAgent() {
   const venue = useAuthenticatedVenue();
 
   useEffect(() => {
-    if (!open || !venue) return;
+    if (!open) return;
+    setAgentName(initialAgentName);
+    setSystemPrompt(initialSystemPrompt);
+    setLlmProvider(initialProvider);
+    setInitialCommand("");
+    if (!venue) return;
     venue.secrets
       .list()
       .then((secrets: string[]) => setAvailableKeys(secrets))
       .catch(() => setAvailableKeys([]));
-  }, [open, venue]);
+  }, [open, venue, initialAgentName, initialSystemPrompt, initialProvider]);
 
   const isProviderReady = (providerId: string) => {
     const provider = LLM_PROVIDERS[providerId];
-    return provider && availableKeys.includes(provider.secretKey);
+    if (!provider) return false;
+    if (!provider.requiresKey) return true;
+    return availableKeys.includes(provider.secretKey);
   };
 
   const handleNewAgent = async () => {
@@ -59,18 +77,18 @@ export function AddNewAgent() {
     }
     setCreating(true);
     try {
+      const provider = LLM_PROVIDERS[llmProvider];
       const result = await venue.agents.create({
         agentId: agentName,
         config: {
-          operation: "standard",
-          llmProvider,
+          operation: "v/ops/llmagent/chat",
+          llmOperation: provider.operation,
           ...(systemPrompt.trim() && { systemPrompt: systemPrompt.trim() }),
         },
       });
 
       if (initialCommand.trim()) {
-        const agent = venue.agent(result.agentId);
-        await agent.request({ prompt: initialCommand.trim() });
+        await venue.agents.request(result.agentId, { task: initialCommand.trim() });
       }
 
       toast("Agent created", {
@@ -89,12 +107,14 @@ export function AddNewAgent() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
-        <Iconbutton
-          icon={PlusCircledIcon}
-          message="Create a new agent"
-          label="Create a new agent"
-        />
+      <DialogTrigger asChild>
+        {trigger ?? (
+          <Iconbutton
+            icon={PlusCircledIcon}
+            message="Create a new agent"
+            label="Create a new agent"
+          />
+        )}
       </DialogTrigger>
       <DialogContent className="flex flex-col bg-card max-h-[85vh] overflow-y-auto">
         <DialogTitle className="space-y-2">
@@ -136,7 +156,7 @@ export function AddNewAgent() {
                 ))}
               </SelectContent>
             </Select>
-            {!isProviderReady(llmProvider) && (
+            {!isProviderReady(llmProvider) && LLM_PROVIDERS[llmProvider]?.requiresKey && (
               <p className="text-xs text-amber-500 flex items-center gap-1">
                 <AlertTriangle size={12} />
                 No API key found for this provider.{" "}
@@ -176,20 +196,18 @@ export function AddNewAgent() {
               First task to send to the agent after creation.
             </p>
           </div>
-
         </div>
-        <DialogClose>
-          <Button
-            aria-label="create agent"
-            role="button"
-            data-testid="create-agent"
-            onClick={() => handleNewAgent()}
-            disabled={creating}
-            className="btn-sm"
-          >
-            {creating ? "Creating..." : "Create"}
-          </Button>
-        </DialogClose>
+
+        <Button
+          aria-label="create agent"
+          role="button"
+          data-testid="create-agent"
+          onClick={handleNewAgent}
+          disabled={creating || !agentName.trim()}
+          className="btn-sm mt-2"
+        >
+          {creating ? "Creating..." : "Create"}
+        </Button>
       </DialogContent>
     </Dialog>
   );

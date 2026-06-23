@@ -5,7 +5,8 @@ import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { KeyRound, Loader2, Plus, Trash2, EyeOff } from "lucide-react";
+import { KeyRound, Loader2, Plus, Trash2, EyeOff, Lock } from "lucide-react";
+import { useIsAuthenticated } from "@/hooks/use-auth";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import {
   AlertDialog,
@@ -27,6 +28,7 @@ export function SecretList() {
   const [adding, setAdding] = useState(false);
 
   const venue = useAuthenticatedVenue();
+  const isAuthenticated = useIsAuthenticated();
 
   const loadSecrets = () => {
     if (!venue) {
@@ -99,32 +101,45 @@ export function SecretList() {
   return (
     <div className="flex flex-col gap-6">
       {/* Add Secret Form */}
-      <div className="border border-border rounded-lg p-4 bg-card">
-        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-          <Plus size={16} /> Add Secret
-        </h3>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Input
-            placeholder="Secret name"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            className="flex-1"
-          />
-          <Input
-            type="password"
-            placeholder="Secret value"
-            value={newValue}
-            onChange={(e) => setNewValue(e.target.value)}
-            className="flex-1"
-          />
-          <Button onClick={handleAdd} disabled={adding || !newName.trim() || !newValue.trim()}>
-            {adding ? "Storing..." : "Add"}
-          </Button>
+      {isAuthenticated ? (
+        <div className="border border-border rounded-lg p-4 bg-card">
+          <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+            <Plus size={16} /> Add Secret
+          </h3>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Input
+              placeholder="Secret name"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              className="flex-1"
+            />
+            <Input
+              type="password"
+              placeholder="Secret value"
+              value={newValue}
+              onChange={(e) => setNewValue(e.target.value)}
+              className="flex-1"
+            />
+            <Button onClick={handleAdd} disabled={adding || !newName.trim() || !newValue.trim()}>
+              {adding ? "Storing..." : "Add"}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Secret values are write-only and cannot be revealed after storage.
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">
-          Secret values are write-only and cannot be revealed after storage.
-        </p>
-      </div>
+      ) : (
+        <div className="border border-border rounded-lg p-4 bg-muted/30 flex items-start gap-3">
+          <Lock size={16} className="text-muted-foreground mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-foreground">Public identity</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              You&apos;re browsing as a public user. Secrets here are shared among all unauthenticated callers.
+              Sign in to store private, per-identity secrets.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Secrets List */}
       <div className="border border-border rounded-lg overflow-hidden">
@@ -160,23 +175,29 @@ export function SecretList() {
                     </span>
                   </TableCell>
                   <TableCell>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
-                          <Trash2 size={14} />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete secret &quot;{name}&quot;?</AlertDialogTitle>
-                          <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(name)}>Delete</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    {isAuthenticated ? (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+                            <Trash2 size={14} />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete secret &quot;{name}&quot;?</AlertDialogTitle>
+                            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(name)}>Delete</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    ) : (
+                      <Button variant="ghost" size="sm" disabled>
+                        <Lock size={14} className="text-muted-foreground" />
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

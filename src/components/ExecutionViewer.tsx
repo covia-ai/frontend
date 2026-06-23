@@ -30,7 +30,8 @@ export const ExecutionViewer = (props: any) => {
     const [assetsMetadata, setAssetsMetadata] = useState<Asset>();
     const { venues, addVenue } = useVenues();
     const [venue, setVenue] = useState<Venue>();
-    const authData = useAuthStore((x) => x.auth);
+    const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
+    const authMap = useAuthStore((x) => x.authMap);
     const [jobMessage, setJobMessage] = useState("");
     const [sendingMessage, setSendingMessage] = useState(false);
     const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
@@ -48,7 +49,7 @@ export const ExecutionViewer = (props: any) => {
 
     useEffect(() => {
     
-      const authOption = createAuthProvider(authData);
+      const authOption = createAuthProvider(getAuthForVenue(props.venueId ?? venueObj?.venueId ?? ''));
       if(props.venueId != venueObj?.venueId) {
         const venue = venues.find(v => v.venueId === props.venueId);
         if (venue) {
@@ -64,8 +65,8 @@ export const ExecutionViewer = (props: any) => {
     }
     else {
         setVenue(new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: authOption}));
-    }  
-   }, [addVenue, props.venueId, authData, venueObj?.baseUrl, venueObj?.metadata.name, venueObj?.venueId, venues]);
+    }
+   }, [addVenue, props.venueId, authMap, getAuthForVenue, venueObj?.baseUrl, venueObj?.metadata.name, venueObj?.venueId, venues]);
 
     function fetchJobStatus() {
         venue?.jobs.get(props.jobId).then((job:Job) => {

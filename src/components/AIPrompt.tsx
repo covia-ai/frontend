@@ -8,11 +8,13 @@ import { Loader2 } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { toast } from "sonner";
-import { KNOWN_LLM_KEYS } from "@/config/llm-providers";
+import { KNOWN_LLM_KEYS, LLM_PROVIDERS } from "@/config/llm-providers";
+import { useRouter } from "next/navigation";
 
 export const AIPrompt = () => {
   const [prompt, setPrompt] = useState('')
   const [checking, setChecking] = useState(false)
+  const [creating, setCreating] = useState(false)
   const [showKeyDialog, setShowKeyDialog] = useState(false)
   const [keyInput, setKeyInput] = useState('')
   const [savingKey, setSavingKey] = useState(false)
@@ -20,6 +22,7 @@ export const AIPrompt = () => {
   const [detectedKeys, setDetectedKeys] = useState<string[]>([])
   const [selectedSecretName, setSelectedSecretName] = useState('')
   const venue = useAuthenticatedVenue();
+  const router = useRouter();
 
   const promptSamples = [
     'Customer onboarding automation',
@@ -29,9 +32,49 @@ export const AIPrompt = () => {
     'Migrate a static HTML website to a modern React framework'
   ]
 
-  function proceedWithKey(secretName: string) {
-    toast(`Using stored ${secretName} (${KNOWN_LLM_KEYS[secretName]})`);
-    // TODO: execute the AI prompt with the selected model
+  function makeAgentId(text: string): string {
+    const slug = text
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 32);
+    return slug + '-' + Date.now().toString(36);
+  }
+
+  async function proceedWithKey(secretName: string) {
+    if (!venue) return;
+
+    const providerEntry = Object.entries(LLM_PROVIDERS).find(
+      ([, p]) => p.secretKey === secretName
+    );
+    if (!providerEntry) {
+      toast("Unknown provider for key " + secretName);
+      return;
+    }
+    const [, provider] = providerEntry;
+    const agentId = makeAgentId(prompt);
+
+    setCreating(true);
+    try {
+      await venue.agents.create({
+        agentId,
+        config: {
+          operation: "v/ops/llmagent/chat",
+          llmOperation: provider.operation,
+          systemPrompt:
+            "You are a helpful AI assistant working on the Covia grid. Complete the user's task thoroughly and report your results clearly.",
+        },
+      });
+
+      await venue.agents.request(agentId, { task: prompt });
+
+      router.push(`/agents/explorer?agentId=${encodeURIComponent(agentId)}`);
+    } catch {
+      toast("Failed to create agent. Please try again.");
+    } finally {
+      setCreating(false);
+    }
   }
 
   async function handleMagicWand() {
@@ -47,12 +90,11 @@ export const AIPrompt = () => {
       const matchedKeys = secrets.filter((s: string) => s in KNOWN_LLM_KEYS);
 
       if (matchedKeys.length === 1) {
-        proceedWithKey(matchedKeys[0]);
+        await proceedWithKey(matchedKeys[0]);
       } else if (matchedKeys.length > 1) {
         setDetectedKeys(matchedKeys);
         setShowPickerDialog(true);
       } else {
-        // No LLM key found — prompt user to add one
         setSelectedSecretName('');
         setShowKeyDialog(true);
       }
@@ -63,9 +105,9 @@ export const AIPrompt = () => {
     }
   }
 
-  function handlePickKey(secretName: string) {
+  async function handlePickKey(secretName: string) {
     setShowPickerDialog(false);
-    proceedWithKey(secretName);
+    await proceedWithKey(secretName);
   }
 
   async function handleSaveKey() {
@@ -77,13 +119,15 @@ export const AIPrompt = () => {
       toast(`${selectedSecretName} saved`);
       setShowKeyDialog(false);
       setKeyInput('');
-      proceedWithKey(selectedSecretName);
+      await proceedWithKey(selectedSecretName);
     } catch {
       toast("Failed to store the API key. Please try again.");
     } finally {
       setSavingKey(false);
     }
   }
+
+  const busy = checking || creating || savingKey;
 
   return (
     <div data-testid="chat-container" className="flex flex-col items-center justify-center py-10 px-10 ">
@@ -101,6 +145,8 @@ export const AIPrompt = () => {
             aria-label="prompt"
             value={prompt}
             onChange={ (e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !busy) handleMagicWand(); }}
+            disabled={busy}
           />
 
           <Button
@@ -109,12 +155,18 @@ export const AIPrompt = () => {
             data-testid="chat-button"
             variant="default"
             className="my-4 btn btn-xs mx-0 bg-primary text-primary-foreground"
-            disabled={!prompt.trim() || checking}
+            disabled={!prompt.trim() || busy}
             onClick={handleMagicWand}
           >
-            {checking ? <Loader2 className="animate-spin" size={16} /> : <MagicWandIcon/>}
+            {busy ? <Loader2 className="animate-spin" size={16} /> : <MagicWandIcon/>}
           </Button>
         </div>
+
+        {creating && (
+          <p className="text-xs text-muted-foreground animate-pulse mt-1">
+            Creating agent and sending task…
+          </p>
+        )}
 
         {/* Picker dialog — shown when multiple LLM keys are detected */}
         <Dialog open={showPickerDialog} onOpenChange={setShowPickerDialog}>
@@ -130,7 +182,11 @@ export const AIPrompt = () => {
                   variant="outline"
                   className="w-full justify-start gap-2"
                   onClick={() => handlePickKey(key)}
+                  disabled={creating}
                 >
+                  {creating
+                    ? <Loader2 className="animate-spin" size={14} />
+                    : null}
                   <span className="font-semibold">{KNOWN_LLM_KEYS[key]}</span>
                   <span className="text-xs text-muted-foreground font-mono">({key})</span>
                 </Button>
@@ -170,9 +226,9 @@ export const AIPrompt = () => {
                 <Button
                   data-testid="chat-connect-to-model"
                   onClick={handleSaveKey}
-                  disabled={!keyInput.trim() || savingKey}
+                  disabled={!keyInput.trim() || savingKey || creating}
                 >
-                  {savingKey ? "Saving..." : "Save & Continue"}
+                  {savingKey ? "Saving…" : creating ? "Creating agent…" : "Save & Continue"}
                 </Button>
               </>
             )}

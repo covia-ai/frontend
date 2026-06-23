@@ -38,6 +38,10 @@ type AuthStore = {
   getAuthForVenue: (venueId: string) => VenueAuth | null;
 };
 
+export function useIsAuthenticated(): boolean {
+  return useAuthStore((x) => x.auth !== null);
+}
+
 export const useAuthStore = create(
   persist<AuthStore>(
     (set, get) => ({

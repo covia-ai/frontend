@@ -3,7 +3,8 @@
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LogInIcon, Copy, Check, Key, Plus, Import } from "lucide-react";
+import { LogInIcon, Copy, Check, Key, Plus, Import, Globe } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import {
   Avatar,
   AvatarImage,
@@ -141,7 +142,14 @@ export function SignInButton(props: any) {
 
   if (!auth) {
     return (
-      <div className="flex items-center justify-center" key={props.index}>
+      <div className="flex items-center gap-2" key={props.index}>
+        <Badge
+          variant="outline"
+          className="text-xs text-muted-foreground hidden sm:flex items-center gap-1 font-normal"
+        >
+          <Globe size={10} />
+          Public
+        </Badge>
         <Button
           onClick={handleSignInClick}
           variant="default"

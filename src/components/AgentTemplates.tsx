@@ -3,33 +3,53 @@
 import { Code, FileText, Pen, Settings } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
+import { AddNewAgent } from "./AddNewAgent";
 
 interface AgentTemplate {
   name: string;
+  agentId: string;
   description: string;
   icon: React.ReactNode;
+  systemPrompt: string;
+  provider: string;
 }
 
 const templates: AgentTemplate[] = [
   {
     name: "Code Assistant",
+    agentId: "code-assistant",
     description: "Analyze, debug, and review code across multiple languages and frameworks.",
     icon: <Code size={32} />,
+    systemPrompt:
+      "You are an expert software engineer. Help the user analyze, debug, write, and review code across any language or framework. Be precise and concise, and explain your reasoning when it aids understanding.",
+    provider: "anthropic",
   },
   {
     name: "Document Analyst",
+    agentId: "document-analyst",
     description: "Extract and summarize key information from documents and data.",
     icon: <FileText size={32} />,
+    systemPrompt:
+      "You are an expert document analyst. Extract key information, summarize content, identify important data points, and answer questions about documents provided to you. Be thorough and accurate.",
+    provider: "openai",
   },
   {
     name: "Creative Writer",
+    agentId: "creative-writer",
     description: "Craft blog posts, marketing copy, and social media content.",
     icon: <Pen size={32} />,
+    systemPrompt:
+      "You are a skilled creative writer. Craft engaging blog posts, marketing copy, social media content, and other written material tailored to the user's goals and audience. Match the requested tone and style.",
+    provider: "anthropic",
   },
   {
     name: "Orchestrator Agent",
+    agentId: "orchestrator",
     description: "Manage and coordinate multiple agents across different sub-systems.",
     icon: <Settings size={32} />,
+    systemPrompt:
+      "You are an orchestrator agent responsible for coordinating tasks and sub-agents. Break down complex goals into subtasks, delegate work to appropriate tools or agents, track progress, and synthesize results into a coherent outcome.",
+    provider: "anthropic",
   },
 ];
 
@@ -57,9 +77,20 @@ export function AgentTemplates() {
                 {template.description}
               </p>
             </div>
-            <Button variant="outline" size="sm" className="w-full mt-2 border-primary text-primary hover:bg-primary/20 hover:text-primary">
-              Use Template
-            </Button>
+            <AddNewAgent
+              trigger={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full mt-2 border-primary text-primary hover:bg-primary/20 hover:text-primary"
+                >
+                  Use Template
+                </Button>
+              }
+              initialAgentName={template.agentId}
+              initialSystemPrompt={template.systemPrompt}
+              initialProvider={template.provider}
+            />
           </Card>
         ))}
       </div>

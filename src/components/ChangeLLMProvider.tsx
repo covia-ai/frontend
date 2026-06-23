@@ -1,30 +1,68 @@
 
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Button } from "./ui/button";
-
 import { Label } from "./ui/label";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Checkbox } from "./ui/checkbox";
 import { LLM_PROVIDERS } from "@/config/llm-providers";
+import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 
 export function ChangeLLMProvider(props:any) {
+    const [open, setOpen] = useState(false);
     const [selectedProvider, setSelectedProvider] = useState('anthropic');
     const [currentProvider, setCurrentProvider] = useState('anthropic');
+    const [loading, setLoading] = useState(false);
+    const [fetchingInfo, setFetchingInfo] = useState(false);
+    const venue = useAuthenticatedVenue();
+
+    useEffect(() => {
+      if (!open || !venue || !props.agentId) return;
+      setFetchingInfo(true);
+      venue.agents.info(props.agentId).then((info) => {
+        const llmOp = info.config?.llmOperation;
+        const key = Object.entries(LLM_PROVIDERS).find(([, p]) => p.operation === llmOp)?.[0] ?? 'anthropic';
+        setCurrentProvider(key);
+        setSelectedProvider(key);
+      }).catch(() => {
+        // silently keep defaults
+      }).finally(() => {
+        setFetchingInfo(false);
+      });
+    }, [open, venue, props.agentId]);
+
+    async function handleChange() {
+      if (!venue || !props.agentId || selectedProvider === currentProvider) return;
+      const provider = LLM_PROVIDERS[selectedProvider];
+      setLoading(true);
+      try {
+        await venue.agents.update({
+          agentId: props.agentId,
+          config: { llmOperation: provider.operation },
+        });
+        toast(`Provider changed to ${provider.label}`);
+        setCurrentProvider(selectedProvider);
+        setOpen(false);
+      } catch {
+        toast("Failed to change provider. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    }
 
     return (
-      <Dialog >
+      <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button aria-label="change llm" role="button"> Change Provider</Button>
+          <Button aria-label="change llm" role="button">Change Provider</Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-md bg-card text-card-foreground">
           <DialogHeader>
@@ -32,17 +70,18 @@ export function ChangeLLMProvider(props:any) {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* Current Provider Alert */}
             <Alert className="bg-yellow-50 border-yellow-200">
-              <AlertDescription className="flex flex-row text-yellow-800 text-sm">
-                Currently using: <span className="font-thin">{LLM_PROVIDERS[currentProvider]?.label ?? currentProvider}</span>
+              <AlertDescription className="flex flex-row gap-2 text-yellow-800 text-sm">
+                {fetchingInfo
+                  ? <span className="italic text-muted-foreground">Loading current provider…</span>
+                  : <>Currently using: <span className="font-semibold">{LLM_PROVIDERS[currentProvider]?.label ?? currentProvider}</span></>
+                }
               </AlertDescription>
             </Alert>
 
-            {/* Select New Provider */}
             <div className="space-y-3">
               <Label className="font-thin">Select New Provider:</Label>
-              <RadioGroup value={selectedProvider} onValueChange={setSelectedProvider}>
+              <RadioGroup value={selectedProvider} onValueChange={setSelectedProvider} disabled={fetchingInfo || loading}>
                 {Object.entries(LLM_PROVIDERS).map(([id, provider]) => (
                   <div key={id} className="flex items-center space-x-2">
                     <RadioGroupItem value={id} id={`llm-${id}`} />
@@ -54,30 +93,23 @@ export function ChangeLLMProvider(props:any) {
               </RadioGroup>
             </div>
 
-            {/* Note Alert */}
             <Alert className="bg-yellow-50 border-yellow-200">
               <AlertDescription className="text-yellow-800 text-sm">
-                <span className="font-thin">Note: Next state will use the new provider.</span>
-
+                <span className="font-thin">Note: The next agent request will use the new provider.</span>
               </AlertDescription>
             </Alert>
 
-             <div className="flex items-start gap-3">
-              <Checkbox defaultChecked id="history" />
-              <Label htmlFor="history">Complete history will be preserved</Label>
-            </div>
-            {/* Action Buttons */}
             <div className="flex gap-2 pt-2">
-
-              <DialogClose>
               <Button
-              aria-label="change provider" role="button"
-               disabled={currentProvider == selectedProvider}
+                aria-label="change provider"
+                role="button"
+                disabled={currentProvider === selectedProvider || loading || fetchingInfo}
                 className="flex-1"
+                onClick={handleChange}
               >
-                Change Provider
+                {loading ? <Loader2 className="animate-spin mr-2" size={14} /> : null}
+                {loading ? "Changing…" : "Change Provider"}
               </Button>
-              </DialogClose>
             </div>
           </div>
         </DialogContent>

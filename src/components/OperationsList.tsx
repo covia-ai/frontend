@@ -39,7 +39,8 @@ export function OperationsList() {
 
   const { venues } = useVenues();
   const venueObj = useStore(useVenue, (x) => x.currentVenue);
-  const authData = useAuthStore((x) => x.auth);
+  const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
+  const authMap = useAuthStore((x) => x.authMap);
 
   const nextPage = (page: number) => {
     setCurrentPage(page)
@@ -67,6 +68,7 @@ export function OperationsList() {
   }
   
   useEffect(() => {
+     const authData = getAuthForVenue(venueObj?.venueId ?? '');
      const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: createAuthProvider(authData)})
      async function fetchAssets() {
         setLoading(true);
@@ -93,7 +95,7 @@ export function OperationsList() {
       }
      if(venueObj != null)
         fetchAssets();
-  }, [search, venueObj]);
+  }, [search, venueObj, authMap, getAuthForVenue]);
 
   useEffect(() => {
     setTotalItems(assetsMetadata.length)

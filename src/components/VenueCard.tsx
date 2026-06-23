@@ -17,10 +17,10 @@ interface VenueCardProps {
 
 export function VenueCard({ venue, compact }: VenueCardProps) {
   const router = useRouter();
-  const authData = useAuthStore((x) => x.auth);
+  const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
 
   if(!(venue instanceof Venue))
-    venue = new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name, auth: createAuthProvider(authData)})
+    venue = new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name, auth: createAuthProvider(getAuthForVenue(venue.venueId))})
   const handleCardClick = () => {
     const encodedUrl = "/venues/"+encodeURIComponent(venue.venueId);
     router.push(encodedUrl);

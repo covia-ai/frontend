@@ -37,7 +37,8 @@ export const OperationViewer = (props: any) => {
   const [rawInput, setRawInput] = useState<Record<string, string>>({}); // raw input content before parsing per field name
   const [typeMap, setTypeMap] = useState<Record<string, string>>({}); // user-specified types of the values to be passed to the operation, affects parsing
   const [assetNotFound, setAssetNotFound] = useState(false);
-  const authData = useAuthStore((x) => x.auth);
+  const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
+  const authMap = useAuthStore((x) => x.authMap);
 
   const { venues, addVenue } = useVenues();
   const [venue, setVenue] = useState<Venue>();
@@ -101,6 +102,7 @@ export const OperationViewer = (props: any) => {
   const pathname = usePathname();
 
    useEffect(() => {
+      const authData = getAuthForVenue(props.venueId ?? venueObj?.venueId ?? '');
       const authOption = createAuthProvider(authData);
       if(props.venueId != venueObj?.venueId) {
         const venue = venues.find(v => v.venueId === props.venueId);
@@ -118,7 +120,7 @@ export const OperationViewer = (props: any) => {
     else {
         setVenue(new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: authOption}));
     }
-   }, [authData]); 
+   }, [authMap, props.venueId, venueObj, getAuthForVenue]);
 
   useEffect(() => {
     if (!venue) return;

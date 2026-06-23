@@ -17,8 +17,10 @@ import {
   Eye,
   ListPlus,
   Database,
+  Lock,
 } from "lucide-react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useIsAuthenticated } from "@/hooks/use-auth";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
@@ -67,6 +69,7 @@ export function WorkspaceExplorer() {
   const { theme } = useTheme();
 
   const venue = useAuthenticatedVenue();
+  const isAuthenticated = useIsAuthenticated();
 
   // Resize state
   const [leftWidth, setLeftWidth] = useState(300);
@@ -311,6 +314,14 @@ export function WorkspaceExplorer() {
         style={{ width: `${leftWidth}px` }}
         className="flex-shrink-0 border-r border-border overflow-y-auto flex flex-col"
       >
+        {/* Read-only notice for public users */}
+        {!isAuthenticated && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b border-border text-xs text-muted-foreground">
+            <Lock size={11} className="shrink-0" />
+            Read-only — sign in to modify workspace data
+          </div>
+        )}
+
         {/* Breadcrumb */}
         <div className="p-2 border-b border-border flex items-center gap-1 flex-wrap text-xs">
           <button
@@ -386,50 +397,52 @@ export function WorkspaceExplorer() {
         })}
 
         {/* New Key Button */}
-        <div className="mt-auto border-t border-border p-2">
-          {!showNewKey ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full text-xs"
-              onClick={() => setShowNewKey(true)}
-            >
-              <Plus size={12} className="mr-1" /> New Key
-            </Button>
-          ) : (
-            <div className="space-y-2">
-              <Input
-                placeholder="Key path"
-                value={newKeyPath}
-                onChange={(e) => setNewKeyPath(e.target.value)}
-                className="text-xs h-7"
-              />
-              <Input
-                placeholder="Value (text or JSON)"
-                value={newKeyValue}
-                onChange={(e) => setNewKeyValue(e.target.value)}
-                className="text-xs h-7"
-              />
-              <div className="flex gap-1">
-                <Button size="sm" className="text-xs h-6 flex-1" onClick={handleNewKey}>
-                  Create
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs h-6"
-                  onClick={() => {
-                    setShowNewKey(false);
-                    setNewKeyPath("");
-                    setNewKeyValue("");
-                  }}
-                >
-                  Cancel
-                </Button>
+        {isAuthenticated && (
+          <div className="mt-auto border-t border-border p-2">
+            {!showNewKey ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-xs"
+                onClick={() => setShowNewKey(true)}
+              >
+                <Plus size={12} className="mr-1" /> New Key
+              </Button>
+            ) : (
+              <div className="space-y-2">
+                <Input
+                  placeholder="Key path"
+                  value={newKeyPath}
+                  onChange={(e) => setNewKeyPath(e.target.value)}
+                  className="text-xs h-7"
+                />
+                <Input
+                  placeholder="Value (text or JSON)"
+                  value={newKeyValue}
+                  onChange={(e) => setNewKeyValue(e.target.value)}
+                  className="text-xs h-7"
+                />
+                <div className="flex gap-1">
+                  <Button size="sm" className="text-xs h-6 flex-1" onClick={handleNewKey}>
+                    Create
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs h-6"
+                    onClick={() => {
+                      setShowNewKey(false);
+                      setNewKeyPath("");
+                      setNewKeyValue("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Resize Handle */}
@@ -462,77 +475,85 @@ export function WorkspaceExplorer() {
               </Badge>
 
               <div className="ml-auto flex items-center gap-1">
-                {!editMode ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setEditMode(true)}
-                  >
-                    <PenLine size={14} className="mr-1" /> Edit
-                  </Button>
-                ) : (
+                {isAuthenticated ? (
                   <>
+                    {!editMode ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditMode(true)}
+                      >
+                        <PenLine size={14} className="mr-1" /> Edit
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditMode(false);
+                            setEditedData(readData);
+                          }}
+                        >
+                          <Eye size={14} className="mr-1" /> View
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={handleSave}
+                          disabled={saving}
+                        >
+                          <Save size={14} className="mr-1" />
+                          {saving ? "Saving..." : "Save"}
+                        </Button>
+                      </>
+                    )}
+
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        setEditMode(false);
-                        setEditedData(readData);
-                      }}
+                      onClick={() => setShowAppend(!showAppend)}
                     >
-                      <Eye size={14} className="mr-1" /> View
+                      <ListPlus size={14} className="mr-1" /> Append
                     </Button>
-                    <Button
-                      size="sm"
-                      onClick={handleSave}
-                      disabled={saving}
-                    >
-                      <Save size={14} className="mr-1" />
-                      {saving ? "Saving..." : "Save"}
-                    </Button>
+
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 size={14} className="mr-1" /> Delete
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            Delete &quot;{selectedPath}&quot;?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleDelete}>
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </>
+                ) : (
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Lock size={12} /> Read-only
+                  </span>
                 )}
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAppend(!showAppend)}
-                >
-                  <ListPlus size={14} className="mr-1" /> Append
-                </Button>
-
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 size={14} className="mr-1" /> Delete
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        Delete &quot;{selectedPath}&quot;?
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDelete}>
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
               </div>
             </div>
 
             {/* Append form */}
-            {showAppend && (
+            {isAuthenticated && showAppend && (
               <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/50">
                 <Input
                   placeholder="Value to append (text or JSON)"
