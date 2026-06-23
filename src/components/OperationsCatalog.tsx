@@ -9,6 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -136,48 +143,34 @@ export function OperationsCatalog() {
       <TopBar />
 
       <div className="flex flex-col gap-4">
-        {/* Search + adapter filter */}
-        <div className="flex flex-col gap-2">
-          <div className="relative">
+        {/* Search + adapter dropdown — one line */}
+        <div className="flex gap-2 items-center">
+          <div className="relative flex-1">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search by name, path, or description…"
+              placeholder="Search operations…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-8"
             />
           </div>
-          {adapters.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              <Button
-                size="sm"
-                variant={filterAdapter === "" ? "default" : "outline"}
-                className="h-7 text-xs"
-                onClick={() => setFilterAdapter("")}
-              >
-                All
-              </Button>
+          <Select value={filterAdapter} onValueChange={setFilterAdapter}>
+            <SelectTrigger className="w-44 shrink-0">
+              <SelectValue placeholder="All adapters" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All adapters</SelectItem>
               {adapters.map((a) => (
-                <Button
-                  key={a}
-                  size="sm"
-                  variant={filterAdapter === a ? "default" : "outline"}
-                  className="h-7 text-xs font-mono"
-                  onClick={() => setFilterAdapter(filterAdapter === a ? "" : a)}
-                >
-                  {a}
-                </Button>
+                <SelectItem key={a} value={a} className="font-mono">{a}</SelectItem>
               ))}
-            </div>
+            </SelectContent>
+          </Select>
+          {!loading && (
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              {filtered.length} ops · {grouped.length} adapters
+            </span>
           )}
         </div>
-
-        {!loading && (
-          <p className="text-xs text-muted-foreground">
-            {filtered.length} of {ops.length} operations · {grouped.length} adapter
-            {grouped.length !== 1 ? "s" : ""}
-          </p>
-        )}
 
         {loading && (
           <div className="flex items-center justify-center py-20">
@@ -212,60 +205,49 @@ export function OperationsCatalog() {
                         value={op.path}
                         className="border-b last:border-b-0"
                       >
-                        <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                          <div className="flex items-baseline gap-3 text-left flex-1 mr-4 min-w-0">
-                            <span className="font-mono text-sm font-semibold shrink-0">
-                              {name}
-                            </span>
+                        {/* Trigger: name + one-line description only */}
+                        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/40">
+                          <div className="flex flex-col items-start text-left flex-1 mr-4 min-w-0 gap-0.5">
+                            <span className="font-mono text-sm font-semibold">{name}</span>
                             {desc && (
-                              <span className="text-xs text-muted-foreground truncate">
-                                {desc}
-                              </span>
+                              <span className="text-xs text-muted-foreground line-clamp-1">{desc}</span>
                             )}
-                            <span className="ml-auto font-mono text-xs text-muted-foreground hidden lg:block shrink-0">
-                              {op.path}
-                            </span>
                           </div>
                         </AccordionTrigger>
 
-                        <AccordionContent className="px-4 pb-4">
-                          <div className="flex flex-col gap-3">
-                            <p className="font-mono text-xs text-muted-foreground">
-                              {op.path}
-                            </p>
-                            {desc && <p className="text-sm">{desc}</p>}
+                        {/* Expanded: path + schemas + Run */}
+                        <AccordionContent className="px-4 pb-4 border-t border-border/50">
+                          <div className="flex items-center justify-between gap-2 pt-3 pb-2">
+                            <p className="font-mono text-xs text-muted-foreground">{op.path}</p>
+                            <Button size="sm" className="shrink-0" onClick={() => openRunSheet(op)}>
+                              <PlayCircle size={13} className="mr-1" /> Run
+                            </Button>
+                          </div>
 
+                          {desc && (
+                            <p className="text-sm text-muted-foreground mb-3">{desc}</p>
+                          )}
+
+                          {(inputSchema || outputSchema) && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               {inputSchema && (
                                 <div>
-                                  <p className="text-xs font-semibold text-muted-foreground mb-1">
-                                    Input Schema
-                                  </p>
-                                  <pre className="text-xs bg-muted rounded p-2 overflow-x-auto whitespace-pre-wrap break-all max-h-48">
+                                  <p className="text-xs font-semibold text-muted-foreground mb-1">Input</p>
+                                  <pre className="text-xs bg-muted rounded p-2 overflow-x-auto whitespace-pre-wrap break-all max-h-40">
                                     {JSON.stringify(inputSchema, null, 2)}
                                   </pre>
                                 </div>
                               )}
                               {outputSchema && (
                                 <div>
-                                  <p className="text-xs font-semibold text-muted-foreground mb-1">
-                                    Output Schema
-                                  </p>
-                                  <pre className="text-xs bg-muted rounded p-2 overflow-x-auto whitespace-pre-wrap break-all max-h-48">
+                                  <p className="text-xs font-semibold text-muted-foreground mb-1">Output</p>
+                                  <pre className="text-xs bg-muted rounded p-2 overflow-x-auto whitespace-pre-wrap break-all max-h-40">
                                     {JSON.stringify(outputSchema, null, 2)}
                                   </pre>
                                 </div>
                               )}
                             </div>
-
-                            <Button
-                              size="sm"
-                              className="w-fit"
-                              onClick={() => openRunSheet(op)}
-                            >
-                              <PlayCircle size={14} className="mr-1" /> Run
-                            </Button>
-                          </div>
+                          )}
                         </AccordionContent>
                       </AccordionItem>
                     );
