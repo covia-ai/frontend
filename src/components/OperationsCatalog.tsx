@@ -181,78 +181,94 @@ export function OperationsCatalog() {
           </div>
         )}
 
-        {!loading &&
-          grouped.map(([adapter, adapterOps]) => (
-            <div key={adapter}>
-              <div className="border border-border rounded-lg overflow-hidden mb-4">
-                <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-b border-border">
-                  <Badge variant="outline" className="font-mono text-xs px-2 py-0">
-                    {adapter}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {adapterOps.length} op{adapterOps.length !== 1 ? "s" : ""}
-                  </span>
-                </div>
-                <Accordion type="multiple">
-                  {adapterOps.map((op) => {
-                    const name =
-                      op.metadata?.name ?? op.path.split("/").pop() ?? op.path;
-                    const desc = op.metadata?.description ?? "";
-                    const inputSchema = op.metadata?.operation?.input;
-                    const outputSchema = op.metadata?.operation?.output;
+        {!loading && (
+          // Outer accordion — groups collapsed when "All", open when a specific adapter is selected
+          <Accordion
+            type="multiple"
+            key={filterAdapter}
+            defaultValue={filterAdapter ? [filterAdapter] : []}
+            className="flex flex-col gap-3"
+          >
+            {grouped.map(([adapter, adapterOps]) => (
+              <AccordionItem
+                key={adapter}
+                value={adapter}
+                className="border border-border rounded-lg overflow-hidden"
+              >
+                {/* Group header — clicking expands/collapses the whole adapter group */}
+                <AccordionTrigger className="px-4 py-2.5 bg-muted/50 hover:bg-muted/70 hover:no-underline border-b border-border data-[state=closed]:border-b-0">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="font-mono text-xs px-2 py-0">
+                      {adapter}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {adapterOps.length} op{adapterOps.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                </AccordionTrigger>
 
-                    return (
-                      <AccordionItem
-                        key={op.path}
-                        value={op.path}
-                        className="border-b last:border-b-0"
-                      >
-                        {/* Trigger: name only — keep rows scannable */}
-                        <AccordionTrigger className="px-4 py-2.5 hover:no-underline hover:bg-muted/40">
-                          <span className="font-mono text-sm font-medium text-left flex-1 mr-4">{name}</span>
-                        </AccordionTrigger>
+                {/* Operations list for this adapter */}
+                <AccordionContent className="p-0">
+                  <Accordion type="multiple">
+                    {adapterOps.map((op) => {
+                      const name =
+                        op.metadata?.name ?? op.path.split("/").pop() ?? op.path;
+                      const desc = op.metadata?.description ?? "";
+                      const inputSchema = op.metadata?.operation?.input;
+                      const outputSchema = op.metadata?.operation?.output;
 
-                        {/* Expanded: path + schemas + Run */}
-                        <AccordionContent className="px-4 pb-4 border-t border-border/50">
-                          <div className="flex items-center justify-between gap-2 pt-3 pb-2">
-                            <p className="font-mono text-xs text-muted-foreground">{op.path}</p>
-                            <Button size="sm" className="shrink-0" onClick={() => openRunSheet(op)}>
-                              <PlayCircle size={13} className="mr-1" /> Run
-                            </Button>
-                          </div>
+                      return (
+                        <AccordionItem
+                          key={op.path}
+                          value={op.path}
+                          className="border-b last:border-b-0"
+                        >
+                          <AccordionTrigger className="px-4 py-2.5 hover:no-underline hover:bg-muted/40">
+                            <span className="font-mono text-sm font-medium text-left flex-1 mr-4">{name}</span>
+                          </AccordionTrigger>
 
-                          {desc && (
-                            <p className="text-sm text-muted-foreground mb-3">{desc}</p>
-                          )}
-
-                          {(inputSchema || outputSchema) && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              {inputSchema && (
-                                <div>
-                                  <p className="text-xs font-semibold text-muted-foreground mb-1">Input</p>
-                                  <pre className="text-xs bg-muted rounded p-2 overflow-x-auto whitespace-pre-wrap break-all max-h-40">
-                                    {JSON.stringify(inputSchema, null, 2)}
-                                  </pre>
-                                </div>
-                              )}
-                              {outputSchema && (
-                                <div>
-                                  <p className="text-xs font-semibold text-muted-foreground mb-1">Output</p>
-                                  <pre className="text-xs bg-muted rounded p-2 overflow-x-auto whitespace-pre-wrap break-all max-h-40">
-                                    {JSON.stringify(outputSchema, null, 2)}
-                                  </pre>
-                                </div>
-                              )}
+                          <AccordionContent className="px-4 pb-4 border-t border-border/50">
+                            <div className="flex items-center justify-between gap-2 pt-3 pb-2">
+                              <p className="font-mono text-xs text-muted-foreground">{op.path}</p>
+                              <Button size="sm" className="shrink-0" onClick={() => openRunSheet(op)}>
+                                <PlayCircle size={13} className="mr-1" /> Run
+                              </Button>
                             </div>
-                          )}
-                        </AccordionContent>
-                      </AccordionItem>
-                    );
-                  })}
-                </Accordion>
-              </div>
-            </div>
-          ))}
+
+                            {desc && (
+                              <p className="text-sm text-muted-foreground mb-3">{desc}</p>
+                            )}
+
+                            {(inputSchema || outputSchema) && (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {inputSchema && (
+                                  <div>
+                                    <p className="text-xs font-semibold text-muted-foreground mb-1">Input</p>
+                                    <pre className="text-xs bg-muted rounded p-2 overflow-x-auto whitespace-pre-wrap break-all max-h-40">
+                                      {JSON.stringify(inputSchema, null, 2)}
+                                    </pre>
+                                  </div>
+                                )}
+                                {outputSchema && (
+                                  <div>
+                                    <p className="text-xs font-semibold text-muted-foreground mb-1">Output</p>
+                                    <pre className="text-xs bg-muted rounded p-2 overflow-x-auto whitespace-pre-wrap break-all max-h-40">
+                                      {JSON.stringify(outputSchema, null, 2)}
+                                    </pre>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </AccordionContent>
+                        </AccordionItem>
+                      );
+                    })}
+                  </Accordion>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        )}
 
         {!loading && filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-2">
