@@ -30,6 +30,7 @@ export const ExecutionViewer = (props: any) => {
     const [assetsMetadata, setAssetsMetadata] = useState<Asset>();
     const { venues, addVenue } = useVenues();
     const [venue, setVenue] = useState<Venue>();
+    const [streaming, setStreaming] = useState(false);
     const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
     const authMap = useAuthStore((x) => x.authMap);
     const [jobMessage, setJobMessage] = useState("");
@@ -98,19 +99,74 @@ export const ExecutionViewer = (props: any) => {
     }
 
     useEffect(() => {
-        if (!venue) return;
+        if (!venue || !props.jobId) return;
+
+        // Initial load so the UI isn't blank while SSE connects.
         fetchJobStatus();
-    }, [venue, props.jobId]);
 
-    useEffect(() => {
-        if (!isJobFinished(jobMetadata?.status)) {
-            const intervalId = setInterval(() => {
-                fetchJobStatus();
-            }, 1000)
-
-            return () => clearInterval(intervalId)
+        const authData = getAuthForVenue(props.venueId ?? venueObj?.venueId ?? '');
+        let sseUrl = `${venue.baseUrl}/api/v1/jobs/${props.jobId}/sse`;
+        if (authData?.type === 'bearer') {
+            sseUrl += `?token=${encodeURIComponent(authData.token)}`;
         }
-    }, [poll])
+
+        let source: EventSource | null = null;
+        let pollInterval: ReturnType<typeof setInterval> | null = null;
+        let sseOpened = false;
+
+        const startPolling = () => {
+            setStreaming(false);
+            pollInterval = setInterval(() => {
+                venue.jobs.get(props.jobId).then((job: Job) => {
+                    setJobMetadata(job.metadata);
+                    const status = job.metadata.status || '';
+                    setPollStatus(status);
+                    if (isJobFinished(status) && pollInterval) {
+                        clearInterval(pollInterval);
+                        pollInterval = null;
+                    }
+                }).catch(() => setPollStatus("ERROR"));
+            }, 1000);
+        };
+
+        try {
+            source = new EventSource(sseUrl);
+
+            source.onopen = () => { sseOpened = true; setStreaming(true); };
+
+            source.onmessage = (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    const meta = data.metadata ?? data;
+                    setJobMetadata(meta);
+                    const status: string = meta.status ?? '';
+                    setPollStatus(status);
+                    if (isJobFinished(status)) {
+                        source?.close();
+                        source = null;
+                        setStreaming(false);
+                    }
+                } catch { /* ignore malformed event */ }
+            };
+
+            source.onerror = () => {
+                source?.close();
+                source = null;
+                setStreaming(false);
+                // Only fall back to polling when SSE never opened (auth/network failure).
+                if (!sseOpened) startPolling();
+            };
+        } catch {
+            startPolling();
+        }
+
+        return () => {
+            source?.close();
+            setStreaming(false);
+            if (pollInterval) clearInterval(pollInterval);
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [venue, props.jobId]);
 
     function renderChildJobs(jsonObject: JSON) {
         const steps = jobMetadata?.steps as any[];
@@ -315,6 +371,18 @@ export const ExecutionViewer = (props: any) => {
 
                                     <span className="w-28">Status:</span>
                                     <span className={colourForStatus(jobMetadata?.status as RunStatus)}>{jobMetadata?.status}</span>
+
+                                    {streaming && (
+                                        <span className="flex items-center gap-1.5 ml-2 px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300 text-xs font-medium">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                                            Streaming
+                                        </span>
+                                    )}
+                                    {!streaming && isJobFinished(jobMetadata?.status) && (
+                                        <span className="flex items-center gap-1.5 ml-2 px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs font-medium">
+                                            Completed
+                                        </span>
+                                    )}
                                 </div>
                                  <ExecutionToolbar jobData={jobMetadata}></ExecutionToolbar>
 
