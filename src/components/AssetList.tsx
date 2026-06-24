@@ -2,10 +2,9 @@
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
-import { Search } from "@/components/search";
 import { useRouter } from "next/navigation";
-import { useSearchParams } from 'next/navigation'
-
+import { useSearchParams, usePathname } from 'next/navigation';
+import { Input } from "@/components/ui/input";
 import { useEffect, useState } from "react";
 
 import { Asset, DataAsset, Operation, Venue } from "@covia/covia-sdk";
@@ -17,7 +16,7 @@ import { Spinner } from '@/components/ui/shadcn-io/spinner';
 import { AssetCard } from "./AssetCard";
 import { PaginationHeader } from "./PaginationHeader";
 import { useVenues } from "@/hooks/use-venues";
-import { FileKey, PlayCircle } from "lucide-react";
+import { FileKey, PlayCircle, Search } from "lucide-react";
 import { CreateAssetComponent } from "./CreateAssetComponent";
 import { TopBar } from "./admin-panel/TopBar";
 
@@ -34,7 +33,9 @@ export function AssetList() {
   const limit = itemsPerPage;
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchInput, setSearchInput] = useState(search ?? "");
+  const pathname = usePathname();
 
   const { venues } = useVenues();
   const venueObj = useStore(useVenue, (x) => x.currentVenue);
@@ -51,8 +52,20 @@ export function AssetList() {
       <TopBar venueName={venueObj?.metadata.name}/>
 
       <div className="flex flex-col items-center justify-center">
-        <div className="flex flex-row items-center justify-center w-full space-x-2 ">
-          <Search />
+        <div className="flex gap-2 items-center w-full mt-4">
+          <div className="relative flex-1">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Type keyword to search…"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter')
+                  window.location.href = pathname + "?search=" + searchInput;
+              }}
+              className="pl-8"
+            />
+          </div>
         </div>
       </div>
       <div className="flex flex-col items-center justify-center w-full h-100 space-y-2">
@@ -130,8 +143,20 @@ export function AssetList() {
         <TopBar venueName={venueObj?.metadata.name}/>
   
         <div className="flex flex-col items-center justify-center">
-          <div className="flex flex-row items-center justify-center w-full space-x-2 ">
-            <Search />
+          <div className="flex gap-2 items-center w-full mt-4">
+            <div className="relative flex-1">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Type keyword to search…"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter')
+                    window.location.href = pathname + "?search=" + searchInput;
+                }}
+                className="pl-8"
+              />
+            </div>
           </div>
   
           {!isLoading && 

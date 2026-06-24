@@ -14,7 +14,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 
-import { Search } from "@/components/search";
 import { PlusCircle, X, Upload,  CircleArrowRight, Edit2, Save, Eraser} from "lucide-react";
 
 import {

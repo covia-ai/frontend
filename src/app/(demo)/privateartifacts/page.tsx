@@ -12,10 +12,10 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator
 } from "@/components/ui/breadcrumb";
-import { Search } from "@/components/search";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import { Eraser, PlusCircle, CircleArrowRight, CopyIcon, Save, AlertCircle, CheckCircle2Icon } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Eraser, PlusCircle, CircleArrowRight, CopyIcon, Save, AlertCircle, CheckCircle2Icon, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { useRouter, usePathname } from "next/navigation";
 import { useSearchParams } from 'next/navigation'
 import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 import {
@@ -51,6 +51,8 @@ export default function AssetPage() {
   const searchParams = useSearchParams()
   const search = searchParams.get('search');
   const router = useRouter();
+  const pathname = usePathname();
+  const [searchInput, setSearchInput] = useState(search ?? "");
 
   const [assetCreated, setAssetCreated] = useState(false);
   const [assetsMetadata, setAssetsMetadata] = useState<Asset[]>([]);
@@ -121,10 +123,20 @@ export default function AssetPage() {
       <SmartBreadcrumb />
 
       <div className="flex flex-col items-center justify-center">
-        <div className="flex flex-row items-center justify-center w-full space-x-2 ">
-          <Search />
-         
-
+        <div className="flex gap-2 items-center w-full mt-4">
+          <div className="relative flex-1">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Type keyword to search…"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter')
+                  window.location.href = pathname + "?search=" + searchInput;
+              }}
+              className="pl-8"
+            />
+          </div>
         </div>
 
 
