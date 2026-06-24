@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Iconbutton } from "./Iconbutton";
 import {  Copy, CopyIcon,  Save, SquareArrowOutUpRight } from "lucide-react";
 import { Asset } from "@covia/covia-sdk";
+import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { Button } from "./ui/button";
@@ -28,6 +29,8 @@ export function AssetCard({ asset,type,compact }: AssetCardProps) {
     const router = useRouter();
     const [newJsonData, setNewJsonData] = useState({});
     const [assetCreated, setAssetCreated] = useState(false);
+
+    const adapter = (asset.metadata?.operation?.adapter as string | undefined)?.split(':')[0] ?? null;
 
     
     const handleCardClick = (assetId:string) => {
@@ -104,7 +107,12 @@ export function AssetCard({ asset,type,compact }: AssetCardProps) {
 
                 {/* Flexible middle section */}
                 <div className="flex-1 p-2 flex flex-col justify-between text-sm" onClick={() => handleCardClick(asset.id)}>
-                    <div data-testid="asset-description" className={` ${ compact ? 'line-clamp-3' : 'line-clamp-4' } text-xs text-card-foreground `}>{asset.metadata.description || 'No description available'}</div>
+                    <div data-testid="asset-description" className={` ${ compact ? 'line-clamp-2' : 'line-clamp-3' } text-xs text-card-foreground `}>{asset.metadata.description || 'No description available'}</div>
+                    {type === "operations" && adapter && (
+                      <Badge variant="outline" className="mt-1 w-fit text-[10px] px-1.5 py-0 text-muted-foreground">
+                        {adapter}
+                      </Badge>
+                    )}
                 </div>
 
                 
