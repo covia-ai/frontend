@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { PaginationHeader } from "@/components/PaginationHeader";
 import { useVenues } from "@/hooks/use-venues";
 import { useAuthStore } from "@/hooks/use-auth";
-import { Activity } from "lucide-react";
+import { Activity, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { TopBar } from "./admin-panel/TopBar";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 
@@ -29,6 +29,10 @@ const ACTIVE_STATUSES = new Set([RunStatus.PENDING, RunStatus.STARTED, RunStatus
 export function JobList() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState("All");
+  const [sort, setSort] = useState<{ col: "id" | "date" | "status"; dir: "asc" | "desc" }>({ col: "date", dir: "desc" });
+
+  const toggleSort = (col: "id" | "date" | "status") =>
+    setSort(prev => prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" });
   const [allIds, setAllIds] = useState<string[]>([]);         // full ID list from venue
   const [jobsData, setJobsData] = useState<JobMetadata[]>([]); // metadata for current page
   const [loading, setLoading] = useState(false);
@@ -187,15 +191,15 @@ export function JobList() {
         
     };
 
-    const formatter = new Intl.DateTimeFormat('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    second: '2-digit',
-    timeZone: 'UTC',
-   });
+    const formatter = new Intl.DateTimeFormat(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    });
   return (
     <ContentLayout >
       <TopBar venueName={venueObj?.metadata.name}/>
@@ -241,17 +245,40 @@ export function JobList() {
         {!loading && <Table className="  border border-border rounded-lg shadow-md">
           <TableHeader >
             <TableRow className="bg-secondary hover:bg-secondary rounded-full text-secondary-foreground ">
-              <TableCell className="border border-border">Job Id</TableCell>
+              <TableCell className="border border-border">
+                <button onClick={() => toggleSort("id")} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                  Job Id
+                  {sort.col === "id" ? (sort.dir === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />) : <ArrowUpDown size={14} />}
+                </button>
+              </TableCell>
               <TableCell className="border border-border">Name</TableCell>
-              <TableCell className="text-center border border-border">Created Date</TableCell>
+              <TableCell className="text-center border border-border">
+                <button onClick={() => toggleSort("date")} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                  Created Date
+                  {sort.col === "date" ? (sort.dir === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />) : <ArrowUpDown size={14} />}
+                </button>
+              </TableCell>
               <TableCell className="text-center border border-border">Execution Time</TableCell>
-
-              <TableCell className="text-center border border-border">Status</TableCell>
+              <TableCell className="text-center border border-border">
+                <button onClick={() => toggleSort("status")} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                  Status
+                  {sort.col === "status" ? (sort.dir === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />) : <ArrowUpDown size={14} />}
+                </button>
+              </TableCell>
             </TableRow>
           </TableHeader>
 
           <TableBody>
-            {jobsData.filter(job => isInRange(job.created)).map((job, index) =>
+            {[...jobsData]
+              .filter(job => isInRange(job.created))
+              .sort((a, b) => {
+                let cmp = 0;
+                if (sort.col === "date") cmp = new Date(a.created).getTime() - new Date(b.created).getTime();
+                else if (sort.col === "id") cmp = a.id.localeCompare(b.id);
+                else if (sort.col === "status") cmp = (a.status ?? "").localeCompare(b.status ?? "");
+                return sort.dir === "asc" ? cmp : -cmp;
+              })
+              .map((job, index) =>
               <TableRow key={index}>
                 <TableCell><Link className="text-foreground font-mono underline" href={encodedPath(job.id)}>{job.id}</Link></TableCell>
                 <TableCell>{job.name}</TableCell>

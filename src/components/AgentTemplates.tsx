@@ -1,9 +1,10 @@
 "use client";
 
-import { Code, FileText, Pen, Settings } from "lucide-react";
+import { Code, FileText, Pen, Settings, Lock } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { AddNewAgent } from "./AddNewAgent";
+import { useIsAuthenticated } from "@/hooks/use-auth";
 
 interface AgentTemplate {
   name: string;
@@ -53,7 +54,13 @@ const templates: AgentTemplate[] = [
   },
 ];
 
-export function AgentTemplates() {
+interface AgentTemplatesProps {
+  onCreated?: () => void;
+}
+
+export function AgentTemplates({ onCreated }: AgentTemplatesProps = {}) {
+  const isAuthenticated = useIsAuthenticated();
+
   return (
     <div className="flex flex-col items-center justify-center w-full px-10 py-10">
       <h3 className="text-center text-2xl font-thin mb-8">
@@ -77,20 +84,33 @@ export function AgentTemplates() {
                 {template.description}
               </p>
             </div>
-            <AddNewAgent
-              trigger={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full mt-2 border-primary text-primary hover:bg-primary/20 hover:text-primary"
-                >
-                  Use Template
-                </Button>
-              }
-              initialAgentName={template.agentId}
-              initialSystemPrompt={template.systemPrompt}
-              initialProvider={template.provider}
-            />
+            {isAuthenticated ? (
+              <AddNewAgent
+                trigger={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-2 border-primary text-primary hover:bg-primary/20 hover:text-primary"
+                  >
+                    Use Template
+                  </Button>
+                }
+                initialAgentName={template.agentId}
+                initialSystemPrompt={template.systemPrompt}
+                initialProvider={template.provider}
+                onCreated={onCreated}
+              />
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled
+                className="w-full mt-2 gap-2 text-muted-foreground"
+              >
+                <Lock size={12} />
+                Sign in to use
+              </Button>
+            )}
           </Card>
         ))}
       </div>

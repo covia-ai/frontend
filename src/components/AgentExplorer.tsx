@@ -136,12 +136,17 @@ const AgentExplorer = (props: any) => {
     ]).finally(() => setDetailLoading(false));
   }, [venue, selectedAgentId]);
 
-  // Auto-select most recent session
+  // Auto-select most recent session (skip while a send is in flight to avoid
+  // the pending-message race: the server creates the session immediately when
+  // agent:chat arrives, so the first poll would set chatSession and change
+  // selectedSessionId before pendingUserMessage.sessionId is updated, causing
+  // the pending bubble and spinner to vanish mid-send).
   useEffect(() => {
+    if (sending) return;
     if (!chatSession && sessions.length > 0 && agentHandle) {
       setChatSession(agentHandle.chatSession(sessions[0].sessionId));
     }
-  }, [sessions, chatSession, agentHandle]);
+  }, [sessions, chatSession, agentHandle, sending]);
 
   // Polling for live updates
   useEffect(() => {

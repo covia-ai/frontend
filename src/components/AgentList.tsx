@@ -27,7 +27,7 @@ export function AgentList() {
   const venue = useAuthenticatedVenue();
   const isAuthenticated = useIsAuthenticated();
 
-  useEffect(() => {
+  const fetchAgents = () => {
     if (!venue) return;
     setLoading(true);
     venue.agents.list(true).then((result) => {
@@ -37,6 +37,11 @@ export function AgentList() {
     }).finally(() => {
       setLoading(false);
     });
+  };
+
+  useEffect(() => {
+    fetchAgents();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [venue]);
 
   const handleCardClick = (agentId: string) => {
@@ -61,7 +66,7 @@ export function AgentList() {
 
    return (<ContentLayout>
      <TopBar/>
- <AgentTemplates />
+ <AgentTemplates onCreated={fetchAgents} />
  <SeperatorWithText text="or"/>
      <h3 className="text-center text-4xl  font-thin pt-10">
           {agentData.length > 0 ? "Choose an existing" : "Create a new"}  {" "}
@@ -73,7 +78,7 @@ export function AgentList() {
      {!loading && agentData.length == 0 &&  <div className="flex flex-col items-center justify-center w-full space-y-2 pt-4">
             <Bot size={48} className="text-primary"></Bot>
             {isAuthenticated ? (
-              <AddNewAgent />
+              <AddNewAgent onCreated={fetchAgents} />
             ) : (
               <Button variant="outline" disabled className="gap-2 text-muted-foreground">
                 <Lock size={14} />
@@ -114,7 +119,7 @@ export function AgentList() {
 
          </div>
          {isAuthenticated ? (
-           <AddNewAgent />
+           <AddNewAgent onCreated={fetchAgents} />
          ) : (
            <Button variant="outline" disabled className="gap-2 text-muted-foreground">
              <Lock size={14} />

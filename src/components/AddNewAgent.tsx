@@ -32,6 +32,7 @@ interface AddNewAgentProps {
   initialAgentName?: string;
   initialSystemPrompt?: string;
   initialProvider?: string;
+  onCreated?: () => void;
 }
 
 export function AddNewAgent({
@@ -39,6 +40,7 @@ export function AddNewAgent({
   initialAgentName = "",
   initialSystemPrompt = "",
   initialProvider = "anthropic",
+  onCreated,
 }: AddNewAgentProps = {}) {
   const [agentName, setAgentName] = useState(initialAgentName);
   const [llmProvider, setLlmProvider] = useState(initialProvider);
@@ -98,6 +100,7 @@ export function AddNewAgent({
       setSystemPrompt("");
       setInitialCommand("");
       setOpen(false);
+      onCreated?.();
     } catch {
       toast("Unable to create agent");
     } finally {
