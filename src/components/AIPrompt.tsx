@@ -91,6 +91,7 @@ export const AIPrompt = () => {
       const matchedKeys = secrets.filter((s: string) => s in KNOWN_LLM_KEYS);
 
       if (matchedKeys.length === 1) {
+        toast(`Using ${KNOWN_LLM_KEYS[matchedKeys[0]]}`);
         await proceedWithKey(matchedKeys[0]);
       } else if (matchedKeys.length > 1) {
         setDetectedKeys(matchedKeys);
