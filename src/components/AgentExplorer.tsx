@@ -24,6 +24,7 @@ import {
 
 const POLL_INTERVAL_MS = 3000;
 const SESSION_LIMIT = 50;
+const SEND_TIMEOUT_MS = 30_000;
 
 const AgentExplorer = (props: any) => {
   const venue = useAuthenticatedVenue();
@@ -218,8 +219,19 @@ const AgentExplorer = (props: any) => {
     setMessageText("");
     setPendingUserMessage({ agentId: sendAgentId, sessionId: sendSessionId, text });
 
-    session.send(text)
+    // Race the send against a timeout so a suspended/unresponsive agent
+    // doesn't leave the spinner running indefinitely.
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const timeout = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(
+        () => reject(new Error("Agent is not responding — it may be suspended. Check the status panel.")),
+        SEND_TIMEOUT_MS,
+      );
+    });
+
+    Promise.race([session.send(text), timeout])
       .then(async (result) => {
+        clearTimeout(timeoutId);
         // ChatSession auto-captures sessionId — update our state reference
         setChatSession(session);
         if (sendSessionId === null && result?.sessionId) {
@@ -233,6 +245,7 @@ const AgentExplorer = (props: any) => {
         refreshAgentList();
       })
       .catch((err: any) => {
+        clearTimeout(timeoutId);
         toast(`Chat failed: ${err?.message || "see console"}`);
         setMessageText(text);
       })
