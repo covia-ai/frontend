@@ -67,11 +67,12 @@ export const AIPrompt = () => {
         },
       });
 
-      await venue.agents.request(agentId, { task: prompt });
+      // wait:false — fire-and-forget so a slow/failing task doesn't block navigation
+      await venue.agents.request(agentId, { task: prompt }, false);
 
       router.push(`/agents/explorer?agentId=${encodeURIComponent(agentId)}`);
-    } catch {
-      toast("Failed to create agent. Please try again.");
+    } catch (err: any) {
+      toast("Failed to create agent", { description: err?.message ?? "Please try again." });
     } finally {
       setCreating(false);
     }
