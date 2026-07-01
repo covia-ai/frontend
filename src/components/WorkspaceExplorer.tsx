@@ -200,14 +200,10 @@ export function WorkspaceExplorer() {
     setSaving(true);
     venue.workspace
       .write(selectedPath, editedData)
-      .then((result) => {
-        if (result.written) {
-          toast("Saved successfully");
-          setReadData(editedData);
-          setEditMode(false);
-        } else {
-          toast("Unable to save");
-        }
+      .then(() => {
+        toast("Saved successfully");
+        setReadData(editedData);
+        setEditMode(false);
       })
       .catch(() => {
         toast("Unable to save");
@@ -222,18 +218,14 @@ export function WorkspaceExplorer() {
     if (!venue || !selectedPath) return;
     venue.workspace
       .delete(selectedPath)
-      .then((result) => {
-        if (result.deleted) {
-          toast("Deleted successfully");
-          setSelectedPath(null);
-          setReadData(null);
-          // Refresh current listing
-          const currentPath =
-            pathSegments.length > 0 ? pathSegments.join("/") : undefined;
-          loadPath(currentPath);
-        } else {
-          toast("Unable to delete");
-        }
+      .then(() => {
+        toast("Deleted successfully");
+        setSelectedPath(null);
+        setReadData(null);
+        // Refresh current listing
+        const currentPath =
+          pathSegments.length > 0 ? pathSegments.join("/") : undefined;
+        loadPath(currentPath);
       })
       .catch(() => {
         toast("Unable to delete");
@@ -255,16 +247,14 @@ export function WorkspaceExplorer() {
         : newKeyPath;
     venue.workspace
       .write(fullPath, value)
-      .then((result) => {
-        if (result.written) {
-          toast("Created successfully");
-          setNewKeyPath("");
-          setNewKeyValue("");
-          setShowNewKey(false);
-          const currentPath =
-            pathSegments.length > 0 ? pathSegments.join("/") : undefined;
-          loadPath(currentPath);
-        }
+      .then(() => {
+        toast("Created successfully");
+        setNewKeyPath("");
+        setNewKeyValue("");
+        setShowNewKey(false);
+        const currentPath =
+          pathSegments.length > 0 ? pathSegments.join("/") : undefined;
+        loadPath(currentPath);
       })
       .catch(() => {
         toast("Unable to create");
@@ -282,13 +272,11 @@ export function WorkspaceExplorer() {
     }
     venue.workspace
       .append(selectedPath, value)
-      .then((result) => {
-        if (result.appended) {
-          toast("Appended successfully");
-          setAppendValue("");
-          setShowAppend(false);
-          readPath(selectedPath);
-        }
+      .then(() => {
+        toast("Appended successfully");
+        setAppendValue("");
+        setShowAppend(false);
+        readPath(selectedPath);
       })
       .catch(() => {
         toast("Unable to append");
