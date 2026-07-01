@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -16,6 +15,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown } from "lucide-react";
 
+const COLLAPSE_THRESHOLD = 4;
+const SHOW_START = 2;
+const SHOW_END = 1;
+
 interface BreadcrumbItemType {
   label: string;
   href?: string;
@@ -30,14 +33,13 @@ interface SmartBreadcrumbProps {
   onNavigate?: (href: string) => void;
 }
 
-export function SmartBreadcrumb({ 
-  pathname, 
-  assetOrJobName, 
+export function SmartBreadcrumb({
+  pathname,
+  assetOrJobName,
   venueName,
   agentName,
-  onNavigate 
+  onNavigate
 }: SmartBreadcrumbProps) {
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   // Generate breadcrumb items based on pathname
   const generateBreadcrumbs = (): BreadcrumbItemType[] => {
@@ -117,108 +119,76 @@ export function SmartBreadcrumb({
   };
 
   const breadcrumbs = generateBreadcrumbs();
-  
-  const handleBreadcrumbClick = (href: string) => {
-    if (onNavigate) {
-      onNavigate(href);
-    }
-    setExpandedIndex(null);
-  };
 
-  const handleEllipsisClick = (index: number) => {
-    setExpandedIndex(expandedIndex === index ? null : index);
-  };
+  const handleBreadcrumbClick = (href: string) => onNavigate?.(href);
 
-  // Determine which breadcrumbs to show on small screens
-  const getVisibleBreadcrumbs = () => {
-    if (breadcrumbs.length <= 2) {
-      return breadcrumbs.map((item, index) => ({ item, index, isHidden: false }));
-    }
-
-    // On small screens, show last 2 items, or 1 expanded item + last item
-    const result = breadcrumbs.map((item, index) => {
-      const isLastTwo = index >= breadcrumbs.length - 2;
-      const isExpanded = expandedIndex !== null && index === expandedIndex;
-      const isLast = index === breadcrumbs.length - 1;
-      
-      return {
-        item,
-        index,
-        isHidden: !isLastTwo && !isExpanded,
-        showAsExpanded: isExpanded && !isLast
-      };
-    });
-
-    return result;
-  };
-
-  const visibleBreadcrumbs = getVisibleBreadcrumbs();
-  const hiddenBreadcrumbs = breadcrumbs.filter((_, index) => 
-    index < breadcrumbs.length - 2 && index !== expandedIndex
-  );
+  const collapsed = breadcrumbs.length > COLLAPSE_THRESHOLD;
+  const startCrumbs = collapsed ? breadcrumbs.slice(0, SHOW_START) : [];
+  const hiddenCrumbs = collapsed ? breadcrumbs.slice(SHOW_START, breadcrumbs.length - SHOW_END) : [];
+  const endCrumbs = collapsed ? breadcrumbs.slice(breadcrumbs.length - SHOW_END) : [];
 
   return (
     <Breadcrumb>
-      <BreadcrumbList>
-        {/* Desktop view - show all breadcrumbs */}
-        <div className="hidden lg:contents">
-          {breadcrumbs.map((item, index) => (
-            <BreadcrumbItem key={`desktop-${index}`}>
-              <BreadcrumbLink 
-                onClick={() => item.href && handleBreadcrumbClick(item.href)}
-                className="cursor-pointer hover:underline"
-              >
-                {item.label}
-              </BreadcrumbLink>
-              {index < breadcrumbs.length - 1 && <BreadcrumbSeparator />}
-            </BreadcrumbItem>
-          ))}
-        </div>
+      <BreadcrumbList className="flex-nowrap">
+        {!collapsed && breadcrumbs.map((item, index) => (
+          <BreadcrumbItem key={index}>
+            <BreadcrumbLink
+              onClick={() => item.href && handleBreadcrumbClick(item.href)}
+              className="cursor-pointer hover:underline"
+            >
+              {item.label}
+            </BreadcrumbLink>
+            {index < breadcrumbs.length - 1 && <BreadcrumbSeparator />}
+          </BreadcrumbItem>
+        ))}
 
-        {/* Mobile view - show last 2 or expanded item */}
-        <div className="lg:hidden contents">
-          {breadcrumbs.length > 2 && hiddenBreadcrumbs.length > 0 && (
-            <BreadcrumbItem>
-              <DropdownMenu>
-                <DropdownMenuTrigger className="flex items-center gap-1 cursor-pointer hover:underline">
-                  <span>...</span>
-                  <ChevronDown className="h-4 w-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  {hiddenBreadcrumbs.map((item, idx) => {
-                    const originalIndex = breadcrumbs.findIndex(b => b === item);
-                    return (
-                      <DropdownMenuItem
-                        key={`hidden-${idx}`}
-                        onClick={() => handleEllipsisClick(originalIndex)}
-                        className="cursor-pointer"
-                      >
-                        {item.label}
-                      </DropdownMenuItem>
-                    );
-                  })}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <BreadcrumbSeparator />
-            </BreadcrumbItem>
-          )}
-
-          {visibleBreadcrumbs.map(({ item, index, isHidden, showAsExpanded }) => {
-            if (isHidden) return null;
-
-            return (
-              <BreadcrumbItem key={`mobile-${index}`}>
-                <BreadcrumbLink 
+        {collapsed && (
+          <>
+            {startCrumbs.map((item, index) => (
+              <BreadcrumbItem key={`s-${index}`}>
+                <BreadcrumbLink
                   onClick={() => item.href && handleBreadcrumbClick(item.href)}
                   className="cursor-pointer hover:underline"
                 >
                   {item.label}
                 </BreadcrumbLink>
-                {(showAsExpanded || index < breadcrumbs.length - 1) && <BreadcrumbSeparator />}
+                <BreadcrumbSeparator />
               </BreadcrumbItem>
-            );
-          })}
-        </div>
+            ))}
+
+            <BreadcrumbItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger className="flex items-center gap-1 cursor-pointer text-muted-foreground hover:text-foreground">
+                  <span>…</span>
+                  <ChevronDown className="h-3 w-3" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {hiddenCrumbs.map((item, idx) => (
+                    <DropdownMenuItem
+                      key={idx}
+                      onClick={() => item.href && handleBreadcrumbClick(item.href)}
+                      className="cursor-pointer"
+                    >
+                      {item.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <BreadcrumbSeparator />
+            </BreadcrumbItem>
+
+            {endCrumbs.map((item, index) => (
+              <BreadcrumbItem key={`e-${index}`}>
+                <BreadcrumbLink
+                  onClick={() => item.href && handleBreadcrumbClick(item.href)}
+                  className="cursor-pointer hover:underline"
+                >
+                  {item.label}
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+            ))}
+          </>
+        )}
       </BreadcrumbList>
     </Breadcrumb>
   );
