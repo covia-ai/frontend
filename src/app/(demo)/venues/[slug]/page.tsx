@@ -79,7 +79,7 @@ export default function VenuePage({ params }: VenuePageProps) {
          addVenue(venue)
        })
     }
-  }, [slug, venues, authMap, getAuthForVenue]);
+  }, [slug, venues, authMap, getAuthForVenue, addVenue]);
 
     useEffect(() => {
        const fetchMCP = async () => {

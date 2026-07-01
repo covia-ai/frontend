@@ -35,6 +35,9 @@ interface AddNewAgentProps {
   onCreated?: () => void;
 }
 
+const slugify = (name: string) =>
+  name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
+
 export function AddNewAgent({
   trigger,
   initialAgentName = "",
@@ -43,6 +46,8 @@ export function AddNewAgent({
   onCreated,
 }: AddNewAgentProps = {}) {
   const [agentName, setAgentName] = useState(initialAgentName);
+  const [agentId, setAgentId] = useState("");
+  const [agentIdEdited, setAgentIdEdited] = useState(false);
   const [llmProvider, setLlmProvider] = useState(initialProvider);
   const [systemPrompt, setSystemPrompt] = useState(initialSystemPrompt);
   const [initialCommand, setInitialCommand] = useState("");
@@ -50,11 +55,14 @@ export function AddNewAgent({
   const [open, setOpen] = useState(false);
   const [availableKeys, setAvailableKeys] = useState<string[]>([]);
 
+
   const venue = useAuthenticatedVenue();
 
   useEffect(() => {
     if (!open) return;
     setAgentName(initialAgentName);
+    setAgentId(slugify(initialAgentName));
+    setAgentIdEdited(false);
     setSystemPrompt(initialSystemPrompt);
     setLlmProvider(initialProvider);
     setInitialCommand("");
@@ -81,7 +89,7 @@ export function AddNewAgent({
     try {
       const provider = LLM_PROVIDERS[llmProvider];
       const result = await venue.agents.create({
-        agentId: agentName,
+        agentId: agentId.trim() || slugify(agentName),
         config: {
           operation: "v/ops/llmagent/chat",
           llmOperation: provider.operation,
@@ -97,6 +105,8 @@ export function AddNewAgent({
         description: `Agent "${result.agentId}" is now ${result.status}`,
       });
       setAgentName("");
+      setAgentId("");
+      setAgentIdEdited(false);
       setSystemPrompt("");
       setInitialCommand("");
       setOpen(false);
@@ -135,8 +145,30 @@ export function AddNewAgent({
               data-testid="agent-name"
               placeholder="e.g., Customer Support Agent"
               value={agentName}
-              onChange={(e) => setAgentName(e.target.value)}
+              onChange={(e) => {
+                setAgentName(e.target.value);
+                if (!agentIdEdited) setAgentId(slugify(e.target.value));
+              }}
             />
+          </div>
+
+          {/* Agent ID */}
+          <div className="space-y-2 w-full">
+            <Label htmlFor="agent-id" className="w-32 text-sm">
+              Agent ID:
+            </Label>
+            <Input
+              id="agent-id"
+              placeholder="e.g., customer-support-agent"
+              value={agentId}
+              onChange={(e) => {
+                setAgentId(e.target.value);
+                setAgentIdEdited(true);
+              }}
+            />
+            <p className="text-xs text-muted-foreground">
+              Unique identifier — auto-suggested from name. Edit to override.
+            </p>
           </div>
 
           {/* LLM Provider */}

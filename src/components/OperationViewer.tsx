@@ -37,6 +37,7 @@ export const OperationViewer = (props: any) => {
   const [rawInput, setRawInput] = useState<Record<string, string>>({}); // raw input content before parsing per field name
   const [typeMap, setTypeMap] = useState<Record<string, string>>({}); // user-specified types of the values to be passed to the operation, affects parsing
   const [assetNotFound, setAssetNotFound] = useState(false);
+  const [showSchema, setShowSchema] = useState(false);
   const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
   const authMap = useAuthStore((x) => x.authMap);
 
@@ -563,7 +564,16 @@ export const OperationViewer = (props: any) => {
         {!assetNotFound && asset && <MetadataViewer asset={asset} />}
         {!assetNotFound && asset?.metadata?.operation && (
           <>
-            
+            <div className="w-full flex justify-end mb-1">
+              <Button variant="outline" size="sm" onClick={() => setShowSchema(v => !v)}>
+                {showSchema ? "Hide Schema" : "View Schema"}
+              </Button>
+            </div>
+            {showSchema && (
+              <pre className="w-full text-xs bg-muted rounded-md p-4 overflow-x-auto whitespace-pre-wrap break-all mb-2">
+                {JSON.stringify({ input: asset.metadata.operation.input, output: asset.metadata.operation.output }, null, 2)}
+              </pre>
+            )}
             {renderInputFields(asset?.metadata?.operation?.input)}
             {asset?.metadata?.operation?.steps && <DiagramViewer metadata={asset.metadata}></DiagramViewer>}
           </>
