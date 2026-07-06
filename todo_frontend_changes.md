@@ -556,7 +556,7 @@ accepts an `overwrite: true` flag that updates a SLEEPING or SUSPENDED agent in 
 
 ---
 
-## P16 — SDK next-release migration & job-free reads (NEW — added 2026-07-06)
+## P18 — SDK next-release migration & job-free reads (NEW — added 2026-07-06)
 
 **Goal:** move to the next covia-sdk release (currently pinned `1.6.0-next.0`; npm
 `latest` is still 1.5.0) as soon as it's tagged, and eliminate invoke-based reads —
@@ -595,11 +595,13 @@ job-free), and `/.well-known/*`.
       user-driven execution.
 - [ ] Bump `@covia/covia-sdk` pin when the next release is tagged; run
       `pnpm build` + jest.
-- [ ] **AgentExplorer** (`src/components/AgentExplorer.tsx:68,130`): replace
-      `agentHandle.query()` (API removed in SDK develop) with `agents.info()` +
-      targeted `workspace.read` calls — the 3 s poll currently mints ~6 jobs per
-      tick, the single worst offender; after migration only `agents.list`/`info`
-      still create jobs (blocked on covia#180 for full elimination).
+- [x] **AgentExplorer** — `agentHandle.query()` (removed in SDK develop) replaced
+      with a `loadAgentDetail()` helper = `agents.info()` + a `workspace.read` of
+      `g/<id>/timeline` (done 2026-07-06). query() bundled info + timeline + state
+      + inbox (4 jobs); the component only renders info-fields + timeline, so the
+      unused state/inbox reads are dropped — the 3 s poll falls from 6 to 4
+      jobs/tick immediately, and info()/workspace.read become job-free at the SDK
+      bump (leaving only `agents.list`, blocked on covia#180 for full elimination).
 - [ ] `WorkspaceExplorer` + `AgentExplorer` sessions slice become job-free
       automatically via the SDK repoint — no code change, but verify.
 - [ ] Optionally migrate `KeyPairAuth` → `Ed25519Auth` in `src/lib/auth-provider.ts` /

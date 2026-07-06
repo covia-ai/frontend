@@ -63,11 +63,28 @@ const AgentExplorer = (props: any) => {
     }).catch(() => {});
   };
 
+  // Agent detail = lightweight info() + the timeline the Details panel dumps.
+  // Replaces the removed agents.query(), which bundled info plus timeline/state/
+  // inbox reads (4 jobs); we only render info-fields + timeline, so state/inbox
+  // are dropped. info() and the timeline read are job-free on venues that serve
+  // the values API; on older ones they fall back to invoke via the SDK.
+  const loadAgentDetail = (agentId: string): Promise<AgentDetail | null> => {
+    if (!venue) return Promise.resolve(null);
+    return Promise.all([
+      venue.agents.info(agentId),
+      venue.workspace.read(`g/${agentId}/timeline`)
+        .then((r) => (Array.isArray(r?.value) ? r.value : []))
+        .catch(() => []),
+    ])
+      .then(([info, timeline]) => ({ ...info, timeline } as AgentDetail))
+      .catch(() => null);
+  };
+
   const refreshAgentDetail = (agentId: string | null) => {
-    if (!agentHandle || !agentId) return Promise.resolve();
-    return agentHandle.query().then((result) => {
-      setSelectedAgentDetail(result as AgentDetail);
-    }).catch(() => {});
+    if (!agentId) return Promise.resolve();
+    return loadAgentDetail(agentId).then((detail) => {
+      if (detail) setSelectedAgentDetail(detail);
+    });
   };
 
   const refreshSessions = (agentId: string | null) => {
@@ -127,11 +144,13 @@ const AgentExplorer = (props: any) => {
     setAgentHandle(handle);
     setDetailLoading(true);
     Promise.all([
-      handle.query()
-        .then((r) => setSelectedAgentDetail(r as AgentDetail))
-        .catch(() => {
-          toast("Unable to load agent details");
-          setSelectedAgentDetail(null);
+      loadAgentDetail(selectedAgentId)
+        .then((detail) => {
+          if (detail) setSelectedAgentDetail(detail);
+          else {
+            toast("Unable to load agent details");
+            setSelectedAgentDetail(null);
+          }
         }),
       refreshSessions(selectedAgentId),
     ]).finally(() => setDetailLoading(false));
