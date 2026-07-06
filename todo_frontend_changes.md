@@ -585,8 +585,10 @@ job-free), and `/.well-known/*`.
 ### Frontend migration checklist
 - [x] Catalog reads job-free — `readValue()` in `src/lib/operations-catalog.ts`
       GETs `/api/v1/values/read` with invoke fallback for pre-0.3 venues
-      (done 2026-07-06; swap the fallback for `venue.workspace.read()` once the
-      SDK release lands and the fleet is upgraded).
+      (done 2026-07-06). **Delete `readValue()` at the SDK bump** and call
+      `venue.workspace.read()` — the SDK now owns the pre-0.3 fallback
+      (covia-sdk `0cc4d3e`); venue-version accommodation belongs in the SDK,
+      not the frontend.
 - [x] MCP tool lists job-free — `listMcpTools()` in `src/lib/utils.ts` speaks
       JSON-RPC `tools/list` to the native `/mcp` endpoint; used by the venue page
       and `/venues/[slug]/mcp` (done 2026-07-06). `tools-call` stays an invoke —
