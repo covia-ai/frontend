@@ -604,6 +604,10 @@ job-free), and `/.well-known/*`.
       automatically via the SDK repoint — no code change, but verify.
 - [ ] Optionally migrate `KeyPairAuth` → `Ed25519Auth` in `src/lib/auth-provider.ts` /
       `src/hooks/use-auth.ts` (alias works; rename at leisure).
+- [ ] Re-enable `reactStrictMode` once reads are job-free — strict mode
+      double-fires dev effects, which currently doubles read-job creation
+      ([#157](https://github.com/covia-ai/frontend/issues/157), also covers the
+      `no-unused-vars` lint burn-down).
 
 ### Remaining venue-side gap → filed as covia#180
 `v/ops/agent/list` and `v/ops/agent/info` have no job-free route: no
