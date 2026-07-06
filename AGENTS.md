@@ -32,7 +32,6 @@ src/
 │   ├── (demo)/             # Demo routes
 │   ├── (signup)/signUp/    # Sign-up page
 │   ├── auth/callback/      # OAuth callback handler
-│   ├── api/                # API routes
 │   └── layout.tsx          # Root layout
 ├── components/             # React components
 │   ├── ui/                 # shadcn/ui primitives (Button, Dialog, etc.)
@@ -41,10 +40,9 @@ src/
 │   └── ...                 # Feature components
 ├── hooks/                  # Custom React hooks
 │   ├── use-auth.ts         # Auth state (Zustand store, localStorage)
-│   ├── use-authenticated-venue.ts  # Venue instance with auth
+│   ├── use-authenticated-venue.ts  # Shared cached Venue instance per (venue, auth)
 │   ├── use-venue.ts        # Current venue state
-│   ├── use-venues.ts       # Multi-venue management
-│   └── use-polling.ts      # Polling helper
+│   └── use-venues.ts       # Multi-venue management
 ├── lib/                    # Utilities
 │   ├── auth-provider.ts    # Converts stored auth → SDK Auth objects
 │   └── utils.ts            # General helpers
@@ -71,6 +69,22 @@ Use the `useAuthenticatedVenue()` hook to get a `Venue` instance with auth pre-c
 const venue = useAuthenticatedVenue();
 // venue.assets.list(), venue.jobs.list(), etc.
 ```
+
+Both the hook and the `getVenueFor(venueObj, auth)` helper it wraps return a
+**single cached `Venue` instance per (venue, auth)** and validate the connection
+with a background `status()`. Never `new Venue({...})` in a component — that
+discards the SDK's per-instance state (asset cache, capability detection) and
+skips connection validation.
+
+### Reads must not create jobs
+
+Every operation `invoke` persists a job to the venue's lattice. So the UI may
+only invoke for **user-driven executions** (running an operation, calling a
+tool, messaging an agent, writing/deleting). Page loads, polls, navigation and
+data display must read via job-free surfaces: REST GETs (`/api/v1/assets|jobs|
+operations|secrets|status`), the values API (`GET /api/v1/values/*`), the native
+`/mcp` JSON-RPC endpoint, and `/.well-known/*`. Treat a non-user-driven
+`operations.run`/`invoke` as a defect.
 
 ### Components
 
