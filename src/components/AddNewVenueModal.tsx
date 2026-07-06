@@ -18,7 +18,7 @@ import { Button } from "./ui/button";
 import { gtmEvent } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
-export const AddNewVenueModal = (props:any) => {
+export const AddNewVenueModal = (_props:any) => {
     const [open, setOpen] = useState(false)
     const { addVenue, venues } = useVenues();
     const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);

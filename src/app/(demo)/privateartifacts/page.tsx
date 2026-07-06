@@ -1,42 +1,22 @@
 "use client";
 
 
-import Link from "next/link";
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator
-} from "@/components/ui/breadcrumb";
-import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import { Eraser, PlusCircle, CircleArrowRight, CopyIcon, Save, AlertCircle, CheckCircle2Icon, Search } from "lucide-react";
+import { Search }from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useRouter, usePathname } from "next/navigation";
 import { useSearchParams } from 'next/navigation'
 import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
 
 
-import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
 import { Asset, DataAsset } from "@covia/covia-sdk";
-import { JsonEditor } from "json-edit-react";
 
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 
 
-import { Badge } from "@/components/ui/badge";
 
 import {
   Pagination,
@@ -54,15 +34,15 @@ export default function AssetPage() {
   const pathname = usePathname();
   const [searchInput, setSearchInput] = useState(search ?? "");
 
-  const [assetCreated, setAssetCreated] = useState(false);
+  const [_assetCreated, setAssetCreated] = useState(false);
   const [assetsMetadata, setAssetsMetadata] = useState<Asset[]>([]);
-  const [newJsonData, setNewJsonData] = useState({});
+  const [_newJsonData, setNewJsonData] = useState({});
 
   const itemsPerPage = 6
-  const [totalItems, setTotalItems] = useState(0);
+  const [_totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(10);
   const [currentPage, setCurrentPage] = useState(1)
-  const [noOfItemsOnPage, setNoOfItemsOnPage] = useState(0);
+  const [_noOfItemsOnPage, _setNoOfItemsOnPage] = useState(0);
   const venue = useAuthenticatedVenue();
 
   const nextPage = (page: number) => {
@@ -100,7 +80,7 @@ export default function AssetPage() {
 
   }, [assetsMetadata]);
 
-  function copyAsset(jsonData: JSON) {
+  function _copyAsset(jsonData: JSON) {
     try {
       venue?.assets.register(jsonData).then((asset: Asset) => {
         if (asset != undefined && asset != null) {
@@ -114,7 +94,7 @@ export default function AssetPage() {
       setAssetCreated(false);
     }
   }
-  function handleDataFromChild(status: boolean) {
+  function handleDataFromChild(_status: boolean) {
     fetchAssets();
   }
 

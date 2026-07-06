@@ -5,19 +5,8 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { LogInIcon, Copy, Check, Key, Plus, Import, Globe } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import {
-  Avatar,
-  AvatarImage,
-} from "@/components/ui/avatar"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { Avatar }from "@/components/ui/avatar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger }from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,

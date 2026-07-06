@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, Clock1, MapPin, User } from 'lucide-react';
+import { Clock1 } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { AgentDetail, AgentSteps } from '@/config/types';
 import {

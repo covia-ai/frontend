@@ -6,8 +6,7 @@ import React from 'react'
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { LibraryBigIcon, MessagesSquare, Play, ExternalLink } from "lucide-react";
-import { VideoSlideShow } from "@/components/VideoSlideShow";
+import { LibraryBigIcon, MessagesSquare, ExternalLink }from "lucide-react";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { VideoThumbnails } from "@/components/VideoThumbnails";
 

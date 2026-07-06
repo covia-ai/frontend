@@ -1,10 +1,5 @@
 import React, { memo } from 'react';
 import {Handle,  Position } from '@xyflow/react';
-import {
-  NodeTooltip,
-  NodeTooltipContent,
-  NodeTooltipTrigger,
-} from "@/components/node-tooltip";
 import { CustomNodeToolTip } from './CustomNodeToolTip';
 
 function InputNode({ data }: { data: any }) {

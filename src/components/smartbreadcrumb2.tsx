@@ -37,7 +37,6 @@ export function SmartBreadcrumb({
   pathname,
   assetOrJobName,
   venueName,
-  agentName,
   onNavigate
 }: SmartBreadcrumbProps) {
 
@@ -98,7 +97,7 @@ export function SmartBreadcrumb({
   };
 
   // Custom label mapping for better UX
-  const getCustomLabel = (segment: string, path: string): string | null => {
+  const getCustomLabel = (segment: string, _path: string): string | null => {
     const labelMap: Record<string, string> = {
       'demo': 'Demo',
       'venues': 'Venues',

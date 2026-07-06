@@ -5,34 +5,22 @@ import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Search } from "lucide-react";
 import { VenueCard } from "@/components/VenueCard";
 import { useVenues } from "@/hooks/use-venues";
-import { toast } from "sonner"
 
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {  useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { Iconbutton } from "@/components/Iconbutton";
-import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { AddNewVenueModal } from "@/components/AddNewVenueModal";
 
 export default function VenuesPage() {
-  const { addVenue,venues } = useVenues();
-  const [venueId, setVenueId] = useState("");
+  const { venues } = useVenues();
+  const [_venueId, _setVenueId] = useState("");
   const searchParams = useSearchParams()
   const search = searchParams.get('search');
   const router = useRouter();
   const pathname = usePathname();
   const [searchInput, setSearchInput] = useState(search ?? "");
-  const [open, setOpen] = useState(false)
+  const [_open, setOpen] = useState(false)
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {

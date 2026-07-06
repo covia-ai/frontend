@@ -238,7 +238,7 @@ export const AIPrompt = () => {
         </Dialog>
 
          <div className="flex flex-row flex-wrap items-center justify-center w-full space-x-2 space-y-2 mt-4">
-          {promptSamples.map( (promptText,index) => (
+          {promptSamples.map( (promptText,_index) => (
 
              prompt == promptText ? (
 

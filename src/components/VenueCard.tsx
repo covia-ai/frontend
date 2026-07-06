@@ -2,10 +2,8 @@
 
 import { Card } from "@/components/ui/card";
 import { Venue } from "@covia/covia-sdk";
-import { createAuthProvider } from "@/lib/auth-provider";
 import { getVenueFor } from "@/hooks/use-authenticated-venue";
 import { useRouter } from 'next/navigation';
-import { useVenues } from "@/hooks/use-venues";
 import { useAuthStore } from "@/hooks/use-auth";
 import { Badge } from "./ui/badge";
 import { RemoveVenueModal } from "./RemoveVenueModal";

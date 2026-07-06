@@ -1,12 +1,5 @@
 import { OperationsList } from "@/components/OperationsList";
 
-interface VenueOperationsPageProps {
-  params: Promise<{
-    slug: string;
-  }>;
-}
-
-export default async function OperationsPage({ params }: VenueOperationsPageProps) {
-  const { slug } = await params;
+export default function OperationsPage() {
   return <OperationsList/>;
 } 

@@ -1,6 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { Iconbutton } from "./Iconbutton";
-import {  Copy, CopyIcon,  Save, SquareArrowOutUpRight } from "lucide-react";
+import { Copy, Save }from "lucide-react";
 import { Asset } from "@covia/covia-sdk";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
@@ -28,7 +27,7 @@ export function AssetCard({ asset,type,compact }: AssetCardProps) {
     const venue = useAuthenticatedVenue();
     const router = useRouter();
     const [newJsonData, setNewJsonData] = useState<any>({});
-    const [assetCreated, setAssetCreated] = useState(false);
+    const [_assetCreated, setAssetCreated] = useState(false);
 
     const adapter = (asset.metadata?.operation?.adapter as string | undefined)?.split(':')[0] ?? null;
 

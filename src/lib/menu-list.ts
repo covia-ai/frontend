@@ -1,18 +1,4 @@
-import {
-
-  LocationEdit,
-  Database,
-  PlayCircle,
-  LucideIcon,
-  Home,
-  User,
-  BookKey,
-  FileKey,
-  LibraryBig,
-  Activity,
-  BotIcon,
-  KeyRound,
-} from "lucide-react";
+import { LocationEdit, Database, PlayCircle, LucideIcon, Home, User, BookKey, LibraryBig, BotIcon, KeyRound }from "lucide-react";
 
 type Submenu = {
   href: string;

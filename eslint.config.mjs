@@ -15,7 +15,7 @@ const eslintConfig = [
       rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       "@typescript-eslint/no-non-null-asserted-optional-chain" : "error",
-      "@typescript-eslint/no-unused-vars" : "off",
+      "@typescript-eslint/no-unused-vars" : ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "caughtErrors": "none" }],
       "react-hooks/rules-of-hooks" : "error"
     },
    })

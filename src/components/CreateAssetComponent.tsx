@@ -16,8 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Plus, PlusCircle, PlusCircleIcon, PlusIcon, Router, User } from "lucide-react";
-import { TbCircleDashedNumber1,  TbCircleDashedNumber2, TbCircleDashedNumber3} from "react-icons/tb";
+import { PlusIcon }from "lucide-react";
+import { TbCircleDashedNumber1, TbCircleDashedNumber3 }from "react-icons/tb";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useEffect, useState } from "react";
@@ -56,7 +56,7 @@ export const CreateAssetComponent = ({sendDataToParent}: {sendDataToParent: (sta
         try {    
           venue?.assets.register(jsonData).then( (asset: Asset) => {
                 if(assetType == "string") {
-                      asset.putContent(assetStringData).then((response) =>{
+                      asset.putContent(assetStringData).then((_response) =>{
                       sendDataToParent(true)
                        setStep(1)
 
@@ -64,14 +64,14 @@ export const CreateAssetComponent = ({sendDataToParent}: {sendDataToParent: (sta
 
                   }
                   if(assetType == "json") {
-                      asset.putContent((JSON.stringify(assetJSONData))).then((response) =>{
+                      asset.putContent((JSON.stringify(assetJSONData))).then((_response) =>{
                       sendDataToParent(true)
                        setStep(1)
                     })
 
                   }
                   if(assetType == "file") {
-                      asset.putContent(assetFileData).then((response) =>{
+                      asset.putContent(assetFileData).then((_response) =>{
                       sendDataToParent(true)
                        setStep(1)
                     })
@@ -95,7 +95,7 @@ export const CreateAssetComponent = ({sendDataToParent}: {sendDataToParent: (sta
       return hash;
     };
      
-    function uploadContent(event: any) {
+    function uploadContent(_event: any) {
        if(assetType == "string" ) {
         getSHA256Hash(assetStringData).then((hash) => {
                 setHash(hash)
@@ -308,11 +308,11 @@ export const CreateAssetComponent = ({sendDataToParent}: {sendDataToParent: (sta
                   </div>
                   </div>
                     <div className="flex flex-row items-center justify-between ">
-                    <Button aria-label="back" role="button" type="button" onClick={(e) => setStep(1)}>Go Back</Button>
+                    <Button aria-label="back" role="button" type="button" onClick={(_e) => setStep(1)}>Go Back</Button>
                     
-                    <Button aria-label="edit" role="button" type="button" onClick={(e) => createMetadata(3)}>Edit </Button>
+                    <Button aria-label="edit" role="button" type="button" onClick={(_e) => createMetadata(3)}>Edit </Button>
                     <DialogClose>
-                      <Button aria-label="create asset" role="button" type="button" onClick={(e) => createMetadata(0)}>Create Asset</Button>
+                      <Button aria-label="create asset" role="button" type="button" onClick={(_e) => createMetadata(0)}>Create Asset</Button>
                     </DialogClose>
 
                   </div>
@@ -348,7 +348,7 @@ export const CreateAssetComponent = ({sendDataToParent}: {sendDataToParent: (sta
                                     />
                               }
                   <div className="flex flex-row items-center justify-between ">
-                      <Button aria-label="back" role="button" type="button" onClick={(e) => setStep(2)}>Go Back</Button>
+                      <Button aria-label="back" role="button" type="button" onClick={(_e) => setStep(2)}>Go Back</Button>
                     <DialogClose>
                       {metadataUpdated && <Button aria-label="create asset" role="button" type="button" className="mx-2 w-32" onClick={() => createNewAsset(jsonData)}>Create Asset</Button>}
                       {!metadataUpdated && <Button aria-label="create asset" role="button" type="button" className="mx-2 w-32" onClick={() => createNewAsset(baseData)}>Create Asset</Button>}

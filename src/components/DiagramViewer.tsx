@@ -1,17 +1,7 @@
 
 'use client'
 
-import {
-  ReactFlow,
-  useNodesState,
-  useEdgesState,
-  addEdge,
-  EdgeTypes,
-  type ColorMode,
-  MiniMap,
-  Controls,
-  Background,
-} from '@xyflow/react';
+import { ReactFlow, useNodesState, useEdgesState, EdgeTypes, type ColorMode, Controls, Background } from '@xyflow/react';
 
 import '@xyflow/react/dist/style.css';
 
@@ -21,8 +11,6 @@ import ConstNode from '@/components/diagram/ConstNode';
 import CustomEdge from '@/components/diagram/CustomEdge';
 import OutputNode from '@/components/diagram/OutputNode';
 import { parseOpMetadata } from '@/lib/diagramutils';
-import { useCallback } from 'react';
-import { redirect } from 'next/navigation';
 import { useTheme } from 'next-themes';
 
 const nodeTypes = {
@@ -38,8 +26,8 @@ const edgeTypes: EdgeTypes = {
 
 export const DiagramViewer = (props:any) => {
        const parseJson = parseOpMetadata(props.metadata);
-       const [nodes, setNodes, onNodesChange] = useNodesState(parseJson[0]);
-       const [edges, setEdges, onEdgesChange] = useEdgesState(parseJson[1]);
+       const [nodes, _setNodes, onNodesChange] = useNodesState(parseJson[0]);
+       const [edges, _setEdges, onEdgesChange] = useEdgesState(parseJson[1]);
        const { theme  } = useTheme();
 
       const defaultViewport = { x: 0, y: 0, zoom: 1.5 };

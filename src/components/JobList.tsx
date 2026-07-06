@@ -10,12 +10,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
-import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { useCallback, useEffect, useRef, useState }from "react";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { getVenueFor } from "@/hooks/use-authenticated-venue";
-import { Job, JobMetadata, RunStatus, Venue } from "@covia/covia-sdk";
-import { createAuthProvider } from "@/lib/auth-provider";
+import { Job, JobMetadata, RunStatus }from "@covia/covia-sdk";
 import { colourForStatus, getExecutionTime } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { PaginationHeader } from "@/components/PaginationHeader";
@@ -29,7 +28,7 @@ const ACTIVE_STATUSES = new Set([RunStatus.PENDING, RunStatus.STARTED, RunStatus
 
 export function JobList() {
   const [statusFilter, setStatusFilter] = useState("All");
-  const [dateFilter, setDateFilter] = useState("All");
+  const [dateFilter, _setDateFilter] = useState("All");
   const [sort, setSort] = useState<{ col: "id" | "date" | "status"; dir: "asc" | "desc" }>({ col: "date", dir: "desc" });
 
   const toggleSort = (col: "id" | "date" | "status") =>

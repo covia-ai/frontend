@@ -17,7 +17,7 @@ import { Separator } from "./ui/separator";
 export function ForkAgent(props:any) {
 
     const [newAgentName, setNewAgentName] = useState("");
-    const [isProcessing, setIsProcessing] = useState(false);
+    const [isProcessing, _setIsProcessing] = useState(false);
 
      const handleFork = () => {
      toast("Success !!", {

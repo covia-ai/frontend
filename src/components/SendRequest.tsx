@@ -8,7 +8,7 @@ import { Loader2 } from 'lucide-react';
 import { toast } from "sonner"
 import { Separator } from './ui/separator';
 
-export default function SendRequest(props:any) {
+export default function SendRequest(_props:any) {
   const [request, setRequest] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 

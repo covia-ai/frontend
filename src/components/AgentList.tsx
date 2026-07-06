@@ -2,7 +2,7 @@
 
 import { AddNewAgent } from "./AddNewAgent";
 import { ContentLayout } from "./admin-panel/content-layout";
-import { Bot, Clock, Loader2, SquareChevronRight, Lock } from "lucide-react";
+import { Bot, Loader2, SquareChevronRight, Lock }from "lucide-react";
 import { Card } from "./ui/card";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -10,10 +10,8 @@ import { TopBar } from "./admin-panel/TopBar";
 import { AgentListItem } from "@/config/types";
 import { SeperatorWithText } from "@/components/SeperatorWithText";
 import { AgentTemplates } from "./AgentTemplates";
-import { AgentSearch } from "./AgentSearch";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 import { AgentStatus } from "@covia/covia-sdk";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useIsAuthenticated } from "@/hooks/use-auth";

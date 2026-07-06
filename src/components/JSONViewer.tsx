@@ -28,7 +28,7 @@ export const JsonViewer = (props:any) => {
    useEffect(() => {
       if (!venue) return;
       venue.assets.getContent(props.assetId).then((response) => {
-        response?.getReader().read().then(({done, value}) => {
+        response?.getReader().read().then(({ value }) => {
           const decoder = new TextDecoder();
           const text = decoder.decode(value);
           setRawText(text);

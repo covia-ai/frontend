@@ -2,8 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { Asset, Operation, Venue } from "@covia/covia-sdk";
-import { createAuthProvider } from "@/lib/auth-provider";
+import { Asset, Operation }from "@covia/covia-sdk";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { getVenueFor } from "@/hooks/use-authenticated-venue";
@@ -36,9 +35,9 @@ export function OperationsList() {
   const router = useRouter();
 
   const itemsPerPage = 12
-  const offset = 0;
-  const limit = itemsPerPage;
-  const [totalItems, setTotalItems] = useState(0);
+  const _offset = 0;
+  const _limit = itemsPerPage;
+  const [_totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [adapterFilter, setAdapterFilter] = useState("All");

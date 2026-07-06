@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 export const VideoThumbnails = () => {
   const router = useRouter()
-  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [_selectedVideo, _setSelectedVideo] = useState(null);
   const videos = [
     { id: 'b0HwKymJbnA', title: 'Covia.ai App Demo showing federated orchestration' },
     { id: '5FtCG8bYS3w', title: 'Covia.ai Venue Operation with Gemini Demo' },

@@ -2,28 +2,10 @@
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader }from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Building2,
-  Database,
-  Settings,
-  Users,
-  Globe,
-  Activity,
-  ArrowRight,
-  ExternalLink,
-  Link as LinkIcon,
-  Fingerprint,
-  Copy,
-  FolderUpIcon,
-  ActivityIcon,
-  User,
-  Wrench,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
+import { Building2, Database, Settings, Users, Globe, Activity, ArrowRight, ExternalLink, Link as LinkIcon, Fingerprint, Copy, Wrench, ChevronDown, ChevronUp }from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useVenues } from "@/hooks/use-venues";
 import { useVenue } from "@/hooks/use-venue";
@@ -193,7 +175,7 @@ export default function VenuePage({ params }: VenuePageProps) {
                 <div>
                   <p className="text-sm text-muted-foreground flex flex-row space-x-2">Venue URL <Copy
                     size={12}
-                    onClick={(e) => copyDataToClipBoard(venue.baseUrl, "Venue URL copied to clipboard")}
+                    onClick={(_e) => copyDataToClipBoard(venue.baseUrl, "Venue URL copied to clipboard")}
                     className="cursor-pointer hover:text-pink-400"
                   /></p>
                   
@@ -216,7 +198,7 @@ export default function VenuePage({ params }: VenuePageProps) {
                   <p className="text-sm text-muted-foreground flex flex-row space-x-2">Venue DID
                  <Copy
                     size={12}
-                    onClick={(e) => copyDataToClipBoard(venueDID, "Venue DID copied to clipboard")}
+                    onClick={(_e) => copyDataToClipBoard(venueDID, "Venue DID copied to clipboard")}
                     className="cursor-pointer hover:text-pink-400"></Copy>
                     </p>
                   <p className="font-mono text-sm bg-muted p-2 rounded break-all">
@@ -234,7 +216,7 @@ export default function VenuePage({ params }: VenuePageProps) {
                 <div>
                   <p className="text-sm text-muted-foreground flex flex-row space-x-2">MCP URL <Copy
                     size={12}
-                    onClick={(e) => copyDataToClipBoard(venueMCPUrl, "MCP URL copied to clipboard")}
+                    onClick={(_e) => copyDataToClipBoard(venueMCPUrl, "MCP URL copied to clipboard")}
                     className="cursor-pointer hover:text-pink-400"></Copy>
                     </p>
                   <p className="font-mono text-sm bg-muted p-2 rounded break-all">

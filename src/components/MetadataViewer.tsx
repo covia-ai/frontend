@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Asset } from "@covia/covia-sdk";
-import { Calendar, Copy, Copyright, Download, Info, InfoIcon, Tag, User } from "lucide-react";
+import { Calendar, Copyright, Download, Info, InfoIcon, Tag, User }from "lucide-react";
 import Link from "next/link";
 import { Badge } from "./ui/badge";
 import { JsonEditor } from "json-edit-react";

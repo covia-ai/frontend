@@ -4,17 +4,9 @@
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle, DialogTrigger }from "@/components/ui/dialog";
 
-import { PlusCircle, X, Upload,  CircleArrowRight, Edit2, Save, Eraser} from "lucide-react";
+import { PlusCircle, Save, Eraser }from "lucide-react";
 
 import {
   Tooltip,
@@ -23,7 +15,7 @@ import {
   
 } from "@/components/ui/tooltip";
 
-import { Toaster, toast } from "sonner";
+import { Toaster }from "sonner";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {  useRouter, useSearchParams } from 'next/navigation'
@@ -44,7 +36,7 @@ export default function AssetPage() {
   }
   const venue = useAuthenticatedVenue();
   const searchParams = useSearchParams()
-  const search = searchParams.get('search');
+  const _search = searchParams.get('search');
   const baseData = {
     "name":"",
 	"creator":"",

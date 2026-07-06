@@ -1,10 +1,9 @@
 "use client";
 
-import { Building, Building2, Check, ChevronDown, EllipsisVertical } from "lucide-react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTrigger } from "./ui/dialog";
+import { Building2, Check, ChevronDown, EllipsisVertical }from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTrigger }from "./ui/dialog";
 import { useEffect, useState } from "react";
 import { Asset, Venue, getAssetIdFromVenueId } from "@covia/covia-sdk";
-import { createAuthProvider } from "@/lib/auth-provider";
 import { getVenueFor, useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useAuthStore } from "@/hooks/use-auth";
 import { ScrollArea } from "./ui/scroll-area";
@@ -142,7 +141,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}: {sendAssetIdBackToForm: (id
             </ScrollArea>
          
 
-             <DialogClose><Button onClick={(e) => sendAssetIdBackToForm(getAssetIdFromVenueId(assetId!,selectedVenue?.venueId ?? ""))}>Select</Button></DialogClose>
+             <DialogClose><Button onClick={(_e) => sendAssetIdBackToForm(getAssetIdFromVenueId(assetId!,selectedVenue?.venueId ?? ""))}>Select</Button></DialogClose>
       </DialogContent>
       
      </Dialog>

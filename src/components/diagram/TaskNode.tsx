@@ -1,11 +1,11 @@
-import React, { memo, useState } from 'react';
+import React, { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { CustomNodeToolTip } from './CustomNodeToolTip';
 
 function TaskNode({ data }: { data: any }) {
   const inputs = data.inputs;
   const outputs = data.outputs;
-  const op = data.op;
+  const _op = data.op;
 
   const inputSpacing = 100 / (inputs.length + 1);
   const outputSpacing = 100 / (outputs.length + 1);

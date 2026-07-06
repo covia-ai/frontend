@@ -14,7 +14,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { CircleX, PauseCircle, PauseCircleIcon, StarIcon, StopCircle, Trash2 } from "lucide-react";
+import { PauseCircleIcon, StopCircle, Trash2 }from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
@@ -96,7 +96,7 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
                                   <AlertDialogCancel>No</AlertDialogCancel>
-                                  <AlertDialogAction onClick={(e) => cancelExecution()}>Yes</AlertDialogAction>
+                                  <AlertDialogAction onClick={(_e) => cancelExecution()}>Yes</AlertDialogAction>
                                   </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
@@ -123,7 +123,7 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
                                   <AlertDialogCancel>No</AlertDialogCancel>
-                                  <AlertDialogAction onClick={(e) => pauseExecution()}>Yes</AlertDialogAction>
+                                  <AlertDialogAction onClick={(_e) => pauseExecution()}>Yes</AlertDialogAction>
                                   </AlertDialogFooter>
                           </AlertDialogContent>
                   </AlertDialog>
@@ -150,7 +150,7 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
                                   <AlertDialogCancel>No</AlertDialogCancel>
-                                  <AlertDialogAction onClick={(e) => resumeExecution()}>Yes</AlertDialogAction>
+                                  <AlertDialogAction onClick={(_e) => resumeExecution()}>Yes</AlertDialogAction>
                                   </AlertDialogFooter>
                           </AlertDialogContent>
                   </AlertDialog>
@@ -182,7 +182,7 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
                                   <AlertDialogCancel>No</AlertDialogCancel>
-                                  <AlertDialogAction onClick={(e) => deleteExecution()}>Yes</AlertDialogAction>
+                                  <AlertDialogAction onClick={(_e) => deleteExecution()}>Yes</AlertDialogAction>
                                   </AlertDialogFooter>
                           </AlertDialogContent>
                   </AlertDialog>

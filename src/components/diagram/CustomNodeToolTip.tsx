@@ -4,7 +4,6 @@ import {
   NodeTooltipContent,
   NodeTooltipTrigger,
 } from "@/components/node-tooltip";
-import { Position } from '@xyflow/react';
 
 export const CustomNodeToolTip = ( {posTop, toolTip, handle, position}: { posTop?: number | string; toolTip: ReactNode; handle?: ReactNode; position: any } ) => {
     return (<NodeTooltip>

@@ -6,7 +6,7 @@ import { Button } from "./ui/button";
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useState }from "react";
 import {  Venue, Asset, getParsedAssetId } from "@covia/covia-sdk";
 import { createAuthProvider } from "@/lib/auth-provider";
 import { formatLabel, gtmEvent } from "@/lib/utils";
@@ -238,7 +238,7 @@ export const OperationViewer = (props: any) => {
     setRawInput(prev => ({ ...prev, [key]: value }));
   }
 
-  function setKeyType(key: any, type: any) {
+  function _setKeyType(key: any, type: any) {
     setTypeMap(prev => ({ ...prev, [key]: type }));
   }
 

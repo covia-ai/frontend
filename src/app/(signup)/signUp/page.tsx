@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 
 export default function SignUp() {
   const auth = useAuthStore((x) => x.auth);
-  const router = useRouter();
+  const _router = useRouter();
 
   if (!auth) {
     return (

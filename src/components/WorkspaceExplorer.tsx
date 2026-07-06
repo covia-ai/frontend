@@ -1,24 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import {
-  ChevronRight,
-  ChevronDown,
-  FolderOpen,
-  Folder,
-  FileText,
-  GripVertical,
-  Loader2,
-  RefreshCw,
-  Save,
-  Trash2,
-  Plus,
-  PenLine,
-  Eye,
-  ListPlus,
-  Database,
-  Lock,
-} from "lucide-react";
+import { ChevronRight, FolderOpen, Folder, FileText, GripVertical, Loader2, RefreshCw, Save, Trash2, Plus, PenLine, Eye, ListPlus, Database, Lock }from "lucide-react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { useTheme } from "next-themes";

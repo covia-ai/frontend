@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { Asset, JobMetadata, RunStatus, Venue, isJobFinished,Job } from "@covia/covia-sdk";
 import { createAuthProvider } from "@/lib/auth-provider";
-import { Check, CircleX, Clock, Copy, FileInput, FileOutput, Hash, MessageSquare, RotateCcw, Send, Settings, Timer, Trash2, X } from "lucide-react";
+import { Check, Clock, Copy, FileInput, FileOutput, Hash, MessageSquare, RotateCcw, Send, Timer, X }from "lucide-react";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
@@ -27,8 +27,8 @@ import { toast } from "sonner";
 
 export const ExecutionViewer = (props: any) => {
     const [jobMetadata, setJobMetadata] = useState<JobMetadata>()
-    const [poll, setPollStatus] = useState("");
-    const [assetsMetadata, setAssetsMetadata] = useState<Asset>();
+    const [_poll, setPollStatus] = useState("");
+    const [assetsMetadata, _setAssetsMetadata] = useState<Asset>();
     const { venues, addVenue } = useVenues();
     const [venue, setVenue] = useState<Venue>();
     const [streaming, setStreaming] = useState(false);
@@ -75,7 +75,7 @@ export const ExecutionViewer = (props: any) => {
         venue?.jobs.get(props.jobId).then((job:Job) => {
                 setJobMetadata(job.metadata);
                 setPollStatus(job.metadata.status || "");
-        }).catch((error) => {
+        }).catch((_error) => {
                 setPollStatus("ERROR");
         })
     }
@@ -170,7 +170,7 @@ export const ExecutionViewer = (props: any) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [venue, props.jobId]);
 
-    function renderChildJobs(jsonObject: JSON) {
+    function renderChildJobs(_jsonObject: JSON) {
         const steps = jobMetadata?.steps as any[];
         return (
             <Table className="border border-border rounded-md py-2 ">
@@ -206,16 +206,13 @@ export const ExecutionViewer = (props: any) => {
     }
     
     let keys = [];
-    let inOutType = "";
-    let schema: any = {};
+let schema: any = {};
     
     if (type == "input") {
         schema = assetsMetadata?.metadata?.operation?.input;
-        inOutType = schema?.type;
         keys = Object.keys(jobMetadata?.input || {});
     } else {
         schema = assetsMetadata?.metadata?.operation?.output;
-        inOutType = schema?.type;
         keys = Object.keys(jobMetadata?.output || {});
     }
     

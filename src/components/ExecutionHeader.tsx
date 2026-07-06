@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { IdAndLink } from "./IdandLink";
-import { Job,  JobMetadata } from "@covia/covia-sdk";
+import { JobMetadata }from "@covia/covia-sdk";
 
 interface ExecutionHeaderProps {
   jobData?: JobMetadata;

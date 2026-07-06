@@ -4,7 +4,7 @@ import { Copy} from "lucide-react";
 import { getAssetIdFromPath } from "@covia/covia-sdk";
 
 export const IdAndLink = (props: any) => {
-    const type = props.type;
+    const _type = props.type;
     const url = props.url;
     const id = getAssetIdFromPath(props.id, url);
     return (
@@ -14,7 +14,7 @@ export const IdAndLink = (props: any) => {
                 <TooltipTrigger >
                     <div data-testid="idcopy_btn" className="p-1 flex flex-row  mr-1 border border-border text-muted-foreground rounded-md w-full space-x-2"> 
                     <div className="select-text text-[10px] w-full">{id} </div>
-                    <Copy  size={10} onClick={(e) => copyDataToClipBoard(id, "Asset Id copied to clipboard")}></Copy>
+                    <Copy  size={10} onClick={(_e) => copyDataToClipBoard(id, "Asset Id copied to clipboard")}></Copy>
                     </div>
                 </TooltipTrigger>
                     <TooltipContent>{props.type} Id</TooltipContent>
