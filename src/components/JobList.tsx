@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
+import { getVenueFor } from "@/hooks/use-authenticated-venue";
 import { Job, JobMetadata, RunStatus, Venue } from "@covia/covia-sdk";
 import { createAuthProvider } from "@/lib/auth-provider";
 import { colourForStatus, getExecutionTime } from "@/lib/utils";
@@ -58,8 +59,7 @@ export function JobList() {
   // IDs arrive newest-last so we reverse to show newest first.
   const fetchAllIds = useCallback(async () => {
     if (!venueObj) return;
-    const authData = getAuthForVenue(venueObj.venueId);
-    const venue = new Venue({ baseUrl: venueObj.baseUrl, venueId: venueObj.venueId, auth: createAuthProvider(authData) });
+    const venue = getVenueFor(venueObj, getAuthForVenue(venueObj.venueId));
     try {
       const ids: string[] = await venue.jobs.list();
       setAllIds([...ids].reverse()); // newest first
@@ -72,8 +72,7 @@ export function JobList() {
   // Step 2: for the current page, fetch only those job metadata records.
   const fetchPageMetadata = useCallback(async (ids: string[], page: number) => {
     if (!venueObj || ids.length === 0) { setJobsData([]); return; }
-    const authData = getAuthForVenue(venueObj.venueId);
-    const venue = new Venue({ baseUrl: venueObj.baseUrl, venueId: venueObj.venueId, auth: createAuthProvider(authData) });
+    const venue = getVenueFor(venueObj, getAuthForVenue(venueObj.venueId));
 
     const pageIds = ids.slice((page - 1) * itemsPerPage, page * itemsPerPage);
     setLoading(true);
@@ -99,8 +98,7 @@ export function JobList() {
     if (!venueObj) return;
 
     // Fetch the most recent 100 jobs to apply the status filter.
-    const authData = getAuthForVenue(venueObj.venueId);
-    const venue = new Venue({ baseUrl: venueObj.baseUrl, venueId: venueObj.venueId, auth: createAuthProvider(authData) });
+    const venue = getVenueFor(venueObj, getAuthForVenue(venueObj.venueId));
     const sample = allIds.slice(0, 100);
     setLoading(true);
     Promise.allSettled(sample.map(id => venue.jobs.get(id)))

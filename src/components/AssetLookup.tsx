@@ -67,8 +67,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}) => {
   },[filterValue, assetsMetadata])
 
   const handleVenueSelect = (venue: Venue) => {
-    const authOption = createAuthProvider(authData);
-    setSelectedVenue(new Venue({baseUrl: venue.baseUrl, venueId: venue.venueId, name:venue.metadata.name, auth: authOption}));
+    setSelectedVenue(getVenueFor(venue, authData));
   };
   return (
      <Dialog>

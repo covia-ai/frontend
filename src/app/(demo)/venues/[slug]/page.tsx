@@ -27,6 +27,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useVenues } from "@/hooks/use-venues";
 import { useVenue } from "@/hooks/use-venue";
+import { getVenueFor } from "@/hooks/use-authenticated-venue";
 import { useEffect, useState } from "react";
 import { Venue } from "@covia/covia-sdk";
 import { createAuthProvider } from "@/lib/auth-provider";
@@ -62,7 +63,8 @@ export default function VenuePage({ params }: VenuePageProps) {
 
   useEffect(() => {
     const decodedSlug = decodeURIComponent(slug);
-    const authOption = createAuthProvider(getAuthForVenue(decodedSlug));
+    const authData = getAuthForVenue(decodedSlug);
+    const authOption = createAuthProvider(authData);
     const foundVenue = venues.find(v => v.venueId === decodedSlug);
     if (foundVenue) {
       if(foundVenue instanceof Venue) {
@@ -70,7 +72,7 @@ export default function VenuePage({ params }: VenuePageProps) {
           setVenueDID(foundVenue.venueId)
       }
       else {
-          const foundVenue_obj = new Venue({baseUrl:foundVenue.baseUrl, venueId:foundVenue.venueId, name:foundVenue.metadata.name, auth: authOption});
+          const foundVenue_obj = getVenueFor(foundVenue, authData);
           setVenue(foundVenue_obj)
           setVenueDID(foundVenue_obj.venueId)
       }

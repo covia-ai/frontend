@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { Textarea } from "./ui/textarea";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
+import { getVenueFor } from "@/hooks/use-authenticated-venue";
 import { DiagramViewer } from "./DiagramViewer";
 import { MetadataViewer } from "./MetadataViewer";
 import { AssetHeader } from "./AssetHeader";
@@ -108,7 +109,7 @@ export const OperationViewer = (props: any) => {
       if(props.venueId != venueObj?.venueId) {
         const venue = venues.find(v => v.venueId === props.venueId);
         if (venue) {
-            setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name, auth: authOption}))
+            setVenue(getVenueFor(venue, authData))
          }
          else {
           Venue.connect(decodeURIComponent(props.venueId), authOption)
@@ -119,7 +120,7 @@ export const OperationViewer = (props: any) => {
          }
     }
     else {
-        setVenue(new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: authOption}));
+        if (venueObj) setVenue(getVenueFor(venueObj, authData));
     }
    }, [authMap, props.venueId, venueObj, getAuthForVenue]);
 

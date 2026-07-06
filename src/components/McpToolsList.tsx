@@ -5,6 +5,7 @@ import { Venue } from "@covia/covia-sdk";
 import { createAuthProvider } from "@/lib/auth-provider";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
+import { getVenueFor } from "@/hooks/use-authenticated-venue";
 import { useVenues } from "@/hooks/use-venues";
 import { useAuthStore } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
@@ -50,7 +51,7 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
     if (venueId && venueId !== venueObj?.venueId) {
       const found = venues.find((v) => v.venueId === venueId);
       if (found) {
-        setVenue(new Venue({ baseUrl: found.baseUrl, venueId: found.venueId, name: found.metadata.name, auth: authOption }));
+        setVenue(getVenueFor(found, authData));
       } else {
         Venue.connect(decodeURIComponent(venueId), authOption).then((v) => {
           addVenue(v);
@@ -58,7 +59,7 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
         });
       }
     } else if (venueObj) {
-      setVenue(new Venue({ baseUrl: venueObj.baseUrl, venueId: venueObj.venueId, name: venueObj.metadata.name, auth: authOption }));
+      setVenue(getVenueFor(venueObj, authData));
     }
   }, [venueId, authMap, venueObj, venues, getAuthForVenue]);
 

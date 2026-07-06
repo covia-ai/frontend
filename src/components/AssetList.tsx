@@ -11,6 +11,7 @@ import { Asset, DataAsset, Operation, Venue } from "@covia/covia-sdk";
 import { createAuthProvider } from "@/lib/auth-provider";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
+import { getVenueFor } from "@/hooks/use-authenticated-venue";
 import { useAuthStore } from "@/hooks/use-auth";
 import { Spinner } from '@/components/ui/shadcn-io/spinner';
 import { AssetCard } from "./AssetCard";
@@ -47,7 +48,8 @@ export function AssetList() {
     setCurrentPage(page)
   }
   useEffect(() => {
-     const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: createAuthProvider(authData)})
+     if (!venueObj) return;
+     const venue = getVenueFor(venueObj, authData)
      function fetchAssets() {
         setAssetsMetadata([]);
           try {
@@ -116,7 +118,8 @@ export function AssetList() {
   }
 
   function handleDataFromChild(status: boolean) {
-    const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: createAuthProvider(authData)})
+    if (!venueObj) return;
+    const venue = getVenueFor(venueObj, authData)
     setAssetsMetadata([]);
     venue.listAssets().then((assetList) => {
       assetList.items.forEach((assetId: string) => {

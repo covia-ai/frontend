@@ -6,6 +6,7 @@ import { Asset, Operation, Venue } from "@covia/covia-sdk";
 import { createAuthProvider } from "@/lib/auth-provider";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
+import { getVenueFor } from "@/hooks/use-authenticated-venue";
 import { useAuthStore } from "@/hooks/use-auth";
 import { useVenues } from "@/hooks/use-venues";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
@@ -56,8 +57,8 @@ export function OperationsList() {
     setCurrentPage(page)
   }
   useEffect(() => {
-     const authData = getAuthForVenue(venueObj?.venueId ?? '');
-     const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: createAuthProvider(authData)})
+     if (!venueObj) return;
+     const venue = getVenueFor(venueObj, getAuthForVenue(venueObj.venueId))
      async function fetchAssets() {
         setLoading(true);
         setAssetsMetadata([]);

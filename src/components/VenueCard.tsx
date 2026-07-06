@@ -3,6 +3,7 @@
 import { Card } from "@/components/ui/card";
 import { Venue } from "@covia/covia-sdk";
 import { createAuthProvider } from "@/lib/auth-provider";
+import { getVenueFor } from "@/hooks/use-authenticated-venue";
 import { useRouter } from 'next/navigation';
 import { useVenues } from "@/hooks/use-venues";
 import { useAuthStore } from "@/hooks/use-auth";
@@ -20,7 +21,7 @@ export function VenueCard({ venue, compact }: VenueCardProps) {
   const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
 
   if(!(venue instanceof Venue))
-    venue = new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name, auth: createAuthProvider(getAuthForVenue(venue.venueId))})
+    venue = getVenueFor(venue, getAuthForVenue(venue.venueId))
   const handleCardClick = () => {
     const encodedUrl = "/venues/"+encodeURIComponent(venue.venueId);
     router.push(encodedUrl);

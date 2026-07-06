@@ -8,6 +8,7 @@ import { Check, CircleX, Clock, Copy, FileInput, FileOutput, Hash, MessageSquare
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
+import { getVenueFor } from "@/hooks/use-authenticated-venue";
 import {  colourForStatus, copyDataToClipBoard, formatLabel, getExecutionTime } from "@/lib/utils";
 import { TbSubtask } from "react-icons/tb";
 import Link from "next/link";
@@ -50,11 +51,12 @@ export const ExecutionViewer = (props: any) => {
 
     useEffect(() => {
     
-      const authOption = createAuthProvider(getAuthForVenue(props.venueId ?? venueObj?.venueId ?? ''));
+      const authData = getAuthForVenue(props.venueId ?? venueObj?.venueId ?? '');
+      const authOption = createAuthProvider(authData);
       if(props.venueId != venueObj?.venueId) {
         const venue = venues.find(v => v.venueId === props.venueId);
         if (venue) {
-            setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name, auth: authOption}))
+            setVenue(getVenueFor(venue, authData))
          }
          else {
           Venue.connect(decodeURIComponent(props.venueId),
@@ -65,7 +67,7 @@ export const ExecutionViewer = (props: any) => {
          }
     }
     else {
-        setVenue(new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: authOption}));
+        if (venueObj) setVenue(getVenueFor(venueObj, authData));
     }
    }, [addVenue, props.venueId, authMap, getAuthForVenue, venueObj?.baseUrl, venueObj?.metadata.name, venueObj?.venueId, venues]);
 
