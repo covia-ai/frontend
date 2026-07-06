@@ -188,8 +188,7 @@ have zero UI.
 
 ## P7 — GoalTree Agent + Agent Context View
 
-**Files:** `src/components/AgentTemplates.tsx`, `src/components/AgentExplorer.tsx`,
-`src/components/AgentHeader.tsx`
+**Files:** `src/components/AgentTemplates.tsx`, `src/components/AgentExplorer.tsx`
 
 ### 7a — GoalTree agent template
 - Add a 5th template to `AgentTemplates.tsx`. Use the official `goaltree` agent template
@@ -217,12 +216,6 @@ have zero UI.
   LLM context string as the job output.
 - Render the returned string in a read-only code block.
 - Shows developers what context the agent "sees" — very useful for debugging prompt issues.
-
-### 7c — Suspend / Resume in AgentHeader
-- Read agent status from `venue.agents.info(agentId)` on load.
-- Show "Suspend" button when status is `ACTIVE`; call `venue.agents.suspend(agentId)`.
-- Show "Resume" button when status is `SUSPENDED`; call `venue.agents.resume(agentId)`.
-- Disable both when a task is in progress.
 
 ---
 
