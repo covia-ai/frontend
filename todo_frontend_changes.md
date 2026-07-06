@@ -316,14 +316,20 @@ Add "Developer Tools" section to the dev menu with this page and the Identity pa
 - Fix: add `useEffect(() => { fetchAssets(); }, [venueObj, authMap])`.
 - Consolidate with `/myassets` or clearly differentiate their purpose.
 
-### CoviaAdapter CRUD response shape changed ⚠️
+### CoviaAdapter CRUD response shape changed ✅ RESOLVED
+
+**Status:** Audited 2026-07-06 — no stale consumers remain. WorkspaceExplorer was
+fixed in `85beb38` (#147); a full sweep of `src/` found zero remaining reads of the
+removed `written`/`deleted`/`appended` fields or the renamed `size` field. The only
+other covia-CRUD consumers (`operations-catalog.ts` read ×2, `AgentExplorer`
+sessions slice) read the unchanged `value`/`values` payloads; the slice shape was
+verified against a live venue.
+
 - `covia:write` / `covia:copy` now return `{pathCreated: true}` **only** when an
   intermediate path was built; omitted otherwise (was `{written: true}` always).
 - `covia:delete` now returns `{}` (was `{deleted: true}`).
 - `covia:append` now returns `{newSize: N}` (was `{appended: true}`).
 - `covia:read` now reports `valueBytes` (always present; was `size`, only on truncation).
-- **Action:** Search WorkspaceExplorer and any component reading these job outputs for
-  `written`, `deleted`, `appended` field checks and update to the new schema.
 
 ---
 
@@ -547,3 +553,53 @@ accepts an `overwrite: true` flag that updates a SLEEPING or SUSPENDED agent in 
 | federation (grid)      | 0%      | 50%   |
 | memory                 | 0%      | 80%   |
 | convex                 | 0%      | 10%   |
+
+---
+
+## P16 — SDK next-release migration & job-free reads (NEW — added 2026-07-06)
+
+**Goal:** move to the next covia-sdk release (currently pinned `1.6.0-next.0`; npm
+`latest` is still 1.5.0) as soon as it's tagged, and eliminate invoke-based reads —
+every operation invoke persists a job (etch bloat, covia#177).
+
+### What the venue already ships (covia develop, #177 closed 2026-07-03)
+Job-free read routes `GET /api/v1/values/{read,list,slice,inspect,aggregate,count}` —
+same `covia:*` read semantics, capability-checked, no job created. Full surface in
+covia `venue/docs/READ_API.md`.
+
+### What covia-sdk develop (unreleased) already has
+- `WorkspaceManager.read/list/slice/inspect` repointed at `GET /api/v1/values/*`
+  (invoke fallback only when UCAN proofs are passed).
+- `AgentManager.query` **removed** (was 1 info + 3 covia/read = 4 jobs per call);
+  agent info via `info()`, timeline/state/inbox via workspace reads.
+- `KeyPairAuth` → `Ed25519Auth` rename (deprecated alias kept — non-breaking).
+
+### Frontend migration checklist (when the release lands)
+- [ ] Bump `@covia/covia-sdk` pin; run `pnpm build` + jest.
+- [ ] **AgentExplorer** (`src/components/AgentExplorer.tsx:68,130`): replace
+      `agentHandle.query()` (API removed) with `agents.info()` + targeted
+      `workspace.read` calls — the 3 s poll currently mints ~6 jobs per tick
+      (query 4 + agents.list 1 + sessions slice 1), the single worst offender;
+      after migration only `agents.list`/`info` still create jobs.
+- [ ] `src/lib/operations-catalog.ts:15,58`: switch raw
+      `operations.run("v/ops/covia/read")` to `venue.workspace.read()` so catalog
+      reads (2 per ops-page load, plus 1 per operation-detail view) ride the GET path.
+- [ ] `WorkspaceExplorer` + `AgentExplorer` sessions slice become job-free
+      automatically via the SDK repoint — no code change, but verify.
+- [ ] Optionally migrate `KeyPairAuth` → `Ed25519Auth` in `src/lib/auth-provider.ts` /
+      `src/hooks/use-auth.ts` (alias works; rename at leisure).
+- [ ] Drop the duplicate `mcp/tools-list` auto-fetch on the venue page
+      (`src/app/(demo)/venues/[slug]/page.tsx:112`) — the dedicated
+      `/venues/[slug]/mcp` page already fetches it; the venue card only needs
+      existence, which `/.well-known/mcp.json` (`venue.mcpDiscovery()`, job-free)
+      can answer.
+
+### Remaining venue-side gap (candidate covia issue)
+Reads that still have **no job-free equivalent** — each mints a job per call:
+- `v/ops/agent/list` (AgentExplorer 3 s poll, `/agents` page) and `v/ops/agent/info`
+  (explorer poll, LLM-provider dialog).
+- `v/ops/mcp/tools-list` (venue page + MCP tools page).
+
+The values API covers `covia:*` paths only; agent and MCP listings are computed
+views. Either expose them under GET routes too, or (agents) read the agent registry
+via `values/list` if the lattice layout permits.
