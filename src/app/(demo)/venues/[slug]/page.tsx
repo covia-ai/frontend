@@ -109,7 +109,7 @@ export default function VenuePage({ params }: VenuePageProps) {
       }
       const fetchMcpTools = async () => {
         try {
-          const res = await venue?.operations.run("v/ops/mcp/toolList", {}) as any;
+          const res = await venue?.operations.run("v/ops/mcp/tools-list", { server: venue?.baseUrl }) as any;
           if (Array.isArray(res?.tools)) setMcpTools(res.tools);
         } catch { /* non-fatal */ }
       }

@@ -66,7 +66,7 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
     if (!venue) return;
     setLoading(true);
     venue.operations
-      .run("v/ops/mcp/toolList", {})
+      .run("v/ops/mcp/tools-list", { server: venue.baseUrl })
       .then((res: any) => {
         setTools(Array.isArray(res?.tools) ? res.tools : []);
       })
@@ -88,7 +88,7 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
     }
     setRunning(true);
     venue.operations
-      .run("v/ops/mcp/toolCall", { name: selectedTool.name, arguments: args })
+      .run("v/ops/mcp/tools-call", { server: venue.baseUrl, toolName: selectedTool.name, arguments: args })
       .then((res: any) => {
         if (res?.id) {
           router.push(`/venues/${encodeURIComponent(venue.venueId)}/jobs/${res.id}`);
