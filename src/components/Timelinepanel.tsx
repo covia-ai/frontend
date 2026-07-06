@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, Clock1, MapPin, User } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
-import { AgentDetail, AgentData, AgentSteps } from '@/config/types';
+import { AgentDetail, AgentSteps } from '@/config/types';
 import {
   Accordion,
   AccordionContent,
@@ -41,7 +41,7 @@ const TimelinePanel = (props:any) => {
                 <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border"></div>
                 
                  <ScrollArea className="h-screen w-100 ">
-                  {agentSteps.map((entry, index) => (
+                  {agentSteps.map((entry: AgentSteps) => (
                     <div
                       key={entry.stepId}
                       className={`relative pl-8 pb-4 cursor-pointer transition-all w-11/12 mt-8 ${
@@ -50,14 +50,14 @@ const TimelinePanel = (props:any) => {
                       onClick={() => setSelectedEntry(entry)}
                     >
                       {/* Timeline dot */}
-                      <div className={`absolute left-2.5 top-2 w-3 h-3 rounded-full ${getTypeColor(entry.head, selectedEntry?.id === entry.id )} ring-4 ring-background`}></div>
+                      <div className={`absolute left-2.5 top-2 w-3 h-3 rounded-full ${getTypeColor(!!entry.head, selectedEntry?.stepId === entry.stepId )} ring-4 ring-background`}></div>
                       
                       <Card className={`w-48 h-36 flex flex-col my-auto ${selectedEntry?.stepId === entry.stepId ? 'border-blue-500 shadow-md p-2' : 'border-border p-2'}` }>
                         <CardHeader className="">
                             <CardTitle className="text-card-foreground text-md font-thin">{entry.stepName}</CardTitle>
                                 <span className="text-sm text-muted-foreground">Job {entry.jobId}</span>
                                  <Badge
-                                                     variant={getStatusConfig(entry?.status)}
+                                                     variant={getStatusConfig(entry?.status).variant}
                                                      className={`shrink-0 text-xs font-medium ${getStatusConfig(entry?.status).className}`}
                                                    >
                                                    {entry?.status}
@@ -79,7 +79,7 @@ const TimelinePanel = (props:any) => {
                     <CardTitle className="text-2xl font-thin mb-2 space-x-2 flex flex-row items-center">
                       <span>{selectedEntry?.stepName} </span>
                       <Badge
-                                                     variant={getStatusConfig(selectedEntry?.status)}
+                                                     variant={getStatusConfig(selectedEntry?.status).variant}
                                                      className={`shrink-0 text-xs font-medium ${getStatusConfig(selectedEntry?.status).className}`}
                                                    >
                                                    {selectedEntry?.status}
@@ -95,9 +95,9 @@ const TimelinePanel = (props:any) => {
               </CardHeader>
               <CardContent className="">
                   <div className="flex flex-row space-x-2">
-                     <Badge variant="primary" className="bg-muted text-muted-foreground text-xs"> Job {selectedEntry?.jobId}</Badge>
-                     <Badge variant="primary" className="bg-muted text-muted-foreground text-xs">  {agent?.agent.provider}</Badge>
-                     <Badge variant="primary" className="bg-muted text-muted-foreground text-xs">  {selectedEntry?.venueId}</Badge>
+                     <Badge variant="secondary" className="bg-muted text-muted-foreground text-xs"> Job {selectedEntry?.jobId}</Badge>
+                     <Badge variant="secondary" className="bg-muted text-muted-foreground text-xs">  {agent?.agent.provider}</Badge>
+                     <Badge variant="secondary" className="bg-muted text-muted-foreground text-xs">  {selectedEntry?.venueId}</Badge>
                    </div>
                     <Accordion
                       type="single"

@@ -18,7 +18,7 @@ interface AssetInfoSheetProps {
 export const AssetInfoSheet = ({asset,venueId}:AssetInfoSheetProps) => {
   const router = useRouter();
 
-  function renderJSONMap(jsonObject: JSON, requiredKeys: string[] = []) {
+  function renderJSONMap(jsonObject: any, requiredKeys: string[] = []) {
         const keys = Object.keys(jsonObject);
         const type = new Array<string>();
         const description = new Array<string>();

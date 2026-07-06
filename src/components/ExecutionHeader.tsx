@@ -6,7 +6,7 @@ import { IdAndLink } from "./IdandLink";
 import { Job,  JobMetadata } from "@covia/covia-sdk";
 
 interface ExecutionHeaderProps {
-  jobData: JobMetadata;
+  jobData?: JobMetadata;
 }
 
 export const ExecutionHeader = ({ jobData }: ExecutionHeaderProps) => {

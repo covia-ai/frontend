@@ -123,7 +123,7 @@ export const ExecutionViewer = (props: any) => {
                     setJobMetadata(job.metadata);
                     const status = job.metadata.status || '';
                     setPollStatus(status);
-                    if (isJobFinished(status) && pollInterval) {
+                    if (isJobFinished(status as RunStatus) && pollInterval) {
                         clearInterval(pollInterval);
                         pollInterval = null;
                     }
@@ -143,7 +143,7 @@ export const ExecutionViewer = (props: any) => {
                     setJobMetadata(meta);
                     const status: string = meta.status ?? '';
                     setPollStatus(status);
-                    if (isJobFinished(status)) {
+                    if (isJobFinished(status as RunStatus)) {
                         source?.close();
                         source = null;
                         setStreaming(false);
@@ -380,7 +380,7 @@ export const ExecutionViewer = (props: any) => {
                                             Streaming
                                         </span>
                                     )}
-                                    {!streaming && isJobFinished(jobMetadata?.status) && (
+                                    {!streaming && jobMetadata?.status && isJobFinished(jobMetadata.status) && (
                                         <span className="flex items-center gap-1.5 ml-2 px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs font-medium">
                                             Completed
                                         </span>
@@ -471,7 +471,6 @@ export const ExecutionViewer = (props: any) => {
                                             <span className="w-28">Output:</span>
                                         </div>
                                         {renderJSONObject(jobMetadata?.output, "output")}
-                                        {jobMetadata?.status == RunStatus.FAILED && jobMetadata?.error && <ErrorDisplay error={jobMetadata.error} />}
                                     </div>
                                 }
                                 {jobMetadata?.status == RunStatus.FAILED && jobMetadata?.error &&

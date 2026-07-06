@@ -7,6 +7,7 @@ import {
   useEdgesState,
   addEdge,
   EdgeTypes,
+  type ColorMode,
   MiniMap,
   Controls,
   Background,
@@ -53,7 +54,7 @@ export const DiagramViewer = (props:any) => {
                 edgeTypes={edgeTypes}
                 nodesConnectable={false}
                 className="bg-background"
-                colorMode={theme || "dark"}
+                colorMode={(theme === "light" ? "light" : "dark") as ColorMode}
                 fitView
                 defaultViewport={defaultViewport}
               >

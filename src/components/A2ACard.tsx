@@ -53,7 +53,7 @@ export default function A2ACard({ venue }: A2ACardProps) {
     const applyMetadata = (meta: JobMetadata) => {
       const status = meta.status ?? "";
       setTaskStatus(status);
-      if (isJobFinished(status)) {
+      if (status && isJobFinished(status)) {
         setTaskResult(status === RunStatus.FAILED ? meta.error : meta.output);
         setSending(false);
         setStreaming(false);
@@ -77,7 +77,7 @@ export default function A2ACard({ venue }: A2ACardProps) {
           .get(jobId)
           .then((job: Job) => {
             applyMetadata(job.metadata);
-            if (isJobFinished(job.metadata.status ?? "") && pollInterval) {
+            if (job.metadata.status && isJobFinished(job.metadata.status) && pollInterval) {
               clearInterval(pollInterval);
               pollInterval = null;
             }
@@ -229,7 +229,7 @@ export default function A2ACard({ venue }: A2ACardProps) {
                   Streaming
                 </span>
               )}
-              {!streaming && isJobFinished(taskStatus) && (
+              {!streaming && isJobFinished(taskStatus as RunStatus) && (
                 <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs font-medium">
                   Completed
                 </span>
@@ -243,7 +243,7 @@ export default function A2ACard({ venue }: A2ACardProps) {
               </button>
             </div>
 
-            {isJobFinished(taskStatus) && (
+            {isJobFinished(taskStatus as RunStatus) && (
               taskStatus === RunStatus.FAILED ? (
                 <ErrorDisplay error={typeof taskResult === "string" ? taskResult : JSON.stringify(taskResult)} />
               ) : (

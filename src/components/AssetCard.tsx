@@ -27,7 +27,7 @@ interface AssetCardProps {
 export function AssetCard({ asset,type,compact }: AssetCardProps) {
     const venue = useAuthenticatedVenue();
     const router = useRouter();
-    const [newJsonData, setNewJsonData] = useState({});
+    const [newJsonData, setNewJsonData] = useState<any>({});
     const [assetCreated, setAssetCreated] = useState(false);
 
     const adapter = (asset.metadata?.operation?.adapter as string | undefined)?.split(':')[0] ?? null;
@@ -40,7 +40,7 @@ export function AssetCard({ asset,type,compact }: AssetCardProps) {
     };
     function copyAsset(jsonData: JSON) {
         try {
-          venue?.register(jsonData).then((asset: Asset) => {
+          venue?.assets.register(jsonData).then((asset: Asset) => {
             if (asset != undefined && asset != null) {
               setNewJsonData({})
               setAssetCreated(true);
@@ -61,7 +61,7 @@ export function AssetCard({ asset,type,compact }: AssetCardProps) {
                     onClick={() => handleCardClick(asset.id)}>{asset.metadata.name || 'Unnamed Asset'}
                     </div>
                     {type == "operations" && 
-                       <AssetInfoSheet asset={asset} venueId={venue?.venueId}/> 
+                       <AssetInfoSheet asset={asset} venueId={venue?.venueId ?? ""}/> 
                     }
                     {type == "assets" && 
                         <Dialog>

@@ -6,7 +6,7 @@ import { toast } from "sonner"
 import { RunStatus } from "@covia/covia-sdk";
 import { sendGTMEvent } from '@next/third-parties/google'
 
-export  const getStatusConfig = (status) => {
+export  const getStatusConfig = (status: string | undefined): { variant: "default" | "destructive" | "secondary" | "outline"; className: string } => {
     switch(status) {
       case 'ACTIVE':
         return { variant: 'default', className: 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600' };
@@ -29,7 +29,7 @@ export function getLicenseUrl(licenseName : string) {
 }
 export function getContentTypeForFile(filename: string) {
  
-    const mimeType =  mime.contentType(filename);
+    const mimeType =  mime.contentType(filename) || "";
     const contentType = mimeType.split(';')[0];
     const charset  = mimeType.split(';')[1]?.split("=")[1];
     return [contentType,charset];
@@ -104,7 +104,7 @@ export function copyDataToClipBoard(entityId:string, message:string) {
        }
       }
 
-export function  colourForStatus(status: RunStatus): string {
+export function  colourForStatus(status: RunStatus | undefined): string {
         switch (status) {
             case RunStatus.COMPLETE:
                 return "text-green-600 dark:text-green-400";

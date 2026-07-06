@@ -34,7 +34,7 @@ export function AssetViewer(props: AssetViewerProps) {
             getVenueFor(venue, authData).getAsset(props.assetId).then((asset: Asset) => {
           setAsset(asset);
           })
-          setVenueName(venue.metadata.name)
+          setVenueName(venue.metadata.name ?? "")
          }
          else {
           Venue.connect(decodeURIComponent(props.venueId), authOption).then((venue) => {
@@ -42,7 +42,7 @@ export function AssetViewer(props: AssetViewerProps) {
              venue.getAsset(props.assetId).then((asset: Asset) => {
              setAsset(asset);
             })
-            setVenueName(venue.metadata.name)
+            setVenueName(venue.metadata.name ?? "")
           });
          }
     }

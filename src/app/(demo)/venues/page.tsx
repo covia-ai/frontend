@@ -35,7 +35,7 @@ export default function VenuesPage() {
   const [open, setOpen] = useState(false)
 
     useEffect(() => {
-        const handleKeyDown = (e) => {
+        const handleKeyDown = (e: KeyboardEvent) => {
          
           // Ctrl/Cmd + K: Search
         if ((e.ctrlKey || e.metaKey) && e.key === 'v') {

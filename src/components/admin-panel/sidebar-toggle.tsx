@@ -13,7 +13,7 @@ interface SidebarToggleProps {
 export function SidebarToggle({ isOpen, setIsOpen }: SidebarToggleProps) {
 
   useEffect(() => {
-      const handleKeyDown = (e) => {
+      const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
         e.preventDefault();
         setIsOpen?.()

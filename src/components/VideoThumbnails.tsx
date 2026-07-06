@@ -29,7 +29,7 @@ export const VideoThumbnails = () => {
                   alt={video.title}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   onError={(e) => {
-                    e.target.src = `https://img.youtube.com/vi/${video.id}/hqdefault.jpg`;
+                    (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${video.id}/hqdefault.jpg`;
                   }}
                 />
                 

@@ -59,7 +59,7 @@ export function AssetList() {
       venue.listAssets().then((assetList) => {
         assetList.items.forEach((assetId: string) => {
           venue.getAsset(assetId).then((asset: Asset) => {
-            asset.getMetadata().then((metadata: object) => {
+            asset.getMetadata().then((metadata: any) => {
               if (isStale()) return;
               if (metadata.name != undefined && metadata.operation == undefined) {
                   if(search && search.length>0 ) {

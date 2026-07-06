@@ -37,6 +37,7 @@ export interface Session {
 }
 export interface AgentSteps {
   stepNumber:number,
+  head?:boolean,
   stepId:string,
   stepName:string,
   stepType:string,

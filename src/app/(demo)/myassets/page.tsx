@@ -59,7 +59,7 @@ export default function AssetPage() {
 		"notes":[""]
 	}
   };
-  const [jsonData, setJsonData] = useState({});
+  const [jsonData, setJsonData] = useState<any>({});
 
 
   function createAsset() {

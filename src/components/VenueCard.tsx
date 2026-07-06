@@ -12,16 +12,17 @@ import { RemoveVenueModal } from "./RemoveVenueModal";
 import { Building } from "lucide-react";
 
 interface VenueCardProps {
-  venue: Venue;
+  venue: Venue | { baseUrl?: string; venueId: string; metadata?: { name?: string } };
   compact:boolean;
 }
 
-export function VenueCard({ venue, compact }: VenueCardProps) {
+export function VenueCard({ venue: venueProp, compact }: VenueCardProps) {
   const router = useRouter();
   const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
 
-  if(!(venue instanceof Venue))
-    venue = getVenueFor(venue, getAuthForVenue(venue.venueId))
+  const venue = venueProp instanceof Venue
+    ? venueProp
+    : getVenueFor(venueProp, getAuthForVenue(venueProp.venueId))
   const handleCardClick = () => {
     const encodedUrl = "/venues/"+encodeURIComponent(venue.venueId);
     router.push(encodedUrl);

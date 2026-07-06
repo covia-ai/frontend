@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTrigger } from
 import { useEffect, useState } from "react";
 import { Asset, Venue, getAssetIdFromVenueId } from "@covia/covia-sdk";
 import { createAuthProvider } from "@/lib/auth-provider";
-import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { getVenueFor, useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useAuthStore } from "@/hooks/use-auth";
 import { ScrollArea } from "./ui/scroll-area";
 import { DialogClose } from "@radix-ui/react-dialog";
@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useVenues } from "@/hooks/use-venues";
 
-export const AssetLookup = ({sendAssetIdBackToForm}) => {
+export const AssetLookup = ({sendAssetIdBackToForm}: {sendAssetIdBackToForm: (id: string) => void}) => {
 
   const venue = useAuthenticatedVenue();
   const authData = useAuthStore((x) => x.auth);
@@ -142,7 +142,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}) => {
             </ScrollArea>
          
 
-             <DialogClose><Button onClick={(e) => sendAssetIdBackToForm(getAssetIdFromVenueId(assetId!,selectedVenue?.venueId))}>Select</Button></DialogClose>
+             <DialogClose><Button onClick={(e) => sendAssetIdBackToForm(getAssetIdFromVenueId(assetId!,selectedVenue?.venueId ?? ""))}>Select</Button></DialogClose>
       </DialogContent>
       
      </Dialog>

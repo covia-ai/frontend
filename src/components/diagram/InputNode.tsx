@@ -7,7 +7,7 @@ import {
 } from "@/components/node-tooltip";
 import { CustomNodeToolTip } from './CustomNodeToolTip';
 
-function InputNode({ data }) {
+function InputNode({ data }: { data: any }) {
   const inputs = data.inputs;
   const inputSpacing = 100/(inputs.length+1);
 
@@ -16,10 +16,10 @@ function InputNode({ data }) {
   const topDivClass ="border-2 border-border bg-card/50 rounded-md flex flex-col justify-start items-center min-w-16 min-h-16";
   const inputClassName = "!w-3 !h-3 !bg-background !border-green-800 !border-2 !rounded-md ";
 
-  function getPosInput(index) {
+  function getPosInput(index: number) {
      return inputSpacing*(index+1)+"%"
   }
-   function getPosInputForTooltip(index) {
+   function getPosInputForTooltip(index: number) {
      return inputSpacing*(index);
   }
   return (
@@ -36,7 +36,7 @@ function InputNode({ data }) {
                 key="input"
                 className="!w-3 !h-3 !rounded-full !border-2 !bg-green-800 !border-green-800 !rounded-md !top-0 !mt-6">  
           </Handle>
-          {inputs.map((input,index) => (
+          {inputs.map((input: string, index: number) => (
               <CustomNodeToolTip key={index}  posTop={getPosInputForTooltip(index)} toolTip={input} position={Position.Right}
                             handle={
                             <Handle

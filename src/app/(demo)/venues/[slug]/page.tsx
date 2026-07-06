@@ -28,7 +28,7 @@ import { useRouter } from "next/navigation";
 import { useVenues } from "@/hooks/use-venues";
 import { useVenue } from "@/hooks/use-venue";
 import { getVenueFor } from "@/hooks/use-authenticated-venue";
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { Venue } from "@covia/covia-sdk";
 import { createAuthProvider } from "@/lib/auth-provider";
 import Link from "next/link";
@@ -38,14 +38,14 @@ import { TopBar } from "@/components/admin-panel/TopBar";
 import A2ACard from "@/components/A2ACard";
 
 interface VenuePageProps {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 }
 
 export default function VenuePage({ params }: VenuePageProps) {
   const router = useRouter();
-  const { slug } = params;
+  const { slug } = use(params);
   const { venues, addVenue } = useVenues();
   const { currentVenue, setCurrentVenue } = useVenue();
   const [ venue, setVenue] = useState<Venue | null>(null);
@@ -97,12 +97,12 @@ export default function VenuePage({ params }: VenuePageProps) {
          try {
           const status =  await venue?.status();
           if(status?.stats) {
-              setNoOfAssets(status?.stats?.assets);
-              setNoOfOps(status?.stats?.ops);
-              setNoOfRuns(status?.stats?.jobs);
-              setNoOfUsers(status?.stats?.users);
-              setVenueDID(status?.did)
-              setVenueName(status?.name)
+              setNoOfAssets(status?.stats?.assets ?? 0);
+              setNoOfOps(status?.stats?.ops ?? 0);
+              setNoOfRuns(status?.stats?.jobs ?? 0);
+              setNoOfUsers(status?.stats?.users ?? 0);
+              setVenueDID(status?.did ?? "")
+              setVenueName(status?.name ?? "")
           }
         }
         catch(e) {

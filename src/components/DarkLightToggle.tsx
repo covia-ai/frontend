@@ -7,7 +7,7 @@ import { Button } from "./ui/button";
 export function DarkLightToggle() {
   const { setTheme, theme  } = useTheme();
     useEffect(() => {
-        const handleKeyDown = (e) => {
+        const handleKeyDown = (e: KeyboardEvent) => {
           if ((e.ctrlKey || e.metaKey) && e.key === 'x') {
             e.preventDefault();
             if(theme == "light") 
