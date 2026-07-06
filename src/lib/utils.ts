@@ -60,6 +60,19 @@ export function getExecutionTime(date1:string, date2:string) {
   return `${Math.round(differenceInMilliseconds)} ms`;
 }
 
+// List a venue's MCP tools via its native MCP endpoint (JSON-RPC tools/list).
+// Job-free: the invoke-based v/ops/mcp/tools-list persists a job per call.
+export async function listMcpTools(baseUrl: string): Promise<any[]> {
+  const res = await fetch(`${baseUrl}/mcp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Accept": "application/json, text/event-stream" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+  });
+  if (!res.ok) throw new Error(`MCP tools/list failed: ${res.status}`);
+  const body = await res.json();
+  return Array.isArray(body?.result?.tools) ? body.result.tools : [];
+}
+
 export function formatLabel(key: string): string {
   return key
     .replace(/_/g, ' ')

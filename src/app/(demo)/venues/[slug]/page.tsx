@@ -31,7 +31,7 @@ import { useEffect, useState } from "react";
 import { Venue } from "@covia/covia-sdk";
 import { createAuthProvider } from "@/lib/auth-provider";
 import Link from "next/link";
-import { copyDataToClipBoard } from "@/lib/utils";
+import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
 import { useAuthStore } from "@/hooks/use-auth";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import A2ACard from "@/components/A2ACard";
@@ -109,8 +109,7 @@ export default function VenuePage({ params }: VenuePageProps) {
       }
       const fetchMcpTools = async () => {
         try {
-          const res = await venue?.operations.run("v/ops/mcp/tools-list", { server: venue?.baseUrl }) as any;
-          if (Array.isArray(res?.tools)) setMcpTools(res.tools);
+          if (venue) setMcpTools(await listMcpTools(venue.baseUrl));
         } catch { /* non-fatal */ }
       }
       fetchMCP();

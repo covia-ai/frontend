@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
-import { copyDataToClipBoard } from "@/lib/utils";
+import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
 import { Copy, Play, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
@@ -65,11 +65,8 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
   useEffect(() => {
     if (!venue) return;
     setLoading(true);
-    venue.operations
-      .run("v/ops/mcp/tools-list", { server: venue.baseUrl })
-      .then((res: any) => {
-        setTools(Array.isArray(res?.tools) ? res.tools : []);
-      })
+    listMcpTools(venue.baseUrl)
+      .then((tools) => setTools(tools))
       .catch(() => {
         toast("Unable to load MCP tools");
         setTools([]);

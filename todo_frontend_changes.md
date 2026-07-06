@@ -574,32 +574,37 @@ covia `venue/docs/READ_API.md`.
   agent info via `info()`, timeline/state/inbox via workspace reads.
 - `KeyPairAuth` → `Ed25519Auth` rename (deprecated alias kept — non-breaking).
 
-### Frontend migration checklist (when the release lands)
-- [ ] Bump `@covia/covia-sdk` pin; run `pnpm build` + jest.
+### HARD RULE (2026-07-06)
+**The UI must never create jobs for reads.** The only permitted invokes are user
+interactions that explicitly drive an execution (run an operation, call a tool,
+message an agent, write/delete). Page loads, polls, navigation, and dialogs must
+use job-free surfaces: REST GETs, `GET /api/v1/values/*` (with invoke fallback
+until the stable fleet runs ≥0.3), the native `/mcp` JSON-RPC endpoint (verified
+job-free), and `/.well-known/*`.
+
+### Frontend migration checklist
+- [x] Catalog reads job-free — `readValue()` in `src/lib/operations-catalog.ts`
+      GETs `/api/v1/values/read` with invoke fallback for pre-0.3 venues
+      (done 2026-07-06; swap the fallback for `venue.workspace.read()` once the
+      SDK release lands and the fleet is upgraded).
+- [x] MCP tool lists job-free — `listMcpTools()` in `src/lib/utils.ts` speaks
+      JSON-RPC `tools/list` to the native `/mcp` endpoint; used by the venue page
+      and `/venues/[slug]/mcp` (done 2026-07-06). `tools-call` stays an invoke —
+      user-driven execution.
+- [ ] Bump `@covia/covia-sdk` pin when the next release is tagged; run
+      `pnpm build` + jest.
 - [ ] **AgentExplorer** (`src/components/AgentExplorer.tsx:68,130`): replace
-      `agentHandle.query()` (API removed) with `agents.info()` + targeted
-      `workspace.read` calls — the 3 s poll currently mints ~6 jobs per tick
-      (query 4 + agents.list 1 + sessions slice 1), the single worst offender;
-      after migration only `agents.list`/`info` still create jobs.
-- [ ] `src/lib/operations-catalog.ts:15,58`: switch raw
-      `operations.run("v/ops/covia/read")` to `venue.workspace.read()` so catalog
-      reads (2 per ops-page load, plus 1 per operation-detail view) ride the GET path.
+      `agentHandle.query()` (API removed in SDK develop) with `agents.info()` +
+      targeted `workspace.read` calls — the 3 s poll currently mints ~6 jobs per
+      tick, the single worst offender; after migration only `agents.list`/`info`
+      still create jobs (blocked on covia#180 for full elimination).
 - [ ] `WorkspaceExplorer` + `AgentExplorer` sessions slice become job-free
       automatically via the SDK repoint — no code change, but verify.
 - [ ] Optionally migrate `KeyPairAuth` → `Ed25519Auth` in `src/lib/auth-provider.ts` /
       `src/hooks/use-auth.ts` (alias works; rename at leisure).
-- [ ] Drop the duplicate `mcp/tools-list` auto-fetch on the venue page
-      (`src/app/(demo)/venues/[slug]/page.tsx:112`) — the dedicated
-      `/venues/[slug]/mcp` page already fetches it; the venue card only needs
-      existence, which `/.well-known/mcp.json` (`venue.mcpDiscovery()`, job-free)
-      can answer.
 
-### Remaining venue-side gap (candidate covia issue)
-Reads that still have **no job-free equivalent** — each mints a job per call:
-- `v/ops/agent/list` (AgentExplorer 3 s poll, `/agents` page) and `v/ops/agent/info`
-  (explorer poll, LLM-provider dialog).
-- `v/ops/mcp/tools-list` (venue page + MCP tools page).
-
-The values API covers `covia:*` paths only; agent and MCP listings are computed
-views. Either expose them under GET routes too, or (agents) read the agent registry
-via `values/list` if the lattice layout permits.
+### Remaining venue-side gap → filed as covia#180
+`v/ops/agent/list` and `v/ops/agent/info` have no job-free route: no
+`GET /api/v1/agents`, and the registry is not reachable via the values API
+(`values/list?path=g` → Nil, rootless). Proposal in the issue mirrors the assets
+GET pattern.
