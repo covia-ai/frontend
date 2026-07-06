@@ -219,8 +219,9 @@ have zero UI.
 
 ---
 
-## P8 — A2A Protocol Section on Venue Page
+## P8 — A2A Protocol Section on Venue Page ✅ DONE
 
+**Status:** Fixed — commit `a9a1ff2`, issue [#153](https://github.com/covia-ai/frontend/issues/153), pushed to `develop` 2026-07-06.  
 **File:** `src/app/(demo)/venues/[slug]/page.tsx`  
 **Gap:** The A2A endpoint is live and `/.well-known/agent-card.json` is served, but
 nothing in the UI surfaces this.
