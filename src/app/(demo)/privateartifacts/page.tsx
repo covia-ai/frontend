@@ -132,7 +132,7 @@ export default function AssetPage() {
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter')
-                  window.location.href = pathname + "?search=" + searchInput;
+                  router.push(pathname + "?search=" + searchInput);
               }}
               className="pl-8"
             />

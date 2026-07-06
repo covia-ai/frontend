@@ -15,6 +15,7 @@ export const ShowCase = () => {
    const venue = useAuthenticatedVenue();
 
    useEffect(() => {
+     let ignore = false;
      const fetchData = async () => {
       if (!venue) return;
        try {
@@ -28,15 +29,16 @@ export const ShowCase = () => {
              [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
            }
          }
-         setAssets(shuffled.slice(0, 3));
+         if (!ignore) setAssets(shuffled.slice(0, 3));
        } catch (error) {
          console.error('Error fetching featured asset data:', error);
-         setAssets([]);
+         if (!ignore) setAssets([]);
        } finally {
-         setLoading(false);
+         if (!ignore) setLoading(false);
        }
      };
      fetchData();
+     return () => { ignore = true; };
    }, [venue]);
 
     if(venues.length == 0)
@@ -68,8 +70,8 @@ export const ShowCase = () => {
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4 mt-4 mb-8">
-            {assets.map((asset, index) =>
-              <AssetCard key={index} asset={asset} type="operations" compact={true}/>
+            {assets.map((asset) =>
+              <AssetCard key={asset.id} asset={asset} type="operations" compact={true}/>
             )}
           </div>
         )}

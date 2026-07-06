@@ -46,11 +46,11 @@ export function AssetViewer(props: AssetViewerProps) {
           });
          }
     }
-    else {
+    else if (venueObj) {
       getVenueFor(venueObj, authData).getAsset(props.assetId).then((asset: Asset) => {
       setAsset(asset);
      })
-      setVenueName(venueObj?.metadata.name!)
+      setVenueName(venueObj.metadata.name ?? "")
     }
   }, [addVenue, props.assetId, props.venueId, authData, venueObj, venues]);
 

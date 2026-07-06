@@ -19,9 +19,6 @@ export  const getStatusConfig = (status) => {
     }
   };
   
-export function getViewerType() {
-    
-}
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }

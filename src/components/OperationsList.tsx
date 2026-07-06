@@ -58,6 +58,7 @@ export function OperationsList() {
   }
   useEffect(() => {
      if (!venueObj) return;
+     let ignore = false;
      const venue = getVenueFor(venueObj, getAuthForVenue(venueObj.venueId))
      async function fetchAssets() {
         setLoading(true);
@@ -75,15 +76,15 @@ export function OperationsList() {
             : ops;
           matched.sort((a, b) =>
             (a.metadata?.name ?? a.path).localeCompare(b.metadata?.name ?? b.path));
-          setAssetsMetadata(matched.map(op => new Operation(op.path, venue, op.metadata)));
+          if (!ignore) setAssetsMetadata(matched.map(op => new Operation(op.path, venue, op.metadata)));
         } catch (error) {
           console.error('Error fetching operations:', error);
         } finally {
-          setLoading(false);
+          if (!ignore) setLoading(false);
         }
       }
-     if(venueObj != null)
-        fetchAssets();
+     fetchAssets();
+     return () => { ignore = true; };
   }, [search, venueObj, authMap, getAuthForVenue]);
 
   const adapterOptions = useMemo(() => {
@@ -141,7 +142,7 @@ export function OperationsList() {
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter')
-                  window.location.href = pathname + "?search=" + searchInput;
+                  router.push(pathname + "?search=" + searchInput);
               }}
               className="pl-8"
             />
@@ -166,8 +167,8 @@ export function OperationsList() {
           <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>
           <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 items-stretch justify-center gap-4">
             {
-            filteredAssets.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset, index) => (
-              <AssetCard key={index} asset={asset} type="operations" compact={true}/>
+            filteredAssets.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset) => (
+              <AssetCard key={asset.id} asset={asset} type="operations" compact={true}/>
             ))}
           </div>
           <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>

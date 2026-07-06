@@ -258,7 +258,7 @@ export const OperationViewer = (props: any) => {
     setInput({});
     setRawInput({});
     setTypeMap({});
-    window.location.href = pathname;
+    router.replace(pathname);
   }
 
   function runOperation() {

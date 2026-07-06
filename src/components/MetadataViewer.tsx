@@ -88,8 +88,8 @@ const METADATA_FIELDS: MetadataFieldConfig[] = [
     path: 'metadata.keywords',
     renderValue: (value) => (
       <div className="flex space-x-1">
-        {value?.map((keyword: string, index: number) => (
-          <Badge variant="secondary" className="text-secondary-foreground" key={index}>{keyword}</Badge>
+        {value?.map((keyword: string) => (
+          <Badge variant="secondary" className="text-secondary-foreground" key={keyword}>{keyword}</Badge>
         ))}
       </div>
     )
@@ -149,7 +149,7 @@ export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
   else {
     setContentUrl(asset.getContentURL());
   }
-  },[])
+  },[asset])
   
   return (
      <Accordion

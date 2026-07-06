@@ -242,12 +242,12 @@ export const AIPrompt = () => {
 
              prompt == promptText ? (
 
-              <Badge key={index} variant="outline" className="bg-primary-light"
+              <Badge key={promptText} variant="outline" className="bg-primary-light"
               onClick={() => setPrompt(promptText)}>
                 {promptText}
               </Badge>
              ) : (
-              <Badge key={index} variant="outline" className="bg-muted px-2 hover:border-white"
+              <Badge key={promptText} variant="outline" className="bg-muted px-2 hover:border-white"
               onClick={() => setPrompt(promptText)}>
                 {promptText}
               </Badge>

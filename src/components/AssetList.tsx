@@ -47,38 +47,45 @@ export function AssetList() {
   const prevPage = (page: number) => {
     setCurrentPage(page)
   }
+  // Shared by the initial-load effect and the create-asset refresh; isStale
+  // drops in-flight results after venue/search change or unmount, so stale
+  // assets never land in the fresh list.
+  function fetchAssets(isStale: () => boolean = () => false) {
+    if (!venueObj) return;
+    const venue = getVenueFor(venueObj, authData)
+    setAssetsMetadata([]);
+    setLoading(true);
+    try {
+      venue.listAssets().then((assetList) => {
+        assetList.items.forEach((assetId: string) => {
+          venue.getAsset(assetId).then((asset: Asset) => {
+            asset.getMetadata().then((metadata: object) => {
+              if (isStale()) return;
+              if (metadata.name != undefined && metadata.operation == undefined) {
+                  if(search && search.length>0 ) {
+                      if(metadata?.name?.toLowerCase().indexOf(search.toLowerCase()) != -1 || asset.id?.toLowerCase().indexOf(search.toLowerCase()) != -1)
+                         setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
+                  }
+                  else {
+                       setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
+                  }
+              }
+            })
+          })
+        })
+        if (!isStale()) setLoading(false)
+      })
+    }
+    catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  }
+
   useEffect(() => {
-     if (!venueObj) return;
-     const venue = getVenueFor(venueObj, authData)
-     function fetchAssets() {
-        setAssetsMetadata([]);
-          try {
-           venue.listAssets().then((assetList) => {
-                 assetList.items.forEach((assetId: string) => {
-                   venue.getAsset(assetId).then((asset: Asset) => {
-                     asset.getMetadata().then((metadata: object) => {
-                       if (metadata.name != undefined && metadata.operation == undefined) {
-                           if(search && search.length>0 ) {
-                               if(metadata?.name?.toLowerCase().indexOf(search.toLowerCase()) != -1 || asset.id?.toLowerCase().indexOf(search.toLowerCase()) != -1)
-                                  setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
-                           }
-                           else {
-                                setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
-                           }
-                       }
-                     })
-                   })
-                   setLoading(false)
-                 })
-               })
-        }
-      catch (error) {
-            console.error('Error fetching data:', error);
-      } 
-      }
-     if(venueObj != null)
-        fetchAssets();
-  }, [search, venueObj]);
+    let ignore = false;
+    fetchAssets(() => ignore);
+    return () => { ignore = true; };
+  }, [search, venueObj, authData]);
 
   useEffect(() => {
     setTotalItems(assetsMetadata.length)
@@ -100,7 +107,7 @@ export function AssetList() {
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter')
-                  window.location.href = pathname + "?search=" + searchInput;
+                  router.push(pathname + "?search=" + searchInput);
               }}
               className="pl-8"
             />
@@ -118,27 +125,7 @@ export function AssetList() {
   }
 
   function handleDataFromChild(status: boolean) {
-    if (!venueObj) return;
-    const venue = getVenueFor(venueObj, authData)
-    setAssetsMetadata([]);
-    venue.listAssets().then((assetList) => {
-      assetList.items.forEach((assetId: string) => {
-        venue.getAsset(assetId).then((asset: Asset) => {
-          asset.getMetadata().then((metadata: object) => {
-            if (metadata.name != undefined && metadata.operation == undefined) {
-                if(search && search.length>0 ) {
-                    if(metadata?.name?.toLowerCase().indexOf(search.toLowerCase()) != -1 || asset.id?.toLowerCase().indexOf(search.toLowerCase()) != -1)
-                       setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
-                }
-                else {
-                     setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
-                }
-            }
-          })
-        })
-        setLoading(false)
-      })
-    })
+    fetchAssets();
   }
 
   return (
@@ -155,7 +142,7 @@ export function AssetList() {
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter')
-                    window.location.href = pathname + "?search=" + searchInput;
+                    router.push(pathname + "?search=" + searchInput);
                 }}
                 className="pl-8"
               />
@@ -167,8 +154,8 @@ export function AssetList() {
               <div className="text-card-foreground text-xs flex flex-row my-2 ">Page {currentPage} : Showing {assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of {assetsMetadata.length} </div>
               <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>
               <div className=" grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 items-stretch justify-center gap-4">
-                {assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset, index) =>
-                  <AssetCard key={index} asset={asset} type="assets" compact={true}/>
+                {assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset) =>
+                  <AssetCard key={asset.id} asset={asset} type="assets" compact={true}/>
                 )}
               </div>
               <CreateAssetComponent sendDataToParent={handleDataFromChild} ></CreateAssetComponent>

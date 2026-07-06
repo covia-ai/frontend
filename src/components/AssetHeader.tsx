@@ -1,5 +1,6 @@
 'use client'
 
+import { usePathname } from "next/navigation";
 import { Asset } from "@covia/covia-sdk";
 import { copyDataToClipBoard } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -10,7 +11,8 @@ interface AssetHeaderProps {
 }
 
 export const AssetHeader = ({ asset }: AssetHeaderProps) => {
-  const venueDid = decodeURIComponent(window.location.href.split("/")[4]);
+  const pathname = usePathname();
+  const venueDid = decodeURIComponent(pathname.split("/")[2] ?? "");
   const catalogPath = asset?.metadata?.operation?.adapter
     ? `v/ops/${asset.metadata.operation.adapter.replace(':', '/')}`
     : null;

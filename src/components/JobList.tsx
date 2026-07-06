@@ -276,8 +276,8 @@ export function JobList() {
                 else if (sort.col === "status") cmp = (a.status ?? "").localeCompare(b.status ?? "");
                 return sort.dir === "asc" ? cmp : -cmp;
               })
-              .map((job, index) =>
-              <TableRow key={index}>
+              .map((job) =>
+              <TableRow key={job.id}>
                 <TableCell><Link className="text-foreground font-mono underline" href={encodedPath(job.id)}>{job.id}</Link></TableCell>
                 <TableCell>{job.name}</TableCell>
                 <TableCell>{formatter.format(new Date(job.created))}</TableCell>

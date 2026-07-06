@@ -29,7 +29,7 @@ const TimelinePanel = (props:any) => {
 
   useEffect(() => {
       setSelectedEntry(agentSteps[0]);
-    },[])
+    },[agentSteps])
   return (
     <div className="flex flex-col">
        <div className="flex flex-row">

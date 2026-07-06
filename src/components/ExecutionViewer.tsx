@@ -187,7 +187,7 @@ export const ExecutionViewer = (props: any) => {
                             const status = step?.status || "UNKNOWN";
                             const id = step?.id || "";
                             return (
-                                <TableRow key={index} >
+                                <TableRow key={id || index} >
                                     <TableCell className="text-muted-foreground">{index}</TableCell>
                                     <TableCell className="text-secondary font-mono underline"><Link href={`/jobs/${id}`}>{id}</Link></TableCell>
                                     <TableCell>
@@ -338,11 +338,11 @@ export const ExecutionViewer = (props: any) => {
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {keys.map((key, index) => (
-                    <TableRow key={index}>
+                {keys.map((key) => (
+                    <TableRow key={key}>
                         {type == "input" 
-                            ? <TableCell key={index} className="text-md bg-input-color text-io-foreground">{formatLabel(key)}</TableCell>
-                            : <TableCell key={index} className="text-md bg-output-color text-io-foreground">{formatLabel(key)}</TableCell>}
+                            ? <TableCell className="text-md bg-input-color text-io-foreground">{formatLabel(key)}</TableCell>
+                            : <TableCell className="text-md bg-output-color text-io-foreground">{formatLabel(key)}</TableCell>}
                         {renderContent(key)}
                         {renderType(key)}
                     </TableRow>

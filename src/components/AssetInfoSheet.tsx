@@ -32,7 +32,7 @@ export const AssetInfoSheet = ({asset,venueId}:AssetInfoSheetProps) => {
            
             <TableBody>
               {keys.map((key, index) => (
-                <TableRow key={index}>
+                <TableRow key={key}>
                   <TableCell>{formatLabel(key)} {requiredKeys != undefined && requiredKeys?.indexOf(key) != -1 && <span className="text-red-400">*</span>}</TableCell>
                   <TableCell>{description[index]}</TableCell>
                 </TableRow>
