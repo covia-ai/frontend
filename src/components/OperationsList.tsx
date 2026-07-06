@@ -55,28 +55,6 @@ export function OperationsList() {
   const prevPage = (page: number) => {
     setCurrentPage(page)
   }
-  if(venues.length == 0 ) {
-     return (
-      <ContentLayout>
-      <TopBar/>
-      <div className="flex flex-col items-center justify-center">
-        <div className="flex gap-2 items-center w-full mt-4">
-          <div className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Type keyword to search…" className="pl-8" disabled />
-          </div>
-        </div>
-      </div>
-       <div className="flex flex-col items-center justify-center w-full h-100 space-y-2">
-            <PlayCircle size={64} className="text-primary"></PlayCircle>
-            <div className="text-primary text-lg">Get Started with Operations</div>
-            <div className="text-card-foreground text-sm">Connect to a venue to get started and see the available operations</div>
-
-        </div>
-      </ContentLayout>
-     ) 
-  }
-  
   useEffect(() => {
      const authData = getAuthForVenue(venueObj?.venueId ?? '');
      const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: createAuthProvider(authData)})
@@ -126,6 +104,28 @@ export function OperationsList() {
     setTotalPages(Math.ceil(filteredAssets.length / itemsPerPage));
     setCurrentPage(1);
   }, [filteredAssets]);
+
+  if(venues.length == 0 ) {
+     return (
+      <ContentLayout>
+      <TopBar/>
+      <div className="flex flex-col items-center justify-center">
+        <div className="flex gap-2 items-center w-full mt-4">
+          <div className="relative flex-1">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input placeholder="Type keyword to search…" className="pl-8" disabled />
+          </div>
+        </div>
+      </div>
+       <div className="flex flex-col items-center justify-center w-full h-100 space-y-2">
+            <PlayCircle size={64} className="text-primary"></PlayCircle>
+            <div className="text-primary text-lg">Get Started with Operations</div>
+            <div className="text-card-foreground text-sm">Connect to a venue to get started and see the available operations</div>
+
+        </div>
+      </ContentLayout>
+     )
+  }
 
   return (
     <ContentLayout>

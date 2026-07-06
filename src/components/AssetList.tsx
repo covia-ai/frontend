@@ -46,38 +46,6 @@ export function AssetList() {
   const prevPage = (page: number) => {
     setCurrentPage(page)
   }
-  if(venues.length == 0 ) {
-     return (
-      <ContentLayout>
-      <TopBar venueName={venueObj?.metadata.name}/>
-
-      <div className="flex flex-col items-center justify-center">
-        <div className="flex gap-2 items-center w-full mt-4">
-          <div className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Type keyword to search…"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter')
-                  window.location.href = pathname + "?search=" + searchInput;
-              }}
-              className="pl-8"
-            />
-          </div>
-        </div>
-      </div>
-      <div className="flex flex-col items-center justify-center w-full h-100 space-y-2">
-            <FileKey size={64} className="text-primary"></FileKey>
-            <div className="text-primary text-lg">Get Started with Assets</div>
-            <div className="text-card-foreground text-sm">Connect to a venue to get started and see the available assets</div>
-
-        </div>
-      </ContentLayout>
-     ) 
-  }
-  
   useEffect(() => {
      const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: createAuthProvider(authData)})
      function fetchAssets() {
@@ -114,6 +82,38 @@ export function AssetList() {
     setTotalItems(assetsMetadata.length)
     setTotalPages(Math.ceil(assetsMetadata.length / itemsPerPage))
   }, [assetsMetadata])
+
+  if(venues.length == 0 ) {
+     return (
+      <ContentLayout>
+      <TopBar venueName={venueObj?.metadata.name}/>
+
+      <div className="flex flex-col items-center justify-center">
+        <div className="flex gap-2 items-center w-full mt-4">
+          <div className="relative flex-1">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Type keyword to search…"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter')
+                  window.location.href = pathname + "?search=" + searchInput;
+              }}
+              className="pl-8"
+            />
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-col items-center justify-center w-full h-100 space-y-2">
+            <FileKey size={64} className="text-primary"></FileKey>
+            <div className="text-primary text-lg">Get Started with Assets</div>
+            <div className="text-card-foreground text-sm">Connect to a venue to get started and see the available assets</div>
+
+        </div>
+      </ContentLayout>
+     )
+  }
 
   function handleDataFromChild(status: boolean) {
     const venue = new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: createAuthProvider(authData)})
