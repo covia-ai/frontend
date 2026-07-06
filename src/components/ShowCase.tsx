@@ -14,21 +14,6 @@ export const ShowCase = () => {
    const { venues } = useVenues();
    const venue = useAuthenticatedVenue();
 
-    if(venues.length == 0)
-      return (
-       <div className="flex flex-col items-center justify-center py-10 px-10  my-4">
-          <h3 className="text-center text-4xl  font-bold">
-            Try some   {" "}
-            <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
-              sample Grid operations
-            </span>
-          </h3>
-            <div className="flex flex-col items-center justify-center w-full h-32 space-y-2">
-            <div className="text-card-foreground text-sm">Connect to a venue to get started and see the available assets & operations</div>
-        </div>
-        </div>
-      );
-    
    useEffect(() => {
      const fetchData = async () => {
       if (!venue) return;
@@ -54,6 +39,20 @@ export const ShowCase = () => {
      fetchData();
    }, [venue]);
 
+    if(venues.length == 0)
+      return (
+       <div className="flex flex-col items-center justify-center py-10 px-10  my-4">
+          <h3 className="text-center text-4xl  font-bold">
+            Try some   {" "}
+            <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
+              sample Grid operations
+            </span>
+          </h3>
+            <div className="flex flex-col items-center justify-center w-full h-32 space-y-2">
+            <div className="text-card-foreground text-sm">Connect to a venue to get started and see the available assets & operations</div>
+        </div>
+        </div>
+      );
 
       return (
         <div className="flex flex-col items-center justify-center py-10 px-10  my-4">

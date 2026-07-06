@@ -6,7 +6,7 @@ import { Button } from "./ui/button";
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {  Venue, Asset, getParsedAssetId } from "@covia/covia-sdk";
 import { createAuthProvider } from "@/lib/auth-provider";
 import { formatLabel, gtmEvent } from "@/lib/utils";
@@ -449,8 +449,8 @@ export const OperationViewer = (props: any) => {
           <CardContent className=" ">
            <div>
   <div className="grid grid-cols-1 md:grid-cols-[min-content_1fr_1fr] lg:grid-cols-[min-content_1fr_1fr] md:gap-4 lg:gap-4 py-2">
-    {keys.map((key, index) => (
-      <>
+    {keys.map((key) => (
+      <Fragment key={key}>
         {/* Label - full width on mobile, min-content on desktop */}
         <div className="flex flex-row items-center min-w-0 my-2">
           <Label className="whitespace-nowrap">{formatLabel(key)}</Label>
@@ -472,7 +472,7 @@ export const OperationViewer = (props: any) => {
         <div className="md:contents lg:contents">
           {renderDescription(properties[key].description || "")}
         </div>
-      </>
+      </Fragment>
     ))}
   </div>
   
