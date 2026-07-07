@@ -55,7 +55,7 @@ export default function VenuesPage() {
             />
           </div>
         </div>
-        <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 items-stretch justify-center gap-4 mb-4">
+        <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 3xl:grid-cols-5 4xl:grid-cols-6 items-stretch justify-center gap-4 mb-4">
          
           {venues.map((venue) => ( 
             

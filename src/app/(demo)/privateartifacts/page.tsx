@@ -133,7 +133,7 @@ export default function AssetPage() {
 
           </PaginationContent>
         </Pagination>
-        <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4">
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 3xl:grid-cols-4 4xl:grid-cols-5 items-stretch justify-center gap-4">
 
         </div>
            <CreateAssetComponent sendDataToParent={handleDataFromChild} ></CreateAssetComponent>

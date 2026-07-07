@@ -157,7 +157,7 @@ export function AssetList() {
               <Spinner variant="ellipsis" className="text-primary" size={64}/>
             </div>
           ) : (
-            <div className=" grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 items-stretch justify-center gap-4">
+            <div className=" grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 3xl:grid-cols-5 4xl:grid-cols-6 items-stretch justify-center gap-4">
               {assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset) =>
                 <AssetCard key={asset.id} asset={asset} type="assets" compact={true}/>
               )}

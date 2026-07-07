@@ -170,7 +170,7 @@ export function OperationsList() {
             <Spinner variant="ellipsis" className="text-primary" size={64}/>
           </div>
         ) : (
-          <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 items-stretch justify-center gap-4">
+          <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 3xl:grid-cols-5 4xl:grid-cols-6 items-stretch justify-center gap-4">
             {
             filteredAssets.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset) => (
               <AssetCard key={asset.id} asset={asset} type="operations" compact={true}/>
