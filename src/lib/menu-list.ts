@@ -39,18 +39,16 @@ export function   getMenuList(): Group[] {
               {
                 href: "/publicartifacts",
                 label: "Public Artifacts",
-                icon: BookKey,
-                active: false
+                icon: BookKey
               },
               {
                 href: "/operations",
                 label: "Operations",
-                icon: PlayCircle,
-                active: false
+                icon: PlayCircle
               },
 
             ]
-          
+
           },
           {
             href: "/agents",
@@ -100,14 +98,12 @@ export function   getMenuList(): Group[] {
               {
                 href: "/publicartifacts",
                 label: "Public Artifacts",
-                icon: BookKey,
-                active: false
+                icon: BookKey
               },
               {
                 href: "/operations",
                 label: "Operations",
-                icon: PlayCircle,
-                active: false
+                icon: PlayCircle
               },
 
             ]
