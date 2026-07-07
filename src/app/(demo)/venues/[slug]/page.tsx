@@ -17,7 +17,6 @@ import Link from "next/link";
 import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
 import { useAuthStore } from "@/hooks/use-auth";
 import { TopBar } from "@/components/admin-panel/TopBar";
-import A2ACard from "@/components/A2ACard";
 
 interface VenuePageProps {
   params: Promise<{
@@ -408,9 +407,6 @@ export default function VenuePage({ params }: VenuePageProps) {
             </div>
           )}
         </Card>
-
-        {/* A2A Protocol Card */}
-        <A2ACard venue={venue} />
       </div>
     </ContentLayout>
   );
