@@ -147,24 +147,26 @@ export function AssetList() {
             </div>
           </div>
   
-          {!isLoading && 
-            <>
-              <div className="text-card-foreground text-xs flex flex-row my-2 ">Page {currentPage} : Showing {assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of {assetsMetadata.length} </div>
-              <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>
-              <div className=" grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 items-stretch justify-center gap-4">
-                {assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset) =>
-                  <AssetCard key={asset.id} asset={asset} type="assets" compact={true}/>
-                )}
-              </div>
-              <CreateAssetComponent sendDataToParent={handleDataFromChild} ></CreateAssetComponent>
-              <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>
-  
-           </>}
-          {isLoading && 
-          <div className="flex flex-row items-center justify-center w-full h-100">
-            <Spinner variant="ellipsis" className="text-primary" size={64}/>
-          </div>}
-  
+          <div className="text-card-foreground text-xs flex flex-row my-2 ">
+            {isLoading ? "Loading…" : `Page ${currentPage} : Showing ${assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of ${assetsMetadata.length}`}
+          </div>
+          <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage} disabled={isLoading}></PaginationHeader>
+
+          {isLoading ? (
+            <div className="flex flex-row items-center justify-center w-full h-100">
+              <Spinner variant="ellipsis" className="text-primary" size={64}/>
+            </div>
+          ) : (
+            <div className=" grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 items-stretch justify-center gap-4">
+              {assetsMetadata.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset) =>
+                <AssetCard key={asset.id} asset={asset} type="assets" compact={true}/>
+              )}
+            </div>
+          )}
+
+          <CreateAssetComponent sendDataToParent={handleDataFromChild} ></CreateAssetComponent>
+          <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage} disabled={isLoading}></PaginationHeader>
+
         </div>
       </ContentLayout>
   );
