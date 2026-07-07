@@ -25,7 +25,9 @@ jest.mock('@/hooks/use-authenticated-venue', () => {
       request: jest.fn().mockResolvedValue({}),
     },
     secrets: {
-      list: jest.fn().mockResolvedValue([]),
+      // ANTHROPIC_API_KEY present so the default provider (anthropic) is
+      // ready and the Create button isn't disabled by the key-readiness gate.
+      list: jest.fn().mockResolvedValue(['ANTHROPIC_API_KEY']),
     },
   };
   return { useAuthenticatedVenue: () => venue };

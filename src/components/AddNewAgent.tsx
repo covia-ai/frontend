@@ -24,7 +24,7 @@ import { Separator } from "./ui/separator";
 import { toast } from "sonner";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { LLM_PROVIDERS } from "@/config/llm-providers";
-import { Check, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
 interface AddNewAgentProps {
@@ -81,8 +81,16 @@ export function AddNewAgent({
   };
 
   const handleNewAgent = async () => {
-    if (!venue || !agentName.trim()) {
+    if (!venue) {
+      toast("Please connect to a venue first");
+      return;
+    }
+    if (!agentName.trim()) {
       toast("Please enter an agent name");
+      return;
+    }
+    if (!isProviderReady(llmProvider)) {
+      toast("No API key found for this provider");
       return;
     }
     setCreating(true);
@@ -181,12 +189,7 @@ export function AddNewAgent({
               <SelectContent>
                 {Object.entries(LLM_PROVIDERS).map(([id, provider]) => (
                   <SelectItem key={id} value={id}>
-                    <span className="flex items-center gap-2">
-                      {provider.label}
-                      {isProviderReady(id) && (
-                        <Check size={14} className="text-green-500" />
-                      )}
-                    </span>
+                    {provider.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -233,12 +236,22 @@ export function AddNewAgent({
           </div>
         </div>
 
+        {!venue && (
+          <p className="text-xs text-amber-500 flex items-center gap-1">
+            <AlertTriangle size={12} />
+            No venue connected.{" "}
+            <Link href="/venues" className="underline">
+              Connect one in Venues
+            </Link>
+          </p>
+        )}
+
         <Button
           aria-label="create agent"
           role="button"
           data-testid="create-agent"
           onClick={handleNewAgent}
-          disabled={creating || !agentName.trim()}
+          disabled={creating || !venue || !agentName.trim() || !isProviderReady(llmProvider)}
           className="btn-sm mt-2"
         >
           {creating ? "Creating..." : "Create"}
