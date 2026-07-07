@@ -45,9 +45,9 @@ describe('AssetCard with asset', () => {
       expect(removeBtn).toHaveTextContent('Remove Venue');
     });
 
-    it('should render venue ID in badge', () => {
+    it('should render venue URL in badge', () => {
       render(<VenueCard venue={mockVenue} compact={false} />);
-      expect(screen.getByText('did:web:venue-test.covia.ai')).toBeInTheDocument();
+      expect(screen.getByText('https://venue-test.covia.ai')).toBeInTheDocument();
     });
 
     it('should render compact variant', () => {
