@@ -203,7 +203,7 @@ export const CreateAssetComponent = ({sendDataToParent}: {sendDataToParent: (sta
           <DialogTrigger>
                   <Iconbutton icon={PlusIcon} message="Add new asset" label="Add new asset"></Iconbutton>
           </DialogTrigger>
-          <DialogContent className="bg-card text-card-forground">  
+          <DialogContent className="bg-card text-card-foreground">
                 <DialogTitle className="flex flex-row items-center space-x-2">
                         <TbCircleDashedNumber1 size={32}></TbCircleDashedNumber1>
                         <Label>Choose Asset Type & Upload Content </Label>
@@ -319,7 +319,7 @@ export const CreateAssetComponent = ({sendDataToParent}: {sendDataToParent: (sta
             </DialogContent>            
           }
           { step ==3  && 
-              <DialogContent className="h-11/12 min-w-10/12">
+              <DialogContent className="h-11/12 min-w-10/12 bg-card text-card-foreground">
               <DialogTitle className="flex flex-row items-center space-x-2">
                       <TbCircleDashedNumber3 size={32}></TbCircleDashedNumber3> 
                       <Label> Edit metadata </Label>

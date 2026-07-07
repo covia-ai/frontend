@@ -74,7 +74,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}: {sendAssetIdBackToForm: (id
       
       <EllipsisVertical className=" bg-muted text-muted-foreground rounded-md shadow-md p-1 h-8 "/>
       </DialogTrigger>
-      <DialogContent className="h-11/12 w-11/12 space-y-0">
+      <DialogContent className="h-11/12 w-11/12 space-y-0 bg-card text-card-foreground">
           
           <DialogHeader>Choose an asset</DialogHeader>
           <div className="flex flex-row w-full space-x-2">

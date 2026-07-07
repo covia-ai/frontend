@@ -193,7 +193,7 @@ export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
                           <DialogTrigger>
                             <span className="text-card-foreground dark:text-secondary-light underline underline"> View metadata</span>
                           </DialogTrigger>
-                          <DialogContent>
+                          <DialogContent className="bg-card text-card-foreground">
                             <DialogTitle>Asset Metadata</DialogTitle>
                             <JsonEditor 
                               data={asset.metadata}

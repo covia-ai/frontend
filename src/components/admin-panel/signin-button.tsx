@@ -156,7 +156,7 @@ export function SignInButton(props: any) {
         </Button>
 
         <Dialog open={signInOpen} onOpenChange={setSignInOpen}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md bg-card text-card-foreground">
             {step === "choose" && (
               <>
                 <DialogHeader>

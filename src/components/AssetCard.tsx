@@ -72,7 +72,7 @@ export function AssetCard({ asset,type,compact }: AssetCardProps) {
                             <TooltipContent data-testid="btn-tootip">Copy Asset</TooltipContent>
                              </Tooltip>
                             </DialogTrigger>
-                            <DialogContent className="h-11/12 min-w-10/12 ">
+                            <DialogContent className="h-11/12 min-w-10/12 bg-card text-card-foreground">
                             <DialogTitle className="flex flex-row items-center justify-between mr-4">
                                 Copy asset
                                 <DialogClose>

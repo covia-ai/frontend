@@ -129,7 +129,7 @@ export function AddNewAgent({
           />
         )}
       </DialogTrigger>
-      <DialogContent className="flex flex-col bg-card max-h-[85vh] overflow-y-auto">
+      <DialogContent className="flex flex-col bg-card text-card-foreground max-h-[85vh] overflow-y-auto">
         <DialogTitle className="space-y-2">
           <Label className="text-md">Create a new agent</Label>
           <Separator />

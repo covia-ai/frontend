@@ -127,7 +127,7 @@ export const SignInButton = () => {
         </div>
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md bg-card text-card-foreground">
             {step === "choose" && (
               <>
                 <DialogHeader>

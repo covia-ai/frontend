@@ -67,7 +67,7 @@ export const DocumentViewer = ({ contentUrl, contentType }: DocumentViewerProps)
       <DialogTrigger className="text-sm text-secondary dark:text-secondary-light underline">
         View
       </DialogTrigger>
-      <DialogContent className="bg-background text-foreground max-h-[90vh] w-full max-w-4xl p-4 flex flex-col overflow-hidden border border-border">
+      <DialogContent className="bg-card text-card-foreground max-h-[90vh] w-full max-w-4xl p-4 flex flex-col overflow-hidden border border-border">
         <DialogHeader className="text-sm font-medium text-muted-foreground">
           Document Preview
         </DialogHeader>
@@ -78,7 +78,7 @@ export const DocumentViewer = ({ contentUrl, contentType }: DocumentViewerProps)
               <TabsTrigger value="raw">Raw</TabsTrigger>
             </TabsList>
             <TabsContent value="preview" className="flex-1 min-h-0">
-              <div className="h-[450px] w-full overflow-auto rounded-lg bg-card">
+              <div className="h-[450px] w-full overflow-auto rounded-lg bg-background">
                 <DocViewer
                   documents={[{ uri: contentUrl, fileType }]}
                   pluginRenderers={SAFE_RENDERERS}
@@ -99,12 +99,12 @@ export const DocumentViewer = ({ contentUrl, contentType }: DocumentViewerProps)
                 ref={rawRef}
                 readOnly
                 value={rawText}
-                className="w-full h-[450px] p-4 text-sm bg-card rounded-lg resize-none border-none outline-none font-mono"
+                className="w-full h-[450px] p-4 text-sm bg-background rounded-lg resize-none border-none outline-none font-mono"
               />
             </TabsContent>
           </Tabs>
         ) : (
-          <div className="flex-1 min-h-0 h-[500px] w-full overflow-auto rounded-lg bg-card">
+          <div className="flex-1 min-h-0 h-[500px] w-full overflow-auto rounded-lg bg-background">
             <DocViewer
               documents={[{ uri: contentUrl, fileType }]}
               pluginRenderers={SAFE_RENDERERS}

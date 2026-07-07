@@ -75,7 +75,7 @@ export default function AssetPage() {
                         <TooltipTrigger asChild>
                         <Dialog >
                           <DialogTrigger><PlusCircle size={32} color="#636363"></PlusCircle></DialogTrigger>
-                          <DialogContent className="h-11/12 min-w-10/12 my-2">
+                          <DialogContent className="h-11/12 min-w-10/12 my-2 bg-card text-card-foreground">
                                <DialogTitle className="">
                                       Create asset
                                       <div className="flex flex-row-reverse ">
