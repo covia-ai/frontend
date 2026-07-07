@@ -21,7 +21,7 @@ import { useState } from "react";
 import { useAuthStore } from "@/hooks/use-auth";
 import { useVenue } from "@/hooks/use-venue";
 import { useVenues } from "@/hooks/use-venues";
-import { generateKeyPair, privateKeyToHex, KeyPairAuth } from "@covia/covia-sdk";
+import { generateKeyPair, privateKeyToHex, Ed25519Auth } from "@covia/covia-sdk";
 
 export function SignInButton(props: any) {
   const auth = useAuthStore((x) => x.auth);
@@ -90,7 +90,7 @@ export function SignInButton(props: any) {
       return;
     }
     try {
-      KeyPairAuth.fromHex(trimmed);
+      Ed25519Auth.fromHex(trimmed);
     } catch {
       setKeyError("Invalid key. Please check and try again.");
       return;
@@ -102,7 +102,7 @@ export function SignInButton(props: any) {
       return;
     }
     setDeviceKeyHex(trimmed);
-    const authObj = KeyPairAuth.fromHex(trimmed);
+    const authObj = Ed25519Auth.fromHex(trimmed);
     loginWithKeypair(venueId, trimmed, authObj.getDID());
     setSignInOpen(false);
     router.push("/operations");
@@ -123,7 +123,7 @@ export function SignInButton(props: any) {
       return;
     }
     setDeviceKeyHex(deviceKey);
-    const authObj = KeyPairAuth.fromHex(deviceKey);
+    const authObj = Ed25519Auth.fromHex(deviceKey);
     loginWithKeypair(venueId, deviceKey, authObj.getDID());
     setSignInOpen(false);
     router.push("/operations");

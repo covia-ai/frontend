@@ -56,7 +56,7 @@ __tests__/                  # Jest test files (root level)
 
 Two auth modes, both stored in localStorage under key `"venue-auth"`:
 
-- **Device Key** — Ed25519 keypair generated client-side, stored as hex. Uses `KeyPairAuth` from SDK. Key persists across logouts.
+- **Device Key** — Ed25519 keypair generated client-side, stored as hex. Uses `Ed25519Auth` from SDK. Key persists across logouts.
 - **OAuth** — Redirects to venue's `/auth/{provider}` endpoint, receives bearer token on callback. Uses `BearerAuth` from SDK.
 
 Key files: `hooks/use-auth.ts` (Zustand store), `lib/auth-provider.ts` (SDK bridge), `components/sign-in-button.tsx` (UI).
@@ -102,5 +102,5 @@ operations|secrets|status`), the values API (`GET /api/v1/values/*`), the native
 
 ## Dependencies on Other Repos
 
-- **@covia/covia-sdk** — Installed from GitHub (`github:covia-ai/covia-sdk`). Provides `Grid`, `Venue`, `KeyPairAuth`, `BearerAuth`, `generateKeyPair`, `privateKeyToHex`.
+- **@covia/covia-sdk** — Installed from npm (`@covia/covia-sdk`, pinned in `package.json`). Provides `Grid`, `Venue`, `Ed25519Auth`, `BearerAuth`, `generateKeyPair`, `privateKeyToHex`.
 - **Covia venue server** — Frontend connects to a running venue for all API calls. Default dev venue at `localhost:8080`.

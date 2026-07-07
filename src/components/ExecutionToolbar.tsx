@@ -41,21 +41,21 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
        },[jobData?.status])
       
       function cancelExecution() {
-          if (!venue) return;
+          if (!venue || !jobData.id) return;
           gtmEvent.buttonClick('Cancel Job', jobData.id);
           venue.jobs.cancel(jobData.id)
             .then(() => toast("Job cancelled"))
             .catch(() => toast("Unable to cancel job right now"))
       }
       function deleteExecution() {
-          if (!venue) return;
+          if (!venue || !jobData.id) return;
           gtmEvent.buttonClick('Delete Job', jobData.id);
           venue.jobs.delete(jobData.id).then(() => {
             router.push("/venues/"+venue.venueId+"/jobs");
           }).catch(() => toast("Unable to delete job right now"))
       }
       function pauseExecution() {
-          if (!venue) return;
+          if (!venue || !jobData.id) return;
           gtmEvent.buttonClick('Pause Job', jobData.id);
           venue.jobs.pause(jobData.id).then(() => {
             toast("Job paused");
@@ -64,7 +64,7 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
           });
       }
       function resumeExecution() {
-          if (!venue) return;
+          if (!venue || !jobData.id) return;
           gtmEvent.buttonClick('Resume Job', jobData.id);
           venue.jobs.resume(jobData.id).then(() => {
             toast("Job resumed");

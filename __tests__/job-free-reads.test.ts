@@ -1,10 +1,27 @@
 import '@testing-library/jest-dom';
-import { readValue } from '@/lib/operations-catalog';
-import { listMcpTools } from '@/lib/utils';
 
-// Reads must not create jobs: readValue and listMcpTools fetch via job-free
-// endpoints (GET /api/v1/values/read, native /mcp JSON-RPC) and only readValue
-// may fall back to the invoke-based covia:read when the venue lacks the route.
+// Reads must not create jobs. The catalog helpers read the venue via
+// `venue.workspace.read` (job-free GET /api/v1/values/read in the SDK, with the
+// SDK owning any pre-0.3 invoke fallback), and listMcpTools fetches the native
+// /mcp JSON-RPC endpoint. Neither may reach `venue.operations.run`.
+
+// Stub the SDK's Operation so resolveOperationByAddress can construct one
+// without pulling in SDK internals (Venue/CatalogOp are type-only, erased).
+jest.mock('@covia/covia-sdk', () => ({
+  Operation: class {
+    constructor(
+      public id: string,
+      public venue: unknown,
+      public metadata: unknown,
+    ) {}
+  },
+}));
+
+import {
+  listCatalogOperations,
+  resolveOperationByAddress,
+} from '@/lib/operations-catalog';
+import { listMcpTools } from '@/lib/utils';
 
 const BASE = 'http://venue.example.com';
 
@@ -16,36 +33,73 @@ const mockFetch = (impl: jest.Mock) => {
   return impl;
 };
 
-describe('readValue', () => {
-  it('reads via GET /api/v1/values/read and returns the value', async () => {
-    const fetchMock = mockFetch(jest.fn()
-      .mockResolvedValue(jsonResponse({ value: { operation: {} }, exists: true, valueBytes: 12 })));
-    const run = jest.fn();
-    const venue = { baseUrl: BASE, operations: { run } } as any;
+// A venue whose workspace.read resolves a fixed {path → value} catalog map.
+const venueWithTree = (tree: Record<string, unknown>) => {
+  const read = jest.fn((path: string) =>
+    Promise.resolve(
+      path in tree ? { exists: true, value: tree[path] } : { exists: false },
+    ),
+  );
+  const run = jest.fn();
+  const getAsset = jest.fn();
+  return { venue: { workspace: { read }, operations: { run }, getAsset } as any, read, run, getAsset };
+};
 
-    const value = await readValue(venue, 'v/ops/covia/read');
+describe('listCatalogOperations', () => {
+  it('reads v/ops and v/test/ops job-free and flattens to catalog paths', async () => {
+    const { venue, read, run } = venueWithTree({
+      'v/ops': { agent: { suspend: { operation: {} }, resume: { operation: {} } } },
+      'v/test/ops': { echo: { operation: {} } },
+    });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      `${BASE}/api/v1/values/read?path=${encodeURIComponent('v/ops/covia/read')}`);
-    expect(value).toEqual({ operation: {} });
+    const ops = await listCatalogOperations(venue);
+
+    expect(ops.map((o) => o.path).sort()).toEqual([
+      'v/ops/agent/resume',
+      'v/ops/agent/suspend',
+      'v/test/ops/echo',
+    ]);
+    // Job-free: went through workspace.read, never the invoke/job path.
+    expect(read).toHaveBeenCalledWith('v/ops');
+    expect(read).toHaveBeenCalledWith('v/test/ops');
     expect(run).not.toHaveBeenCalled();
   });
 
-  it('falls back to invoke-based covia:read when the route is missing (pre-0.3 venue)', async () => {
-    mockFetch(jest.fn().mockResolvedValue(jsonResponse({ error: 'not found' }, false, 404)));
-    const run = jest.fn().mockResolvedValue({ value: 'fallback' });
-    const venue = { baseUrl: BASE, operations: { run } } as any;
+  it('returns [] for a missing/empty catalog sub-tree', async () => {
+    const { venue } = venueWithTree({});
+    await expect(listCatalogOperations(venue)).resolves.toEqual([]);
+  });
+});
 
-    await expect(readValue(venue, 'v/ops')).resolves.toBe('fallback');
-    expect(run).toHaveBeenCalledWith('v/ops/covia/read', { path: 'v/ops' });
+describe('resolveOperationByAddress', () => {
+  it('resolves a catalog path job-free and carries the address as the op id', async () => {
+    const { venue, read, run } = venueWithTree({
+      'v/ops/agent/suspend': { operation: { id: 'suspend' } },
+    });
+
+    const op = await resolveOperationByAddress(venue, 'v/ops/agent/suspend');
+
+    expect(op.id).toBe('v/ops/agent/suspend');
+    expect(op.metadata).toEqual({ operation: { id: 'suspend' } });
+    expect(read).toHaveBeenCalledWith('v/ops/agent/suspend');
+    expect(run).not.toHaveBeenCalled();
   });
 
-  it('falls back to invoke on network failure', async () => {
-    mockFetch(jest.fn().mockRejectedValue(new Error('offline')));
-    const run = jest.fn().mockResolvedValue({ value: 42 });
-    const venue = { baseUrl: BASE, operations: { run } } as any;
+  it('resolves an a/<hash> address via getAsset, not a read', async () => {
+    const { venue, read, getAsset } = venueWithTree({});
+    const asset = { id: 'the-asset' };
+    getAsset.mockResolvedValue(asset);
 
-    await expect(readValue(venue, 'w/x')).resolves.toBe(42);
+    await expect(resolveOperationByAddress(venue, 'a/abc123')).resolves.toBe(asset);
+    expect(getAsset).toHaveBeenCalledWith('abc123');
+    expect(read).not.toHaveBeenCalled();
+  });
+
+  it('throws when the address resolves to a non-operation value', async () => {
+    const { venue } = venueWithTree({ 'o/not-an-op': { just: 'data' } });
+    await expect(resolveOperationByAddress(venue, 'o/not-an-op')).rejects.toThrow(
+      'No operation found at o/not-an-op',
+    );
   });
 });
 

@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { gtmEvent } from "@/lib/utils";
-import { generateKeyPair, privateKeyToHex, KeyPairAuth } from "@covia/covia-sdk";
+import { generateKeyPair, privateKeyToHex, Ed25519Auth } from "@covia/covia-sdk";
 import { useAuthStore } from "@/hooks/use-auth";
 import { useVenue } from "@/hooks/use-venue";
 import { useVenues } from "@/hooks/use-venues";
@@ -71,7 +71,7 @@ export const SignInButton = () => {
         return;
       }
       try {
-        KeyPairAuth.fromHex(trimmed);
+        Ed25519Auth.fromHex(trimmed);
       } catch {
         setKeyError("Invalid key. Please check and try again.");
         return;
@@ -84,7 +84,7 @@ export const SignInButton = () => {
       }
       gtmEvent.buttonClick('Sign Up', 'keypair');
       setDeviceKeyHex(trimmed);
-      const auth = KeyPairAuth.fromHex(trimmed);
+      const auth = Ed25519Auth.fromHex(trimmed);
       loginWithKeypair(venueId, trimmed, auth.getDID());
       setDialogOpen(false);
       router.push("/operations");
@@ -106,7 +106,7 @@ export const SignInButton = () => {
       }
       gtmEvent.buttonClick('Sign Up', 'keypair');
       setDeviceKeyHex(deviceKey);
-      const auth = KeyPairAuth.fromHex(deviceKey);
+      const auth = Ed25519Auth.fromHex(deviceKey);
       loginWithKeypair(venueId, deviceKey, auth.getDID());
       setDialogOpen(false);
       router.push("/operations");

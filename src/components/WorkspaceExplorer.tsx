@@ -89,11 +89,11 @@ export function WorkspaceExplorer() {
       venue.workspace
         .list(path)
         .then((result) => {
+          // The job-free `list` (GET /api/v1/values/list) returns only keys —
+          // per-entry values/types would each need a read (a job), which the UI
+          // must not mint. Entry type is derived lazily on expand if needed.
           const items: PathEntry[] = (result.keys || []).map(
-            (key: string, i: number) => ({
-              key,
-              type: result.values?.[i] !== undefined ? typeof result.values[i] : "unknown",
-            })
+            (key: string): PathEntry => ({ key })
           );
           setEntries(items);
           if (path) {

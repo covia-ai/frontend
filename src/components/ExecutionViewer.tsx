@@ -170,7 +170,7 @@ export const ExecutionViewer = (props: any) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [venue, props.jobId]);
 
-    function renderChildJobs(_jsonObject: JSON) {
+    function renderChildJobs() {
         const steps = jobMetadata?.steps as any[];
         return (
             <Table className="border border-border rounded-md py-2 ">
@@ -443,13 +443,13 @@ let schema: any = {};
                                 <span className="w-28">Time:</span>
                                 <span className="text-card-foreground">{jobMetadata?.created && jobMetadata?.updated ? getExecutionTime(jobMetadata.created, jobMetadata.updated) : 'N/A'}</span>
                             </div>
-                            <div className="flex flex-col py-2 space-x-4 w-3/4 ">{jobMetadata?.steps &&
+                            <div className="flex flex-col py-2 space-x-4 w-3/4 ">{jobMetadata?.steps != null &&
                                 <div className="flex flex-row space-x-4  py-2">
                                     <div className="flex flex-row space-x-4 my-2 ">
                                         <TbSubtask size={20}></TbSubtask>
                                         <span className="w-28">Steps:</span>
                                     </div>
-                                    {renderChildJobs(jobMetadata?.steps)}
+                                    {renderChildJobs()}
                                 </div>
                             }
                             </div>

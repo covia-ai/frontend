@@ -4,17 +4,12 @@ import { Operation, Venue } from "@covia/covia-sdk";
 // catalog path (e.g. "v/ops/agent/suspend"), not a content hash.
 export type CatalogOp = { path: string; metadata: any };
 
-// Job-free read of a lattice path via GET /api/v1/values/read (covia ≥ 0.3).
-// Reads must not create jobs; the invoke-based covia:read is kept only as a
-// fallback for venues without the route (pre-0.3 fleet) or paths the
-// unauthenticated GET cannot see.
-export async function readValue(venue: Venue, path: string): Promise<any> {
-  try {
-    const res = await fetch(`${venue.baseUrl}/api/v1/values/read?path=${encodeURIComponent(path)}`);
-    if (res.ok) return (await res.json())?.value;
-  } catch { /* network failure — fall through to invoke */ }
-  const res = await venue.operations.run("v/ops/covia/read", { path });
-  return (res as any)?.value;
+// Job-free read of a lattice path. `venue.workspace.read` routes through the
+// venue's GET /api/v1/values/read (no Job persisted) and, in the SDK, falls
+// back to the invoke-based covia:read only on pre-0.3 venues that lack the
+// route. Venue-version accommodation lives in the SDK, not here.
+async function readValue(venue: Venue, path: string): Promise<any> {
+  return (await venue.workspace.read(path)).value;
 }
 
 // Read a whole catalog sub-tree in a single covia:read and flatten it to

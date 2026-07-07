@@ -61,7 +61,7 @@ export function SecretList() {
     }
     setAdding(true);
     venue.secrets
-      .put(newName.trim(), newValue)
+      .set(newName.trim(), newValue)
       .then(() => {
         toast(`Secret "${newName}" stored`);
         setNewName("");

@@ -10,7 +10,7 @@ jest.mock('@covia/covia-sdk', () => ({
     publicKey: new Uint8Array(32),
   })),
   privateKeyToHex: jest.fn(() => 'mockhex'),
-  KeyPairAuth: {
+  Ed25519Auth: {
     fromHex: jest.fn(() => ({ getDID: () => 'did:key:z6Mock' })),
   },
 }));

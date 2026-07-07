@@ -117,7 +117,7 @@ export const AIPrompt = () => {
 
     setSavingKey(true);
     try {
-      await venue.secrets.put(selectedSecretName, keyInput.trim());
+      await venue.secrets.set(selectedSecretName, keyInput.trim());
       toast(`${selectedSecretName} saved`);
       setShowKeyDialog(false);
       setKeyInput('');

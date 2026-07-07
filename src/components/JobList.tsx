@@ -106,7 +106,8 @@ export function JobList() {
           .filter((r): r is PromiseFulfilledResult<Job> => r.status === 'fulfilled')
           .map(r => r.value.metadata)
           .filter(m => m.status === statusFilter)
-          .map(m => m.id);
+          .map(m => m.id)
+          .filter((id): id is string => id != null);
         setFilteredIds(matched);
         setCurrentPage(1);
       })
@@ -271,13 +272,13 @@ export function JobList() {
               .sort((a, b) => {
                 let cmp = 0;
                 if (sort.col === "date") cmp = new Date(a.created ?? "").getTime() - new Date(b.created ?? "").getTime();
-                else if (sort.col === "id") cmp = a.id.localeCompare(b.id);
+                else if (sort.col === "id") cmp = (a.id ?? "").localeCompare(b.id ?? "");
                 else if (sort.col === "status") cmp = (a.status ?? "").localeCompare(b.status ?? "");
                 return sort.dir === "asc" ? cmp : -cmp;
               })
               .map((job) =>
               <TableRow key={job.id}>
-                <TableCell><Link className="text-foreground font-mono underline" href={encodedPath(job.id)}>{job.id}</Link></TableCell>
+                <TableCell><Link className="text-foreground font-mono underline" href={encodedPath(job.id ?? "")}>{job.id}</Link></TableCell>
                 <TableCell>{job.name}</TableCell>
                 <TableCell>{job.created ? formatter.format(new Date(job.created)) : "--"}</TableCell>
                 {(job.status == RunStatus.COMPLETE || job.status == RunStatus.FAILED) ?
