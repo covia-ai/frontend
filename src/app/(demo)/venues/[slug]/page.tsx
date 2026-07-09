@@ -5,7 +5,7 @@ import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 import { Card, CardContent, CardHeader }from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Building2, Database, Settings, Users, Globe, Activity, ArrowRight, ExternalLink, Link as LinkIcon, Fingerprint, Copy, Wrench, ChevronDown, ChevronUp }from "lucide-react";
+import { Building2, Database, Settings, Users, Globe, Activity, ArrowRight, ExternalLink, Link as LinkIcon, Fingerprint, Copy, Wrench, ChevronDown, ChevronUp, Plug }from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useVenues } from "@/hooks/use-venues";
 import { useVenue } from "@/hooks/use-venue";
@@ -35,6 +35,7 @@ export default function VenuePage({ params }: VenuePageProps) {
   const [ venueMCPUrl, setVenueMCPURL] = useState("Not Found")
   const [ noOfAssets, setNoOfAssets] = useState(0)
   const [ noOfOps, setNoOfOps] = useState(0)
+  const [ noOfAdapters, setNoOfAdapters] = useState(0)
   const [ noOfRuns, setNoOfRuns] = useState(0)
   const [ noOfUsers, setNoOfUsers] = useState(0)
   const [ mcpTools, setMcpTools] = useState<{name:string}[]>([])
@@ -95,9 +96,15 @@ export default function VenuePage({ params }: VenuePageProps) {
           if (venue) setMcpTools(await listMcpTools(venue.baseUrl));
         } catch { /* non-fatal */ }
       }
+      const fetchAdapters = async () => {
+        try {
+          if (venue) setNoOfAdapters((await venue.adapters.list()).length);
+        } catch { /* non-fatal */ }
+      }
       fetchMCP();
       fetchStats();
       fetchMcpTools();
+      fetchAdapters();
   }, [venue]);
 
   const isCurrentVenue = currentVenue?.venueId === venue?.venueId;
@@ -224,7 +231,7 @@ export default function VenuePage({ params }: VenuePageProps) {
         </Card>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
          <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
             <CardHeader className="flex-1 ">
               <div className="flex items-center space-x-3">
@@ -270,6 +277,31 @@ export default function VenuePage({ params }: VenuePageProps) {
                   aria-label="view operation" role="button"
                 >
                   View Operation
+                  <ArrowRight size={16} className="ml-2" />
+                </Button>
+              </CardContent>
+        </Card>
+
+        <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
+            <CardHeader className="flex-1 ">
+              <div className="flex items-center space-x-3">
+              <div className="bg-primary-vlight  p-2 rounded-lg">
+                <Plug size={20} className="text-primary" />
+              </div>
+              <div className="">
+                <p className="text-sm text-muted-foreground">Adapters</p>
+                <p className="text-2xl font-thin">{noOfAdapters}</p>
+              </div>
+            </div>
+            </CardHeader>
+            <CardContent>
+                <Button
+                  onClick={() => router.push(`/venues/${slug}/adapters`)}
+                  className="w-full"
+                  variant="outline"
+                  aria-label="view adapters" role="button"
+                >
+                  View Adapters
                   <ArrowRight size={16} className="ml-2" />
                 </Button>
               </CardContent>
