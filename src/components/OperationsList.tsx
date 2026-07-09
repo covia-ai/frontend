@@ -15,15 +15,8 @@ import { AssetCard } from "./AssetCard";
 import { PaginationHeader } from "./PaginationHeader";
 import { Input } from "@/components/ui/input";
 import { PlayCircle, Search } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { listCatalogOperations } from "@/lib/operations-catalog";
+import { TagFilterDropdown } from "./TagFilterDropdown";
 
 
 
@@ -40,7 +33,7 @@ export function OperationsList() {
   const [_totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-  const [adapterFilter, setAdapterFilter] = useState("All");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchInput, setSearchInput] = useState(search ?? "");
   const pathname = usePathname();
 
@@ -93,12 +86,19 @@ export function OperationsList() {
     return [...new Set(names)].sort();
   }, [assetsMetadata]);
 
+  const keywordOptions = useMemo(() => {
+    const all = assetsMetadata.flatMap(a => Array.isArray(a.metadata?.keywords) ? a.metadata.keywords : []);
+    return [...new Set(all)].sort();
+  }, [assetsMetadata]);
+
   const filteredAssets = useMemo(() => {
-    if (adapterFilter === "All") return assetsMetadata;
-    return assetsMetadata.filter(
-      a => (a.metadata?.operation?.adapter as string | undefined)?.split(':')[0] === adapterFilter
-    );
-  }, [assetsMetadata, adapterFilter]);
+    if (selectedTags.length === 0) return assetsMetadata;
+    return assetsMetadata.filter(a => {
+      const adapter = (a.metadata?.operation?.adapter as string | undefined)?.split(':')[0];
+      const keywords: string[] = Array.isArray(a.metadata?.keywords) ? a.metadata.keywords : [];
+      return selectedTags.some(tag => tag === adapter || keywords.includes(tag));
+    });
+  }, [assetsMetadata, selectedTags]);
 
   useEffect(() => {
     setTotalItems(filteredAssets.length);
@@ -146,19 +146,12 @@ export function OperationsList() {
               className="pl-8"
             />
           </div>
-          <Select value={adapterFilter} onValueChange={(v) => { setAdapterFilter(v); setCurrentPage(1); }}>
-            <SelectTrigger className="w-44 shrink-0">
-              <SelectValue placeholder="All adapters" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="All">All adapters</SelectItem>
-                {adapterOptions.map(a => (
-                  <SelectItem key={a} value={a}>{a}</SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          <TagFilterDropdown
+            adapterOptions={adapterOptions}
+            keywordOptions={keywordOptions}
+            selected={selectedTags}
+            onChange={setSelectedTags}
+          />
         </div>
         <div className="text-card-foreground text-xs flex flex-row my-2">
           {isLoading ? "Loading…" : `Page ${currentPage} : Showing ${filteredAssets.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of ${filteredAssets.length}`}

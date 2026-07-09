@@ -31,7 +31,12 @@ export function AssetCard({ asset,type,compact }: AssetCardProps) {
 
     const adapter = (asset.metadata?.operation?.adapter as string | undefined)?.split(':')[0] ?? null;
 
-    
+    const keywords: string[] = Array.isArray(asset.metadata?.keywords) ? asset.metadata.keywords : [];
+    const maxKeywords = compact ? 2 : 4;
+    const visibleKeywords = keywords.slice(0, maxKeywords);
+    const hiddenKeywordCount = keywords.length - visibleKeywords.length;
+
+
     const handleCardClick = (assetId:string) => {
         if (!venue) return;
         const encodedUrl = "/venues/"+encodeURIComponent(venue.venueId)+"/"+type+"/"+assetId;
@@ -107,11 +112,29 @@ export function AssetCard({ asset,type,compact }: AssetCardProps) {
                 {/* Flexible middle section */}
                 <div className="flex-1 p-2 flex flex-col justify-between text-sm" onClick={() => handleCardClick(asset.id)}>
                     <div data-testid="asset-description" className={` ${ compact ? 'line-clamp-2' : 'line-clamp-3' } text-xs text-card-foreground `}>{asset.metadata.description || 'No description available'}</div>
-                    {type === "operations" && adapter && (
-                      <Badge variant="outline" className="mt-1 w-fit text-[10px] px-1.5 py-0 text-muted-foreground">
-                        {adapter}
-                      </Badge>
-                    )}
+                    {(type === "operations" && adapter) || keywords.length > 0 ? (
+                      <div data-testid="asset-tags" className="flex flex-wrap items-center gap-1 mt-1">
+                        {type === "operations" && adapter && (
+                          <Badge variant="default" className="w-fit text-[10px] px-1.5 py-0">
+                            {adapter}
+                          </Badge>
+                        )}
+                        {keywords.length > 0 && (
+                          <div data-testid="asset-keywords" className="flex flex-wrap items-center gap-1">
+                            {visibleKeywords.map((keyword) => (
+                              <Badge key={keyword} variant="secondary" className="w-fit text-[10px] px-1.5 py-0 text-secondary-foreground">
+                                {keyword}
+                              </Badge>
+                            ))}
+                            {hiddenKeywordCount > 0 && (
+                              <Badge variant="outline" className="w-fit text-[10px] px-1.5 py-0 text-muted-foreground">
+                                +{hiddenKeywordCount}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
                 </div>
 
                 
