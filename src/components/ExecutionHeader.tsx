@@ -7,9 +7,10 @@ import { JobMetadata }from "@covia/covia-sdk";
 
 interface ExecutionHeaderProps {
   jobData?: JobMetadata;
+  venueId?: string;
 }
 
-export const ExecutionHeader = ({ jobData }: ExecutionHeaderProps) => {
+export const ExecutionHeader = ({ jobData, venueId }: ExecutionHeaderProps) => {
   const pathname = usePathname();
   return (
     <div className="flex flex-col w-full items-center justify-center mb-2 mt-2 border border-slate-200 rounded-md p-4 bg-card">
@@ -19,7 +20,7 @@ export const ExecutionHeader = ({ jobData }: ExecutionHeaderProps) => {
         </Link>
       </h1>
 
-     <IdAndLink type="Job" url={pathname} id={jobData?.id}></IdAndLink>
+     <IdAndLink type="Job" venueId={venueId} id={jobData?.id}></IdAndLink>
     </div>
   );
-}; 
+};

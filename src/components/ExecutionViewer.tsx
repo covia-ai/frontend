@@ -353,7 +353,7 @@ let schema: any = {};
         <>
              <TopBar assetOrJobName={jobMetadata?.name} venueName={venue?.metadata.name} />
            
-             <ExecutionHeader  jobData={jobMetadata}></ExecutionHeader>
+             <ExecutionHeader  jobData={jobMetadata} venueId={venue?.venueId ?? props.venueId}></ExecutionHeader>
             {jobMetadata && (
 
                 <div className="flex flex-col w-full items-center justify-center">
