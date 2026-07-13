@@ -234,7 +234,7 @@ export function JobList() {
             <span className="ml-2 text-muted-foreground">— no jobs match this filter</span>
           )}
         </div>
-        <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>
+        <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage} disabled={loading}></PaginationHeader>
         {loading && (
           <div className="flex items-center justify-center py-10 w-full">
             <Spinner variant="ellipsis" className="text-primary" size={40} />
@@ -290,7 +290,7 @@ export function JobList() {
             )}
           </TableBody>
         </Table>}
-        <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage}></PaginationHeader>
+        <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage} disabled={loading}></PaginationHeader>
       </div>
     </ContentLayout>
 );

@@ -1,13 +1,39 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
-import {AIPrompt} from '@/components/AIPrompt';
+import { AIPrompt } from '@/components/AIPrompt';
 
+const mockUseAuthenticatedVenue = jest.fn();
 jest.mock('@/hooks/use-authenticated-venue', () => ({
-  useAuthenticatedVenue: () => null,
+  useAuthenticatedVenue: () => mockUseAuthenticatedVenue(),
 }));
 
+function makeVenue(overrides: {
+  existingAgents?: string[];
+  secrets?: string[];
+} = {}) {
+  const existingAgents = overrides.existingAgents ?? [];
+  return {
+    agents: {
+      list: jest.fn().mockResolvedValue({
+        agents: existingAgents.map((agentId) => ({ agentId, status: 'active', tasks: 0 })),
+      }),
+      create: jest.fn().mockResolvedValue({ agentId: 'default-agent', status: 'active', created: true }),
+      request: jest.fn().mockResolvedValue({ id: 'job-1', status: 'PENDING' }),
+    },
+    secrets: {
+      list: jest.fn().mockResolvedValue(overrides.secrets ?? []),
+    },
+  };
+}
+
 describe('Chat Component', () => {
+  beforeEach(() => {
+    mockUseAuthenticatedVenue.mockReset();
+    mockUseAuthenticatedVenue.mockReturnValue(null);
+  });
+
   test('renders chat container', () => {
     render(<AIPrompt />);
     expect(screen.getByTestId('chat-container')).toBeInTheDocument();
@@ -26,5 +52,83 @@ describe('Chat Component', () => {
   test('chat button is disabled when prompt is empty', () => {
     render(<AIPrompt />);
     expect(screen.getByTestId('chat-button')).toBeDisabled();
+  });
+});
+
+describe('AIPrompt — default agent reuse vs creation', () => {
+  beforeEach(() => {
+    mockUseAuthenticatedVenue.mockReset();
+  });
+
+  it('reuses an existing default-agent directly — no secrets lookup, no create call', async () => {
+    const venue = makeVenue({ existingAgents: ['default-agent'] });
+    mockUseAuthenticatedVenue.mockReturnValue(venue);
+    const user = userEvent.setup();
+
+    render(<AIPrompt />);
+    await user.type(screen.getByLabelText('prompt'), 'Do something useful');
+    await user.click(screen.getByTestId('chat-button'));
+
+    await waitFor(() => {
+      expect(venue.agents.request).toHaveBeenCalledWith(
+        'default-agent',
+        { task: 'Do something useful' },
+        false,
+      );
+    });
+    expect(venue.agents.create).not.toHaveBeenCalled();
+    expect(venue.secrets.list).not.toHaveBeenCalled();
+  });
+
+  it('creates default-agent on first use when a single LLM key is present, then sends the task', async () => {
+    const venue = makeVenue({ existingAgents: [], secrets: ['ANTHROPIC_API_KEY'] });
+    mockUseAuthenticatedVenue.mockReturnValue(venue);
+    const user = userEvent.setup();
+
+    render(<AIPrompt />);
+    await user.type(screen.getByLabelText('prompt'), 'Do something useful');
+    await user.click(screen.getByTestId('chat-button'));
+
+    await waitFor(() => {
+      expect(venue.agents.create).toHaveBeenCalledWith(
+        expect.objectContaining({ agentId: 'default-agent' }),
+      );
+    });
+    await waitFor(() => {
+      expect(venue.agents.request).toHaveBeenCalledWith(
+        'default-agent',
+        { task: 'Do something useful' },
+        false,
+      );
+    });
+  });
+
+  it('shows the LLM key picker when default-agent does not exist and multiple keys are present', async () => {
+    const venue = makeVenue({
+      existingAgents: [],
+      secrets: ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY'],
+    });
+    mockUseAuthenticatedVenue.mockReturnValue(venue);
+    const user = userEvent.setup();
+
+    render(<AIPrompt />);
+    await user.type(screen.getByLabelText('prompt'), 'Do something useful');
+    await user.click(screen.getByTestId('chat-button'));
+
+    expect(await screen.findByTestId('chat-picker-dialog')).toBeInTheDocument();
+    expect(venue.agents.create).not.toHaveBeenCalled();
+  });
+
+  it('shows the add-key dialog when default-agent does not exist and no key is present', async () => {
+    const venue = makeVenue({ existingAgents: [], secrets: [] });
+    mockUseAuthenticatedVenue.mockReturnValue(venue);
+    const user = userEvent.setup();
+
+    render(<AIPrompt />);
+    await user.type(screen.getByLabelText('prompt'), 'Do something useful');
+    await user.click(screen.getByTestId('chat-button'));
+
+    expect(await screen.findByTestId('chat-dialog')).toBeInTheDocument();
+    expect(venue.agents.create).not.toHaveBeenCalled();
   });
 });

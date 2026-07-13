@@ -15,7 +15,7 @@ import { Spinner } from '@/components/ui/shadcn-io/spinner';
 import { AssetCard } from "./AssetCard";
 import { PaginationHeader } from "./PaginationHeader";
 import { useVenues } from "@/hooks/use-venues";
-import { FileKey, Search }from "lucide-react";
+import { FileKey, Search, X }from "lucide-react";
 import { CreateAssetComponent } from "./CreateAssetComponent";
 import { TopBar } from "./admin-panel/TopBar";
 import { TagFilterDropdown } from "./TagFilterDropdown";
@@ -23,7 +23,6 @@ import { TagFilterDropdown } from "./TagFilterDropdown";
 
 export function AssetList() {
   const searchParams = useSearchParams()
-  const search = searchParams.get('search');
   const [assetsMetadata, setAssetsMetadata] = useState<Asset[]>([]);
   const [isLoading, setLoading] = useState(true);
   const router = useRouter();
@@ -35,7 +34,7 @@ export function AssetList() {
   const [totalPages, setTotalPages] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [searchInput, setSearchInput] = useState(search ?? "");
+  const [searchInput, setSearchInput] = useState(searchParams.get('search') ?? "");
   const pathname = usePathname();
 
   const { venues } = useVenues();
@@ -47,9 +46,15 @@ export function AssetList() {
   const prevPage = (page: number) => {
     setCurrentPage(page)
   }
+  const clearSearch = () => {
+    setSearchInput("");
+    router.replace(pathname);
+  }
   // Shared by the initial-load effect and the create-asset refresh; isStale
-  // drops in-flight results after venue/search change or unmount, so stale
-  // assets never land in the fresh list.
+  // drops in-flight results after venue change or unmount, so stale assets
+  // never land in the fresh list. Fetches the full list unconditionally —
+  // search text only filters client-side (see filteredAssets) so typing
+  // never triggers a refetch.
   function fetchAssets(isStale: () => boolean = () => false) {
     if (!venueObj) return;
     const venue = getVenueFor(venueObj, authData)
@@ -62,13 +67,7 @@ export function AssetList() {
             asset.getMetadata().then((metadata: any) => {
               if (isStale()) return;
               if (metadata.name != undefined && metadata.operation == undefined) {
-                  if(search && search.length>0 ) {
-                      if(metadata?.name?.toLowerCase().indexOf(search.toLowerCase()) != -1 || asset.id?.toLowerCase().indexOf(search.toLowerCase()) != -1)
-                         setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
-                  }
-                  else {
-                       setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
-                  }
+                setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
               }
             })
           })
@@ -85,7 +84,7 @@ export function AssetList() {
     let ignore = false;
     fetchAssets(() => ignore);
     return () => { ignore = true; };
-  }, [search, venueObj, authData]);
+  }, [venueObj, authData]);
 
   const keywordOptions = useMemo(() => {
     const all = assetsMetadata.flatMap(a => Array.isArray(a.metadata?.keywords) ? a.metadata.keywords : []);
@@ -93,12 +92,16 @@ export function AssetList() {
   }, [assetsMetadata]);
 
   const filteredAssets = useMemo(() => {
-    if (selectedTags.length === 0) return assetsMetadata;
+    const term = searchInput.trim().toLowerCase();
     return assetsMetadata.filter(a => {
-      const keywords: string[] = Array.isArray(a.metadata?.keywords) ? a.metadata.keywords : [];
-      return selectedTags.some(tag => keywords.includes(tag));
+      if (selectedTags.length > 0) {
+        const keywords: string[] = Array.isArray(a.metadata?.keywords) ? a.metadata.keywords : [];
+        if (!selectedTags.some(tag => keywords.includes(tag))) return false;
+      }
+      if (!term) return true;
+      return (a.metadata?.name ?? "").toLowerCase().includes(term) || (a.id ?? "").toLowerCase().includes(term);
     });
-  }, [assetsMetadata, selectedTags]);
+  }, [assetsMetadata, selectedTags, searchInput]);
 
   useEffect(() => {
     setTotalItems(filteredAssets.length)
@@ -119,12 +122,18 @@ export function AssetList() {
               placeholder="Type keyword to search…"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter')
-                  router.push(pathname + "?search=" + searchInput);
-              }}
-              className="pl-8"
+              className="pl-8 pr-8"
             />
+            {searchInput && (
+              <button
+                type="button"
+                aria-label="Clear search"
+                onClick={clearSearch}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -154,12 +163,18 @@ export function AssetList() {
                 placeholder="Type keyword to search…"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter')
-                    router.push(pathname + "?search=" + searchInput);
-                }}
-                className="pl-8"
+                className="pl-8 pr-8"
               />
+              {searchInput && (
+                <button
+                  type="button"
+                  aria-label="Clear search"
+                  onClick={clearSearch}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
             <TagFilterDropdown
               adapterOptions={[]}

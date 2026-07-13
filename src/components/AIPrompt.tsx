@@ -9,6 +9,7 @@ import { Badge } from "./ui/badge";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { toast } from "sonner";
 import { KNOWN_LLM_KEYS, LLM_PROVIDERS } from "@/config/llm-providers";
+import { DEFAULT_AGENT_ID } from "@/config/agents";
 import { useRouter } from "next/navigation";
 
 export const AIPrompt = () => {
@@ -32,14 +33,20 @@ export const AIPrompt = () => {
     'Migrate a static HTML website to a modern React framework'
   ]
 
-  function makeAgentId(text: string): string {
-    const slug = text
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-      .slice(0, 32);
-    return slug + '-' + Date.now().toString(36);
+  // Fire-and-forget task dispatch on the (already-existing) default agent,
+  // shared by both the first-time and reuse paths so navigation stays instant.
+  async function sendPrompt() {
+    if (!venue) return;
+    setCreating(true);
+    try {
+      // wait:false — fire-and-forget so a slow/failing task doesn't block navigation
+      await venue.agents.request(DEFAULT_AGENT_ID, { task: prompt }, false);
+      router.push(`/agents/explorer?agentId=${encodeURIComponent(DEFAULT_AGENT_ID)}`);
+    } catch (err: any) {
+      toast("Failed to send task", { description: err?.message ?? "Please try again." });
+    } finally {
+      setCreating(false);
+    }
   }
 
   async function proceedWithKey(secretName: string) {
@@ -53,12 +60,11 @@ export const AIPrompt = () => {
       return;
     }
     const [, provider] = providerEntry;
-    const agentId = makeAgentId(prompt);
 
     setCreating(true);
     try {
       await venue.agents.create({
-        agentId,
+        agentId: DEFAULT_AGENT_ID,
         config: {
           operation: "v/ops/llmagent/chat",
           llmOperation: provider.operation,
@@ -66,16 +72,13 @@ export const AIPrompt = () => {
             "You are a helpful AI assistant working on the Covia grid. Complete the user's task thoroughly and report your results clearly.",
         },
       });
-
-      // wait:false — fire-and-forget so a slow/failing task doesn't block navigation
-      await venue.agents.request(agentId, { task: prompt }, false);
-
-      router.push(`/agents/explorer?agentId=${encodeURIComponent(agentId)}`);
     } catch (err: any) {
-      toast("Failed to create agent", { description: err?.message ?? "Please try again." });
-    } finally {
       setCreating(false);
+      toast("Failed to create agent", { description: err?.message ?? "Please try again." });
+      return;
     }
+    setCreating(false);
+    await sendPrompt();
   }
 
   async function handleMagicWand() {
@@ -87,6 +90,14 @@ export const AIPrompt = () => {
 
     setChecking(true);
     try {
+      // Reuse the default agent directly once it exists — no key lookup,
+      // no re-creation, just dispatch the task.
+      const { agents } = await venue.agents.list();
+      if (agents.some((a) => a.agentId === DEFAULT_AGENT_ID)) {
+        await sendPrompt();
+        return;
+      }
+
       const secrets = await venue.secrets.list();
       const matchedKeys = secrets.filter((s: string) => s in KNOWN_LLM_KEYS);
 
@@ -101,7 +112,7 @@ export const AIPrompt = () => {
         setShowKeyDialog(true);
       }
     } catch {
-      toast("Unable to check secrets. Please try again.");
+      toast("Unable to prepare agent. Please try again.");
     } finally {
       setChecking(false);
     }
@@ -166,7 +177,7 @@ export const AIPrompt = () => {
 
         {creating && (
           <p className="text-xs text-muted-foreground animate-pulse mt-1">
-            Creating agent and sending task…
+            Sending task…
           </p>
         )}
 

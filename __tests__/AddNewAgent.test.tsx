@@ -17,21 +17,23 @@ jest.mock('next/navigation', () => ({
 }));
 
 // Return a stable object reference so the useEffect dep [venue] doesn't
-// fire on every render and reset controlled-input state.
-jest.mock('@/hooks/use-authenticated-venue', () => {
-  const venue = {
-    agents: {
-      create: jest.fn().mockResolvedValue({ agentId: 'test-agent', status: 'active' }),
-      request: jest.fn().mockResolvedValue({}),
-    },
-    secrets: {
-      // ANTHROPIC_API_KEY present so the default provider (anthropic) is
-      // ready and the Create button isn't disabled by the key-readiness gate.
-      list: jest.fn().mockResolvedValue(['ANTHROPIC_API_KEY']),
-    },
-  };
-  return { useAuthenticatedVenue: () => venue };
-});
+// fire on every render and reset controlled-input state. Declared with the
+// `mock` prefix so it's also usable inside test bodies (Jest's hoisting
+// allowlist only exempts identifiers starting with "mock").
+const mockVenue = {
+  agents: {
+    create: jest.fn().mockResolvedValue({ agentId: 'test-agent', status: 'active' }),
+    request: jest.fn().mockResolvedValue({}),
+  },
+  secrets: {
+    // ANTHROPIC_API_KEY present so the default provider (anthropic) is
+    // ready and the Create button isn't disabled by the key-readiness gate.
+    list: jest.fn().mockResolvedValue(['ANTHROPIC_API_KEY']),
+  },
+};
+jest.mock('@/hooks/use-authenticated-venue', () => ({
+  useAuthenticatedVenue: () => mockVenue,
+}));
 
 import { AddNewAgent } from '@/components/AddNewAgent';
 
@@ -129,5 +131,36 @@ describe('AddNewAgent', () => {
     expect(screen.getByText('LLM Provider:')).toBeInTheDocument();
     expect(screen.getByText('System Prompt:')).toBeInTheDocument();
     expect(screen.getByText('Initial Command:')).toBeInTheDocument();
+  });
+
+  it('blocks "default-agent" as a reserved id — warns and disables Create', async () => {
+    const user = await renderAndOpenDialog();
+
+    const input = screen.getByPlaceholderText('e.g., Customer Support Agent');
+    await user.type(input, 'Default Agent');
+
+    expect(screen.getByText(/is reserved for the workspace prompt bar/i)).toBeInTheDocument();
+    const createButton = screen.getByTestId('create-agent');
+    expect(createButton).toBeDisabled();
+
+    // Disabled buttons no-op on click, so this also confirms the guard
+    // isn't bypassable from the UI.
+    await user.click(createButton);
+    expect(mockVenue.agents.create).not.toHaveBeenCalled();
+  });
+
+  it('allows editing the Agent ID away from the reserved default-agent id', async () => {
+    const user = await renderAndOpenDialog();
+
+    const nameInput = screen.getByPlaceholderText('e.g., Customer Support Agent');
+    await user.type(nameInput, 'Default Agent');
+    expect(screen.getByTestId('create-agent')).toBeDisabled();
+
+    const idInput = screen.getByPlaceholderText('e.g., customer-support-agent');
+    await user.clear(idInput);
+    await user.type(idInput, 'my-default-agent');
+
+    expect(screen.queryByText(/is reserved for the workspace prompt bar/i)).not.toBeInTheDocument();
+    expect(screen.getByTestId('create-agent')).not.toBeDisabled();
   });
 });

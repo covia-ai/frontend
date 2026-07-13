@@ -24,6 +24,7 @@ import { Separator } from "./ui/separator";
 import { toast } from "sonner";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { LLM_PROVIDERS } from "@/config/llm-providers";
+import { DEFAULT_AGENT_ID } from "@/config/agents";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
@@ -57,6 +58,9 @@ export function AddNewAgent({
 
 
   const venue = useAuthenticatedVenue();
+
+  const resolvedAgentId = agentId.trim() || slugify(agentName);
+  const isReservedAgentId = resolvedAgentId === DEFAULT_AGENT_ID;
 
   useEffect(() => {
     if (!open) return;
@@ -93,11 +97,15 @@ export function AddNewAgent({
       toast("No API key found for this provider");
       return;
     }
+    if (isReservedAgentId) {
+      toast(`"${DEFAULT_AGENT_ID}" is reserved for the workspace prompt bar — pick another id`);
+      return;
+    }
     setCreating(true);
     try {
       const provider = LLM_PROVIDERS[llmProvider];
       const result = await venue.agents.create({
-        agentId: agentId.trim() || slugify(agentName),
+        agentId: resolvedAgentId,
         config: {
           operation: "v/ops/llmagent/chat",
           llmOperation: provider.operation,
@@ -174,9 +182,16 @@ export function AddNewAgent({
                 setAgentIdEdited(true);
               }}
             />
-            <p className="text-xs text-muted-foreground">
-              Unique identifier — auto-suggested from name. Edit to override.
-            </p>
+            {isReservedAgentId ? (
+              <p className="text-xs text-amber-500 flex items-center gap-1">
+                <AlertTriangle size={12} />
+                &quot;{DEFAULT_AGENT_ID}&quot; is reserved for the workspace prompt bar — pick another id.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Unique identifier — auto-suggested from name. Edit to override.
+              </p>
+            )}
           </div>
 
           {/* LLM Provider */}
@@ -251,7 +266,7 @@ export function AddNewAgent({
           role="button"
           data-testid="create-agent"
           onClick={handleNewAgent}
-          disabled={creating || !venue || !agentName.trim() || !isProviderReady(llmProvider)}
+          disabled={creating || !venue || !agentName.trim() || !isProviderReady(llmProvider) || isReservedAgentId}
           className="btn-sm mt-2"
         >
           {creating ? "Creating..." : "Create"}

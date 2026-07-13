@@ -2,11 +2,11 @@
 
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { LogInIcon, Copy, Check, Key, Plus, Import, Globe } from "lucide-react";
+import { LogInIcon, Copy, Check, Key, Plus, Import, Globe, CircleUserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Avatar }from "@/components/ui/avatar";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger }from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger }from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -16,7 +16,6 @@ import {
   DialogFooter,
 } from "../ui/dialog";
 import { Input } from "../ui/input";
-import { AvatarFallback } from "@radix-ui/react-avatar";
 import { useState } from "react";
 import { useAuthStore } from "@/hooks/use-auth";
 import { useVenue } from "@/hooks/use-venue";
@@ -33,7 +32,6 @@ export function SignInButton(props: any) {
   const venues = useVenues((x) => x.venues);
   const router = useRouter();
 
-  const [openKeyboadShortcut, setOpenKeyboardShortcut] = useState(false);
   const [signInOpen, setSignInOpen] = useState(false);
   // "choose" = pick generate vs provide, "show" = display key with copy, "provide" = paste your own key
   const [step, setStep] = useState<"choose" | "show" | "provide">("choose");
@@ -41,18 +39,7 @@ export function SignInButton(props: any) {
   const [isExisting, setIsExisting] = useState(false);
   const [pastedKey, setPastedKey] = useState("");
   const [keyError, setKeyError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const [keyCopied, setKeyCopied] = useState(false);
-
-  const closeDialog = () => {
-    setOpenKeyboardShortcut(false);
-  };
-  const copyDid = () => {
-    if (!auth) return;
-    navigator.clipboard.writeText(auth.did);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const handleSignInClick = () => {
     const existing = getDeviceKeyHex();
@@ -264,57 +251,23 @@ export function SignInButton(props: any) {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Avatar>
-              <AvatarFallback>{auth.did.slice(-2).toUpperCase()}</AvatarFallback>
-            </Avatar>
+            <Button variant="ghost" size="icon" className="rounded-full">
+              <CircleUserRound className="!size-6" />
+            </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-fit mr-8">
-            <DropdownMenuLabel className="truncate max-w-[200px]">{auth.did}</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={copyDid} className="items-start text-center hover:bg-primary-vlight">
-              {copied ? <Check size={14} className="mr-1" /> : <Copy size={14} className="mr-1" />}
-              {copied ? "Copied!" : "Copy DID"}
+          <DropdownMenuContent className="w-48 mr-8">
+            <DropdownMenuItem asChild className="items-start text-center hover:bg-primary-vlight">
+              <Link href="/profile">My Profile</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setOpenKeyboardShortcut(true)} className="items-start text-center hover:bg-primary-vlight">
-              Keyboard Shortcuts
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="items-start text-center hover:bg-primary-vlight">
-              <div
-                onClick={() => { logout(); router.push("/"); }}
-                className="text-sm "
-              >
-                Sign Out
-              </div>
+            <DropdownMenuItem
+              onClick={() => { logout(); router.push("/"); }}
+              className="items-start text-center hover:bg-primary-vlight"
+            >
+              Sign Out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-
-        <Dialog open={openKeyboadShortcut} onOpenChange={closeDialog}>
-          <DialogContent className="bg-card text-card-foreground font-thin">
-            <DialogTitle>Keyboard Shortcuts</DialogTitle>
-            <hr />
-
-            <div className="flex flex-row items-start justify-between text-sm">
-              <div className="text-center">Sidebar Toggle</div>
-              <div className="text-center"><span className="bg-muted text-muted-foreground p-2 rounded-sm m-1">Cltr</span><span className="bg-muted text-muted-foreground p-2 rounded-sm m-1">b</span></div>
-            </div>
-            <div className="flex flex-row items-start justify-between text-sm">
-              <div className="text-center">Theme Toggle</div>
-              <div className="text-center"><span className="bg-muted text-muted-foreground p-2 rounded-sm m-1">Cltr</span><span className="bg-muted text-muted-foreground p-2 rounded-sm m-1">x</span></div>
-            </div>
-
-            <div className="flex flex-row items-start justify-between text-sm">
-              <div className="text-center">On asset page - Add new asset</div>
-              <div className="text-center"><span className="bg-muted text-muted-foreground p-2 rounded-sm m-1">Cltr</span><span className="bg-muted text-muted-foreground p-2 rounded-sm m-1">a</span></div>
-            </div>
-            <div className="flex flex-row items-start justify-between text-sm">
-              <div className="text-center">On venue page - Add new venue</div>
-              <div className="text-center"><span className="bg-muted text-muted-foreground p-2 rounded-sm m-1">Cltr</span><span className="bg-muted text-muted-foreground p-2 rounded-sm m-1">v</span></div>
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
     )
   }

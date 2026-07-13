@@ -14,7 +14,7 @@ import { Spinner } from '@/components/ui/shadcn-io/spinner';
 import { AssetCard } from "./AssetCard";
 import { PaginationHeader } from "./PaginationHeader";
 import { Input } from "@/components/ui/input";
-import { PlayCircle, Search } from "lucide-react";
+import { PlayCircle, Search, X } from "lucide-react";
 import { listCatalogOperations } from "@/lib/operations-catalog";
 import { TagFilterDropdown } from "./TagFilterDropdown";
 
@@ -22,7 +22,6 @@ import { TagFilterDropdown } from "./TagFilterDropdown";
 
 export function OperationsList() {
   const searchParams = useSearchParams()
-  const search = searchParams.get('search');
   const [assetsMetadata, setAssetsMetadata] = useState<Asset[]>([]);
   const [isLoading, setLoading] = useState(true);
   const router = useRouter();
@@ -34,7 +33,7 @@ export function OperationsList() {
   const [totalPages, setTotalPages] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [searchInput, setSearchInput] = useState(search ?? "");
+  const [searchInput, setSearchInput] = useState(searchParams.get('search') ?? "");
   const pathname = usePathname();
 
   const { venues } = useVenues();
@@ -48,6 +47,12 @@ export function OperationsList() {
   const prevPage = (page: number) => {
     setCurrentPage(page)
   }
+  const clearSearch = () => {
+    setSearchInput("");
+    router.replace(pathname);
+  }
+  // Fetches the full catalog once per venue — search text only filters
+  // client-side (see filteredAssets) so typing never triggers a refetch.
   useEffect(() => {
      if (!venueObj) return;
      let ignore = false;
@@ -60,15 +65,9 @@ export function OperationsList() {
           // one read per tree, no per-asset round trip. Each op keeps its
           // resolvable catalog path as its id (drives the URL).
           const ops = await listCatalogOperations(venue);
-          const term = search?.toLowerCase() ?? "";
-          const matched = term.length > 0
-            ? ops.filter(op =>
-                op.metadata?.name?.toLowerCase().includes(term) ||
-                op.path.toLowerCase().includes(term))
-            : ops;
-          matched.sort((a, b) =>
+          const sorted = [...ops].sort((a, b) =>
             (a.metadata?.name ?? a.path).localeCompare(b.metadata?.name ?? b.path));
-          if (!ignore) setAssetsMetadata(matched.map(op => new Operation(op.path, venue, op.metadata)));
+          if (!ignore) setAssetsMetadata(sorted.map(op => new Operation(op.path, venue, op.metadata)));
         } catch (error) {
           console.error('Error fetching operations:', error);
         } finally {
@@ -77,7 +76,7 @@ export function OperationsList() {
       }
      fetchAssets();
      return () => { ignore = true; };
-  }, [search, venueObj, authMap, getAuthForVenue]);
+  }, [venueObj, authMap, getAuthForVenue]);
 
   const adapterOptions = useMemo(() => {
     const names = assetsMetadata
@@ -92,13 +91,17 @@ export function OperationsList() {
   }, [assetsMetadata]);
 
   const filteredAssets = useMemo(() => {
-    if (selectedTags.length === 0) return assetsMetadata;
+    const term = searchInput.trim().toLowerCase();
     return assetsMetadata.filter(a => {
-      const adapter = (a.metadata?.operation?.adapter as string | undefined)?.split(':')[0];
-      const keywords: string[] = Array.isArray(a.metadata?.keywords) ? a.metadata.keywords : [];
-      return selectedTags.some(tag => tag === adapter || keywords.includes(tag));
+      if (selectedTags.length > 0) {
+        const adapter = (a.metadata?.operation?.adapter as string | undefined)?.split(':')[0];
+        const keywords: string[] = Array.isArray(a.metadata?.keywords) ? a.metadata.keywords : [];
+        if (!selectedTags.some(tag => tag === adapter || keywords.includes(tag))) return false;
+      }
+      if (!term) return true;
+      return (a.metadata?.name ?? "").toLowerCase().includes(term) || (a.id ?? "").toLowerCase().includes(term);
     });
-  }, [assetsMetadata, selectedTags]);
+  }, [assetsMetadata, selectedTags, searchInput]);
 
   useEffect(() => {
     setTotalItems(filteredAssets.length);
@@ -139,12 +142,18 @@ export function OperationsList() {
               placeholder="Type keyword to search…"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter')
-                  router.push(pathname + "?search=" + searchInput);
-              }}
-              className="pl-8"
+              className="pl-8 pr-8"
             />
+            {searchInput && (
+              <button
+                type="button"
+                aria-label="Clear search"
+                onClick={clearSearch}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
           <TagFilterDropdown
             adapterOptions={adapterOptions}
