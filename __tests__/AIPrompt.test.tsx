@@ -11,16 +11,19 @@ jest.mock('@/hooks/use-authenticated-venue', () => ({
 
 function makeVenue(overrides: {
   existingAgents?: string[];
+  agentStatus?: string;
   secrets?: string[];
 } = {}) {
   const existingAgents = overrides.existingAgents ?? [];
+  const agentStatus = overrides.agentStatus ?? 'active';
   return {
     agents: {
       list: jest.fn().mockResolvedValue({
-        agents: existingAgents.map((agentId) => ({ agentId, status: 'active', tasks: 0 })),
+        agents: existingAgents.map((agentId) => ({ agentId, status: agentStatus, tasks: 0 })),
       }),
       create: jest.fn().mockResolvedValue({ agentId: 'default-agent', status: 'active', created: true }),
       request: jest.fn().mockResolvedValue({ id: 'job-1', status: 'PENDING' }),
+      resume: jest.fn().mockResolvedValue({ agentId: 'default-agent', status: 'SLEEPING' }),
     },
     secrets: {
       list: jest.fn().mockResolvedValue(overrides.secrets ?? []),
@@ -78,6 +81,56 @@ describe('AIPrompt — default agent reuse vs creation', () => {
     });
     expect(venue.agents.create).not.toHaveBeenCalled();
     expect(venue.secrets.list).not.toHaveBeenCalled();
+  });
+
+  it('resumes a SUSPENDED default-agent before sending the task', async () => {
+    const venue = makeVenue({ existingAgents: ['default-agent'], agentStatus: 'SUSPENDED' });
+    mockUseAuthenticatedVenue.mockReturnValue(venue);
+    const user = userEvent.setup();
+
+    render(<AIPrompt />);
+    await user.type(screen.getByLabelText('prompt'), 'Do something useful');
+    await user.click(screen.getByTestId('chat-button'));
+
+    await waitFor(() => {
+      expect(venue.agents.resume).toHaveBeenCalledWith('default-agent');
+    });
+    await waitFor(() => {
+      expect(venue.agents.request).toHaveBeenCalledWith(
+        'default-agent',
+        { task: 'Do something useful' },
+        false,
+      );
+    });
+    expect(venue.agents.create).not.toHaveBeenCalled();
+  });
+
+  it('recreates a TERMINATED default-agent instead of resuming it', async () => {
+    const venue = makeVenue({
+      existingAgents: ['default-agent'],
+      agentStatus: 'TERMINATED',
+      secrets: ['ANTHROPIC_API_KEY'],
+    });
+    mockUseAuthenticatedVenue.mockReturnValue(venue);
+    const user = userEvent.setup();
+
+    render(<AIPrompt />);
+    await user.type(screen.getByLabelText('prompt'), 'Do something useful');
+    await user.click(screen.getByTestId('chat-button'));
+
+    await waitFor(() => {
+      expect(venue.agents.create).toHaveBeenCalledWith(
+        expect.objectContaining({ agentId: 'default-agent', overwrite: true }),
+      );
+    });
+    expect(venue.agents.resume).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(venue.agents.request).toHaveBeenCalledWith(
+        'default-agent',
+        { task: 'Do something useful' },
+        false,
+      );
+    });
   });
 
   it('creates default-agent on first use when a single LLM key is present, then sends the task', async () => {

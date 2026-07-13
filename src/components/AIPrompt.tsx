@@ -10,6 +10,7 @@ import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { toast } from "sonner";
 import { KNOWN_LLM_KEYS, LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
+import { AgentStatus } from "@covia/covia-sdk";
 import { useRouter } from "next/navigation";
 
 export const AIPrompt = () => {
@@ -65,6 +66,11 @@ export const AIPrompt = () => {
     try {
       await venue.agents.create({
         agentId: DEFAULT_AGENT_ID,
+        // overwrite:true only matters when the slot is occupied — the venue
+        // allows that solely for a TERMINATED agent (recreates it fresh),
+        // and this path is only reached when the default agent is absent
+        // or TERMINATED, so it's always safe here.
+        overwrite: true,
         config: {
           operation: "v/ops/llmagent/chat",
           llmOperation: provider.operation,
@@ -91,9 +97,21 @@ export const AIPrompt = () => {
     setChecking(true);
     try {
       // Reuse the default agent directly once it exists — no key lookup,
-      // no re-creation, just dispatch the task.
+      // no re-creation, just dispatch the task. A SUSPENDED agent is resumed
+      // first, since a task sent to a suspended agent would just fail. A
+      // TERMINATED agent can't be resumed, so it falls through to recreation
+      // below instead.
       const { agents } = await venue.agents.list();
-      if (agents.some((a) => a.agentId === DEFAULT_AGENT_ID)) {
+      const existing = agents.find((a) => a.agentId === DEFAULT_AGENT_ID);
+      if (existing && existing.status !== AgentStatus.TERMINATED) {
+        if (existing.status === AgentStatus.SUSPENDED) {
+          try {
+            await venue.agents.resume(DEFAULT_AGENT_ID);
+          } catch (err: any) {
+            toast("Failed to resume agent", { description: err?.message ?? "Please try again." });
+            return;
+          }
+        }
         await sendPrompt();
         return;
       }
