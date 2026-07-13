@@ -10,17 +10,18 @@ jest.mock('@/hooks/use-authenticated-venue', () => ({
 }));
 
 function makeVenue(overrides: {
-  existingAgents?: string[];
+  existingAgents?: string[] | Array<{ agentId: string; status: string }>;
   agentStatus?: string;
   secrets?: string[];
 } = {}) {
-  const existingAgents = overrides.existingAgents ?? [];
+  const rawAgents = overrides.existingAgents ?? [];
   const agentStatus = overrides.agentStatus ?? 'active';
+  const agents = rawAgents.map((a) =>
+    typeof a === 'string' ? { agentId: a, status: agentStatus, tasks: 0 } : { tasks: 0, ...a }
+  );
   return {
     agents: {
-      list: jest.fn().mockResolvedValue({
-        agents: existingAgents.map((agentId) => ({ agentId, status: agentStatus, tasks: 0 })),
-      }),
+      list: jest.fn().mockResolvedValue({ agents }),
       create: jest.fn().mockResolvedValue({ agentId: 'default-agent', status: 'active', created: true }),
       request: jest.fn().mockResolvedValue({ id: 'job-1', status: 'PENDING' }),
       resume: jest.fn().mockResolvedValue({ agentId: 'default-agent', status: 'SLEEPING' }),
@@ -29,6 +30,12 @@ function makeVenue(overrides: {
       list: jest.fn().mockResolvedValue(overrides.secrets ?? []),
     },
   };
+}
+
+// Opens the "⋮" agent picker menu and clicks the option with the given visible text.
+async function pickAgentOption(user: ReturnType<typeof userEvent.setup>, label: string) {
+  await user.click(screen.getByTestId('agent-picker'));
+  await user.click(await screen.findByRole('menuitemradio', { name: label }));
 }
 
 describe('Chat Component', () => {
@@ -183,5 +190,115 @@ describe('AIPrompt — default agent reuse vs creation', () => {
 
     expect(await screen.findByTestId('chat-dialog')).toBeInTheDocument();
     expect(venue.agents.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('AIPrompt — agent picker', () => {
+  beforeEach(() => {
+    mockUseAuthenticatedVenue.mockReset();
+  });
+
+  it('shows default-agent subtext, and lists other existing agents plus a New agent option in the ⋮ menu', async () => {
+    const venue = makeVenue({
+      existingAgents: [
+        { agentId: 'default-agent', status: 'active' },
+        { agentId: 'research-bot', status: 'active' },
+      ],
+    });
+    mockUseAuthenticatedVenue.mockReturnValue(venue);
+    const user = userEvent.setup();
+
+    render(<AIPrompt />);
+    expect(screen.getByText(/This request will go to the default agent/)).toBeInTheDocument();
+
+    await user.click(screen.getByTestId('agent-picker'));
+    expect(await screen.findByRole('menuitemradio', { name: 'research-bot' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitemradio', { name: '+ New agent' })).toBeInTheDocument();
+  });
+
+  it('sends directly to a different existing agent selected from the picker', async () => {
+    const venue = makeVenue({
+      existingAgents: [
+        { agentId: 'default-agent', status: 'active' },
+        { agentId: 'research-bot', status: 'active' },
+      ],
+    });
+    mockUseAuthenticatedVenue.mockReturnValue(venue);
+    const user = userEvent.setup();
+
+    render(<AIPrompt />);
+    await pickAgentOption(user, 'research-bot');
+    expect(screen.getByText(/This request will go to "research-bot"/)).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('prompt'), 'Do something useful');
+    await user.click(screen.getByTestId('chat-button'));
+
+    await waitFor(() => {
+      expect(venue.agents.request).toHaveBeenCalledWith(
+        'research-bot',
+        { task: 'Do something useful' },
+        false,
+      );
+    });
+    expect(venue.agents.create).not.toHaveBeenCalled();
+    expect(venue.secrets.list).not.toHaveBeenCalled();
+  });
+
+  it('resumes a SUSPENDED non-default agent selected from the picker', async () => {
+    const venue = makeVenue({
+      existingAgents: [{ agentId: 'research-bot', status: 'SUSPENDED' }],
+    });
+    mockUseAuthenticatedVenue.mockReturnValue(venue);
+    const user = userEvent.setup();
+
+    render(<AIPrompt />);
+    await pickAgentOption(user, 'research-bot');
+
+    await user.type(screen.getByLabelText('prompt'), 'Do something useful');
+    await user.click(screen.getByTestId('chat-button'));
+
+    await waitFor(() => {
+      expect(venue.agents.resume).toHaveBeenCalledWith('research-bot');
+    });
+    await waitFor(() => {
+      expect(venue.agents.request).toHaveBeenCalledWith(
+        'research-bot',
+        { task: 'Do something useful' },
+        false,
+      );
+    });
+  });
+
+  it('creates a distinctly-named workspace agent when "+ New agent" is selected', async () => {
+    const venue = makeVenue({
+      existingAgents: [{ agentId: 'default-agent', status: 'active' }],
+      secrets: ['ANTHROPIC_API_KEY'],
+    });
+    mockUseAuthenticatedVenue.mockReturnValue(venue);
+    const user = userEvent.setup();
+
+    render(<AIPrompt />);
+    await pickAgentOption(user, '+ New agent');
+    expect(screen.getByText(/This request will go to a new agent/)).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('prompt'), 'Do something useful');
+    await user.click(screen.getByTestId('chat-button'));
+
+    await waitFor(() => {
+      expect(venue.agents.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          agentId: expect.stringMatching(/^workspace-agent-/),
+          overwrite: true,
+        }),
+      );
+    });
+    const createdAgentId = venue.agents.create.mock.calls[0][0].agentId;
+    await waitFor(() => {
+      expect(venue.agents.request).toHaveBeenCalledWith(
+        createdAgentId,
+        { task: 'Do something useful' },
+        false,
+      );
+    });
   });
 });

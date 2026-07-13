@@ -251,7 +251,7 @@ export function SignInButton(props: any) {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full">
+            <Button variant="ghost" size="icon" className="rounded-full" aria-label="Account menu">
               <CircleUserRound className="!size-6" />
             </Button>
           </DropdownMenuTrigger>
