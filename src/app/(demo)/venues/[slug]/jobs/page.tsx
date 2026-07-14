@@ -1,7 +1,14 @@
 
 "use client";
 
+import { use } from "react";
 import { JobList } from "@/components/JobList";
-export default function JobPage() {
-  return <JobList/>
+
+interface Props {
+  params: Promise<{ slug: string }>;
+}
+
+export default function JobPage({ params }: Props) {
+  const { slug } = use(params);
+  return <JobList venueId={decodeURIComponent(slug)} />
 }

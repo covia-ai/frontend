@@ -11,9 +11,8 @@ import {
 } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { useCallback, useEffect, useRef, useState }from "react";
-import { useStore } from "zustand";
-import { useVenue } from "@/hooks/use-venue";
 import { getVenueFor } from "@/hooks/use-authenticated-venue";
+import { useVenueForRoute } from "@/hooks/use-venue-for-route";
 import { Job, JobMetadata, RunStatus }from "@covia/covia-sdk";
 import { colourForStatus, getExecutionTime } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
@@ -26,7 +25,11 @@ import { Spinner } from "@/components/ui/shadcn-io/spinner";
 
 const ACTIVE_STATUSES = new Set([RunStatus.PENDING, RunStatus.STARTED, RunStatus.PAUSED]);
 
-export function JobList() {
+interface JobListProps {
+  venueId?: string;
+}
+
+export function JobList({ venueId }: JobListProps = {}) {
   const [statusFilter, setStatusFilter] = useState("All");
   const [dateFilter, _setDateFilter] = useState("All");
   const [sort, setSort] = useState<{ col: "id" | "date" | "status"; dir: "asc" | "desc" }>({ col: "date", dir: "desc" });
@@ -39,7 +42,7 @@ export function JobList() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const { venues } = useVenues();
-  const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
+  const venueObj = useVenueForRoute(venueId);
   const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
   const authMap = useAuthStore((x) => x.authMap);
   const prevVenueId = useRef<string | undefined>(undefined);

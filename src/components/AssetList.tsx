@@ -7,9 +7,8 @@ import { Input } from "@/components/ui/input";
 import { useEffect, useState, useMemo } from "react";
 
 import { Asset, DataAsset }from "@covia/covia-sdk";
-import { useStore } from "zustand";
-import { useVenue } from "@/hooks/use-venue";
 import { getVenueFor } from "@/hooks/use-authenticated-venue";
+import { useVenueForRoute } from "@/hooks/use-venue-for-route";
 import { useAuthStore } from "@/hooks/use-auth";
 import { Spinner } from '@/components/ui/shadcn-io/spinner';
 import { AssetCard } from "./AssetCard";
@@ -21,16 +20,17 @@ import { TopBar } from "./admin-panel/TopBar";
 import { TagFilterDropdown } from "./TagFilterDropdown";
 
 
-export function AssetList() {
+interface AssetListProps {
+  venueId?: string;
+}
+
+export function AssetList({ venueId }: AssetListProps = {}) {
   const searchParams = useSearchParams()
   const [assetsMetadata, setAssetsMetadata] = useState<Asset[]>([]);
   const [isLoading, setLoading] = useState(true);
   const router = useRouter();
 
   const itemsPerPage = 12
-  const _offset = 0;
-  const _limit = itemsPerPage;
-  const [_totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -38,8 +38,10 @@ export function AssetList() {
   const pathname = usePathname();
 
   const { venues } = useVenues();
-  const venueObj = useStore(useVenue, (x) => x.currentVenue);
-  const authData = useAuthStore((x) => x.auth);
+  const venueObj = useVenueForRoute(venueId);
+  const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
+  const authMap = useAuthStore((x) => x.authMap);
+  const authData = getAuthForVenue(venueObj?.venueId ?? "");
   const nextPage = (page: number) => {
     setCurrentPage(page)
   }
@@ -62,17 +64,16 @@ export function AssetList() {
     setLoading(true);
     try {
       venue.listAssets().then((assetList) => {
-        assetList.items.forEach((assetId: string) => {
-          venue.getAsset(assetId).then((asset: Asset) => {
-            asset.getMetadata().then((metadata: any) => {
-              if (isStale()) return;
-              if (metadata.name != undefined && metadata.operation == undefined) {
-                setAssetsMetadata(prevArray => [...prevArray, new DataAsset(asset.id, asset.venue, metadata)]);
-              }
-            })
-          })
+        // getAsset() already fetches the asset's metadata (GET /api/v1/assets/{id}),
+        // so asset.metadata is used directly below instead of a redundant getMetadata() call.
+        Promise.all(assetList.items.map((assetId: string) => venue.getAsset(assetId).catch(() => null))).then((assets) => {
+          if (isStale()) return;
+          const dataAssets = assets
+            .filter((asset): asset is Asset => asset != null && asset.metadata.name != undefined && asset.metadata.operation == undefined)
+            .map((asset) => new DataAsset(asset.id, asset.venue, asset.metadata));
+          setAssetsMetadata(dataAssets);
+          setLoading(false);
         })
-        if (!isStale()) setLoading(false)
       })
     }
     catch (error) {
@@ -84,7 +85,7 @@ export function AssetList() {
     let ignore = false;
     fetchAssets(() => ignore);
     return () => { ignore = true; };
-  }, [venueObj, authData]);
+  }, [venueObj, authMap, getAuthForVenue]);
 
   const keywordOptions = useMemo(() => {
     const all = assetsMetadata.flatMap(a => Array.isArray(a.metadata?.keywords) ? a.metadata.keywords : []);
@@ -104,7 +105,6 @@ export function AssetList() {
   }, [assetsMetadata, selectedTags, searchInput]);
 
   useEffect(() => {
-    setTotalItems(filteredAssets.length)
     setTotalPages(Math.ceil(filteredAssets.length / itemsPerPage))
     setCurrentPage(1)
   }, [filteredAssets])

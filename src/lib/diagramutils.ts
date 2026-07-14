@@ -37,7 +37,7 @@ function processOutput(results: any, nodes: any[], edges: any[], posX: number, p
 			const stepId = results[output][0];
 			if (typeof (stepId) == "number") {
 				let sourceHandle = "";
-				if (results[output] > 1)
+				if (results[output].length > 1)
 					sourceHandle = results[output][1]
 				else
 					sourceHandle = getResultOfStep(results, stepId)[0];
@@ -55,7 +55,7 @@ function processOutput(results: any, nodes: any[], edges: any[], posX: number, p
 			}
 			else if (stepId == "input") {
 				let sourceHandle = "";
-				if (results[output] > 1)
+				if (results[output].length > 1)
 					sourceHandle = results[output][1]
 				else
 					sourceHandle = "input";

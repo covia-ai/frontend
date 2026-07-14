@@ -50,15 +50,10 @@ export const AssetLookup = ({sendAssetIdBackToForm}: {sendAssetIdBackToForm: (id
   }
   useEffect(() => {
     if(filterValue.length > 0 ) {
-        setFilteredAsset([])
-        assetsMetadata.map((asset) => {
-          
-          if(asset.id.indexOf(filterValue) != -1 || asset.metadata.name?.toLowerCase().indexOf(filterValue.toLowerCase()) != -1) {
-            setFilteredAsset(prevArray => [...prevArray,asset]);
-          }
-      
-    })
-   
+        const matches = assetsMetadata.filter((asset) =>
+          asset.id.indexOf(filterValue) != -1 || (asset.metadata.name ?? "").toLowerCase().indexOf(filterValue.toLowerCase()) != -1
+        );
+        setFilteredAsset(matches);
   }
    else {
       setFilteredAsset(assetsMetadata)
@@ -116,21 +111,21 @@ export const AssetLookup = ({sendAssetIdBackToForm}: {sendAssetIdBackToForm: (id
               
                 
                   {
-                    filteredAsset && filteredAsset.map((asset:Asset, index:number) => 
-                       
-                       
-                        asset.id != assetId ? 
-                        ( <div  onClick={() => setSelectedAsset(asset.id)}  
-                        className="flex flex-col items-start justify-center  text-xs text-left  hover:bg-muted rounded-md my-4"  key={index}>
+                    filteredAsset && filteredAsset.map((asset:Asset) =>
+
+
+                        asset.id != assetId ?
+                        ( <div  onClick={() => setSelectedAsset(asset.id)}
+                        className="flex flex-col items-start justify-center  text-xs text-left  hover:bg-muted rounded-md my-4"  key={asset.id}>
                           <span className="px-2 rounded-sm text-[1rem] font-medium">{asset.metadata.name || "Unamed asset"}</span>
                           <span className="px-2 rounded-sm text-xs text-card-foreground my-1">{asset.id.substring(0,50)+".."}</span>
                         </div>)
                         :
                         (
-                        <div  onClick={() => setSelectedAsset("")}  
-                        className="flex flex-col items-start justify-center  text-xs text-left bg-secondary-vlight  rounded-md my-4"  key={index}>
+                        <div  onClick={() => setSelectedAsset("")}
+                        className="flex flex-col items-start justify-center  text-xs text-left bg-secondary-vlight  rounded-md my-4"  key={asset.id}>
                           <span className="px-2 rounded-sm text-[1rem] font-medium">{asset.metadata.name || "Unamed asset"}</span>
-                          <span className="px-2 rounded-sm text-xs text-card-foreground my-1">{asset.id.substring(0,50)+".."}</span>                        
+                          <span className="px-2 rounded-sm text-xs text-card-foreground my-1">{asset.id.substring(0,50)+".."}</span>
                        </div>
                         )
                       )

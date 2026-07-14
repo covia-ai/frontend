@@ -34,7 +34,6 @@ type AuthStore = {
   setDeviceKeyHex: (hex: string) => void;
   setActiveVenue: (venueId: string) => void;
   logout: () => void;
-  getAuth: () => VenueAuth | null;
   getAuthForVenue: (venueId: string) => VenueAuth | null;
 };
 
@@ -89,11 +88,6 @@ export const useAuthStore = create(
           const { [activeVenueId]: _, ...rest } = authMap;
           set({ authMap: rest, auth: null });
         }
-      },
-
-      getAuth: () => {
-        const { activeVenueId, authMap } = get();
-        return deriveAuth(authMap, activeVenueId);
       },
 
       getAuthForVenue: (venueId: string) => {

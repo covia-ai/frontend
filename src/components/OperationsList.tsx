@@ -3,9 +3,8 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Asset, Operation }from "@covia/covia-sdk";
-import { useStore } from "zustand";
-import { useVenue } from "@/hooks/use-venue";
 import { getVenueFor } from "@/hooks/use-authenticated-venue";
+import { useVenueForRoute } from "@/hooks/use-venue-for-route";
 import { useAuthStore } from "@/hooks/use-auth";
 import { useVenues } from "@/hooks/use-venues";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
@@ -19,17 +18,17 @@ import { listCatalogOperations } from "@/lib/operations-catalog";
 import { TagFilterDropdown } from "./TagFilterDropdown";
 
 
+interface OperationsListProps {
+  venueId?: string;
+}
 
-export function OperationsList() {
+export function OperationsList({ venueId }: OperationsListProps = {}) {
   const searchParams = useSearchParams()
   const [assetsMetadata, setAssetsMetadata] = useState<Asset[]>([]);
   const [isLoading, setLoading] = useState(true);
   const router = useRouter();
 
   const itemsPerPage = 12
-  const _offset = 0;
-  const _limit = itemsPerPage;
-  const [_totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -37,7 +36,7 @@ export function OperationsList() {
   const pathname = usePathname();
 
   const { venues } = useVenues();
-  const venueObj = useStore(useVenue, (x) => x.currentVenue);
+  const venueObj = useVenueForRoute(venueId);
   const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
   const authMap = useAuthStore((x) => x.authMap);
 
@@ -104,7 +103,6 @@ export function OperationsList() {
   }, [assetsMetadata, selectedTags, searchInput]);
 
   useEffect(() => {
-    setTotalItems(filteredAssets.length);
     setTotalPages(Math.ceil(filteredAssets.length / itemsPerPage));
     setCurrentPage(1);
   }, [filteredAssets]);

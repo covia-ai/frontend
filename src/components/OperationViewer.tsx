@@ -238,10 +238,6 @@ export const OperationViewer = (props: any) => {
     setRawInput(prev => ({ ...prev, [key]: value }));
   }
 
-  function _setKeyType(key: any, type: any) {
-    setTypeMap(prev => ({ ...prev, [key]: type }));
-  }
-
   function setKeyTypeAndUpdateRawInput(key: any, newType: any) {
     // Update the type
     setTypeMap(prev => ({ ...prev, [key]: newType }));

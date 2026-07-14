@@ -1,5 +1,10 @@
 import { AssetList } from "@/components/AssetList";
 
-export default function AssetPage() {
-  return <AssetList/>;
-} 
+interface Props {
+  params: Promise<{ slug: string }>;
+}
+
+export default async function AssetPage({ params }: Props) {
+  const { slug } = await params;
+  return <AssetList venueId={decodeURIComponent(slug)} />;
+}

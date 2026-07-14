@@ -15,7 +15,6 @@ import { AddNewVenueModal } from "@/components/AddNewVenueModal";
 
 export default function VenuesPage() {
   const { venues } = useVenues();
-  const [_venueId, _setVenueId] = useState("");
   const searchParams = useSearchParams()
   const router = useRouter();
   const pathname = usePathname();
@@ -24,7 +23,6 @@ export default function VenuesPage() {
   const [totalPages, setTotalPages] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchInput, setSearchInput] = useState(searchParams.get('search') ?? "");
-  const [_open, setOpen] = useState(false)
 
   const nextPage = (page: number) => {
     setCurrentPage(page)
@@ -48,19 +46,6 @@ export default function VenuesPage() {
     setTotalPages(Math.ceil(filteredVenues.length / itemsPerPage))
     setCurrentPage(1)
   }, [filteredVenues]);
-
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-
-          // Ctrl/Cmd + K: Search
-        if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
-          e.preventDefault();
-          setOpen(true)
-        }
-        }
-       window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
 
   return (
     <ContentLayout>

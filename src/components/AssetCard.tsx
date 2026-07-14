@@ -27,7 +27,6 @@ export function AssetCard({ asset,type,compact }: AssetCardProps) {
     const venue = useAuthenticatedVenue();
     const router = useRouter();
     const [newJsonData, setNewJsonData] = useState<any>({});
-    const [_assetCreated, setAssetCreated] = useState(false);
 
     const adapter = (asset.metadata?.operation?.adapter as string | undefined)?.split(':')[0] ?? null;
 
@@ -47,13 +46,12 @@ export function AssetCard({ asset,type,compact }: AssetCardProps) {
           venue?.assets.register(jsonData).then((asset: Asset) => {
             if (asset != undefined && asset != null) {
               setNewJsonData({})
-              setAssetCreated(true);
               window.location.reload()
             }
           })
         }
         catch (error) {
-          setAssetCreated(false);
+          console.error('Error copying asset:', error);
         }
     }
     return (
@@ -77,7 +75,7 @@ export function AssetCard({ asset,type,compact }: AssetCardProps) {
                             <TooltipContent data-testid="btn-tootip">Copy Asset</TooltipContent>
                              </Tooltip>
                             </DialogTrigger>
-                            <DialogContent className="h-11/12 min-w-10/12 bg-card text-card-foreground">
+                            <DialogContent className="h-11/12 min-w-10/12 bg-card text-card-foreground content-start">
                             <DialogTitle className="flex flex-row items-center justify-between mr-4">
                                 Copy asset
                                 <DialogClose>
@@ -90,6 +88,7 @@ export function AssetCard({ asset,type,compact }: AssetCardProps) {
 
                                 </DialogClose>
                             </DialogTitle>
+                            <div className="rounded-lg bg-white">
                             {Object.keys(newJsonData).length == 0 && <JsonEditor data={asset.metadata}
                                 setData={setNewJsonData}
                                 rootName="metadata"
@@ -104,6 +103,10 @@ export function AssetCard({ asset,type,compact }: AssetCardProps) {
                                 collapse={1}
                                 maxWidth="90vw"
                             />}
+                            <p className="px-8 pb-4 text-xs italic text-neutral-500">
+                                Editing any field above creates a copy — click the save icon to register it as a brand-new asset. The original is left untouched.
+                            </p>
+                            </div>
                             </DialogContent>
                         </Dialog>
                     }

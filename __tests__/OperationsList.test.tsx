@@ -41,8 +41,8 @@ const mockVenue: any = { venueId: 'venue-1', metadata: { name: 'Test Venue' } };
 // Minimal store-api shape real zustand's useStore(api, selector) requires:
 // getState + subscribe + getInitialState (see node_modules/zustand/react.js).
 const mockVenueStoreApi = {
-  getState: () => ({ currentVenue: mockVenue }),
-  getInitialState: () => ({ currentVenue: mockVenue }),
+  getState: () => ({ currentVenue: mockVenue, getCurrentVenue: () => mockVenue }),
+  getInitialState: () => ({ currentVenue: mockVenue, getCurrentVenue: () => mockVenue }),
   subscribe: () => () => {},
 };
 jest.mock('@/hooks/use-venue', () => ({ useVenue: mockVenueStoreApi }));

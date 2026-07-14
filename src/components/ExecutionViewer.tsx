@@ -27,8 +27,7 @@ import { toast } from "sonner";
 
 export const ExecutionViewer = (props: any) => {
     const [jobMetadata, setJobMetadata] = useState<JobMetadata>()
-    const [_poll, setPollStatus] = useState("");
-    const [assetsMetadata, _setAssetsMetadata] = useState<Asset>();
+    const [assetsMetadata, setAssetsMetadata] = useState<Asset>();
     const { venues, addVenue } = useVenues();
     const [venue, setVenue] = useState<Venue>();
     const [streaming, setStreaming] = useState(false);
@@ -71,13 +70,15 @@ export const ExecutionViewer = (props: any) => {
     }
    }, [addVenue, props.venueId, authMap, getAuthForVenue, venueObj?.baseUrl, venueObj?.metadata.name, venueObj?.venueId, venues]);
 
+    useEffect(() => {
+        if (!venue || !jobMetadata?.operation) return;
+        venue.getAsset(jobMetadata.operation).then(setAssetsMetadata).catch(() => {});
+    }, [venue, jobMetadata?.operation]);
+
     function fetchJobStatus() {
         venue?.jobs.get(props.jobId).then((job:Job) => {
                 setJobMetadata(job.metadata);
-                setPollStatus(job.metadata.status || "");
-        }).catch((_error) => {
-                setPollStatus("ERROR");
-        })
+        }).catch(() => {})
     }
 
     function handleSendJobMessage() {
@@ -122,12 +123,11 @@ export const ExecutionViewer = (props: any) => {
                 venue.jobs.get(props.jobId).then((job: Job) => {
                     setJobMetadata(job.metadata);
                     const status = job.metadata.status || '';
-                    setPollStatus(status);
                     if (isJobFinished(status as RunStatus) && pollInterval) {
                         clearInterval(pollInterval);
                         pollInterval = null;
                     }
-                }).catch(() => setPollStatus("ERROR"));
+                }).catch(() => {});
             }, 1000);
         };
 
@@ -142,7 +142,6 @@ export const ExecutionViewer = (props: any) => {
                     const meta = data.metadata ?? data;
                     setJobMetadata(meta);
                     const status: string = meta.status ?? '';
-                    setPollStatus(status);
                     if (isJobFinished(status as RunStatus)) {
                         source?.close();
                         source = null;

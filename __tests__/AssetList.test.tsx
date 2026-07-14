@@ -44,20 +44,22 @@ const mockVenue: any = {
 // Minimal store-api shape real zustand's useStore(api, selector) requires:
 // getState + subscribe + getInitialState (see node_modules/zustand/react.js).
 const mockVenueStoreApi = {
-  getState: () => ({ currentVenue: mockVenue }),
-  getInitialState: () => ({ currentVenue: mockVenue }),
+  getState: () => ({ currentVenue: mockVenue, getCurrentVenue: () => mockVenue }),
+  getInitialState: () => ({ currentVenue: mockVenue, getCurrentVenue: () => mockVenue }),
   subscribe: () => () => {},
 };
 jest.mock('@/hooks/use-venue', () => ({ useVenue: mockVenueStoreApi }));
 jest.mock('@/hooks/use-venues', () => ({
   useVenues: () => ({ venues: [mockVenue], addVenue: jest.fn() }),
 }));
-// Stable reference across renders — a fresh object here would make
+// Stable references across renders — a fresh object/function here would make
 // `authData` change identity every render and infinite-loop the
-// [venueObj, authData] fetch effect in AssetList.
-const mockAuthState = { auth: { type: 'keypair' } };
+// [venueObj, authMap, getAuthForVenue] fetch effect in AssetList.
+const mockAuthMap = {};
+const mockGetAuthForVenue = jest.fn().mockReturnValue({ type: 'keypair' });
 jest.mock('@/hooks/use-auth', () => ({
-  useAuthStore: (selector: any) => selector(mockAuthState),
+  useAuthStore: (selector: any) =>
+    selector({ authMap: mockAuthMap, getAuthForVenue: mockGetAuthForVenue }),
 }));
 jest.mock('@/hooks/use-authenticated-venue', () => ({
   getVenueFor: () => mockVenue,
@@ -69,6 +71,7 @@ function makeAsset(id: string, name: string) {
   return {
     id,
     venue: mockVenue,
+    metadata: { name, operation: undefined },
     getMetadata: jest.fn().mockResolvedValue({ name, operation: undefined }),
   };
 }

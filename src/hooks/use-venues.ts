@@ -6,7 +6,6 @@ type VenuesStore = {
   venues: Venue[];
   addVenue: (venue: Venue) => void;
   removeVenue: (venueId: string) => void;
-  updateVenue: (venueId: string, updates: Partial<Venue>) => void;
   getVenue:() => Venue[];
 };
 
@@ -64,16 +63,6 @@ export const useVenues = create(
       removeVenue: (venueId: string) => {
         set((state) => ({
           venues: state.venues.filter(venue => venue.venueId !== venueId)
-        }));
-      },
-      
-      updateVenue: (venueId: string, updates: Partial<Venue>) => {
-        set((state) => ({
-          venues: state.venues.map(venue => 
-            venue.venueId === venueId 
-              ? Object.assign(venue, updates)
-              : venue
-          )
         }));
       },
     }),

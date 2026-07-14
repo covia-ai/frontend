@@ -29,7 +29,6 @@ interface SmartBreadcrumbProps {
   pathname: string;
   assetOrJobName?: string;
   venueName?: string;
-  agentName?:string;
   onNavigate?: (href: string) => void;
 }
 

@@ -27,17 +27,21 @@ export const JsonViewer = (props:any) => {
 
    useEffect(() => {
       if (!venue) return;
-      venue.assets.getContent(props.assetId).then((response) => {
-        response?.getReader().read().then(({ value }) => {
-          const decoder = new TextDecoder();
-          const text = decoder.decode(value);
-          setRawText(text);
-          const jsonData = JSON.parse(text);
-          setRenderData(jsonData)
-      });
-
+      venue.assets.getContent(props.assetId).then(async (response) => {
+        const reader = response?.getReader();
+        if (!reader) return;
+        const decoder = new TextDecoder();
+        let text = "";
+        while (true) {
+          const { value, done } = await reader.read();
+          if (value) text += decoder.decode(value, { stream: !done });
+          if (done) break;
+        }
+        setRawText(text);
+        const jsonData = JSON.parse(text);
+        setRenderData(jsonData)
       })
-    },[props.assetId])
+    },[props.assetId, venue])
 
 
   return (

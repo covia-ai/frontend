@@ -5,7 +5,6 @@ import { CustomNodeToolTip } from './CustomNodeToolTip';
 function TaskNode({ data }: { data: any }) {
   const inputs = data.inputs;
   const outputs = data.outputs;
-  const _op = data.op;
 
   const inputSpacing = 100 / (inputs.length + 1);
   const outputSpacing = 100 / (outputs.length + 1);
@@ -20,7 +19,7 @@ function TaskNode({ data }: { data: any }) {
     return inputSpacing * index 
   }
   function getPosOutputForTooltip(index: number) {
-    return inputSpacing * index 
+    return outputSpacing * index
   }
 
   function getPosOutput(index: number) {
