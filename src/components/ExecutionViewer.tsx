@@ -4,11 +4,12 @@
 import { useEffect, useState } from "react";
 import { Asset, JobMetadata, RunStatus, Venue, isJobFinished,Job } from "@covia/covia-sdk";
 import { createAuthProvider } from "@/lib/auth-provider";
-import { Check, CircleX, Clock, Copy, FileInput, FileOutput, Hash, MessageSquare, RotateCcw, Send, Settings, Timer, Trash2, X } from "lucide-react";
+import { Check, Clock, Copy, FileInput, FileOutput, Hash, MessageSquare, RotateCcw, Send, Timer, X }from "lucide-react";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
-import {  colourForStatus, formatLabel, getExecutionTime } from "@/lib/utils";
+import { getVenueFor } from "@/hooks/use-authenticated-venue";
+import {  colourForStatus, copyDataToClipBoard, formatLabel, getExecutionTime } from "@/lib/utils";
 import { TbSubtask } from "react-icons/tb";
 import Link from "next/link";
 import { ErrorDisplay } from "./ErrorDisplay";
@@ -26,11 +27,12 @@ import { toast } from "sonner";
 
 export const ExecutionViewer = (props: any) => {
     const [jobMetadata, setJobMetadata] = useState<JobMetadata>()
-    const [poll, setPollStatus] = useState("");
     const [assetsMetadata, setAssetsMetadata] = useState<Asset>();
     const { venues, addVenue } = useVenues();
     const [venue, setVenue] = useState<Venue>();
-    const authData = useAuthStore((x) => x.auth);
+    const [streaming, setStreaming] = useState(false);
+    const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
+    const authMap = useAuthStore((x) => x.authMap);
     const [jobMessage, setJobMessage] = useState("");
     const [sendingMessage, setSendingMessage] = useState(false);
     const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
@@ -48,11 +50,12 @@ export const ExecutionViewer = (props: any) => {
 
     useEffect(() => {
     
+      const authData = getAuthForVenue(props.venueId ?? venueObj?.venueId ?? '');
       const authOption = createAuthProvider(authData);
       if(props.venueId != venueObj?.venueId) {
         const venue = venues.find(v => v.venueId === props.venueId);
         if (venue) {
-            setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name, auth: authOption}))
+            setVenue(getVenueFor(venue, authData))
          }
          else {
           Venue.connect(decodeURIComponent(props.venueId),
@@ -63,17 +66,19 @@ export const ExecutionViewer = (props: any) => {
          }
     }
     else {
-        setVenue(new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: authOption}));
-    }  
-   }, [addVenue, props.venueId, authData, venueObj?.baseUrl, venueObj?.metadata.name, venueObj?.venueId, venues]);
+        if (venueObj) setVenue(getVenueFor(venueObj, authData));
+    }
+   }, [addVenue, props.venueId, authMap, getAuthForVenue, venueObj?.baseUrl, venueObj?.metadata.name, venueObj?.venueId, venues]);
+
+    useEffect(() => {
+        if (!venue || !jobMetadata?.operation) return;
+        venue.getAsset(jobMetadata.operation).then(setAssetsMetadata).catch(() => {});
+    }, [venue, jobMetadata?.operation]);
 
     function fetchJobStatus() {
         venue?.jobs.get(props.jobId).then((job:Job) => {
                 setJobMetadata(job.metadata);
-                setPollStatus(job.metadata.status || "");
-        }).catch((error) => {
-                setPollStatus("ERROR");
-        })
+        }).catch(() => {})
     }
 
     function handleSendJobMessage() {
@@ -97,21 +102,74 @@ export const ExecutionViewer = (props: any) => {
     }
 
     useEffect(() => {
-        if (!venue) return;
+        if (!venue || !props.jobId) return;
+
+        // Initial load so the UI isn't blank while SSE connects.
         fetchJobStatus();
+
+        const authData = getAuthForVenue(props.venueId ?? venueObj?.venueId ?? '');
+        let sseUrl = `${venue.baseUrl}/api/v1/jobs/${props.jobId}/sse`;
+        if (authData?.type === 'bearer') {
+            sseUrl += `?token=${encodeURIComponent(authData.token)}`;
+        }
+
+        let source: EventSource | null = null;
+        let pollInterval: ReturnType<typeof setInterval> | null = null;
+        let sseOpened = false;
+
+        const startPolling = () => {
+            setStreaming(false);
+            pollInterval = setInterval(() => {
+                venue.jobs.get(props.jobId).then((job: Job) => {
+                    setJobMetadata(job.metadata);
+                    const status = job.metadata.status || '';
+                    if (isJobFinished(status as RunStatus) && pollInterval) {
+                        clearInterval(pollInterval);
+                        pollInterval = null;
+                    }
+                }).catch(() => {});
+            }, 1000);
+        };
+
+        try {
+            source = new EventSource(sseUrl);
+
+            source.onopen = () => { sseOpened = true; setStreaming(true); };
+
+            source.onmessage = (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    const meta = data.metadata ?? data;
+                    setJobMetadata(meta);
+                    const status: string = meta.status ?? '';
+                    if (isJobFinished(status as RunStatus)) {
+                        source?.close();
+                        source = null;
+                        setStreaming(false);
+                    }
+                } catch { /* ignore malformed event */ }
+            };
+
+            source.onerror = () => {
+                source?.close();
+                source = null;
+                setStreaming(false);
+                // Only fall back to polling when SSE never opened (auth/network failure).
+                if (!sseOpened) startPolling();
+            };
+        } catch {
+            startPolling();
+        }
+
+        return () => {
+            source?.close();
+            setStreaming(false);
+            if (pollInterval) clearInterval(pollInterval);
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [venue, props.jobId]);
 
-    useEffect(() => {
-        if (!isJobFinished(jobMetadata?.status)) {
-            const intervalId = setInterval(() => {
-                fetchJobStatus();
-            }, 1000)
-
-            return () => clearInterval(intervalId)
-        }
-    }, [poll])
-
-    function renderChildJobs(jsonObject: JSON) {
+    function renderChildJobs() {
         const steps = jobMetadata?.steps as any[];
         return (
             <Table className="border border-border rounded-md py-2 ">
@@ -128,7 +186,7 @@ export const ExecutionViewer = (props: any) => {
                             const status = step?.status || "UNKNOWN";
                             const id = step?.id || "";
                             return (
-                                <TableRow key={index} >
+                                <TableRow key={id || index} >
                                     <TableCell className="text-muted-foreground">{index}</TableCell>
                                     <TableCell className="text-secondary font-mono underline"><Link href={`/jobs/${id}`}>{id}</Link></TableCell>
                                     <TableCell>
@@ -147,16 +205,13 @@ export const ExecutionViewer = (props: any) => {
     }
     
     let keys = [];
-    let inOutType = "";
-    let schema: any = {};
+let schema: any = {};
     
     if (type == "input") {
         schema = assetsMetadata?.metadata?.operation?.input;
-        inOutType = schema?.type;
         keys = Object.keys(jobMetadata?.input || {});
     } else {
         schema = assetsMetadata?.metadata?.operation?.output;
-        inOutType = schema?.type;
         keys = Object.keys(jobMetadata?.output || {});
     }
     
@@ -279,11 +334,11 @@ export const ExecutionViewer = (props: any) => {
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {keys.map((key, index) => (
-                    <TableRow key={index}>
+                {keys.map((key) => (
+                    <TableRow key={key}>
                         {type == "input" 
-                            ? <TableCell key={index} className="text-md bg-input-color text-io-foreground">{formatLabel(key)}</TableCell>
-                            : <TableCell key={index} className="text-md bg-output-color text-io-foreground">{formatLabel(key)}</TableCell>}
+                            ? <TableCell className="text-md bg-input-color text-io-foreground">{formatLabel(key)}</TableCell>
+                            : <TableCell className="text-md bg-output-color text-io-foreground">{formatLabel(key)}</TableCell>}
                         {renderContent(key)}
                         {renderType(key)}
                     </TableRow>
@@ -297,7 +352,7 @@ export const ExecutionViewer = (props: any) => {
         <>
              <TopBar assetOrJobName={jobMetadata?.name} venueName={venue?.metadata.name} />
            
-             <ExecutionHeader  jobData={jobMetadata}></ExecutionHeader>
+             <ExecutionHeader  jobData={jobMetadata} venueId={venue?.venueId ?? props.venueId}></ExecutionHeader>
             {jobMetadata && (
 
                 <div className="flex flex-col w-full items-center justify-center">
@@ -314,9 +369,35 @@ export const ExecutionViewer = (props: any) => {
 
                                     <span className="w-28">Status:</span>
                                     <span className={colourForStatus(jobMetadata?.status as RunStatus)}>{jobMetadata?.status}</span>
+
+                                    {streaming && (
+                                        <span className="flex items-center gap-1.5 ml-2 px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300 text-xs font-medium">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                                            Streaming
+                                        </span>
+                                    )}
+                                    {!streaming && jobMetadata?.status && isJobFinished(jobMetadata.status) && (
+                                        <span className="flex items-center gap-1.5 ml-2 px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs font-medium">
+                                            Completed
+                                        </span>
+                                    )}
                                 </div>
                                  <ExecutionToolbar jobData={jobMetadata}></ExecutionToolbar>
 
+                            </div>
+
+                            <div className="flex flex-row items-center space-x-4 py-2">
+                                <Hash></Hash>
+                                <span className="w-28">Job ID:</span>
+                                <span className="text-card-foreground font-mono break-all">{props.jobId}</span>
+                                <button
+                                    type="button"
+                                    aria-label="copy job id"
+                                    onClick={() => copyDataToClipBoard(props.jobId, "Job ID copied")}
+                                    className="text-muted-foreground hover:text-foreground"
+                                >
+                                    <Copy size={14} />
+                                </button>
                             </div>
 
                             {/* INPUT_REQUIRED message form */}
@@ -361,13 +442,13 @@ export const ExecutionViewer = (props: any) => {
                                 <span className="w-28">Time:</span>
                                 <span className="text-card-foreground">{jobMetadata?.created && jobMetadata?.updated ? getExecutionTime(jobMetadata.created, jobMetadata.updated) : 'N/A'}</span>
                             </div>
-                            <div className="flex flex-col py-2 space-x-4 w-3/4 ">{jobMetadata?.steps &&
+                            <div className="flex flex-col py-2 space-x-4 w-3/4 ">{jobMetadata?.steps != null &&
                                 <div className="flex flex-row space-x-4  py-2">
                                     <div className="flex flex-row space-x-4 my-2 ">
                                         <TbSubtask size={20}></TbSubtask>
                                         <span className="w-28">Steps:</span>
                                     </div>
-                                    {renderChildJobs(jobMetadata?.steps)}
+                                    {renderChildJobs()}
                                 </div>
                             }
                             </div>
@@ -386,7 +467,6 @@ export const ExecutionViewer = (props: any) => {
                                             <span className="w-28">Output:</span>
                                         </div>
                                         {renderJSONObject(jobMetadata?.output, "output")}
-                                        {jobMetadata?.status == RunStatus.FAILED && jobMetadata?.error && <ErrorDisplay error={jobMetadata.error} />}
                                     </div>
                                 }
                                 {jobMetadata?.status == RunStatus.FAILED && jobMetadata?.error &&

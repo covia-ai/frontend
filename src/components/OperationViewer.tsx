@@ -6,15 +6,17 @@ import { Button } from "./ui/button";
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useState }from "react";
 import {  Venue, Asset, getParsedAssetId } from "@covia/covia-sdk";
 import { createAuthProvider } from "@/lib/auth-provider";
 import { formatLabel, gtmEvent } from "@/lib/utils";
+import { resolveOperationByAddress } from "@/lib/operations-catalog";
 import { ErrorDisplay } from "./ErrorDisplay";
 import { useRouter } from "next/navigation";
 import { Textarea } from "./ui/textarea";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
+import { getVenueFor } from "@/hooks/use-authenticated-venue";
 import { DiagramViewer } from "./DiagramViewer";
 import { MetadataViewer } from "./MetadataViewer";
 import { AssetHeader } from "./AssetHeader";
@@ -36,7 +38,9 @@ export const OperationViewer = (props: any) => {
   const [rawInput, setRawInput] = useState<Record<string, string>>({}); // raw input content before parsing per field name
   const [typeMap, setTypeMap] = useState<Record<string, string>>({}); // user-specified types of the values to be passed to the operation, affects parsing
   const [assetNotFound, setAssetNotFound] = useState(false);
-  const authData = useAuthStore((x) => x.auth);
+  const [showSchema, setShowSchema] = useState(false);
+  const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
+  const authMap = useAuthStore((x) => x.authMap);
 
   const { venues, addVenue } = useVenues();
   const [venue, setVenue] = useState<Venue>();
@@ -100,11 +104,12 @@ export const OperationViewer = (props: any) => {
   const pathname = usePathname();
 
    useEffect(() => {
+      const authData = getAuthForVenue(props.venueId ?? venueObj?.venueId ?? '');
       const authOption = createAuthProvider(authData);
       if(props.venueId != venueObj?.venueId) {
         const venue = venues.find(v => v.venueId === props.venueId);
         if (venue) {
-            setVenue(new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name, auth: authOption}))
+            setVenue(getVenueFor(venue, authData))
          }
          else {
           Venue.connect(decodeURIComponent(props.venueId), authOption)
@@ -115,14 +120,17 @@ export const OperationViewer = (props: any) => {
          }
     }
     else {
-        setVenue(new Venue({baseUrl:venueObj?.baseUrl, venueId:venueObj?.venueId, name:venueObj?.metadata.name, auth: authOption}));
+        if (venueObj) setVenue(getVenueFor(venueObj, authData));
     }
-   }, [authData]); 
+   }, [authMap, props.venueId, venueObj, getAuthForVenue]);
 
   useEffect(() => {
+    if (!venue) return;
     setAssetNotFound(false);
     setErrorMessage("");
-    venue?.getAsset(props.assetId)
+    // props.assetId is a namespace-explicit address (v/ops/..., v/test/ops/...,
+    // or a/<hash>) — resolve it through the catalog/CAS, not hash-only getAsset.
+    resolveOperationByAddress(venue, props.assetId)
       .then((asset: Asset) => {
         setAsset(asset);
 
@@ -230,10 +238,6 @@ export const OperationViewer = (props: any) => {
     setRawInput(prev => ({ ...prev, [key]: value }));
   }
 
-  function setKeyType(key: any, type: any) {
-    setTypeMap(prev => ({ ...prev, [key]: type }));
-  }
-
   function setKeyTypeAndUpdateRawInput(key: any, newType: any) {
     // Update the type
     setTypeMap(prev => ({ ...prev, [key]: newType }));
@@ -250,7 +254,7 @@ export const OperationViewer = (props: any) => {
     setInput({});
     setRawInput({});
     setTypeMap({});
-    window.location.href = pathname;
+    router.replace(pathname);
   }
 
   function runOperation() {
@@ -442,8 +446,8 @@ export const OperationViewer = (props: any) => {
           <CardContent className=" ">
            <div>
   <div className="grid grid-cols-1 md:grid-cols-[min-content_1fr_1fr] lg:grid-cols-[min-content_1fr_1fr] md:gap-4 lg:gap-4 py-2">
-    {keys.map((key, index) => (
-      <>
+    {keys.map((key) => (
+      <Fragment key={key}>
         {/* Label - full width on mobile, min-content on desktop */}
         <div className="flex flex-row items-center min-w-0 my-2">
           <Label className="whitespace-nowrap">{formatLabel(key)}</Label>
@@ -465,7 +469,7 @@ export const OperationViewer = (props: any) => {
         <div className="md:contents lg:contents">
           {renderDescription(properties[key].description || "")}
         </div>
-      </>
+      </Fragment>
     ))}
   </div>
   
@@ -557,7 +561,16 @@ export const OperationViewer = (props: any) => {
         {!assetNotFound && asset && <MetadataViewer asset={asset} />}
         {!assetNotFound && asset?.metadata?.operation && (
           <>
-            
+            <div className="w-full flex justify-end mb-1">
+              <Button variant="outline" size="sm" onClick={() => setShowSchema(v => !v)}>
+                {showSchema ? "Hide Schema" : "View Schema"}
+              </Button>
+            </div>
+            {showSchema && (
+              <pre className="w-full text-xs bg-muted rounded-md p-4 overflow-x-auto whitespace-pre-wrap break-all mb-2">
+                {JSON.stringify({ input: asset.metadata.operation.input, output: asset.metadata.operation.output }, null, 2)}
+              </pre>
+            )}
             {renderInputFields(asset?.metadata?.operation?.input)}
             {asset?.metadata?.operation?.steps && <DiagramViewer metadata={asset.metadata}></DiagramViewer>}
           </>

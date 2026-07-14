@@ -86,6 +86,7 @@ const mockOpData = {
 	"description": "Generates a specified number of random bytes using a cryptographically secure random number generator",
 	"dateCreated":"2025-06-09T07:22:59Z",
 	"dateModified": "2025-06-09T07:22:59Z",
+	"keywords": ["random", "bytes", "crypto"],
 	"operation": {
 		"adapter": "test:random",
 		"input": {
@@ -165,6 +166,34 @@ describe('AssetCard with asset', () => {
       const assetInfoSheet = screen.queryByTestId('asset-info-sheet');
       expect(assetInfoSheet).not.toBeInTheDocument();
     });
+    it('should render all keywords when not compact', () => {
+      render(<AssetCard asset={mockAsset} type="assets" compact={false} />);
+
+      const keywords = screen.getByTestId('asset-keywords');
+      expect(keywords).toHaveTextContent('text');
+      expect(keywords).toHaveTextContent('script');
+      expect(keywords).toHaveTextContent('creative-work');
+      expect(keywords).not.toHaveTextContent('+');
+    });
+    it('should truncate keywords with a "+N" badge when compact', () => {
+      render(<AssetCard asset={mockAsset} type="assets" compact={true} />);
+
+      const keywords = screen.getByTestId('asset-keywords');
+      expect(keywords).toHaveTextContent('text');
+      expect(keywords).toHaveTextContent('script');
+      expect(keywords).not.toHaveTextContent('creative-work');
+      expect(keywords).toHaveTextContent('+1');
+    });
+    it('should not render a keywords row when metadata.keywords is absent', () => {
+      const assetWithoutKeywords = {
+        ...mockAsset,
+        metadata: { name: 'Hamlet', description: 'A play.' },
+      } as Asset;
+
+      render(<AssetCard asset={assetWithoutKeywords} type="assets" compact={false} />);
+
+      expect(screen.queryByTestId('asset-keywords')).not.toBeInTheDocument();
+    });
 
 });
 
@@ -203,6 +232,25 @@ describe('AssetCard with operation', () => {
 
       const assetInfoSheet = screen.getByTestId('asset-info-sheet');
       expect(assetInfoSheet).toBeInTheDocument();
+    });
+    it('should show both the adapter badge and keyword badges', () => {
+      render(<AssetCard asset={mockOperation} type="operations" compact={false} />);
+
+      expect(screen.getByText('test')).toBeInTheDocument(); // adapter badge, unchanged
+      const keywords = screen.getByTestId('asset-keywords');
+      expect(keywords).toHaveTextContent('random');
+      expect(keywords).toHaveTextContent('bytes');
+      expect(keywords).toHaveTextContent('crypto');
+    });
+    it('should not render a keywords row when the operation has no keywords', () => {
+      const opWithoutKeywords = {
+        ...mockOperation,
+        metadata: { name: 'Random Data Generator', operation: { adapter: 'test:random' } },
+      } as Asset;
+
+      render(<AssetCard asset={opWithoutKeywords} type="operations" compact={false} />);
+
+      expect(screen.queryByTestId('asset-keywords')).not.toBeInTheDocument();
     });
 
 });

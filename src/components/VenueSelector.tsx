@@ -58,9 +58,6 @@ export function VenueSelector() {
     setCurrentVenue(venue);
     setSelectedVenue(venue);
     setActiveVenue(venue.venueId);
-    window.location.reload();
-
-    
   };
   if (!selectedVenue || venues.length === 0) {
       

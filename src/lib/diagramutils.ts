@@ -1,4 +1,4 @@
-export function parseOpMetadata(metadata: JSON) {
+export function parseOpMetadata(metadata: any) {
 	const inputArray = Object.keys(metadata.operation.input.properties);
 	const outputArray = Object.keys(metadata.operation.output.properties)
 	const steps = metadata.operation.steps;
@@ -12,7 +12,7 @@ export function parseOpMetadata(metadata: JSON) {
 	processOutput(results, nodes, edges, posX + 100, posYIO, outputArray)
 	return [nodes, edges]
 }
-function processInput(nodes, inputArray, posX, posYIO) {
+function processInput(nodes: any[], inputArray: string[], posX: number, posYIO: number) {
 	nodes.push(
 		{
 			id: nodes.length + "",
@@ -22,7 +22,7 @@ function processInput(nodes, inputArray, posX, posYIO) {
 		}
 	)
 }
-function processOutput(results, nodes, edges, posX, posY, outputArray) {
+function processOutput(results: any, nodes: any[], edges: any[], posX: number, posY: number, outputArray: string[]) {
 	nodes.push(
 		{
 			id: (nodes.length) + "",
@@ -31,13 +31,13 @@ function processOutput(results, nodes, edges, posX, posY, outputArray) {
 			position: { x: posX + 200 * nodes.length, y: posY },
 		}
 	)
-	outputArray.forEach((output) => {
+	outputArray.forEach((output: string) => {
 
 		if (results[output] && results[output].length > 0) {
 			const stepId = results[output][0];
 			if (typeof (stepId) == "number") {
 				let sourceHandle = "";
-				if (results[output] > 1)
+				if (results[output].length > 1)
 					sourceHandle = results[output][1]
 				else
 					sourceHandle = getResultOfStep(results, stepId)[0];
@@ -55,7 +55,7 @@ function processOutput(results, nodes, edges, posX, posY, outputArray) {
 			}
 			else if (stepId == "input") {
 				let sourceHandle = "";
-				if (results[output] > 1)
+				if (results[output].length > 1)
 					sourceHandle = results[output][1]
 				else
 					sourceHandle = "input";
@@ -75,7 +75,7 @@ function processOutput(results, nodes, edges, posX, posY, outputArray) {
 	})
 }
 
-function processSteps(stepIndex, steps, results, nodes, edges, posX, posY) {
+function processSteps(stepIndex: number, steps: any[], results: any, nodes: any[], edges: any[], posX: number, posY: number) {
 	if (stepIndex == steps.length) {
 		return;
 	}
@@ -207,7 +207,7 @@ function processSteps(stepIndex, steps, results, nodes, edges, posX, posY) {
 	processSteps(stepIndex + 1, steps, results, nodes, edges, posX, posY)
 
 }
-function getResultOfStep(results, stepIndex) {
+function getResultOfStep(results: any, stepIndex: number): any[] {
 	for (const key in results) {
 		const stepResult = Array.from(results[key]);
 		if (stepResult[0] == stepIndex) {

@@ -1,11 +1,10 @@
 "use client";
 
-import { Building, Building2, Check, ChevronDown, EllipsisVertical } from "lucide-react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTrigger } from "./ui/dialog";
+import { Building2, Check, ChevronDown, EllipsisVertical }from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTrigger }from "./ui/dialog";
 import { useEffect, useState } from "react";
 import { Asset, Venue, getAssetIdFromVenueId } from "@covia/covia-sdk";
-import { createAuthProvider } from "@/lib/auth-provider";
-import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { getVenueFor, useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useAuthStore } from "@/hooks/use-auth";
 import { ScrollArea } from "./ui/scroll-area";
 import { DialogClose } from "@radix-ui/react-dialog";
@@ -19,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useVenues } from "@/hooks/use-venues";
 
-export const AssetLookup = ({sendAssetIdBackToForm}) => {
+export const AssetLookup = ({sendAssetIdBackToForm}: {sendAssetIdBackToForm: (id: string) => void}) => {
 
   const venue = useAuthenticatedVenue();
   const authData = useAuthStore((x) => x.auth);
@@ -51,15 +50,10 @@ export const AssetLookup = ({sendAssetIdBackToForm}) => {
   }
   useEffect(() => {
     if(filterValue.length > 0 ) {
-        setFilteredAsset([])
-        assetsMetadata.map((asset) => {
-          
-          if(asset.id.indexOf(filterValue) != -1 || asset.metadata.name?.toLowerCase().indexOf(filterValue.toLowerCase()) != -1) {
-            setFilteredAsset(prevArray => [...prevArray,asset]);
-          }
-      
-    })
-   
+        const matches = assetsMetadata.filter((asset) =>
+          asset.id.indexOf(filterValue) != -1 || (asset.metadata.name ?? "").toLowerCase().indexOf(filterValue.toLowerCase()) != -1
+        );
+        setFilteredAsset(matches);
   }
    else {
       setFilteredAsset(assetsMetadata)
@@ -67,8 +61,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}) => {
   },[filterValue, assetsMetadata])
 
   const handleVenueSelect = (venue: Venue) => {
-    const authOption = createAuthProvider(authData);
-    setSelectedVenue(new Venue({baseUrl: venue.baseUrl, venueId: venue.venueId, name:venue.metadata.name, auth: authOption}));
+    setSelectedVenue(getVenueFor(venue, authData));
   };
   return (
      <Dialog>
@@ -76,7 +69,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}) => {
       
       <EllipsisVertical className=" bg-muted text-muted-foreground rounded-md shadow-md p-1 h-8 "/>
       </DialogTrigger>
-      <DialogContent className="h-11/12 w-11/12 space-y-0">
+      <DialogContent className="h-11/12 w-11/12 space-y-0 bg-card text-card-foreground">
           
           <DialogHeader>Choose an asset</DialogHeader>
           <div className="flex flex-row w-full space-x-2">
@@ -118,21 +111,21 @@ export const AssetLookup = ({sendAssetIdBackToForm}) => {
               
                 
                   {
-                    filteredAsset && filteredAsset.map((asset:Asset, index:number) => 
-                       
-                       
-                        asset.id != assetId ? 
-                        ( <div  onClick={() => setSelectedAsset(asset.id)}  
-                        className="flex flex-col items-start justify-center  text-xs text-left  hover:bg-muted rounded-md my-4"  key={index}>
+                    filteredAsset && filteredAsset.map((asset:Asset) =>
+
+
+                        asset.id != assetId ?
+                        ( <div  onClick={() => setSelectedAsset(asset.id)}
+                        className="flex flex-col items-start justify-center  text-xs text-left  hover:bg-muted rounded-md my-4"  key={asset.id}>
                           <span className="px-2 rounded-sm text-[1rem] font-medium">{asset.metadata.name || "Unamed asset"}</span>
                           <span className="px-2 rounded-sm text-xs text-card-foreground my-1">{asset.id.substring(0,50)+".."}</span>
                         </div>)
                         :
                         (
-                        <div  onClick={() => setSelectedAsset("")}  
-                        className="flex flex-col items-start justify-center  text-xs text-left bg-secondary-vlight  rounded-md my-4"  key={index}>
+                        <div  onClick={() => setSelectedAsset("")}
+                        className="flex flex-col items-start justify-center  text-xs text-left bg-secondary-vlight  rounded-md my-4"  key={asset.id}>
                           <span className="px-2 rounded-sm text-[1rem] font-medium">{asset.metadata.name || "Unamed asset"}</span>
-                          <span className="px-2 rounded-sm text-xs text-card-foreground my-1">{asset.id.substring(0,50)+".."}</span>                        
+                          <span className="px-2 rounded-sm text-xs text-card-foreground my-1">{asset.id.substring(0,50)+".."}</span>
                        </div>
                         )
                       )
@@ -143,7 +136,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}) => {
             </ScrollArea>
          
 
-             <DialogClose><Button onClick={(e) => sendAssetIdBackToForm(getAssetIdFromVenueId(assetId!,selectedVenue?.venueId))}>Select</Button></DialogClose>
+             <DialogClose><Button onClick={(_e) => sendAssetIdBackToForm(getAssetIdFromVenueId(assetId!,selectedVenue?.venueId ?? ""))}>Select</Button></DialogClose>
       </DialogContent>
       
      </Dialog>

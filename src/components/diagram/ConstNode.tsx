@@ -7,7 +7,7 @@ import {
 } from "@/components/node-tooltip";
 
 
-function ConstNode({ data }) {
+function ConstNode({ data }: { data: any }) {
   return (
 
     <div className="rounded-md border-border bg-card/50 p-2">

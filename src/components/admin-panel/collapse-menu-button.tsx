@@ -50,9 +50,6 @@ export function CollapseMenuButton({
   isOpen
 }: CollapseMenuButtonProps) {
   const pathname = usePathname();
-  const isSubmenuActive = submenus.some((submenu) =>
-    submenu.active === undefined ? submenu.href === pathname : submenu.active
-  );
   const [isCollapsed, setIsCollapsed] = useState<boolean>(true);
 
   return isOpen ? (
@@ -66,7 +63,7 @@ export function CollapseMenuButton({
         asChild
       >
         <Button
-          variant={isSubmenuActive ? "secondary" : "ghost"}
+          variant="ghost"
           className="w-full justify-start h-10"
         >
           <div className="w-full items-center flex justify-between">
@@ -139,7 +136,7 @@ export function CollapseMenuButton({
           <TooltipTrigger asChild>
             <DropdownMenuTrigger asChild>
               <Button
-                variant={isSubmenuActive ? "secondary" : "ghost"}
+                variant="ghost"
                 className="w-full justify-start h-10 mb-1"
               >
                 <div className="w-full items-center flex justify-between">

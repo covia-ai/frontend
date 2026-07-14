@@ -2,45 +2,31 @@
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader }from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { 
-  Building2, 
-  Database, 
-  Settings, 
-  Users, 
-  Globe, 
-  Activity,
-  ArrowRight,
-  ExternalLink,
-  Link as LinkIcon,
-  Fingerprint,
-  Copy,
-  FolderUpIcon,
-  ActivityIcon,
-  User,
-} from "lucide-react";
+import { Building2, Database, Settings, Users, Globe, Activity, ArrowRight, ExternalLink, Link as LinkIcon, Fingerprint, Copy, Wrench, ChevronDown, ChevronUp, Plug }from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useVenues } from "@/hooks/use-venues";
 import { useVenue } from "@/hooks/use-venue";
-import { useEffect, useState } from "react";
+import { getVenueFor } from "@/hooks/use-authenticated-venue";
+import { use, useEffect, useState } from "react";
 import { Venue } from "@covia/covia-sdk";
 import { createAuthProvider } from "@/lib/auth-provider";
 import Link from "next/link";
-import { copyDataToClipBoard } from "@/lib/utils";
+import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
 import { useAuthStore } from "@/hooks/use-auth";
 import { TopBar } from "@/components/admin-panel/TopBar";
 
 interface VenuePageProps {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 }
 
 export default function VenuePage({ params }: VenuePageProps) {
   const router = useRouter();
-  const { slug } = params;
+  const { slug } = use(params);
   const { venues, addVenue } = useVenues();
   const { currentVenue, setCurrentVenue } = useVenue();
   const [ venue, setVenue] = useState<Venue | null>(null);
@@ -49,36 +35,36 @@ export default function VenuePage({ params }: VenuePageProps) {
   const [ venueMCPUrl, setVenueMCPURL] = useState("Not Found")
   const [ noOfAssets, setNoOfAssets] = useState(0)
   const [ noOfOps, setNoOfOps] = useState(0)
+  const [ noOfAdapters, setNoOfAdapters] = useState(0)
   const [ noOfRuns, setNoOfRuns] = useState(0)
   const [ noOfUsers, setNoOfUsers] = useState(0)
-  const authData = useAuthStore((x) => x.auth);
+  const [ mcpTools, setMcpTools] = useState<{name:string}[]>([])
+  const [ showClaudeSnippet, setShowClaudeSnippet] = useState(false)
+  const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
+  const authMap = useAuthStore((x) => x.authMap);
 
   useEffect(() => {
-    // Find the venue by slug
-    const foundVenue = venues.find(v => v.venueId === decodeURIComponent(slug));
+    const decodedSlug = decodeURIComponent(slug);
+    const authData = getAuthForVenue(decodedSlug);
+    const authOption = createAuthProvider(authData);
+    const foundVenue = venues.find(v => v.venueId === decodedSlug);
     if (foundVenue) {
       if(foundVenue instanceof Venue) {
           setVenue(foundVenue);
           setVenueDID(foundVenue.venueId)
       }
       else {
-          const authOption = createAuthProvider(authData);
-          const foundVenue_obj = new Venue({baseUrl:foundVenue.baseUrl, venueId:foundVenue.venueId, name:foundVenue.metadata.name, auth: authOption});
+          const foundVenue_obj = getVenueFor(foundVenue, authData);
           setVenue(foundVenue_obj)
           setVenueDID(foundVenue_obj.venueId)
       }
-     
-      // Don't automatically set as current venue - only when user clicks "Make Default"
-      
     }
     else {
-       const authOption = createAuthProvider(authData);
-       Venue.connect(decodeURIComponent(slug), authOption).then((venue) => {
+       Venue.connect(decodedSlug, authOption).then((venue) => {
          addVenue(venue)
-       }
-      )
+       })
     }
-  }, [slug, venues]);
+  }, [slug, venues, authMap, getAuthForVenue, addVenue]);
 
     useEffect(() => {
        const fetchMCP = async () => {
@@ -93,20 +79,32 @@ export default function VenuePage({ params }: VenuePageProps) {
          try {
           const status =  await venue?.status();
           if(status?.stats) {
-              setNoOfAssets(status?.stats?.assets);
-              setNoOfOps(status?.stats?.ops);
-              setNoOfRuns(status?.stats?.jobs);
-              setNoOfUsers(status?.stats?.users);
-              setVenueDID(status?.did)
-              setVenueName(status?.name)
+              setNoOfAssets(status?.stats?.assets ?? 0);
+              setNoOfOps(status?.stats?.ops ?? 0);
+              setNoOfRuns(status?.stats?.jobs ?? 0);
+              setNoOfUsers(status?.stats?.users ?? 0);
+              setVenueDID(status?.did ?? "")
+              setVenueName(status?.name ?? "")
           }
         }
         catch(e) {
           console.log(e)
         }
       }
+      const fetchMcpTools = async () => {
+        try {
+          if (venue) setMcpTools(await listMcpTools(venue.baseUrl));
+        } catch { /* non-fatal */ }
+      }
+      const fetchAdapters = async () => {
+        try {
+          if (venue) setNoOfAdapters((await venue.adapters.list()).length);
+        } catch { /* non-fatal */ }
+      }
       fetchMCP();
       fetchStats();
+      fetchMcpTools();
+      fetchAdapters();
   }, [venue]);
 
   const isCurrentVenue = currentVenue?.venueId === venue?.venueId;
@@ -174,69 +172,66 @@ export default function VenuePage({ params }: VenuePageProps) {
         {/* Venue Information */}
         <Card className="p-6">
           <h2 className="text-xl font-thin mb-4">Venue Information {venue.metadata.name}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <div className="bg-primary-vlight p-2 rounded-lg">
-                  <LinkIcon size={20} className="text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground flex flex-row space-x-2">Venue URL <Copy
-                    size={12}
-                    onClick={(e) => copyDataToClipBoard(venue.baseUrl, "Venue URL copied to clipboard")}
-                    className="cursor-pointer hover:text-pink-400"
-                  /></p>
-                  
-                  <Link 
-                    href={venue.baseUrl} 
-                    target="_blank"
-                    className="font-mono text-sm bg-muted p-2 rounded break-all"
-                  >
-                    {venue.baseUrl}
-                  </Link>
-                 
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="flex items-center space-x-3">
+              <div className="bg-primary-vlight p-2 rounded-lg">
+                <LinkIcon size={20} className="text-primary" />
               </div>
-              
-              <div className="flex items-center space-x-3">
-                <div className="bg-primary-vlight p-2 rounded-lg">
-                  <Fingerprint size={20} className="text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground flex flex-row space-x-2">Venue DID
-                 <Copy
-                    size={12}
-                    onClick={(e) => copyDataToClipBoard(venueDID, "Venue DID copied to clipboard")}
-                    className="cursor-pointer hover:text-pink-400"></Copy>
-                    </p>
-                  <p className="font-mono text-sm bg-muted p-2 rounded break-all">
-                    {venueDID}
-                  </p>
-                </div>
+              <div>
+                <p className="text-sm text-muted-foreground flex flex-row space-x-2">Venue URL <Copy
+                  size={12}
+                  onClick={(_e) => copyDataToClipBoard(venue.baseUrl, "Venue URL copied to clipboard")}
+                  className="cursor-pointer hover:text-pink-400"
+                /></p>
+
+                <Link
+                  href={venue.baseUrl}
+                  target="_blank"
+                  className="font-mono text-sm bg-muted p-2 rounded break-all"
+                >
+                  {venue.baseUrl}
+                </Link>
+
               </div>
             </div>
-            
-              
-              <div className="flex items-start space-x-3">
-                <div className="bg-primary-vlight p-2 rounded-lg">
-                  <Globe size={20} className="text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground flex flex-row space-x-2">MCP URL <Copy
-                    size={12}
-                    onClick={(e) => copyDataToClipBoard(venueMCPUrl, "MCP URL copied to clipboard")}
-                    className="cursor-pointer hover:text-pink-400"></Copy>
-                    </p>
-                  <p className="font-mono text-sm bg-muted p-2 rounded break-all">
-                    {venueMCPUrl}
-                  </p>
-                </div>
+
+            <div className="flex items-center space-x-3">
+              <div className="bg-primary-vlight p-2 rounded-lg">
+                <Fingerprint size={20} className="text-primary" />
               </div>
+              <div>
+                <p className="text-sm text-muted-foreground flex flex-row space-x-2">Venue DID
+               <Copy
+                  size={12}
+                  onClick={(_e) => copyDataToClipBoard(venueDID, "Venue DID copied to clipboard")}
+                  className="cursor-pointer hover:text-pink-400"></Copy>
+                  </p>
+                <p className="font-mono text-sm bg-muted p-2 rounded break-all">
+                  {venueDID}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-3">
+              <div className="bg-primary-vlight p-2 rounded-lg">
+                <Globe size={20} className="text-primary" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground flex flex-row space-x-2">MCP URL <Copy
+                  size={12}
+                  onClick={(_e) => copyDataToClipBoard(venueMCPUrl, "MCP URL copied to clipboard")}
+                  className="cursor-pointer hover:text-pink-400"></Copy>
+                  </p>
+                <p className="font-mono text-sm bg-muted p-2 rounded break-all">
+                  {venueMCPUrl}
+                </p>
+              </div>
+            </div>
           </div>
         </Card>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
          <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
             <CardHeader className="flex-1 ">
               <div className="flex items-center space-x-3">
@@ -282,6 +277,31 @@ export default function VenuePage({ params }: VenuePageProps) {
                   aria-label="view operation" role="button"
                 >
                   View Operation
+                  <ArrowRight size={16} className="ml-2" />
+                </Button>
+              </CardContent>
+        </Card>
+
+        <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
+            <CardHeader className="flex-1 ">
+              <div className="flex items-center space-x-3">
+              <div className="bg-primary-vlight  p-2 rounded-lg">
+                <Plug size={20} className="text-primary" />
+              </div>
+              <div className="">
+                <p className="text-sm text-muted-foreground">Adapters</p>
+                <p className="text-2xl font-thin">{noOfAdapters}</p>
+              </div>
+            </div>
+            </CardHeader>
+            <CardContent>
+                <Button
+                  onClick={() => router.push(`/venues/${slug}/adapters`)}
+                  className="w-full"
+                  variant="outline"
+                  aria-label="view adapters" role="button"
+                >
+                  View Adapters
                   <ArrowRight size={16} className="ml-2" />
                 </Button>
               </CardContent>
@@ -338,8 +358,85 @@ export default function VenuePage({ params }: VenuePageProps) {
         </Card>
         </div>
 
-       
+        {/* MCP Integration Card */}
+        <Card className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="bg-primary-vlight p-2 rounded-lg">
+              <Wrench size={20} className="text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-medium">MCP Integration</h2>
+              <p className="text-sm text-muted-foreground">
+                {mcpTools.length > 0
+                  ? `${mcpTools.length} tool${mcpTools.length !== 1 ? "s" : ""} available as MCP tools`
+                  : "This venue exposes every operation as an MCP tool"}
+              </p>
+            </div>
+          </div>
+
+          {/* Top-5 preview */}
+          {mcpTools.length > 0 && (
+            <ul className="mb-4 space-y-1">
+              {mcpTools.slice(0, 5).map((t) => (
+                <li key={t.name} className="font-mono text-xs text-muted-foreground pl-2 border-l-2 border-primary/30">
+                  {t.name}
+                </li>
+              ))}
+              {mcpTools.length > 5 && (
+                <li className="text-xs text-muted-foreground pl-2">
+                  +{mcpTools.length - 5} more…
+                </li>
+              )}
+            </ul>
+          )}
+
+          <div className="flex flex-wrap gap-3 mb-4">
+            <Button
+              className="flex items-center gap-2"
+              onClick={() => copyDataToClipBoard(venueMCPUrl, "MCP URL copied")}
+              variant="default"
+            >
+              <Copy size={14} /> Copy MCP URL
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => router.push(`/venues/${slug}/mcp`)}
+              className="flex items-center gap-2"
+            >
+              <Wrench size={14} /> MCP Tools
+              <ArrowRight size={14} />
+            </Button>
+          </div>
+
+          {/* Expandable Claude Desktop snippet */}
+          <button
+            className="flex items-center gap-1 text-sm text-primary hover:underline"
+            onClick={() => setShowClaudeSnippet((v) => !v)}
+          >
+            {showClaudeSnippet ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            Connect to Claude Desktop
+          </button>
+          {showClaudeSnippet && (
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs text-muted-foreground">Add to your Claude Desktop <code>claude_desktop_config.json</code></p>
+                <button
+                  className="text-xs text-primary flex items-center gap-1 hover:underline"
+                  onClick={() => copyDataToClipBoard(
+                    JSON.stringify({ mcpServers: { covia: { command: "npx", args: ["-y", "mcp-remote", venueMCPUrl] } } }, null, 2),
+                    "Snippet copied"
+                  )}
+                >
+                  <Copy size={11} /> Copy
+                </button>
+              </div>
+              <pre className="text-xs bg-muted rounded-md p-3 overflow-x-auto whitespace-pre-wrap break-all">
+{JSON.stringify({ mcpServers: { covia: { command: "npx", args: ["-y", "mcp-remote", venueMCPUrl] } } }, null, 2)}
+              </pre>
+            </div>
+          )}
+        </Card>
       </div>
     </ContentLayout>
   );
-} 
+}

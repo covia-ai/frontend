@@ -6,7 +6,7 @@ import { toast } from "sonner"
 import { RunStatus } from "@covia/covia-sdk";
 import { sendGTMEvent } from '@next/third-parties/google'
 
-export  const getStatusConfig = (status) => {
+export  const getStatusConfig = (status: string | undefined): { variant: "default" | "destructive" | "secondary" | "outline"; className: string } => {
     switch(status) {
       case 'ACTIVE':
         return { variant: 'default', className: 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600' };
@@ -19,9 +19,6 @@ export  const getStatusConfig = (status) => {
     }
   };
   
-export function getViewerType() {
-    
-}
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
@@ -32,7 +29,7 @@ export function getLicenseUrl(licenseName : string) {
 }
 export function getContentTypeForFile(filename: string) {
  
-    const mimeType =  mime.contentType(filename);
+    const mimeType =  mime.contentType(filename) || "";
     const contentType = mimeType.split(';')[0];
     const charset  = mimeType.split(';')[1]?.split("=")[1];
     return [contentType,charset];
@@ -58,6 +55,19 @@ export function getExecutionTime(date1:string, date2:string) {
   if(differenceInSeconds >= 1)
     return `${Math.round(differenceInSeconds)} sec`;
   return `${Math.round(differenceInMilliseconds)} ms`;
+}
+
+// List a venue's MCP tools via its native MCP endpoint (JSON-RPC tools/list).
+// Job-free: the invoke-based v/ops/mcp/tools-list persists a job per call.
+export async function listMcpTools(baseUrl: string): Promise<any[]> {
+  const res = await fetch(`${baseUrl}/mcp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Accept": "application/json, text/event-stream" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+  });
+  if (!res.ok) throw new Error(`MCP tools/list failed: ${res.status}`);
+  const body = await res.json();
+  return Array.isArray(body?.result?.tools) ? body.result.tools : [];
 }
 
 export function formatLabel(key: string): string {
@@ -94,7 +104,7 @@ export function copyDataToClipBoard(entityId:string, message:string) {
        }
       }
 
-export function  colourForStatus(status: RunStatus): string {
+export function  colourForStatus(status: RunStatus | undefined): string {
         switch (status) {
             case RunStatus.COMPLETE:
                 return "text-green-600 dark:text-green-400";
@@ -151,3 +161,4 @@ export const gtmEvent = {
     })
   },
 }
+

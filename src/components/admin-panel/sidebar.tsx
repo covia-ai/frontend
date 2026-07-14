@@ -10,9 +10,9 @@ import Image from "next/image";
 import Link from "next/link";
 export function Sidebar() {
   const sidebar = useStore(useSidebar, (x) => x);
+  const { theme } = useTheme();
   if (!sidebar) return null;
   const { isOpen, toggleOpen, getOpenState, setIsHover, settings } = sidebar;
-  const { theme  } = useTheme();
 
   return (
     <aside

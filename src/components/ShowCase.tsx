@@ -14,6 +14,33 @@ export const ShowCase = () => {
    const { venues } = useVenues();
    const venue = useAuthenticatedVenue();
 
+   useEffect(() => {
+     let ignore = false;
+     const fetchData = async () => {
+      if (!venue) return;
+       try {
+         const assetList = await venue.listAssets();
+         const res = await Promise.all(assetList.items.map((assetId: string) => venue.getAsset(assetId)));
+         const featured = res.filter((asset: Asset) => asset?.metadata?.operation?.info?.featured);
+         const shuffled = featured.slice();
+         for (let i = shuffled.length - 1; i > 0; i--) {
+           const j = Math.floor(Math.random() * (i + 1));
+           if (i !== j) {
+             [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+           }
+         }
+         if (!ignore) setAssets(shuffled.slice(0, 3));
+       } catch (error) {
+         console.error('Error fetching featured asset data:', error);
+         if (!ignore) setAssets([]);
+       } finally {
+         if (!ignore) setLoading(false);
+       }
+     };
+     fetchData();
+     return () => { ignore = true; };
+   }, [venue]);
+
     if(venues.length == 0)
       return (
        <div className="flex flex-col items-center justify-center py-10 px-10  my-4">
@@ -28,32 +55,6 @@ export const ShowCase = () => {
         </div>
         </div>
       );
-    
-   useEffect(() => {
-     const fetchData = async () => {
-      if (!venue) return;
-       try {
-         const assetList = await venue.listAssets();
-         const res = await Promise.all(assetList.items.map((assetId: string) => venue.getAsset(assetId)));
-         const featured = res.filter((asset: Asset) => asset?.metadata?.operation?.info?.featured);
-         const shuffled = featured.slice(); // copy array
-         for (let i = shuffled.length - 1; i > 0; i--) {
-           const j = Math.floor(Math.random() * (i + 1));
-           if (i !== j) {
-             [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-           }
-         }
-         setAssets(shuffled.slice(0, 3));
-       } catch (error) {
-         console.error('Error fetching featured asset data:', error);
-         setAssets([]);
-       } finally {
-         setLoading(false);
-       }
-     };
-     fetchData();
-   }, [venue]); // Re-fetch when venue changes
- 
 
       return (
         <div className="flex flex-col items-center justify-center py-10 px-10  my-4">
@@ -63,13 +64,17 @@ export const ShowCase = () => {
               sample Grid operations
             </span>
           </h3>
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4 mt-4 mb-8">
-
-              {assets.map((asset, index) =>
-
-                <AssetCard key={index} asset={asset} type="operations" compact={true}/>
-              )}
-        </div>
+        {!loading && assets.length === 0 ? (
+          <div className="flex flex-col items-center justify-center w-full h-32 space-y-2 mt-4">
+            <div className="text-card-foreground text-sm">No featured operations available on this venue.</div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4 mt-4 mb-8">
+            {assets.map((asset) =>
+              <AssetCard key={asset.id} asset={asset} type="operations" compact={true}/>
+            )}
+          </div>
+        )}
         </div>
       )
   

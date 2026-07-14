@@ -47,7 +47,7 @@ export const XmlViewer = (props: { assetId: string }) => {
   return (
     <Dialog>
       <DialogTrigger className="text-sm text-secondary dark:text-secondary-light underline">View</DialogTrigger>
-      <DialogContent className="bg-background text-foreground max-h-[90vh] w-full max-w-4xl p-4 flex flex-col overflow-hidden border border-border">
+      <DialogContent className="bg-card text-card-foreground max-h-[90vh] w-full max-w-4xl p-4 flex flex-col overflow-hidden border border-border">
         <DialogHeader className="text-sm font-medium text-muted-foreground">
           XML Preview
         </DialogHeader>
@@ -83,7 +83,7 @@ export const XmlViewer = (props: { assetId: string }) => {
               ref={rawRef}
               readOnly
               value={renderData}
-              className="w-full h-[450px] p-4 text-sm bg-card rounded-lg resize-none border-none outline-none font-mono"
+              className="w-full h-[450px] p-4 text-sm bg-background rounded-lg resize-none border-none outline-none font-mono"
             />
           </TabsContent>
         </Tabs>

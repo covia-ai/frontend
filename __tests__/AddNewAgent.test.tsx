@@ -2,37 +2,41 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { toast } from 'sonner';
 
-// Mock the toast function
 jest.mock('sonner', () => ({
   toast: jest.fn(),
 }));
 
-// Mock Iconbutton used by the dialog trigger
+// Must spread ...rest so DialogTrigger asChild can forward onClick/ref.
 jest.mock('@/components/Iconbutton', () => ({
-  Iconbutton: ({ icon, message, label }: any) => (
-    <button data-testid="trigger-btn">{label || message}</button>
+  Iconbutton: ({ icon, message, label, ...rest }: any) => (
+    <button data-testid="trigger-btn" {...rest}>{label || message}</button>
   ),
 }));
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),
 }));
 
-// Mock the authenticated venue hook
+// Return a stable object reference so the useEffect dep [venue] doesn't
+// fire on every render and reset controlled-input state. Declared with the
+// `mock` prefix so it's also usable inside test bodies (Jest's hoisting
+// allowlist only exempts identifiers starting with "mock").
+const mockVenue = {
+  agents: {
+    create: jest.fn().mockResolvedValue({ agentId: 'test-agent', status: 'active' }),
+    request: jest.fn().mockResolvedValue({}),
+  },
+  secrets: {
+    // ANTHROPIC_API_KEY present so the default provider (anthropic) is
+    // ready and the Create button isn't disabled by the key-readiness gate.
+    list: jest.fn().mockResolvedValue(['ANTHROPIC_API_KEY']),
+  },
+};
 jest.mock('@/hooks/use-authenticated-venue', () => ({
-  useAuthenticatedVenue: () => ({
-    agents: {
-      create: jest.fn().mockResolvedValue({ agentId: 'test-agent', status: 'active' }),
-      request: jest.fn().mockResolvedValue({}),
-    },
-    secrets: {
-      list: jest.fn().mockResolvedValue([]),
-    },
-  }),
+  useAuthenticatedVenue: () => mockVenue,
 }));
 
 import { AddNewAgent } from '@/components/AddNewAgent';
 
-// Helper to open the dialog before querying form elements
 async function renderAndOpenDialog() {
   const user = userEvent.setup();
   render(<AddNewAgent />);
@@ -48,7 +52,6 @@ describe('AddNewAgent', () => {
 
   it('renders the trigger button', () => {
     render(<AddNewAgent />);
-
     expect(screen.getByTestId('trigger-btn')).toBeInTheDocument();
     expect(screen.getByTestId('trigger-btn')).toHaveTextContent('Create a new agent');
   });
@@ -74,21 +77,17 @@ describe('AddNewAgent', () => {
 
   it('renders LLM provider select with default value', async () => {
     await renderAndOpenDialog();
-
-    // The select trigger should show the default provider (Anthropic)
     expect(screen.getByText('Anthropic (Claude)')).toBeInTheDocument();
   });
 
   it('renders create button with correct attributes', async () => {
     await renderAndOpenDialog();
-
     const createButton = screen.getByRole('button', { name: /create agent/i });
     expect(createButton).toHaveAttribute('aria-label', 'create agent');
   });
 
   it('shows system prompt textarea', async () => {
     await renderAndOpenDialog();
-
     const textarea = screen.getByPlaceholderText(
       'e.g., You are a helpful customer support agent that...'
     );
@@ -97,7 +96,6 @@ describe('AddNewAgent', () => {
 
   it('shows initial command input', async () => {
     await renderAndOpenDialog();
-
     const input = screen.getByPlaceholderText(
       'e.g., Greet the user and ask how you can help'
     );
@@ -120,13 +118,10 @@ describe('AddNewAgent', () => {
     });
   });
 
-  it('shows error toast when agent name is empty', async () => {
-    const user = await renderAndOpenDialog();
-
+  it('create button is disabled when agent name is empty', async () => {
+    await renderAndOpenDialog();
     const createButton = screen.getByTestId('create-agent');
-    await user.click(createButton);
-
-    expect(toast).toHaveBeenCalledWith('Please enter an agent name');
+    expect(createButton).toBeDisabled();
   });
 
   it('displays all form labels correctly', async () => {
@@ -136,5 +131,36 @@ describe('AddNewAgent', () => {
     expect(screen.getByText('LLM Provider:')).toBeInTheDocument();
     expect(screen.getByText('System Prompt:')).toBeInTheDocument();
     expect(screen.getByText('Initial Command:')).toBeInTheDocument();
+  });
+
+  it('blocks "default-agent" as a reserved id — warns and disables Create', async () => {
+    const user = await renderAndOpenDialog();
+
+    const input = screen.getByPlaceholderText('e.g., Customer Support Agent');
+    await user.type(input, 'Default Agent');
+
+    expect(screen.getByText(/is reserved for the workspace prompt bar/i)).toBeInTheDocument();
+    const createButton = screen.getByTestId('create-agent');
+    expect(createButton).toBeDisabled();
+
+    // Disabled buttons no-op on click, so this also confirms the guard
+    // isn't bypassable from the UI.
+    await user.click(createButton);
+    expect(mockVenue.agents.create).not.toHaveBeenCalled();
+  });
+
+  it('allows editing the Agent ID away from the reserved default-agent id', async () => {
+    const user = await renderAndOpenDialog();
+
+    const nameInput = screen.getByPlaceholderText('e.g., Customer Support Agent');
+    await user.type(nameInput, 'Default Agent');
+    expect(screen.getByTestId('create-agent')).toBeDisabled();
+
+    const idInput = screen.getByPlaceholderText('e.g., customer-support-agent');
+    await user.clear(idInput);
+    await user.type(idInput, 'my-default-agent');
+
+    expect(screen.queryByText(/is reserved for the workspace prompt bar/i)).not.toBeInTheDocument();
+    expect(screen.getByTestId('create-agent')).not.toBeDisabled();
   });
 });

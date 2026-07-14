@@ -2,7 +2,7 @@
 
 import { AddNewAgent } from "./AddNewAgent";
 import { ContentLayout } from "./admin-panel/content-layout";
-import { Bot, Clock, Loader2, SquareChevronRight } from "lucide-react";
+import { Bot, Loader2, SquareChevronRight, Lock }from "lucide-react";
 import { Card } from "./ui/card";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -10,12 +10,11 @@ import { TopBar } from "./admin-panel/TopBar";
 import { AgentListItem } from "@/config/types";
 import { SeperatorWithText } from "@/components/SeperatorWithText";
 import { AgentTemplates } from "./AgentTemplates";
-import { AgentSearch } from "./AgentSearch";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 import { AgentStatus } from "@covia/covia-sdk";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useIsAuthenticated } from "@/hooks/use-auth";
 import { toast } from "sonner";
 
 export function AgentList() {
@@ -24,8 +23,9 @@ export function AgentList() {
   const [loading, setLoading] = useState(true);
   const compact = true;
   const venue = useAuthenticatedVenue();
+  const isAuthenticated = useIsAuthenticated();
 
-  useEffect(() => {
+  const fetchAgents = () => {
     if (!venue) return;
     setLoading(true);
     venue.agents.list(true).then((result) => {
@@ -35,6 +35,11 @@ export function AgentList() {
     }).finally(() => {
       setLoading(false);
     });
+  };
+
+  useEffect(() => {
+    fetchAgents();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [venue]);
 
   const handleCardClick = (agentId: string) => {
@@ -45,21 +50,21 @@ export function AgentList() {
   const getStatusConfig = (status: string) => {
     switch(status) {
       case AgentStatus.RUNNING:
-        return { variant: 'default', className: 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600' };
+        return { className: 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600' };
       case AgentStatus.SLEEPING:
-        return { variant: 'default', className: 'bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600' };
+        return { className: 'bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600' };
       case AgentStatus.SUSPENDED:
-        return { variant: 'default', className: 'bg-amber-600 hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600' };
+        return { className: 'bg-amber-600 hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600' };
       case AgentStatus.TERMINATED:
-        return { variant: 'destructive', className: 'bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600' };
+        return { className: 'bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600' };
       default:
-        return { variant: 'secondary', className: 'bg-gray-600 hover:bg-gray-700 dark:bg-gray-500 dark:hover:bg-gray-600' };
+        return { className: 'bg-gray-600 hover:bg-gray-700 dark:bg-gray-500 dark:hover:bg-gray-600' };
     }
   };
 
    return (<ContentLayout>
      <TopBar/>
- <AgentTemplates />
+ <AgentTemplates onCreated={fetchAgents} />
  <SeperatorWithText text="or"/>
      <h3 className="text-center text-4xl  font-thin pt-10">
           {agentData.length > 0 ? "Choose an existing" : "Create a new"}  {" "}
@@ -70,7 +75,14 @@ export function AgentList() {
      {loading && <div className="flex items-center justify-center py-10"><Loader2 className="animate-spin text-primary" size={32} /></div>}
      {!loading && agentData.length == 0 &&  <div className="flex flex-col items-center justify-center w-full space-y-2 pt-4">
             <Bot size={48} className="text-primary"></Bot>
-            <AddNewAgent></AddNewAgent>
+            {isAuthenticated ? (
+              <AddNewAgent onCreated={fetchAgents} />
+            ) : (
+              <Button variant="outline" disabled className="gap-2 text-muted-foreground">
+                <Lock size={14} />
+                Sign in to create agents
+              </Button>
+            )}
       </div>}
       <div className="flex flex-row-reverse w-full">
        <SquareChevronRight onClick={() => router.push('/agents/explorer')}/>
@@ -104,7 +116,14 @@ export function AgentList() {
             ))}
 
          </div>
-         <AddNewAgent></AddNewAgent>
+         {isAuthenticated ? (
+           <AddNewAgent onCreated={fetchAgents} />
+         ) : (
+           <Button variant="outline" disabled className="gap-2 text-muted-foreground">
+             <Lock size={14} />
+             Sign in to create agents
+           </Button>
+         )}
       </div>
       }
      

@@ -1,12 +1,10 @@
 "use client"
 import { SignInButton } from "@/components/sign-in-button"
 import { useAuthStore } from "@/hooks/use-auth"
-import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 
 export default function SignUp() {
   const auth = useAuthStore((x) => x.auth);
-  const router = useRouter();
 
   if (!auth) {
     return (

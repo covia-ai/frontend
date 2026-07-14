@@ -1,18 +1,4 @@
-import {
-
-  LocationEdit,
-  Database,
-  PlayCircle,
-  LucideIcon,
-  Home,
-  User,
-  BookKey,
-  FileKey,
-  LibraryBig,
-  Activity,
-  BotIcon,
-  KeyRound
-} from "lucide-react";
+import { LocationEdit, Database, PlayCircle, LucideIcon, Home, User, BookKey, LibraryBig, BotIcon, KeyRound }from "lucide-react";
 
 type Submenu = {
   href: string;
@@ -53,19 +39,16 @@ export function   getMenuList(): Group[] {
               {
                 href: "/publicartifacts",
                 label: "Public Artifacts",
-                icon: BookKey,
-                active: false
+                icon: BookKey
               },
               {
                 href: "/operations",
                 label: "Operations",
-                icon: PlayCircle,
-                active: false
-              
+                icon: PlayCircle
               },
 
             ]
-          
+
           },
           {
             href: "/agents",
@@ -115,15 +98,12 @@ export function   getMenuList(): Group[] {
               {
                 href: "/publicartifacts",
                 label: "Public Artifacts",
-                icon: BookKey,
-                active: false
+                icon: BookKey
               },
               {
                 href: "/operations",
                 label: "Operations",
-                icon: PlayCircle,
-                active: false
-              
+                icon: PlayCircle
               },
 
             ]

@@ -10,7 +10,7 @@ jest.mock('@covia/covia-sdk', () => ({
     publicKey: new Uint8Array(32),
   })),
   privateKeyToHex: jest.fn(() => 'mockhex'),
-  KeyPairAuth: {
+  Ed25519Auth: {
     fromHex: jest.fn(() => ({ getDID: () => 'did:key:z6Mock' })),
   },
 }));
@@ -64,31 +64,30 @@ describe('SignInButton', () => {
       });
     });
 
-    it('should render avatar with DID initials', () => {
+    it('should render an identity icon button instead of DID-initials avatar', () => {
       render(<SignInButton />);
-      expect(screen.getByText('OK')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Account menu' })).toBeInTheDocument();
     });
 
-    it('should show dropdown with Copy DID option on avatar click', async () => {
+    it('should show My Profile option on account menu click', async () => {
       const user = userEvent.setup();
       render(<SignInButton />);
 
-      await user.click(screen.getByText('OK'));
+      await user.click(screen.getByRole('button', { name: 'Account menu' }));
 
       await waitFor(() => {
-        expect(screen.getByText('Copy DID')).toBeInTheDocument();
+        expect(screen.getByRole('menuitem', { name: 'My Profile' })).toBeInTheDocument();
       });
     });
 
-    it('should show Copy DID option with copy icon in dropdown', async () => {
+    it('should link My Profile to the /profile page', async () => {
       const user = userEvent.setup();
       render(<SignInButton />);
 
-      await user.click(screen.getByText('OK'));
+      await user.click(screen.getByRole('button', { name: 'Account menu' }));
 
       await waitFor(() => {
-        const copyItem = screen.getByRole('menuitem', { name: /Copy DID/ });
-        expect(copyItem).toBeInTheDocument();
+        expect(screen.getByRole('menuitem', { name: 'My Profile' })).toHaveAttribute('href', '/profile');
       });
     });
 
@@ -96,22 +95,24 @@ describe('SignInButton', () => {
       const user = userEvent.setup();
       render(<SignInButton />);
 
-      await user.click(screen.getByText('OK'));
+      await user.click(screen.getByRole('button', { name: 'Account menu' }));
 
       await waitFor(() => {
-        expect(screen.getByText('Sign Out')).toBeInTheDocument();
+        expect(screen.getByRole('menuitem', { name: 'Sign Out' })).toBeInTheDocument();
       });
     });
 
-    it('should show Keyboard Shortcuts option in dropdown', async () => {
+    it('should not show Copy DID or Keyboard Shortcuts in the simplified dropdown', async () => {
       const user = userEvent.setup();
       render(<SignInButton />);
 
-      await user.click(screen.getByText('OK'));
+      await user.click(screen.getByRole('button', { name: 'Account menu' }));
 
       await waitFor(() => {
-        expect(screen.getByText('Keyboard Shortcuts')).toBeInTheDocument();
+        expect(screen.getByRole('menuitem', { name: 'Sign Out' })).toBeInTheDocument();
       });
+      expect(screen.queryByText('Copy DID')).not.toBeInTheDocument();
+      expect(screen.queryByText('Keyboard Shortcuts')).not.toBeInTheDocument();
     });
   });
 });

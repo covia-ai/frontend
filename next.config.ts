@@ -10,15 +10,7 @@ const nextConfig: NextConfig = {
     config.target = isServer ? 'node' : ['web', 'es2022'];
     return config;
   },
-  
-  typescript: {
-    // !! WARN !!
-    // Dangerously allow production builds to successfully complete even if
-    // your project has type errors.
-    // !! WARN !!
-    ignoreBuildErrors: true,
-  },
-  
+
   images: {
     remotePatterns: [
       {

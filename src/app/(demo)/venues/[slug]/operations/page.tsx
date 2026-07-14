@@ -1,12 +1,10 @@
 import { OperationsList } from "@/components/OperationsList";
 
-interface VenueOperationsPageProps {
-  params: Promise<{
-    slug: string;
-  }>;
+interface Props {
+  params: Promise<{ slug: string }>;
 }
 
-export default async function OperationsPage({ params }: VenueOperationsPageProps) {
+export default async function OperationsPage({ params }: Props) {
   const { slug } = await params;
-  return <OperationsList/>;
-} 
+  return <OperationsList venueId={decodeURIComponent(slug)} />;
+}

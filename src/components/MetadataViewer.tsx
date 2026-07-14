@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Asset } from "@covia/covia-sdk";
-import { Calendar, Copy, Copyright, Download, Info, InfoIcon, Tag, User } from "lucide-react";
+import { Calendar, Copyright, Download, Info, InfoIcon, Tag, User }from "lucide-react";
 import Link from "next/link";
 import { Badge } from "./ui/badge";
 import { JsonEditor } from "json-edit-react";
@@ -88,8 +88,8 @@ const METADATA_FIELDS: MetadataFieldConfig[] = [
     path: 'metadata.keywords',
     renderValue: (value) => (
       <div className="flex space-x-1">
-        {value?.map((keyword: string, index: number) => (
-          <Badge variant="secondary" className="text-secondary-foreground" key={index}>{keyword}</Badge>
+        {value?.map((keyword: string) => (
+          <Badge variant="secondary" className="text-secondary-foreground" key={keyword}>{keyword}</Badge>
         ))}
       </div>
     )
@@ -149,7 +149,7 @@ export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
   else {
     setContentUrl(asset.getContentURL());
   }
-  },[])
+  },[asset])
   
   return (
      <Accordion
@@ -193,7 +193,7 @@ export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
                           <DialogTrigger>
                             <span className="text-card-foreground dark:text-secondary-light underline underline"> View metadata</span>
                           </DialogTrigger>
-                          <DialogContent>
+                          <DialogContent className="bg-card text-card-foreground">
                             <DialogTitle>Asset Metadata</DialogTitle>
                             <JsonEditor 
                               data={asset.metadata}

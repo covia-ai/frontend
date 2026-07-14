@@ -1,11 +1,7 @@
 "use client"
 
 import { Play } from "lucide-react";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 export const VideoThumbnails = () => {
-  const router = useRouter()
-  const [selectedVideo, setSelectedVideo] = useState(null);
   const videos = [
     { id: 'b0HwKymJbnA', title: 'Covia.ai App Demo showing federated orchestration' },
     { id: '5FtCG8bYS3w', title: 'Covia.ai Venue Operation with Gemini Demo' },
@@ -19,7 +15,7 @@ export const VideoThumbnails = () => {
               className={` bg-card text-card-foreground  p-4 pb-8 rounded-md shadow-2xl cursor-pointer group transition-all duration-300 hover:scale-105 hover:shadow-3xl
                 ${index === 1 ? 'w-80 md:w-80 h-68' : 'w-64 md:w-64 h-60 '}
               `}
-              onClick={() => router.push(`https://www.youtube.com/watch?v=${video.id}`)}
+              onClick={() => window.open(`https://www.youtube.com/watch?v=${video.id}`, "_blank", "noopener,noreferrer")}
             >
               {/* Thumbnail */}
               <div className="relative aspect-video  overflow-hidden rounded-md">
@@ -29,7 +25,7 @@ export const VideoThumbnails = () => {
                   alt={video.title}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   onError={(e) => {
-                    e.target.src = `https://img.youtube.com/vi/${video.id}/hqdefault.jpg`;
+                    (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${video.id}/hqdefault.jpg`;
                   }}
                 />
                 

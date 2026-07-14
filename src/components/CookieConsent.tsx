@@ -1,6 +1,18 @@
 "use client";
 import CookieConsent from "react-cookie-consent";
 
+// Google Consent Mode v2: GTM/GA read these dataLayer signals to decide
+// whether analytics/ad cookies may actually be set. Without this push,
+// accepting or declining the banner has no effect on tracking.
+function pushConsent(granted: boolean) {
+  window.dataLayer = window.dataLayer || [];
+  window.dataLayer.push({
+    event: "consent_update",
+    analytics_storage: granted ? "granted" : "denied",
+    ad_storage: granted ? "granted" : "denied",
+  });
+}
+
 export const CookieConsentComponent = () => {
 
   return (
@@ -15,13 +27,8 @@ export const CookieConsentComponent = () => {
         buttonClasses="bg-primary text-primary-foreground text-sm"
         declineButtonClasses="bg-muted text-muted-foreground text-sm"
         expires={365}  // Number of days before the cookie expires
-        onAccept={() => {
-          // Add functionality when user accepts cookies
-          
-        }}
-        onDecline={() => {
-          // Add functionality when user declines cookies
-        }}
+        onAccept={() => pushConsent(true)}
+        onDecline={() => pushConsent(false)}
       >
         This website uses cookies to enhance your experience. By using our website, you consent to the use of cookies. 
         You can read more in our <a href="/privacy-policy">privacy policy</a>.

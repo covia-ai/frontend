@@ -80,7 +80,7 @@ export function SmartBreadcrumb({ assetOrJobName, venueName }: SmartBreadcrumbPr
     return !knownRoutes.includes(segment) && !segment.startsWith('[') && !segment.endsWith(']') && isPrevSegmentVenues;
   };
   // Custom label mapping for better UX
-  const getCustomLabel = (segment: string, path: string): string | null => {
+  const getCustomLabel = (segment: string, _path: string): string | null => {
     const labelMap: Record<string, string> = {
       'demo': 'Demo',
       'venues': 'Venues',

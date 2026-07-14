@@ -14,7 +14,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { CircleX, PauseCircle, PauseCircleIcon, StarIcon, StopCircle, Trash2 } from "lucide-react";
+import { PauseCircleIcon, StopCircle, Trash2 }from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
@@ -41,28 +41,21 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
        },[jobData?.status])
       
       function cancelExecution() {
-          if (!venue) return;
+          if (!venue || !jobData.id) return;
           gtmEvent.buttonClick('Cancel Job', jobData.id);
-          venue.jobs.cancel(jobData.id).then((response) => {
-             if(response != 200) {
-                toast("Unable to cancel job right now")
-             }
-             else {
-              toast("Job cancelled")
-             }
-          })
+          venue.jobs.cancel(jobData.id)
+            .then(() => toast("Job cancelled"))
+            .catch(() => toast("Unable to cancel job right now"))
       }
       function deleteExecution() {
-          if (!venue) return;
+          if (!venue || !jobData.id) return;
           gtmEvent.buttonClick('Delete Job', jobData.id);
-          venue.jobs.delete(jobData.id).then((response) => {
-            if(response == 200) {
-              router.push("/venues/"+venue.venueId+"/jobs");
-            }
-          })
+          venue.jobs.delete(jobData.id).then(() => {
+            router.push("/venues/"+venue.venueId+"/jobs");
+          }).catch(() => toast("Unable to delete job right now"))
       }
       function pauseExecution() {
-          if (!venue) return;
+          if (!venue || !jobData.id) return;
           gtmEvent.buttonClick('Pause Job', jobData.id);
           venue.jobs.pause(jobData.id).then(() => {
             toast("Job paused");
@@ -71,7 +64,7 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
           });
       }
       function resumeExecution() {
-          if (!venue) return;
+          if (!venue || !jobData.id) return;
           gtmEvent.buttonClick('Resume Job', jobData.id);
           venue.jobs.resume(jobData.id).then(() => {
             toast("Job resumed");
@@ -103,7 +96,7 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
                                   <AlertDialogCancel>No</AlertDialogCancel>
-                                  <AlertDialogAction onClick={(e) => cancelExecution()}>Yes</AlertDialogAction>
+                                  <AlertDialogAction onClick={(_e) => cancelExecution()}>Yes</AlertDialogAction>
                                   </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
@@ -130,7 +123,7 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
                                   <AlertDialogCancel>No</AlertDialogCancel>
-                                  <AlertDialogAction onClick={(e) => pauseExecution()}>Yes</AlertDialogAction>
+                                  <AlertDialogAction onClick={(_e) => pauseExecution()}>Yes</AlertDialogAction>
                                   </AlertDialogFooter>
                           </AlertDialogContent>
                   </AlertDialog>
@@ -157,7 +150,7 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
                                   <AlertDialogCancel>No</AlertDialogCancel>
-                                  <AlertDialogAction onClick={(e) => resumeExecution()}>Yes</AlertDialogAction>
+                                  <AlertDialogAction onClick={(_e) => resumeExecution()}>Yes</AlertDialogAction>
                                   </AlertDialogFooter>
                           </AlertDialogContent>
                   </AlertDialog>
@@ -189,7 +182,7 @@ export const ExecutionToolbar = ({ jobData }: ExecutionToolBarProps) => {
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
                                   <AlertDialogCancel>No</AlertDialogCancel>
-                                  <AlertDialogAction onClick={(e) => deleteExecution()}>Yes</AlertDialogAction>
+                                  <AlertDialogAction onClick={(_e) => deleteExecution()}>Yes</AlertDialogAction>
                                   </AlertDialogFooter>
                           </AlertDialogContent>
                   </AlertDialog>

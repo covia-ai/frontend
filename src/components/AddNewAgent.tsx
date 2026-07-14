@@ -2,7 +2,6 @@
 
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogTitle,
   DialogTrigger,
@@ -25,61 +24,109 @@ import { Separator } from "./ui/separator";
 import { toast } from "sonner";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { LLM_PROVIDERS } from "@/config/llm-providers";
-import { Check, AlertTriangle } from "lucide-react";
+import { DEFAULT_AGENT_ID } from "@/config/agents";
+import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
-export function AddNewAgent() {
-  const [agentName, setAgentName] = useState("");
-  const [llmProvider, setLlmProvider] = useState("anthropic");
-  const [systemPrompt, setSystemPrompt] = useState("");
+interface AddNewAgentProps {
+  trigger?: React.ReactNode;
+  initialAgentName?: string;
+  initialSystemPrompt?: string;
+  initialProvider?: string;
+  onCreated?: () => void;
+}
+
+const slugify = (name: string) =>
+  name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
+
+export function AddNewAgent({
+  trigger,
+  initialAgentName = "",
+  initialSystemPrompt = "",
+  initialProvider = "anthropic",
+  onCreated,
+}: AddNewAgentProps = {}) {
+  const [agentName, setAgentName] = useState(initialAgentName);
+  const [agentId, setAgentId] = useState("");
+  const [agentIdEdited, setAgentIdEdited] = useState(false);
+  const [llmProvider, setLlmProvider] = useState(initialProvider);
+  const [systemPrompt, setSystemPrompt] = useState(initialSystemPrompt);
   const [initialCommand, setInitialCommand] = useState("");
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState(false);
   const [availableKeys, setAvailableKeys] = useState<string[]>([]);
 
+
   const venue = useAuthenticatedVenue();
 
+  const resolvedAgentId = agentId.trim() || slugify(agentName);
+  const isReservedAgentId = resolvedAgentId === DEFAULT_AGENT_ID;
+
   useEffect(() => {
-    if (!open || !venue) return;
+    if (!open) return;
+    setAgentName(initialAgentName);
+    setAgentId(slugify(initialAgentName));
+    setAgentIdEdited(false);
+    setSystemPrompt(initialSystemPrompt);
+    setLlmProvider(initialProvider);
+    setInitialCommand("");
+    if (!venue) return;
     venue.secrets
       .list()
       .then((secrets: string[]) => setAvailableKeys(secrets))
       .catch(() => setAvailableKeys([]));
-  }, [open, venue]);
+  }, [open, venue, initialAgentName, initialSystemPrompt, initialProvider]);
 
   const isProviderReady = (providerId: string) => {
     const provider = LLM_PROVIDERS[providerId];
-    return provider && availableKeys.includes(provider.secretKey);
+    if (!provider) return false;
+    if (!provider.requiresKey) return true;
+    return availableKeys.includes(provider.secretKey);
   };
 
   const handleNewAgent = async () => {
-    if (!venue || !agentName.trim()) {
+    if (!venue) {
+      toast("Please connect to a venue first");
+      return;
+    }
+    if (!agentName.trim()) {
       toast("Please enter an agent name");
+      return;
+    }
+    if (!isProviderReady(llmProvider)) {
+      toast("No API key found for this provider");
+      return;
+    }
+    if (isReservedAgentId) {
+      toast(`"${DEFAULT_AGENT_ID}" is reserved for the workspace prompt bar — pick another id`);
       return;
     }
     setCreating(true);
     try {
+      const provider = LLM_PROVIDERS[llmProvider];
       const result = await venue.agents.create({
-        agentId: agentName,
+        agentId: resolvedAgentId,
         config: {
-          operation: "standard",
-          llmProvider,
+          operation: "v/ops/llmagent/chat",
+          llmOperation: provider.operation,
           ...(systemPrompt.trim() && { systemPrompt: systemPrompt.trim() }),
         },
       });
 
       if (initialCommand.trim()) {
-        const agent = venue.agent(result.agentId);
-        await agent.request({ prompt: initialCommand.trim() });
+        await venue.agents.request(result.agentId, { task: initialCommand.trim() });
       }
 
       toast("Agent created", {
         description: `Agent "${result.agentId}" is now ${result.status}`,
       });
       setAgentName("");
+      setAgentId("");
+      setAgentIdEdited(false);
       setSystemPrompt("");
       setInitialCommand("");
       setOpen(false);
+      onCreated?.();
     } catch {
       toast("Unable to create agent");
     } finally {
@@ -89,14 +136,16 @@ export function AddNewAgent() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
-        <Iconbutton
-          icon={PlusCircledIcon}
-          message="Create a new agent"
-          label="Create a new agent"
-        />
+      <DialogTrigger asChild>
+        {trigger ?? (
+          <Iconbutton
+            icon={PlusCircledIcon}
+            message="Create a new agent"
+            label="Create a new agent"
+          />
+        )}
       </DialogTrigger>
-      <DialogContent className="flex flex-col bg-card max-h-[85vh] overflow-y-auto">
+      <DialogContent className="flex flex-col bg-card text-card-foreground max-h-[85vh] overflow-y-auto">
         <DialogTitle className="space-y-2">
           <Label className="text-md">Create a new agent</Label>
           <Separator />
@@ -112,8 +161,37 @@ export function AddNewAgent() {
               data-testid="agent-name"
               placeholder="e.g., Customer Support Agent"
               value={agentName}
-              onChange={(e) => setAgentName(e.target.value)}
+              onChange={(e) => {
+                setAgentName(e.target.value);
+                if (!agentIdEdited) setAgentId(slugify(e.target.value));
+              }}
             />
+          </div>
+
+          {/* Agent ID */}
+          <div className="space-y-2 w-full">
+            <Label htmlFor="agent-id" className="w-32 text-sm">
+              Agent ID:
+            </Label>
+            <Input
+              id="agent-id"
+              placeholder="e.g., customer-support-agent"
+              value={agentId}
+              onChange={(e) => {
+                setAgentId(e.target.value);
+                setAgentIdEdited(true);
+              }}
+            />
+            {isReservedAgentId ? (
+              <p className="text-xs text-amber-500 flex items-center gap-1">
+                <AlertTriangle size={12} />
+                &quot;{DEFAULT_AGENT_ID}&quot; is reserved for the workspace prompt bar — pick another id.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Unique identifier — auto-suggested from name. Edit to override.
+              </p>
+            )}
           </div>
 
           {/* LLM Provider */}
@@ -126,17 +204,12 @@ export function AddNewAgent() {
               <SelectContent>
                 {Object.entries(LLM_PROVIDERS).map(([id, provider]) => (
                   <SelectItem key={id} value={id}>
-                    <span className="flex items-center gap-2">
-                      {provider.label}
-                      {isProviderReady(id) && (
-                        <Check size={14} className="text-green-500" />
-                      )}
-                    </span>
+                    {provider.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            {!isProviderReady(llmProvider) && (
+            {!isProviderReady(llmProvider) && LLM_PROVIDERS[llmProvider]?.requiresKey && (
               <p className="text-xs text-amber-500 flex items-center gap-1">
                 <AlertTriangle size={12} />
                 No API key found for this provider.{" "}
@@ -176,20 +249,28 @@ export function AddNewAgent() {
               First task to send to the agent after creation.
             </p>
           </div>
-
         </div>
-        <DialogClose>
-          <Button
-            aria-label="create agent"
-            role="button"
-            data-testid="create-agent"
-            onClick={() => handleNewAgent()}
-            disabled={creating}
-            className="btn-sm"
-          >
-            {creating ? "Creating..." : "Create"}
-          </Button>
-        </DialogClose>
+
+        {!venue && (
+          <p className="text-xs text-amber-500 flex items-center gap-1">
+            <AlertTriangle size={12} />
+            No venue connected.{" "}
+            <Link href="/venues" className="underline">
+              Connect one in Venues
+            </Link>
+          </p>
+        )}
+
+        <Button
+          aria-label="create agent"
+          role="button"
+          data-testid="create-agent"
+          onClick={handleNewAgent}
+          disabled={creating || !venue || !agentName.trim() || !isProviderReady(llmProvider) || isReservedAgentId}
+          className="btn-sm mt-2"
+        >
+          {creating ? "Creating..." : "Create"}
+        </Button>
       </DialogContent>
     </Dialog>
   );

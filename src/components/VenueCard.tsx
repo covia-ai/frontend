@@ -2,25 +2,26 @@
 
 import { Card } from "@/components/ui/card";
 import { Venue } from "@covia/covia-sdk";
-import { createAuthProvider } from "@/lib/auth-provider";
+import { getVenueFor } from "@/hooks/use-authenticated-venue";
 import { useRouter } from 'next/navigation';
-import { useVenues } from "@/hooks/use-venues";
 import { useAuthStore } from "@/hooks/use-auth";
 import { Badge } from "./ui/badge";
 import { RemoveVenueModal } from "./RemoveVenueModal";
-import { Building } from "lucide-react";
+import { Copy } from "lucide-react";
+import { copyDataToClipBoard } from "@/lib/utils";
 
 interface VenueCardProps {
-  venue: Venue;
+  venue: Venue | { baseUrl?: string; venueId: string; metadata?: { name?: string } };
   compact:boolean;
 }
 
-export function VenueCard({ venue, compact }: VenueCardProps) {
+export function VenueCard({ venue: venueProp, compact }: VenueCardProps) {
   const router = useRouter();
-  const authData = useAuthStore((x) => x.auth);
+  const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
 
-  if(!(venue instanceof Venue))
-    venue = new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name, auth: createAuthProvider(authData)})
+  const venue = venueProp instanceof Venue
+    ? venueProp
+    : getVenueFor(venueProp, getAuthForVenue(venueProp.venueId))
   const handleCardClick = () => {
     const encodedUrl = "/venues/"+encodeURIComponent(venue.venueId);
     router.push(encodedUrl);
@@ -44,9 +45,17 @@ export function VenueCard({ venue, compact }: VenueCardProps) {
       </div>
 
       {/* Fixed-size footer */}
-      <div className="p-1 h-8 flex flex-row-reverse" onClick={handleCardClick}>
-          <Badge variant="outline" className="bg-muted text-muted-foreground text-[10px] max-w-full overflow-hidden"><Building className="text-amber-400 ml-2 flex-shrink-0" size={14}/> <span className="truncate">{venue.venueId}</span></Badge>
-          
+      <div className="p-1 h-8 flex flex-row-reverse">
+          <Badge
+            variant="outline"
+            className="bg-muted text-muted-foreground text-[10px] max-w-full overflow-hidden cursor-pointer hover:border-accent"
+            onClick={(e) => {
+              e.stopPropagation();
+              copyDataToClipBoard(venue.baseUrl, "Venue URL copied to clipboard");
+            }}
+          >
+            <Copy className="text-amber-400 ml-2 flex-shrink-0" size={14}/> <span className="truncate">{venue.baseUrl}</span>
+          </Badge>
       </div>
     </Card>
   );

@@ -1,24 +1,9 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import {
-  ChevronRight,
-  ChevronDown,
-  FolderOpen,
-  Folder,
-  FileText,
-  GripVertical,
-  Loader2,
-  RefreshCw,
-  Save,
-  Trash2,
-  Plus,
-  PenLine,
-  Eye,
-  ListPlus,
-  Database,
-} from "lucide-react";
+import { ChevronRight, FolderOpen, Folder, FileText, GripVertical, Loader2, RefreshCw, Save, Trash2, Plus, PenLine, Eye, ListPlus, Database, Lock }from "lucide-react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useIsAuthenticated } from "@/hooks/use-auth";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
@@ -67,6 +52,7 @@ export function WorkspaceExplorer() {
   const { theme } = useTheme();
 
   const venue = useAuthenticatedVenue();
+  const isAuthenticated = useIsAuthenticated();
 
   // Resize state
   const [leftWidth, setLeftWidth] = useState(300);
@@ -103,11 +89,11 @@ export function WorkspaceExplorer() {
       venue.workspace
         .list(path)
         .then((result) => {
+          // The job-free `list` (GET /api/v1/values/list) returns only keys —
+          // per-entry values/types would each need a read (a job), which the UI
+          // must not mint. Entry type is derived lazily on expand if needed.
           const items: PathEntry[] = (result.keys || []).map(
-            (key: string, i: number) => ({
-              key,
-              type: result.values?.[i] !== undefined ? typeof result.values[i] : "unknown",
-            })
+            (key: string): PathEntry => ({ key })
           );
           setEntries(items);
           if (path) {
@@ -197,14 +183,10 @@ export function WorkspaceExplorer() {
     setSaving(true);
     venue.workspace
       .write(selectedPath, editedData)
-      .then((result) => {
-        if (result.written) {
-          toast("Saved successfully");
-          setReadData(editedData);
-          setEditMode(false);
-        } else {
-          toast("Unable to save");
-        }
+      .then(() => {
+        toast("Saved successfully");
+        setReadData(editedData);
+        setEditMode(false);
       })
       .catch(() => {
         toast("Unable to save");
@@ -219,18 +201,14 @@ export function WorkspaceExplorer() {
     if (!venue || !selectedPath) return;
     venue.workspace
       .delete(selectedPath)
-      .then((result) => {
-        if (result.deleted) {
-          toast("Deleted successfully");
-          setSelectedPath(null);
-          setReadData(null);
-          // Refresh current listing
-          const currentPath =
-            pathSegments.length > 0 ? pathSegments.join("/") : undefined;
-          loadPath(currentPath);
-        } else {
-          toast("Unable to delete");
-        }
+      .then(() => {
+        toast("Deleted successfully");
+        setSelectedPath(null);
+        setReadData(null);
+        // Refresh current listing
+        const currentPath =
+          pathSegments.length > 0 ? pathSegments.join("/") : undefined;
+        loadPath(currentPath);
       })
       .catch(() => {
         toast("Unable to delete");
@@ -252,16 +230,14 @@ export function WorkspaceExplorer() {
         : newKeyPath;
     venue.workspace
       .write(fullPath, value)
-      .then((result) => {
-        if (result.written) {
-          toast("Created successfully");
-          setNewKeyPath("");
-          setNewKeyValue("");
-          setShowNewKey(false);
-          const currentPath =
-            pathSegments.length > 0 ? pathSegments.join("/") : undefined;
-          loadPath(currentPath);
-        }
+      .then(() => {
+        toast("Created successfully");
+        setNewKeyPath("");
+        setNewKeyValue("");
+        setShowNewKey(false);
+        const currentPath =
+          pathSegments.length > 0 ? pathSegments.join("/") : undefined;
+        loadPath(currentPath);
       })
       .catch(() => {
         toast("Unable to create");
@@ -279,13 +255,11 @@ export function WorkspaceExplorer() {
     }
     venue.workspace
       .append(selectedPath, value)
-      .then((result) => {
-        if (result.appended) {
-          toast("Appended successfully");
-          setAppendValue("");
-          setShowAppend(false);
-          readPath(selectedPath);
-        }
+      .then(() => {
+        toast("Appended successfully");
+        setAppendValue("");
+        setShowAppend(false);
+        readPath(selectedPath);
       })
       .catch(() => {
         toast("Unable to append");
@@ -311,6 +285,14 @@ export function WorkspaceExplorer() {
         style={{ width: `${leftWidth}px` }}
         className="flex-shrink-0 border-r border-border overflow-y-auto flex flex-col"
       >
+        {/* Read-only notice for public users */}
+        {!isAuthenticated && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b border-border text-xs text-muted-foreground">
+            <Lock size={11} className="shrink-0" />
+            Read-only — sign in to modify workspace data
+          </div>
+        )}
+
         {/* Breadcrumb */}
         <div className="p-2 border-b border-border flex items-center gap-1 flex-wrap text-xs">
           <button
@@ -386,50 +368,52 @@ export function WorkspaceExplorer() {
         })}
 
         {/* New Key Button */}
-        <div className="mt-auto border-t border-border p-2">
-          {!showNewKey ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full text-xs"
-              onClick={() => setShowNewKey(true)}
-            >
-              <Plus size={12} className="mr-1" /> New Key
-            </Button>
-          ) : (
-            <div className="space-y-2">
-              <Input
-                placeholder="Key path"
-                value={newKeyPath}
-                onChange={(e) => setNewKeyPath(e.target.value)}
-                className="text-xs h-7"
-              />
-              <Input
-                placeholder="Value (text or JSON)"
-                value={newKeyValue}
-                onChange={(e) => setNewKeyValue(e.target.value)}
-                className="text-xs h-7"
-              />
-              <div className="flex gap-1">
-                <Button size="sm" className="text-xs h-6 flex-1" onClick={handleNewKey}>
-                  Create
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs h-6"
-                  onClick={() => {
-                    setShowNewKey(false);
-                    setNewKeyPath("");
-                    setNewKeyValue("");
-                  }}
-                >
-                  Cancel
-                </Button>
+        {isAuthenticated && (
+          <div className="mt-auto border-t border-border p-2">
+            {!showNewKey ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-xs"
+                onClick={() => setShowNewKey(true)}
+              >
+                <Plus size={12} className="mr-1" /> New Key
+              </Button>
+            ) : (
+              <div className="space-y-2">
+                <Input
+                  placeholder="Key path"
+                  value={newKeyPath}
+                  onChange={(e) => setNewKeyPath(e.target.value)}
+                  className="text-xs h-7"
+                />
+                <Input
+                  placeholder="Value (text or JSON)"
+                  value={newKeyValue}
+                  onChange={(e) => setNewKeyValue(e.target.value)}
+                  className="text-xs h-7"
+                />
+                <div className="flex gap-1">
+                  <Button size="sm" className="text-xs h-6 flex-1" onClick={handleNewKey}>
+                    Create
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs h-6"
+                    onClick={() => {
+                      setShowNewKey(false);
+                      setNewKeyPath("");
+                      setNewKeyValue("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Resize Handle */}
@@ -462,77 +446,85 @@ export function WorkspaceExplorer() {
               </Badge>
 
               <div className="ml-auto flex items-center gap-1">
-                {!editMode ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setEditMode(true)}
-                  >
-                    <PenLine size={14} className="mr-1" /> Edit
-                  </Button>
-                ) : (
+                {isAuthenticated ? (
                   <>
+                    {!editMode ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditMode(true)}
+                      >
+                        <PenLine size={14} className="mr-1" /> Edit
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditMode(false);
+                            setEditedData(readData);
+                          }}
+                        >
+                          <Eye size={14} className="mr-1" /> View
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={handleSave}
+                          disabled={saving}
+                        >
+                          <Save size={14} className="mr-1" />
+                          {saving ? "Saving..." : "Save"}
+                        </Button>
+                      </>
+                    )}
+
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        setEditMode(false);
-                        setEditedData(readData);
-                      }}
+                      onClick={() => setShowAppend(!showAppend)}
                     >
-                      <Eye size={14} className="mr-1" /> View
+                      <ListPlus size={14} className="mr-1" /> Append
                     </Button>
-                    <Button
-                      size="sm"
-                      onClick={handleSave}
-                      disabled={saving}
-                    >
-                      <Save size={14} className="mr-1" />
-                      {saving ? "Saving..." : "Save"}
-                    </Button>
+
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 size={14} className="mr-1" /> Delete
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            Delete &quot;{selectedPath}&quot;?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleDelete}>
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </>
+                ) : (
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Lock size={12} /> Read-only
+                  </span>
                 )}
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAppend(!showAppend)}
-                >
-                  <ListPlus size={14} className="mr-1" /> Append
-                </Button>
-
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 size={14} className="mr-1" /> Delete
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        Delete &quot;{selectedPath}&quot;?
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDelete}>
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
               </div>
             </div>
 
             {/* Append form */}
-            {showAppend && (
+            {isAuthenticated && showAppend && (
               <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/50">
                 <Input
                   placeholder="Value to append (text or JSON)"

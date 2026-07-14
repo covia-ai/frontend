@@ -5,6 +5,7 @@ import { TopBar } from "@/components/admin-panel/TopBar";
 import { SecretList } from "@/components/SecretList";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Info, ChevronRight } from "lucide-react";
+import { KNOWN_LLM_KEYS } from "@/config/llm-providers";
 
 export default function SecretsPage() {
   return (
@@ -30,18 +31,12 @@ export default function SecretsPage() {
                 To use LLM providers in your workspaces, store your API keys with the following names. Agents and tools in the workspace will automatically look for these secret names.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <code className="bg-muted px-2 py-0.5 rounded font-mono text-xs">OPENAI_API_KEY</code>
-                  <span className="text-muted-foreground">— OpenAI</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <code className="bg-muted px-2 py-0.5 rounded font-mono text-xs">ANTHROPIC_API_KEY</code>
-                  <span className="text-muted-foreground">— Anthropic</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <code className="bg-muted px-2 py-0.5 rounded font-mono text-xs">GOOGLE_API_KEY</code>
-                  <span className="text-muted-foreground">— Google Gemini</span>
-                </div>
+                {Object.entries(KNOWN_LLM_KEYS).map(([key, label]) => (
+                  <div key={key} className="flex items-center gap-2">
+                    <code className="bg-muted px-2 py-0.5 rounded font-mono text-xs">{key}</code>
+                    <span className="text-muted-foreground">— {label}</span>
+                  </div>
+                ))}
                 <div className="flex items-center gap-2">
                   <code className="bg-muted px-2 py-0.5 rounded font-mono text-xs">MISTRAL_API_KEY</code>
                   <span className="text-muted-foreground">— Mistral</span>

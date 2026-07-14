@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { CustomNodeToolTip } from './CustomNodeToolTip';
-function OutputNode({ data }) {
+function OutputNode({ data }: { data: any }) {
   const outputs = data.outputs;
   const outputSpacing = 100 / (outputs.length + 1);
   const width = 6;
@@ -9,10 +9,10 @@ function OutputNode({ data }) {
   const outputClassName = "!w-3 !h-3 !rounded-full !border-2 !bg-background !border-blue-600 !rounded-md"
   const topDivClass ="border-2 border-border bg-card/50 rounded-md flex flex-col justify-start items-center min-w-16 min-h-16";
 
-  function getPosOutput(index) {
+  function getPosOutput(index: number) {
     return outputSpacing * (index + 1) + "%"
   }
- function getPosOutputForToolTip(index) {
+ function getPosOutputForToolTip(index: number) {
     return outputSpacing * index ;
   }
 
@@ -29,7 +29,7 @@ function OutputNode({ data }) {
         className="!w-3 !h-3 !rounded-full !border-2 !bg-blue-700 !border-blue-700 !rounded-md !top-1 !mt-6"
       >
       </Handle>
-      {outputs.map((output, index) => (
+      {outputs.map((output: string, index: number) => (
            <CustomNodeToolTip key={index} posTop={getPosOutputForToolTip(index)} toolTip={output} position={Position.Left}
                     handle={<Handle
                         type="target"

@@ -1,35 +1,34 @@
-import React, { memo, useState } from 'react';
+import React, { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { CustomNodeToolTip } from './CustomNodeToolTip';
 
-function TaskNode({ data }) {
+function TaskNode({ data }: { data: any }) {
   const inputs = data.inputs;
   const outputs = data.outputs;
-  const op = data.op;
 
   const inputSpacing = 100 / (inputs.length + 1);
   const outputSpacing = 100 / (outputs.length + 1);
   const outputClassName = "!w-3 !h-3 !bg-primary !border-2 !bg-background !border-blue-800  !rounded-md";
   const inputClassName = "!w-3 !h-3 !rounded-full !border-2 !bg-background !border-green-800 !rounded-md  !rounded-md";
 
-  function getPosInput(index) {
+  function getPosInput(index: number) {
     return inputSpacing * (index + 1) + "%"
   }
 
-  function getPosInputForTooltip(index) {
+  function getPosInputForTooltip(index: number) {
     return inputSpacing * index 
   }
-  function getPosOutputForTooltip(index) {
-    return inputSpacing * index 
+  function getPosOutputForTooltip(index: number) {
+    return outputSpacing * index
   }
 
-  function getPosOutput(index) {
+  function getPosOutput(index: number) {
     return outputSpacing * (index + 1) + "%"
   }
 
   function getInputBoxDiv() {
      let maxLengthOfInputs = 0;
-     inputs.map((input) => {
+     inputs.map((input: string) => {
        if(input.length > maxLengthOfInputs)
           maxLengthOfInputs = input.length
      });
@@ -45,7 +44,7 @@ function TaskNode({ data }) {
   }
  function getOutputBoxDiv() {
      let maxLengthOfInputs = 0;
-     outputs.map((output) => {
+     outputs.map((output: string) => {
        if(output.length > maxLengthOfInputs)
           maxLengthOfInputs = output.length
      });
@@ -78,7 +77,7 @@ function TaskNode({ data }) {
             >
             </Handle>
                  
-          {inputs.map((input, index) => (
+          {inputs.map((input: string, index: number) => (
             <CustomNodeToolTip key={index} posTop={getPosInputForTooltip(index)} toolTip={input} position={Position.Left}
                 handle={
                   <Handle
@@ -111,7 +110,7 @@ function TaskNode({ data }) {
                 >
                 </Handle>
           
-          {outputs.map((output, index) => (
+          {outputs.map((output: string, index: number) => (
             <CustomNodeToolTip key={index}  posTop={getPosOutputForTooltip(index)} toolTip={output} position={Position.Right}
                                 handle={
                 <Handle

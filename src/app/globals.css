@@ -4,6 +4,12 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* Custom breakpoints for grid column scaling — Tailwind's default 2xl
+     (1536px) already triggers on ordinary 1080p/1440p laptops, so extra
+     grid columns need much wider thresholds to only kick in on genuinely
+     large/ultrawide/4K displays. */
+  --breakpoint-3xl: 1800px;
+  --breakpoint-4xl: 2200px;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);

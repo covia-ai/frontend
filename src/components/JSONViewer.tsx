@@ -27,23 +27,27 @@ export const JsonViewer = (props:any) => {
 
    useEffect(() => {
       if (!venue) return;
-      venue.assets.getContent(props.assetId).then((response) => {
-        response?.getReader().read().then(({done, value}) => {
-          const decoder = new TextDecoder();
-          const text = decoder.decode(value);
-          setRawText(text);
-          const jsonData = JSON.parse(text);
-          setRenderData(jsonData)
-      });
-
+      venue.assets.getContent(props.assetId).then(async (response) => {
+        const reader = response?.getReader();
+        if (!reader) return;
+        const decoder = new TextDecoder();
+        let text = "";
+        while (true) {
+          const { value, done } = await reader.read();
+          if (value) text += decoder.decode(value, { stream: !done });
+          if (done) break;
+        }
+        setRawText(text);
+        const jsonData = JSON.parse(text);
+        setRenderData(jsonData)
       })
-    },[props.assetId])
+    },[props.assetId, venue])
 
 
   return (
   <Dialog>
   <DialogTrigger className="text-sm text-secondary dark:text-secondary-light underline">View</DialogTrigger>
-  <DialogContent className="bg-background text-foreground max-h-[90vh] w-full max-w-4xl p-4 flex flex-col overflow-hidden border border-border">
+  <DialogContent className="bg-card text-card-foreground max-h-[90vh] w-full max-w-4xl p-4 flex flex-col overflow-hidden border border-border">
      <DialogHeader className="text-sm font-medium text-muted-foreground">
         JSON Preview
     </DialogHeader>
@@ -55,7 +59,7 @@ export const JsonViewer = (props:any) => {
       </TabsList>
       <TabsContent value="preview" className="flex-1 min-h-0">
         <ScrollArea className="h-[500px] w-full [&>[data-radix-scroll-area-viewport]>div]:!block rounded-lg">
-          <div className="p-4 bg-card rounded-lg">
+          <div className="p-4 bg-background rounded-lg">
             <JsonEditor
                               data={renderData}
                               rootName="content"
@@ -84,7 +88,7 @@ export const JsonViewer = (props:any) => {
           ref={rawRef}
           readOnly
           value={rawText}
-          className="w-full h-[450px] p-4 text-sm bg-card rounded-lg resize-none border-none outline-none font-mono"
+          className="w-full h-[450px] p-4 text-sm bg-background rounded-lg resize-none border-none outline-none font-mono"
         />
       </TabsContent>
     </Tabs>

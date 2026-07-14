@@ -6,6 +6,7 @@ import { createAuthProvider } from "@/lib/auth-provider";
 import Link from "next/link";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
+import { getVenueFor } from "@/hooks/use-authenticated-venue";
 import { MetadataViewer } from "./MetadataViewer";
 import { AssetHeader } from "./AssetHeader";
 import { useVenues } from "@/hooks/use-venues";
@@ -30,10 +31,10 @@ export function AssetViewer(props: AssetViewerProps) {
     if(props.venueId != venueObj?.venueId) {
         const venue = venues.find(v => v.venueId === props.venueId);
         if (venue) {
-            new Venue({baseUrl:venue.baseUrl, venueId:venue.venueId, name:venue.metadata.name, auth: authOption}).getAsset(props.assetId).then((asset: Asset) => {
+            getVenueFor(venue, authData).getAsset(props.assetId).then((asset: Asset) => {
           setAsset(asset);
           })
-          setVenueName(venue.metadata.name)
+          setVenueName(venue.metadata.name ?? "")
          }
          else {
           Venue.connect(decodeURIComponent(props.venueId), authOption).then((venue) => {
@@ -41,15 +42,15 @@ export function AssetViewer(props: AssetViewerProps) {
              venue.getAsset(props.assetId).then((asset: Asset) => {
              setAsset(asset);
             })
-            setVenueName(venue.metadata.name)
+            setVenueName(venue.metadata.name ?? "")
           });
          }
     }
-    else {
-      new Venue({baseUrl:venueObj.baseUrl, venueId:venueObj.venueId, name:venueObj.metadata.name, auth: authOption}).getAsset(props.assetId).then((asset: Asset) => {
+    else if (venueObj) {
+      getVenueFor(venueObj, authData).getAsset(props.assetId).then((asset: Asset) => {
       setAsset(asset);
      })
-      setVenueName(venueObj?.metadata.name!)
+      setVenueName(venueObj.metadata.name ?? "")
     }
   }, [addVenue, props.assetId, props.venueId, authData, venueObj, venues]);
 
