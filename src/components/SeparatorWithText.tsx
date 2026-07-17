@@ -1,6 +1,6 @@
 import { Separator } from "./ui/separator"
 
-export const SeperatorWithText= (props:any) => {
+export const SeparatorWithText= (props:any) => {
     return (
         <div className="w-full">
         <div className="relative flex items-center gap-2">

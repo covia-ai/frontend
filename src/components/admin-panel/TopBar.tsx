@@ -2,7 +2,7 @@
 "use client"
 
 import { SheetMenu } from "@/components/admin-panel/sheet-menu";
-import { SignInButton } from "./signin-button";
+import { ChromeSignInButton } from "./signin-button";
 import { VenueSelector } from "@/components/VenueSelector";
 import { DarkLightToggle } from "../DarkLightToggle";
 import { SmartBreadcrumb } from "../smartbreadcrumb2";
@@ -23,7 +23,7 @@ export function TopBar(props:any) {
           <div className="flex flex-1 items-center justify-end space-x-4">
               <DarkLightToggle/>
               <VenueSelector />
-              <SignInButton/>
+              <ChromeSignInButton/>
           </div>
         </div>
       </div>

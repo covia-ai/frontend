@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { TopBar } from "./admin-panel/TopBar";
 import { AgentListItem } from "@/config/types";
-import { SeperatorWithText } from "@/components/SeperatorWithText";
+import { SeparatorWithText } from "@/components/SeparatorWithText";
 import { AgentTemplates } from "./AgentTemplates";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -51,7 +51,7 @@ export function AgentList() {
    return (<ContentLayout>
      <TopBar/>
  <AgentTemplates onCreated={fetchAgents} />
- <SeperatorWithText text="or"/>
+ <SeparatorWithText text="or"/>
      <PageHeading
        className="pt-10"
        text={agentData.length > 0 ? "Choose an existing" : "Create a new"}

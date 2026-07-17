@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/dialog"
 import { useState } from "react"
 import { useVenues } from "@/hooks/use-venues";
-import { Iconbutton } from "./Iconbutton";
+import { IconButton } from "./IconButton";
 import { Venue } from "@covia/covia-sdk";
 import { createAuthProvider } from "@/lib/auth-provider";
 import { toast } from "sonner";
@@ -64,7 +64,7 @@ export const AddNewVenueModal = (_props:any) => {
     return (
        <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setError(""); setVenueDidOrUrl(""); } }}>
             <DialogTrigger>
-                  <Iconbutton icon={PlusCircledIcon} message="Connect to new venue" label="Connect to venue"/>
+                  <IconButton icon={PlusCircledIcon} message="Connect to new venue" label="Connect to venue"/>
             </DialogTrigger>
             <DialogContent className="bg-card text-card-foreground">
                 <DialogTitle data-testid="add-title" className="flex flex-row items-center space-x-2">

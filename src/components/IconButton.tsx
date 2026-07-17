@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 // `asChild` trigger (e.g. `<DialogTrigger asChild>`), which clones
 // onClick/ref onto whatever element is passed to it — without this,
 // those props are silently dropped and the trigger never fires.
-export const Iconbutton = forwardRef<HTMLDivElement, any>((props, ref) => {
+export const IconButton = forwardRef<HTMLDivElement, any>((props, ref) => {
   const { icon: Icon, label, message, compact, pathId, path, venueId, ...rest } = props;
   const router = useRouter();
 
@@ -48,4 +48,4 @@ export const Iconbutton = forwardRef<HTMLDivElement, any>((props, ref) => {
      </Tooltip>
   )
 });
-Iconbutton.displayName = "Iconbutton";
+IconButton.displayName = "IconButton";

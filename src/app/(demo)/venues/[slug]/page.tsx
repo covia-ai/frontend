@@ -1,7 +1,6 @@
 "use client";
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
-import { SmartBreadcrumb } from "@/components/ui/smart-breadcrumb";
 import { Card, CardContent, CardHeader }from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -111,7 +110,7 @@ export default function VenuePage({ params }: VenuePageProps) {
   if (!venue) {
     return (
       <ContentLayout>
-        <SmartBreadcrumb assetOrJobName={slug}/>
+        <TopBar assetOrJobName={slug}/>
         <div className="flex items-center justify-center h-64">
           <p className="text-muted-foreground">Venue not found</p>
         </div>

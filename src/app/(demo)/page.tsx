@@ -5,7 +5,7 @@ import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { ShowCase } from "@/components/ShowCase";
 import { AIPrompt } from "@/components/AIPrompt";
 import { TopBar } from "@/components/admin-panel/TopBar";
-import { SeperatorWithText } from "@/components/SeperatorWithText";
+import { SeparatorWithText } from "@/components/SeparatorWithText";
 import { WorkspaceExplorer } from "@/components/WorkspaceExplorer";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 
@@ -16,11 +16,11 @@ export default function Workspace() {
     <ContentLayout>
       <TopBar/>
       <AIPrompt/>
-      <SeperatorWithText text="or"/>
+      <SeparatorWithText text="or"/>
       <ShowCase/>
       {isAuthenticated && (
         <>
-          <SeperatorWithText text="Workspace Data"/>
+          <SeparatorWithText text="Workspace Data"/>
           <WorkspaceExplorer/>
         </>
       )}

@@ -27,7 +27,7 @@ jest.mock('@/hooks/use-venues', () => ({
 }));
 
 // Must import after mocks are set up
-import { SignInButton } from '@/components/admin-panel/signin-button';
+import { ChromeSignInButton } from '@/components/admin-panel/signin-button';
 import { useAuthStore } from '@/hooks/use-auth';
 
 // Mock clipboard API
@@ -38,7 +38,7 @@ Object.defineProperty(navigator, 'clipboard', {
   configurable: true,
 });
 
-describe('SignInButton', () => {
+describe('ChromeSignInButton', () => {
   beforeEach(() => {
     act(() => {
       useAuthStore.setState({ auth: null, deviceKeyHex: null });
@@ -48,7 +48,7 @@ describe('SignInButton', () => {
 
   describe('when logged out', () => {
     it('should render Sign In button', () => {
-      render(<SignInButton />);
+      render(<ChromeSignInButton />);
       expect(screen.getByText('Sign In')).toBeInTheDocument();
     });
   });
@@ -65,13 +65,13 @@ describe('SignInButton', () => {
     });
 
     it('should render an identity icon button instead of DID-initials avatar', () => {
-      render(<SignInButton />);
+      render(<ChromeSignInButton />);
       expect(screen.getByRole('button', { name: 'Account menu' })).toBeInTheDocument();
     });
 
     it('should show My Profile option on account menu click', async () => {
       const user = userEvent.setup();
-      render(<SignInButton />);
+      render(<ChromeSignInButton />);
 
       await user.click(screen.getByRole('button', { name: 'Account menu' }));
 
@@ -82,7 +82,7 @@ describe('SignInButton', () => {
 
     it('should link My Profile to the /profile page', async () => {
       const user = userEvent.setup();
-      render(<SignInButton />);
+      render(<ChromeSignInButton />);
 
       await user.click(screen.getByRole('button', { name: 'Account menu' }));
 
@@ -93,7 +93,7 @@ describe('SignInButton', () => {
 
     it('should show Sign Out option in dropdown', async () => {
       const user = userEvent.setup();
-      render(<SignInButton />);
+      render(<ChromeSignInButton />);
 
       await user.click(screen.getByRole('button', { name: 'Account menu' }));
 
@@ -104,7 +104,7 @@ describe('SignInButton', () => {
 
     it('should not show Copy DID or Keyboard Shortcuts in the simplified dropdown', async () => {
       const user = userEvent.setup();
-      render(<SignInButton />);
+      render(<ChromeSignInButton />);
 
       await user.click(screen.getByRole('button', { name: 'Account menu' }));
 

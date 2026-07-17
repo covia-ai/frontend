@@ -18,8 +18,8 @@ jest.mock('next-auth/react', () => ({
 jest.mock('sonner', () => ({
   toast: jest.fn(),
 }));
-jest.mock('@/components/Iconbutton', () => ({
-  Iconbutton: ({ icon, message, label }: any) => (
+jest.mock('@/components/IconButton', () => ({
+  IconButton: ({ icon, message, label }: any) => (
     <button data-testid="icon-button">{label || message}</button>
   ),
 }));

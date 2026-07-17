@@ -26,7 +26,7 @@ import { Button } from "./ui/button";
 import { Asset, AssetMetadata } from "@covia/covia-sdk";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { getContentTypeForFile, getLicenseUrl, gtmEvent } from "@/lib/utils";
-import { Iconbutton } from "./Iconbutton";
+import { IconButton } from "./IconButton";
 
 export const CreateAssetComponent = ({sendDataToParent}: {sendDataToParent: (status: boolean) => void}) => {
     const [step, setStep] = useState(0);
@@ -201,7 +201,7 @@ export const CreateAssetComponent = ({sendDataToParent}: {sendDataToParent: (sta
     <div className="h-48 flex flex-center items-center justify-center ">
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger>
-                  <Iconbutton icon={PlusIcon} message="Add new asset" label="Add new asset"></Iconbutton>
+                  <IconButton icon={PlusIcon} message="Add new asset" label="Add new asset"></IconButton>
           </DialogTrigger>
           <DialogContent className="bg-card text-card-foreground">
                 <DialogTitle className="flex flex-row items-center space-x-2">

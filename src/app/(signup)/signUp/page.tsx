@@ -1,5 +1,5 @@
 "use client"
-import { SignInButton } from "@/components/sign-in-button"
+import { SignupSignInButton } from "@/components/sign-in-button"
 import { useAuthStore } from "@/hooks/use-auth"
 import { Badge } from "@/components/ui/badge"
 
@@ -20,7 +20,7 @@ export default function SignUp() {
                 Welcome back to Covia app! Log in with Google or Github, or continue with a device key.
               </p>
 
-              <SignInButton/>
+              <SignupSignInButton/>
               <div className="flex items-center justify-center space-x-2 space-y-2 text-xs text-muted-foreground">
                 By Signing up you are agreeing to Covia terms and conditions
               </div>

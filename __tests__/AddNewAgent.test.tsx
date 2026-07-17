@@ -7,8 +7,8 @@ jest.mock('sonner', () => ({
 }));
 
 // Must spread ...rest so DialogTrigger asChild can forward onClick/ref.
-jest.mock('@/components/Iconbutton', () => ({
-  Iconbutton: ({ icon, message, label, ...rest }: any) => (
+jest.mock('@/components/IconButton', () => ({
+  IconButton: ({ icon, message, label, ...rest }: any) => (
     <button data-testid="trigger-btn" {...rest}>{label || message}</button>
   ),
 }));
