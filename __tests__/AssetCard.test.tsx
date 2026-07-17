@@ -3,6 +3,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { AssetCard } from '@/components/AssetCard';
+import { useIsAuthenticated } from '@/hooks/use-auth';
 import { Asset, DataAsset, Operation, Venue } from '@covia/covia-sdk';
 
 // Mock dependencies
@@ -38,6 +39,9 @@ jest.mock('zustand', () => {
 });
 jest.mock('@/hooks/use-authenticated-venue', () => ({
   useAuthenticatedVenue: () => null,
+}));
+jest.mock('@/hooks/use-auth', () => ({
+  useIsAuthenticated: jest.fn(() => true),
 }));
 jest.mock('@/components/AssetInfoSheet', () => ({
   AssetInfoSheet: () => <div data-testid="asset-info-sheet">Asset Info Sheet</div>,
@@ -113,6 +117,9 @@ const mockOpData = {
 const mockOperation = new Operation("test-op", mockVenue, mockOpData);
 
 describe('AssetCard with asset', () => {
+    beforeEach(() => {
+      (useIsAuthenticated as jest.Mock).mockReturnValue(true);
+    });
     it('should render asset card with name and description', () => {
       render(<AssetCard asset={mockAsset} type="assets" compact={false} />);
       expect(screen.getByTestId('asset-header')).toHaveTextContent('Hamlet');
@@ -195,6 +202,19 @@ describe('AssetCard with asset', () => {
       expect(screen.queryByTestId('asset-keywords')).not.toBeInTheDocument();
     });
 
+});
+
+describe('AssetCard when unauthenticated', () => {
+    beforeEach(() => {
+      (useIsAuthenticated as jest.Mock).mockReturnValue(false);
+    });
+
+    it('should show a locked icon instead of the Copy icon for assets type', () => {
+      render(<AssetCard asset={mockAsset} type="assets" compact={false} />);
+
+      expect(screen.queryByTestId('copy_btn')).not.toBeInTheDocument();
+      expect(screen.getByTestId('copy_btn_locked')).toBeInTheDocument();
+    });
 });
 
 describe('AssetCard with operation', () => {

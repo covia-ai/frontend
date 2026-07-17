@@ -14,10 +14,11 @@ import { Spinner } from '@/components/ui/shadcn-io/spinner';
 import { AssetCard } from "./AssetCard";
 import { PaginationHeader } from "./PaginationHeader";
 import { useVenues } from "@/hooks/use-venues";
-import { FileKey, Search, X }from "lucide-react";
+import { FileKey, Lock, Search, X }from "lucide-react";
 import { CreateAssetComponent } from "./CreateAssetComponent";
 import { TopBar } from "./admin-panel/TopBar";
 import { TagFilterDropdown } from "./TagFilterDropdown";
+import { Button } from "./ui/button";
 
 
 interface AssetListProps {
@@ -42,6 +43,7 @@ export function AssetList({ venueId }: AssetListProps = {}) {
   const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
   const authMap = useAuthStore((x) => x.authMap);
   const authData = getAuthForVenue(venueObj?.venueId ?? "");
+  const isAuthenticated = authData !== null;
   const nextPage = (page: number) => {
     setCurrentPage(page)
   }
@@ -201,7 +203,16 @@ export function AssetList({ venueId }: AssetListProps = {}) {
             </div>
           )}
 
-          <CreateAssetComponent sendDataToParent={handleDataFromChild} ></CreateAssetComponent>
+          {isAuthenticated ? (
+            <CreateAssetComponent sendDataToParent={handleDataFromChild} ></CreateAssetComponent>
+          ) : (
+            <div className="h-48 flex flex-center items-center justify-center">
+              <Button variant="outline" disabled className="gap-2 text-muted-foreground">
+                <Lock size={14} />
+                Sign in to create assets
+              </Button>
+            </div>
+          )}
           <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage} disabled={isLoading}></PaginationHeader>
 
         </div>

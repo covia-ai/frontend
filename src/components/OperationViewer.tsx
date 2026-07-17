@@ -14,6 +14,8 @@ import { ErrorDisplay } from "./ErrorDisplay";
 import { useRouter } from "next/navigation";
 import { Textarea } from "./ui/textarea";
 import { useResolvedVenue } from "@/hooks/use-resolved-venue";
+import { useVenueForRoute } from "@/hooks/use-venue-for-route";
+import { useAuthStore } from "@/hooks/use-auth";
 import { DiagramViewer } from "./DiagramViewer";
 import { MetadataViewer } from "./MetadataViewer";
 import { AssetHeader } from "./AssetHeader";
@@ -22,6 +24,7 @@ import { AssetLookup } from "./AssetLookup";
 import { TopBar } from "./admin-panel/TopBar";
 import { ContentLayout } from "./admin-panel/content-layout";
 import { Card, CardContent } from "./ui/card";
+import { Lock } from "lucide-react";
 
 
 export const OperationViewer = (props: any) => {
@@ -35,6 +38,10 @@ export const OperationViewer = (props: any) => {
   const [assetNotFound, setAssetNotFound] = useState(false);
   const [showSchema, setShowSchema] = useState(false);
   const venue = useResolvedVenue(props.venueId);
+  const venueObj = useVenueForRoute(props.venueId);
+  const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
+  useAuthStore((x) => x.authMap); // subscribe so isAuthenticated updates on login/logout
+  const isAuthenticated = getAuthForVenue(venueObj?.venueId ?? "") !== null;
 
   // Session storage key based on asset ID
   const getStorageKey = (suffix: string) => `operation_input_${props.assetId}_${suffix}`;
@@ -445,27 +452,33 @@ export const OperationViewer = (props: any) => {
   {errorMessage && <ErrorDisplay error={errorMessage} className="mb-4" />}
   
   <div className="flex flex-row space-x-2 items-center justify-center py-2">
-    {!loading && (
+    {!loading && isAuthenticated && (
       <>
-        <Button 
-          aria-label="invoke operation" 
-          role="button" 
-          type="button" 
-          className="w-32" 
+        <Button
+          aria-label="invoke operation"
+          role="button"
+          type="button"
+          className="w-32"
           onClick={() => invokeOp(asset?.id, requiredKeys)}
         >
           {buttonText}
         </Button>
-        <Button 
-          type="button" 
-          aria-label="reset" 
-          role="button" 
-          className="w-32" 
+        <Button
+          type="button"
+          aria-label="reset"
+          role="button"
+          className="w-32"
           onClick={() => resetForm()}
         >
           Reset
         </Button>
       </>
+    )}
+    {!loading && !isAuthenticated && (
+      <Button variant="outline" disabled className="gap-2 text-muted-foreground">
+        <Lock size={14} />
+        Sign in to run operations
+      </Button>
     )}
   </div>
 
@@ -506,8 +519,15 @@ export const OperationViewer = (props: any) => {
           </div>
 
           {errorMessage && <ErrorDisplay error={errorMessage} className="mb-4" />}
-          <div className="flex flex-row space-x-2 items-center justify-center py-2">{!loading && <Button  aria-label="invoke operation" role="button" type="button" className="w-32" onClick={() => invokeOp(asset?.id, [])}>{buttonText}</Button>}
-            {!loading && <Button type="button"  aria-label="reset" role="button" className="w-32" onClick={() => resetForm()}>Reset</Button>}
+          <div className="flex flex-row space-x-2 items-center justify-center py-2">
+            {!loading && isAuthenticated && <Button  aria-label="invoke operation" role="button" type="button" className="w-32" onClick={() => invokeOp(asset?.id, [])}>{buttonText}</Button>}
+            {!loading && isAuthenticated && <Button type="button"  aria-label="reset" role="button" className="w-32" onClick={() => resetForm()}>Reset</Button>}
+            {!loading && !isAuthenticated && (
+              <Button variant="outline" disabled className="gap-2 text-muted-foreground">
+                <Lock size={14} />
+                Sign in to run operations
+              </Button>
+            )}
           </div>
           <div className="flex flex-row space-x-2 items-center justify-center py-2">{loading && <Button  aria-label="invoke operation" role="button" type="button" className="w-32" disabled>Please wait ...</Button>}</div>
         </div>

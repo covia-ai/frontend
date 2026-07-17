@@ -1,9 +1,10 @@
 import { Card } from "@/components/ui/card";
-import { Copy, Save }from "lucide-react";
+import { Copy, Lock, Save }from "lucide-react";
 import { Asset } from "@covia/covia-sdk";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useIsAuthenticated } from "@/hooks/use-auth";
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -26,6 +27,7 @@ interface AssetCardProps {
 export function AssetCard({ asset,type,compact }: AssetCardProps) {
     const venue = useAuthenticatedVenue();
     const router = useRouter();
+    const isAuthenticated = useIsAuthenticated();
     const [newJsonData, setNewJsonData] = useState<any>({});
 
     const adapter = (asset.metadata?.operation?.adapter as string | undefined)?.split(':')[0] ?? null;
@@ -65,7 +67,15 @@ export function AssetCard({ asset,type,compact }: AssetCardProps) {
                     {type == "operations" && 
                        <AssetInfoSheet asset={asset} venueId={venue?.venueId ?? ""}/> 
                     }
-                    {type == "assets" && 
+                    {type == "assets" && !isAuthenticated &&
+                        <Tooltip>
+                          <TooltipTrigger>
+                              <Lock size={16} className="text-muted-foreground" data-testid="copy_btn_locked"/>
+                          </TooltipTrigger>
+                          <TooltipContent data-testid="btn-tootip">Sign in to copy assets</TooltipContent>
+                        </Tooltip>
+                    }
+                    {type == "assets" && isAuthenticated &&
                         <Dialog>
                             <DialogTrigger>
                             <Tooltip>
