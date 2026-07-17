@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { getVenueFor } from "@/hooks/use-authenticated-venue";
-import {  copyDataToClipBoard, formatLabel, getExecutionTime } from "@/lib/utils";
+import {  copyDataToClipBoard, formatLabel, getExecutionTime, looksLikeSecretField } from "@/lib/utils";
 import { TbSubtask } from "react-icons/tb";
 import Link from "next/link";
 import { ErrorDisplay } from "./ErrorDisplay";
@@ -267,7 +267,7 @@ let schema: any = {};
     // render function for each key within the input or output
     const renderContent = (key: string) => {
         const fieldType = schema?.properties?.[key]?.type || "object";
-        const isSecret = schema?.properties?.[key]?.secret === true;
+        const isSecret = schema?.properties?.[key]?.secret === true || looksLikeSecretField(key);
         const value = (jsonObject as any)[key];
         
         // Mask secret outputs

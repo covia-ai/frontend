@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Fragment, useEffect, useState }from "react";
 import {  Venue, Asset, getParsedAssetId } from "@covia/covia-sdk";
 import { createAuthProvider } from "@/lib/auth-provider";
-import { formatLabel, gtmEvent } from "@/lib/utils";
+import { formatLabel, gtmEvent, looksLikeSecretField } from "@/lib/utils";
 import { resolveOperationByAddress } from "@/lib/operations-catalog";
 import { ErrorDisplay } from "./ErrorDisplay";
 import { useRouter } from "next/navigation";
@@ -328,7 +328,7 @@ export const OperationViewer = (props: any) => {
     const defaultValue = schema.default || "";
     const exampleValue = schema.examples ? `e.g. ${Array.isArray(schema.examples) ? schema.examples[0] : schema.examples}` : "";
     const type = typeMap[key] || schema.type || "string";
-    const isSecret = schema.secret === true;
+    const isSecret = schema.secret === true || looksLikeSecretField(key);
 
     // Get current raw value from rawInput state or use default
     const currentRawValue = key == TOP_LEVEL_INPUT_KEY ?

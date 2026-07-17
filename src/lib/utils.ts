@@ -9,6 +9,18 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// Fallback for operation schemas that don't mark a credential field
+// `secret: true` — job records are immutable, so an unmasked field here is
+// permanent. Complements, never replaces, the schema-driven flag.
+// "token" only matches as a field-name suffix (accessToken, apiToken, ...) —
+// a bare substring match would also catch legitimate LLM fields like
+// maxTokens/inputTokens/tokenCount, which aren't credentials.
+const SENSITIVE_FIELD_PATTERN = /api[-_]?key|secret|password|passwd|\bpwd\b|credential|private[-_]?key|authorization|bearer|token$/i;
+
+export function looksLikeSecretField(key: string): boolean {
+  return SENSITIVE_FIELD_PATTERN.test(key);
+}
+
 export function getLicenseUrl(licenseName : string) {
   if(licenseName.trim() ==  "CC BY 4.0")
     return "https://creativecommons.org/licenses/by/4.0/"
