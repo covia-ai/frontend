@@ -25,14 +25,17 @@ export const RemoveVenueModal = (props:any) => {
 
     return (
         <AlertDialog data-testid="remove-venue" open={open} onOpenChange={setOpen}>
-                    <AlertDialogTrigger  className="flex flex-row ">
-                        <Tooltip>
-                                                   <TooltipTrigger>
-                                                        <X className="" size={16} data-testid="remove_btn"/>
-                                                   </TooltipTrigger>
-                                                   <TooltipContent data-testid="btn-tootip">Remove Venue</TooltipContent>
-                                                    </Tooltip>
-                    </AlertDialogTrigger>
+                    {/* Single <button> (AlertDialogTrigger's) — TooltipTrigger
+                        adopts it via asChild; nested trigger buttons are invalid
+                        HTML and break hydration. */}
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <AlertDialogTrigger className="flex flex-row ">
+                                <X className="" size={16} data-testid="remove_btn"/>
+                            </AlertDialogTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent data-testid="btn-tootip">Remove Venue</TooltipContent>
+                    </Tooltip>
                     <AlertDialogContent className="bg-card text-card-foreground">
 
                         <AlertDialogHeader>

@@ -8,7 +8,7 @@ jest.mock('sonner', () => ({
 
 // Must spread ...rest so DialogTrigger asChild can forward onClick/ref.
 jest.mock('@/components/IconButton', () => ({
-  IconButton: ({ icon, message, label, ...rest }: any) => (
+  IconButton: ({ icon: _icon, message, label, ...rest }: any) => (
     <button data-testid="trigger-btn" {...rest}>{label || message}</button>
   ),
 }));
@@ -116,6 +116,61 @@ describe('AddNewAgent', () => {
         description: 'Agent "test-agent" is now active',
       });
     });
+  });
+
+  it('omits model from the agent config when left on venue default', async () => {
+    const user = await renderAndOpenDialog();
+    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    const config = mockVenue.agents.create.mock.calls[0][0].config;
+    expect(config).not.toHaveProperty('model');
+  });
+
+  it('passes a picked model into the agent config', async () => {
+    const user = await renderAndOpenDialog();
+    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+
+    await user.click(screen.getByTestId('model-select'));
+    await user.click(await screen.findByRole('option', { name: 'claude-opus-4-8' }));
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    const config = mockVenue.agents.create.mock.calls[0][0].config;
+    expect(config.model).toBe('claude-opus-4-8');
+  });
+
+  it('passes a custom-typed model into the agent config', async () => {
+    const user = await renderAndOpenDialog();
+    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+
+    await user.click(screen.getByTestId('model-select'));
+    await user.click(await screen.findByRole('option', { name: 'Custom…' }));
+    await user.type(screen.getByTestId('model-custom-input'), 'my-org/experimental-model');
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    const config = mockVenue.agents.create.mock.calls[0][0].config;
+    expect(config.model).toBe('my-org/experimental-model');
+  });
+
+  it('resets the model choice when the provider changes', async () => {
+    const user = await renderAndOpenDialog();
+    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+
+    // Pick an Anthropic model, then switch provider — the id must not leak.
+    await user.click(screen.getByTestId('model-select'));
+    await user.click(await screen.findByRole('option', { name: 'claude-opus-4-8' }));
+    const providerSelect = screen.getAllByRole('combobox')[0];
+    await user.click(providerSelect);
+    await user.click(await screen.findByRole('option', { name: 'Ollama (local)' }));
+
+    await user.click(screen.getByTestId('create-agent'));
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    const config = mockVenue.agents.create.mock.calls[0][0].config;
+    expect(config).not.toHaveProperty('model');
+    expect(config.llmOperation).toBe('v/ops/langchain/ollama');
   });
 
   it('create button is disabled when agent name is empty', async () => {

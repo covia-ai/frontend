@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { Venue } from '@covia/covia-sdk';
 import { VenueCard } from '@/components/VenueCard';
@@ -15,7 +15,7 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),
 }));
 jest.mock('@/components/RemoveVenueModal', () => ({
-  RemoveVenueModal: ({ venueId }: any) => (
+  RemoveVenueModal: ({ venueId: _venueId }: any) => (
     <button data-testid="remove-venue-btn">Remove Venue</button>
   ),
 }));

@@ -80,17 +80,15 @@ export const ExecutionViewer = (props: any) => {
         fetchJobStatus();
 
         const authData = getAuthForVenue(venue.venueId ?? '');
-        let sseUrl = `${venue.baseUrl}/api/v1/jobs/${props.jobId}/sse`;
-        if (authData?.type === 'bearer') {
-            sseUrl += `?token=${encodeURIComponent(authData.token)}`;
-        }
+        const sseUrl = `${venue.baseUrl}/api/v1/jobs/${props.jobId}/sse`;
 
         let source: EventSource | null = null;
         let pollInterval: ReturnType<typeof setInterval> | null = null;
-        let sseOpened = false;
 
         const startPolling = () => {
+            if (pollInterval) return;
             setStreaming(false);
+            fetchJobStatus();
             pollInterval = setInterval(() => {
                 venue.jobs.get(props.jobId).then((job: Job) => {
                     setJobMetadata(job.metadata);
@@ -103,10 +101,20 @@ export const ExecutionViewer = (props: any) => {
             }, 1000);
         };
 
+        // Native EventSource cannot attach the bearer header or Ed25519
+        // signature used by authenticated venue requests. Poll through the
+        // authenticated SDK instead of leaking bearer credentials in a URL.
+        if (authData) {
+            startPolling();
+            return () => {
+                if (pollInterval) clearInterval(pollInterval);
+            };
+        }
+
         try {
             source = new EventSource(sseUrl);
 
-            source.onopen = () => { sseOpened = true; setStreaming(true); };
+            source.onopen = () => { setStreaming(true); };
 
             source.onmessage = (e) => {
                 try {
@@ -126,8 +134,9 @@ export const ExecutionViewer = (props: any) => {
                 source?.close();
                 source = null;
                 setStreaming(false);
-                // Only fall back to polling when SSE never opened (auth/network failure).
-                if (!sseOpened) startPolling();
+                // A stream can fail after opening as well as during setup. Once
+                // closed, polling must take over or a running job stays stale.
+                startPolling();
             };
         } catch {
             startPolling();
@@ -160,7 +169,7 @@ export const ExecutionViewer = (props: any) => {
                             return (
                                 <TableRow key={id || index} >
                                     <TableCell className="text-muted-foreground">{index}</TableCell>
-                                    <TableCell className="text-secondary font-mono underline"><Link href={`/jobs/${id}`}>{id}</Link></TableCell>
+                                    <TableCell className="text-secondary font-mono underline"><Link href={`/venues/${encodeURIComponent(venue?.venueId ?? props.venueId ?? "")}/jobs/${id}`}>{id}</Link></TableCell>
                                     <TableCell>
                                         <StatusBadge status={status} kind="job" />
                                     </TableCell>
@@ -354,7 +363,7 @@ let schema: any = {};
                                         </span>
                                     )}
                                 </div>
-                                 <ExecutionToolbar jobData={jobMetadata}></ExecutionToolbar>
+                                 <ExecutionToolbar jobData={jobMetadata} venue={venue}></ExecutionToolbar>
 
                             </div>
 

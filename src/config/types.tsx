@@ -12,8 +12,10 @@ export interface AgentDetail {
 
 export interface AgentListItem {
    agentId: string;
-   status: string;
-   tasks: number;
+   // Absent when the entry came from the lean GET /api/v1/agents shape
+   // (bare ids) rather than the enriched agent:list op.
+   status?: string;
+   tasks?: number;
 }
 
 export interface SessionMessage {

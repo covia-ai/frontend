@@ -19,6 +19,7 @@ import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { toast } from "sonner";
 import { KNOWN_LLM_KEYS, LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
+import { normalizeAgentEntries } from "@/lib/agent-list";
 import { AgentStatus } from "@covia/covia-sdk";
 import { useRouter } from "next/navigation";
 import { PageHeading } from "./PageHeading";
@@ -41,7 +42,7 @@ export const AIPrompt = () => {
   const [showPickerDialog, setShowPickerDialog] = useState(false)
   const [detectedKeys, setDetectedKeys] = useState<string[]>([])
   const [selectedSecretName, setSelectedSecretName] = useState('')
-  const [agentOptions, setAgentOptions] = useState<{ agentId: string; status: string }[]>([])
+  const [agentOptions, setAgentOptions] = useState<{ agentId: string; status?: string }[]>([])
   const [selectedAgentId, setSelectedAgentId] = useState<string>(DEFAULT_AGENT_ID)
   const [pendingAgentId, setPendingAgentId] = useState<string>(DEFAULT_AGENT_ID)
   const venue = useAuthenticatedVenue();
@@ -63,7 +64,7 @@ export const AIPrompt = () => {
     if (!venue) { setAgentOptions([]); return; }
     try {
       const { agents } = await venue.agents.list();
-      setAgentOptions(agents);
+      setAgentOptions(normalizeAgentEntries(agents));
     } catch {
       // Non-fatal — picker just falls back to Default agent / New agent.
     }
@@ -90,25 +91,31 @@ export const AIPrompt = () => {
       ? "the default agent"
       : `"${selectedAgentId}"`;
 
-  // True once the selected target is a real, non-terminated agent — i.e. the
-  // task can be sent directly, no creation step needed.
-  const targetAgentReady = selectedAgentId !== NEW_AGENT_OPTION &&
-    agentOptions.some((a) => a.agentId === selectedAgentId && a.status !== AgentStatus.TERMINATED);
-
-  // Fire-and-forget task dispatch on an already-existing, ready agent —
-  // shared by every path once the target is confirmed usable.
-  async function sendPrompt(agentId: string) {
+  // Conversational dispatch on an already-existing, ready agent — shared by
+  // every path once the target is confirmed usable. The prompt travels over
+  // agent_chat as a plain string message, not an agent_request task envelope:
+  // a person typing here is starting a conversation, and an agent that judges
+  // the work deserves a durable, tracked job can spawn one itself (the
+  // manager-template pattern). chat() blocks until the agent replies, so the
+  // promise is deliberately left un-awaited — the venue records the user turn
+  // immediately, and the explorer we navigate to polls up both that turn and
+  // the eventual reply. Failures and empty replies surface via toast, which
+  // is global (sonner) and so outlives this component.
+  function sendPrompt(agentId: string) {
     if (!venue) return;
-    setCreating(true);
-    try {
-      // wait:false — fire-and-forget so a slow/failing task doesn't block navigation
-      await venue.agents.request(agentId, { task: prompt }, false);
-      router.push(`/agents/explorer?agentId=${encodeURIComponent(agentId)}`);
-    } catch (err: any) {
-      toast("Failed to send task", { description: err?.message ?? "Please try again." });
-    } finally {
-      setCreating(false);
-    }
+    venue.agents.chat(agentId, prompt)
+      .then((result) => {
+        const r = result?.response;
+        if (r == null || (typeof r === "string" && r.trim() === "")) {
+          toast("The agent sent an empty reply", {
+            description: "It may have hit an error — check its session in the explorer.",
+          });
+        }
+      })
+      .catch((err: any) => {
+        toast("Chat failed", { description: err?.message ?? "Please try again." });
+      });
+    router.push(`/agents/explorer?agentId=${encodeURIComponent(agentId)}`);
   }
 
   async function proceedWithKey(secretName: string, agentId: string) {
@@ -145,7 +152,7 @@ export const AIPrompt = () => {
       return;
     }
     setCreating(false);
-    await sendPrompt(agentId);
+    sendPrompt(agentId);
     refreshAgentOptions();
   }
 
@@ -190,7 +197,7 @@ export const AIPrompt = () => {
       // below instead (only reachable for the reserved default agent — the
       // picker excludes terminated agents from its option list).
       const { agents } = await venue.agents.list();
-      const existing = agents.find((a) => a.agentId === selectedAgentId);
+      const existing = normalizeAgentEntries(agents).find((a) => a.agentId === selectedAgentId);
       if (existing && existing.status !== AgentStatus.TERMINATED) {
         if (existing.status === AgentStatus.SUSPENDED) {
           try {
@@ -200,7 +207,7 @@ export const AIPrompt = () => {
             return;
           }
         }
-        await sendPrompt(selectedAgentId);
+        sendPrompt(selectedAgentId);
         return;
       }
 
@@ -291,13 +298,13 @@ export const AIPrompt = () => {
         </div>
 
         <p className="text-xs text-muted-foreground text-center max-w-md">
-          This request will go to {selectedAgentLabel}. If you want to choose another agent,
+          Your message will go to {selectedAgentLabel}. If you want to choose another agent,
           click the <EllipsisVertical size={12} className="inline align-text-bottom" /> icon before the magic wand.
         </p>
 
         {creating && (
           <p className="text-xs text-muted-foreground animate-pulse mt-1">
-            {targetAgentReady ? "Sending task…" : "Creating agent and sending task…"}
+            Creating agent…
           </p>
         )}
 

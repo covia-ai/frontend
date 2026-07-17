@@ -1,13 +1,12 @@
 
 import React from 'react';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { AssetHeader } from '@/components/AssetHeader';
 import { DataAsset, Venue } from '@covia/covia-sdk';
 
-// Mock window.location.href used by IdAndLink
-delete (window as any).location;
-window.location = { href: 'http://localhost/test' } as any;
+// Set the URL used by IdAndLink without replacing jsdom's Location object.
+window.history.replaceState({}, '', '/test');
 
 describe('AssetHeader Component', () => {
   test('renders AssetHeader', () => {

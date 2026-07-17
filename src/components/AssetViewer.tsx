@@ -29,7 +29,7 @@ export function AssetViewer(props: AssetViewerProps) {
       {asset && (
         <div className="flex flex-col w-full items-center justify-center">
           <AssetHeader asset={asset} />
-          <MetadataViewer asset={asset} />
+          <MetadataViewer asset={asset} venue={venue} />
           <div className="flex flex-row items-center space-x-2 my-2 text-xs text-muted-foreground">
             <span>Venue:</span>
             <span><Link href={`/venues/${venue?.venueId}`} className="underline text-secondary dark:text-secondary-light"> {venue?.venueId}</Link></span>

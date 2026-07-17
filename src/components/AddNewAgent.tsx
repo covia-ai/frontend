@@ -3,6 +3,7 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
@@ -36,6 +37,9 @@ interface AddNewAgentProps {
   onCreated?: () => void;
 }
 
+const CUSTOM_MODEL_OPTION = "__custom__";
+const DEFAULT_MODEL_OPTION = "__default__";
+
 const slugify = (name: string) =>
   name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
 
@@ -50,6 +54,10 @@ export function AddNewAgent({
   const [agentId, setAgentId] = useState("");
   const [agentIdEdited, setAgentIdEdited] = useState(false);
   const [llmProvider, setLlmProvider] = useState(initialProvider);
+  // "" = venue default (model omitted from config); CUSTOM_MODEL_OPTION shows
+  // a free-text input for ids not in the curated list.
+  const [model, setModel] = useState("");
+  const [customModel, setCustomModel] = useState("");
   const [systemPrompt, setSystemPrompt] = useState(initialSystemPrompt);
   const [initialCommand, setInitialCommand] = useState("");
   const [creating, setCreating] = useState(false);
@@ -69,6 +77,8 @@ export function AddNewAgent({
     setAgentIdEdited(false);
     setSystemPrompt(initialSystemPrompt);
     setLlmProvider(initialProvider);
+    setModel("");
+    setCustomModel("");
     setInitialCommand("");
     if (!venue) return;
     venue.secrets
@@ -76,6 +86,17 @@ export function AddNewAgent({
       .then((secrets: string[]) => setAvailableKeys(secrets))
       .catch(() => setAvailableKeys([]));
   }, [open, venue, initialAgentName, initialSystemPrompt, initialProvider]);
+
+  // The model actually sent in the agent config; "" means omit (venue default).
+  const resolvedModel =
+    model === CUSTOM_MODEL_OPTION ? customModel.trim() : model === DEFAULT_MODEL_OPTION ? "" : model;
+
+  const handleProviderChange = (providerId: string) => {
+    setLlmProvider(providerId);
+    // Model ids are provider-specific — a Claude id is meaningless on OpenAI.
+    setModel("");
+    setCustomModel("");
+  };
 
   const isProviderReady = (providerId: string) => {
     const provider = LLM_PROVIDERS[providerId];
@@ -109,6 +130,9 @@ export function AddNewAgent({
         config: {
           operation: "v/ops/llmagent/chat",
           llmOperation: provider.operation,
+          // The agent loop forwards `model` into the LLM op input
+          // (AbstractLLMAdapter K_MODEL); omitted → provider default.
+          ...(resolvedModel && { model: resolvedModel }),
           ...(systemPrompt.trim() && { systemPrompt: systemPrompt.trim() }),
         },
       });
@@ -150,6 +174,9 @@ export function AddNewAgent({
           <Label className="text-md">Create a new agent</Label>
           <Separator />
         </DialogTitle>
+        <DialogDescription className="sr-only">
+          Configure the identity, model, and initial prompt for a new venue agent.
+        </DialogDescription>
 
         <div className="flex flex-col items-start justify-center space-y-6">
           {/* Agent Name */}
@@ -197,7 +224,7 @@ export function AddNewAgent({
           {/* LLM Provider */}
           <div className="space-y-2 w-full">
             <Label>LLM Provider:</Label>
-            <Select value={llmProvider} onValueChange={setLlmProvider}>
+            <Select value={llmProvider} onValueChange={handleProviderChange}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -218,6 +245,37 @@ export function AddNewAgent({
                 </Link>
               </p>
             )}
+          </div>
+
+          {/* Model */}
+          <div className="space-y-2 w-full">
+            <Label>Model:</Label>
+            <Select
+              value={model || DEFAULT_MODEL_OPTION}
+              onValueChange={(v) => setModel(v === DEFAULT_MODEL_OPTION ? "" : v)}
+            >
+              <SelectTrigger data-testid="model-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={DEFAULT_MODEL_OPTION}>Venue default</SelectItem>
+                {(LLM_PROVIDERS[llmProvider]?.models ?? []).map((m) => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+                <SelectItem value={CUSTOM_MODEL_OPTION}>Custom…</SelectItem>
+              </SelectContent>
+            </Select>
+            {model === CUSTOM_MODEL_OPTION && (
+              <Input
+                data-testid="model-custom-input"
+                placeholder="e.g. claude-opus-4-8"
+                value={customModel}
+                onChange={(e) => setCustomModel(e.target.value)}
+              />
+            )}
+            <p className="text-xs text-muted-foreground">
+              Venue default uses the provider&apos;s configured model.
+            </p>
           </div>
 
           {/* System Prompt */}

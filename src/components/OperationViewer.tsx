@@ -6,7 +6,7 @@ import { Button } from "./ui/button";
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
-import { Fragment, useEffect, useState }from "react";
+import { Fragment, useCallback, useEffect, useState }from "react";
 import {  Asset, getParsedAssetId } from "@covia/covia-sdk";
 import { formatLabel, gtmEvent, looksLikeSecretField } from "@/lib/utils";
 import { resolveOperationByAddress } from "@/lib/operations-catalog";
@@ -39,18 +39,22 @@ export const OperationViewer = (props: any) => {
   const [showSchema, setShowSchema] = useState(false);
   const venue = useResolvedVenue(props.venueId);
   const venueObj = useVenueForRoute(props.venueId);
-  const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
-  useAuthStore((x) => x.authMap); // subscribe so isAuthenticated updates on login/logout
-  const isAuthenticated = getAuthForVenue(venueObj?.venueId ?? "") !== null;
+  const authData = useAuthStore((x) =>
+    venueObj ? x.authMap[venueObj.venueId] ?? null : null
+  );
+  const isAuthenticated = authData !== null;
 
   // Session storage key based on asset ID
-  const getStorageKey = (suffix: string) => `operation_input_${props.assetId}_${suffix}`;
+  const getStorageKey = useCallback(
+    (suffix: string) => `operation_input_${props.assetId}_${suffix}`,
+    [props.assetId],
+  );
 
   // Fake key to indicate top level input
   const TOP_LEVEL_INPUT_KEY = "__top__";
 
   // Save input values to session storage
-  const saveToSessionStorage = (inputData: any, rawInputData: Record<string, string>, typeData: Record<string, string>) => {
+  const saveToSessionStorage = useCallback((inputData: any, rawInputData: Record<string, string>, typeData: Record<string, string>) => {
     try {
       sessionStorage.setItem(getStorageKey('input'), JSON.stringify(inputData));
       sessionStorage.setItem(getStorageKey('rawInput'), JSON.stringify(rawInputData));
@@ -58,10 +62,10 @@ export const OperationViewer = (props: any) => {
     } catch (error) {
       console.warn('Failed to save to session storage:', error);
     }
-  };
+  }, [getStorageKey]);
 
   // Restore input values from session storage
-  const restoreFromSessionStorage = () => {
+  const restoreFromSessionStorage = useCallback(() => {
     try {
       const savedInput = sessionStorage.getItem(getStorageKey('input'));
       const savedRawInput = sessionStorage.getItem(getStorageKey('rawInput'));
@@ -84,10 +88,10 @@ export const OperationViewer = (props: any) => {
     } catch (error) {
       console.warn('Failed to restore from session storage:', error);
     }
-  };
+  }, [getStorageKey]);
 
   // Clear session storage
-  const clearSessionStorage = () => {
+  const clearSessionStorage = useCallback(() => {
     try {
       sessionStorage.removeItem(getStorageKey('input'));
       sessionStorage.removeItem(getStorageKey('rawInput'));
@@ -95,7 +99,7 @@ export const OperationViewer = (props: any) => {
     } catch (error) {
       console.warn('Failed to clear session storage:', error);
     }
-  };
+  }, [getStorageKey]);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -150,14 +154,14 @@ export const OperationViewer = (props: any) => {
         setErrorMessage(e?.message || 'Failed to load asset');
       });
 
-  }, [props.assetId, venue]);
+  }, [props.assetId, venue, getStorageKey, restoreFromSessionStorage]);
 
   // Save to session storage whenever input changes
   useEffect(() => {
     if (input !== null && input !== undefined && (typeof input === 'object' ? Object.keys(input).length > 0 : true)) {
       saveToSessionStorage(input, rawInput, typeMap);
     }
-  }, [input, rawInput, typeMap]);
+  }, [input, rawInput, typeMap, saveToSessionStorage]);
 
   // Helper function to process a value based on its type
   const parseValue = (rawValue: string, type: string) => {
@@ -233,14 +237,26 @@ export const OperationViewer = (props: any) => {
     router.replace(pathname);
   }
 
-  function runOperation() {
-    return asset?.invoke(input)
-      .then(response => {
-        if (response?.id) {
-          router.push("/venues/"+venue?.venueId+"/jobs/" + response?.id);
-        }
-        return response;
-      });
+  async function runOperation() {
+    if (!asset || !venue) {
+      setErrorMessage("This asset is not an operation and cannot be invoked");
+      return;
+    }
+
+    setLoading(true);
+    setErrorMessage("");
+    try {
+      const response = await asset.invoke(input);
+      if (response?.id) {
+        router.push(`/venues/${encodeURIComponent(venue.venueId)}/jobs/${response.id}`);
+      } else {
+        setErrorMessage("The operation completed without returning a job ID");
+      }
+    } catch (error: unknown) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to run operation");
+    } finally {
+      setLoading(false);
+    }
   }
 
   function invokeOp(id: any, requiredKeys: string[] = []) {
@@ -264,7 +280,8 @@ export const OperationViewer = (props: any) => {
 
           //Values are already processed by the input components
           gtmEvent.buttonClick('Invoke Operation', asset?.metadata?.name || asset?.id || 'unknown');
-          runOperation();
+          setButtonText("Run");
+          void runOperation();
 
         } else {
           //No inputs provided
@@ -279,18 +296,9 @@ export const OperationViewer = (props: any) => {
       }
     } else {
       //Second attempt for "Run Anyway?" button, we do not do any validation just run the operations
-      setLoading(true)
       gtmEvent.buttonClick('Invoke Operation', asset?.metadata?.name || asset?.id || 'unknown');
-      const operationPromise = runOperation();
-      if (operationPromise) {
-        operationPromise.catch(e => {
-          setErrorMessage(e.message)
-          setLoading(false);
-        });
-      } else {
-        setErrorMessage("This asset is not an operation and cannot be invoked");
-        setLoading(false);
-      }
+      setButtonText("Run");
+      void runOperation();
     }
   }
 
@@ -547,7 +555,7 @@ export const OperationViewer = (props: any) => {
         )}
 
         {!assetNotFound && asset && <AssetHeader asset={asset} />}
-        {!assetNotFound && asset && <MetadataViewer asset={asset} />}
+        {!assetNotFound && asset && <MetadataViewer asset={asset} venue={venue} />}
         {!assetNotFound && asset?.metadata?.operation && (
           <>
             <div className="w-full flex justify-end mb-1">

@@ -4,9 +4,10 @@ import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { useRouter } from "next/navigation";
 import { useSearchParams, usePathname } from 'next/navigation';
 import { Input } from "@/components/ui/input";
-import { useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 
 import { Asset, DataAsset }from "@covia/covia-sdk";
+import { loadAssetEntries } from "@/lib/asset-metadata";
 import { getVenueFor } from "@/hooks/use-authenticated-venue";
 import { useVenueForRoute } from "@/hooks/use-venue-for-route";
 import { useAuthStore } from "@/hooks/use-auth";
@@ -40,10 +41,14 @@ export function AssetList({ venueId }: AssetListProps = {}) {
 
   const { venues } = useVenues();
   const venueObj = useVenueForRoute(venueId);
-  const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
-  const authMap = useAuthStore((x) => x.authMap);
-  const authData = getAuthForVenue(venueObj?.venueId ?? "");
+  const authData = useAuthStore((x) =>
+    venueObj ? x.authMap[venueObj.venueId] ?? null : null
+  );
   const isAuthenticated = authData !== null;
+  const venue = useMemo(
+    () => venueObj ? getVenueFor(venueObj, authData) : null,
+    [venueObj, authData],
+  );
   const nextPage = (page: number) => {
     setCurrentPage(page)
   }
@@ -56,38 +61,37 @@ export function AssetList({ venueId }: AssetListProps = {}) {
   }
   // Shared by the initial-load effect and the create-asset refresh; isStale
   // drops in-flight results after venue change or unmount, so stale assets
-  // never land in the fresh list. Fetches the full list unconditionally —
+  // never land in the fresh list. Fetches the full id list unconditionally —
   // search text only filters client-side (see filteredAssets) so typing
-  // never triggers a refetch.
-  function fetchAssets(isStale: () => boolean = () => false) {
-    if (!venueObj) return;
-    const venue = getVenueFor(venueObj, authData)
+  // never triggers a refetch. Metadata resolves through the content-addressed
+  // cache (immutable, so revisits are near-free) and streams in per batch,
+  // so the grid fills incrementally instead of blocking on the slowest of
+  // N individual GETs.
+  const fetchAssets = useCallback((isStale: () => boolean = () => false) => {
+    if (!venue) return;
     setAssetsMetadata([]);
     setLoading(true);
-    try {
-      venue.listAssets().then((assetList) => {
-        // getAsset() already fetches the asset's metadata (GET /api/v1/assets/{id}),
-        // so asset.metadata is used directly below instead of a redundant getMetadata() call.
-        Promise.all(assetList.items.map((assetId: string) => venue.getAsset(assetId).catch(() => null))).then((assets) => {
+    venue.listAssets()
+      .then((assetList) =>
+        loadAssetEntries(venue, assetList.items, (entries) => {
           if (isStale()) return;
-          const dataAssets = assets
-            .filter((asset): asset is Asset => asset != null && asset.metadata.name != undefined && asset.metadata.operation == undefined)
-            .map((asset) => new DataAsset(asset.id, asset.venue, asset.metadata));
+          const dataAssets = entries
+            .filter((e) => e.metadata.name != undefined && e.metadata.operation == undefined)
+            .map((e) => new DataAsset(e.id, venue, e.metadata));
           setAssetsMetadata(dataAssets);
           setLoading(false);
-        })
-      })
-    }
-    catch (error) {
-      console.error('Error fetching data:', error);
-    }
-  }
+        }))
+      .catch((error) => {
+        console.error('Error fetching data:', error);
+        if (!isStale()) setLoading(false);
+      });
+  }, [venue]);
 
   useEffect(() => {
     let ignore = false;
     fetchAssets(() => ignore);
     return () => { ignore = true; };
-  }, [venueObj, authMap, getAuthForVenue]);
+  }, [fetchAssets]);
 
   const keywordOptions = useMemo(() => {
     const all = assetsMetadata.flatMap(a => Array.isArray(a.metadata?.keywords) ? a.metadata.keywords : []);
@@ -198,13 +202,13 @@ export function AssetList({ venueId }: AssetListProps = {}) {
           ) : (
             <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 3xl:grid-cols-5 4xl:grid-cols-6 items-stretch justify-center gap-4">
               {filteredAssets.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset) =>
-                <AssetCard key={asset.id} asset={asset} type="assets" compact={true}/>
+                <AssetCard key={asset.id} asset={asset} type="assets" compact={true} venue={venue ?? undefined} authenticated={isAuthenticated}/>
               )}
             </div>
           )}
 
           {isAuthenticated ? (
-            <CreateAssetComponent sendDataToParent={handleDataFromChild} ></CreateAssetComponent>
+            <CreateAssetComponent sendDataToParent={handleDataFromChild} venue={venue ?? undefined}></CreateAssetComponent>
           ) : (
             <div className="h-48 flex flex-center items-center justify-center">
               <Button variant="outline" disabled className="gap-2 text-muted-foreground">
@@ -218,4 +222,4 @@ export function AssetList({ venueId }: AssetListProps = {}) {
         </div>
       </ContentLayout>
   );
-} 
+}

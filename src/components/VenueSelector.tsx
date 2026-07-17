@@ -14,6 +14,7 @@ import { useVenue } from "@/hooks/use-venue";
 import { useVenues } from "@/hooks/use-venues";
 import { useAuthStore } from "@/hooks/use-auth";
 import { Venue } from "@covia/covia-sdk";
+import { VenueHealthDot } from "./VenueHealthDot";
 
 export function VenueSelector() {
   const pathname = usePathname();
@@ -25,24 +26,28 @@ export function VenueSelector() {
 
   useEffect(() => {  
   
-    // If we already have a current venue, use it
-    if (currentVenue) {
-      setSelectedVenue(currentVenue);
-      setActiveVenue(currentVenue.venueId);
-      return;
-    }
-
     // Check if the pathname contains a venue slug
     const venueMatch = pathname.match(/\/venues\/([^\/]+)/);
     if (venueMatch) {
-      const venueSlug = venueMatch[1];
+      let venueSlug = venueMatch[1];
+      try { venueSlug = decodeURIComponent(venueSlug); } catch { /* use the raw segment */ }
       const venue = venues.find(v => v.venueId === venueSlug);
       if (venue) {
-        setCurrentVenue(venue);
+        if (currentVenue?.venueId !== venue.venueId) setCurrentVenue(venue);
         setSelectedVenue(venue);
         setActiveVenue(venue.venueId);
         return;
       }
+    }
+
+    // Keep an existing selection only while it remains connected.
+    const liveCurrent = currentVenue
+      ? venues.find((venue) => venue.venueId === currentVenue.venueId)
+      : undefined;
+    if (liveCurrent) {
+      setSelectedVenue(liveCurrent);
+      setActiveVenue(liveCurrent.venueId);
+      return;
     }
 
     // Default to first venue if no specific venue is found
@@ -51,6 +56,10 @@ export function VenueSelector() {
       setCurrentVenue(defaultVenue);
       setSelectedVenue(defaultVenue);
       setActiveVenue(defaultVenue.venueId);
+    } else {
+      setSelectedVenue(null);
+      setCurrentVenue(null);
+      setActiveVenue(null);
     }
   }, [pathname, venues, currentVenue, setCurrentVenue, setActiveVenue]);
 
@@ -77,6 +86,7 @@ export function VenueSelector() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button aria-label="venue" variant="outline" className="hover:bg-primary-vlight hover:text-foreground">
+          <VenueHealthDot baseUrl={selectedVenue.baseUrl} />
           <Building2 size={14} />
           <span className="hidden md:block lg:block">{selectedVenue.metadata.name}</span>
           <ChevronDown size={14} />
@@ -90,6 +100,7 @@ export function VenueSelector() {
             className="flex items-center justify-between cursor-pointer hover:bg-primary-vlight hover:text-foreground"
           >
             <div className="flex items-center gap-2">
+              <VenueHealthDot baseUrl={venue.baseUrl} />
               <Building2 size={16} />
               <span className="truncate">{venue.metadata.name}</span>
             </div>

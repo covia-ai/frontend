@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from "@/hooks/use-auth";
 import { Badge } from "./ui/badge";
 import { RemoveVenueModal } from "./RemoveVenueModal";
+import { VenueHealthDot } from "./VenueHealthDot";
 import { Copy } from "lucide-react";
 import { copyDataToClipBoard } from "@/lib/utils";
 
@@ -33,7 +34,8 @@ export function VenueCard({ venue: venueProp, compact }: VenueCardProps) {
           ${ compact ? 'h-32 p-1' : 'h-48 p-2'  }`}>
       {/* Fixed-size header */}
       <div className={` ${ compact ? 'h-10' : 'h-14'  } p-2 flex flex-row items-center border-b bg-card-banner`}>
-        <div data-testid="venue-name" className="truncate flex-1 mr-2 text-md text-foreground" onClick={handleCardClick}>{venue.metadata.name}</div>
+        <VenueHealthDot baseUrl={venue.baseUrl} />
+        <div data-testid="venue-name" className="truncate flex-1 mx-2 text-md text-foreground" onClick={handleCardClick}>{venue.metadata.name}</div>
             <RemoveVenueModal venueId={venue.venueId}/>
         </div>
       {/* Flexible middle section */}

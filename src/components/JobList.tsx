@@ -2,10 +2,10 @@ import Link from "next/link";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
-import { useCallback, useEffect, useRef, useState }from "react";
+import { useCallback, useEffect, useMemo, useRef, useState }from "react";
 import { getVenueFor } from "@/hooks/use-authenticated-venue";
 import { useVenueForRoute } from "@/hooks/use-venue-for-route";
-import { Job, JobMetadata, RunStatus }from "@covia/covia-sdk";
+import { JobMetadata, RunStatus }from "@covia/covia-sdk";
 import { getExecutionTime, formatRelativeTime } from "@/lib/utils";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Input } from "@/components/ui/input";
@@ -47,28 +47,29 @@ export function JobList({ venueId }: JobListProps = {}) {
 
   const toggleSort = (col: "id" | "date" | "status") =>
     setSort(prev => prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" });
-  const [allIds, setAllIds] = useState<string[]>([]);         // full ID list from venue
-  const [jobsData, setJobsData] = useState<JobMetadata[]>([]); // metadata for current page
+  const [jobsData, setJobsData] = useState<JobMetadata[]>([]);       // current page (no filters)
+  const [windowRecords, setWindowRecords] = useState<JobMetadata[]>([]); // newest window (filter mode)
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [refreshTick, setRefreshTick] = useState(0);
   const itemsPerPage = 10;
+  const FILTER_WINDOW = 100;
   const { venues } = useVenues();
   const venueObj = useVenueForRoute(venueId);
-  const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
-  const authMap = useAuthStore((x) => x.authMap);
+  const authData = useAuthStore((x) =>
+    venueObj ? x.authMap[venueObj.venueId] ?? null : null
+  );
   const prevVenueId = useRef<string | undefined>(undefined);
 
   const nextPage = (page: number) => { setCurrentPage(page); }
   const prevPage = (page: number) => { setCurrentPage(page); }
 
-  function startOfDay(d: Date) {
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  }
-
-  function isInRange(date: string, ranges: string[]) {
+  const isInRange = useCallback((date: string, ranges: string[]) => {
     if (ranges.length === 0) return true;
     const target = new Date(date);
     const now = new Date();
+    const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const startOfThisWeek = new Date(startOfDay(now));
     startOfThisWeek.setDate(startOfThisWeek.getDate() - startOfThisWeek.getDay());
     const startOfLastWeek = new Date(startOfThisWeek);
@@ -80,113 +81,129 @@ export function JobList({ venueId }: JobListProps = {}) {
       if (range === "lastWeek") return target >= startOfLastWeek && target < startOfThisWeek;
       return false;
     });
-  }
+  }, []);
 
-  // Step 1: fetch all IDs from the venue (one fast request).
-  // IDs arrive newest-last so we reverse to show newest first.
-  const fetchAllIds = useCallback(async () => {
+  // The caller's job index lives at lattice path "j", and the values API
+  // paginates it properly (offset/limit + total count) — one windowed slice
+  // returns full job records. The REST /jobs route can't do this: it returns
+  // every id and ignores limit/offset (covia#229), which is why this page
+  // used to pull the full id list and then GET each job individually.
+  // Records arrive oldest-first (time-ordered keys), so windows are computed
+  // from the end and reversed for newest-first display.
+  const recordsFromSlice = (values: unknown[]): JobMetadata[] =>
+    (values ?? [])
+      .map((e: any) => (e?.value ? { ...e.value, id: e.value.id ?? `0x${e.key}` } : null))
+      .filter((m): m is JobMetadata => m != null)
+      .reverse();
+
+  // One page of the full history: ranks [(page-1)*size, page*size) from the end.
+  const fetchPage = useCallback(async (page: number) => {
     if (!venueObj) return;
-    const venue = getVenueFor(venueObj, getAuthForVenue(venueObj.venueId));
-    try {
-      const ids: string[] = await venue.jobs.list();
-      setAllIds([...ids].reverse()); // newest first
-      setCurrentPage(1);
-    } catch {
-      setAllIds([]);
-    }
-  }, [venueObj, authMap, getAuthForVenue]);
-
-  // Step 2: for the current page, fetch only those job metadata records.
-  const fetchPageMetadata = useCallback(async (ids: string[], page: number) => {
-    if (!venueObj || ids.length === 0) { setJobsData([]); return; }
-    const venue = getVenueFor(venueObj, getAuthForVenue(venueObj.venueId));
-
-    const pageIds = ids.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+    const venue = getVenueFor(venueObj, authData);
     setLoading(true);
-    const results = await Promise.allSettled(pageIds.map(id => venue.jobs.get(id)));
-    const metadata: JobMetadata[] = results
-      .filter((r): r is PromiseFulfilledResult<Job> => r.status === 'fulfilled')
-      .map(r => r.value.metadata);
-    setJobsData(metadata);
-    setLoading(false);
-  }, [venueObj, authMap, getAuthForVenue]);
+    try {
+      const { count = 0 } = await venue.workspace.list("j", 1);
+      const end = Math.max(0, count - (page - 1) * itemsPerPage);
+      const start = Math.max(0, end - itemsPerPage);
+      const res = end > start ? await venue.workspace.slice("j", start, end - start) : { values: [] };
+      setTotalCount(count);
+      setJobsData(recordsFromSlice((res.values as unknown[]) ?? []));
+    } catch {
+      setTotalCount(0);
+      setJobsData([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [venueObj, authData]);
 
-  // Debounce free-text search so typing doesn't fire a fresh 100-job metadata
-  // fetch on every keystroke.
+  // Filter mode: one slice of the newest FILTER_WINDOW records, filtered and
+  // paged client-side. Filters only ever see this recent window — same
+  // semantics as before, when the window was 100 individual per-job GETs.
+  const fetchWindow = useCallback(async () => {
+    if (!venueObj) return;
+    const venue = getVenueFor(venueObj, authData);
+    setLoading(true);
+    try {
+      const { count = 0 } = await venue.workspace.list("j", 1);
+      const start = Math.max(0, count - FILTER_WINDOW);
+      const res = count > start ? await venue.workspace.slice("j", start, count - start) : { values: [] };
+      setTotalCount(count);
+      setWindowRecords(recordsFromSlice((res.values as unknown[]) ?? []));
+    } catch {
+      setTotalCount(0);
+      setWindowRecords([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [venueObj, authData]);
+
+  // Debounce free-text search so typing doesn't fire a fresh window fetch
+  // on every keystroke.
   useEffect(() => {
     const id = setTimeout(() => setDebouncedQuery(searchQuery), 300);
     return () => clearTimeout(id);
   }, [searchQuery]);
 
-  // Filter IDs when status, date, or search narrows the set. Since we only
-  // have IDs at this stage, we batch-fetch a window of up to 100 recent jobs
-  // to inspect their metadata, then page through those. With everything at
-  // its default we page by ID directly with no extra fetch.
-  const [filteredIds, setFilteredIds] = useState<string[]>([]);
+  const hasFilters = statusFilter.length > 0 || dateFilter.length > 0 || debouncedQuery.trim().length > 0;
 
-  useEffect(() => {
-    const hasSearch = debouncedQuery.trim().length > 0;
-    const hasDateFilter = dateFilter.length > 0;
-    const hasStatusFilter = statusFilter.length > 0;
-    if (!hasStatusFilter && !hasDateFilter && !hasSearch) {
-      setFilteredIds(allIds);
-      return;
-    }
-    if (allIds.length === 0) { setFilteredIds([]); return; }
-    if (!venueObj) return;
-
-    // Fetch the most recent 100 jobs to apply status/date/search filters —
-    // filters only ever see this recent window, not full history.
-    const venue = getVenueFor(venueObj, getAuthForVenue(venueObj.venueId));
-    const sample = allIds.slice(0, 100);
+  // Client-side filtering over the fetched window (filter mode only).
+  const filteredRecords = useMemo(() => {
+    if (!hasFilters) return null;
     const q = debouncedQuery.trim().toLowerCase();
-    setLoading(true);
-    Promise.allSettled(sample.map(id => venue.jobs.get(id)))
-      .then(results => {
-        const matched = results
-          .filter((r): r is PromiseFulfilledResult<Job> => r.status === 'fulfilled')
-          .map(r => r.value.metadata)
-          .filter(m => !hasStatusFilter || statusFilter.includes(m.status ?? ""))
-          .filter(m => !hasDateFilter || isInRange(m.created ?? "", dateFilter))
-          .filter(m => !hasSearch || [m.id, m.operation, m.name].some(v => v?.toLowerCase().includes(q)))
-          .map(m => m.id)
-          .filter((id): id is string => id != null);
-        setFilteredIds(matched);
-        setCurrentPage(1);
-      })
-      .finally(() => setLoading(false));
-  }, [statusFilter, dateFilter, debouncedQuery, allIds]);
+    return windowRecords
+      .filter(m => statusFilter.length === 0 || statusFilter.includes(m.status ?? ""))
+      .filter(m => dateFilter.length === 0 || isInRange(m.created ?? "", dateFilter))
+      .filter(m => !q || [m.id, m.operation, m.name].some(v => v?.toLowerCase().includes(q)));
+  }, [hasFilters, windowRecords, statusFilter, dateFilter, debouncedQuery, isInRange]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredIds.length / itemsPerPage));
+  // What the table renders: the server-paged window, or a client-side page
+  // of the filtered records.
+  const matchTotal = filteredRecords ? filteredRecords.length : totalCount;
+  const totalPages = Math.max(1, Math.ceil(matchTotal / itemsPerPage));
+  const pageRecords = filteredRecords
+    ? filteredRecords.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+    : jobsData;
 
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [totalPages, currentPage]);
 
-  // Re-fetch page metadata whenever filteredIds or currentPage changes.
+  // Default mode: one windowed slice per page.
   useEffect(() => {
-    fetchPageMetadata(filteredIds, currentPage);
-  }, [filteredIds, currentPage]);
+    if (!hasFilters) fetchPage(currentPage);
+  }, [fetchPage, currentPage, hasFilters, refreshTick]);
 
-  // On venue change, reload IDs.
+  // Filter mode: one window fetch per venue/filter change (or poll tick).
+  useEffect(() => {
+    if (hasFilters) fetchWindow();
+  }, [fetchWindow, hasFilters, refreshTick]);
+
+  // Back to page 1 when the filter set itself changes.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, dateFilter, debouncedQuery]);
+
+  // On venue change, reset view state (the fetch effects re-run via fetchPage/
+  // fetchWindow identity).
   useEffect(() => {
     if (!venueObj) return;
     if (prevVenueId.current !== venueObj.venueId) {
       setStatusFilter([]);
-      setAllIds([]);
       setJobsData([]);
+      setWindowRecords([]);
+      setTotalCount(0);
+      setCurrentPage(1);
       prevVenueId.current = venueObj.venueId;
     }
-    fetchAllIds();
-  }, [venueObj, authMap, getAuthForVenue]);
+  }, [venueObj]);
 
   // Poll every 5 s when there are active jobs on the current page.
   useEffect(() => {
-    const hasActive = jobsData.some(j => ACTIVE_STATUSES.has(j.status as RunStatus));
+    const hasActive = pageRecords.some(j => ACTIVE_STATUSES.has(j.status as RunStatus));
     if (!hasActive || !venueObj) return;
-    const id = setInterval(() => fetchPageMetadata(filteredIds, currentPage), 5000);
+    const id = setInterval(() => setRefreshTick(t => t + 1), 5000);
     return () => clearInterval(id);
-  }, [jobsData, filteredIds, currentPage, venueObj]);
+  }, [pageRecords, venueObj]);
 
   if(venues.length == 0)
     return (
@@ -271,8 +288,8 @@ export function JobList({ venueId }: JobListProps = {}) {
           />
         </div>
         <div className="text-card-foreground text-xs flex flex-row my-2">
-          Page {currentPage} : Showing {jobsData.length} of {filteredIds.length}
-          {(statusFilter.length > 0 || dateFilter.length > 0 || debouncedQuery.trim() !== '') && filteredIds.length === 0 && !loading && (
+          Page {currentPage} : Showing {pageRecords.length} of {matchTotal}
+          {hasFilters && matchTotal === 0 && !loading && (
             <span className="ml-2 text-muted-foreground">— no jobs match this filter</span>
           )}
         </div>
@@ -309,7 +326,7 @@ export function JobList({ venueId }: JobListProps = {}) {
           </TableHeader>
 
           <TableBody>
-            {[...jobsData]
+            {[...pageRecords]
               .sort((a, b) => {
                 let cmp = 0;
                 if (sort.col === "date") cmp = new Date(a.created ?? "").getTime() - new Date(b.created ?? "").getTime();

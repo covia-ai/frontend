@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Copy, Lock, Save }from "lucide-react";
-import { Asset } from "@covia/covia-sdk";
+import { Asset, Venue } from "@covia/covia-sdk";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
@@ -17,17 +17,22 @@ import { useState } from "react";
 import { JsonEditor } from "json-edit-react";
 import { AssetInfoSheet } from "./AssetInfoSheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { toast } from "sonner";
 
 interface AssetCardProps {
   asset: Asset;
   type: string;
   compact:boolean;
+  venue?: Venue;
+  authenticated?: boolean;
 }
 
-export function AssetCard({ asset,type,compact }: AssetCardProps) {
-    const venue = useAuthenticatedVenue();
+export function AssetCard({ asset,type,compact,venue: venueProp,authenticated }: AssetCardProps) {
+    const fallbackVenue = useAuthenticatedVenue();
+    const venue = venueProp ?? fallbackVenue;
     const router = useRouter();
-    const isAuthenticated = useIsAuthenticated();
+    const globalIsAuthenticated = useIsAuthenticated();
+    const isAuthenticated = authenticated ?? globalIsAuthenticated;
     const [newJsonData, setNewJsonData] = useState<any>({});
 
     const adapter = (asset.metadata?.operation?.adapter as string | undefined)?.split(':')[0] ?? null;
@@ -43,17 +48,19 @@ export function AssetCard({ asset,type,compact }: AssetCardProps) {
         const encodedUrl = "/venues/"+encodeURIComponent(venue.venueId)+"/"+type+"/"+assetId;
         router.push(encodedUrl);
     };
-    function copyAsset(jsonData: JSON) {
+    async function copyAsset(jsonData: JSON) {
         try {
-          venue?.assets.register(jsonData).then((asset: Asset) => {
-            if (asset != undefined && asset != null) {
-              setNewJsonData({})
-              window.location.reload()
-            }
-          })
+          if (!venue) throw new Error("No venue selected");
+          const copiedAsset = await venue.assets.register(jsonData);
+          if (copiedAsset) {
+            setNewJsonData({});
+            window.location.reload();
+          }
         }
-        catch (error) {
-          console.error('Error copying asset:', error);
+        catch (error: unknown) {
+          toast("Unable to copy asset", {
+            description: error instanceof Error ? error.message : "Please try again.",
+          });
         }
     }
     return (
@@ -77,14 +84,17 @@ export function AssetCard({ asset,type,compact }: AssetCardProps) {
                     }
                     {type == "assets" && isAuthenticated &&
                         <Dialog>
-                            <DialogTrigger>
+                            {/* Single <button> (DialogTrigger's) — TooltipTrigger
+                                adopts it via asChild; nested trigger buttons are
+                                invalid HTML and break hydration. */}
                             <Tooltip>
-                            <TooltipTrigger>
+                            <TooltipTrigger asChild>
+                            <DialogTrigger>
                                  <Copy size={16} data-testid="copy_btn"/>
+                            </DialogTrigger>
                             </TooltipTrigger>
                             <TooltipContent data-testid="btn-tootip">Copy Asset</TooltipContent>
                              </Tooltip>
-                            </DialogTrigger>
                             <DialogContent className="h-11/12 min-w-10/12 bg-card text-card-foreground content-start">
                             <DialogTitle className="flex flex-row items-center justify-between mr-4">
                                 Copy asset

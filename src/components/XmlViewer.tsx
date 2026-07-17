@@ -6,9 +6,11 @@ import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Copy, Check } from "lucide-react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import type { Venue } from "@covia/covia-sdk";
 
-export const XmlViewer = (props: { assetId: string }) => {
-  const venue = useAuthenticatedVenue();
+export const XmlViewer = (props: { assetId: string; venue?: Venue }) => {
+  const fallbackVenue = useAuthenticatedVenue();
+  const venue = props.venue ?? fallbackVenue;
 
   const [renderData, setRenderData] = useState("");
   const [copied, setCopied] = useState(false);
@@ -42,7 +44,7 @@ export const XmlViewer = (props: { assetId: string }) => {
       };
       read();
     });
-  }, [props.assetId]);
+  }, [props.assetId, venue]);
 
   return (
     <Dialog>

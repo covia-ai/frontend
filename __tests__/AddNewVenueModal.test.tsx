@@ -19,8 +19,11 @@ jest.mock('sonner', () => ({
   toast: jest.fn(),
 }));
 jest.mock('@/components/IconButton', () => ({
-  IconButton: ({ icon, message, label }: any) => (
-    <button data-testid="icon-button">{label || message}</button>
+  // The real IconButton renders a <div> (it sits inside Radix trigger
+  // <button>s) — mocking it as a <button> fabricates nested-button warnings
+  // that don't exist in production.
+  IconButton: ({ icon: _icon, message, label }: any) => (
+    <div data-testid="icon-button">{label || message}</div>
   ),
 }));
 jest.mock('next/navigation', () => ({

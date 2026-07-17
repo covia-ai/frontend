@@ -14,9 +14,9 @@ function AuthCallbackInner() {
   useEffect(() => {
     const token = searchParams.get("token");
     const did = searchParams.get("did");
+    const venueId = searchParams.get("venueId") || currentVenue?.venueId;
 
-    if (token && did) {
-      const venueId = currentVenue?.venueId || "_unknown";
+    if (token && did && venueId) {
       loginWithToken(venueId, token, did);
       router.replace("/operations");
     } else {

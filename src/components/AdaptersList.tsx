@@ -52,7 +52,7 @@ export function AdaptersList({ venueId }: AdaptersListProps) {
     } else if (venueObj) {
       setVenue(getVenueFor(venueObj, authData));
     }
-  }, [venueId, authMap, venueObj, venues, getAuthForVenue]);
+  }, [venueId, authMap, venueObj, venues, getAuthForVenue, addVenue]);
 
   useEffect(() => {
     if (!venue) return;

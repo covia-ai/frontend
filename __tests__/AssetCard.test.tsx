@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { AssetCard } from '@/components/AssetCard';
 import { useIsAuthenticated } from '@/hooks/use-auth';
@@ -47,7 +47,7 @@ jest.mock('@/components/AssetInfoSheet', () => ({
   AssetInfoSheet: () => <div data-testid="asset-info-sheet">Asset Info Sheet</div>,
 }));
 jest.mock('json-edit-react', () => ({
-  JsonEditor: ({ data, setData }: any) => (
+  JsonEditor: ({ data: _data, setData }: any) => (
     <div data-testid="json-editor">
       <button onClick={() => setData({ test: 'data' })}>Update JSON</button>
     </div>

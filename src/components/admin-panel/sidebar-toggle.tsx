@@ -22,7 +22,7 @@ export function SidebarToggle({ isOpen, setIsOpen }: SidebarToggleProps) {
   
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
+    }, [setIsOpen]);
   
   return (
     <div className="invisible lg:visible absolute top-[12px] -right-[16px] z-20 ">

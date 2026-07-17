@@ -37,8 +37,13 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
 
   const { venues } = useVenues();
   const venueObj = useVenueForRoute(venueId);
-  const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
-  const authMap = useAuthStore((x) => x.authMap);
+  const authData = useAuthStore((x) =>
+    venueObj ? x.authMap[venueObj.venueId] ?? null : null
+  );
+  const venue = useMemo(
+    () => venueObj ? getVenueFor(venueObj, authData) : null,
+    [venueObj, authData],
+  );
 
   const nextPage = (page: number) => {
     setCurrentPage(page)
@@ -53,9 +58,9 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
   // Fetches the full catalog once per venue — search text only filters
   // client-side (see filteredAssets) so typing never triggers a refetch.
   useEffect(() => {
-     if (!venueObj) return;
+     if (!venue) return;
+     const activeVenue = venue;
      let ignore = false;
-     const venue = getVenueFor(venueObj, getAuthForVenue(venueObj.venueId))
      async function fetchAssets() {
         setLoading(true);
         setAssetsMetadata([]);
@@ -63,10 +68,10 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
           // Discover ops from the venue catalog (v/ops + v/test/ops) by path —
           // one read per tree, no per-asset round trip. Each op keeps its
           // resolvable catalog path as its id (drives the URL).
-          const ops = await listCatalogOperations(venue);
+          const ops = await listCatalogOperations(activeVenue);
           const sorted = [...ops].sort((a, b) =>
             (a.metadata?.name ?? a.path).localeCompare(b.metadata?.name ?? b.path));
-          if (!ignore) setAssetsMetadata(sorted.map(op => new Operation(op.path, venue, op.metadata)));
+          if (!ignore) setAssetsMetadata(sorted.map(op => new Operation(op.path, activeVenue, op.metadata)));
         } catch (error) {
           console.error('Error fetching operations:', error);
         } finally {
@@ -75,7 +80,7 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
       }
      fetchAssets();
      return () => { ignore = true; };
-  }, [venueObj, authMap, getAuthForVenue]);
+  }, [venue]);
 
   const adapterOptions = useMemo(() => {
     const names = assetsMetadata
@@ -173,7 +178,7 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
           <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 3xl:grid-cols-5 4xl:grid-cols-6 items-stretch justify-center gap-4">
             {
             filteredAssets.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset) => (
-              <AssetCard key={asset.id} asset={asset} type="operations" compact={true}/>
+              <AssetCard key={asset.id} asset={asset} type="operations" compact={true} venue={venue ?? undefined} authenticated={authData !== null}/>
             ))}
           </div>
         )}
@@ -183,4 +188,4 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
       
     </ContentLayout>
   );
-} 
+}

@@ -6,7 +6,7 @@ import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, ChevronRight, KeyRound, Globe, ExternalLink } from "lucide-react";
+import { Copy, Check, ChevronRight, KeyRound, Globe, ExternalLink, Eye, EyeOff } from "lucide-react";
 import { useAuthStore } from "@/hooks/use-auth";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { Ed25519Auth, type DIDDocument } from "@covia/covia-sdk";
@@ -34,6 +34,45 @@ function CopyField({ label, value }: { label: string; value: string }) {
           {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
         </Button>
       </div>
+    </div>
+  );
+}
+
+// Like CopyField, but concealed by default: the value renders as dots until
+// explicitly revealed. Copy works without revealing (clipboard gets the real
+// value), so the common path never puts the key on screen.
+function SecretCopyField({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+  const [revealed, setRevealed] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <div>
+      <p className="text-sm text-muted-foreground mb-1">{label}</p>
+      <div className="flex items-center gap-2">
+        <code data-testid="secret-field-value" className="bg-muted flex-1 rounded-md px-3 py-2 text-xs font-mono break-all select-all">
+          {revealed ? value : "•".repeat(48)}
+        </code>
+        <Button
+          data-testid="secret-field-reveal"
+          variant="outline"
+          size="icon"
+          onClick={() => setRevealed((v) => !v)}
+          aria-label={revealed ? "Hide" : "Show"}
+          className="shrink-0"
+        >
+          {revealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </Button>
+        <Button variant="outline" size="icon" onClick={copy} className="shrink-0">
+          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground mt-1">
+        Anyone with this key can act as you. Never share it.
+      </p>
     </div>
   );
 }
@@ -87,6 +126,9 @@ export default function ProfilePage() {
             </p>
           </div>
           {publicKeyHex && <CopyField label="Public Key" value={publicKeyHex} />}
+          {auth.type === "keypair" && (
+            <SecretCopyField label="Private Key" value={auth.privateKeyHex} />
+          )}
         </div>
 
         {venue && (

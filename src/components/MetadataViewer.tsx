@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from "react";
-import { Asset } from "@covia/covia-sdk";
+import { Asset, Venue } from "@covia/covia-sdk";
 import { Calendar, Copyright, Download, Info, InfoIcon, Tag, User }from "lucide-react";
 import Link from "next/link";
 import { Badge } from "./ui/badge";
@@ -23,6 +23,7 @@ const DocumentViewer = dynamic(() => import("./DocumentViewer").then(mod => mod.
 const XML_CONTENT_TYPES = ["text/xml", "application/xml"];
 interface MetadataViewerProps {
   asset: Asset;
+  venue?: Venue;
 }
 
 interface MetadataFieldConfig {
@@ -138,7 +139,7 @@ const renderMetadataFields = (asset: Asset, fields: MetadataFieldConfig[]) => {
   );
 };
 
-export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
+export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
   const [contentURL, setContentUrl] = useState("");
   const [defaultValue, setDefaultValue] = useState("metadata");
   useEffect(() => { 
@@ -177,8 +178,8 @@ export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
                           </Link>
                         </span>
                           
-                          {asset.metadata?.content?.contentType?.split(";")[0] == "application/json" && <JsonViewer assetId={asset.id} />}
-                          {XML_CONTENT_TYPES.includes(asset.metadata?.content?.contentType?.split(";")[0]) && <XmlViewer assetId={asset.id} />}
+                          {asset.metadata?.content?.contentType?.split(";")[0] == "application/json" && <JsonViewer assetId={asset.id} venue={venue} />}
+                          {XML_CONTENT_TYPES.includes(asset.metadata?.content?.contentType?.split(";")[0]) && <XmlViewer assetId={asset.id} venue={venue} />}
                           {asset.metadata?.content?.contentType?.split(";")[0] != "application/json" && !XML_CONTENT_TYPES.includes(asset.metadata?.content?.contentType?.split(";")[0]) && (
                             <DocumentViewer contentUrl={contentURL} contentType={asset.metadata?.content?.contentType?.split(";")[0]} />
                           )}
@@ -217,4 +218,4 @@ export const MetadataViewer = ({ asset }: MetadataViewerProps) => {
     </AccordionItem>
     </Accordion>
   );
-}; 
+};

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { toastError } from "@/lib/toast-error";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -30,7 +31,7 @@ export function SecretList() {
   const venue = useAuthenticatedVenue();
   const isAuthenticated = useIsAuthenticated();
 
-  const loadSecrets = () => {
+  const loadSecrets = useCallback(() => {
     if (!venue || !isAuthenticated) {
       setLoading(false);
       return;
@@ -41,18 +42,18 @@ export function SecretList() {
       .then((result) => {
         setSecrets(Array.isArray(result) ? result : []);
       })
-      .catch(() => {
-        toast("Unable to load secrets");
+      .catch((err: any) => {
+        toastError("Unable to load secrets", err, venue.baseUrl);
         setSecrets([]);
       })
       .finally(() => {
         setLoading(false);
       });
-  };
+  }, [venue, isAuthenticated]);
 
   useEffect(() => {
     loadSecrets();
-  }, [venue, isAuthenticated]);
+  }, [loadSecrets]);
 
   const handleAdd = () => {
     if (!venue || !newName.trim() || !newValue.trim()) {
@@ -68,8 +69,9 @@ export function SecretList() {
         setNewValue("");
         loadSecrets();
       })
-      .catch(() => {
-        toast("Unable to store secret");
+      .catch((err: any) => {
+        // Surface the cause — a blind toast hid a JWT-audience 401 for days.
+        toastError("Unable to store secret", err, venue.baseUrl);
       })
       .finally(() => {
         setAdding(false);
@@ -84,8 +86,8 @@ export function SecretList() {
         toast(`Secret "${name}" deleted`);
         loadSecrets();
       })
-      .catch(() => {
-        toast("Unable to delete secret");
+      .catch((err: any) => {
+        toastError("Unable to delete secret", err, venue.baseUrl);
       });
   };
 

@@ -4,7 +4,7 @@ import { Venue } from "@covia/covia-sdk";
 
 type VenueStore = {
   currentVenue: Venue | null;
-  setCurrentVenue: (venue: Venue) => void;
+  setCurrentVenue: (venue: Venue | null) => void;
   getCurrentVenue: () => Venue | null;
 };
 
@@ -13,7 +13,7 @@ export const useVenue = create(
     (set, get) => ({
       currentVenue: null,
       
-      setCurrentVenue: (venue: Venue) => {
+      setCurrentVenue: (venue: Venue | null) => {
         set({ currentVenue: venue });
       },
       

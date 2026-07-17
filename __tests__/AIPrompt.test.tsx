@@ -4,6 +4,11 @@ import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { AIPrompt } from '@/components/AIPrompt';
 
+const mockToast = jest.fn();
+jest.mock('sonner', () => ({
+  toast: (...args: any[]) => mockToast(...args),
+}));
+
 const mockUseAuthenticatedVenue = jest.fn();
 jest.mock('@/hooks/use-authenticated-venue', () => ({
   useAuthenticatedVenue: () => mockUseAuthenticatedVenue(),
@@ -23,7 +28,7 @@ function makeVenue(overrides: {
     agents: {
       list: jest.fn().mockResolvedValue({ agents }),
       create: jest.fn().mockResolvedValue({ agentId: 'default-agent', status: 'active', created: true }),
-      request: jest.fn().mockResolvedValue({ id: 'job-1', status: 'PENDING' }),
+      chat: jest.fn().mockResolvedValue({ agentId: 'default-agent', sessionId: 's-1', response: 'Reply text' }),
       resume: jest.fn().mockResolvedValue({ agentId: 'default-agent', status: 'SLEEPING' }),
     },
     secrets: {
@@ -80,17 +85,16 @@ describe('AIPrompt — default agent reuse vs creation', () => {
     await user.click(screen.getByTestId('chat-button'));
 
     await waitFor(() => {
-      expect(venue.agents.request).toHaveBeenCalledWith(
+      expect(venue.agents.chat).toHaveBeenCalledWith(
         'default-agent',
-        { task: 'Do something useful' },
-        false,
+        'Do something useful',
       );
     });
     expect(venue.agents.create).not.toHaveBeenCalled();
     expect(venue.secrets.list).not.toHaveBeenCalled();
   });
 
-  it('resumes a SUSPENDED default-agent before sending the task', async () => {
+  it('resumes a SUSPENDED default-agent before sending the message', async () => {
     const venue = makeVenue({ existingAgents: ['default-agent'], agentStatus: 'SUSPENDED' });
     mockUseAuthenticatedVenue.mockReturnValue(venue);
     const user = userEvent.setup();
@@ -103,10 +107,9 @@ describe('AIPrompt — default agent reuse vs creation', () => {
       expect(venue.agents.resume).toHaveBeenCalledWith('default-agent');
     });
     await waitFor(() => {
-      expect(venue.agents.request).toHaveBeenCalledWith(
+      expect(venue.agents.chat).toHaveBeenCalledWith(
         'default-agent',
-        { task: 'Do something useful' },
-        false,
+        'Do something useful',
       );
     });
     expect(venue.agents.create).not.toHaveBeenCalled();
@@ -132,15 +135,14 @@ describe('AIPrompt — default agent reuse vs creation', () => {
     });
     expect(venue.agents.resume).not.toHaveBeenCalled();
     await waitFor(() => {
-      expect(venue.agents.request).toHaveBeenCalledWith(
+      expect(venue.agents.chat).toHaveBeenCalledWith(
         'default-agent',
-        { task: 'Do something useful' },
-        false,
+        'Do something useful',
       );
     });
   });
 
-  it('creates default-agent on first use when a single LLM key is present, then sends the task', async () => {
+  it('creates default-agent on first use when a single LLM key is present, then sends the message', async () => {
     const venue = makeVenue({ existingAgents: [], secrets: ['ANTHROPIC_API_KEY'] });
     mockUseAuthenticatedVenue.mockReturnValue(venue);
     const user = userEvent.setup();
@@ -155,10 +157,9 @@ describe('AIPrompt — default agent reuse vs creation', () => {
       );
     });
     await waitFor(() => {
-      expect(venue.agents.request).toHaveBeenCalledWith(
+      expect(venue.agents.chat).toHaveBeenCalledWith(
         'default-agent',
-        { task: 'Do something useful' },
-        false,
+        'Do something useful',
       );
     });
   });
@@ -198,7 +199,7 @@ describe('AIPrompt — agent picker', () => {
     mockUseAuthenticatedVenue.mockReset();
   });
 
-  it('shows default-agent subtext, and lists other existing agents plus a New agent option in the ⋮ menu', async () => {
+  it('lists other existing agents plus a New agent option in the ⋮ menu', async () => {
     const venue = makeVenue({
       existingAgents: [
         { agentId: 'default-agent', status: 'active' },
@@ -209,8 +210,6 @@ describe('AIPrompt — agent picker', () => {
     const user = userEvent.setup();
 
     render(<AIPrompt />);
-    expect(screen.getByText(/This request will go to the default agent/)).toBeInTheDocument();
-
     await user.click(screen.getByTestId('agent-picker'));
     expect(await screen.findByRole('menuitemradio', { name: 'research-bot' })).toBeInTheDocument();
     expect(screen.getByRole('menuitemradio', { name: '+ New agent' })).toBeInTheDocument();
@@ -228,16 +227,14 @@ describe('AIPrompt — agent picker', () => {
 
     render(<AIPrompt />);
     await pickAgentOption(user, 'research-bot');
-    expect(screen.getByText(/This request will go to "research-bot"/)).toBeInTheDocument();
 
     await user.type(screen.getByLabelText('prompt'), 'Do something useful');
     await user.click(screen.getByTestId('chat-button'));
 
     await waitFor(() => {
-      expect(venue.agents.request).toHaveBeenCalledWith(
+      expect(venue.agents.chat).toHaveBeenCalledWith(
         'research-bot',
-        { task: 'Do something useful' },
-        false,
+        'Do something useful',
       );
     });
     expect(venue.agents.create).not.toHaveBeenCalled();
@@ -261,10 +258,9 @@ describe('AIPrompt — agent picker', () => {
       expect(venue.agents.resume).toHaveBeenCalledWith('research-bot');
     });
     await waitFor(() => {
-      expect(venue.agents.request).toHaveBeenCalledWith(
+      expect(venue.agents.chat).toHaveBeenCalledWith(
         'research-bot',
-        { task: 'Do something useful' },
-        false,
+        'Do something useful',
       );
     });
   });
@@ -279,7 +275,6 @@ describe('AIPrompt — agent picker', () => {
 
     render(<AIPrompt />);
     await pickAgentOption(user, '+ New agent');
-    expect(screen.getByText(/This request will go to a new agent/)).toBeInTheDocument();
 
     await user.type(screen.getByLabelText('prompt'), 'Do something useful');
     await user.click(screen.getByTestId('chat-button'));
@@ -294,11 +289,51 @@ describe('AIPrompt — agent picker', () => {
     });
     const createdAgentId = venue.agents.create.mock.calls[0][0].agentId;
     await waitFor(() => {
-      expect(venue.agents.request).toHaveBeenCalledWith(
+      expect(venue.agents.chat).toHaveBeenCalledWith(
         createdAgentId,
-        { task: 'Do something useful' },
-        false,
+        'Do something useful',
       );
+    });
+  });
+});
+
+describe('AIPrompt — chat outcome surfacing', () => {
+  beforeEach(() => {
+    mockUseAuthenticatedVenue.mockReset();
+    mockToast.mockReset();
+  });
+
+  it('toasts when the agent sends an empty reply', async () => {
+    const venue = makeVenue({ existingAgents: ['default-agent'] });
+    venue.agents.chat.mockResolvedValue({ agentId: 'default-agent', sessionId: 's-1', response: '  ' });
+    mockUseAuthenticatedVenue.mockReturnValue(venue);
+    const user = userEvent.setup();
+
+    render(<AIPrompt />);
+    await user.type(screen.getByLabelText('prompt'), 'Do something useful');
+    await user.click(screen.getByTestId('chat-button'));
+
+    // Some toast must fire — an empty reply is a silent failure otherwise.
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalled();
+    });
+  });
+
+  it('toasts when the chat call fails', async () => {
+    const venue = makeVenue({ existingAgents: ['default-agent'] });
+    venue.agents.chat.mockRejectedValue(new Error('venue unreachable'));
+    mockUseAuthenticatedVenue.mockReturnValue(venue);
+    const user = userEvent.setup();
+
+    render(<AIPrompt />);
+    await user.type(screen.getByLabelText('prompt'), 'Do something useful');
+    await user.click(screen.getByTestId('chat-button'));
+
+    // The wire error must reach the user, not vanish into the un-awaited promise.
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
+        description: 'venue unreachable',
+      }));
     });
   });
 });

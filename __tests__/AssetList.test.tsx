@@ -79,6 +79,9 @@ function makeAsset(id: string, name: string) {
 describe('AssetList', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Metadata is cached content-addressed in localStorage — clear it so each
+    // test controls whether it exercises the fetch path or the cache path.
+    window.localStorage.clear();
     mockSearchParam = null;
     mockVenue.listAssets.mockResolvedValue({ items: ['a1', 'a2'] });
     mockVenue.getAsset.mockImplementation((id: string) => {
@@ -92,6 +95,17 @@ describe('AssetList', () => {
     render(<AssetList />);
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
     expect(mockVenue.listAssets).toHaveBeenCalledTimes(1);
+  });
+
+  it('serves metadata from the content-addressed cache on revisit — no per-asset GETs', async () => {
+    window.localStorage.setItem('asset-meta:a1', JSON.stringify({ name: 'Alpha Report' }));
+    window.localStorage.setItem('asset-meta:a2', JSON.stringify({ name: 'Beta Dataset' }));
+
+    render(<AssetList />);
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
+
+    expect(mockVenue.listAssets).toHaveBeenCalledTimes(1);
+    expect(mockVenue.getAsset).not.toHaveBeenCalled();
   });
 
   it('filters assets live as the user types, without refetching', async () => {

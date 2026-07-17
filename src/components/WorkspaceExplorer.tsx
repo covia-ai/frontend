@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { ChevronRight, FolderOpen, Folder, FileText, GripVertical, Loader2, RefreshCw, Save, Trash2, Plus, PenLine, Eye, ListPlus, Database, Lock }from "lucide-react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { usePaneResize } from "@/hooks/use-pane-resize";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -54,29 +55,7 @@ export function WorkspaceExplorer() {
   const venue = useAuthenticatedVenue();
   const isAuthenticated = useIsAuthenticated();
 
-  // Resize state
-  const [leftWidth, setLeftWidth] = useState(300);
-  const isResizing = useRef(false);
-
-  const startResizing = () => {
-    isResizing.current = true;
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", stopResizing);
-    document.body.style.cursor = "col-resize";
-  };
-
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isResizing.current) return;
-    const newWidth = Math.min(Math.max(200, e.clientX - 20), 500);
-    setLeftWidth(newWidth);
-  };
-
-  const stopResizing = () => {
-    isResizing.current = false;
-    document.removeEventListener("mousemove", handleMouseMove);
-    document.removeEventListener("mouseup", stopResizing);
-    document.body.style.cursor = "default";
-  };
+  const { width: leftWidth, containerRef, startResizing } = usePaneResize(300);
 
   // Load root listing
   const loadPath = useCallback(
@@ -86,8 +65,12 @@ export function WorkspaceExplorer() {
         return;
       }
       setLoading(true);
+      // Root must be requested as "/" — the SDK routes an empty/undefined path
+      // to the invoke-based covia:list (which mints a Job on every page load),
+      // while any non-empty path, "/" included, goes over the job-free
+      // GET /api/v1/values/list. Reads must never create jobs (AGENTS.md).
       venue.workspace
-        .list(path)
+        .list(path ?? "/")
         .then((result) => {
           // The job-free `list` (GET /api/v1/values/list) returns only keys —
           // per-entry values/types would each need a read (a job), which the UI
@@ -279,7 +262,7 @@ export function WorkspaceExplorer() {
   }
 
   return (
-    <div className="flex h-[500px] w-full border border-border rounded-lg overflow-hidden shadow-sm select-none mt-4">
+    <div ref={containerRef} className="flex h-[500px] w-full border border-border rounded-lg overflow-hidden shadow-sm mt-4">
       {/* Left Pane — Path Browser */}
       <div
         style={{ width: `${leftWidth}px` }}

@@ -16,6 +16,8 @@ import Link from "next/link";
 import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
 import { useAuthStore } from "@/hooks/use-auth";
 import { TopBar } from "@/components/admin-panel/TopBar";
+import { connectWithTimeout } from "@/hooks/use-venues";
+import { toastError } from "@/lib/toast-error";
 
 interface VenuePageProps {
   params: Promise<{
@@ -59,20 +61,23 @@ export default function VenuePage({ params }: VenuePageProps) {
       }
     }
     else {
-       Venue.connect(decodedSlug, authOption).then((venue) => {
+       connectWithTimeout(decodedSlug, authOption, 10_000).then((venue) => {
          addVenue(venue)
-       })
+       }).catch((err: unknown) => toastError("Unable to connect to venue", err, decodedSlug))
     }
   }, [slug, venues, authMap, getAuthForVenue, addVenue]);
 
     useEffect(() => {
+       if (!venue) return;
        const fetchMCP = async () => {
-          const response = await fetch(venue?.baseUrl+"/.well-known/mcp");
-          const body = await response.json();
-          if(body?.error)
-             setVenueMCPURL("Not Available")
-          else
-              setVenueMCPURL(body?.server_url)
+          try {
+            const response = await fetch(`${venue.baseUrl}/.well-known/mcp`);
+            if (!response.ok) throw new Error(`MCP discovery failed: ${response.status}`);
+            const body = await response.json();
+            setVenueMCPURL(body?.error ? "Not Available" : body?.server_url ?? "Not Available");
+          } catch {
+            setVenueMCPURL("Not Available");
+          }
       }
        const fetchStats = async () => {
          try {
@@ -80,10 +85,17 @@ export default function VenuePage({ params }: VenuePageProps) {
           if(status?.stats) {
               setNoOfAssets(status?.stats?.assets ?? 0);
               setNoOfOps(status?.stats?.ops ?? 0);
-              setNoOfRuns(status?.stats?.jobs ?? 0);
               setNoOfUsers(status?.stats?.users ?? 0);
               setVenueDID(status?.did ?? "")
               setVenueName(status?.name ?? "")
+              // Venues up to at least 0.5.0 omit stats.jobs from /api/v1/status
+              // (covia-ai/covia#229) — fall back to counting the job index via
+              // the job-free GET /api/v1/jobs rather than showing a false 0.
+              if (status?.stats?.jobs != undefined) {
+                  setNoOfRuns(status.stats.jobs);
+              } else if (venue) {
+                  try { setNoOfRuns((await venue.jobs.list()).length); } catch { /* leave at 0 */ }
+              }
           }
         }
         catch(e) {

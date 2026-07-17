@@ -9,7 +9,7 @@ global.fetch = jest.fn();
 
 // Mock json-edit-react
 jest.mock('json-edit-react', () => ({
-  JsonEditor: ({ data }: any) => <div data-testid="json-editor">JSON Editor</div>,
+  JsonEditor: ({ data: _data }: any) => <div data-testid="json-editor">JSON Editor</div>,
 }));
 
 // Mock dynamically imported components

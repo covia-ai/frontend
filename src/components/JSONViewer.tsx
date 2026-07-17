@@ -6,9 +6,11 @@ import { JsonEditor, githubDarkTheme, githubLightTheme } from "json-edit-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Copy, Check } from "lucide-react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import type { Venue } from "@covia/covia-sdk";
 
-export const JsonViewer = (props:any) => {
-   const venue = useAuthenticatedVenue();
+export const JsonViewer = (props: { assetId: string; venue?: Venue }) => {
+   const fallbackVenue = useAuthenticatedVenue();
+   const venue = props.venue ?? fallbackVenue;
    const { theme } = useTheme();
 
    const [renderData, setRenderData] = useState({});

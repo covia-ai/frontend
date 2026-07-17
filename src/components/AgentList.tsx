@@ -14,7 +14,8 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useIsAuthenticated } from "@/hooks/use-auth";
-import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
+import { normalizeAgentEntries } from "@/lib/agent-list";
 import { PageHeading } from "./PageHeading";
 import { StatusBadge } from "./StatusBadge";
 
@@ -30,9 +31,9 @@ export function AgentList() {
     if (!venue) return;
     setLoading(true);
     venue.agents.list(true).then((result) => {
-      setAgentData(result.agents || []);
-    }).catch(() => {
-      toast("Unable to load agents");
+      setAgentData(normalizeAgentEntries(result.agents));
+    }).catch((err: any) => {
+      toastError("Unable to load agents", err, venue.baseUrl);
     }).finally(() => {
       setLoading(false);
     });
@@ -84,7 +85,7 @@ export function AgentList() {
                    {/* Fixed-size header */}
                    <div className={` ${ compact ? 'h-10' : 'h-14'  } p-2 flex flex-row items-start border-b`}>
                       <div data-testid="agent-name" className="truncate flex-1 mr-2 text-md text-foreground font-mono"> {agent.agentId}</div>
-                      <StatusBadge status={agent.status} kind="agent" as="dot" className="ml-1" />
+                      {agent.status && <StatusBadge status={agent.status} kind="agent" as="dot" className="ml-1" />}
                     </div>
                    {/* Flexible middle section */}
                    <div className="flex-1 p-2 flex flex-col justify-between">
@@ -95,7 +96,9 @@ export function AgentList() {
 
                    {/* Fixed-size footer */}
                    <div className="p-1 h-8 flex flex-row-reverse" >
-                       <Badge variant="outline" className="bg-muted text-muted-foreground text-[10px]">{agent.tasks} task{agent.tasks !== 1 ? 's' : ''}</Badge>
+                       {agent.tasks != null && (
+                         <Badge variant="outline" className="bg-muted text-muted-foreground text-[10px]">{agent.tasks} task{agent.tasks !== 1 ? 's' : ''}</Badge>
+                       )}
                    </div>
                  </Card>
             ))}

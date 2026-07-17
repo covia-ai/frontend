@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   GripVertical, Bot, Pause, Play, Trash2, Send, Loader2,
   Plus, MessageSquare, ChevronDown
@@ -9,7 +9,10 @@ import { AgentDetail, AgentListItem, Session, SessionMessage } from '@/config/ty
 import { TopBar } from './admin-panel/TopBar';
 import { Agent, ChatSession, AgentStatus } from '@covia/covia-sdk';
 import { useAuthenticatedVenue } from '@/hooks/use-authenticated-venue';
+import { usePaneResize } from '@/hooks/use-pane-resize';
 import { toast } from 'sonner';
+import { toastError } from '@/lib/toast-error';
+import { normalizeAgentEntries } from '@/lib/agent-list';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
@@ -36,6 +39,7 @@ const AgentExplorer = (props: any) => {
   const [selectedAgentDetail, setSelectedAgentDetail] = useState<AgentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState(false);
 
   // Agent handle + chat session (OO API from SDK 1.5.0)
   const [agentHandle, setAgentHandle] = useState<Agent | null>(null);
@@ -51,25 +55,29 @@ const AgentExplorer = (props: any) => {
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   // Layout
-  const [leftWidth, setLeftWidth] = useState(200);
-  const isResizingLeft = useRef(false);
+  const { width: leftWidth, containerRef, startResizing } = usePaneResize(200);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
 
   // ─── Loaders ────────────────────────────────────────────────────────────────
 
-  const refreshAgentList = () => {
+  // Poll-driven refreshes stay silent (a transient blip would toast every
+  // 3 s); the initial load surfaces its cause so an unreachable venue or
+  // rejected token doesn't masquerade as "No agents found".
+  const refreshAgentList = useCallback((surfaceErrors = false) => {
     if (!venue) return Promise.resolve();
     return venue.agents.list(true).then((result) => {
-      setAgentList(result.agents || []);
-    }).catch(() => {});
-  };
+      setAgentList(normalizeAgentEntries(result.agents));
+    }).catch((err: any) => {
+      if (surfaceErrors) toastError("Unable to load agents", err, venue.baseUrl);
+    });
+  }, [venue]);
 
   // Agent detail = lightweight info() + the timeline the Details panel dumps.
   // Replaces the removed agents.query(), which bundled info plus timeline/state/
   // inbox reads (4 jobs); we only render info-fields + timeline, so state/inbox
   // are dropped. info() and the timeline read are job-free on venues that serve
   // the values API; on older ones they fall back to invoke via the SDK.
-  const loadAgentDetail = (agentId: string): Promise<AgentDetail | null> => {
+  const loadAgentDetail = useCallback((agentId: string): Promise<AgentDetail | null> => {
     if (!venue) return Promise.resolve(null);
     return Promise.all([
       venue.agents.info(agentId),
@@ -79,16 +87,16 @@ const AgentExplorer = (props: any) => {
     ])
       .then(([info, timeline]) => ({ ...info, timeline } as AgentDetail))
       .catch(() => null);
-  };
+  }, [venue]);
 
-  const refreshAgentDetail = (agentId: string | null) => {
+  const refreshAgentDetail = useCallback((agentId: string | null) => {
     if (!agentId) return Promise.resolve();
     return loadAgentDetail(agentId).then((detail) => {
       if (detail) setSelectedAgentDetail(detail);
     });
-  };
+  }, [loadAgentDetail]);
 
-  const refreshSessions = (agentId: string | null) => {
+  const refreshSessions = useCallback((agentId: string | null) => {
     if (!venue || !agentId) return Promise.resolve();
     return venue.workspace
       .slice(`g/${agentId}/sessions`, 0, SESSION_LIMIT)
@@ -114,7 +122,7 @@ const AgentExplorer = (props: any) => {
         setSessions(items);
       })
       .catch(() => setSessions([]));
-  };
+  }, [venue]);
 
   // ─── Effects ────────────────────────────────────────────────────────────────
 
@@ -122,8 +130,8 @@ const AgentExplorer = (props: any) => {
   useEffect(() => {
     if (!venue) return;
     setLoading(true);
-    refreshAgentList().finally(() => setLoading(false));
-  }, [venue]);
+    refreshAgentList(true).finally(() => setLoading(false));
+  }, [venue, refreshAgentList]);
 
   // Auto-select first agent when list arrives
   useEffect(() => {
@@ -144,6 +152,7 @@ const AgentExplorer = (props: any) => {
     const handle = venue.agent(selectedAgentId);
     setAgentHandle(handle);
     setDetailLoading(true);
+    setDetailError(false);
     Promise.all([
       loadAgentDetail(selectedAgentId)
         .then((detail) => {
@@ -151,11 +160,12 @@ const AgentExplorer = (props: any) => {
           else {
             toast("Unable to load agent details");
             setSelectedAgentDetail(null);
+            setDetailError(true);
           }
         }),
       refreshSessions(selectedAgentId),
     ]).finally(() => setDetailLoading(false));
-  }, [venue, selectedAgentId]);
+  }, [venue, selectedAgentId, loadAgentDetail, refreshSessions]);
 
   // Auto-select most recent session (skip while a send is in flight to avoid
   // the pending-message race: the server creates the session immediately when
@@ -178,7 +188,7 @@ const AgentExplorer = (props: any) => {
       refreshSessions(selectedAgentId);
     }, POLL_INTERVAL_MS);
     return () => clearInterval(t);
-  }, [venue, selectedAgentId]);
+  }, [venue, selectedAgentId, refreshAgentList, refreshAgentDetail, refreshSessions]);
 
   // Auto-scroll transcript on update
   const selectedSessionId = chatSession?.sessionId ?? null;
@@ -252,6 +262,14 @@ const AgentExplorer = (props: any) => {
     Promise.race([session.send(text), timeout])
       .then(async (result) => {
         clearTimeout(timeoutId);
+        // An empty response is a silent failure (agent errored without a
+        // reply turn) — surface it rather than showing nothing.
+        const r = (result as any)?.response;
+        if (r == null || (typeof r === "string" && r.trim() === "")) {
+          toast("The agent sent an empty reply", {
+            description: "It may have hit an error — check the Details panel.",
+          });
+        }
         // ChatSession auto-captures sessionId — update our state reference
         setChatSession(session);
         if (sendSessionId === null && result?.sessionId) {
@@ -285,36 +303,22 @@ const AgentExplorer = (props: any) => {
     return `${when} · …${short} · ${s.turns ?? 0} turn${(s.turns ?? 0) === 1 ? "" : "s"}`;
   };
 
+  // Turn content is `string | map | any cell` per the conversation contract
+  // (covia AGENT_SESSIONS/agent-loop docs) — the transcript is a record, so
+  // unwrap only when nothing can be hidden: a plain string renders as-is, and
+  // an envelope holding exactly one string field ({task: "..."} from
+  // agent_request, {message: "..."} from chat intake) renders as that string.
+  // Anything more structured renders as full JSON — probing "likely" keys
+  // (the old text/message/content/input list) would silently drop sibling
+  // fields and misrepresent what was actually exchanged with the agent.
   const messageContentToString = (c: any): string => {
     if (c == null) return "";
     if (typeof c === "string") return c;
-    if (typeof c === "object") {
-      if (typeof c.text === "string") return c.text;
-      if (typeof c.message === "string") return c.message;
-      if (typeof c.content === "string") return c.content;
-      if (typeof c.input === "string") return c.input;
+    if (typeof c === "object" && !Array.isArray(c)) {
+      const keys = Object.keys(c);
+      if (keys.length === 1 && typeof c[keys[0]] === "string") return c[keys[0]];
     }
     return JSON.stringify(c, null, 2);
-  };
-
-  // ─── Resize ─────────────────────────────────────────────────────────────────
-
-  const startResizingLeft = () => {
-    isResizingLeft.current = true;
-    document.addEventListener("mousemove", handleMouseMoveLeft);
-    document.addEventListener("mouseup", stopResizingLeft);
-    document.body.style.cursor = "col-resize";
-  };
-  const handleMouseMoveLeft = (e: MouseEvent) => {
-    if (!isResizingLeft.current) return;
-    const newWidth = Math.min(Math.max(200, e.clientX - 20), 600);
-    setLeftWidth(newWidth);
-  };
-  const stopResizingLeft = () => {
-    isResizingLeft.current = false;
-    document.removeEventListener("mousemove", handleMouseMoveLeft);
-    document.removeEventListener("mouseup", stopResizingLeft);
-    document.body.style.cursor = "default";
   };
 
   // ─── Render ─────────────────────────────────────────────────────────────────
@@ -326,10 +330,11 @@ const AgentExplorer = (props: any) => {
   return (
     <>
       <TopBar />
-      <div className="flex h-[calc(100vh-120px)] min-h-[600px] w-full border border-border rounded-lg overflow-hidden shadow-sm select-none">
+      <div ref={containerRef} className="flex h-[calc(100vh-120px)] min-h-[600px] w-full border border-border rounded-lg overflow-hidden shadow-sm">
 
         {/* Column 1: Agent List */}
         <div
+          data-testid="agent-list-panel"
           style={{ width: `${leftWidth}px` }}
           className="flex-shrink-0 border-r border-border overflow-y-auto"
         >
@@ -351,11 +356,13 @@ const AgentExplorer = (props: any) => {
               <Bot size={14} className={`flex-shrink-0 ${selectedAgentId === agent.agentId ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground'}`} />
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-base truncate">{agent.agentId}</p>
-                <div className="flex items-center gap-1.5 text-[10px] opacity-70">
-                  <span>{agent.tasks} task{agent.tasks !== 1 ? 's' : ''}</span>
-                  <span>·</span>
-                  <StatusBadge status={agent.status} kind="agent" as="pill" />
-                </div>
+                {(agent.tasks != null || agent.status) && (
+                  <div className="flex items-center gap-1.5 text-[10px] opacity-70">
+                    {agent.tasks != null && <span>{agent.tasks} task{agent.tasks !== 1 ? 's' : ''}</span>}
+                    {agent.tasks != null && agent.status && <span>·</span>}
+                    {agent.status && <StatusBadge status={agent.status} kind="agent" as="pill" />}
+                  </div>
+                )}
               </div>
             </button>
           ))}
@@ -369,7 +376,8 @@ const AgentExplorer = (props: any) => {
 
         {/* Resize Handle */}
         <div
-          onMouseDown={startResizingLeft}
+          data-testid="agent-list-divider"
+          onMouseDown={startResizing}
           className="w-1.5 hover:w-1.5 bg-transparent hover:bg-blue-400 cursor-col-resize transition-colors flex items-center justify-center group relative z-10"
         >
           <div className="hidden group-hover:block absolute bg-blue-500 rounded-full p-0.5">
@@ -387,9 +395,18 @@ const AgentExplorer = (props: any) => {
           )}
 
           {!detailLoading && !selectedAgentDetail && (
-            <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-8 text-center">
+            // A failed load must not masquerade as "nothing selected" — the
+            // user picked an agent and deserves an explicit error state.
+            <div
+              data-testid={detailError ? "agent-detail-error" : "agent-detail-empty"}
+              className="h-full flex flex-col items-center justify-center text-muted-foreground p-8 text-center"
+            >
               <Bot size={32} />
-              <p className="text-sm mt-2">Select an agent</p>
+              <p className="text-sm mt-2">
+                {detailError
+                  ? `Couldn't load details for ${selectedAgentId ?? "this agent"} — see the error notification.`
+                  : "Select an agent"}
+              </p>
             </div>
           )}
 
@@ -490,6 +507,12 @@ const AgentExplorer = (props: any) => {
                         ${isUser ? "bg-blue-600 text-white" : isAssistant ? "bg-muted text-foreground" : "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200"}`}>
                         {!isUser && !isAssistant && (
                           <div className="text-[10px] font-semibold uppercase tracking-wide opacity-70 mb-1">{msg.role}</div>
+                        )}
+                        {/* Task-originated turns (agent_request) look identical to chat
+                            once unwrapped — label their provenance so the transcript
+                            stays an honest record. source comes from the turn itself. */}
+                        {isUser && msg.source === "request" && (
+                          <div data-testid="turn-source-label" className="text-[10px] font-semibold uppercase tracking-wide opacity-70 mb-1">task</div>
                         )}
                         {messageContentToString(msg.content)}
                         {msg.ts && (

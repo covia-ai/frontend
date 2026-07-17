@@ -14,11 +14,12 @@ import { getVenueFor } from "@/hooks/use-authenticated-venue";
 // slight variations in AssetViewer/ExecutionViewer/OperationViewer/McpToolsList.
 export function useResolvedVenue(routeVenueId?: string): Venue | undefined {
   const venueObj = useVenueForRoute(routeVenueId);
-  const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
-  const authMap = useAuthStore((x) => x.authMap);
+  const authData = useAuthStore((x) =>
+    venueObj ? x.authMap[venueObj.venueId] ?? null : null
+  );
 
   return useMemo(() => {
     if (!venueObj) return undefined;
-    return getVenueFor(venueObj, getAuthForVenue(venueObj.venueId));
-  }, [venueObj, authMap, getAuthForVenue]);
+    return getVenueFor(venueObj, authData);
+  }, [venueObj, authData]);
 }

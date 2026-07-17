@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown } from "lucide-react";
+import { Fragment } from "react";
 
 const COLLAPSE_THRESHOLD = 4;
 const SHOW_START = 2;
@@ -128,30 +129,37 @@ export function SmartBreadcrumb({
   return (
     <Breadcrumb>
       <BreadcrumbList className="flex-nowrap">
+        {/* Separators are <li>s themselves — they must be siblings of
+            BreadcrumbItem (also an <li>), never children: li-in-li is invalid
+            HTML and breaks hydration. */}
         {!collapsed && breadcrumbs.map((item, index) => (
-          <BreadcrumbItem key={index}>
-            <BreadcrumbLink
-              onClick={() => item.href && handleBreadcrumbClick(item.href)}
-              className="cursor-pointer hover:underline"
-            >
-              {item.label}
-            </BreadcrumbLink>
+          <Fragment key={index}>
+            <BreadcrumbItem>
+              <BreadcrumbLink
+                onClick={() => item.href && handleBreadcrumbClick(item.href)}
+                className="cursor-pointer hover:underline"
+              >
+                {item.label}
+              </BreadcrumbLink>
+            </BreadcrumbItem>
             {index < breadcrumbs.length - 1 && <BreadcrumbSeparator />}
-          </BreadcrumbItem>
+          </Fragment>
         ))}
 
         {collapsed && (
           <>
             {startCrumbs.map((item, index) => (
-              <BreadcrumbItem key={`s-${index}`}>
-                <BreadcrumbLink
-                  onClick={() => item.href && handleBreadcrumbClick(item.href)}
-                  className="cursor-pointer hover:underline"
-                >
-                  {item.label}
-                </BreadcrumbLink>
+              <Fragment key={`s-${index}`}>
+                <BreadcrumbItem>
+                  <BreadcrumbLink
+                    onClick={() => item.href && handleBreadcrumbClick(item.href)}
+                    className="cursor-pointer hover:underline"
+                  >
+                    {item.label}
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
                 <BreadcrumbSeparator />
-              </BreadcrumbItem>
+              </Fragment>
             ))}
 
             <BreadcrumbItem>
@@ -172,8 +180,8 @@ export function SmartBreadcrumb({
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <BreadcrumbSeparator />
             </BreadcrumbItem>
+            <BreadcrumbSeparator />
 
             {endCrumbs.map((item, index) => (
               <BreadcrumbItem key={`e-${index}`}>

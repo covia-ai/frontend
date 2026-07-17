@@ -1,11 +1,12 @@
 "use client";
 
 
-import { Asset } from "@covia/covia-sdk";
+import { Asset, Operation } from "@covia/covia-sdk";
 import React, { useEffect, useState } from 'react'
 import { AssetCard } from "./AssetCard";
 import { useVenues } from "@/hooks/use-venues";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { listCatalogOperations } from "@/lib/operations-catalog";
 import { PageHeading } from "./PageHeading";
 
 
@@ -20,9 +21,13 @@ export const ShowCase = () => {
      const fetchData = async () => {
       if (!venue) return;
        try {
-         const assetList = await venue.listAssets();
-         const res = await Promise.all(assetList.items.map((assetId: string) => venue.getAsset(assetId)));
-         const featured = res.filter((asset: Asset) => asset?.metadata?.operation?.info?.featured);
+         // Featured showcase items are operations, and the catalog returns
+         // every operation's metadata inline in two job-free reads — no need
+         // to hydrate the venue's entire asset store one GET at a time.
+         const ops = await listCatalogOperations(venue);
+         const featured = ops
+           .filter((op) => op.metadata?.operation?.info?.featured)
+           .map((op) => new Operation(op.path, venue, op.metadata));
          const shuffled = featured.slice();
          for (let i = shuffled.length - 1; i > 0; i--) {
            const j = Math.floor(Math.random() * (i + 1));
@@ -62,7 +67,7 @@ export const ShowCase = () => {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4 mt-4 mb-8">
             {assets.map((asset) =>
-              <AssetCard key={asset.id} asset={asset} type="operations" compact={true}/>
+              <AssetCard key={asset.id} asset={asset} type="operations" compact={true} venue={venue ?? undefined}/>
             )}
           </div>
         )}
