@@ -6,18 +6,14 @@ import { SecretList } from "@/components/SecretList";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Info, ChevronRight } from "lucide-react";
 import { KNOWN_LLM_KEYS } from "@/config/llm-providers";
+import { PageHeading } from "@/components/PageHeading";
 
 export default function SecretsPage() {
   return (
     <ContentLayout>
       <TopBar />
       <div className="py-4">
-        <h2 className="text-2xl font-thin mb-4">
-          Manage your{" "}
-          <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
-            secrets
-          </span>
-        </h2>
+        <PageHeading className="mb-4" size="sm" align="left" text="Manage your" highlight="secrets" />
 
         <Collapsible className="border border-blue-500/30 bg-blue-500/5 rounded-lg mb-6">
           <CollapsibleTrigger className="flex items-center gap-2 w-full p-4 text-sm font-semibold text-foreground cursor-pointer">

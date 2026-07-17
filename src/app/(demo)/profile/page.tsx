@@ -10,6 +10,7 @@ import { Copy, Check, ChevronRight, KeyRound, Globe, ExternalLink } from "lucide
 import { useAuthStore } from "@/hooks/use-auth";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { Ed25519Auth, type DIDDocument } from "@covia/covia-sdk";
+import { PageHeading } from "@/components/PageHeading";
 
 function toHex(bytes: Uint8Array): string {
   return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -71,12 +72,7 @@ export default function ProfilePage() {
     <ContentLayout>
       <TopBar />
       <div className="py-4">
-        <h2 className="text-2xl font-thin mb-4">
-          Your{" "}
-          <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
-            profile
-          </span>
-        </h2>
+        <PageHeading className="mb-4" size="sm" align="left" text="Your" highlight="profile" />
 
         <div className="border rounded-lg p-4 mb-6 space-y-4">
           <h3 className="text-sm font-semibold flex items-center gap-2">

@@ -30,7 +30,7 @@ export const IdAndLink = ({ type, id, venueId }: IdAndLinkProps) => {
             <Tooltip>
                 <TooltipTrigger >
                     <div data-testid="idcopy_btn" className="p-1 flex flex-row  mr-1 border border-border text-muted-foreground rounded-md w-full space-x-2">
-                    <div className="select-text text-[10px] w-full">{displayId} </div>
+                    <div className="select-text font-mono text-[10px] w-full">{displayId} </div>
                     <Copy  size={10} onClick={(_e) => copyDataToClipBoard(displayId, "Asset Id copied to clipboard")}></Copy>
                     </div>
                 </TooltipTrigger>

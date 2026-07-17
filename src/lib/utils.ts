@@ -3,22 +3,8 @@ import { twMerge } from "tailwind-merge"
 import * as mime from 'mime-types'
 import copy from 'copy-to-clipboard';
 import { toast } from "sonner"
-import { RunStatus } from "@covia/covia-sdk";
 import { sendGTMEvent } from '@next/third-parties/google'
 
-export  const getStatusConfig = (status: string | undefined): { variant: "default" | "destructive" | "secondary" | "outline"; className: string } => {
-    switch(status) {
-      case 'ACTIVE':
-        return { variant: 'default', className: 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600' };
-      case 'COMPLETED':
-        return { variant: 'default', className: 'bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600' };
-      case 'TERMINATED':
-        return { variant: 'destructive', className: 'dark:bg-red-600 dark:hover:bg-red-700' };
-      default:
-        return { variant: 'secondary', className: 'dark:bg-gray-600 dark:hover:bg-gray-700' };
-    }
-  };
-  
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
@@ -55,6 +41,23 @@ export function getExecutionTime(date1:string, date2:string) {
   if(differenceInSeconds >= 1)
     return `${Math.round(differenceInSeconds)} sec`;
   return `${Math.round(differenceInMilliseconds)} ms`;
+}
+
+// Scannable "3m ago" form for list views — pair with the exact timestamp in
+// a tooltip rather than showing it alone, since relative time alone loses
+// precision developers need for correlating with logs.
+export function formatRelativeTime(date: string): string {
+  const diffMs = Date.now() - new Date(date).getTime();
+  const diffSec = Math.round(diffMs / 1000);
+  if (diffSec < 5) return "just now";
+  if (diffSec < 60) return `${diffSec}s ago`;
+  const diffMin = Math.round(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHour = Math.round(diffMin / 60);
+  if (diffHour < 24) return `${diffHour}h ago`;
+  const diffDay = Math.round(diffHour / 24);
+  if (diffDay < 7) return `${diffDay}d ago`;
+  return new Date(date).toLocaleDateString();
 }
 
 // List a venue's MCP tools via its native MCP endpoint (JSON-RPC tools/list).
@@ -103,27 +106,6 @@ export function copyDataToClipBoard(entityId:string, message:string) {
             toast(message)
        }
       }
-
-export function  colourForStatus(status: RunStatus | undefined): string {
-        switch (status) {
-            case RunStatus.COMPLETE:
-                return "text-green-600 dark:text-green-400";
-            case RunStatus.CANCELLED:
-            case RunStatus.REJECTED:
-            case RunStatus.INPUT_REQUIRED:
-            case RunStatus.AUTH_REQUIRED:
-            case RunStatus.TIMEOUT:
-            case RunStatus.FAILED:
-                return "text-red-600 dark:text-red-400";
-            case RunStatus.PENDING:
-            case RunStatus.PAUSED:
-            case RunStatus.STARTED:
-                return "text-blue-600 dark:text-blue-400";
-            default:
-                return "text-gray-600 dark:text-gray-400";
-        }
-    }
-
 
 export const gtmEvent = {
   // Button clicks

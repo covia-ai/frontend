@@ -9,10 +9,11 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { useStore } from "zustand";
 import { useVenue } from "@/hooks/use-venue";
 import { getVenueFor } from "@/hooks/use-authenticated-venue";
-import {  colourForStatus, copyDataToClipBoard, formatLabel, getExecutionTime } from "@/lib/utils";
+import {  copyDataToClipBoard, formatLabel, getExecutionTime } from "@/lib/utils";
 import { TbSubtask } from "react-icons/tb";
 import Link from "next/link";
 import { ErrorDisplay } from "./ErrorDisplay";
+import { StatusBadge } from "./StatusBadge";
 import { ExecutionHeader } from "./ExecutionHeader";
 import { ExecutionToolbar } from "./ExecutionToolbar";
 import { useVenues } from "@/hooks/use-venues";
@@ -190,7 +191,7 @@ export const ExecutionViewer = (props: any) => {
                                     <TableCell className="text-muted-foreground">{index}</TableCell>
                                     <TableCell className="text-secondary font-mono underline"><Link href={`/jobs/${id}`}>{id}</Link></TableCell>
                                     <TableCell>
-                                        <span className={colourForStatus(status)}>{status}</span>
+                                        <StatusBadge status={status} kind="job" />
                                     </TableCell>
                                 </TableRow>
                             );
@@ -368,7 +369,7 @@ let schema: any = {};
                                     {jobMetadata?.status == RunStatus.STARTED && < RotateCcw />}
 
                                     <span className="w-28">Status:</span>
-                                    <span className={colourForStatus(jobMetadata?.status as RunStatus)}>{jobMetadata?.status}</span>
+                                    <StatusBadge status={jobMetadata?.status} kind="job" />
 
                                     {streaming && (
                                         <span className="flex items-center gap-1.5 ml-2 px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300 text-xs font-medium">

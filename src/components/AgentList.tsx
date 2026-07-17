@@ -12,10 +12,11 @@ import { SeperatorWithText } from "@/components/SeperatorWithText";
 import { AgentTemplates } from "./AgentTemplates";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { AgentStatus } from "@covia/covia-sdk";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { toast } from "sonner";
+import { PageHeading } from "./PageHeading";
+import { StatusBadge } from "./StatusBadge";
 
 export function AgentList() {
   const router = useRouter();
@@ -47,31 +48,15 @@ export function AgentList() {
     router.push(encodedUrl);
   };
 
-  const getStatusConfig = (status: string) => {
-    switch(status) {
-      case AgentStatus.RUNNING:
-        return { className: 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600' };
-      case AgentStatus.SLEEPING:
-        return { className: 'bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600' };
-      case AgentStatus.SUSPENDED:
-        return { className: 'bg-amber-600 hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600' };
-      case AgentStatus.TERMINATED:
-        return { className: 'bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600' };
-      default:
-        return { className: 'bg-gray-600 hover:bg-gray-700 dark:bg-gray-500 dark:hover:bg-gray-600' };
-    }
-  };
-
    return (<ContentLayout>
      <TopBar/>
  <AgentTemplates onCreated={fetchAgents} />
  <SeperatorWithText text="or"/>
-     <h3 className="text-center text-4xl  font-thin pt-10">
-          {agentData.length > 0 ? "Choose an existing" : "Create a new"}  {" "}
-          <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
-             agent ...
-            </span>
-        </h3>
+     <PageHeading
+       className="pt-10"
+       text={agentData.length > 0 ? "Choose an existing" : "Create a new"}
+       highlight="agent"
+     />
      {loading && <div className="flex items-center justify-center py-10"><Loader2 className="animate-spin text-primary" size={32} /></div>}
      {!loading && agentData.length == 0 &&  <div className="flex flex-col items-center justify-center w-full space-y-2 pt-4">
             <Bot size={48} className="text-primary"></Bot>
@@ -98,8 +83,8 @@ export function AgentList() {
                        ${ compact ? 'h-32 p-1' : 'h-48 p-2'  }`}>
                    {/* Fixed-size header */}
                    <div className={` ${ compact ? 'h-10' : 'h-14'  } p-2 flex flex-row items-start border-b`}>
-                      <div data-testid="agent-name" className="truncate flex-1 mr-2 text-md text-foreground"> {agent.agentId}</div>
-                      <div className={`w-2 h-2 rounded-full shadow-lg ml-1 ${getStatusConfig(agent.status).className}`}></div>
+                      <div data-testid="agent-name" className="truncate flex-1 mr-2 text-md text-foreground font-mono"> {agent.agentId}</div>
+                      <StatusBadge status={agent.status} kind="agent" as="dot" className="ml-1" />
                     </div>
                    {/* Flexible middle section */}
                    <div className="flex-1 p-2 flex flex-col justify-between">

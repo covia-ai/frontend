@@ -118,7 +118,7 @@ export function AssetCard({ asset,type,compact }: AssetCardProps) {
                     {(type === "operations" && adapter) || keywords.length > 0 ? (
                       <div data-testid="asset-tags" className="flex flex-wrap items-center gap-1 mt-1">
                         {type === "operations" && adapter && (
-                          <Badge variant="default" className="w-fit text-[10px] px-1.5 py-0">
+                          <Badge variant="outline" className="w-fit font-mono text-[10px] px-1.5 py-0 text-muted-foreground">
                             {adapter}
                           </Badge>
                         )}

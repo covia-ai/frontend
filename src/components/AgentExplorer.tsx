@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
+import { StatusBadge } from './StatusBadge';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
@@ -276,16 +277,6 @@ const AgentExplorer = (props: any) => {
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case AgentStatus.RUNNING:    return "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300";
-      case AgentStatus.SLEEPING:   return "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300";
-      case AgentStatus.SUSPENDED:  return "bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300";
-      case AgentStatus.TERMINATED: return "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300";
-      default:                     return "bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-300";
-    }
-  };
-
   const formatSessionLabel = (s: Session) => {
     const short = s.sessionId.slice(-8);
     const when = s.created
@@ -363,9 +354,7 @@ const AgentExplorer = (props: any) => {
                 <div className="flex items-center gap-1.5 text-[10px] opacity-70">
                   <span>{agent.tasks} task{agent.tasks !== 1 ? 's' : ''}</span>
                   <span>·</span>
-                  <span className={`px-1.5 py-px rounded-full font-semibold ${getStatusBadge(agent.status)}`}>
-                    {agent.status}
-                  </span>
+                  <StatusBadge status={agent.status} kind="agent" as="pill" />
                 </div>
               </div>
             </button>
@@ -409,10 +398,8 @@ const AgentExplorer = (props: any) => {
               {/* Header */}
               <div className="px-6 py-4 border-b border-border flex flex-wrap items-center gap-3">
                 <Bot size={20} className="text-blue-600 dark:text-blue-400" />
-                <h3 className="text-lg font-bold text-foreground">{selectedAgentDetail.agentId}</h3>
-                <Badge className={getStatusBadge(selectedAgentDetail.status)}>
-                  {selectedAgentDetail.status}
-                </Badge>
+                <h3 className="text-lg font-bold font-mono text-foreground">{selectedAgentDetail.agentId}</h3>
+                <StatusBadge status={selectedAgentDetail.status} kind="agent" as="pill" />
                 {(selectedAgentDetail.tasks ?? 0) > 0 && (
                   <Badge variant="outline">{selectedAgentDetail.tasks} task{selectedAgentDetail.tasks === 1 ? '' : 's'}</Badge>
                 )}

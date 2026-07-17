@@ -6,6 +6,7 @@ import React, { useEffect, useState } from 'react'
 import { AssetCard } from "./AssetCard";
 import { useVenues } from "@/hooks/use-venues";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { PageHeading } from "./PageHeading";
 
 
 export const ShowCase = () => {
@@ -44,12 +45,7 @@ export const ShowCase = () => {
     if(venues.length == 0)
       return (
        <div className="flex flex-col items-center justify-center py-10 px-10  my-4">
-          <h3 className="text-center text-4xl  font-bold">
-            Try some   {" "}
-            <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
-              sample Grid operations
-            </span>
-          </h3>
+          <PageHeading text="Try some" highlight="sample Grid operations" />
             <div className="flex flex-col items-center justify-center w-full h-32 space-y-2">
             <div className="text-card-foreground text-sm">Connect to a venue to get started and see the available assets & operations</div>
         </div>
@@ -58,12 +54,7 @@ export const ShowCase = () => {
 
       return (
         <div className="flex flex-col items-center justify-center py-10 px-10  my-4">
-          <h3 className="text-center text-4xl  font-bold">
-            Try some   {" "}
-            <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
-              sample Grid operations
-            </span>
-          </h3>
+          <PageHeading text="Try some" highlight="sample Grid operations" />
         {!loading && assets.length === 0 ? (
           <div className="flex flex-col items-center justify-center w-full h-32 space-y-2 mt-4">
             <div className="text-card-foreground text-sm">No featured operations available on this venue.</div>

@@ -21,6 +21,7 @@ import { KNOWN_LLM_KEYS, LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
 import { AgentStatus } from "@covia/covia-sdk";
 import { useRouter } from "next/navigation";
+import { PageHeading } from "./PageHeading";
 
 // Sentinel picker value — never a real agentId — meaning "create a fresh,
 // distinctly-named agent" rather than targeting an existing one.
@@ -237,12 +238,7 @@ export const AIPrompt = () => {
 
   return (
     <div data-testid="chat-container" className="flex flex-col items-center justify-center py-10 px-10 ">
-        <h3 className="text-center text-4xl  font-thin">
-          Do anything on   {" "}
-          <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
-            the Grid ...
-          </span>
-        </h3>
+        <PageHeading text="Do anything on" highlight="the Grid" />
 
         <div className="flex flex-col md:flex-row lg:flex-row items-center justify-center w-full space-x-2 space-y-2 ">
             <Input
@@ -377,12 +373,12 @@ export const AIPrompt = () => {
 
              prompt == promptText ? (
 
-              <Badge key={promptText} variant="outline" className="bg-primary-light"
+              <Badge key={promptText} variant="outline" className="bg-primary-light cursor-pointer"
               onClick={() => setPrompt(promptText)}>
                 {promptText}
               </Badge>
              ) : (
-              <Badge key={promptText} variant="outline" className="bg-muted px-2 hover:border-white"
+              <Badge key={promptText} variant="outline" className="bg-muted px-2 cursor-pointer hover:border-accent"
               onClick={() => setPrompt(promptText)}>
                 {promptText}
               </Badge>

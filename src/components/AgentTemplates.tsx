@@ -5,6 +5,7 @@ import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { AddNewAgent } from "./AddNewAgent";
 import { useIsAuthenticated } from "@/hooks/use-auth";
+import { PageHeading } from "./PageHeading";
 
 interface AgentTemplate {
   name: string;
@@ -63,12 +64,7 @@ export function AgentTemplates({ onCreated }: AgentTemplatesProps = {}) {
 
   return (
     <div className="flex flex-col items-center justify-center w-full px-10 py-10">
-      <h3 className="text-center text-2xl font-thin mb-8">
-        Choose a Template to start your{" "}
-        <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
-          agent
-        </span>
-      </h3>
+      <PageHeading className="mb-8" text="Choose a Template to start your" highlight="agent" />
       <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {templates.map((template) => (
           <Card
