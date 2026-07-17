@@ -7,22 +7,17 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 import { Fragment, useEffect, useState }from "react";
-import {  Venue, Asset, getParsedAssetId } from "@covia/covia-sdk";
-import { createAuthProvider } from "@/lib/auth-provider";
+import {  Asset, getParsedAssetId } from "@covia/covia-sdk";
 import { formatLabel, gtmEvent, looksLikeSecretField } from "@/lib/utils";
 import { resolveOperationByAddress } from "@/lib/operations-catalog";
 import { ErrorDisplay } from "./ErrorDisplay";
 import { useRouter } from "next/navigation";
 import { Textarea } from "./ui/textarea";
-import { useStore } from "zustand";
-import { useVenue } from "@/hooks/use-venue";
-import { getVenueFor } from "@/hooks/use-authenticated-venue";
+import { useResolvedVenue } from "@/hooks/use-resolved-venue";
 import { DiagramViewer } from "./DiagramViewer";
 import { MetadataViewer } from "./MetadataViewer";
 import { AssetHeader } from "./AssetHeader";
 import { usePathname } from "next/navigation";
-import { useVenues } from "@/hooks/use-venues";
-import { useAuthStore } from "@/hooks/use-auth";
 import { AssetLookup } from "./AssetLookup";
 import { TopBar } from "./admin-panel/TopBar";
 import { ContentLayout } from "./admin-panel/content-layout";
@@ -39,12 +34,7 @@ export const OperationViewer = (props: any) => {
   const [typeMap, setTypeMap] = useState<Record<string, string>>({}); // user-specified types of the values to be passed to the operation, affects parsing
   const [assetNotFound, setAssetNotFound] = useState(false);
   const [showSchema, setShowSchema] = useState(false);
-  const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
-  const authMap = useAuthStore((x) => x.authMap);
-
-  const { venues, addVenue } = useVenues();
-  const [venue, setVenue] = useState<Venue>();
-  const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
+  const venue = useResolvedVenue(props.venueId);
 
   // Session storage key based on asset ID
   const getStorageKey = (suffix: string) => `operation_input_${props.assetId}_${suffix}`;
@@ -102,27 +92,6 @@ export const OperationViewer = (props: any) => {
 
   const router = useRouter();
   const pathname = usePathname();
-
-   useEffect(() => {
-      const authData = getAuthForVenue(props.venueId ?? venueObj?.venueId ?? '');
-      const authOption = createAuthProvider(authData);
-      if(props.venueId != venueObj?.venueId) {
-        const venue = venues.find(v => v.venueId === props.venueId);
-        if (venue) {
-            setVenue(getVenueFor(venue, authData))
-         }
-         else {
-          Venue.connect(decodeURIComponent(props.venueId), authOption)
-          .then((venue) => {
-            addVenue(venue)
-            setVenue(venue)
-          });
-         }
-    }
-    else {
-        if (venueObj) setVenue(getVenueFor(venueObj, authData));
-    }
-   }, [authMap, props.venueId, venueObj, getAuthForVenue]);
 
   useEffect(() => {
     if (!venue) return;

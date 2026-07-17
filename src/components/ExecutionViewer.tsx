@@ -2,13 +2,10 @@
 'use client'
 
 import { useEffect, useState } from "react";
-import { Asset, JobMetadata, RunStatus, Venue, isJobFinished,Job } from "@covia/covia-sdk";
-import { createAuthProvider } from "@/lib/auth-provider";
+import { Asset, JobMetadata, RunStatus, isJobFinished,Job } from "@covia/covia-sdk";
 import { Check, Clock, Copy, FileInput, FileOutput, Hash, MessageSquare, RotateCcw, Send, Timer, X }from "lucide-react";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
-import { useStore } from "zustand";
-import { useVenue } from "@/hooks/use-venue";
-import { getVenueFor } from "@/hooks/use-authenticated-venue";
+import { useResolvedVenue } from "@/hooks/use-resolved-venue";
 import {  copyDataToClipBoard, formatLabel, getExecutionTime, looksLikeSecretField } from "@/lib/utils";
 import { TbSubtask } from "react-icons/tb";
 import Link from "next/link";
@@ -16,7 +13,6 @@ import { ErrorDisplay } from "./ErrorDisplay";
 import { StatusBadge } from "./StatusBadge";
 import { ExecutionHeader } from "./ExecutionHeader";
 import { ExecutionToolbar } from "./ExecutionToolbar";
-import { useVenues } from "@/hooks/use-venues";
 import { useAuthStore } from "@/hooks/use-auth";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -29,14 +25,11 @@ import { toast } from "sonner";
 export const ExecutionViewer = (props: any) => {
     const [jobMetadata, setJobMetadata] = useState<JobMetadata>()
     const [assetsMetadata, setAssetsMetadata] = useState<Asset>();
-    const { venues, addVenue } = useVenues();
-    const [venue, setVenue] = useState<Venue>();
+    const venue = useResolvedVenue(props.venueId);
     const [streaming, setStreaming] = useState(false);
     const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
-    const authMap = useAuthStore((x) => x.authMap);
     const [jobMessage, setJobMessage] = useState("");
     const [sendingMessage, setSendingMessage] = useState(false);
-    const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
 
     const formatter = new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
@@ -48,28 +41,6 @@ export const ExecutionViewer = (props: any) => {
     timeZone: 'UTC',
    });
 
-
-    useEffect(() => {
-    
-      const authData = getAuthForVenue(props.venueId ?? venueObj?.venueId ?? '');
-      const authOption = createAuthProvider(authData);
-      if(props.venueId != venueObj?.venueId) {
-        const venue = venues.find(v => v.venueId === props.venueId);
-        if (venue) {
-            setVenue(getVenueFor(venue, authData))
-         }
-         else {
-          Venue.connect(decodeURIComponent(props.venueId),
-            authOption).then((venue) => {
-            addVenue(venue)
-            setVenue(venue)
-          });
-         }
-    }
-    else {
-        if (venueObj) setVenue(getVenueFor(venueObj, authData));
-    }
-   }, [addVenue, props.venueId, authMap, getAuthForVenue, venueObj?.baseUrl, venueObj?.metadata.name, venueObj?.venueId, venues]);
 
     useEffect(() => {
         if (!venue || !jobMetadata?.operation) return;
@@ -108,7 +79,7 @@ export const ExecutionViewer = (props: any) => {
         // Initial load so the UI isn't blank while SSE connects.
         fetchJobStatus();
 
-        const authData = getAuthForVenue(props.venueId ?? venueObj?.venueId ?? '');
+        const authData = getAuthForVenue(venue.venueId ?? '');
         let sseUrl = `${venue.baseUrl}/api/v1/jobs/${props.jobId}/sse`;
         if (authData?.type === 'bearer') {
             sseUrl += `?token=${encodeURIComponent(authData.token)}`;
