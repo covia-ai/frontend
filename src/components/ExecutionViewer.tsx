@@ -6,7 +6,7 @@ import { Asset, JobMetadata, RunStatus, isJobFinished,Job } from "@covia/covia-s
 import { Check, Clock, Copy, FileInput, FileOutput, Hash, MessageSquare, RotateCcw, Send, Timer, X }from "lucide-react";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import { useResolvedVenue } from "@/hooks/use-resolved-venue";
-import {  copyDataToClipBoard, formatLabel, getExecutionTime, looksLikeSecretField } from "@/lib/utils";
+import {  copyDataToClipBoard, formatLabel, getExecutionTime } from "@/lib/utils";
 import { TbSubtask } from "react-icons/tb";
 import Link from "next/link";
 import { ErrorDisplay } from "./ErrorDisplay";
@@ -247,7 +247,7 @@ let schema: any = {};
     // render function for each key within the input or output
     const renderContent = (key: string) => {
         const fieldType = schema?.properties?.[key]?.type || "object";
-        const isSecret = schema?.properties?.[key]?.secret === true || looksLikeSecretField(key);
+        const isSecret = schema?.properties?.[key]?.secret === true;
         const value = (jsonObject as any)[key];
         
         // Mask secret outputs
