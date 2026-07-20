@@ -26,7 +26,6 @@ import { Button } from "./ui/button";
 import { Asset, AssetMetadata, Venue } from "@covia/covia-sdk";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { getContentTypeForFile, getLicenseUrl, gtmEvent } from "@/lib/utils";
-import { IconButton } from "./IconButton";
 import { toast } from "sonner";
 
 export const CreateAssetComponent = ({sendDataToParent, venue: venueProp}: {sendDataToParent: (status: boolean) => void; venue?: Venue}) => {
@@ -171,10 +170,12 @@ export const CreateAssetComponent = ({sendDataToParent, venue: venueProp}: {send
       }, [open]);
     
     return (
-    <div className="h-48 flex flex-center items-center justify-center ">
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger>
-                  <IconButton icon={PlusIcon} message="Add new asset" label="Add new asset"></IconButton>
+          <DialogTrigger asChild>
+                  <Button data-testid="create-asset-trigger" className="shrink-0 gap-2">
+                        <PlusIcon />
+                        Create Asset
+                  </Button>
           </DialogTrigger>
           <DialogContent className="bg-card text-card-foreground">
                 <DialogTitle className="flex flex-row items-center space-x-2">
@@ -332,6 +333,5 @@ export const CreateAssetComponent = ({sendDataToParent, venue: venueProp}: {send
             </DialogContent>
             }
         </Dialog>
-    </div>
     );
 };

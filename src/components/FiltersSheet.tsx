@@ -16,9 +16,17 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Filter, Search, X } from "lucide-react";
 
+interface FilterOption {
+  value: string;
+  label: string;
+  /** Optional sub-heading (e.g. "Adapter" vs "Keyword") for options that
+   * share one selection array but read better split into labeled sections. */
+  groupTag?: string;
+}
+
 interface FilterGroup {
   label: string;
-  options: { value: string; label: string }[];
+  options: FilterOption[];
   selected: string[];
   onChange: (values: string[]) => void;
 }
@@ -116,22 +124,39 @@ export function FiltersSheet({
             </div>
           )}
 
-          {groups.map((group, i) => (
-            <div key={group.label} className="flex flex-col gap-2">
-              <label className="text-sm font-medium">{group.label}</label>
-              <div className="flex flex-col gap-2">
-                {group.options.map((option) => {
-                  const checked = draftGroups[i]?.includes(option.value) ?? false;
-                  return (
-                    <label key={option.value} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <Checkbox checked={checked} onCheckedChange={() => toggleDraft(i, option.value)} />
-                      {option.label}
-                    </label>
-                  );
-                })}
+          {groups.map((group, i) => {
+            // Partition by groupTag, preserving option order — an options
+            // list with no tags collapses to one untitled section, so this
+            // renders identically to a flat list when groupTag is unused.
+            const sections = new Map<string, FilterOption[]>();
+            for (const option of group.options) {
+              const tag = option.groupTag ?? "";
+              if (!sections.has(tag)) sections.set(tag, []);
+              sections.get(tag)!.push(option);
+            }
+
+            return (
+              <div key={group.label} className="flex flex-col gap-2">
+                <label className="text-sm font-medium">{group.label}</label>
+                <div className="flex flex-col gap-3">
+                  {[...sections.entries()].map(([tag, options]) => (
+                    <div key={tag || "_default"} className="flex flex-col gap-2">
+                      {tag && <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{tag}</span>}
+                      {options.map((option) => {
+                        const checked = draftGroups[i]?.includes(option.value) ?? false;
+                        return (
+                          <label key={option.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                            <Checkbox checked={checked} onCheckedChange={() => toggleDraft(i, option.value)} />
+                            {option.label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <SheetFooter className="flex-row justify-end gap-2">

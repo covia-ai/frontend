@@ -10,9 +10,11 @@ import { getExecutionTime } from "@/lib/utils";
 import { StatusBadge } from "@/components/StatusBadge";
 import { PaginationHeader } from "@/components/PaginationHeader";
 import { FiltersSheet } from "@/components/FiltersSheet";
+import { StatTile } from "@/components/StatTile";
+import { TONE_STYLES } from "@/lib/status";
 import { useVenues } from "@/hooks/use-venues";
 import { useAuthStore } from "@/hooks/use-auth";
-import { Activity, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Activity, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2, Clock, Layers } from "lucide-react";
 import { TopBar } from "./admin-panel/TopBar";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 
@@ -53,7 +55,7 @@ export function JobList({ venueId }: JobListProps = {}) {
   const [currentPage, setCurrentPage] = useState(1);
   const [refreshTick, setRefreshTick] = useState(0);
   const itemsPerPage = 10;
-  const FILTER_WINDOW = 100;
+  const FILTER_WINDOW = 500;
   const { venues } = useVenues();
   const venueObj = useVenueForRoute(venueId);
   const router = useRouter();
@@ -156,6 +158,24 @@ export function JobList({ venueId }: JobListProps = {}) {
       .filter(m => !q || [m.id, m.operation, m.name].some(v => v?.toLowerCase().includes(q)));
   }, [hasFilters, windowRecords, statusFilter, dateFilter, debouncedQuery, isInRange]);
 
+  // Headline stats for the tile row — read over the same recent window
+  // (last FILTER_WINDOW records) used for client-side filtering, not the
+  // full history, so this stays a job-free, bounded read like everything
+  // else on this page.
+  const jobStats = useMemo(() => {
+    const terminal = windowRecords.filter(j => TERMINAL_STATUSES.has(j.status as RunStatus));
+    const completed = terminal.filter(j => j.status === RunStatus.COMPLETE);
+    const successRate = terminal.length > 0 ? (completed.length / terminal.length) * 100 : null;
+    const durationsMs = terminal
+      .filter(j => j.created && j.updated)
+      .map(j => new Date(j.updated as string).getTime() - new Date(j.created as string).getTime());
+    const avgDurationMs = durationsMs.length > 0
+      ? durationsMs.reduce((sum, ms) => sum + ms, 0) / durationsMs.length
+      : null;
+    const activeNow = windowRecords.filter(j => ACTIVE_STATUSES.has(j.status as RunStatus)).length;
+    return { successRate, avgDurationMs, activeNow, sampleSize: windowRecords.length };
+  }, [windowRecords]);
+
   // What the table renders: the server-paged window, or a client-side page
   // of the filtered records.
   const matchTotal = filteredRecords ? filteredRecords.length : totalCount;
@@ -173,10 +193,11 @@ export function JobList({ venueId }: JobListProps = {}) {
     if (!hasFilters) fetchPage(currentPage);
   }, [fetchPage, currentPage, hasFilters, refreshTick]);
 
-  // Filter mode: one window fetch per venue/filter change (or poll tick).
+  // Also kept fresh outside filter mode — the stat tile row above the table
+  // reads this same window (recent-activity stats), not just the filter path.
   useEffect(() => {
-    if (hasFilters) fetchWindow();
-  }, [fetchWindow, hasFilters, refreshTick]);
+    fetchWindow();
+  }, [fetchWindow, refreshTick]);
 
   // Back to page 1 when the filter set itself changes.
   useEffect(() => {
@@ -255,6 +276,37 @@ export function JobList({ venueId }: JobListProps = {}) {
             ]}
           />
         </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full mt-4">
+          <StatTile
+            icon={Layers}
+            label="Total Jobs"
+            value={totalCount.toLocaleString()}
+            caption="across this venue"
+          />
+          <StatTile
+            icon={CheckCircle2}
+            label="Success Rate"
+            value={jobStats.successRate != null ? `${Math.round(jobStats.successRate)}%` : "–"}
+            caption={jobStats.sampleSize > 0 ? `of the last ${jobStats.sampleSize} jobs` : undefined}
+            iconClassName={TONE_STYLES.success.text}
+          />
+          <StatTile
+            icon={Clock}
+            label="Avg Duration"
+            value={jobStats.avgDurationMs != null
+              ? getExecutionTime("1970-01-01T00:00:00.000Z", new Date(jobStats.avgDurationMs).toISOString())
+              : "–"}
+            caption={jobStats.sampleSize > 0 ? `of the last ${jobStats.sampleSize} jobs` : undefined}
+          />
+          <StatTile
+            icon={Activity}
+            label="Active Now"
+            value={jobStats.activeNow.toLocaleString()}
+            caption="pending, running, or paused"
+            iconClassName={TONE_STYLES.active.text}
+          />
+        </div>
+
         <div className="flex flex-row flex-nowrap items-center justify-between w-full my-2 gap-4">
           <div className="text-card-foreground text-xs whitespace-nowrap">
             Page {currentPage} : Showing {pageRecords.length} of {matchTotal}

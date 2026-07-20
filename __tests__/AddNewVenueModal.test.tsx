@@ -18,14 +18,6 @@ jest.mock('next-auth/react', () => ({
 jest.mock('sonner', () => ({
   toast: jest.fn(),
 }));
-jest.mock('@/components/IconButton', () => ({
-  // The real IconButton renders a <div> (it sits inside Radix trigger
-  // <button>s) — mocking it as a <button> fabricates nested-button warnings
-  // that don't exist in production.
-  IconButton: ({ icon: _icon, message, label }: any) => (
-    <div data-testid="icon-button">{label || message}</div>
-  ),
-}));
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),
 }));
@@ -39,7 +31,7 @@ describe('AddNewVenueModal', () => {
       const user = userEvent.setup();
       render(<AddNewVenueModal />);
       // Click the trigger to open the dialog
-      const triggerBtn = screen.getByTestId('icon-button');
+      const triggerBtn = screen.getByTestId('connect-venue-trigger');
       await user.click(triggerBtn);
 
       await waitFor(() => {
@@ -52,7 +44,7 @@ describe('AddNewVenueModal', () => {
     it('should have connect button', async () => {
         const user = userEvent.setup();
         render(<AddNewVenueModal />);
-        const triggerBtn = screen.getByTestId('icon-button');
+        const triggerBtn = screen.getByTestId('connect-venue-trigger');
         await user.click(triggerBtn);
 
         await waitFor(() => {

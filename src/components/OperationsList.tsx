@@ -12,10 +12,9 @@ import { TopBar } from "./admin-panel/TopBar";
 import { Spinner } from '@/components/ui/shadcn-io/spinner';
 import { AssetCard } from "./AssetCard";
 import { PaginationHeader } from "./PaginationHeader";
-import { Input } from "@/components/ui/input";
-import { PlayCircle, Search, X } from "lucide-react";
+import { PlayCircle } from "lucide-react";
 import { listCatalogOperations } from "@/lib/operations-catalog";
-import { TagFilterDropdown } from "./TagFilterDropdown";
+import { FiltersSheet } from "./FiltersSheet";
 
 
 interface OperationsListProps {
@@ -51,9 +50,9 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
   const prevPage = (page: number) => {
     setCurrentPage(page)
   }
-  const clearSearch = () => {
-    setSearchInput("");
-    router.replace(pathname);
+  const handleSearchChange = (value: string) => {
+    setSearchInput(value);
+    if (!value) router.replace(pathname);
   }
   // Fetches the full catalog once per venue — search text only filters
   // client-side (see filteredAssets) so typing never triggers a refetch.
@@ -94,6 +93,11 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
     return [...new Set(all)].sort();
   }, [assetsMetadata]);
 
+  const tagOptions = useMemo(() => [
+    ...adapterOptions.map((a) => ({ value: a, label: a, groupTag: "Adapter" })),
+    ...keywordOptions.map((k) => ({ value: k, label: k, groupTag: "Keyword" })),
+  ], [adapterOptions, keywordOptions]);
+
   const filteredAssets = useMemo(() => {
     const term = searchInput.trim().toLowerCase();
     return assetsMetadata.filter(a => {
@@ -117,11 +121,13 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
       <ContentLayout>
       <TopBar/>
       <div className="flex flex-col items-center justify-center">
-        <div className="flex gap-2 items-center w-full mt-4">
-          <div className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Type keyword to search…" className="pl-8" disabled />
-          </div>
+        <div className="flex gap-2 items-center w-full mt-4 justify-end">
+          <FiltersSheet
+            title="Filter Operations"
+            description="Search and narrow down operations by tag."
+            search={{ value: searchInput, onChange: handleSearchChange, placeholder: "Type keyword to search…" }}
+            groups={[]}
+          />
         </div>
       </div>
        <div className="flex flex-col items-center justify-center w-full h-100 space-y-2">
@@ -138,37 +144,22 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
     <ContentLayout>
       <TopBar venueName={venueObj?.metadata.name}/>
       <div className="flex flex-col items-center justify-center">
-        <div className="flex gap-2 items-center w-full mt-4">
-          <div className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Type keyword to search…"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="pl-8 pr-8"
-            />
-            {searchInput && (
-              <button
-                type="button"
-                aria-label="Clear search"
-                onClick={clearSearch}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-          <TagFilterDropdown
-            adapterOptions={adapterOptions}
-            keywordOptions={keywordOptions}
-            selected={selectedTags}
-            onChange={setSelectedTags}
+        <div className="flex gap-2 items-center w-full mt-4 justify-end">
+          <FiltersSheet
+            title="Filter Operations"
+            description="Search and narrow down operations by tag."
+            search={{ value: searchInput, onChange: handleSearchChange, placeholder: "Type keyword to search…" }}
+            groups={tagOptions.length > 0 ? [{ label: "Tags", options: tagOptions, selected: selectedTags, onChange: setSelectedTags }] : []}
           />
         </div>
-        <div className="text-card-foreground text-xs flex flex-row my-2">
-          {isLoading ? "Loading…" : `Page ${currentPage} : Showing ${filteredAssets.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of ${filteredAssets.length}`}
+        <div className="flex flex-row flex-nowrap items-center justify-between w-full my-2 gap-4">
+          <div className="text-card-foreground text-xs whitespace-nowrap">
+            {isLoading ? "Loading…" : `Page ${currentPage} : Showing ${filteredAssets.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of ${filteredAssets.length}`}
+          </div>
+          <div className="shrink-0">
+            <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage} disabled={isLoading}></PaginationHeader>
+          </div>
         </div>
-        <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage} disabled={isLoading}></PaginationHeader>
 
         {isLoading ? (
           <div className="flex flex-row items-center justify-center w-full h-100">

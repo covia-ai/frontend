@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { Ellipsis } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { useMemo } from "react";
 
 import { cn } from "@/lib/utils";
 import { getMenuList } from "@/lib/menu-list";
+import { useIsAuthenticated } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CollapseMenuButton } from "@/components/admin-panel/collapse-menu-button";
@@ -20,9 +22,22 @@ interface MenuProps {
   isOpen: boolean | undefined;
 }
 
+// Both destinations require a signed-in user under the hood (Workspace's
+// data is per-user, Secrets are per-user credentials) — hide them from the
+// sidebar entirely rather than showing a sign-in wall after navigating in.
+const AUTH_ONLY_LABELS = new Set(["Workspace", "Secrets"]);
+
 export function Menu({ isOpen }: MenuProps) {
   const pathname = usePathname();
-  const menuList = getMenuList();
+  const isAuthenticated = useIsAuthenticated();
+  const rawMenuList = getMenuList();
+  const menuList = useMemo(() => {
+    if (isAuthenticated) return rawMenuList;
+    return rawMenuList.map((group) => ({
+      ...group,
+      menus: group.menus.filter((m) => !AUTH_ONLY_LABELS.has(m.label)),
+    }));
+  }, [rawMenuList, isAuthenticated]);
 
   return (
     <ScrollArea className="[&>div>div[style]]:!block">

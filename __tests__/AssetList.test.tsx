@@ -10,9 +10,6 @@ jest.mock('@/components/AssetCard', () => ({
     <div data-testid="asset-card">{asset.metadata?.name ?? asset.id}</div>
   ),
 }));
-jest.mock('@/components/TagFilterDropdown', () => ({
-  TagFilterDropdown: () => <div data-testid="tag-filter-dropdown" />,
-}));
 jest.mock('@/components/CreateAssetComponent', () => ({
   CreateAssetComponent: () => <div data-testid="create-asset" />,
 }));
@@ -108,18 +105,19 @@ describe('AssetList', () => {
     expect(mockVenue.getAsset).not.toHaveBeenCalled();
   });
 
-  it('filters assets live as the user types, without refetching', async () => {
+  it('filters assets once a search is applied from the Filters sheet, without refetching', async () => {
     const user = userEvent.setup();
     render(<AssetList />);
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
 
-    const input = screen.getByPlaceholderText('Type keyword to search…');
-    await user.type(input, 'Alpha');
+    await user.click(screen.getByTestId('filters-trigger'));
+    await user.type(await screen.findByPlaceholderText('Type keyword to search…'), 'Alpha');
+    await user.click(screen.getByRole('button', { name: /apply filters/i }));
 
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(1));
     expect(screen.getByText('Alpha Report')).toBeInTheDocument();
     expect(screen.queryByText('Beta Dataset')).not.toBeInTheDocument();
-    // Search is purely client-side now — typing must never trigger a second fetch.
+    // Search is purely client-side now — applying it must never trigger a second fetch.
     expect(mockVenue.listAssets).toHaveBeenCalledTimes(1);
   });
 
@@ -128,33 +126,36 @@ describe('AssetList', () => {
     render(<AssetList />);
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
 
-    await user.type(screen.getByPlaceholderText('Type keyword to search…'), 'a2');
+    await user.click(screen.getByTestId('filters-trigger'));
+    await user.type(await screen.findByPlaceholderText('Type keyword to search…'), 'a2');
+    await user.click(screen.getByRole('button', { name: /apply filters/i }));
 
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(1));
     expect(screen.getByText('Beta Dataset')).toBeInTheDocument();
   });
 
-  it('shows a clear button only once search text is entered, and resets on click', async () => {
+  it('resets search via Clear All in the Filters sheet', async () => {
     const user = userEvent.setup();
     render(<AssetList />);
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
 
-    expect(screen.queryByLabelText('Clear search')).not.toBeInTheDocument();
+    await user.click(screen.getByTestId('filters-trigger'));
+    await user.type(await screen.findByPlaceholderText('Type keyword to search…'), 'Alpha');
+    await user.click(screen.getByRole('button', { name: /apply filters/i }));
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(1));
 
-    const input = screen.getByPlaceholderText('Type keyword to search…');
-    await user.type(input, 'Alpha');
-    const clearButton = await screen.findByLabelText('Clear search');
-    expect(clearButton).toBeInTheDocument();
+    await user.click(screen.getByTestId('filters-trigger'));
+    await user.click(await screen.findByRole('button', { name: /clear all/i }));
 
-    await user.click(clearButton);
-    expect(input).toHaveValue('');
     expect(mockReplace).toHaveBeenCalledWith('/assets');
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
   });
 
-  it('seeds the search box from the ?search= URL param on load', () => {
+  it('seeds the search box from the ?search= URL param on load', async () => {
     mockSearchParam = 'beta';
+    const user = userEvent.setup();
     render(<AssetList />);
-    expect(screen.getByPlaceholderText('Type keyword to search…')).toHaveValue('beta');
+    await user.click(screen.getByTestId('filters-trigger'));
+    expect(await screen.findByPlaceholderText('Type keyword to search…')).toHaveValue('beta');
   });
 });
