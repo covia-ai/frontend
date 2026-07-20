@@ -3,7 +3,8 @@
 
 import { Asset, Operation } from "@covia/covia-sdk";
 import React, { useEffect, useState } from 'react'
-import { Loader2 } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { AssetCard } from "./AssetCard";
 import { useVenues } from "@/hooks/use-venues";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
@@ -70,10 +71,16 @@ export const ShowCase = () => {
             <div className="text-card-foreground text-sm">No featured operations available on this venue.</div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4 mt-6 mb-8">
-            {assets.map((asset) =>
-              <AssetCard key={asset.id} asset={asset} type="operations" compact={true} venue={venue ?? undefined}/>
-            )}
+          <div className="flex flex-col items-end gap-2 mt-6 mb-8">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 items-stretch justify-center gap-4">
+              {assets.map((asset) =>
+                <AssetCard key={asset.id} asset={asset} type="operations" compact={true} venue={venue ?? undefined}/>
+              )}
+            </div>
+            <Link href="/operations" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1">
+              View all
+              <ArrowRight size={12} />
+            </Link>
           </div>
         )}
         </div>

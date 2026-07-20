@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
@@ -6,14 +6,13 @@ import { useCallback, useEffect, useMemo, useRef, useState }from "react";
 import { getVenueFor } from "@/hooks/use-authenticated-venue";
 import { useVenueForRoute } from "@/hooks/use-venue-for-route";
 import { JobMetadata, RunStatus }from "@covia/covia-sdk";
-import { getExecutionTime, formatRelativeTime } from "@/lib/utils";
+import { getExecutionTime } from "@/lib/utils";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Input } from "@/components/ui/input";
 import { PaginationHeader } from "@/components/PaginationHeader";
-import { MultiSelectFilterDropdown } from "@/components/MultiSelectFilterDropdown";
+import { FiltersSheet } from "@/components/FiltersSheet";
 import { useVenues } from "@/hooks/use-venues";
 import { useAuthStore } from "@/hooks/use-auth";
-import { Activity, ArrowUpDown, ArrowUp, ArrowDown, Search, ListFilter, CalendarDays } from "lucide-react";
+import { Activity, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { TopBar } from "./admin-panel/TopBar";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 
@@ -57,6 +56,7 @@ export function JobList({ venueId }: JobListProps = {}) {
   const FILTER_WINDOW = 100;
   const { venues } = useVenues();
   const venueObj = useVenueForRoute(venueId);
+  const router = useRouter();
   const authData = useAuthStore((x) =>
     venueObj ? x.authMap[venueObj.venueId] ?? null : null
   );
@@ -210,29 +210,13 @@ export function JobList({ venueId }: JobListProps = {}) {
       <ContentLayout>
       <TopBar />
         <div className="flex flex-col items-center justify-center  mt-2 bg-background">
-      <div className="flex flex-row w-full  items-center justify-start mt-4 gap-4">
-          <div className="relative flex-1 min-w-[220px] max-w-sm">
-            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search by id, operation, or name..."
-              className="pl-8"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <MultiSelectFilterDropdown
-            label="Status"
-            icon={ListFilter}
-            options={STATUS_OPTIONS}
-            selected={statusFilter}
-            onChange={setStatusFilter}
-          />
-          <MultiSelectFilterDropdown
-            label="Date"
-            icon={CalendarDays}
-            options={DATE_OPTIONS}
-            selected={dateFilter}
-            onChange={setDateFilter}
+      <div className="flex flex-row w-full  items-center justify-end mt-4 gap-4">
+          <FiltersSheet
+            search={{ value: searchQuery, onChange: setSearchQuery, placeholder: "Search by id, operation, or name..." }}
+            groups={[
+              { label: "Status", options: STATUS_OPTIONS, selected: statusFilter, onChange: setStatusFilter },
+              { label: "Date", options: DATE_OPTIONS, selected: dateFilter, onChange: setDateFilter },
+            ]}
           />
       </div>
   <div className="flex flex-col items-center justify-center w-full h-100 space-y-2">
@@ -262,38 +246,26 @@ export function JobList({ venueId }: JobListProps = {}) {
     <ContentLayout >
       <TopBar venueName={venueObj?.metadata.name}/>
       <div className="flex flex-col items-center justify-center  mt-2 bg-background">
-        <div className="flex flex-row flex-wrap w-full items-center justify-start mt-4 gap-4">
-          <div className="relative flex-1 min-w-[220px] max-w-sm">
-            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search by id, operation, or name..."
-              className="pl-8"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+        <div className="flex flex-row flex-wrap w-full items-center justify-end mt-4 gap-4">
+          <FiltersSheet
+            search={{ value: searchQuery, onChange: setSearchQuery, placeholder: "Search by id, operation, or name..." }}
+            groups={[
+              { label: "Status", options: STATUS_OPTIONS, selected: statusFilter, onChange: setStatusFilter },
+              { label: "Date", options: DATE_OPTIONS, selected: dateFilter, onChange: setDateFilter },
+            ]}
+          />
+        </div>
+        <div className="flex flex-row flex-nowrap items-center justify-between w-full my-2 gap-4">
+          <div className="text-card-foreground text-xs whitespace-nowrap">
+            Page {currentPage} : Showing {pageRecords.length} of {matchTotal}
+            {hasFilters && matchTotal === 0 && !loading && (
+              <span className="ml-2 text-muted-foreground">— no jobs match this filter</span>
+            )}
           </div>
-          <MultiSelectFilterDropdown
-            label="Status"
-            icon={ListFilter}
-            options={STATUS_OPTIONS}
-            selected={statusFilter}
-            onChange={setStatusFilter}
-          />
-          <MultiSelectFilterDropdown
-            label="Date"
-            icon={CalendarDays}
-            options={DATE_OPTIONS}
-            selected={dateFilter}
-            onChange={setDateFilter}
-          />
+          <div className="shrink-0">
+            <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage} disabled={loading}></PaginationHeader>
+          </div>
         </div>
-        <div className="text-card-foreground text-xs flex flex-row my-2">
-          Page {currentPage} : Showing {pageRecords.length} of {matchTotal}
-          {hasFilters && matchTotal === 0 && !loading && (
-            <span className="ml-2 text-muted-foreground">— no jobs match this filter</span>
-          )}
-        </div>
-        <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage} disabled={loading}></PaginationHeader>
         {loading && (
           <div className="flex items-center justify-center py-10 w-full">
             <Spinner variant="ellipsis" className="text-primary" size={40} />
@@ -302,21 +274,21 @@ export function JobList({ venueId }: JobListProps = {}) {
         {!loading && <Table className="  border border-border rounded-lg shadow-md">
           <TableHeader >
             <TableRow className="bg-secondary hover:bg-secondary rounded-full text-secondary-foreground ">
-              <TableCell className="border border-border">
+              <TableCell className="text-left">
                 <button onClick={() => toggleSort("id")} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
                   Job Id
                   {sort.col === "id" ? (sort.dir === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />) : <ArrowUpDown size={14} />}
                 </button>
               </TableCell>
-              <TableCell className="border border-border">Name</TableCell>
-              <TableCell className="text-center border border-border">
+              <TableCell className="text-left">Name</TableCell>
+              <TableCell className="text-left">
                 <button onClick={() => toggleSort("date")} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
-                  Created Date
+                  Start Time
                   {sort.col === "date" ? (sort.dir === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />) : <ArrowUpDown size={14} />}
                 </button>
               </TableCell>
-              <TableCell className="text-center border border-border">Execution Time</TableCell>
-              <TableCell className="text-center border border-border">
+              <TableCell className="text-left">Duration</TableCell>
+              <TableCell className="text-left">
                 <button onClick={() => toggleSort("status")} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
                   Status
                   {sort.col === "status" ? (sort.dir === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />) : <ArrowUpDown size={14} />}
@@ -337,16 +309,11 @@ export function JobList({ venueId }: JobListProps = {}) {
               .map((job) => {
                 const isTerminal = TERMINAL_STATUSES.has(job.status as RunStatus);
                 return (
-              <TableRow key={job.id}>
-                <TableCell><Link className="text-foreground font-mono underline" href={encodedPath(job.id ?? "")}>{job.id}</Link></TableCell>
+              <TableRow key={job.id} className="cursor-pointer" onClick={() => router.push(encodedPath(job.id ?? ""))}>
+                <TableCell className="font-mono">{job.id}</TableCell>
                 <TableCell>{job.name}</TableCell>
                 <TableCell>
-                  {job.created ? (
-                    <div className="flex flex-col leading-tight">
-                      <span>{formatRelativeTime(job.created)}</span>
-                      <span className="text-xs text-muted-foreground">{formatter.format(new Date(job.created))}</span>
-                    </div>
-                  ) : "--"}
+                  {job.created ? formatter.format(new Date(job.created)) : "--"}
                 </TableCell>
                 <TableCell>
                   {isTerminal && job.updated

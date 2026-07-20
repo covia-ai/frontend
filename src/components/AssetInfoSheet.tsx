@@ -7,7 +7,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Info } from "lucide-react";
+import { Lightbulb } from "lucide-react";
 import { Separator } from "./ui/separator";
 import { Table, TableBody, TableCell, TableRow }from "@/components/ui/table";
 import { Asset } from "@covia/covia-sdk";
@@ -59,10 +59,10 @@ export const AssetInfoSheet = ({asset,venueId}:AssetInfoSheetProps) => {
                 <Tooltip>
                           <TooltipTrigger asChild>
                             <SheetTrigger>
-                                 <Info size={16} data-testid="info_btn"/>
+                                 <Lightbulb size={16} data-testid="info_btn"/>
                             </SheetTrigger>
                           </TooltipTrigger>
-                          <TooltipContent data-testid="btn-tootip">Know More</TooltipContent>
+                          <TooltipContent data-testid="btn-tootip">Learn More</TooltipContent>
                 </Tooltip>
                   <SheetContent data-testid="info_sheet" className="min-w-2xl text-card-foreground bg-card">
                       <SheetHeader className="flex flex-col items-center justify-center">

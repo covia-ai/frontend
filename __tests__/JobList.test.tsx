@@ -87,7 +87,11 @@ describe('JobList windowed fetching', () => {
     render(<JobList />);
     await screen.findByText('job-997');
 
-    await user.type(screen.getByPlaceholderText(/Search by id/), 'job-9');
+    // Search now lives inside the Filters sheet — open it, type, and commit
+    // via "Apply Filters" (edits are staged until then).
+    await user.click(screen.getByTestId('filters-trigger'));
+    await user.type(await screen.findByPlaceholderText(/Search by id/), 'job-9');
+    await user.click(screen.getByRole('button', { name: /apply filters/i }));
 
     // One 100-record window: slice('j', 898, 100), after the 300ms debounce.
     await waitFor(() => {
