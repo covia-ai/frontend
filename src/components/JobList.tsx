@@ -314,9 +314,11 @@ export function JobList({ venueId }: JobListProps = {}) {
               <span className="ml-2 text-muted-foreground">— no jobs match this filter</span>
             )}
           </div>
-          <div className="shrink-0">
-            <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage} disabled={loading}></PaginationHeader>
-          </div>
+          {!loading && (
+            <div className="shrink-0">
+              <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage} disabled={loading}></PaginationHeader>
+            </div>
+          )}
         </div>
         {loading && (
           <div className="flex items-center justify-center py-10 w-full">
@@ -380,7 +382,9 @@ export function JobList({ venueId }: JobListProps = {}) {
               })}
           </TableBody>
         </Table>}
-        <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage} disabled={loading}></PaginationHeader>
+        {!loading && (
+          <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage} disabled={loading}></PaginationHeader>
+        )}
       </div>
     </ContentLayout>
 );

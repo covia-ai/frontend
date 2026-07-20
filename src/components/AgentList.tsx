@@ -53,7 +53,7 @@ export function AgentList() {
      <TopBar/>
  <AgentTemplates onCreated={fetchAgents} />
  <SeparatorWithText text="or"/>
-     <div className="relative w-full pt-10">
+     <div className="w-full pt-10">
        <PageHeading
          className="w-full"
          align="center"
@@ -61,7 +61,7 @@ export function AgentList() {
          highlight="agent"
        />
        {agentData.length > 0 && (
-         <div className="absolute right-0 top-10 flex items-center gap-2 shrink-0">
+         <div className="flex items-center justify-center gap-2 shrink-0 mt-4">
            {isAuthenticated ? (
              <>
                <AddNewAgent onCreated={fetchAgents} />
@@ -72,7 +72,7 @@ export function AgentList() {
                  onClick={() => router.push('/agents/explorer')}
                >
                  <SquareChevronRight size={14} />
-                 Explorer
+                 Explore
                </Button>
              </>
            ) : (
