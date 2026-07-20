@@ -21,16 +21,6 @@ const nextConfig: NextConfig = {
   },
   
   reactStrictMode: false,
-  
-  async redirects() {
-    return [
-      {
-        source: '/workspace',
-        destination: '/',
-        permanent: false,
-      },
-    ];
-  },
 };
 
 export default nextConfig;

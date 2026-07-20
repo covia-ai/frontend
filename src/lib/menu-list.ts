@@ -1,4 +1,4 @@
-import { LocationEdit, Database, PlayCircle, LucideIcon, Home, User, BookKey, LibraryBig, BotIcon, KeyRound }from "lucide-react";
+import { LocationEdit, Database, PlayCircle, LucideIcon, Home, FolderOpen, User, BookKey, LibraryBig, BotIcon, KeyRound }from "lucide-react";
 
 type Submenu = {
   href: string;
@@ -28,8 +28,13 @@ export function   getMenuList(): Group[] {
         menus: [
           {
             href: "/",
-            label: "Workspace",
+            label: "Home",
             icon: Home
+          },
+          {
+            href: "/workspace",
+            label: "Workspace",
+            icon: FolderOpen
           },
           {
             href: "/assets",
@@ -87,8 +92,13 @@ export function   getMenuList(): Group[] {
         menus: [
           {
             href: "/",
-            label: "Workspace",
+            label: "Home",
             icon: Home
+          },
+          {
+            href: "/workspace",
+            label: "Workspace",
+            icon: FolderOpen
           },
           {
             href: "/assets",

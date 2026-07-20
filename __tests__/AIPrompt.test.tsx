@@ -210,6 +210,9 @@ describe('AIPrompt — agent picker', () => {
     const user = userEvent.setup();
 
     render(<AIPrompt />);
+    await user.hover(screen.getByTestId('agent-picker'));
+    expect((await screen.findAllByText(/Your message will go to the default agent/))[0]).toBeInTheDocument();
+
     await user.click(screen.getByTestId('agent-picker'));
     expect(await screen.findByRole('menuitemradio', { name: 'research-bot' })).toBeInTheDocument();
     expect(screen.getByRole('menuitemradio', { name: '+ New agent' })).toBeInTheDocument();
@@ -227,6 +230,8 @@ describe('AIPrompt — agent picker', () => {
 
     render(<AIPrompt />);
     await pickAgentOption(user, 'research-bot');
+    await user.hover(screen.getByTestId('agent-picker'));
+    expect((await screen.findAllByText(/Your message will go to "research-bot"/))[0]).toBeInTheDocument();
 
     await user.type(screen.getByLabelText('prompt'), 'Do something useful');
     await user.click(screen.getByTestId('chat-button'));
@@ -275,6 +280,8 @@ describe('AIPrompt — agent picker', () => {
 
     render(<AIPrompt />);
     await pickAgentOption(user, '+ New agent');
+    await user.hover(screen.getByTestId('agent-picker'));
+    expect((await screen.findAllByText(/Your message will go to a new agent/))[0]).toBeInTheDocument();
 
     await user.type(screen.getByLabelText('prompt'), 'Do something useful');
     await user.click(screen.getByTestId('chat-button'));

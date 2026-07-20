@@ -1,6 +1,8 @@
 "use client";
 import { Button } from "./ui/button";
+import { Card } from "./ui/card";
 import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
 import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -12,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { MagicWandIcon } from "@radix-ui/react-icons";
 import { EllipsisVertical, Loader2 } from "lucide-react";
 import { Badge } from "./ui/badge";
@@ -49,11 +52,9 @@ export const AIPrompt = () => {
   const router = useRouter();
 
   const promptSamples = [
-    'Customer onboarding automation',
-    'Contract review and signature',
-    'Automate the security patching process for servers',
-    'Define a multi-agent orchestration strategy for a Content Publishing',
-    'Migrate a static HTML website to a modern React framework'
+    'Automate an AP invoice pipeline',
+    'Orchestrate a cross-venue workflow',
+    'Publish an operation to REST, MCP, and A2A',
   ]
 
   // Populates the picker's option list. Best-effort and separate from the
@@ -247,60 +248,76 @@ export const AIPrompt = () => {
     <div data-testid="chat-container" className="flex flex-col items-center justify-center py-10 px-10 ">
         <PageHeading text="Do anything on" highlight="the Grid" />
 
-        <div className="flex flex-col md:flex-row lg:flex-row items-center justify-center w-full space-x-2 space-y-2 ">
-            <Input
+        <Card className="w-full max-w-4xl mt-6 gap-1 p-3">
+          <Textarea
             placeholder="Add a prompt and click the magic wand..."
-            className="bg-card placeholder:text-muted-foreground my-2"
+            className="min-h-12 resize-none border-none bg-transparent p-0 shadow-none placeholder:text-muted-foreground focus-visible:ring-0 dark:bg-transparent"
             aria-label="prompt"
             value={prompt}
-            onChange={ (e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !busy) handleMagicWand(); }}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey && !busy) {
+                e.preventDefault();
+                handleMagicWand();
+              }
+            }}
             disabled={busy}
           />
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                aria-label="Choose agent"
-                data-testid="agent-picker"
-                variant="ghost"
-                size="icon"
-                className="my-4 mx-0"
-                disabled={busy}
-              >
-                <EllipsisVertical size={16} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Send to</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuRadioGroup value={selectedAgentId} onValueChange={setSelectedAgentId}>
-                <DropdownMenuRadioItem value={DEFAULT_AGENT_ID}>{defaultAgentLabel}</DropdownMenuRadioItem>
-                {otherAgents.map((a) => (
-                  <DropdownMenuRadioItem key={a.agentId} value={a.agentId}>{a.agentId}</DropdownMenuRadioItem>
-                ))}
-                <DropdownMenuRadioItem value={NEW_AGENT_OPTION}>+ New agent</DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center justify-end gap-1">
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      aria-label="Choose agent"
+                      data-testid="agent-picker"
+                      variant="ghost"
+                      size="icon"
+                      disabled={busy}
+                    >
+                      <EllipsisVertical size={16} />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  Your message will go to {selectedAgentLabel}. Click to choose another agent.
+                </TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Send to</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuRadioGroup value={selectedAgentId} onValueChange={setSelectedAgentId}>
+                  <DropdownMenuRadioItem value={DEFAULT_AGENT_ID}>{defaultAgentLabel}</DropdownMenuRadioItem>
+                  {otherAgents.map((a) => (
+                    <DropdownMenuRadioItem key={a.agentId} value={a.agentId}>{a.agentId}</DropdownMenuRadioItem>
+                  ))}
+                  <DropdownMenuRadioItem value={NEW_AGENT_OPTION}>+ New agent</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-          <Button
-            aria-label="Run"
-            role="button"
-            data-testid="chat-button"
-            variant="default"
-            className="my-4 btn btn-xs mx-0 bg-primary text-primary-foreground"
-            disabled={!prompt.trim() || busy}
-            onClick={handleMagicWand}
-          >
-            {busy ? <Loader2 className="animate-spin" size={16} /> : <MagicWandIcon/>}
-          </Button>
-        </div>
-
-        <p className="text-xs text-muted-foreground text-center max-w-md">
-          Your message will go to {selectedAgentLabel}. If you want to choose another agent,
-          click the <EllipsisVertical size={12} className="inline align-text-bottom" /> icon before the magic wand.
-        </p>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  aria-label="Run"
+                  role="button"
+                  data-testid="chat-button"
+                  variant="default"
+                  size="icon"
+                  className="rounded-full"
+                  disabled={!prompt.trim() || busy}
+                  onClick={handleMagicWand}
+                >
+                  {busy ? <Loader2 className="animate-spin" size={16} /> : <MagicWandIcon/>}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                This will send your message to {selectedAgentLabel}.
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </Card>
 
         {creating && (
           <p className="text-xs text-muted-foreground animate-pulse mt-1">
@@ -375,17 +392,17 @@ export const AIPrompt = () => {
           </DialogContent>
         </Dialog>
 
-         <div className="flex flex-row flex-wrap items-center justify-center w-full space-x-2 space-y-2 mt-4">
+         <div className="flex flex-row flex-wrap items-center justify-center w-full gap-2 mt-6">
           {promptSamples.map( (promptText,_index) => (
 
              prompt == promptText ? (
 
-              <Badge key={promptText} variant="outline" className="bg-primary-light cursor-pointer"
+              <Badge key={promptText} variant="outline" className="bg-primary-light cursor-pointer px-2 py-1 text-xs"
               onClick={() => setPrompt(promptText)}>
                 {promptText}
               </Badge>
              ) : (
-              <Badge key={promptText} variant="outline" className="bg-muted px-2 cursor-pointer hover:border-accent"
+              <Badge key={promptText} variant="outline" className="bg-muted px-2 py-1 text-xs cursor-pointer hover:border-accent"
               onClick={() => setPrompt(promptText)}>
                 {promptText}
               </Badge>

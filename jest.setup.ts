@@ -13,6 +13,7 @@ Element.prototype.setPointerCapture = Element.prototype.setPointerCapture ?? (()
 Element.prototype.releasePointerCapture = Element.prototype.releasePointerCapture ?? (() => {});
 Element.prototype.scrollIntoView = Element.prototype.scrollIntoView ?? (() => {});
 
+// jsdom also has no ResizeObserver — Radix's Tooltip (arrow sizing) needs one.
 global.ResizeObserver = global.ResizeObserver ?? class ResizeObserver {
   observe() {}
   unobserve() {}
