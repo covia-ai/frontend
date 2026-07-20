@@ -53,11 +53,37 @@ export function AgentList() {
      <TopBar/>
  <AgentTemplates onCreated={fetchAgents} />
  <SeparatorWithText text="or"/>
-     <PageHeading
-       className="pt-10"
-       text={agentData.length > 0 ? "Choose an existing" : "Create a new"}
-       highlight="agent"
-     />
+     <div className="flex flex-row items-center justify-between w-full pt-10">
+       <PageHeading
+         className={agentData.length > 0 ? undefined : "w-full"}
+         align={agentData.length > 0 ? "left" : "center"}
+         text={agentData.length > 0 ? "Choose an existing" : "Create a new"}
+         highlight="agent"
+       />
+       {agentData.length > 0 && (
+         <div className="flex items-center gap-2 shrink-0">
+           {isAuthenticated ? (
+             <>
+               <AddNewAgent onCreated={fetchAgents} />
+               <Button
+                 variant="outline"
+                 className="shrink-0 gap-2"
+                 data-testid="explorer-trigger"
+                 onClick={() => router.push('/agents/explorer')}
+               >
+                 <SquareChevronRight size={14} />
+                 Explorer
+               </Button>
+             </>
+           ) : (
+             <Button variant="outline" disabled className="gap-2 text-muted-foreground">
+               <Lock size={14} />
+               Sign in to create agents
+             </Button>
+           )}
+         </div>
+       )}
+     </div>
      {loading && <div className="flex items-center justify-center py-10"><Loader2 className="animate-spin text-primary" size={32} /></div>}
      {!loading && agentData.length == 0 &&  <div className="flex flex-col items-center justify-center w-full space-y-2 pt-4">
             <Bot size={48} className="text-primary"></Bot>
@@ -70,9 +96,6 @@ export function AgentList() {
               </Button>
             )}
       </div>}
-      <div className="flex flex-row-reverse w-full">
-       <SquareChevronRight onClick={() => router.push('/agents/explorer')}/>
-      </div>
       {agentData.length > 0 && <div className="flex flex-col items-center justify-center space-y-4">
 
          <div className="mt-10 w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 items-stretch justify-center gap-4">
@@ -104,14 +127,6 @@ export function AgentList() {
             ))}
 
          </div>
-         {isAuthenticated ? (
-           <AddNewAgent onCreated={fetchAgents} />
-         ) : (
-           <Button variant="outline" disabled className="gap-2 text-muted-foreground">
-             <Lock size={14} />
-             Sign in to create agents
-           </Button>
-         )}
       </div>
       }
      

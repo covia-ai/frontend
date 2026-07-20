@@ -8,7 +8,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "./ui/button";
-import { IconButton } from "./IconButton";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
@@ -162,11 +161,10 @@ export function AddNewAgent({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger ?? (
-          <IconButton
-            icon={PlusCircledIcon}
-            message="Create a new agent"
-            label="Create a new agent"
-          />
+          <Button data-testid="create-agent-trigger" className="shrink-0 gap-2">
+            <PlusCircledIcon />
+            Create Agent
+          </Button>
         )}
       </DialogTrigger>
       <DialogContent className="flex flex-col bg-card text-card-foreground max-h-[85vh] overflow-y-auto">

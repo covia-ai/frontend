@@ -43,6 +43,9 @@ export function SmartBreadcrumb({
   // Generate breadcrumb items based on pathname
   const generateBreadcrumbs = (): BreadcrumbItemType[] => {
     const segments = pathname.split('/').filter(Boolean);
+    // Home page itself — no "Workspace" crumb pointing at the page you're
+    // already on.
+    if (segments.length === 0) return [];
     const breadcrumbs: BreadcrumbItemType[] = [
       { label: 'Workspace', href: '/' }
     ];

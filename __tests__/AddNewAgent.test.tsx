@@ -6,12 +6,6 @@ jest.mock('sonner', () => ({
   toast: jest.fn(),
 }));
 
-// Must spread ...rest so DialogTrigger asChild can forward onClick/ref.
-jest.mock('@/components/IconButton', () => ({
-  IconButton: ({ icon: _icon, message, label, ...rest }: any) => (
-    <button data-testid="trigger-btn" {...rest}>{label || message}</button>
-  ),
-}));
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),
 }));
@@ -40,7 +34,7 @@ import { AddNewAgent } from '@/components/AddNewAgent';
 async function renderAndOpenDialog() {
   const user = userEvent.setup();
   render(<AddNewAgent />);
-  const trigger = screen.getByTestId('trigger-btn');
+  const trigger = screen.getByTestId('create-agent-trigger');
   await user.click(trigger);
   return user;
 }
@@ -52,8 +46,8 @@ describe('AddNewAgent', () => {
 
   it('renders the trigger button', () => {
     render(<AddNewAgent />);
-    expect(screen.getByTestId('trigger-btn')).toBeInTheDocument();
-    expect(screen.getByTestId('trigger-btn')).toHaveTextContent('Create a new agent');
+    expect(screen.getByTestId('create-agent-trigger')).toBeInTheDocument();
+    expect(screen.getByTestId('create-agent-trigger')).toHaveTextContent('Create Agent');
   });
 
   it('renders the component with initial state after opening dialog', async () => {
@@ -82,7 +76,7 @@ describe('AddNewAgent', () => {
 
   it('renders create button with correct attributes', async () => {
     await renderAndOpenDialog();
-    const createButton = screen.getByRole('button', { name: /create agent/i });
+    const createButton = screen.getByTestId('create-agent');
     expect(createButton).toHaveAttribute('aria-label', 'create agent');
   });
 

@@ -27,9 +27,9 @@ export function ChromeSignInButton(props: any) {
       <div className="flex items-center gap-2" key={props.index}>
         <Badge
           variant="outline"
-          className="text-xs text-muted-foreground hidden sm:flex items-center gap-1 font-normal"
+          className="h-9 px-3 gap-1.5 text-sm bg-muted text-muted-foreground hidden sm:flex items-center font-normal"
         >
-          <Globe size={10} />
+          <Globe size={14} />
           Public
         </Badge>
         <Button
