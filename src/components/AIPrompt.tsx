@@ -19,6 +19,7 @@ import { MagicWandIcon } from "@radix-ui/react-icons";
 import { EllipsisVertical, Loader2 } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useTypewriterPlaceholder } from "@/hooks/use-typewriter-placeholder";
 import { toast } from "sonner";
 import { KNOWN_LLM_KEYS, LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
@@ -56,6 +57,19 @@ export const AIPrompt = () => {
     'Orchestrate a cross-venue workflow',
     'Publish an operation to REST, MCP, and A2A',
   ]
+
+  const typingPromptSamples = [
+    'Automate an AP invoice pipeline with agents',
+    'Orchestrate a workflow across three venues',
+    'Publish an operation to REST, MCP, and A2A',
+    'Build an agent that scans and enriches vendor records',
+    'Chat with a Gemini-powered agent about my data',
+    'Set up a sovereign file store with DLFS',
+    'Issue a UCAN to share access with a partner venue',
+    'Infer a JSON schema from sample data',
+  ]
+
+  const animatedPlaceholder = useTypewriterPlaceholder(typingPromptSamples, prompt.length === 0);
 
   // Populates the picker's option list. Best-effort and separate from the
   // fresh venue.agents.list() call in handleMagicWand — that one drives the
@@ -250,7 +264,7 @@ export const AIPrompt = () => {
 
         <Card className="w-full max-w-4xl mt-6 gap-1 p-3">
           <Textarea
-            placeholder="Add a prompt and click the magic wand..."
+            placeholder={animatedPlaceholder}
             className="min-h-12 resize-none border-none bg-transparent p-0 shadow-none placeholder:text-muted-foreground focus-visible:ring-0 dark:bg-transparent"
             aria-label="prompt"
             value={prompt}

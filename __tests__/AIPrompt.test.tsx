@@ -56,7 +56,7 @@ describe('Chat Component', () => {
 
   test('renders input field', () => {
     render(<AIPrompt />);
-    expect(screen.getByPlaceholderText('Add a prompt and click the magic wand...')).toBeInTheDocument();
+    expect(screen.getByLabelText('prompt')).toBeInTheDocument();
   });
 
   test('renders chat button', () => {
