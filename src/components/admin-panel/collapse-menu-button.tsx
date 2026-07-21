@@ -50,7 +50,7 @@ export function CollapseMenuButton({
   isOpen
 }: CollapseMenuButtonProps) {
   const pathname = usePathname();
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(true);
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
 
   return isOpen ? (
     <Collapsible

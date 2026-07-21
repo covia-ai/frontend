@@ -31,6 +31,11 @@ export function   getMenuList(): Group[] {
             label: "Home",
             icon: Home
           },
+        ]
+      },
+      {
+        groupLabel: "Build",
+        menus: [
           {
             href: "/workspace",
             label: "Workspace",
@@ -60,6 +65,11 @@ export function   getMenuList(): Group[] {
             label: "Agents",
             icon: BotIcon,
           } ,
+        ]
+      },
+      {
+        groupLabel: "Operate",
+        menus: [
           {
             href: "/venues",
             label: "Venues",
@@ -70,6 +80,11 @@ export function   getMenuList(): Group[] {
             label: "Jobs",
             icon: User
           },
+        ]
+      },
+      {
+        groupLabel: "Manage",
+        menus: [
           {
             href: "/secrets",
             label: "Secrets",
@@ -77,11 +92,9 @@ export function   getMenuList(): Group[] {
           },
           {
             href: "/learning",
-            label: "Learning corner",
+            label: "Resources",
             icon: LibraryBig
           },
-
-
         ]
       },
 
@@ -95,6 +108,11 @@ export function   getMenuList(): Group[] {
             label: "Home",
             icon: Home
           },
+        ]
+      },
+      {
+        groupLabel: "Build",
+        menus: [
           {
             href: "/workspace",
             label: "Workspace",
@@ -118,6 +136,11 @@ export function   getMenuList(): Group[] {
 
             ]
           },
+        ]
+      },
+      {
+        groupLabel: "Operate",
+        menus: [
           {
             href: "/venues",
             label: "Venues",
@@ -128,6 +151,11 @@ export function   getMenuList(): Group[] {
             label: "Jobs",
             icon: User
           },
+        ]
+      },
+      {
+        groupLabel: "Manage",
+        menus: [
           {
             href: "/secrets",
             label: "Secrets",
@@ -135,11 +163,9 @@ export function   getMenuList(): Group[] {
           },
           {
             href: "/learning",
-            label: "Learning corner",
+            label: "Resources",
             icon: LibraryBig
           },
-
-
         ]
       },
 

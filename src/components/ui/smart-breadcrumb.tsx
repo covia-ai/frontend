@@ -89,7 +89,7 @@ export function SmartBreadcrumb({ assetOrJobName, venueName }: SmartBreadcrumbPr
       'privateartifacts': 'Private Artifacts',
       'operations': 'Operations',
       'jobs': 'Jobs',
-      'learning': 'Learning Corner',
+      'learning': 'Resources',
       'workspace': 'Workspace',
       'myvenues': 'My Venues',
       'myassets': 'My Assets',
