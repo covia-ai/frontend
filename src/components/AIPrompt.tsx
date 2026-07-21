@@ -19,6 +19,7 @@ import { MagicWandIcon } from "@radix-ui/react-icons";
 import { EllipsisVertical, Loader2 } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { usePendingChats } from "@/hooks/use-pending-chats";
 import { useTypewriterPlaceholder } from "@/hooks/use-typewriter-placeholder";
 import { toast } from "sonner";
 import { KNOWN_LLM_KEYS, LLM_PROVIDERS } from "@/config/llm-providers";
@@ -51,6 +52,9 @@ export const AIPrompt = () => {
   const [pendingAgentId, setPendingAgentId] = useState<string>(DEFAULT_AGENT_ID)
   const venue = useAuthenticatedVenue();
   const router = useRouter();
+  const startPendingChat = usePendingChats((s) => s.startPendingChat);
+  const attachSessionId = usePendingChats((s) => s.attachSessionId);
+  const clearPendingChat = usePendingChats((s) => s.clearPendingChat);
 
   const promptSamples = [
     'Automate an AP invoice pipeline',
@@ -112,14 +116,20 @@ export const AIPrompt = () => {
   // a person typing here is starting a conversation, and an agent that judges
   // the work deserves a durable, tracked job can spawn one itself (the
   // manager-template pattern). chat() blocks until the agent replies, so the
-  // promise is deliberately left un-awaited — the venue records the user turn
-  // immediately, and the explorer we navigate to polls up both that turn and
-  // the eventual reply. Failures and empty replies surface via toast, which
-  // is global (sonner) and so outlives this component.
+  // promise is deliberately left un-awaited — we publish the message as a
+  // pending chat first so the explorer we navigate to can echo it straight
+  // away, then poll up the recorded turn and the eventual reply. Failures and
+  // empty replies surface via toast, which is global (sonner) and so outlives
+  // this component — as does this promise chain, so clearing the pending chat
+  // on settle still runs after we have unmounted.
   function sendPrompt(agentId: string) {
     if (!venue) return;
+    // No session id — chat() with none makes the venue mint a fresh session,
+    // and it only comes back with the reply.
+    const chat = startPendingChat({ agentId, sessionId: null, text: prompt });
     venue.agents.chat(agentId, prompt)
       .then((result) => {
+        if (result?.sessionId) attachSessionId(chat, result.sessionId);
         const r = result?.response;
         if (r == null || (typeof r === "string" && r.trim() === "")) {
           toast("The agent sent an empty reply", {
@@ -129,7 +139,8 @@ export const AIPrompt = () => {
       })
       .catch((err: any) => {
         toast("Chat failed", { description: err?.message ?? "Please try again." });
-      });
+      })
+      .finally(() => clearPendingChat(chat));
     router.push(`/agents/explorer?agentId=${encodeURIComponent(agentId)}`);
   }
 

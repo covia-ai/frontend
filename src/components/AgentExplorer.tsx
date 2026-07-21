@@ -9,6 +9,7 @@ import { AgentDetail, AgentListItem, Session, SessionMessage } from '@/config/ty
 import { TopBar } from './admin-panel/TopBar';
 import { Agent, ChatSession, AgentStatus } from '@covia/covia-sdk';
 import { useAuthenticatedVenue } from '@/hooks/use-authenticated-venue';
+import { usePendingChats, findPendingChat } from '@/hooks/use-pending-chats';
 import { usePaneResize } from '@/hooks/use-pane-resize';
 import { toast } from 'sonner';
 import { toastError } from '@/lib/toast-error';
@@ -48,11 +49,20 @@ const AgentExplorer = (props: any) => {
   // Sessions + chat
   const [sessions, setSessions] = useState<Session[]>([]);
   const [messageText, setMessageText] = useState("");
-  const [sending, setSending] = useState(false);
-  const [pendingUserMessage, setPendingUserMessage] = useState<
-    { agentId: string; sessionId: string | null; text: string } | null
-  >(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+
+  // In-flight sends live in a shared store rather than local state, so a chat
+  // dispatched from anywhere — this composer, the home prompt, another screen
+  // — is echoed here, and survives navigating away and back mid-send.
+  const pendingChats = usePendingChats((s) => s.pendingChats);
+  const startPendingChat = usePendingChats((s) => s.startPendingChat);
+  const attachSessionId = usePendingChats((s) => s.attachSessionId);
+  const clearPendingChat = usePendingChats((s) => s.clearPendingChat);
+
+  // A send for this agent not yet bound to a session — the venue is still
+  // minting one, so the transcript has to follow it when it surfaces.
+  const awaitingNewSession = !!selectedAgentId
+    && pendingChats.some((c) => c.agentId === selectedAgentId && c.sessionId === null);
 
   // Layout
   const { width: leftWidth, containerRef, startResizing } = usePaneResize(200);
@@ -167,17 +177,16 @@ const AgentExplorer = (props: any) => {
     ]).finally(() => setDetailLoading(false));
   }, [venue, selectedAgentId, loadAgentDetail, refreshSessions]);
 
-  // Auto-select most recent session (skip while a send is in flight to avoid
-  // the pending-message race: the server creates the session immediately when
-  // agent:chat arrives, so the first poll would set chatSession and change
-  // selectedSessionId before pendingUserMessage.sessionId is updated, causing
-  // the pending bubble and spinner to vanish mid-send).
+  // Auto-select the most recent session — held while a send is still waiting on
+  // a session the venue has yet to mint. Without the hold the transcript pins
+  // to whichever session was newest when the send went out, putting an
+  // unrelated conversation above the pending message; with it the message sits
+  // on a blank transcript until the send settles and its real session appears.
   useEffect(() => {
-    if (sending) return;
-    if (!chatSession && sessions.length > 0 && agentHandle) {
-      setChatSession(agentHandle.chatSession(sessions[0].sessionId));
-    }
-  }, [sessions, chatSession, agentHandle, sending]);
+    if (!agentHandle || sessions.length === 0 || chatSession) return;
+    if (awaitingNewSession) return;
+    setChatSession(agentHandle.chatSession(sessions[0].sessionId));
+  }, [sessions, chatSession, agentHandle, awaitingNewSession]);
 
   // Polling for live updates
   useEffect(() => {
@@ -196,6 +205,11 @@ const AgentExplorer = (props: any) => {
     () => sessions.find((s) => s.sessionId === selectedSessionId) || null,
     [sessions, selectedSessionId]
   );
+
+  // The in-flight send this transcript should echo, if any.
+  const pendingChat = findPendingChat(pendingChats, selectedAgentId, selectedSessionId);
+  const sending = !!pendingChat;
+
   useEffect(() => {
     if (transcriptRef.current) {
       transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
@@ -245,9 +259,8 @@ const AgentExplorer = (props: any) => {
     const session = chatSession ?? agentHandle.chatSession();
     const sendSessionId = session.sessionId ?? null;
 
-    setSending(true);
     setMessageText("");
-    setPendingUserMessage({ agentId: sendAgentId, sessionId: sendSessionId, text });
+    const chat = startPendingChat({ agentId: sendAgentId, sessionId: sendSessionId, text });
 
     // Race the send against a timeout so a suspended/unresponsive agent
     // doesn't leave the spinner running indefinitely.
@@ -273,10 +286,7 @@ const AgentExplorer = (props: any) => {
         // ChatSession auto-captures sessionId — update our state reference
         setChatSession(session);
         if (sendSessionId === null && result?.sessionId) {
-          setPendingUserMessage((prev) =>
-            prev && prev.agentId === sendAgentId && prev.sessionId === null
-              ? { ...prev, sessionId: result.sessionId }
-              : prev);
+          attachSessionId(chat, result.sessionId);
         }
         await refreshSessions(sendAgentId);
         refreshAgentDetail(sendAgentId);
@@ -287,10 +297,7 @@ const AgentExplorer = (props: any) => {
         toast(`Chat failed: ${err?.message || "see console"}`);
         setMessageText(text);
       })
-      .finally(() => {
-        setSending(false);
-        setPendingUserMessage(null);
-      });
+      .finally(() => clearPendingChat(chat));
   };
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -326,6 +333,13 @@ const AgentExplorer = (props: any) => {
   const canSend = !!selectedAgentDetail
     && selectedAgentDetail.status !== AgentStatus.TERMINATED
     && selectedAgentDetail.status !== AgentStatus.SUSPENDED;
+
+  // The echo is dropped once the venue has recorded that turn and a poll has
+  // brought it into view, so the transcript never shows the message twice.
+  const echoAlreadyRecorded = !!pendingChat
+    && (currentSession?.conversation ?? []).some(
+      (m) => m.role === "user" && messageContentToString(m.content) === pendingChat.text
+    );
 
   return (
     <>
@@ -490,7 +504,7 @@ const AgentExplorer = (props: any) => {
 
               {/* Transcript */}
               <div ref={transcriptRef} className="flex-1 overflow-y-auto p-6 space-y-3 bg-background">
-                {!currentSession?.conversation.length && (
+                {!currentSession?.conversation.length && !pendingChat && (
                   <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-sm text-center">
                     <MessageSquare size={32} className="mb-2" />
                     {selectedSessionId
@@ -524,24 +538,20 @@ const AgentExplorer = (props: any) => {
                     </div>
                   );
                 })}
-                {pendingUserMessage
-                  && pendingUserMessage.agentId === selectedAgentId
-                  && pendingUserMessage.sessionId === selectedSessionId && (
-                  <>
-                    <div className="flex justify-end">
-                      <div className="max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words bg-blue-600 text-white">
-                        {pendingUserMessage.text}
-                      </div>
+                {pendingChat && !echoAlreadyRecorded && (
+                  <div data-testid="pending-user-message" className="flex justify-end">
+                    <div className="max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words bg-blue-600 text-white">
+                      {pendingChat.text}
                     </div>
-                    {sending && (
-                      <div className="flex justify-start">
-                        <div className="bg-muted text-foreground rounded-lg px-3 py-2 text-sm flex items-center gap-2">
-                          <Loader2 size={14} className="animate-spin" />
-                          <span className="italic text-muted-foreground">{selectedAgentDetail.agentId} is thinking…</span>
-                        </div>
-                      </div>
-                    )}
-                  </>
+                  </div>
+                )}
+                {pendingChat && (
+                  <div data-testid="agent-thinking" className="flex justify-start">
+                    <div className="bg-muted text-foreground rounded-lg px-3 py-2 text-sm flex items-center gap-2">
+                      <Loader2 size={14} className="animate-spin" />
+                      <span className="italic text-muted-foreground">{selectedAgentDetail.agentId} is thinking…</span>
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -549,6 +559,7 @@ const AgentExplorer = (props: any) => {
               <div className="px-6 py-3 border-t border-border bg-muted/20 flex flex-col gap-2">
                 <div className="flex flex-row gap-2">
                   <Input
+                    data-testid="composer-input"
                     placeholder={canSend ? `Message ${selectedAgentDetail.agentId}…` : `${selectedAgentDetail.status} — cannot send`}
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
@@ -556,7 +567,7 @@ const AgentExplorer = (props: any) => {
                     className="text-sm"
                     disabled={sending || !canSend}
                   />
-                  <Button size="sm" onClick={handleSend} disabled={sending || !canSend || !messageText.trim()}>
+                  <Button data-testid="composer-send" size="sm" onClick={handleSend} disabled={sending || !canSend || !messageText.trim()}>
                     {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
                   </Button>
                 </div>
