@@ -80,12 +80,30 @@ export function formatLabel(key: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// Upstream services a venue calls out to (model providers, for one) fail with
+// their own JSON error envelope embedded in the venue's message. Surface the
+// human-readable message rather than dumping the raw blob at the user.
+function embeddedMessage(error: string): string | null {
+  const start = error?.indexOf('{') ?? -1;
+  if (start === -1) return null;
+  try {
+    const parsed = JSON.parse(error.slice(start));
+    const message = parsed?.error?.message ?? parsed?.message;
+    return typeof message === 'string' && message ? message : null;
+  } catch {
+    return null;
+  }
+}
+
 export function friendlyError(error: string): { summary: string; detail: string } {
   const lower = error?.toLowerCase() || '';
   let summary = 'Something went wrong';
   if (lower.includes('timeout') || lower.includes('timed out'))
     summary = 'The operation timed out';
-  else if (lower.includes('401') || lower.includes('unauthorized'))
+  else if (
+    lower.includes('401') || lower.includes('unauthorized') ||
+    lower.includes('authentication_error') || lower.includes('api key')
+  )
     summary = 'Authentication failed';
   else if (lower.includes('403') || lower.includes('forbidden'))
     summary = 'Access denied';
@@ -97,7 +115,7 @@ export function friendlyError(error: string): { summary: string; detail: string 
     summary = 'Connection error';
   else if (lower.includes('parse') || lower.includes('json') || lower.includes('syntax'))
     summary = 'Invalid data format';
-  return { summary, detail: error };
+  return { summary, detail: embeddedMessage(error) ?? error };
 }
 
 export function copyDataToClipBoard(entityId:string, message:string) {
