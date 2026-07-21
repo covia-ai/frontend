@@ -154,7 +154,7 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
         </div>
         <div className="flex flex-row flex-nowrap items-center justify-between w-full my-2 gap-4">
           <div className="text-card-foreground text-xs whitespace-nowrap">
-            {isLoading ? "Loading…" : `Page ${currentPage} : Showing ${filteredAssets.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of ${filteredAssets.length}`}
+            {!isLoading && `Page ${currentPage} : Showing ${filteredAssets.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of ${filteredAssets.length}`}
           </div>
           <div className="shrink-0">
             <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage} disabled={isLoading}></PaginationHeader>
