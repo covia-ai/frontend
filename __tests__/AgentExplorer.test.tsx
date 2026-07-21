@@ -292,6 +292,27 @@ describe('AgentExplorer with a chat in flight', () => {
   });
 });
 
+// A null session means two different things — "nothing picked yet", which
+// auto-select resolves, and "the user asked for a fresh chat", which it must
+// not. Conflating them made New chat snap straight back to the newest session.
+describe('AgentExplorer new chat', () => {
+  afterEach(() => jest.useRealTimers());
+
+  it('stays on a requested new chat instead of reselecting the newest session', async () => {
+    jest.useFakeTimers();
+    await setupWithSession([{ role: 'assistant', content: 'older-session-reply', ts: 1 }]);
+    expect(await screen.findByText('older-session-reply')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('new-chat'));
+    await waitFor(() =>
+      expect(screen.queryByText('older-session-reply')).not.toBeInTheDocument());
+
+    // ...and a poll landing mid-compose must not drag it back either.
+    await act(async () => { jest.advanceTimersByTime(3100); });
+    expect(screen.queryByText('older-session-reply')).not.toBeInTheDocument();
+  });
+});
+
 describe('AgentExplorer transcript rendering', () => {
   it('unwraps single-string-field envelopes and labels task-originated turns', async () => {
     await setupWithSession([

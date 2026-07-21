@@ -45,6 +45,10 @@ const AgentExplorer = (props: any) => {
   // Agent handle + chat session (OO API from SDK 1.5.0)
   const [agentHandle, setAgentHandle] = useState<Agent | null>(null);
   const [chatSession, setChatSession] = useState<ChatSession | null>(null);
+  // A null chatSession is ambiguous on its own: it means both "nothing picked
+  // yet", which the auto-select below resolves, and "the user asked for a fresh
+  // chat", which it must leave alone. This tells the two apart.
+  const [newChatRequested, setNewChatRequested] = useState(false);
 
   // Sessions + chat
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -153,6 +157,7 @@ const AgentExplorer = (props: any) => {
   // Reload detail + sessions when agent changes
   useEffect(() => {
     setChatSession(null);
+    setNewChatRequested(false);
     setSessions([]);
     if (!venue || !selectedAgentId) {
       setAgentHandle(null);
@@ -184,9 +189,9 @@ const AgentExplorer = (props: any) => {
   // on a blank transcript until the send settles and its real session appears.
   useEffect(() => {
     if (!agentHandle || sessions.length === 0 || chatSession) return;
-    if (awaitingNewSession) return;
+    if (awaitingNewSession || newChatRequested) return;
     setChatSession(agentHandle.chatSession(sessions[0].sessionId));
-  }, [sessions, chatSession, agentHandle, awaitingNewSession]);
+  }, [sessions, chatSession, agentHandle, awaitingNewSession, newChatRequested]);
 
   // Polling for live updates
   useEffect(() => {
@@ -248,7 +253,16 @@ const AgentExplorer = (props: any) => {
     }).catch(() => toast("Unable to delete agent"));
   };
 
-  const handleNewChat = () => setChatSession(null);
+  const handleNewChat = () => {
+    setChatSession(null);
+    setNewChatRequested(true);
+  };
+
+  const handleSelectSession = (sessionId: string) => {
+    if (!agentHandle) return;
+    setChatSession(agentHandle.chatSession(sessionId));
+    setNewChatRequested(false);
+  };
 
   const handleSend = () => {
     if (!agentHandle || !selectedAgentId || !messageText.trim()) return;
@@ -283,8 +297,10 @@ const AgentExplorer = (props: any) => {
             description: "It may have hit an error — check the Details panel.",
           });
         }
-        // ChatSession auto-captures sessionId — update our state reference
+        // ChatSession auto-captures sessionId — update our state reference.
+        // The requested new chat now exists, so auto-select is free again.
         setChatSession(session);
+        setNewChatRequested(false);
         if (sendSessionId === null && result?.sessionId) {
           attachSessionId(chat, result.sessionId);
         }
@@ -473,11 +489,8 @@ const AgentExplorer = (props: any) => {
                   <Select
                     value={selectedSessionId ?? "__new__"}
                     onValueChange={(v) => {
-                      if (v === "__new__") {
-                        setChatSession(null);
-                      } else if (agentHandle) {
-                        setChatSession(agentHandle.chatSession(v));
-                      }
+                      if (v === "__new__") handleNewChat();
+                      else handleSelectSession(v);
                     }}
                   >
                     <SelectTrigger className="h-8 text-sm">
@@ -497,7 +510,7 @@ const AgentExplorer = (props: any) => {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleNewChat} disabled={!chatSession}>
+                <Button data-testid="new-chat" variant="outline" size="sm" onClick={handleNewChat} disabled={!chatSession}>
                   <Plus size={14} className="mr-1" /> New chat
                 </Button>
               </div>
