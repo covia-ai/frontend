@@ -137,7 +137,11 @@ export function AddNewAgent({
       });
 
       if (initialCommand.trim()) {
-        await venue.agents.request(result.agentId, { task: initialCommand.trim() });
+        // Fire-and-forget (wait:false): without it the SDK blocks until the
+        // initial task reaches a terminal state, so a failed task would surface
+        // below as a false "Unable to create agent" even though creation already
+        // succeeded. Task failures instead show up via normal job polling (#142).
+        await venue.agents.request(result.agentId, { task: initialCommand.trim() }, false);
       }
 
       toast("Agent created", {
@@ -150,8 +154,10 @@ export function AddNewAgent({
       setInitialCommand("");
       setOpen(false);
       onCreated?.();
-    } catch {
-      toast("Unable to create agent");
+    } catch (err) {
+      toast("Unable to create agent", {
+        description: err instanceof Error ? err.message : undefined,
+      });
     } finally {
       setCreating(false);
     }
