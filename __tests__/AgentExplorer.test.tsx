@@ -1,6 +1,7 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { usePendingChats } from '@/hooks/use-pending-chats';
 
 jest.mock('@/components/admin-panel/TopBar', () => ({
   TopBar: () => <div data-testid="top-bar" />,
@@ -160,6 +161,155 @@ describe('AgentExplorer with lean GET agent entries', () => {
     render(<AgentExplorer />);
 
     expect(await screen.findByTestId('agent-detail-error')).toBeInTheDocument();
+  });
+});
+
+// One session entry as workspace.slice returns it.
+function sessionEntry(key: string, created: number, conversation: any[]) {
+  return {
+    key,
+    value: {
+      meta: { created, turns: conversation.length },
+      pending: [],
+      frames: [{ conversation }],
+    },
+  };
+}
+
+// A dispatched chat is echoed wherever its transcript is shown, whoever sent
+// it: the home prompt fires venue.agents.chat() and routes straight here, so
+// the explorer mounts mid-send with no send state of its own, and a user can
+// navigate away from a transcript and back while an agent is still thinking.
+describe('AgentExplorer with a chat in flight', () => {
+  afterEach(() => {
+    act(() => usePendingChats.setState({ pendingChats: [] }));
+    jest.useRealTimers();
+  });
+
+  it('echoes the in-flight message with a thinking indicator', async () => {
+    usePendingChats.getState().startPendingChat({ agentId: 'agent-1', sessionId: null, text: 'sent elsewhere' });
+    await setupWithSession([]);
+
+    expect(await screen.findByTestId('pending-user-message')).toHaveTextContent('sent elsewhere');
+    expect(screen.getByTestId('agent-thinking')).toBeInTheDocument();
+  });
+
+  it('echoes a send bound to the session in view', async () => {
+    usePendingChats.getState().startPendingChat({ agentId: 'agent-1', sessionId: 'sess-1', text: 'bound to sess-1' });
+    await setupWithSession([]);
+
+    expect(await screen.findByTestId('pending-user-message')).toHaveTextContent('bound to sess-1');
+  });
+
+  it('ignores a send bound to a different session of the same agent', async () => {
+    usePendingChats.getState().startPendingChat({ agentId: 'agent-1', sessionId: 'sess-other', text: 'elsewhere' });
+    await setupWithSession([]);
+
+    await screen.findAllByText('agent-1');
+    expect(screen.queryByTestId('pending-user-message')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('agent-thinking')).not.toBeInTheDocument();
+  });
+
+  it('drops the echo once the venue records the turn, so it is never doubled', async () => {
+    usePendingChats.getState().startPendingChat({ agentId: 'agent-1', sessionId: 'sess-1', text: 'sent elsewhere' });
+    await setupWithSession([{ role: 'user', source: 'chat', content: 'sent elsewhere', ts: 1 }]);
+
+    await screen.findByTestId('agent-thinking');
+    expect(screen.queryByTestId('pending-user-message')).not.toBeInTheDocument();
+    expect(screen.getAllByText('sent elsewhere')).toHaveLength(1);
+  });
+
+  it('ignores a send dispatched to a different agent', async () => {
+    usePendingChats.getState().startPendingChat({ agentId: 'other-agent', sessionId: null, text: 'not for agent-1' });
+    await setupWithSession([]);
+
+    await screen.findAllByText('agent-1');
+    expect(screen.queryByTestId('pending-user-message')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('agent-thinking')).not.toBeInTheDocument();
+  });
+
+  // Same mechanism, local origin: the composer publishes to the shared store
+  // rather than keeping its own copy of the in-flight message.
+  it('echoes a message sent from the composer, and blocks a second send', async () => {
+    const agent = { agentId: 'agent-1', status: 'RUNNING', tasks: 0 };
+    mockVenue.agents.list.mockResolvedValue({ agents: [agent] });
+    mockVenue.agents.info.mockResolvedValue(agent);
+    mockVenue.workspace.read.mockResolvedValue({ value: [] });
+    mockVenue.workspace.slice.mockResolvedValue({ values: [sessionEntry('sess-1', 1000, [])] });
+    // A send that never settles — the agent is still thinking.
+    mockVenue.agent.mockReturnValue({
+      chatSession: (sid?: string) => ({ sessionId: sid, send: () => new Promise(() => {}) }),
+    });
+    render(<AgentExplorer />);
+
+    const input = await screen.findByTestId('composer-input');
+    fireEvent.change(input, { target: { value: 'typed here' } });
+    fireEvent.click(screen.getByTestId('composer-send'));
+
+    expect(await screen.findByTestId('pending-user-message')).toHaveTextContent('typed here');
+    expect(screen.getByTestId('agent-thinking')).toBeInTheDocument();
+    expect(screen.getByTestId('composer-send')).toBeDisabled();
+    expect(input).toBeDisabled();
+  });
+
+  // The venue mints the session server-side, so it does not exist while the
+  // send is in flight. Falling back to the newest session that does exist would
+  // stack the pending message on top of an unrelated conversation.
+  it('holds the transcript blank rather than showing an unrelated session', async () => {
+    const chat = usePendingChats.getState()
+      .startPendingChat({ agentId: 'agent-1', sessionId: null, text: 'awaiting a session' });
+    await setupWithSession([{ role: 'assistant', content: 'older-session-reply', ts: 1 }]);
+
+    expect(await screen.findByTestId('pending-user-message')).toBeInTheDocument();
+    expect(screen.queryByText('older-session-reply')).not.toBeInTheDocument();
+
+    // Settling the send releases the hold, and the session it produced — now
+    // the newest — is selected.
+    act(() => usePendingChats.getState().clearPendingChat(chat));
+    expect(await screen.findByText('older-session-reply')).toBeInTheDocument();
+  });
+
+  it('leaves the selected session alone when no send is in flight', async () => {
+    jest.useFakeTimers();
+
+    const older = sessionEntry('sess-1', 1000, [{ role: 'assistant', content: 'older-session-reply', ts: 1 }]);
+    const newer = sessionEntry('sess-2', 2000, [{ role: 'assistant', content: 'newer-session-reply', ts: 2 }]);
+    const agent = { agentId: 'agent-1', status: 'RUNNING', tasks: 0 };
+    mockVenue.agents.list.mockResolvedValue({ agents: [agent] });
+    mockVenue.agents.info.mockResolvedValue(agent);
+    mockVenue.workspace.read.mockResolvedValue({ value: [] });
+    mockVenue.workspace.slice.mockResolvedValue({ values: [older] });
+    mockVenue.agent.mockReturnValue({ chatSession: (sid?: string) => ({ sessionId: sid }) });
+    render(<AgentExplorer />);
+
+    await screen.findByText('older-session-reply');
+
+    mockVenue.workspace.slice.mockResolvedValue({ values: [older, newer] });
+    await act(async () => { jest.advanceTimersByTime(3100); });
+
+    expect(screen.getByText('older-session-reply')).toBeInTheDocument();
+    expect(screen.queryByText('newer-session-reply')).not.toBeInTheDocument();
+  });
+});
+
+// A null session means two different things — "nothing picked yet", which
+// auto-select resolves, and "the user asked for a fresh chat", which it must
+// not. Conflating them made New chat snap straight back to the newest session.
+describe('AgentExplorer new chat', () => {
+  afterEach(() => jest.useRealTimers());
+
+  it('stays on a requested new chat instead of reselecting the newest session', async () => {
+    jest.useFakeTimers();
+    await setupWithSession([{ role: 'assistant', content: 'older-session-reply', ts: 1 }]);
+    expect(await screen.findByText('older-session-reply')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('new-chat'));
+    await waitFor(() =>
+      expect(screen.queryByText('older-session-reply')).not.toBeInTheDocument());
+
+    // ...and a poll landing mid-compose must not drag it back either.
+    await act(async () => { jest.advanceTimersByTime(3100); });
+    expect(screen.queryByText('older-session-reply')).not.toBeInTheDocument();
   });
 });
 
