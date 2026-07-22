@@ -99,4 +99,41 @@ describe('JobList windowed fetching', () => {
     });
     expect(mockVenue.jobs.get).not.toHaveBeenCalled();
   });
+
+  it('recovers from a stale count between list() and slice() (#193)', async () => {
+    // Every list() reads count=990, but the index has already grown to
+    // TOTAL (998) by the time slice() runs — the stale-count race behind
+    // #193. fetchPage and fetchWindow both fire on mount, so this must hold
+    // for either caller, not just a fixed call order.
+    const guessCount = 990;
+    mockVenue.workspace.list.mockResolvedValue({ exists: true, count: guessCount, keys: [] });
+    mockVenue.workspace.slice.mockImplementation((_p: string, offset: number, limit: number) =>
+      Promise.resolve({
+        exists: true,
+        count: TOTAL, // slice's own response carries the live count
+        values: Array.from({ length: limit }, (_, i) => ({
+          key: String(offset + i).padStart(4, '0'),
+          value: record(offset + i),
+        })),
+      }));
+
+    render(<JobList />);
+
+    // Page window is first computed against the stale guess (ranks
+    // 980..989), then recomputed against the live count once slice's
+    // response disagrees with it (998 !== 990), landing on 988..997.
+    await waitFor(() => {
+      expect(mockVenue.workspace.slice).toHaveBeenCalledWith('j', guessCount - 10, 10);
+    });
+    await waitFor(() => {
+      expect(mockVenue.workspace.slice).toHaveBeenCalledWith('j', TOTAL - 10, 10);
+    });
+
+    // 988..997 (corrected) and 980..989 (stale) overlap at 988-989, so
+    // assert on ranks unique to each: 997 only in the corrected window,
+    // 980 only in the stale one.
+    expect(await screen.findByText('job-997')).toBeInTheDocument();
+    expect(screen.queryByText('job-980')).not.toBeInTheDocument();
+    expect(screen.getByText(/Showing 10 of 998/)).toBeInTheDocument();
+  });
 });

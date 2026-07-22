@@ -99,17 +99,47 @@ export function JobList({ venueId }: JobListProps = {}) {
       .reverse();
 
   // One page of the full history: ranks [(page-1)*size, page*size) from the end.
+  //
+  // The window is positions-from-the-end, which needs a total count up front —
+  // but `workspace.list("j", 1)` (for the count) and `workspace.slice("j", ...)`
+  // (for the page) are two separate round trips, not one atomic read. If the
+  // index grows between them the window is computed against a stale count and
+  // silently comes out wrong (covia-ai/frontend#193: the newest job landed on
+  // page 2 while page 1 still showed days-old entries). `slice`'s own response
+  // carries the collection's count as read at slice time (CoviaAdapter.java
+  // handleSlice computes `total` from the same live value it pages), so it's
+  // authoritative for that specific read — if it disagrees with the count used
+  // to pick the window, recompute against it and slice once more.
+  const sliceWindow = async (
+    venue: ReturnType<typeof getVenueFor>,
+    windowFor: (count: number) => { start: number; end: number },
+    guessCount: number,
+  ) => {
+    const { start, end } = windowFor(guessCount);
+    let res = end > start ? await venue.workspace.slice("j", start, end - start) : { values: [], count: guessCount };
+    const freshCount = res.count ?? guessCount;
+    if (freshCount !== guessCount) {
+      const corrected = windowFor(freshCount);
+      res = corrected.end > corrected.start
+        ? await venue.workspace.slice("j", corrected.start, corrected.end - corrected.start)
+        : { values: [], count: freshCount };
+    }
+    return { count: res.count ?? freshCount, values: (res.values as unknown[]) ?? [] };
+  };
+
   const fetchPage = useCallback(async (page: number) => {
     if (!venueObj) return;
     const venue = getVenueFor(venueObj, authData);
     setLoading(true);
     try {
-      const { count = 0 } = await venue.workspace.list("j", 1);
-      const end = Math.max(0, count - (page - 1) * itemsPerPage);
-      const start = Math.max(0, end - itemsPerPage);
-      const res = end > start ? await venue.workspace.slice("j", start, end - start) : { values: [] };
+      const { count: guessCount = 0 } = await venue.workspace.list("j", 1);
+      const windowFor = (count: number) => {
+        const end = Math.max(0, count - (page - 1) * itemsPerPage);
+        return { start: Math.max(0, end - itemsPerPage), end };
+      };
+      const { count, values } = await sliceWindow(venue, windowFor, guessCount);
       setTotalCount(count);
-      setJobsData(recordsFromSlice((res.values as unknown[]) ?? []));
+      setJobsData(recordsFromSlice(values));
     } catch {
       setTotalCount(0);
       setJobsData([]);
@@ -126,11 +156,11 @@ export function JobList({ venueId }: JobListProps = {}) {
     const venue = getVenueFor(venueObj, authData);
     setLoading(true);
     try {
-      const { count = 0 } = await venue.workspace.list("j", 1);
-      const start = Math.max(0, count - FILTER_WINDOW);
-      const res = count > start ? await venue.workspace.slice("j", start, count - start) : { values: [] };
+      const { count: guessCount = 0 } = await venue.workspace.list("j", 1);
+      const windowFor = (count: number) => ({ start: Math.max(0, count - FILTER_WINDOW), end: count });
+      const { count, values } = await sliceWindow(venue, windowFor, guessCount);
       setTotalCount(count);
-      setWindowRecords(recordsFromSlice((res.values as unknown[]) ?? []));
+      setWindowRecords(recordsFromSlice(values));
     } catch {
       setTotalCount(0);
       setWindowRecords([]);
