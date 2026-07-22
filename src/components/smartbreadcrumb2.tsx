@@ -47,7 +47,7 @@ export function SmartBreadcrumb({
     // already on.
     if (segments.length === 0) return [];
     const breadcrumbs: BreadcrumbItemType[] = [
-      { label: 'Workspace', href: '/' }
+      { label: 'Home', href: '/' }
     ];
 
     let currentPath = '';
