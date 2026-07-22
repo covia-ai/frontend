@@ -29,21 +29,21 @@ export function PaginationHeader({currentPage, totalPages,nextPage,prevPage,disa
             {/* flex-row-reverse: first JSX child renders rightmost */}
             <PaginationContent className="flex flex-row-reverse w-full">
               {!onLastPage && <PaginationItem>
-                <PaginationLink href="#" aria-label="Go to last page" onClick={() => !disabled && nextPage(totalPages)}>
+                <PaginationLink href="#" aria-label="Go to last page" onClick={(e) => { e.preventDefault(); if (!disabled) nextPage(totalPages); }}>
                   <ChevronsRight />
                 </PaginationLink>
               </PaginationItem>}
 
               {!onLastPage && <PaginationItem>
-                <PaginationNext href="#" onClick={() => !disabled && nextPage(currentPage + 1)} />
+                <PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (!disabled) nextPage(currentPage + 1); }} />
               </PaginationItem>}
 
               {!onFirstPage && <PaginationItem>
-                <PaginationPrevious href="#" onClick={() => !disabled && prevPage(currentPage - 1)} />
+                <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (!disabled) prevPage(currentPage - 1); }} />
               </PaginationItem>}
 
               {!onFirstPage && <PaginationItem>
-                <PaginationLink href="#" aria-label="Go to first page" onClick={() => !disabled && prevPage(1)}>
+                <PaginationLink href="#" aria-label="Go to first page" onClick={(e) => { e.preventDefault(); if (!disabled) prevPage(1); }}>
                   <ChevronsLeft />
                 </PaginationLink>
               </PaginationItem>}
