@@ -90,7 +90,7 @@ export function Menu({ isOpen }: MenuProps) {
                                   ? "secondary"
                                   : "ghost"
                               }
-                              className="w-full justify-start h-10 mb-1"
+                              className="w-full justify-start h-10 mb-1 relative"
                               asChild
                             >
                               <Link href={href}>
@@ -109,16 +109,30 @@ export function Menu({ isOpen }: MenuProps) {
                                 >
                                   {label}
                                 </p>
-                                {label === HITL_LABEL && hitlOpenCount > 0 && isOpen !== false && (
-                                  <span
-                                    data-testid="hitl-nav-badge"
-                                    className={cn(
-                                      "ml-auto min-w-5 h-5 px-1.5 flex items-center justify-center rounded-full text-xs font-semibold",
-                                      TONE_STYLES.attention.pill,
-                                    )}
-                                  >
-                                    {hitlOpenCount}
-                                  </span>
+                                {/* Collapsed, the label is translated off-screen and a
+                                    count would have nowhere to sit — so the pending
+                                    state degrades to a dot on the icon rather than
+                                    disappearing entirely. */}
+                                {label === HITL_LABEL && hitlOpenCount > 0 && (
+                                  isOpen === false ? (
+                                    <span
+                                      data-testid="hitl-nav-dot"
+                                      className={cn(
+                                        "absolute top-1.5 right-1.5 h-2 w-2 rounded-full",
+                                        TONE_STYLES.attention.dot,
+                                      )}
+                                    />
+                                  ) : (
+                                    <span
+                                      data-testid="hitl-nav-badge"
+                                      className={cn(
+                                        "ml-auto min-w-5 h-5 px-1.5 flex items-center justify-center rounded-full text-xs font-semibold",
+                                        TONE_STYLES.attention.pill,
+                                      )}
+                                    >
+                                      {hitlOpenCount}
+                                    </span>
+                                  )
                                 )}
                               </Link>
                             </Button>

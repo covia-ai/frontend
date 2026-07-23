@@ -4,6 +4,7 @@
 import { SheetMenu } from "@/components/admin-panel/sheet-menu";
 import { ChromeSignInButton } from "./signin-button";
 import { VenueSelector } from "@/components/VenueSelector";
+import { HitlIndicator } from "@/components/HitlIndicator";
 import { DarkLightToggle } from "../DarkLightToggle";
 import { SmartBreadcrumb } from "../smartbreadcrumb2";
 import { Separator } from "../ui/separator";
@@ -52,6 +53,7 @@ export function TopBar(props:any) {
             )}
           </div>
           <div className="flex flex-1 items-center justify-end space-x-4">
+              <HitlIndicator />
               <DarkLightToggle/>
               <VenueSelector />
               <ChromeSignInButton/>
