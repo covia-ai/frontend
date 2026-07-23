@@ -51,14 +51,14 @@ export const HITL_RESPOND_ADDRESS = "v/ops/hitl/respond";
 // every call — unacceptable for a page load or a poll (AGENTS.md), which is
 // why the lattice is read directly here.
 export async function listHitlRequests(venue: Venue): Promise<HitlRequest[]> {
-  let keys: string[];
-  try {
-    const res = await venue.workspace.list("h");
-    keys = ((res as { keys?: string[] })?.keys) ?? [];
-  } catch {
-    // An inbox that has never received a request simply doesn't exist yet.
-    return [];
-  }
+  // An inbox that has never received a request resolves to Nil (exists:false)
+  // rather than throwing, so anything thrown here is a genuine failure — a 403
+  // because the selected venue isn't the one holding your requests, an expired
+  // session, an unreachable host. Let it propagate. Swallowing it renders
+  // "nothing waiting on you", which is indistinguishable from a healthy empty
+  // inbox and leaves the user with nothing to debug.
+  const res = await venue.workspace.list("h");
+  const keys = ((res as { keys?: string[] })?.keys) ?? [];
 
   const records = await Promise.all(keys.map((key) => readHitlRequest(venue, key)));
   return records

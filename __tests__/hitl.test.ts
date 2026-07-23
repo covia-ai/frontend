@@ -69,11 +69,22 @@ describe('listHitlRequests', () => {
   });
 
   it('returns [] when the inbox has never been created', async () => {
-    const rejecting = jest.fn().mockRejectedValue(new Error('Nil'));
-    const { venue, read } = venueWithInbox({}, rejecting);
+    // An inbox with no requests yet resolves to Nil rather than throwing.
+    const nil = jest.fn().mockResolvedValue({ type: 'Nil', exists: false });
+    const { venue, read } = venueWithInbox({}, nil);
 
     await expect(listHitlRequests(venue)).resolves.toEqual([]);
     expect(read).not.toHaveBeenCalled();
+  });
+
+  it('propagates a failed read instead of reporting an empty inbox', async () => {
+    // A 403 (wrong venue for this identity) or a dead host must not render as
+    // "nothing waiting on you" — that is indistinguishable from a healthy
+    // empty inbox and leaves nothing to diagnose.
+    const forbidden = jest.fn().mockRejectedValue(new Error('HTTP 403: Request failed'));
+    const { venue } = venueWithInbox({}, forbidden);
+
+    await expect(listHitlRequests(venue)).rejects.toThrow('HTTP 403');
   });
 
   it('drops keys whose record cannot be read', async () => {

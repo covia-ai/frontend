@@ -51,10 +51,12 @@ export function useHitlOpenCountPoll(): void {
       return;
     }
     let ignore = false;
+    // The background poll stays quiet — the inbox page is where a read failure
+    // gets reported. Logging keeps it visible in the console rather than lost.
     const load = () =>
       listHitlRequests(venue)
         .then((list) => { if (!ignore) publishOpenCount(list); })
-        .catch(() => {});
+        .catch((err: unknown) => console.warn("HITL open-count poll failed:", err));
 
     load();
     const id = setInterval(load, HITL_POLL_MS);
@@ -68,6 +70,7 @@ export function useHitlRequests() {
   const isAuthenticated = useIsAuthenticated();
   const [requests, setRequests] = useState<HitlRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
 
   const refresh = useCallback(() => setRefreshTick((t) => t + 1), []);
@@ -75,11 +78,13 @@ export function useHitlRequests() {
   useEffect(() => {
     if (!venue || !isAuthenticated) {
       setRequests([]);
+      setError(null);
       setLoading(false);
       return;
     }
     let ignore = false;
     setLoading(true);
+    setError(null);
     listHitlRequests(venue)
       .then((list) => {
         if (ignore) return;
@@ -89,10 +94,15 @@ export function useHitlRequests() {
         // for the next poll.
         publishOpenCount(list);
       })
-      .catch(() => { if (!ignore) setRequests([]); })
+      .catch((err: unknown) => {
+        if (ignore) return;
+        setRequests([]);
+        // Surfaced by the page: a failed read must never look like an empty inbox.
+        setError(err instanceof Error ? err.message : String(err));
+      })
       .finally(() => { if (!ignore) setLoading(false); });
     return () => { ignore = true; };
   }, [venue, isAuthenticated, refreshTick]);
 
-  return { requests, loading, refresh };
+  return { requests, loading, error, refresh };
 }

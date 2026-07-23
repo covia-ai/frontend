@@ -148,7 +148,7 @@ function AskField({
 
 export function HitlInbox() {
   const venue = useAuthenticatedVenue();
-  const { requests, loading, refresh } = useHitlRequests();
+  const { requests, loading, error, refresh } = useHitlRequests();
 
   const [statusFilter, setStatusFilter] = useState<string>("open");
   const [selected, setSelected] = useState<HitlRequest | null>(null);
@@ -234,7 +234,22 @@ export function HitlInbox() {
         </div>
       )}
 
-      {!loading && visible.length === 0 && (
+      {!loading && error && (
+        <div
+          data-testid="hitl-error"
+          className="border border-destructive/40 rounded-md p-4 flex flex-col gap-1"
+        >
+          <div className="text-sm font-medium text-destructive">Couldn&apos;t read your inbox</div>
+          <div className="text-sm text-muted-foreground break-words">{error}</div>
+          <div className="text-xs text-muted-foreground mt-1">
+            The inbox lives in your own namespace on one venue — check that the selected
+            venue is the one holding your requests, and that you are signed in with the
+            same key.
+          </div>
+        </div>
+      )}
+
+      {!loading && !error && visible.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 gap-2">
           <Inbox size={64} className="text-primary" />
           <div className="text-primary text-lg">Nothing waiting on you</div>
@@ -244,7 +259,7 @@ export function HitlInbox() {
         </div>
       )}
 
-      {!loading && visible.length > 0 && (
+      {!loading && !error && visible.length > 0 && (
         <div className="flex flex-col gap-3">
           {visible.map((request) => (
             <Card key={request.id} className="p-4 flex flex-col gap-2" data-testid="hitl-request">
