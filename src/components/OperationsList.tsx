@@ -12,7 +12,8 @@ import { TopBar } from "./admin-panel/TopBar";
 import { Spinner } from '@/components/ui/shadcn-io/spinner';
 import { AssetCard } from "./AssetCard";
 import { PaginationHeader } from "./PaginationHeader";
-import { PlayCircle } from "lucide-react";
+import { PlayCircle, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { listCatalogOperations } from "@/lib/operations-catalog";
 import { FiltersSheet } from "./FiltersSheet";
 
@@ -43,6 +44,10 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
     () => venueObj ? getVenueFor(venueObj, authData) : null,
     [venueObj, authData],
   );
+  const isAuthenticated = authData !== null;
+  // Bumped by the refresh control so ops registered after page load show up
+  // without a reload — the catalog is otherwise fetched once per venue.
+  const [refreshTick, setRefreshTick] = useState(0);
 
   const nextPage = (page: number) => {
     setCurrentPage(page)
@@ -64,10 +69,11 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
         setLoading(true);
         setAssetsMetadata([]);
         try {
-          // Discover ops from the venue catalog (v/ops + v/test/ops) by path —
-          // one read per tree, no per-asset round trip. Each op keeps its
-          // resolvable catalog path as its id (drives the URL).
-          const ops = await listCatalogOperations(activeVenue);
+          // Discover ops from the venue catalog (v/ops + v/test/ops), plus the
+          // signed-in user's own w/ops, by path — one read per tree, no
+          // per-asset round trip. Each op keeps its resolvable catalog path as
+          // its id (drives the URL).
+          const ops = await listCatalogOperations(activeVenue, { includeUserOps: isAuthenticated });
           const sorted = [...ops].sort((a, b) =>
             (a.metadata?.name ?? a.path).localeCompare(b.metadata?.name ?? b.path));
           if (!ignore) setAssetsMetadata(sorted.map(op => new Operation(op.path, activeVenue, op.metadata)));
@@ -79,7 +85,7 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
       }
      fetchAssets();
      return () => { ignore = true; };
-  }, [venue]);
+  }, [venue, isAuthenticated, refreshTick]);
 
   const adapterOptions = useMemo(() => {
     const names = assetsMetadata
@@ -151,6 +157,17 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
             search={{ value: searchInput, onChange: handleSearchChange, placeholder: "Type keyword to search…" }}
             groups={tagOptions.length > 0 ? [{ label: "Tags", options: tagOptions, selected: selectedTags, onChange: setSelectedTags }] : []}
           />
+          <Button
+            variant="outline"
+            size="icon"
+            data-testid="refresh-operations"
+            aria-label="Refresh operations"
+            title="Refresh operations"
+            disabled={isLoading}
+            onClick={() => setRefreshTick((t) => t + 1)}
+          >
+            <RefreshCw size={16} className={isLoading ? "animate-spin" : undefined} />
+          </Button>
         </div>
         <div className="flex flex-row flex-nowrap items-center justify-between w-full my-2 gap-4">
           <div className="text-card-foreground text-xs whitespace-nowrap">
@@ -169,7 +186,7 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
           <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 3xl:grid-cols-5 4xl:grid-cols-6 items-stretch justify-center gap-4">
             {
             filteredAssets.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset) => (
-              <AssetCard key={asset.id} asset={asset} type="operations" compact={true} venue={venue ?? undefined} authenticated={authData !== null}/>
+              <AssetCard key={asset.id} asset={asset} type="operations" compact={true} venue={venue ?? undefined} authenticated={isAuthenticated}/>
             ))}
           </div>
         )}

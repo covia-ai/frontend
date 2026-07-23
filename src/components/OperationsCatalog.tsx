@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useIsAuthenticated } from "@/hooks/use-auth";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { Input } from "@/components/ui/input";
@@ -32,7 +33,7 @@ import {
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { listCatalogOperations, resolveOperationByAddress, type CatalogOp } from "@/lib/operations-catalog";
 import { useRouter } from "next/navigation";
-import { PlayCircle, Search } from "lucide-react";
+import { PlayCircle, RefreshCw, Search } from "lucide-react";
 import { toast } from "sonner";
 
 function adapterOf(path: string): string {
@@ -58,6 +59,10 @@ function defaultsFromSchema(schema: any): string {
 
 export function OperationsCatalog() {
   const venue = useAuthenticatedVenue();
+  const isAuthenticated = useIsAuthenticated();
+  // Bumped by the refresh control so ops registered after page load show up
+  // without a reload — the catalog is otherwise fetched once per venue.
+  const [refreshTick, setRefreshTick] = useState(0);
   const [ops, setOps] = useState<CatalogOp[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -71,11 +76,11 @@ export function OperationsCatalog() {
   useEffect(() => {
     if (!venue) return;
     setLoading(true);
-    listCatalogOperations(venue)
+    listCatalogOperations(venue, { includeUserOps: isAuthenticated })
       .then((list) => setOps(list))
       .catch(() => toast("Failed to load operation catalog"))
       .finally(() => setLoading(false));
-  }, [venue]);
+  }, [venue, isAuthenticated, refreshTick]);
 
   const adapters = useMemo(
     () => Array.from(new Set(ops.map((op) => adapterOf(op.path)))).sort(),
@@ -173,6 +178,18 @@ export function OperationsCatalog() {
               {filtered.length} ops · {grouped.length} adapters
             </span>
           )}
+          <Button
+            variant="outline"
+            size="icon"
+            className="shrink-0"
+            data-testid="refresh-catalog"
+            aria-label="Refresh operation catalog"
+            title="Refresh operation catalog"
+            disabled={loading}
+            onClick={() => setRefreshTick((t) => t + 1)}
+          >
+            <RefreshCw size={16} className={loading ? "animate-spin" : undefined} />
+          </Button>
         </div>
 
         {loading && (

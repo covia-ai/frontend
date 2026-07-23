@@ -15,9 +15,15 @@ async function readValue(venue: Venue, path: string): Promise<any> {
 // Read a whole catalog sub-tree in a single covia:read and flatten it to
 // {path, metadata} entries. Catalog entries are full inline asset metadata
 // (see OPERATIONS.md §5), so one read returns paths + metadata together —
-// no per-op round trip. `depth` is how many key levels sit above each entry:
-// v/ops/<adapter>/<op> = 2, v/test/ops/<op> = 1.
-async function readCatalog(venue: Venue, base: string, depth: number): Promise<CatalogOp[]> {
+// no per-op round trip.
+//
+// Operations are matched by shape — any node carrying an `operation` field —
+// rather than at a fixed depth. Venues mix depths: most ops are
+// v/ops/<adapter>/<op>, but some (v/ops/skills, v/ops/memory) sit directly
+// under the root, and the previous hard-coded depth silently dropped those.
+// An operation node is a leaf and is never descended into, so its own
+// input/output schemas can't be mistaken for nested entries.
+async function readCatalog(venue: Venue, base: string): Promise<CatalogOp[]> {
   let tree: any;
   try {
     tree = await readValue(venue, base);
@@ -27,31 +33,32 @@ async function readCatalog(venue: Venue, base: string, depth: number): Promise<C
   if (!tree || typeof tree !== "object") return [];
 
   const out: CatalogOp[] = [];
-  const walk = (node: any, prefix: string, level: number) => {
+  const walk = (node: any, path: string) => {
     if (!node || typeof node !== "object") return;
-    for (const key of Object.keys(node)) {
-      const child = node[key];
-      const path = `${prefix}/${key}`;
-      if (level + 1 >= depth) {
-        if (child?.operation) out.push({ path, metadata: child });
-      } else {
-        walk(child, path, level + 1);
-      }
+    if (node.operation) {
+      out.push({ path, metadata: node });
+      return;
     }
+    for (const key of Object.keys(node)) walk(node[key], `${path}/${key}`);
   };
-  walk(tree, base, 0);
+  walk(tree, base);
   return out;
 }
 
-// List every operation the venue offers, by catalog path. Reads v/ops and
-// v/test/ops (two calls total), preserving the namespace-explicit path as the
-// operation's identity.
-export async function listCatalogOperations(venue: Venue): Promise<CatalogOp[]> {
-  const [ops, testOps] = await Promise.all([
-    readCatalog(venue, "v/ops", 2),
-    readCatalog(venue, "v/test/ops", 1),
-  ]);
-  return [...ops, ...testOps];
+// List every operation available to the caller, by catalog path, preserving
+// the namespace-explicit path as the operation's identity. Always reads the
+// venue catalogs (v/ops, v/test/ops); when the caller is signed in it also
+// reads w/ops — the current user's own operations. w/ops is namespace-relative,
+// so it resolves to the authenticated DID; a signed-out caller has no DID for
+// it to resolve against, so that read is skipped rather than left to fail.
+export async function listCatalogOperations(
+  venue: Venue,
+  options: { includeUserOps?: boolean } = {},
+): Promise<CatalogOp[]> {
+  const bases = ["v/ops", "v/test/ops"];
+  if (options.includeUserOps) bases.push("w/ops");
+  const trees = await Promise.all(bases.map((base) => readCatalog(venue, base)));
+  return trees.flat();
 }
 
 // Resolve an operation from its namespace-explicit URL address:

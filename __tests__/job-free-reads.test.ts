@@ -69,6 +69,58 @@ describe('listCatalogOperations', () => {
     const { venue } = venueWithTree({});
     await expect(listCatalogOperations(venue)).resolves.toEqual([]);
   });
+
+  it('includes operations at any depth, including directly under the root', async () => {
+    // Venues mix depths: most ops are v/ops/<adapter>/<op>, but some (skills,
+    // memory) sit directly under v/ops. A fixed-depth walk dropped the latter.
+    const { venue } = venueWithTree({
+      'v/ops': {
+        agent: { suspend: { operation: {} } },
+        skills: { name: 'Skills', operation: { adapter: 'skills' } },
+      },
+    });
+
+    const ops = await listCatalogOperations(venue);
+
+    expect(ops.map((o) => o.path).sort()).toEqual(['v/ops/agent/suspend', 'v/ops/skills']);
+  });
+
+  it('excludes namespace nodes and never descends into an operation', async () => {
+    const { venue } = venueWithTree({
+      'v/ops': {
+        // `agent` is a pure namespace; the op's own input schema carries a
+        // nested `operation` key that must not be mistaken for an entry.
+        agent: { suspend: { operation: { input: { nested: { operation: 'decoy' } } } } },
+        // A namespace holding nothing operation-shaped at all.
+        empty: { notAnOp: { just: 'data' } },
+      },
+    });
+
+    const ops = await listCatalogOperations(venue);
+
+    expect(ops.map((o) => o.path)).toEqual(['v/ops/agent/suspend']);
+  });
+
+  it('reads the user catalog at w/ops only when includeUserOps is set', async () => {
+    const tree = {
+      'v/ops': { agent: { suspend: { operation: {} } } },
+      'w/ops': { 'infer-validate': { operation: { adapter: 'orchestrator' } } },
+    };
+
+    const signedOut = venueWithTree(tree);
+    await expect(listCatalogOperations(signedOut.venue)).resolves.toEqual([
+      { path: 'v/ops/agent/suspend', metadata: { operation: {} } },
+    ]);
+    expect(signedOut.read).not.toHaveBeenCalledWith('w/ops');
+
+    const signedIn = venueWithTree(tree);
+    const ops = await listCatalogOperations(signedIn.venue, { includeUserOps: true });
+    expect(ops.map((o) => o.path).sort()).toEqual([
+      'v/ops/agent/suspend',
+      'w/ops/infer-validate',
+    ]);
+    expect(signedIn.read).toHaveBeenCalledWith('w/ops');
+  });
 });
 
 describe('resolveOperationByAddress', () => {
