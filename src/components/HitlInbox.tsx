@@ -1,11 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -14,14 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
@@ -34,8 +25,7 @@ import {
   type HitlAsk,
   type HitlRequest,
 } from "@/lib/hitl";
-import Link from "next/link";
-import { Bot, Inbox, RefreshCw } from "lucide-react";
+import { Bot, ChevronDown, ChevronUp, Inbox, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 const ALL = "_all_";
@@ -53,10 +43,29 @@ function formatWhen(ms?: number): string {
   return ms ? new Date(ms).toLocaleString() : "";
 }
 
-// DIDs are too long to sit in a table cell; the full value stays in `title`.
+// DIDs are too long to sit in a card row; the full value stays in `title`.
 function shortDid(did?: string): string {
   if (!did) return "unknown sender";
   return did.length > 28 ? `${did.slice(0, 18)}…${did.slice(-6)}` : did;
+}
+
+// True if the request offers capability grants anywhere. Grants are shown but
+// never echoed (see respondToHitl), and a request carrying them is never
+// answerable in one click — the warning has to be read first.
+function offersGrants(request: HitlRequest): boolean {
+  return (request.asks ?? []).some(
+    (ask) => (ask.grants?.length ?? 0) > 0 || (ask.options ?? []).some((o) => (o.grants?.length ?? 0) > 0),
+  );
+}
+
+// A single approval or choice is one decision, so it resolves in one click
+// straight from the card. Anything else — several asks, free text, multi-select
+// — needs a form, and gets one inline.
+function quickAsk(request: HitlRequest): HitlAsk | null {
+  const asks = request.asks ?? [];
+  if (asks.length !== 1 || offersGrants(request)) return null;
+  const ask = asks[0];
+  return ask.type === "approval" || ask.type === "choice" ? ask : null;
 }
 
 // Who raised this. An agent request still carries its owner's DID in `from`,
@@ -88,28 +97,24 @@ function Requester({ request, selfDid }: { request: HitlRequest; selfDid?: strin
   );
 }
 
-// True if the request offers capability grants anywhere. Grants are shown but
-// never echoed back (see respondToHitl), so the UI says so rather than letting
-// a responder assume ticking a box confers them.
-function offersGrants(request: HitlRequest): boolean {
-  return (request.asks ?? []).some(
-    (ask) => (ask.grants?.length ?? 0) > 0 || (ask.options ?? []).some((o) => (o.grants?.length ?? 0) > 0),
-  );
-}
-
-function AskField({
+// Every option is a button. A select would cost an open, a pick and a close for
+// what is one decision, and hides the alternatives until you go looking.
+function AskControl({
   ask,
   value,
+  disabled,
   onChange,
 }: {
   ask: HitlAsk;
   value: HitlAnswer | undefined;
+  disabled?: boolean;
   onChange: (value: HitlAnswer) => void;
 }) {
   if (ask.type === "text") {
     return (
       <Textarea
         value={typeof value === "string" ? value : ""}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Your answer…"
       />
@@ -118,67 +123,69 @@ function AskField({
 
   if (ask.type === "approval") {
     return (
-      <RadioGroup
-        value={value === true ? "yes" : value === false ? "no" : ""}
-        onValueChange={(v) => onChange(v === "yes")}
-        className="flex gap-6"
-      >
+      <div className="flex flex-wrap gap-2">
         {[
-          { id: "yes", label: "Yes" },
-          { id: "no", label: "No" },
-        ].map((opt) => (
-          <div key={opt.id} className="flex items-center gap-2">
-            <RadioGroupItem value={opt.id} id={`${ask.id}-${opt.id}`} />
-            <Label htmlFor={`${ask.id}-${opt.id}`} className="font-normal">{opt.label}</Label>
-          </div>
+          { id: "yes", label: "Yes", val: true },
+          { id: "no", label: "No", val: false },
+        ].map((o) => (
+          <Button
+            key={o.id}
+            type="button"
+            size="sm"
+            data-testid="hitl-ask-option"
+            variant={value === o.val ? "default" : "outline"}
+            disabled={disabled}
+            onClick={() => onChange(o.val)}
+          >
+            {o.label}
+          </Button>
         ))}
-      </RadioGroup>
+      </div>
     );
   }
 
   if (ask.type === "choice") {
     return (
-      <RadioGroup
-        value={typeof value === "string" ? value : ""}
-        onValueChange={onChange}
-        className="flex flex-col gap-2"
-      >
-        {(ask.options ?? []).map((opt) => (
-          <div key={opt.id} className="flex items-start gap-2">
-            <RadioGroupItem value={opt.id} id={`${ask.id}-${opt.id}`} className="mt-1" />
-            <Label htmlFor={`${ask.id}-${opt.id}`} className="font-normal">
-              {opt.label}
-              {opt.description && (
-                <span className="block text-xs text-muted-foreground">{opt.description}</span>
-              )}
-            </Label>
-          </div>
+      <div className="flex flex-wrap gap-2">
+        {(ask.options ?? []).map((o) => (
+          <Button
+            key={o.id}
+            type="button"
+            size="sm"
+            data-testid="hitl-ask-option"
+            title={o.description}
+            variant={value === o.id ? "default" : "outline"}
+            disabled={disabled}
+            onClick={() => onChange(o.id)}
+          >
+            {o.label}
+          </Button>
         ))}
-      </RadioGroup>
+      </div>
     );
   }
 
-  const selectedIds = Array.isArray(value) ? value : [];
+  const selected = Array.isArray(value) ? value : [];
   return (
-    <div className="flex flex-col gap-2">
-      {(ask.options ?? []).map((opt) => (
-        <div key={opt.id} className="flex items-start gap-2">
-          <Checkbox
-            id={`${ask.id}-${opt.id}`}
-            className="mt-1"
-            checked={selectedIds.includes(opt.id)}
-            onCheckedChange={(checked) =>
-              onChange(checked ? [...selectedIds, opt.id] : selectedIds.filter((i) => i !== opt.id))
-            }
-          />
-          <Label htmlFor={`${ask.id}-${opt.id}`} className="font-normal">
-            {opt.label}
-            {opt.description && (
-              <span className="block text-xs text-muted-foreground">{opt.description}</span>
-            )}
-          </Label>
-        </div>
-      ))}
+    <div className="flex flex-wrap gap-2">
+      {(ask.options ?? []).map((o) => {
+        const on = selected.includes(o.id);
+        return (
+          <Button
+            key={o.id}
+            type="button"
+            size="sm"
+            data-testid="hitl-ask-option"
+            title={o.description}
+            aria-pressed={on}
+            variant={on ? "default" : "outline"}
+            disabled={disabled}
+            onClick={() => onChange(on ? selected.filter((i) => i !== o.id) : [...selected, o.id])}
+          >
+            {o.label}
+          </Button>
+        );
+      })}
     </div>
   );
 }
@@ -194,48 +201,61 @@ export function HitlInbox() {
   const credsForVenue = useAuthStore((x) => (venue ? x.authMap[venue.venueId] ?? null : null));
 
   const [statusFilter, setStatusFilter] = useState<string>("open");
-  const [selected, setSelected] = useState<HitlRequest | null>(null);
+  // Only one request is ever open for editing, so its draft can live here
+  // rather than in a map keyed by request id.
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, HitlAnswer>>({});
   const [comment, setComment] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
 
   const visible = useMemo(
     () => (statusFilter === ALL ? requests : requests.filter((r) => r.status === statusFilter)),
     [requests, statusFilter],
   );
 
-  function openRespond(request: HitlRequest) {
-    setSelected(request);
+  function toggleExpanded(request: HitlRequest) {
+    if (expandedId === request.id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(request.id);
     setAnswers({});
     setComment("");
   }
 
-  async function submit(outcome: "answer" | "reject") {
-    if (!venue || !selected) return;
+  async function send(
+    request: HitlRequest,
+    outcome: "answer" | "reject",
+    override?: Record<string, HitlAnswer>,
+  ) {
+    if (!venue) return;
+    const body = override ?? answers;
     if (outcome === "answer") {
-      const missing = missingRequiredAnswers(selected.asks ?? [], answers);
+      const missing = missingRequiredAnswers(request.asks ?? [], body);
       if (missing.length > 0) {
         toast("Some required asks are unanswered", { description: missing.join(", ") });
         return;
       }
     }
-    setSubmitting(true);
+    setSubmittingId(request.id);
     try {
       await respondToHitl(venue, {
-        id: selected.id,
+        id: request.id,
         outcome,
-        ...(outcome === "answer" ? { answers } : {}),
+        ...(outcome === "answer" ? { answers: body } : {}),
         ...(comment.trim() ? { comment: comment.trim() } : {}),
       });
       toast(outcome === "answer" ? "Response sent" : "Request rejected");
-      setSelected(null);
+      setExpandedId(null);
+      setAnswers({});
+      setComment("");
       refresh();
     } catch (err) {
       toast("Unable to send response", {
         description: err instanceof Error ? err.message : undefined,
       });
     } finally {
-      setSubmitting(false);
+      setSubmittingId(null);
     }
   }
 
@@ -311,90 +331,173 @@ export function HitlInbox() {
 
       {!loading && !error && visible.length > 0 && (
         <div className="flex flex-col gap-3">
-          {visible.map((request) => (
-            <Card key={request.id} className="p-4 flex flex-col gap-2" data-testid="hitl-request">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="font-medium truncate">{request.title}</div>
-                  {request.description && (
-                    <div className="text-sm text-muted-foreground line-clamp-2">
-                      {request.description}
-                    </div>
-                  )}
+          {visible.map((request) => {
+            const quick = quickAsk(request);
+            const isOpen = request.status === "open";
+            const expanded = expandedId === request.id;
+            const busy = submittingId === request.id;
+            const asks = request.asks ?? [];
+
+            return (
+              <Card key={request.id} className="p-4 flex flex-col gap-3" data-testid="hitl-request">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="font-medium">{request.title}</div>
+                    {request.description && (
+                      <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                        {request.description}
+                      </div>
+                    )}
+                  </div>
+                  <StatusBadge status={request.status} kind="hitl" as="pill" className="shrink-0 text-xs" />
                 </div>
-                <StatusBadge status={request.status} kind="hitl" as="pill" className="shrink-0 text-xs" />
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <Requester request={request} selfDid={credsForVenue?.did} />
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+
+                <div className="flex items-center justify-between gap-4">
+                  <Requester request={request} selfDid={credsForVenue?.did} />
+                  <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
                     {formatWhen(request.created)}
                   </span>
-                  {request.status === "open" && (
-                    <Button size="sm" onClick={() => openRespond(request)}>Respond</Button>
-                  )}
                 </div>
-              </div>
-            </Card>
-          ))}
+
+                {/* One decision → answer it straight from the card. */}
+                {isOpen && quick && !expanded && (
+                  <div className="flex flex-wrap items-center gap-2 border-t pt-3">
+                    <span className="text-sm mr-1">{quick.prompt}</span>
+                    {quick.type === "approval" ? (
+                      <>
+                        <Button
+                          size="sm"
+                          data-testid="hitl-quick-answer"
+                          disabled={busy}
+                          onClick={() => send(request, "answer", { [quick.id]: true })}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          data-testid="hitl-quick-answer"
+                          disabled={busy}
+                          onClick={() => send(request, "answer", { [quick.id]: false })}
+                        >
+                          Decline
+                        </Button>
+                      </>
+                    ) : (
+                      (quick.options ?? []).map((o) => (
+                        <Button
+                          key={o.id}
+                          size="sm"
+                          data-testid="hitl-quick-answer"
+                          title={o.description}
+                          disabled={busy}
+                          onClick={() => send(request, "answer", { [quick.id]: o.id })}
+                        >
+                          {o.label}
+                        </Button>
+                      ))
+                    )}
+                    <div className="flex-1" />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      data-testid="hitl-reject"
+                      className="text-muted-foreground"
+                      disabled={busy}
+                      onClick={() => send(request, "reject")}
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                )}
+
+                {/* Several asks, or one that needs typing — form, inline. */}
+                {isOpen && !quick && !expanded && (
+                  <div className="flex items-center gap-2 border-t pt-3">
+                    <span className="text-xs text-muted-foreground">
+                      {asks.length} {asks.length === 1 ? "ask" : "asks"}
+                    </span>
+                    <div className="flex-1" />
+                    <Button
+                      size="sm"
+                      data-testid="hitl-respond-toggle"
+                      disabled={busy}
+                      onClick={() => toggleExpanded(request)}
+                    >
+                      Respond <ChevronDown size={14} className="ml-1" />
+                    </Button>
+                  </div>
+                )}
+
+                {isOpen && expanded && (
+                  <div className="flex flex-col gap-4 border-t pt-3">
+                    {offersGrants(request) && (
+                      <p className="text-xs text-muted-foreground border rounded-md p-2">
+                        This request offers capability grants. Responding here confers none
+                        of them — grant them deliberately via the API if that is your intent.
+                      </p>
+                    )}
+
+                    {asks.map((ask) => (
+                      <div key={ask.id} className="flex flex-col gap-2">
+                        <Label className="text-sm">
+                          {ask.prompt}
+                          {ask.required && <span className="text-destructive"> *</span>}
+                        </Label>
+                        <AskControl
+                          ask={ask}
+                          value={answers[ask.id]}
+                          disabled={busy}
+                          onChange={(value) => setAnswers((prev) => ({ ...prev, [ask.id]: value }))}
+                        />
+                      </div>
+                    ))}
+
+                    <div className="flex flex-col gap-2">
+                      <Label className="text-sm">Comment</Label>
+                      <Textarea
+                        value={comment}
+                        disabled={busy}
+                        onChange={(e) => setComment(e.target.value)}
+                        placeholder="Optional — the reason the requester sees when rejecting."
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        size="sm"
+                        data-testid="hitl-submit"
+                        disabled={busy}
+                        onClick={() => send(request, "answer")}
+                      >
+                        {busy ? "Sending…" : "Send response"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        data-testid="hitl-reject"
+                        disabled={busy}
+                        onClick={() => send(request, "reject")}
+                      >
+                        Reject
+                      </Button>
+                      <div className="flex-1" />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() => toggleExpanded(request)}
+                      >
+                        Cancel <ChevronUp size={14} className="ml-1" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            );
+          })}
         </div>
       )}
-
-      <Sheet open={selected !== null} onOpenChange={(open) => !open && setSelected(null)}>
-        <SheetContent className="overflow-y-auto w-full sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle>{selected?.title}</SheetTitle>
-            {selected?.description && <SheetDescription>{selected.description}</SheetDescription>}
-            {selected && <Requester request={selected} selfDid={credsForVenue?.did} />}
-          </SheetHeader>
-
-          <div className="flex flex-col gap-6 px-4">
-            {selected && offersGrants(selected) && (
-              <p className="text-xs text-muted-foreground border rounded-md p-2">
-                This request offers capability grants. Responding here confers none of
-                them — grant them deliberately via the API if that is your intent.
-              </p>
-            )}
-
-            {(selected?.asks ?? []).map((ask) => (
-              <div key={ask.id} className="flex flex-col gap-2">
-                <Label className="text-sm">
-                  {ask.prompt}
-                  {ask.required && <span className="text-destructive"> *</span>}
-                </Label>
-                <AskField
-                  ask={ask}
-                  value={answers[ask.id]}
-                  onChange={(value) => setAnswers((prev) => ({ ...prev, [ask.id]: value }))}
-                />
-              </div>
-            ))}
-
-            <div className="flex flex-col gap-2">
-              <Label className="text-sm">Comment</Label>
-              <Textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Optional — the reason the requester sees when rejecting."
-              />
-            </div>
-          </div>
-
-          <SheetFooter className="flex-row gap-2 justify-end">
-            <Button
-              variant="outline"
-              disabled={submitting}
-              onClick={() => submit("reject")}
-              data-testid="hitl-reject"
-            >
-              Reject
-            </Button>
-            <Button disabled={submitting} onClick={() => submit("answer")} data-testid="hitl-answer">
-              {submitting ? "Sending…" : "Answer"}
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }
