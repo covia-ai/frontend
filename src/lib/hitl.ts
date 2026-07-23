@@ -32,8 +32,13 @@ export type HitlRequest = {
   id: string;
   title: string;
   status: HitlStatus;
-  /** DID of the requester. */
+  /** DID of the requesting user — the agent's owner when `agent` is set. */
   from?: string;
+  /**
+   * Id of the agent that raised the request, when one did. Absent for requests
+   * raised directly by a person or a plain operation call.
+   */
+  agent?: string;
   description?: string;
   created?: number;
   expires?: number;

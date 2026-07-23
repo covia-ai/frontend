@@ -34,7 +34,8 @@ import {
   type HitlAsk,
   type HitlRequest,
 } from "@/lib/hitl";
-import { Inbox, RefreshCw } from "lucide-react";
+import Link from "next/link";
+import { Bot, Inbox, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 const ALL = "_all_";
@@ -50,6 +51,41 @@ const STATUS_FILTERS = [
 
 function formatWhen(ms?: number): string {
   return ms ? new Date(ms).toLocaleString() : "";
+}
+
+// DIDs are too long to sit in a table cell; the full value stays in `title`.
+function shortDid(did?: string): string {
+  if (!did) return "unknown sender";
+  return did.length > 28 ? `${did.slice(0, 18)}…${did.slice(-6)}` : did;
+}
+
+// Who raised this. An agent request still carries its owner's DID in `from`,
+// but the agent is the useful attribution — a raw owner DID tells you nothing
+// about which of your agents is blocked waiting on you.
+function Requester({ request, selfDid }: { request: HitlRequest; selfDid?: string }) {
+  if (request.agent) {
+    return (
+      <div className="flex items-center gap-2 min-w-0 text-xs" title={request.from}>
+        <Bot size={14} className="text-muted-foreground shrink-0" />
+        <span className="truncate">
+          Agent <span className="font-medium">{request.agent}</span>
+        </span>
+        <Link
+          href={`/agents/explorer?agentId=${encodeURIComponent(request.agent)}`}
+          data-testid="hitl-view-agent"
+          className="text-primary hover:underline whitespace-nowrap shrink-0"
+        >
+          View agent
+        </Link>
+      </div>
+    );
+  }
+  const isSelf = !!selfDid && selfDid === request.from;
+  return (
+    <div className="text-xs text-muted-foreground font-mono truncate" title={request.from}>
+      {shortDid(request.from)}{isSelf ? " (you)" : ""}
+    </div>
+  );
 }
 
 // True if the request offers capability grants anywhere. Grants are shown but
@@ -289,9 +325,7 @@ export function HitlInbox() {
                 <StatusBadge status={request.status} kind="hitl" as="pill" className="shrink-0 text-xs" />
               </div>
               <div className="flex items-center justify-between gap-4">
-                <div className="text-xs text-muted-foreground font-mono truncate">
-                  {request.from}
-                </div>
+                <Requester request={request} selfDid={credsForVenue?.did} />
                 <div className="flex items-center gap-3 shrink-0">
                   <span className="text-xs text-muted-foreground whitespace-nowrap">
                     {formatWhen(request.created)}
@@ -311,6 +345,7 @@ export function HitlInbox() {
           <SheetHeader>
             <SheetTitle>{selected?.title}</SheetTitle>
             {selected?.description && <SheetDescription>{selected.description}</SheetDescription>}
+            {selected && <Requester request={selected} selfDid={credsForVenue?.did} />}
           </SheetHeader>
 
           <div className="flex flex-col gap-6 px-4">
