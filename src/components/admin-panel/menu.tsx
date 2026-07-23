@@ -7,7 +7,9 @@ import { useMemo } from "react";
 
 import { cn } from "@/lib/utils";
 import { getMenuList } from "@/lib/menu-list";
+import { TONE_STYLES } from "@/lib/status";
 import { useIsAuthenticated } from "@/hooks/use-auth";
+import { useHitlOpenCount } from "@/hooks/use-hitl";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CollapseMenuButton } from "@/components/admin-panel/collapse-menu-button";
@@ -22,14 +24,20 @@ interface MenuProps {
   isOpen: boolean | undefined;
 }
 
-// Both destinations require a signed-in user under the hood (Workspace's
-// data is per-user, Secrets are per-user credentials) — hide them from the
-// sidebar entirely rather than showing a sign-in wall after navigating in.
-const AUTH_ONLY_LABELS = new Set(["Workspace", "Secrets"]);
+// All of these require a signed-in user under the hood (Workspace's data is
+// per-user, Secrets are per-user credentials, and the HITL inbox is the
+// caller's own h/ namespace) — hide them from the sidebar entirely rather than
+// showing a sign-in wall after navigating in.
+const AUTH_ONLY_LABELS = new Set(["Workspace", "Secrets", "HITL"]);
+
+// Only this entry carries a live count, so the badge is wired by label rather
+// than threading a value through the static menu definition.
+const HITL_LABEL = "HITL";
 
 export function Menu({ isOpen }: MenuProps) {
   const pathname = usePathname();
   const isAuthenticated = useIsAuthenticated();
+  const hitlOpenCount = useHitlOpenCount();
   const rawMenuList = getMenuList();
   const menuList = useMemo(() => {
     if (isAuthenticated) return rawMenuList;
@@ -101,6 +109,17 @@ export function Menu({ isOpen }: MenuProps) {
                                 >
                                   {label}
                                 </p>
+                                {label === HITL_LABEL && hitlOpenCount > 0 && isOpen !== false && (
+                                  <span
+                                    data-testid="hitl-nav-badge"
+                                    className={cn(
+                                      "ml-auto min-w-5 h-5 px-1.5 flex items-center justify-center rounded-full text-xs font-semibold",
+                                      TONE_STYLES.attention.pill,
+                                    )}
+                                  >
+                                    {hitlOpenCount}
+                                  </span>
+                                )}
                               </Link>
                             </Button>
                           </TooltipTrigger>

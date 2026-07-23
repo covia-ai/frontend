@@ -1,9 +1,9 @@
 import { cn } from "@/lib/utils";
-import { toneForAgentStatus, toneForRunStatus, TONE_STYLES } from "@/lib/status";
+import { toneForAgentStatus, toneForHitlStatus, toneForRunStatus, TONE_STYLES } from "@/lib/status";
 
 interface StatusBadgeProps {
   status?: string;
-  kind: "job" | "agent";
+  kind: "job" | "agent" | "hitl";
   as?: "text" | "dot" | "pill";
   className?: string;
 }
@@ -12,7 +12,10 @@ interface StatusBadgeProps {
 // replaces three drifted, hand-rolled color switches that used to disagree
 // with each other (and lumped CANCELLED in with FAILED).
 export function StatusBadge({ status, kind, as = "text", className }: StatusBadgeProps) {
-  const tone = kind === "job" ? toneForRunStatus(status) : toneForAgentStatus(status);
+  const tone =
+    kind === "job" ? toneForRunStatus(status)
+    : kind === "agent" ? toneForAgentStatus(status)
+    : toneForHitlStatus(status);
   const style = TONE_STYLES[tone];
 
   if (as === "dot") {

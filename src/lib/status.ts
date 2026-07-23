@@ -30,12 +30,28 @@ const AGENT_STATUS_TONE: Partial<Record<AgentStatus, StatusTone>> = {
   [AgentStatus.TERMINATED]: "neutral",
 };
 
+// HITL inbox records carry their own vocabulary, but it maps onto the same
+// five tones — a request awaiting a person reads "attention", exactly like a
+// job sitting in INPUT_REQUIRED.
+const HITL_STATUS_TONE: Record<string, StatusTone> = {
+  open: "attention",
+  answered: "success",
+  rejected: "failure",
+  // The requester's Job fails on expiry, so it belongs with the failures.
+  expired: "failure",
+  cancelled: "neutral",
+};
+
 export function toneForRunStatus(status?: string): StatusTone {
   return (status && RUN_STATUS_TONE[status as RunStatus]) || "neutral";
 }
 
 export function toneForAgentStatus(status?: string): StatusTone {
   return (status && AGENT_STATUS_TONE[status as AgentStatus]) || "neutral";
+}
+
+export function toneForHitlStatus(status?: string): StatusTone {
+  return (status && HITL_STATUS_TONE[status]) || "neutral";
 }
 
 export const TONE_STYLES: Record<StatusTone, { text: string; dot: string; pill: string }> = {
