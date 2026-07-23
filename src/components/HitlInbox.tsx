@@ -25,6 +25,7 @@ import {
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useAuthStore } from "@/hooks/use-auth";
 import { useHitlRequests } from "@/hooks/use-hitl";
 import {
   missingRequiredAnswers,
@@ -149,6 +150,12 @@ function AskField({
 export function HitlInbox() {
   const venue = useAuthenticatedVenue();
   const { requests, loading, error, refresh } = useHitlRequests();
+  // Whether stored credentials exist for *the venue actually being read*. The
+  // signed-in gate keys off activeVenueId while the Venue is built from the
+  // current venue's id; when those drift the page renders as signed in but
+  // reads anonymously, which the venue answers with a 401. Reporting both
+  // makes that distinguishable from a genuine credential problem.
+  const credsForVenue = useAuthStore((x) => (venue ? x.authMap[venue.venueId] ?? null : null));
 
   const [statusFilter, setStatusFilter] = useState<string>("open");
   const [selected, setSelected] = useState<HitlRequest | null>(null);
@@ -245,6 +252,13 @@ export function HitlInbox() {
             The inbox lives in your own namespace on one venue — check that the selected
             venue is the one holding your requests, and that you are signed in with the
             same key.
+          </div>
+          <div
+            data-testid="hitl-error-context"
+            className="text-xs text-muted-foreground mt-2 font-mono break-all"
+          >
+            venue {venue?.baseUrl ?? "(none)"} · id {venue?.venueId ?? "(none)"} ·
+            {" "}credentials stored for this venue: {credsForVenue ? `yes (${credsForVenue.did})` : "NONE"}
           </div>
         </div>
       )}
