@@ -2,6 +2,26 @@ import { Venue } from "@covia/covia-sdk";
 
 export type AssetEntry = { id: string; metadata: any };
 
+// The asset store is content-addressed and holds every kind of asset together:
+// data artifacts, but also operations, skills and agent-config templates. The
+// browse pages (Assets, Public Artifacts) are for artifacts — the others have
+// their own homes (operations on /operations, skills as capability bundles,
+// templates in the agent-creation flow), and named like `models`, `grid`,
+// `workspace` they read as stray directories rather than content.
+//
+// Classify by shape, since the metadata carries no single `type` discriminator:
+// an operation has `operation`, a skill has `skill`, an agent template carries
+// agent-transition config (`systemPrompt`/`llmOperation`). A data artifact has
+// none of these. Filter by exclusion, not by requiring `content`, so a data
+// asset that stores its bytes out of line still counts.
+export function isDataArtifact(metadata: any): boolean {
+  if (!metadata || metadata.name == undefined) return false;
+  if (metadata.operation != undefined) return false;
+  if (metadata.skill != undefined) return false;
+  if (metadata.systemPrompt != undefined || metadata.llmOperation != undefined) return false;
+  return true;
+}
+
 // An asset id IS the content hash of its metadata, so id → metadata is
 // immutable: safe to cache indefinitely, across venues and sessions. This
 // makes revisits to asset listings near-free — only ids never seen on this

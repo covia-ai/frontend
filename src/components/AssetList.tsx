@@ -6,7 +6,7 @@ import { useSearchParams, usePathname } from 'next/navigation';
 import { useCallback, useEffect, useState, useMemo } from "react";
 
 import { Asset, DataAsset }from "@covia/covia-sdk";
-import { loadAssetEntries } from "@/lib/asset-metadata";
+import { loadAssetEntries, isDataArtifact } from "@/lib/asset-metadata";
 import { getVenueFor } from "@/hooks/use-authenticated-venue";
 import { useVenueForRoute } from "@/hooks/use-venue-for-route";
 import { useAuthStore } from "@/hooks/use-auth";
@@ -78,7 +78,7 @@ export function AssetList({ venueId }: AssetListProps = {}) {
         loadAssetEntries(venue, assetList.items, (entries) => {
           if (isStale()) return;
           const dataAssets = entries
-            .filter((e) => e.metadata.name != undefined && e.metadata.operation == undefined)
+            .filter((e) => isDataArtifact(e.metadata))
             .map((e) => new DataAsset(e.id, venue, e.metadata));
           setAssetsMetadata(dataAssets);
           setLoading(false);
