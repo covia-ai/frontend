@@ -109,11 +109,17 @@ export function SecretList() {
             <Plus size={16} /> Add Secret
           </h3>
           <div className="flex flex-col sm:flex-row gap-2">
+            {/* This is not a login form. Without these opt-outs the browser
+                treats name+password as credentials and autofills a saved
+                password into the value field. autoComplete="new-password" is the
+                reliable signal to suppress filling an existing password; the
+                data-* attrs cover 1Password / LastPass. */}
             <Input
               placeholder="Secret name"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               className="flex-1"
+              autoComplete="off"
             />
             <Input
               type="password"
@@ -121,6 +127,10 @@ export function SecretList() {
               value={newValue}
               onChange={(e) => setNewValue(e.target.value)}
               className="flex-1"
+              autoComplete="new-password"
+              data-1p-ignore
+              data-lpignore="true"
+              spellCheck={false}
             />
             <Button onClick={handleAdd} disabled={adding || !newName.trim() || !newValue.trim()}>
               {adding ? "Storing..." : "Add"}
