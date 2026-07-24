@@ -7,6 +7,7 @@ import { TopBar } from "@/components/admin-panel/TopBar";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Copy, Check, ChevronRight, KeyRound, Globe, ExternalLink, Eye, EyeOff } from "lucide-react";
+import { CopyField } from "@/components/CopyField";
 import { useAuthStore } from "@/hooks/use-auth";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { Ed25519Auth, type DIDDocument } from "@covia/covia-sdk";
@@ -14,28 +15,6 @@ import { PageHeading } from "@/components/PageHeading";
 
 function toHex(bytes: Uint8Array): string {
   return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-function CopyField({ label, value }: { label: string; value: string }) {
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    navigator.clipboard.writeText(value);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-  return (
-    <div>
-      <p className="text-sm text-muted-foreground mb-1">{label}</p>
-      <div className="flex items-center gap-2">
-        <code className="bg-muted flex-1 rounded-md px-3 py-2 text-xs font-mono break-all select-all">
-          {value}
-        </code>
-        <Button variant="outline" size="icon" onClick={copy} className="shrink-0">
-          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-        </Button>
-      </div>
-    </div>
-  );
 }
 
 // Like CopyField, but concealed by default: the value renders as dots until

@@ -12,8 +12,8 @@ import { getVenueFor } from "@/hooks/use-authenticated-venue";
 import { use, useEffect, useState } from "react";
 import { Venue } from "@covia/covia-sdk";
 import { createAuthProvider } from "@/lib/auth-provider";
-import Link from "next/link";
 import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
+import { CopyField } from "@/components/CopyField";
 import { useAuthStore } from "@/hooks/use-auth";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { connectWithTimeout } from "@/hooks/use-venues";
@@ -184,59 +184,25 @@ export default function VenuePage({ params }: VenuePageProps) {
         <Card className="p-6">
           <h2 className="text-xl font-thin mb-4">Venue Information {venue.metadata.name}</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="flex items-center space-x-3">
+            <div className="flex items-start space-x-3">
               <div className="bg-primary-vlight p-2 rounded-lg">
                 <LinkIcon size={20} className="text-primary" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground flex flex-row space-x-2">Venue URL <Copy
-                  size={12}
-                  onClick={(_e) => copyDataToClipBoard(venue.baseUrl, "Venue URL copied to clipboard")}
-                  className="cursor-pointer hover:text-pink-400"
-                /></p>
-
-                <Link
-                  href={venue.baseUrl}
-                  target="_blank"
-                  className="font-mono text-sm bg-muted p-2 rounded break-all"
-                >
-                  {venue.baseUrl}
-                </Link>
-
-              </div>
+              <CopyField label="Venue URL" value={venue.baseUrl} href={venue.baseUrl} className="flex-1" />
             </div>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex items-start space-x-3">
               <div className="bg-primary-vlight p-2 rounded-lg">
                 <Fingerprint size={20} className="text-primary" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground flex flex-row space-x-2">Venue DID
-               <Copy
-                  size={12}
-                  onClick={(_e) => copyDataToClipBoard(venueDID, "Venue DID copied to clipboard")}
-                  className="cursor-pointer hover:text-pink-400"></Copy>
-                  </p>
-                <p className="font-mono text-sm bg-muted p-2 rounded break-all">
-                  {venueDID}
-                </p>
-              </div>
+              <CopyField label="Venue DID" value={venueDID} className="flex-1" />
             </div>
 
             <div className="flex items-start space-x-3">
               <div className="bg-primary-vlight p-2 rounded-lg">
                 <Globe size={20} className="text-primary" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground flex flex-row space-x-2">MCP URL <Copy
-                  size={12}
-                  onClick={(_e) => copyDataToClipBoard(venueMCPUrl, "MCP URL copied to clipboard")}
-                  className="cursor-pointer hover:text-pink-400"></Copy>
-                  </p>
-                <p className="font-mono text-sm bg-muted p-2 rounded break-all">
-                  {venueMCPUrl}
-                </p>
-              </div>
+              <CopyField label="MCP URL" value={venueMCPUrl} className="flex-1" />
             </div>
           </div>
         </Card>
