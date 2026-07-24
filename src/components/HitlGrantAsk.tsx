@@ -125,7 +125,7 @@ export function HitlGrantAsk({ request, ask, kind, venue, signingKeyHex, onDone,
       <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs items-center">
         <span className="text-muted-foreground">To</span>
         <span className="flex items-center gap-1.5 min-w-0" title={audience}>
-          <Identicon did={audience} size={14} gridSize={5} />
+          <Identicon did={audience} size={14} />
           <span className="font-mono truncate">{audience || "(the requester)"}</span>
         </span>
         {isToken && spec?.venue && (

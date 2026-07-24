@@ -5,9 +5,15 @@ import { decodePublicKey } from "@covia/covia-sdk";
 // identities render with the same avatar Convex uses for accounts, without
 // pulling in the whole convex-client package.
 //
+// The identicon grid resolution — a fixed constant, NOT a per-use option.
+// Matches Convex's IdenticonBuilder.SIZE (7) so the same key renders the same
+// identicon here and anywhere in the Convex ecosystem. Only the rendered pixel
+// size varies; the grid must not, or one key would show two different patterns.
+export const IDENTICON_GRID_SIZE = 7;
+
 // Returns size*size 24-bit RGB ints (0xRRGGBB): the last 12 bytes pick four
 // colours, the leading bytes lay out a bitmap mirrored across the vertical axis.
-export function generateIdenticonGrid(input: Uint8Array, size = 7): number[] {
+export function generateIdenticonGrid(input: Uint8Array, size = IDENTICON_GRID_SIZE): number[] {
   const data = input;
   const n = data.length;
   const total = size * size;
@@ -52,7 +58,7 @@ function multikeyOf(did: string): string {
 }
 
 /** Identicon grid for a did:key, or null for any other identity or a bad key. */
-export function identiconGridForDid(did: string | null | undefined, size = 7): number[] | null {
+export function identiconGridForDid(did: string | null | undefined, size = IDENTICON_GRID_SIZE): number[] | null {
   if (!isDidKey(did)) return null;
   try {
     return generateIdenticonGrid(decodePublicKey(multikeyOf(did)), size);

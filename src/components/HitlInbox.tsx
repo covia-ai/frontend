@@ -105,7 +105,7 @@ function Requester({ request, selfDid }: { request: HitlRequest; selfDid?: strin
   const isSelf = !!selfDid && selfDid === request.from;
   return (
     <div className="flex items-center gap-1.5 min-w-0 text-xs text-muted-foreground" title={request.from}>
-      <Identicon did={request.from} size={16} gridSize={5} />
+      <Identicon did={request.from} size={16} />
       <span className="font-mono truncate">{shortDid(request.from)}{isSelf ? " (you)" : ""}</span>
     </div>
   );

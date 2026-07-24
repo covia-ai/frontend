@@ -4,11 +4,11 @@ import userEvent from '@testing-library/user-event';
 
 jest.mock('@/hooks/use-venues', () => ({ useVenues: () => ({ venues: [] }) }));
 
-const respondToHitl = jest.fn(() => Promise.resolve({ status: 'answered' }));
-const signAccessToken = jest.fn(() => 'signed.jwt.token');
+const respondToHitl = jest.fn((..._a: unknown[]) => Promise.resolve({ status: 'answered' }));
+const signAccessToken = jest.fn((..._a: unknown[]) => 'signed.jwt.token');
 jest.mock('@/lib/hitl', () => {
   const actual = jest.requireActual('@/lib/hitl');
-  return { ...actual, respondToHitl: (...a: any[]) => respondToHitl(...a), signAccessToken: (...a: any[]) => signAccessToken(...a) };
+  return { ...actual, respondToHitl: (...a: unknown[]) => respondToHitl(...a), signAccessToken: (...a: unknown[]) => signAccessToken(...a) };
 });
 
 import { HitlGrantAsk } from '@/components/HitlGrantAsk';

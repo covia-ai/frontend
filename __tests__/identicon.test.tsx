@@ -60,10 +60,11 @@ describe('isDidKey / identiconGridForDid', () => {
 });
 
 describe('<Identicon>', () => {
-  it('renders an svg of grid cells for a did:key', () => {
-    const { container } = render(<Identicon did={DID_A} gridSize={7} />);
+  it('renders a fixed 7x7 (Convex-standard) svg of grid cells for a did:key', () => {
+    const { container } = render(<Identicon did={DID_A} size={20} />);
     const svg = container.querySelector('svg');
     expect(svg).toBeInTheDocument();
+    // Grid resolution is a constant (IdenticonBuilder.SIZE = 7), never a prop.
     expect(svg?.querySelectorAll('rect')).toHaveLength(49);
   });
 
