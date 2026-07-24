@@ -8,6 +8,7 @@ import { LogInIcon, Globe, CircleUserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger }from "@/components/ui/dropdown-menu";
 import { DeviceKeyDialog } from "@/components/DeviceKeyDialog";
+import { Identicon } from "@/components/Identicon";
 import { useDeviceKeySignIn } from "@/hooks/use-device-key-signin";
 import { useAuthStore } from "@/hooks/use-auth";
 
@@ -75,7 +76,11 @@ export function ChromeSignInButton(props: any) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full" aria-label="Account menu">
-              <CircleUserRound className="!size-6" />
+              {/* A did:key login shows its identicon; other identities keep the
+                  generic icon until avatars land. */}
+              {auth?.type === "keypair"
+                ? <Identicon did={auth.did} size={24} title={auth.did} />
+                : <CircleUserRound className="!size-6" />}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-48 mr-8">

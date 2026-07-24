@@ -25,6 +25,7 @@ import {
   type HitlAsk,
   type HitlRequest,
 } from "@/lib/hitl";
+import { Identicon } from "@/components/Identicon";
 import { Bot, ChevronDown, ChevronUp, Inbox, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -108,8 +109,9 @@ function Requester({ request, selfDid }: { request: HitlRequest; selfDid?: strin
   }
   const isSelf = !!selfDid && selfDid === request.from;
   return (
-    <div className="text-xs text-muted-foreground font-mono truncate" title={request.from}>
-      {shortDid(request.from)}{isSelf ? " (you)" : ""}
+    <div className="flex items-center gap-1.5 min-w-0 text-xs text-muted-foreground" title={request.from}>
+      <Identicon did={request.from} size={16} gridSize={5} />
+      <span className="font-mono truncate">{shortDid(request.from)}{isSelf ? " (you)" : ""}</span>
     </div>
   );
 }
