@@ -16,7 +16,3 @@
 // interpolation would silently generate no CSS at all.
 export const CARD_GRID_CLASS =
   "w-full grid grid-cols-[repeat(auto-fill,minmax(min(14rem,100%),1fr))] items-stretch justify-center gap-4";
-
-// Rows to aim for per page; the column count comes from the grid itself, so
-// the page size follows the window rather than a fixed 12.
-export const CARD_GRID_ROWS = 4;

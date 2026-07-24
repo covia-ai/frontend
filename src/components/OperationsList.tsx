@@ -15,8 +15,8 @@ import { PaginationHeader } from "./PaginationHeader";
 import { PlayCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { listCatalogOperations } from "@/lib/operations-catalog";
-import { useGridColumns } from "@/hooks/use-grid-columns";
-import { CARD_GRID_CLASS, CARD_GRID_ROWS } from "@/lib/grid";
+import { useGridPageSize } from "@/hooks/use-grid-page-size";
+import { CARD_GRID_CLASS } from "@/lib/grid";
 import { FiltersSheet } from "./FiltersSheet";
 
 interface OperationsListProps {
@@ -29,12 +29,10 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
   const [isLoading, setLoading] = useState(true);
   const router = useRouter();
 
-  // A fixed page size wasted the extra columns a wide screen gets: 12 items
-  // over lg's 4 columns is 3 rows, and over 6 columns only 2. Size the page
-  // from the columns the grid is actually rendering instead, so a wider window
-  // shows more operations rather than shorter rows.
-  const { ref: gridRef, columns } = useGridColumns(3);
-  const itemsPerPage = Math.max(1, columns * CARD_GRID_ROWS);
+  // A fixed 12 wasted whatever the window actually offered — three rows on a
+  // wide screen, two on a very wide one, and no more on a tall one. Size the
+  // page from the grid itself: columns it renders, times rows that fit below.
+  const { ref: gridRef, pageSize: itemsPerPage } = useGridPageSize();
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchInput, setSearchInput] = useState(searchParams.get('search') ?? "");

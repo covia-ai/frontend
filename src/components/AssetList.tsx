@@ -14,8 +14,8 @@ import { Spinner } from '@/components/ui/shadcn-io/spinner';
 import { AssetCard } from "./AssetCard";
 import { PaginationHeader } from "./PaginationHeader";
 import { useVenues } from "@/hooks/use-venues";
-import { useGridColumns } from "@/hooks/use-grid-columns";
-import { CARD_GRID_CLASS, CARD_GRID_ROWS } from "@/lib/grid";
+import { useGridPageSize } from "@/hooks/use-grid-page-size";
+import { CARD_GRID_CLASS } from "@/lib/grid";
 import { FileKey, Lock }from "lucide-react";
 import { CreateAssetComponent } from "./CreateAssetComponent";
 import { TopBar } from "./admin-panel/TopBar";
@@ -33,10 +33,9 @@ export function AssetList({ venueId }: AssetListProps = {}) {
   const [isLoading, setLoading] = useState(true);
   const router = useRouter();
 
-  // Page size follows the columns the grid actually renders, so a wider window
-  // shows more assets instead of the same 12 spread over shorter rows.
-  const { ref: gridRef, columns } = useGridColumns(3);
-  const itemsPerPage = Math.max(1, columns * CARD_GRID_ROWS);
+  // Page size follows the grid: columns it renders, times rows that fit in the
+  // space below it, so both a wider and a taller window show more assets.
+  const { ref: gridRef, pageSize: itemsPerPage } = useGridPageSize();
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchInput, setSearchInput] = useState(searchParams.get('search') ?? "");
