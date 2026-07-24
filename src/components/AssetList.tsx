@@ -14,6 +14,8 @@ import { Spinner } from '@/components/ui/shadcn-io/spinner';
 import { AssetCard } from "./AssetCard";
 import { PaginationHeader } from "./PaginationHeader";
 import { useVenues } from "@/hooks/use-venues";
+import { useGridColumns } from "@/hooks/use-grid-columns";
+import { CARD_GRID_CLASS, CARD_GRID_ROWS } from "@/lib/grid";
 import { FileKey, Lock }from "lucide-react";
 import { CreateAssetComponent } from "./CreateAssetComponent";
 import { TopBar } from "./admin-panel/TopBar";
@@ -31,8 +33,10 @@ export function AssetList({ venueId }: AssetListProps = {}) {
   const [isLoading, setLoading] = useState(true);
   const router = useRouter();
 
-  const itemsPerPage = 12
-  const [totalPages, setTotalPages] = useState(10);
+  // Page size follows the columns the grid actually renders, so a wider window
+  // shows more assets instead of the same 12 spread over shorter rows.
+  const { ref: gridRef, columns } = useGridColumns(3);
+  const itemsPerPage = Math.max(1, columns * CARD_GRID_ROWS);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchInput, setSearchInput] = useState(searchParams.get('search') ?? "");
@@ -114,10 +118,18 @@ export function AssetList({ venueId }: AssetListProps = {}) {
     });
   }, [assetsMetadata, selectedTags, searchInput]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredAssets.length / itemsPerPage));
+
+  // Filtering starts a new result set, so go back to the first page.
   useEffect(() => {
-    setTotalPages(Math.ceil(filteredAssets.length / itemsPerPage))
     setCurrentPage(1)
   }, [filteredAssets])
+
+  // Resizing changes the page size, which can strand you past the last page —
+  // clamp rather than reset, so widening the window keeps you roughly in place.
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
 
   if(venues.length == 0 ) {
      return (
@@ -184,7 +196,7 @@ export function AssetList({ venueId }: AssetListProps = {}) {
               <Spinner variant="ellipsis" className="text-primary" size={64}/>
             </div>
           ) : (
-            <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 3xl:grid-cols-5 4xl:grid-cols-6 items-stretch justify-center gap-4">
+            <div ref={gridRef} className={CARD_GRID_CLASS}>
               {filteredAssets.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset) =>
                 <AssetCard key={asset.id} asset={asset} type="assets" compact={true} venue={venue ?? undefined} authenticated={isAuthenticated}/>
               )}

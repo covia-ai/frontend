@@ -16,10 +16,8 @@ import { PlayCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { listCatalogOperations } from "@/lib/operations-catalog";
 import { useGridColumns } from "@/hooks/use-grid-columns";
+import { CARD_GRID_CLASS, CARD_GRID_ROWS } from "@/lib/grid";
 import { FiltersSheet } from "./FiltersSheet";
-
-// Rows to aim for per page; the column count comes from the grid itself.
-const ROWS_PER_PAGE = 4;
 
 interface OperationsListProps {
   venueId?: string;
@@ -36,7 +34,7 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
   // from the columns the grid is actually rendering instead, so a wider window
   // shows more operations rather than shorter rows.
   const { ref: gridRef, columns } = useGridColumns(3);
-  const itemsPerPage = Math.max(1, columns * ROWS_PER_PAGE);
+  const itemsPerPage = Math.max(1, columns * CARD_GRID_ROWS);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchInput, setSearchInput] = useState(searchParams.get('search') ?? "");
@@ -199,7 +197,7 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
             <Spinner variant="ellipsis" className="text-primary" size={64}/>
           </div>
         ) : (
-          <div ref={gridRef} className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 3xl:grid-cols-5 4xl:grid-cols-6 items-stretch justify-center gap-4">
+          <div ref={gridRef} className={CARD_GRID_CLASS}>
             {
             filteredAssets.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset) => (
               <AssetCard key={asset.id} asset={asset} type="operations" compact={true} venue={venue ?? undefined} authenticated={isAuthenticated}/>
