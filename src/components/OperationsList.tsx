@@ -15,8 +15,11 @@ import { PaginationHeader } from "./PaginationHeader";
 import { PlayCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { listCatalogOperations } from "@/lib/operations-catalog";
+import { useGridColumns } from "@/hooks/use-grid-columns";
 import { FiltersSheet } from "./FiltersSheet";
 
+// Rows to aim for per page; the column count comes from the grid itself.
+const ROWS_PER_PAGE = 4;
 
 interface OperationsListProps {
   venueId?: string;
@@ -28,8 +31,12 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
   const [isLoading, setLoading] = useState(true);
   const router = useRouter();
 
-  const itemsPerPage = 12
-  const [totalPages, setTotalPages] = useState(10);
+  // A fixed page size wasted the extra columns a wide screen gets: 12 items
+  // over lg's 4 columns is 3 rows, and over 6 columns only 2. Size the page
+  // from the columns the grid is actually rendering instead, so a wider window
+  // shows more operations rather than shorter rows.
+  const { ref: gridRef, columns } = useGridColumns(3);
+  const itemsPerPage = Math.max(1, columns * ROWS_PER_PAGE);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchInput, setSearchInput] = useState(searchParams.get('search') ?? "");
@@ -117,10 +124,19 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
     });
   }, [assetsMetadata, selectedTags, searchInput]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredAssets.length / itemsPerPage));
+
+  // Filtering starts a new result set, so go back to the first page.
   useEffect(() => {
-    setTotalPages(Math.ceil(filteredAssets.length / itemsPerPage));
     setCurrentPage(1);
   }, [filteredAssets]);
+
+  // Resizing changes the page size, which can strand you past the last page —
+  // clamp rather than reset, so widening the window keeps you roughly in place
+  // instead of throwing you back to page 1.
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
 
   if(venues.length == 0 ) {
      return (
@@ -183,7 +199,7 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
             <Spinner variant="ellipsis" className="text-primary" size={64}/>
           </div>
         ) : (
-          <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 3xl:grid-cols-5 4xl:grid-cols-6 items-stretch justify-center gap-4">
+          <div ref={gridRef} className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 3xl:grid-cols-5 4xl:grid-cols-6 items-stretch justify-center gap-4">
             {
             filteredAssets.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset) => (
               <AssetCard key={asset.id} asset={asset} type="operations" compact={true} venue={venue ?? undefined} authenticated={isAuthenticated}/>
