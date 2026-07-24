@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Asset, Venue } from "@covia/covia-sdk";
-import { Calendar, Copyright, Download, Info, InfoIcon, Tag, User }from "lucide-react";
+import { Calendar, Copyright, Download, FileText, Info, InfoIcon, Tag, User, Wrench }from "lucide-react";
 import Link from "next/link";
 import { Badge } from "./ui/badge";
 import { JsonEditor } from "json-edit-react";
@@ -142,10 +142,25 @@ const renderMetadataFields = (asset: Asset, fields: MetadataFieldConfig[]) => {
 export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
   const [contentURL, setContentUrl] = useState("");
   const [defaultValue, setDefaultValue] = useState("metadata");
-  useEffect(() => { 
+
+  // Skills and other inline assets carry their body in `content.inline`, with
+  // no separate blob — the content endpoint 500s for them. Render the inline
+  // text directly and never point Download at a URL that doesn't exist.
+  const inlineContent =
+    typeof asset.metadata?.content?.inline === "string" ? asset.metadata.content.inline : null;
+  const contentType = asset.metadata?.content?.contentType?.split(";")[0];
+  const skillTools: string[] = Array.isArray(asset.metadata?.skill?.tools)
+    ? asset.metadata.skill.tools
+    : [];
+
+  useEffect(() => {
   if(asset.metadata.operation != undefined) {
     setContentUrl('NA');
     setDefaultValue('NA');
+  }
+  else if (typeof asset.metadata?.content?.inline === "string") {
+    // Content lives in metadata, so there is nothing to fetch or download.
+    setContentUrl('NA');
   }
   else {
     setContentUrl(asset.getContentURL());
@@ -168,6 +183,32 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
                     {renderMetadataFields(asset, METADATA_FIELDS)}
                   </div>
                   <div className="flex flex-col flex-2 px-2 ">
+                    {skillTools.length > 0 && (
+                      <div className="my-2" data-testid="skill-tools">
+                        <div className="flex flex-row items-center space-x-2">
+                          <Wrench size={18} />
+                          <span className="text-md">Skill tools:</span>
+                        </div>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {skillTools.map((tool) => (
+                            <Badge key={tool} variant="outline" className="font-mono text-[10px] text-muted-foreground">
+                              {tool}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {inlineContent != null && (
+                      <div className="my-2" data-testid="inline-content">
+                        <div className="flex flex-row items-center space-x-2">
+                          <FileText size={18} />
+                          <span className="text-md">Content{contentType ? ` (${contentType})` : ""}:</span>
+                        </div>
+                        <pre className="mt-1 max-h-96 overflow-auto rounded bg-muted p-3 text-xs whitespace-pre-wrap break-words font-mono">
+                          {inlineContent}
+                        </pre>
+                      </div>
+                    )}
                     {contentURL &&  contentURL !='NA'  && (
                       <div className="flex flex-row items-center space-x-2 my-2">
                         <Download size={18}></Download>
