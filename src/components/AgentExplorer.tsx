@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { gtmEvent } from "@/lib/utils";
 import { messageContentToString, describeToolTurn } from "@/lib/agent-turns";
+import { AgentToolTurn } from "./AgentToolTurn";
 
 const POLL_INTERVAL_MS = 3000;
 const SESSION_LIMIT = 50;
@@ -528,31 +529,23 @@ const AgentExplorer = (props: any) => {
                 {currentSession?.conversation.map((msg, i) => {
                   const isUser = msg.role === "user";
                   const isAssistant = msg.role === "assistant";
-                  // A tool/system turn carries its result in structuredContent (a
-                  // success) or content (an "Error:" string) — describeToolTurn
-                  // reads both, so a successful tool call is no longer an empty
-                  // bubble, and a failure is styled as one rather than as the
-                  // neutral amber every tool turn used to get.
-                  const tool = !isUser && !isAssistant ? describeToolTurn(msg) : null;
-                  const bubble = isUser ? "bg-blue-600 text-white"
-                    : isAssistant ? "bg-muted text-foreground"
-                    : tool?.isError ? "bg-destructive/10 text-destructive dark:bg-destructive/20"
-                    : "bg-muted/40 text-muted-foreground border border-border";
+                  // Tool/system turns render as their own collapsible bubble: the
+                  // result (structuredContent for a success, an "Error:" string
+                  // for a failure) is hidden behind a header until expanded.
+                  if (!isUser && !isAssistant) {
+                    return <AgentToolTurn key={i} role={msg.role} tool={describeToolTurn(msg)} ts={msg.ts} />;
+                  }
                   return (
                     <div key={i} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-                      <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words ${bubble}`}>
-                        {tool && (
-                          <div data-testid="turn-role-label" className="text-[10px] font-semibold uppercase tracking-wide opacity-70 mb-1">
-                            {msg.role}{tool.name ? ` · ${tool.name}` : ""}
-                          </div>
-                        )}
+                      <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words
+                        ${isUser ? "bg-blue-600 text-white" : "bg-muted text-foreground"}`}>
                         {/* Task-originated turns (agent_request) look identical to chat
                             once unwrapped — label their provenance so the transcript
                             stays an honest record. source comes from the turn itself. */}
                         {isUser && msg.source === "request" && (
                           <div data-testid="turn-source-label" className="text-[10px] font-semibold uppercase tracking-wide opacity-70 mb-1">task</div>
                         )}
-                        {tool ? tool.text : messageContentToString(msg.content)}
+                        {messageContentToString(msg.content)}
                         {msg.ts && (
                           <div className={`text-[10px] mt-1 ${isUser ? "text-blue-100" : "text-muted-foreground"}`}>
                             {new Date(msg.ts).toLocaleTimeString()}
