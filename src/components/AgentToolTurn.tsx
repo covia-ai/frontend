@@ -41,15 +41,18 @@ export function AgentToolTurn({ role, tool, ts }: AgentToolTurnProps) {
         </button>
 
         {expanded && (
-          <div data-testid="tool-turn-body" className="mt-1 whitespace-pre-wrap break-words">
-            {tool.text}
-          </div>
-        )}
-
-        {ts && (
-          <div className="text-[10px] mt-1 text-muted-foreground">
-            {new Date(ts).toLocaleTimeString()}
-          </div>
+          <>
+            <div data-testid="tool-turn-body" className="mt-1 whitespace-pre-wrap break-words">
+              {tool.text}
+            </div>
+            {/* Timestamp is rarely useful for a tool call, so it lives inside the
+                expander rather than under every collapsed row. */}
+            {ts && (
+              <div data-testid="tool-turn-time" className="text-[10px] mt-1 text-muted-foreground">
+                {new Date(ts).toLocaleTimeString()}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

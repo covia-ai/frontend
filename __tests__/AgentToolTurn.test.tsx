@@ -23,6 +23,14 @@ describe('AgentToolTurn', () => {
     expect(screen.getByTestId('tool-turn-body')).toHaveTextContent('Capability denied');
   });
 
+  it('keeps the timestamp inside the expander, not on the collapsed row', async () => {
+    render(<AgentToolTurn role="tool" tool={{ name: 'auth_whoami', text: 'x', isError: false }} ts={1700000000000} />);
+    // Collapsed: no timestamp on show.
+    expect(screen.queryByTestId('tool-turn-time')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByTestId('tool-turn-toggle'));
+    expect(screen.getByTestId('tool-turn-time')).toBeInTheDocument();
+  });
+
   it('renders the tool name verbatim, not upper-cased', () => {
     render(<AgentToolTurn role="tool" tool={{ name: 'auth_whoami', text: 'x', isError: false }} />);
     // The label must read "tool · auth_whoami", not "AUTH_WHOAMI" — it's a code id.

@@ -535,9 +535,17 @@ const AgentExplorer = (props: any) => {
                   if (!isUser && !isAssistant) {
                     return <AgentToolTurn key={i} role={msg.role} tool={describeToolTurn(msg)} ts={msg.ts} />;
                   }
+                  // A visible per-message timestamp is clutter; keep it as a
+                  // hover title instead ("Reply from <agent> at <time>").
+                  const when = msg.ts ? new Date(msg.ts).toLocaleTimeString() : null;
+                  const title = when
+                    ? isAssistant
+                      ? `Reply from ${selectedAgentId ?? "agent"} at ${when}`
+                      : `Sent at ${when}`
+                    : undefined;
                   return (
                     <div key={i} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-                      <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words
+                      <div title={title} className={`max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words
                         ${isUser ? "bg-blue-600 text-white" : "bg-muted text-foreground"}`}>
                         {/* Task-originated turns (agent_request) look identical to chat
                             once unwrapped — label their provenance so the transcript
@@ -546,11 +554,6 @@ const AgentExplorer = (props: any) => {
                           <div data-testid="turn-source-label" className="text-[10px] font-semibold uppercase tracking-wide opacity-70 mb-1">task</div>
                         )}
                         {messageContentToString(msg.content)}
-                        {msg.ts && (
-                          <div className={`text-[10px] mt-1 ${isUser ? "text-blue-100" : "text-muted-foreground"}`}>
-                            {new Date(msg.ts).toLocaleTimeString()}
-                          </div>
-                        )}
                       </div>
                     </div>
                   );
