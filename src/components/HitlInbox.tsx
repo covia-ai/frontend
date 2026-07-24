@@ -58,6 +58,23 @@ function offersGrants(request: HitlRequest): boolean {
   );
 }
 
+// Answers come back as raw option ids, so they have to be mapped through the
+// ask's own options — showing "tonight" instead of "Tonight 22:00" would make a
+// resolved request harder to read than the form that produced it.
+function formatAnswer(ask: HitlAsk, value: HitlAnswer | undefined): string {
+  if (value === undefined || value === null) return "—";
+  const labelFor = (id: string) => ask.options?.find((o) => o.id === id)?.label ?? id;
+
+  if (ask.type === "approval") return value ? "Yes" : "No";
+  if (ask.type === "choice") return labelFor(String(value));
+  if (ask.type === "checkboxes") {
+    const ids = Array.isArray(value) ? value : [];
+    return ids.length ? ids.map(labelFor).join(", ") : "none";
+  }
+  const text = String(value);
+  return text.trim() ? text : "—";
+}
+
 // A single approval or choice is one decision, so it resolves in one click
 // straight from the card. Anything else — several asks, free text, multi-select
 // — needs a form, and gets one inline.
@@ -207,11 +224,21 @@ export function HitlInbox() {
   const [answers, setAnswers] = useState<Record<string, HitlAnswer>>({});
   const [comment, setComment] = useState("");
   const [submittingId, setSubmittingId] = useState<string | null>(null);
+  // Answering moves a request out of the default Open filter, so without this
+  // the card you just acted on vanishes and you never see what you decided.
+  const [justAnsweredId, setJustAnsweredId] = useState<string | null>(null);
 
-  const visible = useMemo(
-    () => (statusFilter === ALL ? requests : requests.filter((r) => r.status === statusFilter)),
-    [requests, statusFilter],
-  );
+  const visible = useMemo(() => {
+    const base = statusFilter === ALL ? requests : requests.filter((r) => r.status === statusFilter);
+    if (!justAnsweredId || base.some((r) => r.id === justAnsweredId)) return base;
+    const pinned = requests.find((r) => r.id === justAnsweredId);
+    return pinned ? [pinned, ...base] : base;
+  }, [requests, statusFilter, justAnsweredId]);
+
+  function changeStatusFilter(next: string) {
+    setStatusFilter(next);
+    setJustAnsweredId(null);
+  }
 
   function toggleExpanded(request: HitlRequest) {
     if (expandedId === request.id) {
@@ -249,6 +276,7 @@ export function HitlInbox() {
       setExpandedId(null);
       setAnswers({});
       setComment("");
+      setJustAnsweredId(request.id);
       refresh();
     } catch (err) {
       toast("Unable to send response", {
@@ -262,7 +290,7 @@ export function HitlInbox() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-2 items-center">
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={changeStatusFilter}>
           <SelectTrigger className="w-44 shrink-0" data-testid="hitl-status-filter">
             <SelectValue />
           </SelectTrigger>
@@ -358,6 +386,37 @@ export function HitlInbox() {
                     {formatWhen(request.created)}
                   </span>
                 </div>
+
+                {/* Resolved → show what was decided, not just a status pill. */}
+                {!isOpen && request.response && (
+                  <div data-testid="hitl-result" className="border-t pt-3 flex flex-col gap-1">
+                    {request.response.outcome === "reject" ? (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Rejected</span>
+                        {request.response.comment && (
+                          <span className="text-muted-foreground"> — {request.response.comment}</span>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        {asks.map((ask) => (
+                          <div key={ask.id} className="flex items-baseline gap-3 text-sm">
+                            <span className="text-muted-foreground truncate">{ask.prompt}</span>
+                            <span className="flex-1 border-b border-dotted border-muted-foreground/30" />
+                            <span className="font-medium shrink-0" data-testid="hitl-result-answer">
+                              {formatAnswer(ask, request.response?.answers?.[ask.id])}
+                            </span>
+                          </div>
+                        ))}
+                        {request.response.comment && (
+                          <div className="text-sm text-muted-foreground mt-1 italic">
+                            {request.response.comment}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
 
                 {/* One decision → answer it straight from the card. */}
                 {isOpen && quick && !expanded && (

@@ -43,6 +43,17 @@ export type HitlRequest = {
   created?: number;
   expires?: number;
   asks: HitlAsk[];
+  /** Present once resolved — what the human decided. */
+  response?: HitlResponse;
+};
+
+export type HitlResponse = {
+  outcome?: "answer" | "reject";
+  /** Keyed by ask id. Choice/checkbox values are option *ids*, not labels. */
+  answers?: Record<string, HitlAnswer>;
+  /** For a rejection this is the reason the requester was given. */
+  comment?: string;
+  comments?: Record<string, string>;
 };
 
 /** text → string, approval → boolean, choice → option id, checkboxes → option ids. */

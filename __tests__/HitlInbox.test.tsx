@@ -158,3 +158,62 @@ describe('inline form', () => {
     expect(screen.getByTestId('hitl-respond-toggle')).toBeInTheDocument();
   });
 });
+
+describe('resolved requests show the outcome', () => {
+  const ASKS = [
+    approvalAsk,
+    { id: 'window', type: 'choice', prompt: 'When?',
+      options: [{ id: 'now', label: 'Immediately' }, { id: 'tonight', label: 'Tonight 22:00' }] },
+    { id: 'checks', type: 'checkboxes', prompt: 'Checks?',
+      options: [{ id: 'tests', label: 'Tests green' }, { id: 'backup', label: 'Backup taken' }] },
+  ];
+
+  // Answering moves a request out of the default Open filter, so this walks the
+  // real path: respond, then let the venue report it resolved. The card must
+  // stay on screen — that pin is the only way the outcome is ever seen without
+  // going and changing the filter.
+  async function answerThenResolve(response: unknown) {
+    const open = req({ status: 'open', asks: ASKS });
+    withRequests([open]);
+    const view = render(<HitlInbox />);
+
+    await userEvent.click(screen.getByTestId('hitl-respond-toggle'));
+    await userEvent.click(screen.getByTestId('hitl-submit'));
+
+    withRequests([{ ...open, status: 'answered', response }]);
+    view.rerender(<HitlInbox />);
+  }
+
+  it('keeps the answered card visible and renders option labels, not ids', async () => {
+    await answerThenResolve({
+      outcome: 'answer',
+      answers: { approve: true, window: 'tonight', checks: ['tests', 'backup'] },
+    });
+
+    const answers = (await screen.findAllByTestId('hitl-result-answer')).map((n) => n.textContent);
+    // 'tonight' / 'tests' are stored ids; the human picked labels.
+    expect(answers).toEqual(['Yes', 'Tonight 22:00', 'Tests green, Backup taken']);
+  });
+
+  it('marks an unanswered optional ask rather than rendering blank', async () => {
+    await answerThenResolve({ outcome: 'answer', answers: { approve: false } });
+
+    const answers = (await screen.findAllByTestId('hitl-result-answer')).map((n) => n.textContent);
+    expect(answers).toEqual(['No', '—', '—']);
+  });
+
+  it('shows the reason for a rejection instead of per-ask answers', async () => {
+    await answerThenResolve({ outcome: 'reject', comment: 'not mine to approve' });
+
+    expect(await screen.findByTestId('hitl-result')).toHaveTextContent('not mine to approve');
+    expect(screen.queryByTestId('hitl-result-answer')).not.toBeInTheDocument();
+  });
+
+  it('offers no response controls once resolved', async () => {
+    await answerThenResolve({ outcome: 'answer', answers: { approve: true } });
+
+    expect(await screen.findByTestId('hitl-result')).toBeInTheDocument();
+    expect(screen.queryByTestId('hitl-quick-answer')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('hitl-respond-toggle')).not.toBeInTheDocument();
+  });
+});
