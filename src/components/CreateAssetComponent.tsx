@@ -52,7 +52,6 @@ export const CreateAssetComponent = ({sendDataToParent, venue: venueProp}: {send
     const venue = venueProp ?? fallbackVenue;
     
     async function createNewAsset(jsonData: AssetMetadata) {
-        gtmEvent.buttonClick('Create Asset', jsonData.name!);
         if (!venue) return;
 
         try {
@@ -63,9 +62,14 @@ export const CreateAssetComponent = ({sendDataToParent, venue: venueProp}: {send
             if (!assetFileData) throw new Error("Choose a file before continuing");
             await asset.putContent(assetFileData);
           }
+          gtmEvent.createAsset(jsonData.name ?? asset.id);
           sendDataToParent(true);
           setStep(1);
         } catch (error: unknown) {
+          gtmEvent.createAssetFailed(
+            jsonData.name ?? "unknown",
+            error instanceof Error ? error.message : undefined,
+          );
           toast("Unable to create asset", {
             description: error instanceof Error ? error.message : "Please try again.",
           });

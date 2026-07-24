@@ -28,6 +28,7 @@ import { normalizeAgentEntries } from "@/lib/agent-list";
 import { AgentStatus } from "@covia/covia-sdk";
 import { useRouter } from "next/navigation";
 import { PageHeading } from "./PageHeading";
+import { gtmEvent } from "@/lib/utils";
 
 // Sentinel picker value — never a real agentId — meaning "create a fresh,
 // distinctly-named agent" rather than targeting an existing one.
@@ -136,8 +137,10 @@ export const AIPrompt = () => {
             description: "It may have hit an error — check its session in the explorer.",
           });
         }
+        gtmEvent.sendAgentMessage(agentId);
       })
       .catch((err: any) => {
+        gtmEvent.sendAgentMessageFailed(agentId, err?.message);
         toast("Chat failed", { description: err?.message ?? "Please try again." });
       })
       .finally(() => clearPendingChat(chat));
@@ -174,10 +177,12 @@ export const AIPrompt = () => {
       });
     } catch (err: any) {
       setCreating(false);
+      gtmEvent.createAgentFailed(agentId, err?.message);
       toast("Failed to create agent", { description: err?.message ?? "Please try again." });
       return;
     }
     setCreating(false);
+    gtmEvent.createAgent(agentId, provider.operation);
     sendPrompt(agentId);
     refreshAgentOptions();
   }
@@ -228,7 +233,9 @@ export const AIPrompt = () => {
         if (existing.status === AgentStatus.SUSPENDED) {
           try {
             await venue.agents.resume(selectedAgentId);
+            gtmEvent.resumeAgent(selectedAgentId);
           } catch (err: any) {
+            gtmEvent.resumeAgentFailed(selectedAgentId, err?.message);
             toast("Failed to resume agent", { description: err?.message ?? "Please try again." });
             return;
           }

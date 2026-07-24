@@ -26,6 +26,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { gtmEvent } from "@/lib/utils";
 
 const POLL_INTERVAL_MS = 3000;
 const SESSION_LIMIT = 50;
@@ -226,31 +227,44 @@ const AgentExplorer = (props: any) => {
   const handleSuspend = () => {
     if (!agentHandle || !selectedAgentId) return;
     agentHandle.suspend().then(() => {
+      gtmEvent.suspendAgent(selectedAgentId);
       toast("Agent suspended");
       refreshAgentDetail(selectedAgentId);
       refreshAgentList();
-    }).catch(() => toast("Unable to suspend agent"));
+    }).catch((err: any) => {
+      gtmEvent.suspendAgentFailed(selectedAgentId, err?.message);
+      toast("Unable to suspend agent");
+    });
   };
 
   const handleResume = () => {
     if (!agentHandle || !selectedAgentId) return;
     agentHandle.resume().then(() => {
+      gtmEvent.resumeAgent(selectedAgentId);
       toast("Agent resumed");
       refreshAgentDetail(selectedAgentId);
       refreshAgentList();
-    }).catch(() => toast("Unable to resume agent"));
+    }).catch((err: any) => {
+      gtmEvent.resumeAgentFailed(selectedAgentId, err?.message);
+      toast("Unable to resume agent");
+    });
   };
 
   const handleDelete = () => {
     if (!agentHandle || !selectedAgentId) return;
+    const agentId = selectedAgentId;
     agentHandle.delete().then(() => {
+      gtmEvent.deleteAgent(agentId);
       toast("Agent deleted");
       setSelectedAgentId(null);
       setSelectedAgentDetail(null);
       setAgentHandle(null);
       setChatSession(null);
       refreshAgentList();
-    }).catch(() => toast("Unable to delete agent"));
+    }).catch((err: any) => {
+      gtmEvent.deleteAgentFailed(agentId, err?.message);
+      toast("Unable to delete agent");
+    });
   };
 
   const handleNewChat = () => {
@@ -304,12 +318,14 @@ const AgentExplorer = (props: any) => {
         if (sendSessionId === null && result?.sessionId) {
           attachSessionId(chat, result.sessionId);
         }
+        gtmEvent.sendAgentMessage(sendAgentId);
         await refreshSessions(sendAgentId);
         refreshAgentDetail(sendAgentId);
         refreshAgentList();
       })
       .catch((err: any) => {
         clearTimeout(timeoutId);
+        gtmEvent.sendAgentMessageFailed(sendAgentId, err?.message);
         toast(`Chat failed: ${err?.message || "see console"}`);
         setMessageText(text);
       })

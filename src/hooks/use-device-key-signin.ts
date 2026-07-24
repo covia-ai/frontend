@@ -70,7 +70,7 @@ export function useDeviceKeySignIn(options: { trackSignUp?: boolean } = {}) {
       console.error("No venue available for keypair login");
       return;
     }
-    if (trackSignUp) gtmEvent.buttonClick('Sign Up', 'keypair');
+    if (trackSignUp) gtmEvent.signUp('keypair');
     setDeviceKeyHex(key);
     const auth = Ed25519Auth.fromHex(key);
     loginWithKeypair(venueId, key, auth.getDID());

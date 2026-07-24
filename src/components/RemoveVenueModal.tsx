@@ -13,6 +13,7 @@ import { useState } from "react"
 import { useVenues } from "@/hooks/use-venues";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { X } from "lucide-react";
+import { gtmEvent } from "@/lib/utils";
 
 export const RemoveVenueModal = (props:any) => {
     const [open, setOpen] = useState(false)
@@ -20,6 +21,7 @@ export const RemoveVenueModal = (props:any) => {
     const handleRemoveVenue = (e: React.MouseEvent) => {
                 e.stopPropagation();
                 removeVenue(props.venueId);
+                gtmEvent.removeVenue(props.venueId);
      };
 
 

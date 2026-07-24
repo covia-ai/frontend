@@ -28,7 +28,6 @@ export const AddNewVenueModal = (_props:any) => {
     const addVenueToList = async () => {
       let processVenueDidOrUrl = venueDidOrUrl.trim();
       if (!processVenueDidOrUrl) return;
-      gtmEvent.buttonClick('Add Venue', processVenueDidOrUrl);
 
       if (processVenueDidOrUrl.endsWith("/"))
         processVenueDidOrUrl = processVenueDidOrUrl.slice(0, -1);
@@ -50,10 +49,12 @@ export const AddNewVenueModal = (_props:any) => {
         const authOption = createAuthProvider(getAuthForVenue(processVenueDidOrUrl));
         const venue = await Venue.connect(processVenueDidOrUrl, authOption);
         addVenue(venue);
+        gtmEvent.connectVenue(venue.venueId);
         toast("Venue connected successfully");
         setVenueDidOrUrl("");
         setOpen(false);
       } catch {
+        gtmEvent.connectVenueFailed(processVenueDidOrUrl);
         setError("Could not connect to venue. Check the URL or DID and try again.");
       } finally {
         setLoading(false);

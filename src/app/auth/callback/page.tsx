@@ -4,6 +4,7 @@ import { Suspense, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/hooks/use-auth";
 import { useVenue } from "@/hooks/use-venue";
+import { gtmEvent } from "@/lib/utils";
 
 function AuthCallbackInner() {
   const searchParams = useSearchParams();
@@ -18,6 +19,7 @@ function AuthCallbackInner() {
 
     if (token && did && venueId) {
       loginWithToken(venueId, token, did);
+      gtmEvent.signUp('oauth');
       router.replace("/operations");
     } else {
       router.replace("/signUp");

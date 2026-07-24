@@ -160,5 +160,126 @@ export const gtmEvent = {
       ...params,
     })
   },
+
+  // GA4 recommended sign_up event: https://support.google.com/analytics/answer/9267735
+  signUp: (method: string) => {
+    sendGTMEvent({
+      event: 'sign_up',
+      method,
+    })
+  },
+
+  connectVenue: (venueId: string) => {
+    sendGTMEvent({
+      event: 'connect_venue',
+      venue_id: venueId,
+    })
+  },
+
+  connectVenueFailed: (venueId: string, reason?: string) => {
+    sendGTMEvent({
+      event: 'connect_venue_failed',
+      venue_id: venueId,
+      reason,
+    })
+  },
+
+  removeVenue: (venueId: string) => {
+    sendGTMEvent({
+      event: 'remove_venue',
+      venue_id: venueId,
+    })
+  },
+
+  createAsset: (assetName: string) => {
+    sendGTMEvent({
+      event: 'create_asset',
+      asset_name: assetName,
+    })
+  },
+
+  createAssetFailed: (assetName: string, reason?: string) => {
+    sendGTMEvent({
+      event: 'create_asset_failed',
+      asset_name: assetName,
+      reason,
+    })
+  },
+
+  createAgent: (agentId: string, provider?: string) => {
+    sendGTMEvent({
+      event: 'create_agent',
+      agent_id: agentId,
+      provider,
+    })
+  },
+
+  createAgentFailed: (agentId?: string, reason?: string) => {
+    sendGTMEvent({
+      event: 'create_agent_failed',
+      agent_id: agentId,
+      reason,
+    })
+  },
+
+  deleteAgent: (agentId: string) => {
+    sendGTMEvent({
+      event: 'delete_agent',
+      agent_id: agentId,
+    })
+  },
+
+  deleteAgentFailed: (agentId: string, reason?: string) => {
+    sendGTMEvent({
+      event: 'delete_agent_failed',
+      agent_id: agentId,
+      reason,
+    })
+  },
+
+  suspendAgent: (agentId: string) => {
+    sendGTMEvent({
+      event: 'suspend_agent',
+      agent_id: agentId,
+    })
+  },
+
+  suspendAgentFailed: (agentId: string, reason?: string) => {
+    sendGTMEvent({
+      event: 'suspend_agent_failed',
+      agent_id: agentId,
+      reason,
+    })
+  },
+
+  resumeAgent: (agentId: string) => {
+    sendGTMEvent({
+      event: 'resume_agent',
+      agent_id: agentId,
+    })
+  },
+
+  resumeAgentFailed: (agentId: string, reason?: string) => {
+    sendGTMEvent({
+      event: 'resume_agent_failed',
+      agent_id: agentId,
+      reason,
+    })
+  },
+
+  sendAgentMessage: (agentId: string) => {
+    sendGTMEvent({
+      event: 'send_agent_message',
+      agent_id: agentId,
+    })
+  },
+
+  sendAgentMessageFailed: (agentId: string, reason?: string) => {
+    sendGTMEvent({
+      event: 'send_agent_message_failed',
+      agent_id: agentId,
+      reason,
+    })
+  },
 }
 

@@ -27,6 +27,7 @@ import { LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
+import { gtmEvent } from "@/lib/utils";
 
 interface AddNewAgentProps {
   trigger?: React.ReactNode;
@@ -144,6 +145,7 @@ export function AddNewAgent({
         await venue.agents.request(result.agentId, { task: initialCommand.trim() }, false);
       }
 
+      gtmEvent.createAgent(result.agentId, llmProvider);
       toast("Agent created", {
         description: `Agent "${result.agentId}" is now ${result.status}`,
       });
@@ -155,6 +157,7 @@ export function AddNewAgent({
       setOpen(false);
       onCreated?.();
     } catch (err) {
+      gtmEvent.createAgentFailed(resolvedAgentId, err instanceof Error ? err.message : undefined);
       toast("Unable to create agent", {
         description: err instanceof Error ? err.message : undefined,
       });
