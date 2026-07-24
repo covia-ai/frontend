@@ -48,7 +48,10 @@ export function HitlGrantAsk({ request, ask, kind, venue, signingKeyHex, onDone,
   const offered = offeredGrantsOf(ask);
   const { venues } = useVenues();
 
-  const audience = spec?.audience ?? request.agent ?? request.from ?? "";
+  // Must match the venue's expected audience exactly (COG-19): the ask's pinned
+  // audience, else the requester (`from`). Never `agent` — that's a display
+  // name, not a DID, and would fail the token's aud check.
+  const audience = spec?.audience ?? request.from ?? "";
   const targetVenue = useMemo(
     () => (spec?.venue ? venues.find((v) => v.venueId === spec.venue) : undefined),
     [venues, spec?.venue],
