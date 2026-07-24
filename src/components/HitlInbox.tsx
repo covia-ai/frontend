@@ -19,6 +19,7 @@ import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useAuthStore } from "@/hooks/use-auth";
 import { useHitlRequests } from "@/hooks/use-hitl";
 import {
+  grantAskOf,
   missingRequiredAnswers,
   respondToHitl,
   type HitlAnswer,
@@ -26,6 +27,7 @@ import {
   type HitlRequest,
 } from "@/lib/hitl";
 import { Identicon } from "@/components/Identicon";
+import { HitlGrantAsk } from "@/components/HitlGrantAsk";
 import { Bot, ChevronDown, ChevronUp, Inbox, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -50,15 +52,6 @@ function shortDid(did?: string): string {
   return did.length > 28 ? `${did.slice(0, 18)}…${did.slice(-6)}` : did;
 }
 
-// True if the request offers capability grants anywhere. Grants are shown but
-// never echoed (see respondToHitl), and a request carrying them is never
-// answerable in one click — the warning has to be read first.
-function offersGrants(request: HitlRequest): boolean {
-  return (request.asks ?? []).some(
-    (ask) => (ask.grants?.length ?? 0) > 0 || (ask.options ?? []).some((o) => (o.grants?.length ?? 0) > 0),
-  );
-}
-
 // Answers come back as raw option ids, so they have to be mapped through the
 // ask's own options — showing "tonight" instead of "Tonight 22:00" would make a
 // resolved request harder to read than the form that produced it.
@@ -81,7 +74,9 @@ function formatAnswer(ask: HitlAsk, value: HitlAnswer | undefined): string {
 // — needs a form, and gets one inline.
 function quickAsk(request: HitlRequest): HitlAsk | null {
   const asks = request.asks ?? [];
-  if (asks.length !== 1 || offersGrants(request)) return null;
+  // A grant/token request is never quick-answered — conferring authority or
+  // signing a token is always a deliberate, reviewed action.
+  if (asks.length !== 1 || grantAskOf(request)) return null;
   const ask = asks[0];
   return ask.type === "approval" || ask.type === "choice" ? ask : null;
 }
@@ -218,6 +213,9 @@ export function HitlInbox() {
   // reads anonymously, which the venue answers with a 401. Reporting both
   // makes that distinguishable from a genuine credential problem.
   const credsForVenue = useAuthStore((x) => (venue ? x.authMap[venue.venueId] ?? null : null));
+  // Only a did:key holder can sign a self-sovereign token (COG-19); a bearer
+  // login has no client key. null disables signing with an explanation.
+  const signingKeyHex = credsForVenue?.type === "keypair" ? credsForVenue.privateKeyHex : null;
 
   const [statusFilter, setStatusFilter] = useState<string>("open");
   // Only one request is ever open for editing, so its draft can live here
@@ -363,6 +361,7 @@ export function HitlInbox() {
         <div className="flex flex-col gap-3">
           {visible.map((request) => {
             const quick = quickAsk(request);
+            const grant = grantAskOf(request);
             const isOpen = request.status === "open";
             const expanded = expandedId === request.id;
             const busy = submittingId === request.id;
@@ -476,7 +475,9 @@ export function HitlInbox() {
                 {isOpen && !quick && !expanded && (
                   <div className="flex items-center gap-2 border-t pt-3">
                     <span className="text-xs text-muted-foreground">
-                      {asks.length} {asks.length === 1 ? "ask" : "asks"}
+                      {grant?.kind === "token" ? "Signs a capability token"
+                        : grant?.kind === "grant" ? "Grants capabilities"
+                        : `${asks.length} ${asks.length === 1 ? "ask" : "asks"}`}
                     </span>
                     <div className="flex-1" />
                     <Button
@@ -485,20 +486,28 @@ export function HitlInbox() {
                       disabled={busy}
                       onClick={() => toggleExpanded(request)}
                     >
-                      Respond <ChevronDown size={14} className="ml-1" />
+                      {grant?.kind === "token" ? "Review & sign" : grant ? "Review grant" : "Respond"}
+                      <ChevronDown size={14} className="ml-1" />
                     </Button>
                   </div>
                 )}
 
-                {isOpen && expanded && (
-                  <div className="flex flex-col gap-4 border-t pt-3">
-                    {offersGrants(request) && (
-                      <p className="text-xs text-muted-foreground border rounded-md p-2">
-                        This request offers capability grants. Responding here confers none
-                        of them — grant them deliberately via the API if that is your intent.
-                      </p>
-                    )}
+                {/* A token/grant request gets the capability surface; everything
+                    else the generic ask form. */}
+                {isOpen && expanded && grant && (
+                  <HitlGrantAsk
+                    request={request}
+                    ask={grant.ask}
+                    kind={grant.kind}
+                    venue={venue}
+                    signingKeyHex={signingKeyHex}
+                    onDone={() => { setExpandedId(null); setJustAnsweredId(request.id); refresh(); }}
+                    onCancel={() => toggleExpanded(request)}
+                  />
+                )}
 
+                {isOpen && expanded && !grant && (
+                  <div className="flex flex-col gap-4 border-t pt-3">
                     {asks.map((ask) => (
                       <div key={ask.id} className="flex flex-col gap-2">
                         <Label className="text-sm">

@@ -1,18 +1,42 @@
-import { Venue } from "@covia/covia-sdk";
+import { Venue, createUCANJWT, hexToPrivateKey } from "@covia/covia-sdk";
 import { resolveOperationByAddress } from "@/lib/operations-catalog";
 
 // Human-in-the-loop requests. A request is delivered as a durable record into
 // the target user's `h/` lattice inbox, carried by a Job that sits in
 // INPUT_REQUIRED until the human answers, rejects, or it expires.
 
-export type HitlAskType = "text" | "approval" | "choice" | "checkboxes";
+// `token` (COG-19) is the self-sovereign access-token ask: the human signs a
+// UCAN with their own key. The others are COG-16 asks.
+export type HitlAskType = "text" | "approval" | "choice" | "checkboxes" | "token";
+
+// A capability {with, can} — the shared shape behind both a venue-minted grant
+// (COG-17, offered on an approval/option ask) and a self-sovereign access token
+// (COG-19, requested by a token ask).
+export type HitlCap = {
+  with: string;
+  can: string;
+  /** Grant expiry (Unix seconds), where the offer carries one. */
+  exp?: number;
+};
+
+// COG-19 token spec: what a `token` ask requests. `caps` is what the agent asks
+// for; the human decides what to actually sign.
+export type HitlTokenSpec = {
+  caps: HitlCap[];
+  /** Requested lifetime hint (seconds); the responder sets the real expiry. */
+  exp?: number;
+  /** DID the signed token must be audienced to; defaults to the request's `from`. */
+  audience?: string;
+  /** Target venue — informational, for the responder's UI. */
+  venue?: string;
+};
 
 export type HitlOption = {
   id: string;
   label: string;
   description?: string;
-  /** Capability grants this option would confer if echoed back. */
-  grants?: unknown[];
+  /** Capability grants this option would confer if echoed back (COG-17). */
+  grants?: HitlCap[];
 };
 
 export type HitlAsk = {
@@ -22,9 +46,37 @@ export type HitlAsk = {
   required?: boolean;
   /** choice / checkboxes only. */
   options?: HitlOption[];
-  /** approval only. */
-  grants?: unknown[];
+  /** approval only — venue-minted grants offered (COG-17). */
+  grants?: HitlCap[];
+  /** token only — the requested self-sovereign grant (COG-19). */
+  token?: HitlTokenSpec;
 };
+
+// The COG-19 token spec on a token ask, or null. A token ask needs at least one
+// requested capability to be actionable.
+export function tokenSpecOf(ask: HitlAsk): HitlTokenSpec | null {
+  const spec = ask.token;
+  if (ask.type !== "token" || !spec || !Array.isArray(spec.caps) || spec.caps.length === 0) {
+    return null;
+  }
+  return spec;
+}
+
+/** Venue-minted grants offered on an approval ask (COG-17), or []. */
+export function offeredGrantsOf(ask: HitlAsk): HitlCap[] {
+  return Array.isArray(ask.grants) ? ask.grants : [];
+}
+
+// Which of a request's asks is the grant/token surface, if any — and which kind.
+// A grant-bearing request is answered through the capability form, never the
+// quick path: signing / conferring authority is always deliberate.
+export function grantAskOf(request: { asks?: HitlAsk[] }): { ask: HitlAsk; kind: "token" | "grant" } | null {
+  for (const ask of request.asks ?? []) {
+    if (tokenSpecOf(ask)) return { ask, kind: "token" };
+    if (offeredGrantsOf(ask).length > 0) return { ask, kind: "grant" };
+  }
+  return null;
+}
 
 export type HitlStatus = "open" | "answered" | "rejected" | "expired" | "cancelled";
 
@@ -117,20 +169,39 @@ export type HitlRespondInput = {
   answers?: Record<string, HitlAnswer>;
   /** For "reject" this is the reason the requester sees. */
   comment?: string;
+  /**
+   * COG-17: the venue-minted grants the responder approves. The venue issues a
+   * UCAN for exactly the intersection of these and the choices actually made.
+   * Only ever set from an explicit capability approval — never a side effect.
+   */
+  grants?: HitlCap[];
 };
 
 export type HitlRespondResult = { status?: string; id?: string };
 
 // User-driven: answering or rejecting is an explicit human action, so the Job
-// this invoke persists is exactly what should be recorded.
-//
-// `grants` is deliberately never sent. Echoing a grant makes the venue issue a
-// real UCAN capability, so conferring one must be a considered choice rather
-// than a side effect of clicking Answer; omitting the field confers nothing.
+// this invoke persists is exactly what should be recorded. `grants` and a
+// token-ask JWT answer are only ever populated by the capability form, where
+// the human has reviewed exactly what they are conferring.
 export async function respondToHitl(
   venue: Venue,
   input: HitlRespondInput,
 ): Promise<HitlRespondResult> {
   const op = await resolveOperationByAddress(venue, HITL_RESPOND_ADDRESS);
   return (await op.run(input)) as HitlRespondResult;
+}
+
+// Sign a self-sovereign UCAN with the responder's own device key (COG-19). The
+// token roots in the user (iss = their did:key), is bound to `audience`, and
+// carries exactly `caps` — so it verifies on any venue where the user is the
+// root authority. The venue only transports it; it never signs.
+export function signAccessToken(opts: {
+  privateKeyHex: string;
+  audience: string;
+  caps: HitlCap[];
+  lifetimeSeconds: number;
+}): string {
+  const priv = hexToPrivateKey(opts.privateKeyHex);
+  const att = opts.caps.map((c) => ({ with: c.with, can: c.can }));
+  return createUCANJWT(priv, opts.audience, att, opts.lifetimeSeconds);
 }

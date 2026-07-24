@@ -11,9 +11,10 @@ jest.mock('@/hooks/use-authenticated-venue', () => ({
 jest.mock('@/hooks/use-auth', () => ({
   useAuthStore: () => ({ type: 'keypair', privateKeyHex: 'x', did: 'did:key:zSELF' }),
 }));
-// Mocked wholesale so the component test never pulls in the SDK.
-// missingRequiredAnswers has its own unit tests in hitl.test.ts.
+// Keep the real detection/classification helpers (grantAskOf etc.); only the
+// network-facing respond call and missingRequiredAnswers are stubbed.
 jest.mock('@/lib/hitl', () => ({
+  ...jest.requireActual('@/lib/hitl'),
   respondToHitl: jest.fn(() => Promise.resolve({ status: 'answered' })),
   missingRequiredAnswers: jest.fn(() => []),
 }));
