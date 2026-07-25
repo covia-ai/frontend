@@ -29,11 +29,23 @@ import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { gtmEvent } from "@/lib/utils";
 
+// The capability half of a venue agent template (COG-18 skills + tool palette)
+// that the dialog carries into the created agent unchanged — name, prompt,
+// provider and model are edited in the form, these ride along.
+export interface AgentTemplateConfig {
+  operation?: string;
+  skills?: string[];
+  tools?: string[];
+  defaultTools?: boolean;
+}
+
 interface AddNewAgentProps {
   trigger?: React.ReactNode;
   initialAgentName?: string;
   initialSystemPrompt?: string;
   initialProvider?: string;
+  /** Skills/tools/operation from a venue template, applied to the created agent. */
+  initialConfig?: AgentTemplateConfig;
   onCreated?: () => void;
 }
 
@@ -48,6 +60,7 @@ export function AddNewAgent({
   initialAgentName = "",
   initialSystemPrompt = "",
   initialProvider = "anthropic",
+  initialConfig,
   onCreated,
 }: AddNewAgentProps = {}) {
   const [agentName, setAgentName] = useState(initialAgentName);
@@ -128,7 +141,12 @@ export function AddNewAgent({
       const result = await venue.agents.create({
         agentId: resolvedAgentId,
         config: {
-          operation: "v/ops/llmagent/chat",
+          // Template capabilities (skills, tools, defaultTools) ride along; the
+          // form's provider/model/prompt below always win over the template's.
+          ...(initialConfig?.skills?.length ? { skills: initialConfig.skills } : {}),
+          ...(initialConfig?.tools?.length ? { tools: initialConfig.tools } : {}),
+          ...(initialConfig?.defaultTools != null ? { defaultTools: initialConfig.defaultTools } : {}),
+          operation: initialConfig?.operation ?? "v/ops/llmagent/chat",
           llmOperation: provider.operation,
           // The agent loop forwards `model` into the LLM op input
           // (AbstractLLMAdapter K_MODEL); omitted → provider default.
@@ -186,6 +204,14 @@ export function AddNewAgent({
         </DialogDescription>
 
         <div className="flex flex-col items-start justify-center space-y-6">
+          {/* What a template contributes beyond the editable fields below. */}
+          {initialConfig && Boolean(initialConfig.skills?.length || initialConfig.tools?.length || initialConfig.defaultTools) && (
+            <p data-testid="template-capabilities" className="w-full text-xs text-muted-foreground border rounded-md p-2">
+              This template adds{initialConfig.skills?.length ? ` a skills index (${initialConfig.skills.join(", ")})` : ""}
+              {initialConfig.tools?.length ? `${initialConfig.skills?.length ? "," : ""} ${initialConfig.tools.length} tool${initialConfig.tools.length === 1 ? "" : "s"}` : ""}
+              {initialConfig.defaultTools ? `${(initialConfig.skills?.length || initialConfig.tools?.length) ? ", and" : ""} read-only workspace access` : ""}. Set the name, provider and prompt below.
+            </p>
+          )}
           {/* Agent Name */}
           <div className="space-y-2 w-full">
             <Label htmlFor="agent-name" className="w-32 text-sm">
