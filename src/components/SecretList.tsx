@@ -6,8 +6,14 @@ import { toastError } from "@/lib/toast-error";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { KeyRound, Loader2, Plus, Trash2, EyeOff, Lock } from "lucide-react";
+import { KeyRound, Loader2, Plus, Trash2, EyeOff, Lock, ChevronDown } from "lucide-react";
 import { useIsAuthenticated } from "@/hooks/use-auth";
+import { KNOWN_LLM_KEYS } from "@/config/llm-providers";
+import { keyNameSuggestions, recentKeyNames, rememberKeyName } from "@/lib/recent-keys";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import {
   AlertDialog,
@@ -27,6 +33,15 @@ export function SecretList() {
   const [newName, setNewName] = useState("");
   const [newValue, setNewValue] = useState("");
   const [adding, setAdding] = useState(false);
+  const [recent, setRecent] = useState<string[]>([]);
+  useEffect(() => setRecent(recentKeyNames()), []);
+
+  // Grouped name suggestions: recent → your existing keys → common LLM keys.
+  const nameGroups = keyNameSuggestions({
+    recent,
+    existing: secrets,
+    common: Object.keys(KNOWN_LLM_KEYS),
+  });
 
   const venue = useAuthenticatedVenue();
   const isAuthenticated = useIsAuthenticated();
@@ -65,6 +80,8 @@ export function SecretList() {
       .set(newName.trim(), newValue)
       .then(() => {
         toast(`Secret "${newName}" stored`);
+        rememberKeyName(newName.trim());
+        setRecent(recentKeyNames());
         setNewName("");
         setNewValue("");
         loadSecrets();
@@ -114,13 +131,39 @@ export function SecretList() {
                 password into the value field. autoComplete="new-password" is the
                 reliable signal to suppress filling an existing password; the
                 data-* attrs cover 1Password / LastPass. */}
-            <Input
-              placeholder="Secret name"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              className="flex-1"
-              autoComplete="off"
-            />
+            <div className="flex-1 flex gap-1">
+              <Input
+                placeholder="Secret name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                className="flex-1"
+                autoComplete="off"
+              />
+              {nameGroups.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button type="button" variant="outline" size="icon" aria-label="Suggested key names" data-testid="key-name-suggestions">
+                      <ChevronDown size={16} />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="max-h-72 overflow-auto">
+                    {nameGroups.map((group, i) => (
+                      <div key={group.label}>
+                        {i > 0 && <DropdownMenuSeparator />}
+                        <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                          {group.label}
+                        </DropdownMenuLabel>
+                        {group.names.map((name) => (
+                          <DropdownMenuItem key={name} className="font-mono text-xs" onSelect={() => setNewName(name)}>
+                            {name}
+                          </DropdownMenuItem>
+                        ))}
+                      </div>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
             <Input
               type="password"
               placeholder="Secret value"

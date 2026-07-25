@@ -76,6 +76,9 @@ export function AddNewAgent({
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState(false);
   const [availableKeys, setAvailableKeys] = useState<string[]>([]);
+  // A key pasted inline when the chosen provider has none — stored on create
+  // so you don't have to leave the dialog to add it in Secrets first.
+  const [apiKeyInput, setApiKeyInput] = useState("");
 
 
   const venue = useAuthenticatedVenue();
@@ -93,6 +96,7 @@ export function AddNewAgent({
     setModel("");
     setCustomModel("");
     setInitialCommand("");
+    setApiKeyInput("");
     if (!venue) return;
     venue.secrets
       .list()
@@ -140,8 +144,12 @@ export function AddNewAgent({
       toast("Please enter an agent name");
       return;
     }
-    if (!isProviderReady(llmProvider)) {
-      toast("No API key found for this provider");
+    const provider = LLM_PROVIDERS[llmProvider];
+    // The provider needs a key it doesn't have. Accept one pasted inline rather
+    // than making the user leave for the Secrets page.
+    const needsKey = !!provider?.requiresKey && !isProviderReady(llmProvider);
+    if (needsKey && !apiKeyInput.trim()) {
+      toast(`Enter an API key for ${provider.label}, or add one in Secrets`);
       return;
     }
     if (isReservedAgentId) {
@@ -150,7 +158,10 @@ export function AddNewAgent({
     }
     setCreating(true);
     try {
-      const provider = LLM_PROVIDERS[llmProvider];
+      // Store the pasted key first so the provider op can resolve it.
+      if (needsKey && apiKeyInput.trim()) {
+        await venue.secrets.set(provider.secretKey, apiKeyInput.trim());
+      }
       const result = await venue.agents.create({
         agentId: resolvedAgentId,
         config: {
@@ -283,13 +294,24 @@ export function AddNewAgent({
               </SelectContent>
             </Select>
             {!isProviderReady(llmProvider) && LLM_PROVIDERS[llmProvider]?.requiresKey && (
-              <p className="text-xs text-amber-500 flex items-center gap-1">
-                <AlertTriangle size={12} />
-                No API key found for this provider.{" "}
-                <Link href="/secrets" className="underline">
-                  Add one in Secrets
-                </Link>
-              </p>
+              <div className="space-y-1">
+                <p className="text-xs text-amber-500 flex items-center gap-1">
+                  <AlertTriangle size={12} />
+                  No {LLM_PROVIDERS[llmProvider]?.label} key yet — paste one to store it, or{" "}
+                  <Link href="/secrets" className="underline">add it in Secrets</Link>.
+                </p>
+                <Input
+                  type="password"
+                  data-testid="inline-api-key"
+                  placeholder={`${LLM_PROVIDERS[llmProvider]?.secretKey}`}
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  autoComplete="new-password"
+                  data-1p-ignore
+                  data-lpignore="true"
+                  spellCheck={false}
+                />
+              </div>
             )}
           </div>
 
