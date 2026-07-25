@@ -64,9 +64,12 @@ export function AgentTemplates({ onCreated }: AgentTemplatesProps = {}) {
                 <div className="text-primary mt-2"><Icon size={32} /></div>
                 <div className="text-center">
                   <div className="text-sm font-medium text-foreground capitalize">
-                    {template.name ?? template.key}
+                    {templateTitle(template)}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">{template.description}</p>
+                  {/* Clamp so cards stay even — venue descriptions run 150–250 chars. */}
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-4" title={template.description}>
+                    {template.description}
+                  </p>
                 </div>
                 {isAuthenticated ? (
                   <AddNewAgent
@@ -97,6 +100,12 @@ export function AgentTemplates({ onCreated }: AgentTemplatesProps = {}) {
       )}
     </div>
   );
+}
+
+// The name is "Skilled Agent Template" etc. — on a "Choose a Template" page the
+// " Agent Template" suffix is noise on every card, so drop it: "Skilled".
+function templateTitle(t: AgentTemplate): string {
+  return (t.name ?? t.key).replace(/\s*Agent Template$/i, "").trim() || t.key;
 }
 
 // The capability fields the create dialog carries through unchanged.

@@ -96,7 +96,20 @@ export function AddNewAgent({
     if (!venue) return;
     venue.secrets
       .list()
-      .then((secrets: string[]) => setAvailableKeys(secrets))
+      .then((secrets: string[]) => {
+        setAvailableKeys(secrets);
+        // Templates all default to OpenAI, but most users hold a different key.
+        // If the seeded provider has no key and another does, switch to a ready
+        // one so "Use Template" just works instead of showing "No API key".
+        const ready = (id: string) => {
+          const p = LLM_PROVIDERS[id];
+          return !!p && (!p.requiresKey || secrets.includes(p.secretKey));
+        };
+        if (!ready(initialProvider)) {
+          const pick = Object.keys(LLM_PROVIDERS).find(ready);
+          if (pick) setLlmProvider(pick);
+        }
+      })
       .catch(() => setAvailableKeys([]));
   }, [open, venue, initialAgentName, initialSystemPrompt, initialProvider]);
 
