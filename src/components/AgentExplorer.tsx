@@ -75,6 +75,16 @@ const AgentExplorer = (props: any) => {
   const { width: leftWidth, containerRef, startResizing } = usePaneResize(200);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
 
+  // A send's resolution handler runs after whatever render kicked it off, so
+  // the `selectedAgentId` it closed over is a snapshot from send time, not
+  // "the agent currently on screen". This ref is always current, so the
+  // handler can tell whether the user has since switched agents
+  // (covia-ai/frontend#195).
+  const selectedAgentIdRef = useRef<string | null>(selectedAgentId);
+  useEffect(() => {
+    selectedAgentIdRef.current = selectedAgentId;
+  }, [selectedAgentId]);
+
   // ─── Loaders ────────────────────────────────────────────────────────────────
 
   // Poll-driven refreshes stay silent (a transient blip would toast every
@@ -313,16 +323,22 @@ const AgentExplorer = (props: any) => {
             description: "It may have hit an error — check the Details panel.",
           });
         }
-        // ChatSession auto-captures sessionId — update our state reference.
-        // The requested new chat now exists, so auto-select is free again.
-        setChatSession(session);
-        setNewChatRequested(false);
         if (sendSessionId === null && result?.sessionId) {
           attachSessionId(chat, result.sessionId);
         }
         gtmEvent.sendAgentMessage(sendAgentId);
-        await refreshSessions(sendAgentId);
-        refreshAgentDetail(sendAgentId);
+        // chatSession/sessions are shared component state, not scoped per
+        // agent — if the user has since switched away from sendAgentId,
+        // writing them here would overwrite the agent now on screen with
+        // this stale response (covia-ai/frontend#195).
+        if (selectedAgentIdRef.current === sendAgentId) {
+          // ChatSession auto-captures sessionId — update our state reference.
+          // The requested new chat now exists, so auto-select is free again.
+          setChatSession(session);
+          setNewChatRequested(false);
+          await refreshSessions(sendAgentId);
+          refreshAgentDetail(sendAgentId);
+        }
         refreshAgentList();
       })
       .catch((err: any) => {

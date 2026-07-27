@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { usePendingChats } from '@/hooks/use-pending-chats';
 
@@ -310,6 +310,68 @@ describe('AgentExplorer new chat', () => {
     // ...and a poll landing mid-compose must not drag it back either.
     await act(async () => { jest.advanceTimersByTime(3100); });
     expect(screen.queryByText('older-session-reply')).not.toBeInTheDocument();
+  });
+});
+
+// chatSession/sessions are shared component state, not scoped per agent — a
+// send's resolution handler must check the user hasn't switched agents before
+// touching them, or a slow reply for the old agent overwrites the one now on
+// screen (covia-ai/frontend#195).
+describe('AgentExplorer cross-agent send race', () => {
+  afterEach(() => {
+    act(() => usePendingChats.setState({ pendingChats: [] }));
+  });
+
+  it('does not let a slow send for a previous agent overwrite the newly selected agent', async () => {
+    const agentA = { agentId: 'agent-1', status: 'RUNNING', tasks: 0 };
+    const agentB = { agentId: 'agent-2', status: 'RUNNING', tasks: 0 };
+    mockVenue.agents.list.mockResolvedValue({ agents: [agentA, agentB] });
+    mockVenue.agents.info.mockImplementation((id: string) =>
+      Promise.resolve(id === 'agent-1' ? agentA : agentB));
+    mockVenue.workspace.read.mockResolvedValue({ value: [] });
+    mockVenue.workspace.slice.mockImplementation((path: string) => {
+      if (path.startsWith('g/agent-1/sessions')) {
+        return Promise.resolve({
+          values: [sessionEntry('sess-1', 1000, [{ role: 'assistant', content: 'agent-1-reply', ts: 1 }])],
+        });
+      }
+      if (path.startsWith('g/agent-2/sessions')) {
+        return Promise.resolve({
+          values: [sessionEntry('sess-2', 2000, [{ role: 'assistant', content: 'agent-2-reply', ts: 2 }])],
+        });
+      }
+      return Promise.resolve({ values: [] });
+    });
+
+    // agent-1's send never settles until the test says so.
+    let resolveSend: (v: unknown) => void = () => {};
+    const sendPromise = new Promise((resolve) => { resolveSend = resolve; });
+    mockVenue.agent.mockReturnValue({
+      chatSession: (sid?: string) => ({ sessionId: sid, send: () => sendPromise }),
+    });
+
+    render(<AgentExplorer />);
+
+    // agent-1 auto-selected; its session loads.
+    expect(await screen.findByText('agent-1-reply')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId('composer-input'), { target: { value: 'hello' } });
+    fireEvent.click(screen.getByTestId('composer-send'));
+
+    // Switch to agent-2 before agent-1's send resolves.
+    const listPanel = screen.getByTestId('agent-list-panel');
+    fireEvent.click(within(listPanel).getByText('agent-2'));
+    expect(await screen.findByText('agent-2-reply')).toBeInTheDocument();
+
+    // Now the stale send settles.
+    await act(async () => {
+      resolveSend({ response: 'ok', sessionId: 'sess-1' });
+      await Promise.resolve();
+    });
+
+    // agent-2's view must be undisturbed by agent-1's late response.
+    expect(screen.getByText('agent-2-reply')).toBeInTheDocument();
+    expect(screen.queryByText('agent-1-reply')).not.toBeInTheDocument();
   });
 });
 

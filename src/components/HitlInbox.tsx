@@ -6,13 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { FiltersSheet } from "@/components/FiltersSheet";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
@@ -31,11 +25,11 @@ import { HitlGrantAsk } from "@/components/HitlGrantAsk";
 import { Bot, ChevronDown, ChevronUp, Inbox, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
-const ALL = "_all_";
-
-const STATUS_FILTERS = [
+// Empty selection means "no filter" (show every status) — same convention as
+// the Status group on the Jobs filter sheet — so there's no separate "All"
+// option here.
+const STATUS_OPTIONS = [
   { value: "open", label: "Open" },
-  { value: ALL, label: "All" },
   { value: "answered", label: "Answered" },
   { value: "rejected", label: "Rejected" },
   { value: "expired", label: "Expired" },
@@ -217,7 +211,9 @@ export function HitlInbox() {
   // login has no client key. null disables signing with an explanation.
   const signingKeyHex = credsForVenue?.type === "keypair" ? credsForVenue.privateKeyHex : null;
 
-  const [statusFilter, setStatusFilter] = useState<string>("open");
+  // Defaults to just "open" rather than empty (= everything) — an inbox
+  // should surface what's actionable first.
+  const [statusFilter, setStatusFilter] = useState<string[]>(["open"]);
   // Only one request is ever open for editing, so its draft can live here
   // rather than in a map keyed by request id.
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -229,25 +225,26 @@ export function HitlInbox() {
   const [justAnsweredId, setJustAnsweredId] = useState<string | null>(null);
 
   const visible = useMemo(() => {
-    const base = statusFilter === ALL ? requests : requests.filter((r) => r.status === statusFilter);
+    const base = statusFilter.length === 0
+      ? requests
+      : requests.filter((r) => statusFilter.includes(r.status));
     if (!justAnsweredId || base.some((r) => r.id === justAnsweredId)) return base;
     const pinned = requests.find((r) => r.id === justAnsweredId);
     return pinned ? [pinned, ...base] : base;
   }, [requests, statusFilter, justAnsweredId]);
 
-  function changeStatusFilter(next: string) {
+  function changeStatusFilter(next: string[]) {
     setStatusFilter(next);
     setJustAnsweredId(null);
   }
 
   function toggleExpanded(request: HitlRequest) {
-    if (expandedId === request.id) {
-      setExpandedId(null);
-      return;
-    }
-    setExpandedId(request.id);
+    // Draft answers/comment are staged here regardless of which way the form
+    // closes, so a cancelled draft can never bleed into a later quick-answer
+    // on this card or any other (covia-ai/frontend#196).
     setAnswers({});
     setComment("");
+    setExpandedId(expandedId === request.id ? null : request.id);
   }
 
   async function send(
@@ -289,23 +286,14 @@ export function HitlInbox() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-2 items-center">
-        <Select value={statusFilter} onValueChange={changeStatusFilter}>
-          <SelectTrigger className="w-44 shrink-0" data-testid="hitl-status-filter">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {STATUS_FILTERS.map((s) => (
-              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {!loading && (
-          <span className="text-xs text-muted-foreground whitespace-nowrap">
-            {visible.length} of {requests.length}
-          </span>
-        )}
-        <div className="flex-1" />
+      <div className="flex gap-2 items-center justify-end">
+        <FiltersSheet
+          title="Filter Requests"
+          description="Narrow down HITL requests by status."
+          groups={[
+            { label: "Status", options: STATUS_OPTIONS, selected: statusFilter, onChange: changeStatusFilter },
+          ]}
+        />
         <Button
           variant="outline"
           size="icon"
@@ -318,6 +306,14 @@ export function HitlInbox() {
           <RefreshCw size={16} className={loading ? "animate-spin" : undefined} />
         </Button>
       </div>
+
+      {!loading && (
+        <div className="flex flex-row flex-nowrap items-center justify-between w-full gap-4">
+          <span className="text-card-foreground text-xs whitespace-nowrap">
+            Showing {visible.length} of {requests.length}
+          </span>
+        </div>
+      )}
 
       {loading && (
         <div className="flex items-center justify-center py-20">

@@ -148,6 +148,38 @@ describe('inline form', () => {
     });
   });
 
+  // `comment` is shared component state across every card, staged while a
+  // form is open. It must be cleared on Cancel too, not just on Apply —
+  // otherwise a discarded draft survives and gets attached to the next quick
+  // answer, on this request or a different one entirely (covia-ai/frontend#196).
+  it('clears a cancelled draft comment so it does not leak into another request', async () => {
+    const multiAsk = req({
+      id: 'multi', asks: [approvalAsk, { id: 'notes', type: 'text', prompt: 'Notes?' }],
+    });
+    const singleAsk = req({ id: 'single', asks: [approvalAsk] });
+    withRequests([multiAsk, singleAsk]);
+    render(<HitlInbox />);
+
+    // Open the form for the multi-ask request, type a comment, then cancel —
+    // discarding it.
+    await userEvent.click(screen.getByTestId('hitl-respond-toggle'));
+    await userEvent.type(
+      screen.getByPlaceholderText('Optional — the reason the requester sees when rejecting.'),
+      'should not leak',
+    );
+    await userEvent.click(screen.getByText('Cancel'));
+
+    // Answer the *other* request via its quick-answer button — only that
+    // request renders quick-answer buttons, since the multi-ask one needs a
+    // form.
+    const [approve] = screen.getAllByTestId('hitl-quick-answer');
+    await userEvent.click(approve);
+
+    expect(mockRespond).toHaveBeenCalledWith(expect.anything(), {
+      id: 'single', outcome: 'answer', answers: { approve: true },
+    });
+  });
+
   it('never fast-paths a request offering capability grants', () => {
     withRequests([req({
       asks: [{ ...approvalAsk, grants: [{ with: 'w/', can: 'write' }] }],
