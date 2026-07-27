@@ -1,11 +1,12 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from "react";
-import { Asset } from "@covia/covia-sdk";
+import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useResolvedVenue } from "@/hooks/use-resolved-venue";
+import { useAssetDetails } from "@/hooks/use-asset-details";
 import { MetadataViewer } from "./MetadataViewer";
 import { AssetHeader } from "./AssetHeader";
+import { ErrorDisplay } from "./ErrorDisplay";
 import { ContentLayout } from "./admin-panel/content-layout";
 import { TopBar } from "./admin-panel/TopBar";
 
@@ -15,17 +16,18 @@ interface AssetViewerProps {
 }
 
 export function AssetViewer(props: AssetViewerProps) {
-  const [asset, setAsset] = useState<Asset>();
   const venue = useResolvedVenue(props.venueId);
-
-  useEffect(() => {
-    if (!venue) return;
-    venue.getAsset(props.assetId).then(setAsset).catch(() => {});
-  }, [venue, props.assetId]);
+  const { asset, loading, error } = useAssetDetails(venue, props.assetId);
 
   return (
     <ContentLayout>
       <TopBar assetOrJobName={asset?.metadata?.name} venueName={venue?.metadata?.name ?? ""} />
+      {loading && (
+        <div className="flex min-h-48 items-center justify-center">
+          <Loader2 className="animate-spin text-primary" size={32} />
+        </div>
+      )}
+      {error && <ErrorDisplay error={error} className="m-4" />}
       {asset && (
         <div className="flex flex-col w-full items-center justify-center">
           <AssetHeader asset={asset} />

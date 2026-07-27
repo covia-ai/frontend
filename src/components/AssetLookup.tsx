@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { Venue, getAssetIdFromVenueId } from "@covia/covia-sdk";
 import { AssetEntry, loadAssetEntries } from "@/lib/asset-metadata";
 import { getVenueFor, useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
-import { useAuthStore } from "@/hooks/use-auth";
+import { useCurrentAuth } from "@/hooks/use-auth";
 import { ScrollArea } from "./ui/scroll-area";
 import { DialogClose } from "@radix-ui/react-dialog";
 import { Button } from "./ui/button";
@@ -18,11 +18,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useVenues } from "@/hooks/use-venues";
+import type { VenueDescriptor } from "@/hooks/use-venues";
 
 export const AssetLookup = ({sendAssetIdBackToForm}: {sendAssetIdBackToForm: (id: string) => void}) => {
 
   const venue = useAuthenticatedVenue();
-  const authData = useAuthStore((x) => x.auth);
+  const authData = useCurrentAuth();
 
   const [assetsMetadata, setAssetsMetadata] = useState<AssetEntry[]>([]);
   const [filteredAsset, setFilteredAsset] = useState<AssetEntry[]>([]);
@@ -69,7 +70,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}: {sendAssetIdBackToForm: (id
     }
   },[filterValue, assetsMetadata])
 
-  const handleVenueSelect = (venue: Venue) => {
+  const handleVenueSelect = (venue: VenueDescriptor) => {
     setSelectedVenue(getVenueFor(venue, authData));
   };
   return (
@@ -96,7 +97,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}: {sendAssetIdBackToForm: (id
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="start">
-                    {venues.map((venue:Venue) => (
+                    {venues.map((venue) => (
                       <DropdownMenuItem
                         key={venue.venueId}
                         onClick={() => handleVenueSelect(venue)}

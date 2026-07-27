@@ -7,20 +7,21 @@ import { useCallback, useEffect, useState, useMemo } from "react";
 
 import { Asset, DataAsset }from "@covia/covia-sdk";
 import { loadAssetEntries } from "@/lib/asset-metadata";
-import { getVenueFor } from "@/hooks/use-authenticated-venue";
-import { useVenueForRoute } from "@/hooks/use-venue-for-route";
-import { useAuthStore } from "@/hooks/use-auth";
+import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { Spinner } from '@/components/ui/shadcn-io/spinner';
 import { AssetCard } from "./AssetCard";
 import { PaginationHeader } from "./PaginationHeader";
 import { useVenues } from "@/hooks/use-venues";
 import { useGridPageSize } from "@/hooks/use-grid-page-size";
+import { useLatestQuery } from "@/hooks/use-latest-query";
+import { useClientPagination } from "@/hooks/use-pagination";
 import { CARD_GRID_CLASS } from "@/lib/grid";
 import { FileKey, Lock }from "lucide-react";
 import { CreateAssetComponent } from "./CreateAssetComponent";
 import { TopBar } from "./admin-panel/TopBar";
 import { FiltersSheet } from "./FiltersSheet";
 import { Button } from "./ui/button";
+import { ErrorDisplay } from "@/components/ErrorDisplay";
 
 
 interface AssetListProps {
@@ -29,34 +30,29 @@ interface AssetListProps {
 
 export function AssetList({ venueId }: AssetListProps = {}) {
   const searchParams = useSearchParams()
-  const [assetsMetadata, setAssetsMetadata] = useState<Asset[]>([]);
-  const [isLoading, setLoading] = useState(true);
+  const {
+    data: assetsMetadata,
+    loading: isLoading,
+    error: loadError,
+    run: runAssetQuery,
+    reset: resetAssetQuery,
+    invalidate: invalidateAssetQuery,
+  } = useLatestQuery<Asset[]>([], { initialLoading: true });
   const router = useRouter();
 
   // Page size follows the grid: columns it renders, times rows that fit in the
   // space below it, so both a wider and a taller window show more assets.
   const { ref: gridRef, pageSize: itemsPerPage } = useGridPageSize();
-  const [currentPage, setCurrentPage] = useState(1);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchInput, setSearchInput] = useState(searchParams.get('search') ?? "");
   const pathname = usePathname();
 
   const { venues } = useVenues();
-  const venueObj = useVenueForRoute(venueId);
-  const authData = useAuthStore((x) =>
-    venueObj ? x.authMap[venueObj.venueId] ?? null : null
-  );
-  const isAuthenticated = authData !== null;
-  const venue = useMemo(
-    () => venueObj ? getVenueFor(venueObj, authData) : null,
-    [venueObj, authData],
-  );
-  const nextPage = (page: number) => {
-    setCurrentPage(page)
-  }
-  const prevPage = (page: number) => {
-    setCurrentPage(page)
-  }
+  const {
+    descriptor: venueObj,
+    venue,
+    isAuthenticated,
+  } = useResolvedVenueContext(venueId);
   const handleSearchChange = (value: string) => {
     setSearchInput(value);
     if (!value) router.replace(pathname);
@@ -69,33 +65,35 @@ export function AssetList({ venueId }: AssetListProps = {}) {
   // cache (immutable, so revisits are near-free) and streams in per batch,
   // so the grid fills incrementally instead of blocking on the slowest of
   // N individual GETs.
-  const fetchAssets = useCallback((isStale: () => boolean = () => false) => {
-    if (!venue) return;
-    setAssetsMetadata([]);
-    setLoading(true);
-    venue.listAssets()
-      .then((assetList) =>
-        loadAssetEntries(venue, assetList.items, (entries) => {
-          if (isStale()) return;
-          const dataAssets = entries
+  const fetchAssets = useCallback(() => {
+    if (!venue) {
+      resetAssetQuery();
+      return Promise.resolve();
+    }
+    return runAssetQuery(
+      async (publish) => {
+        const assetList = await venue.listAssets();
+        const toDataAssets = (entries: Awaited<ReturnType<typeof loadAssetEntries>>) =>
+          entries
             // Everything except operations (which have their own page) is an
             // artifact here — skills and agent templates included.
             .filter((e) => e.metadata.name != undefined && e.metadata.operation == undefined)
             .map((e) => new DataAsset(e.id, venue, e.metadata));
-          setAssetsMetadata(dataAssets);
-          setLoading(false);
-        }))
-      .catch((error) => {
-        console.error('Error fetching data:', error);
-        if (!isStale()) setLoading(false);
-      });
-  }, [venue]);
+        const entries = await loadAssetEntries(
+          venue,
+          assetList.items,
+          (progress) => publish(toDataAssets(progress), { loading: false }),
+        );
+        return toDataAssets(entries);
+      },
+      { clear: true },
+    );
+  }, [venue, resetAssetQuery, runAssetQuery]);
 
   useEffect(() => {
-    let ignore = false;
-    fetchAssets(() => ignore);
-    return () => { ignore = true; };
-  }, [fetchAssets]);
+    void fetchAssets();
+    return invalidateAssetQuery;
+  }, [fetchAssets, invalidateAssetQuery]);
 
   const keywordOptions = useMemo(() => {
     const all = assetsMetadata.flatMap(a => Array.isArray(a.metadata?.keywords) ? a.metadata.keywords : []);
@@ -119,18 +117,16 @@ export function AssetList({ venueId }: AssetListProps = {}) {
     });
   }, [assetsMetadata, selectedTags, searchInput]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredAssets.length / itemsPerPage));
-
-  // Filtering starts a new result set, so go back to the first page.
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [filteredAssets])
-
-  // Resizing changes the page size, which can strand you past the last page —
-  // clamp rather than reset, so widening the window keeps you roughly in place.
-  useEffect(() => {
-    setCurrentPage((page) => Math.min(page, totalPages));
-  }, [totalPages]);
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    pageItems,
+  } = useClientPagination({
+    items: filteredAssets,
+    pageSize: itemsPerPage,
+    resetKey: `${searchInput}\u0000${selectedTags.join("\u0000")}`,
+  });
 
   if(venues.length == 0 ) {
      return (
@@ -158,7 +154,7 @@ export function AssetList({ venueId }: AssetListProps = {}) {
   }
 
   function handleDataFromChild(_status: boolean) {
-    fetchAssets();
+    void fetchAssets();
   }
 
   return (
@@ -185,12 +181,14 @@ export function AssetList({ venueId }: AssetListProps = {}) {
 
           <div className="flex flex-row flex-nowrap items-center justify-between w-full my-2 gap-4">
             <div className="text-card-foreground text-xs whitespace-nowrap">
-              {!isLoading && `Page ${currentPage} : Showing ${filteredAssets.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of ${filteredAssets.length}`}
+              {!isLoading && `Page ${currentPage} : Showing ${pageItems.length} of ${filteredAssets.length}`}
             </div>
             <div className="shrink-0">
-              <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage} disabled={isLoading}></PaginationHeader>
+              <PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={isLoading}></PaginationHeader>
             </div>
           </div>
+
+          {loadError && <ErrorDisplay error={loadError} className="mb-4 w-full" />}
 
           {isLoading ? (
             <div className="flex flex-row items-center justify-center w-full h-100">
@@ -198,13 +196,13 @@ export function AssetList({ venueId }: AssetListProps = {}) {
             </div>
           ) : (
             <div ref={gridRef} className={CARD_GRID_CLASS}>
-              {filteredAssets.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset) =>
+              {pageItems.map((asset) =>
                 <AssetCard key={asset.id} asset={asset} type="assets" compact={true} venue={venue ?? undefined} authenticated={isAuthenticated}/>
               )}
             </div>
           )}
 
-          <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage} disabled={isLoading}></PaginationHeader>
+          <PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={isLoading}></PaginationHeader>
 
         </div>
       </ContentLayout>

@@ -32,6 +32,16 @@ import AgentExplorer from '@/components/AgentExplorer';
 const CONTAINER_LEFT = 256;
 const CONTAINER_WIDTH = 1000;
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
 function mockContainerRect(container: Element) {
   jest.spyOn(container, 'getBoundingClientRect').mockReturnValue({
     left: CONTAINER_LEFT,
@@ -41,11 +51,17 @@ function mockContainerRect(container: Element) {
   } as DOMRect);
 }
 
+async function renderExplorer() {
+  await act(async () => {
+    render(<AgentExplorer />);
+  });
+}
+
 // Resize tests need no selectable agent — an empty list renders just the
 // list panel and divider.
 async function setup() {
   mockVenue.agents.list.mockResolvedValue({ agents: [] });
-  render(<AgentExplorer />);
+  await renderExplorer();
   await screen.findByText('No agents found');
   const panel = screen.getByTestId('agent-list-panel');
   const divider = screen.getByTestId('agent-list-divider');
@@ -129,7 +145,7 @@ async function setupWithSession(conversation: any[]) {
     }],
   });
   mockVenue.agent.mockReturnValue({ chatSession: (sid?: string) => ({ sessionId: sid }) });
-  render(<AgentExplorer />);
+  await renderExplorer();
 }
 
 describe('AgentExplorer with lean GET agent entries', () => {
@@ -142,7 +158,7 @@ describe('AgentExplorer with lean GET agent entries', () => {
     mockVenue.workspace.read.mockResolvedValue({ value: [] });
     mockVenue.workspace.slice.mockResolvedValue({ values: [] });
     mockVenue.agent.mockReturnValue({ chatSession: (sid?: string) => ({ sessionId: sid }) });
-    render(<AgentExplorer />);
+    await renderExplorer();
 
     // Auto-selects the first agent and loads its detail — the panel must
     // show agent info, not the "select an agent" placeholder.
@@ -158,9 +174,63 @@ describe('AgentExplorer with lean GET agent entries', () => {
     mockVenue.workspace.read.mockResolvedValue({ value: [] });
     mockVenue.workspace.slice.mockResolvedValue({ values: [] });
     mockVenue.agent.mockReturnValue({ chatSession: (sid?: string) => ({ sessionId: sid }) });
-    render(<AgentExplorer />);
+    await renderExplorer();
 
     expect(await screen.findByTestId('agent-detail-error')).toBeInTheDocument();
+  });
+
+  it('ignores a slow detail response after another agent is selected', async () => {
+    const firstDetail = deferred<any>();
+    const secondDetail = deferred<any>();
+    mockVenue.agents.list.mockResolvedValue({
+      agents: [
+        { agentId: 'agent-1', status: 'RUNNING', tasks: 0 },
+        { agentId: 'agent-2', status: 'RUNNING', tasks: 0 },
+      ],
+    });
+    mockVenue.agents.info.mockImplementation((agentId: string) =>
+      agentId === 'agent-1' ? firstDetail.promise : secondDetail.promise,
+    );
+    mockVenue.workspace.read.mockResolvedValue({ value: [] });
+    mockVenue.workspace.slice.mockResolvedValue({ values: [] });
+    mockVenue.agent.mockImplementation((agentId: string) => ({
+      agentId,
+      chatSession: (sessionId?: string) => ({ sessionId }),
+    }));
+    await renderExplorer();
+
+    await waitFor(() =>
+      expect(mockVenue.agents.info).toHaveBeenCalledWith('agent-1'),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: /agent-2/i }));
+    await waitFor(() =>
+      expect(mockVenue.agents.info).toHaveBeenCalledWith('agent-2'),
+    );
+
+    await act(async () => {
+      secondDetail.resolve({
+        agentId: 'agent-2',
+        status: 'RUNNING',
+        tasks: 0,
+      });
+    });
+    expect(
+      await screen.findByRole('heading', { name: 'agent-2' }),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      firstDetail.resolve({
+        agentId: 'agent-1',
+        status: 'RUNNING',
+        tasks: 0,
+      });
+    });
+    expect(
+      screen.getByRole('heading', { name: 'agent-2' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'agent-1' }),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -240,7 +310,7 @@ describe('AgentExplorer with a chat in flight', () => {
     mockVenue.agent.mockReturnValue({
       chatSession: (sid?: string) => ({ sessionId: sid, send: () => new Promise(() => {}) }),
     });
-    render(<AgentExplorer />);
+    await renderExplorer();
 
     const input = await screen.findByTestId('composer-input');
     fireEvent.change(input, { target: { value: 'typed here' } });
@@ -280,7 +350,7 @@ describe('AgentExplorer with a chat in flight', () => {
     mockVenue.workspace.read.mockResolvedValue({ value: [] });
     mockVenue.workspace.slice.mockResolvedValue({ values: [older] });
     mockVenue.agent.mockReturnValue({ chatSession: (sid?: string) => ({ sessionId: sid }) });
-    render(<AgentExplorer />);
+    await renderExplorer();
 
     await screen.findByText('older-session-reply');
 

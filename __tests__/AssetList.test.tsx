@@ -38,28 +38,16 @@ const mockVenue: any = {
   getAsset: jest.fn(),
 };
 
-// Minimal store-api shape real zustand's useStore(api, selector) requires:
-// getState + subscribe + getInitialState (see node_modules/zustand/react.js).
-const mockVenueStoreApi = {
-  getState: () => ({ currentVenue: mockVenue, getCurrentVenue: () => mockVenue }),
-  getInitialState: () => ({ currentVenue: mockVenue, getCurrentVenue: () => mockVenue }),
-  subscribe: () => () => {},
-};
-jest.mock('@/hooks/use-venue', () => ({ useVenue: mockVenueStoreApi }));
 jest.mock('@/hooks/use-venues', () => ({
   useVenues: () => ({ venues: [mockVenue], addVenue: jest.fn() }),
 }));
-// Stable references across renders — a fresh object/function here would make
-// `authData` change identity every render and infinite-loop the
-// [venueObj, authMap, getAuthForVenue] fetch effect in AssetList.
-const mockAuthMap = {};
-const mockGetAuthForVenue = jest.fn().mockReturnValue({ type: 'keypair' });
-jest.mock('@/hooks/use-auth', () => ({
-  useAuthStore: (selector: any) =>
-    selector({ authMap: mockAuthMap, getAuthForVenue: mockGetAuthForVenue }),
-}));
-jest.mock('@/hooks/use-authenticated-venue', () => ({
-  getVenueFor: () => mockVenue,
+jest.mock('@/hooks/use-resolved-venue', () => ({
+  useResolvedVenueContext: () => ({
+    descriptor: mockVenue,
+    venue: mockVenue,
+    auth: { type: 'keypair' },
+    isAuthenticated: true,
+  }),
 }));
 
 import { AssetList } from '@/components/AssetList';

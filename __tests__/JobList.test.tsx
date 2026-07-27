@@ -41,20 +41,16 @@ const mockVenue: any = {
   jobs: { list: jest.fn(), get: jest.fn() },
 };
 
-jest.mock('@/hooks/use-venue-for-route', () => ({
-  useVenueForRoute: () => mockVenue,
-}));
-jest.mock('@/hooks/use-authenticated-venue', () => ({
-  getVenueFor: () => mockVenue,
+jest.mock('@/hooks/use-resolved-venue', () => ({
+  useResolvedVenueContext: () => ({
+    descriptor: mockVenue,
+    venue: mockVenue,
+    auth: { type: 'keypair' },
+    isAuthenticated: true,
+  }),
 }));
 jest.mock('@/hooks/use-venues', () => ({
   useVenues: () => ({ venues: [mockVenue] }),
-}));
-const mockAuthMap = {};
-const mockGetAuthForVenue = jest.fn().mockReturnValue({ type: 'keypair' });
-jest.mock('@/hooks/use-auth', () => ({
-  useAuthStore: (selector: any) =>
-    selector({ authMap: mockAuthMap, getAuthForVenue: mockGetAuthForVenue }),
 }));
 
 import { JobList } from '@/components/JobList';

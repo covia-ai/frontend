@@ -10,14 +10,18 @@ import {
 import { ChevronsLeft, ChevronsRight } from "lucide-react"
 
 interface PaginationProps {
- currentPage:number,
- totalPages:number,
- nextPage(pageNo:number):any,
- prevPage(pageNo:number):any,
- disabled?:boolean
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (pageNumber: number) => void;
+  disabled?: boolean;
 }
 
-export function PaginationHeader({currentPage, totalPages,nextPage,prevPage,disabled=false } : PaginationProps) {
+export function PaginationHeader({
+  currentPage,
+  totalPages,
+  onPageChange,
+  disabled = false,
+}: PaginationProps) {
     const onFirstPage = currentPage <= 1;
     const onLastPage = currentPage >= totalPages;
 
@@ -29,21 +33,21 @@ export function PaginationHeader({currentPage, totalPages,nextPage,prevPage,disa
             {/* flex-row-reverse: first JSX child renders rightmost */}
             <PaginationContent className="flex flex-row-reverse w-full">
               {!onLastPage && <PaginationItem>
-                <PaginationLink href="#" aria-label="Go to last page" onClick={(e) => { e.preventDefault(); if (!disabled) nextPage(totalPages); }}>
+                <PaginationLink href="#" aria-label="Go to last page" onClick={(e) => { e.preventDefault(); if (!disabled) onPageChange(totalPages); }}>
                   <ChevronsRight />
                 </PaginationLink>
               </PaginationItem>}
 
               {!onLastPage && <PaginationItem>
-                <PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (!disabled) nextPage(currentPage + 1); }} />
+                <PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (!disabled) onPageChange(currentPage + 1); }} />
               </PaginationItem>}
 
               {!onFirstPage && <PaginationItem>
-                <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (!disabled) prevPage(currentPage - 1); }} />
+                <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (!disabled) onPageChange(currentPage - 1); }} />
               </PaginationItem>}
 
               {!onFirstPage && <PaginationItem>
-                <PaginationLink href="#" aria-label="Go to first page" onClick={(e) => { e.preventDefault(); if (!disabled) prevPage(1); }}>
+                <PaginationLink href="#" aria-label="Go to first page" onClick={(e) => { e.preventDefault(); if (!disabled) onPageChange(1); }}>
                   <ChevronsLeft />
                 </PaginationLink>
               </PaginationItem>}

@@ -21,8 +21,16 @@ jest.mock('@/lib/utils', () => ({
 }));
 
 jest.mock('@/hooks/use-venues', () => ({
-  useVenues: Object.assign(() => ({ venues: [], addVenue: jest.fn() }), {
-    getState: () => ({ venues: [], addVenue: jest.fn() }),
+  useVenues: Object.assign((selector: (state: any) => unknown) => selector({
+    venues: [],
+    selectedVenueId: 'did:web:venue.example',
+    addVenue: jest.fn(),
+  }), {
+    getState: () => ({
+      venues: [],
+      selectedVenueId: 'did:web:venue.example',
+      addVenue: jest.fn(),
+    }),
   }),
 }));
 
@@ -41,7 +49,7 @@ Object.defineProperty(navigator, 'clipboard', {
 describe('ChromeSignInButton', () => {
   beforeEach(() => {
     act(() => {
-      useAuthStore.setState({ auth: null, deviceKeyHex: null });
+      useAuthStore.setState({ authMap: {}, deviceKeyHex: null });
     });
     mockWriteText.mockClear();
   });
@@ -59,7 +67,13 @@ describe('ChromeSignInButton', () => {
     beforeEach(() => {
       act(() => {
         useAuthStore.setState({
-          auth: { type: 'keypair', privateKeyHex: 'abc123', did: mockDid },
+          authMap: {
+            'did:web:venue.example': {
+              type: 'keypair',
+              privateKeyHex: 'abc123',
+              did: mockDid,
+            },
+          },
         });
       });
     });

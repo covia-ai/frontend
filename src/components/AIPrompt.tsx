@@ -4,7 +4,12 @@ import { Card } from "./ui/card";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { useEffect, useMemo, useState } from "react";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -361,9 +366,9 @@ export const AIPrompt = () => {
         <Dialog open={showPickerDialog} onOpenChange={setShowPickerDialog}>
           <DialogContent data-testid="chat-picker-dialog" className="flex flex-col items-center justify-center bg-card text-card-foreground gap-4">
             <DialogTitle>Choose an LLM provider</DialogTitle>
-            <p className="text-sm text-muted-foreground text-center">
+            <DialogDescription className="text-center">
               Multiple API keys detected in your secrets. Select which provider to use.
-            </p>
+            </DialogDescription>
             <div className="flex flex-col gap-2 w-full">
               {detectedKeys.map((key) => (
                 <Button
@@ -388,9 +393,9 @@ export const AIPrompt = () => {
         <Dialog open={showKeyDialog} onOpenChange={setShowKeyDialog}>
           <DialogContent data-testid="chat-dialog" className="flex flex-col items-center justify-center bg-card text-card-foreground gap-4">
             <DialogTitle>No LLM API key found</DialogTitle>
-            <p className="text-sm text-muted-foreground text-center">
+            <DialogDescription className="text-center">
               Add an API key for one of the supported providers. It will be securely stored in your venue secrets.
-            </p>
+            </DialogDescription>
             <div className="flex flex-wrap gap-2 justify-center">
               {Object.entries(KNOWN_LLM_KEYS).map(([key, label]) => (
                 <Badge

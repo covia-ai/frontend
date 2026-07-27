@@ -10,11 +10,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { DeviceKeyDialog } from "@/components/DeviceKeyDialog";
 import { Identicon } from "@/components/Identicon";
 import { useDeviceKeySignIn } from "@/hooks/use-device-key-signin";
-import { useAuthStore } from "@/hooks/use-auth";
+import { useAuthStore, useCurrentAuth } from "@/hooks/use-auth";
+import { useVenues } from "@/hooks/use-venues";
 
 export function ChromeSignInButton(props: any) {
-  const auth = useAuthStore((x) => x.auth);
+  const auth = useCurrentAuth();
   const logout = useAuthStore((x) => x.logout);
+  const selectedVenueId = useVenues((state) => state.selectedVenueId);
   const router = useRouter();
 
   const {
@@ -89,7 +91,10 @@ export function ChromeSignInButton(props: any) {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => { logout(); router.push("/"); }}
+              onClick={() => {
+                if (selectedVenueId) logout(selectedVenueId);
+                router.push("/");
+              }}
               className="items-start text-center hover:bg-primary-vlight"
             >
               Sign Out

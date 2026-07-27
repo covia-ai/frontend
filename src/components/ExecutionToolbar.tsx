@@ -15,7 +15,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { PauseCircleIcon, StopCircle, Trash2 }from "lucide-react";
-import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 import { toast } from "sonner";
@@ -28,16 +27,12 @@ interface ExecutionToolBarProps {
 export const ExecutionToolbar = ({ jobData, venue }: ExecutionToolBarProps) => {
 
      const router = useRouter()
-  
-      const [isFinished, setFinished] = useState<boolean>(false);
-      const [isPaused, setPaused] = useState<boolean>(false);
-
-       useEffect(() => {
-         if(jobData?.status != null) {
-            setFinished(isJobFinished(jobData.status))
-            setPaused(isJobPaused(jobData.status));
-         }
-       },[jobData?.status])
+      const isFinished = jobData.status
+        ? isJobFinished(jobData.status)
+        : false;
+      const isPaused = jobData.status
+        ? isJobPaused(jobData.status)
+        : false;
       
       function cancelExecution() {
           if (!venue || !jobData.id) return;

@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { generateKeyPair, privateKeyToHex, Ed25519Auth } from "@covia/covia-sdk";
 import { useAuthStore } from "@/hooks/use-auth";
-import { useVenue } from "@/hooks/use-venue";
 import { useVenues } from "@/hooks/use-venues";
 import { gtmEvent } from "@/lib/utils";
 
@@ -19,8 +18,8 @@ export function useDeviceKeySignIn(options: { trackSignUp?: boolean } = {}) {
   const loginWithKeypair = useAuthStore((x) => x.loginWithKeypair);
   const getDeviceKeyHex = useAuthStore((x) => x.getDeviceKeyHex);
   const setDeviceKeyHex = useAuthStore((x) => x.setDeviceKeyHex);
-  const currentVenue = useVenue((x) => x.currentVenue);
   const venues = useVenues((x) => x.venues);
+  const selectedVenueId = useVenues((x) => x.selectedVenueId);
   const router = useRouter();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -65,7 +64,7 @@ export function useDeviceKeySignIn(options: { trackSignUp?: boolean } = {}) {
   };
 
   const completeLogin = (key: string) => {
-    const venueId = currentVenue?.venueId || venues[0]?.venueId;
+    const venueId = selectedVenueId || venues[0]?.venueId;
     if (!venueId) {
       console.error("No venue available for keypair login");
       return;

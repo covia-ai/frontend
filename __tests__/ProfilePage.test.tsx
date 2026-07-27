@@ -9,8 +9,11 @@ jest.mock('@/components/admin-panel/TopBar', () => ({
 
 const PRIV_HEX = 'a'.repeat(64);
 jest.mock('@/hooks/use-auth', () => ({
-  useAuthStore: (selector: any) =>
-    selector({ auth: { type: 'keypair', privateKeyHex: PRIV_HEX, did: 'did:key:z6MkTest' } }),
+  useCurrentAuth: () => ({
+    type: 'keypair',
+    privateKeyHex: PRIV_HEX,
+    did: 'did:key:z6MkTest',
+  }),
 }));
 jest.mock('@/hooks/use-authenticated-venue', () => ({
   useAuthenticatedVenue: () => null,

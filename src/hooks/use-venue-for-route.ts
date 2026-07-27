@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Venue } from "@covia/covia-sdk";
-import { useStore } from "zustand";
-import { useVenue } from "@/hooks/use-venue";
-import { connectWithTimeout, useVenues } from "@/hooks/use-venues";
+import {
+  connectWithTimeout,
+  toVenueDescriptor,
+  useVenues,
+  type VenueDescriptor,
+} from "@/hooks/use-venues";
 import { useAuthStore } from "@/hooks/use-auth";
 import { createAuthProvider } from "@/lib/auth-provider";
 import { reportVenueHealth } from "@/hooks/use-venue-health";
@@ -18,9 +20,13 @@ import { toastError } from "@/lib/toast-error";
 // `routeVenueId` is given (e.g. the unscoped /assets, /operations, /jobs
 // pages). If the route's venue isn't already known, it's connected to and
 // added to the venues list, mirroring AdaptersList's resolution.
-export function useVenueForRoute(routeVenueId?: string): Venue | null {
-  const globalVenueObj = useStore(useVenue, (x) => x.getCurrentVenue());
-  const { venues, addVenue } = useVenues();
+export function useVenueForRoute(routeVenueId?: string): VenueDescriptor | null {
+  const venues = useVenues((state) => state.venues);
+  const selectedVenueId = useVenues((state) => state.selectedVenueId);
+  const addVenue = useVenues((state) => state.addVenue);
+  const globalVenueObj = venues.find(
+    (venue) => venue.venueId === selectedVenueId,
+  );
   const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
   const authMap = useAuthStore((x) => x.authMap);
   const connecting = useRef(new Set<string>());
@@ -40,7 +46,7 @@ export function useVenueForRoute(routeVenueId?: string): Venue | null {
     connectWithTimeout(identifier, authOption, 10_000)
       .then((v) => {
         reportVenueHealth(v.baseUrl, { state: "connected", version: v.lastKnownStatus?.version });
-        addVenue(v);
+        addVenue(toVenueDescriptor(v));
       })
       .catch((err: unknown) => {
         failed.current.add(attemptKey);
@@ -53,6 +59,6 @@ export function useVenueForRoute(routeVenueId?: string): Venue | null {
       });
   }, [routeVenueId, found, addVenue, getAuthForVenue, authMap, attemptKey]);
 
-  if (!routeVenueId) return globalVenueObj;
+  if (!routeVenueId) return globalVenueObj ?? null;
   return found ?? null;
 }

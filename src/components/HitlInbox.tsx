@@ -208,7 +208,7 @@ export function HitlInbox() {
   const venue = useAuthenticatedVenue();
   const { requests, loading, error, refresh } = useHitlRequests();
   // Whether stored credentials exist for *the venue actually being read*. The
-  // signed-in gate keys off activeVenueId while the Venue is built from the
+  // signed-in gate keys off the selected venue while the Venue is built from the
   // current venue's id; when those drift the page renders as signed in but
   // reads anonymously, which the venue answers with a 401. Reporting both
   // makes that distinguishable from a genuine credential problem.

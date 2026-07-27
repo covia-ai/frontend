@@ -1,6 +1,7 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
@@ -11,13 +12,13 @@ import { createAuthProvider } from "@/lib/auth-provider";
 import { toast } from "sonner";
 import { useAuthStore } from "@/hooks/use-auth";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
-import { Label } from "@radix-ui/react-dropdown-menu";
+import { Label } from "@/components/ui/label";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { gtmEvent } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
-export const AddNewVenueModal = (_props:any) => {
+export const AddNewVenueModal = () => {
     const [open, setOpen] = useState(false)
     const { addVenue, venues } = useVenues();
     const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
@@ -72,12 +73,16 @@ export const AddNewVenueModal = (_props:any) => {
             <DialogContent className="bg-card text-card-foreground">
                 <DialogTitle data-testid="add-title" className="flex flex-row items-center space-x-2">
                       Connect to a venue
-              </DialogTitle>
+                </DialogTitle>
+                <DialogDescription>
+                  Connect using a venue URL or decentralized identifier.
+                </DialogDescription>
 
                     <div className="flex flex-col items-center justify-between space-y-4">
                       <div className="flex flex-row items-center justify-center space-x-2 w-full">
-                        <Label className="w-32">Venue Url/DID</Label>
+                        <Label htmlFor="venue-urlid" className="w-32">Venue URL/DID</Label>
                         <Input
+                          id="venue-urlid"
                           data-testid="venue-urlid"
                           required
                           value={venueDidOrUrl}

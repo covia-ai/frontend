@@ -3,8 +3,7 @@ import { ContentLayout } from "@/components/admin-panel/content-layout";
 
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { useCallback, useEffect, useMemo, useRef, useState }from "react";
-import { getVenueFor } from "@/hooks/use-authenticated-venue";
-import { useVenueForRoute } from "@/hooks/use-venue-for-route";
+import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { JobMetadata, RunStatus }from "@covia/covia-sdk";
 import { getExecutionTime } from "@/lib/utils";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -13,10 +12,16 @@ import { FiltersSheet } from "@/components/FiltersSheet";
 import { StatTile } from "@/components/StatTile";
 import { TONE_STYLES } from "@/lib/status";
 import { useVenues } from "@/hooks/use-venues";
-import { useAuthStore } from "@/hooks/use-auth";
 import { Activity, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2, Clock, Layers } from "lucide-react";
 import { TopBar } from "./admin-panel/TopBar";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
+import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { useLatestQuery } from "@/hooks/use-latest-query";
+import { usePageNumber } from "@/hooks/use-pagination";
+import {
+  jobRecordsFromSlice,
+  sliceJobWindow,
+} from "@/lib/job-history";
 
 const TERMINAL_STATUSES = new Set([
   RunStatus.COMPLETE, RunStatus.FAILED, RunStatus.CANCELLED, RunStatus.REJECTED, RunStatus.TIMEOUT,
@@ -35,6 +40,10 @@ const DATE_OPTIONS = [
   { value: "lastWeek", label: "Last week" },
 ];
 
+const ITEMS_PER_PAGE = 10;
+const FILTER_WINDOW = 500;
+const EMPTY_JOB_QUERY = { records: [] as JobMetadata[], totalCount: 0 };
+
 interface JobListProps {
   venueId?: string;
 }
@@ -48,24 +57,25 @@ export function JobList({ venueId }: JobListProps = {}) {
 
   const toggleSort = (col: "id" | "date" | "status") =>
     setSort(prev => prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" });
-  const [jobsData, setJobsData] = useState<JobMetadata[]>([]);       // current page (no filters)
-  const [windowRecords, setWindowRecords] = useState<JobMetadata[]>([]); // newest window (filter mode)
-  const [totalCount, setTotalCount] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
   const [refreshTick, setRefreshTick] = useState(0);
-  const itemsPerPage = 10;
-  const FILTER_WINDOW = 500;
+  const {
+    data: pageData,
+    loading: pageLoading,
+    error: pageError,
+    run: runPageQuery,
+    reset: resetPageQuery,
+  } = useLatestQuery(EMPTY_JOB_QUERY);
+  const {
+    data: recentData,
+    loading: recentLoading,
+    error: recentError,
+    run: runRecentQuery,
+    reset: resetRecentQuery,
+  } = useLatestQuery(EMPTY_JOB_QUERY);
   const { venues } = useVenues();
-  const venueObj = useVenueForRoute(venueId);
+  const { descriptor: venueObj, venue } = useResolvedVenueContext(venueId);
   const router = useRouter();
-  const authData = useAuthStore((x) =>
-    venueObj ? x.authMap[venueObj.venueId] ?? null : null
-  );
   const prevVenueId = useRef<string | undefined>(undefined);
-
-  const nextPage = (page: number) => { setCurrentPage(page); }
-  const prevPage = (page: number) => { setCurrentPage(page); }
 
   const isInRange = useCallback((date: string, ranges: string[]) => {
     if (ranges.length === 0) return true;
@@ -92,12 +102,6 @@ export function JobList({ venueId }: JobListProps = {}) {
   // used to pull the full id list and then GET each job individually.
   // Records arrive oldest-first (time-ordered keys), so windows are computed
   // from the end and reversed for newest-first display.
-  const recordsFromSlice = (values: unknown[]): JobMetadata[] =>
-    (values ?? [])
-      .map((e: any) => (e?.value ? { ...e.value, id: e.value.id ?? `0x${e.key}` } : null))
-      .filter((m): m is JobMetadata => m != null)
-      .reverse();
-
   // One page of the full history: ranks [(page-1)*size, page*size) from the end.
   //
   // The window is positions-from-the-end, which needs a total count up front —
@@ -110,64 +114,68 @@ export function JobList({ venueId }: JobListProps = {}) {
   // handleSlice computes `total` from the same live value it pages), so it's
   // authoritative for that specific read — if it disagrees with the count used
   // to pick the window, recompute against it and slice once more.
-  const sliceWindow = async (
-    venue: ReturnType<typeof getVenueFor>,
-    windowFor: (count: number) => { start: number; end: number },
-    guessCount: number,
-  ) => {
-    const { start, end } = windowFor(guessCount);
-    let res = end > start ? await venue.workspace.slice("j", start, end - start) : { values: [], count: guessCount };
-    const freshCount = res.count ?? guessCount;
-    if (freshCount !== guessCount) {
-      const corrected = windowFor(freshCount);
-      res = corrected.end > corrected.start
-        ? await venue.workspace.slice("j", corrected.start, corrected.end - corrected.start)
-        : { values: [], count: freshCount };
-    }
-    return { count: res.count ?? freshCount, values: (res.values as unknown[]) ?? [] };
-  };
-
   const fetchPage = useCallback(async (page: number) => {
-    if (!venueObj) return;
-    const venue = getVenueFor(venueObj, authData);
-    setLoading(true);
-    try {
-      const { count: guessCount = 0 } = await venue.workspace.list("j", 1);
-      const windowFor = (count: number) => {
-        const end = Math.max(0, count - (page - 1) * itemsPerPage);
-        return { start: Math.max(0, end - itemsPerPage), end };
-      };
-      const { count, values } = await sliceWindow(venue, windowFor, guessCount);
-      setTotalCount(count);
-      setJobsData(recordsFromSlice(values));
-    } catch {
-      setTotalCount(0);
-      setJobsData([]);
-    } finally {
-      setLoading(false);
+    if (!venue) {
+      resetPageQuery();
+      return;
     }
-  }, [venueObj, authData]);
+    await runPageQuery(
+      async () => {
+        const { count: guessCount = 0 } =
+          await venue.workspace.list("j", 1);
+        const windowFor = (count: number) => {
+          const end = Math.max(
+            0,
+            count - (page - 1) * ITEMS_PER_PAGE,
+          );
+          return {
+            start: Math.max(0, end - ITEMS_PER_PAGE),
+            end,
+          };
+        };
+        const { count, values } = await sliceJobWindow(
+          venue,
+          windowFor,
+          guessCount,
+        );
+        return {
+          totalCount: count,
+          records: jobRecordsFromSlice(values),
+        };
+      },
+      { clear: true },
+    );
+  }, [venue, resetPageQuery, runPageQuery]);
 
   // Filter mode: one slice of the newest FILTER_WINDOW records, filtered and
   // paged client-side. Filters only ever see this recent window — same
   // semantics as before, when the window was 100 individual per-job GETs.
   const fetchWindow = useCallback(async () => {
-    if (!venueObj) return;
-    const venue = getVenueFor(venueObj, authData);
-    setLoading(true);
-    try {
-      const { count: guessCount = 0 } = await venue.workspace.list("j", 1);
-      const windowFor = (count: number) => ({ start: Math.max(0, count - FILTER_WINDOW), end: count });
-      const { count, values } = await sliceWindow(venue, windowFor, guessCount);
-      setTotalCount(count);
-      setWindowRecords(recordsFromSlice(values));
-    } catch {
-      setTotalCount(0);
-      setWindowRecords([]);
-    } finally {
-      setLoading(false);
+    if (!venue) {
+      resetRecentQuery();
+      return;
     }
-  }, [venueObj, authData]);
+    await runRecentQuery(
+      async () => {
+        const { count: guessCount = 0 } =
+          await venue.workspace.list("j", 1);
+        const windowFor = (count: number) => ({
+          start: Math.max(0, count - FILTER_WINDOW),
+          end: count,
+        });
+        const { count, values } = await sliceJobWindow(
+          venue,
+          windowFor,
+          guessCount,
+        );
+        return {
+          totalCount: count,
+          records: jobRecordsFromSlice(values),
+        };
+      },
+      { clear: true },
+    );
+  }, [venue, resetRecentQuery, runRecentQuery]);
 
   // Debounce free-text search so typing doesn't fire a fresh window fetch
   // on every keystroke.
@@ -177,6 +185,7 @@ export function JobList({ venueId }: JobListProps = {}) {
   }, [searchQuery]);
 
   const hasFilters = statusFilter.length > 0 || dateFilter.length > 0 || debouncedQuery.trim().length > 0;
+  const windowRecords = recentData.records;
 
   // Client-side filtering over the fetched window (filter mode only).
   const filteredRecords = useMemo(() => {
@@ -208,15 +217,29 @@ export function JobList({ venueId }: JobListProps = {}) {
 
   // What the table renders: the server-paged window, or a client-side page
   // of the filtered records.
+  const totalCount = hasFilters
+    ? recentData.totalCount
+    : pageData.totalCount || recentData.totalCount;
   const matchTotal = filteredRecords ? filteredRecords.length : totalCount;
-  const totalPages = Math.max(1, Math.ceil(matchTotal / itemsPerPage));
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+  } = usePageNumber({
+    totalItems: matchTotal,
+    pageSize: ITEMS_PER_PAGE,
+    resetKey: `${venueObj?.venueId ?? ""}\u0000${statusFilter.join(
+      "\u0000",
+    )}\u0000${dateFilter.join("\u0000")}\u0000${debouncedQuery}`,
+  });
   const pageRecords = filteredRecords
-    ? filteredRecords.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-    : jobsData;
-
-  useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(totalPages);
-  }, [totalPages, currentPage]);
+    ? filteredRecords.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE,
+      )
+    : pageData.records;
+  const loading = hasFilters ? recentLoading : pageLoading;
+  const loadError = hasFilters ? recentError : pageError ?? recentError;
 
   // Default mode: one windowed slice per page.
   useEffect(() => {
@@ -229,21 +252,15 @@ export function JobList({ venueId }: JobListProps = {}) {
     fetchWindow();
   }, [fetchWindow, refreshTick]);
 
-  // Back to page 1 when the filter set itself changes.
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [statusFilter, dateFilter, debouncedQuery]);
-
   // On venue change, reset view state (the fetch effects re-run via fetchPage/
   // fetchWindow identity).
   useEffect(() => {
     if (!venueObj) return;
     if (prevVenueId.current !== venueObj.venueId) {
       setStatusFilter([]);
-      setJobsData([]);
-      setWindowRecords([]);
-      setTotalCount(0);
-      setCurrentPage(1);
+      setDateFilter([]);
+      setSearchQuery("");
+      setDebouncedQuery("");
       prevVenueId.current = venueObj.venueId;
     }
   }, [venueObj]);
@@ -346,10 +363,11 @@ export function JobList({ venueId }: JobListProps = {}) {
           </div>
           {!loading && (
             <div className="shrink-0">
-              <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage} disabled={loading}></PaginationHeader>
+              <PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={loading}></PaginationHeader>
             </div>
           )}
         </div>
+        {loadError && <ErrorDisplay error={loadError} className="mb-4 w-full" />}
         {loading && (
           <div className="flex items-center justify-center py-10 w-full">
             <Spinner variant="ellipsis" className="text-primary" size={40} />
@@ -413,7 +431,7 @@ export function JobList({ venueId }: JobListProps = {}) {
           </TableBody>
         </Table>}
         {!loading && (
-          <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage} disabled={loading}></PaginationHeader>
+          <PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={loading}></PaginationHeader>
         )}
       </div>
     </ContentLayout>

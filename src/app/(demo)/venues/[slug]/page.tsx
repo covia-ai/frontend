@@ -7,17 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Building2, Database, Settings, Users, Globe, Activity, ArrowRight, ExternalLink, Link as LinkIcon, Fingerprint, Copy, Wrench, ChevronDown, ChevronUp, Plug }from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useVenues } from "@/hooks/use-venues";
-import { useVenue } from "@/hooks/use-venue";
-import { getVenueFor } from "@/hooks/use-authenticated-venue";
 import { use, useEffect, useState } from "react";
-import { Venue } from "@covia/covia-sdk";
-import { createAuthProvider } from "@/lib/auth-provider";
 import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
 import { CopyField } from "@/components/CopyField";
-import { useAuthStore } from "@/hooks/use-auth";
 import { TopBar } from "@/components/admin-panel/TopBar";
-import { connectWithTimeout } from "@/hooks/use-venues";
-import { toastError } from "@/lib/toast-error";
+import { useResolvedVenue } from "@/hooks/use-resolved-venue";
 
 interface VenuePageProps {
   params: Promise<{
@@ -28,9 +22,10 @@ interface VenuePageProps {
 export default function VenuePage({ params }: VenuePageProps) {
   const router = useRouter();
   const { slug } = use(params);
-  const { venues, addVenue } = useVenues();
-  const { currentVenue, setCurrentVenue } = useVenue();
-  const [ venue, setVenue] = useState<Venue | null>(null);
+  const routeVenueId = decodeURIComponent(slug);
+  const venue = useResolvedVenue(routeVenueId);
+  const selectedVenueId = useVenues((state) => state.selectedVenueId);
+  const selectVenue = useVenues((state) => state.selectVenue);
   const [ venueDID, setVenueDID] = useState("");
   const [ venueName, setVenueName] = useState("");
   const [ venueMCPUrl, setVenueMCPURL] = useState("Not Found")
@@ -41,33 +36,7 @@ export default function VenuePage({ params }: VenuePageProps) {
   const [ noOfUsers, setNoOfUsers] = useState(0)
   const [ mcpTools, setMcpTools] = useState<{name:string}[]>([])
   const [ showClaudeSnippet, setShowClaudeSnippet] = useState(false)
-  const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
-  const authMap = useAuthStore((x) => x.authMap);
-
   useEffect(() => {
-    const decodedSlug = decodeURIComponent(slug);
-    const authData = getAuthForVenue(decodedSlug);
-    const authOption = createAuthProvider(authData);
-    const foundVenue = venues.find(v => v.venueId === decodedSlug);
-    if (foundVenue) {
-      if(foundVenue instanceof Venue) {
-          setVenue(foundVenue);
-          setVenueDID(foundVenue.venueId)
-      }
-      else {
-          const foundVenue_obj = getVenueFor(foundVenue, authData);
-          setVenue(foundVenue_obj)
-          setVenueDID(foundVenue_obj.venueId)
-      }
-    }
-    else {
-       connectWithTimeout(decodedSlug, authOption, 10_000).then((venue) => {
-         addVenue(venue)
-       }).catch((err: unknown) => toastError("Unable to connect to venue", err, decodedSlug))
-    }
-  }, [slug, venues, authMap, getAuthForVenue, addVenue]);
-
-    useEffect(() => {
        if (!venue) return;
        const fetchMCP = async () => {
           try {
@@ -118,7 +87,7 @@ export default function VenuePage({ params }: VenuePageProps) {
       fetchAdapters();
   }, [venue]);
 
-  const isCurrentVenue = currentVenue?.venueId === venue?.venueId;
+  const isCurrentVenue = selectedVenueId === venue?.venueId;
   if (!venue) {
     return (
       <ContentLayout>
@@ -167,7 +136,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               </Button>
               
               <Button 
-                onClick={() => setCurrentVenue(venue)}
+                onClick={() => selectVenue(venue.venueId)}
                 variant={isCurrentVenue ? "default" : "secondary"}
                 aria-label="make default" role="button"
                 className="flex items-center space-x-2 bg-secondary text-secondary-foreground border border-muted"

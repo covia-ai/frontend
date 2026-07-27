@@ -11,28 +11,25 @@ describe('PaginationHeader', () => {
   // history that back/forward has to step through for nothing.
   it('does not navigate to "#" when Next/Previous are clicked', async () => {
     const user = userEvent.setup();
-    const nextPage = jest.fn();
-    const prevPage = jest.fn();
-    render(<PaginationHeader currentPage={2} totalPages={5} nextPage={nextPage} prevPage={prevPage} />);
+    const onPageChange = jest.fn();
+    render(<PaginationHeader currentPage={2} totalPages={5} onPageChange={onPageChange} />);
 
     await user.click(screen.getByLabelText(/go to next page/i));
-    expect(nextPage).toHaveBeenCalledWith(3);
+    expect(onPageChange).toHaveBeenCalledWith(3);
     expect(window.location.hash).toBe('');
 
     await user.click(screen.getByLabelText(/go to previous page/i));
-    expect(prevPage).toHaveBeenCalledWith(1);
+    expect(onPageChange).toHaveBeenCalledWith(1);
     expect(window.location.hash).toBe('');
   });
 
   it('does not call through when disabled', async () => {
     const user = userEvent.setup();
-    const nextPage = jest.fn();
-    const prevPage = jest.fn();
-    render(<PaginationHeader currentPage={2} totalPages={5} nextPage={nextPage} prevPage={prevPage} disabled />);
+    const onPageChange = jest.fn();
+    render(<PaginationHeader currentPage={2} totalPages={5} onPageChange={onPageChange} disabled />);
 
     await user.click(screen.getByLabelText(/go to next page/i));
     await user.click(screen.getByLabelText(/go to previous page/i));
-    expect(nextPage).not.toHaveBeenCalled();
-    expect(prevPage).not.toHaveBeenCalled();
+    expect(onPageChange).not.toHaveBeenCalled();
   });
 });

@@ -1,91 +1,85 @@
-import { useEffect, useRef, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTrigger } from "./ui/dialog";
-import { ScrollArea, ScrollBar } from "./ui/scroll-area";
+"use client";
+
+import { useState } from "react";
+import type { Venue } from "@covia/covia-sdk";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
-import { Copy, Check } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
-import type { Venue } from "@covia/covia-sdk";
+import { useAssetTextContent } from "@/hooks/use-asset-text-content";
+import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { RawTextPanel } from "@/components/content-preview/RawTextPanel";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
-export const XmlViewer = (props: { assetId: string; venue?: Venue }) => {
+type XmlViewerProps = {
+  assetId: string;
+  venue?: Venue;
+};
+
+export const XmlViewer = ({ assetId, venue: providedVenue }: XmlViewerProps) => {
   const fallbackVenue = useAuthenticatedVenue();
-  const venue = props.venue ?? fallbackVenue;
-
-  const [renderData, setRenderData] = useState("");
-  const [copied, setCopied] = useState(false);
-  const rawRef = useRef<HTMLTextAreaElement>(null);
-
-  const handleCopy = () => {
-    const el = rawRef.current;
-    if (!el) return;
-    navigator.clipboard.writeText(el.value).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
-
-  useEffect(() => {
-    if (!venue) return;
-    venue.assets.getContent(props.assetId).then((response) => {
-      const reader = response?.getReader();
-      const chunks: Uint8Array[] = [];
-      const read = (): void => {
-        reader?.read().then(({ done, value }) => {
-          if (done) {
-            const decoder = new TextDecoder();
-            const text = chunks.map(chunk => decoder.decode(chunk, { stream: true })).join("") + decoder.decode();
-            setRenderData(text);
-            return;
-          }
-          chunks.push(value);
-          read();
-        });
-      };
-      read();
-    });
-  }, [props.assetId, venue]);
+  const venue = providedVenue ?? fallbackVenue;
+  const [open, setOpen] = useState(false);
+  const content = useAssetTextContent(venue, assetId, open);
 
   return (
-    <Dialog>
-      <DialogTrigger className="text-sm text-secondary dark:text-secondary-light underline">View</DialogTrigger>
-      <DialogContent className="bg-card text-card-foreground max-h-[90vh] w-full max-w-4xl p-4 flex flex-col overflow-hidden border border-border">
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger className="text-sm text-secondary underline dark:text-secondary-light">
+        View
+      </DialogTrigger>
+      <DialogContent className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden border border-border bg-card p-4 text-card-foreground">
         <DialogHeader className="text-sm font-medium text-muted-foreground">
           XML Preview
         </DialogHeader>
-        <Tabs defaultValue="preview" className="flex-1 flex flex-col min-h-0">
+        <Tabs defaultValue="preview" className="flex min-h-0 flex-1 flex-col">
           <TabsList>
             <TabsTrigger value="preview">Preview</TabsTrigger>
             <TabsTrigger value="raw">Raw</TabsTrigger>
           </TabsList>
-          <TabsContent value="preview" className="flex-1 min-h-0">
-            <ScrollArea className="h-[500px] w-full [&>[data-radix-scroll-area-viewport]>div]:!block rounded-lg">
-              <SyntaxHighlighter
-                language="xml"
-                style={oneDark}
-                showLineNumbers
-                wrapLongLines
-                customStyle={{ margin: 0, borderRadius: "0.5rem", fontSize: "0.875rem" }}
-              >
-                {renderData}
-              </SyntaxHighlighter>
+          <TabsContent value="preview" className="min-h-0 flex-1">
+            <ScrollArea className="h-[500px] w-full rounded-lg [&>[data-radix-scroll-area-viewport]>div]:!block">
+              {content.loading ? (
+                <div className="flex h-[500px] items-center justify-center">
+                  <Loader2 className="animate-spin text-primary" size={28} />
+                </div>
+              ) : content.error ? (
+                <ErrorDisplay error={content.error} className="p-4" />
+              ) : (
+                <SyntaxHighlighter
+                  language="xml"
+                  style={oneDark}
+                  showLineNumbers
+                  wrapLongLines
+                  customStyle={{
+                    margin: 0,
+                    borderRadius: "0.5rem",
+                    fontSize: "0.875rem",
+                  }}
+                >
+                  {content.text}
+                </SyntaxHighlighter>
+              )}
               <ScrollBar orientation="horizontal" />
               <ScrollBar orientation="vertical" />
             </ScrollArea>
           </TabsContent>
-          <TabsContent value="raw" className="flex-1 min-h-0 relative">
-            <button
-              onClick={handleCopy}
-              className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-muted hover:bg-muted/80 transition-colors"
-              title={copied ? "Copied!" : "Copy selected or all"}
-            >
-              {copied ? <Check size={16} /> : <Copy size={16} />}
-            </button>
-            <textarea
-              ref={rawRef}
-              readOnly
-              value={renderData}
-              className="w-full h-[450px] p-4 text-sm bg-background rounded-lg resize-none border-none outline-none font-mono"
+          <TabsContent value="raw" className="min-h-0 flex-1">
+            <RawTextPanel
+              value={content.text}
+              loading={content.loading}
+              error={content.error}
             />
           </TabsContent>
         </Tabs>

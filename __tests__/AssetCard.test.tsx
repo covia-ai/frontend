@@ -10,33 +10,6 @@ import { Asset, DataAsset, Operation, Venue } from '@covia/covia-sdk';
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),
 }));
-jest.mock('@/hooks/use-venue', () => ({
-  useVenue: Object.assign(() => null, {
-    getState: () => ({
-      currentVenue: {
-        baseUrl: 'https://venue-test.covia.ai',
-        venueId: 'did:web:venue-test.covia.ai',
-        metadata: { name: 'TestVenue' },
-      },
-      getCurrentVenue: () => ({
-        baseUrl: 'https://venue-test.covia.ai',
-        venueId: 'did:web:venue-test.covia.ai',
-        metadata: { name: 'TestVenue' },
-      }),
-    }),
-    subscribe: () => () => {},
-  }),
-}));
-jest.mock('zustand', () => {
-  const actualZustand = jest.requireActual('zustand');
-  return {
-    ...actualZustand,
-    useStore: (store: any, selector: any) => {
-      const state = store.getState();
-      return selector(state);
-    },
-  };
-});
 jest.mock('@/hooks/use-authenticated-venue', () => ({
   useAuthenticatedVenue: () => null,
 }));

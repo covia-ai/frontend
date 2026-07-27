@@ -1,6 +1,6 @@
-'use client'
+"use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import DocViewer, { DocViewerRenderers, TXTRenderer } from "@cyntler/react-doc-viewer";
 
 // TXTRenderer has an unpatched XSS (unsanitized file content cast to ReactNode).
@@ -8,7 +8,8 @@ import DocViewer, { DocViewerRenderers, TXTRenderer } from "@cyntler/react-doc-v
 const SAFE_RENDERERS = DocViewerRenderers.filter((r) => r !== TXTRenderer);
 import { Dialog, DialogContent, DialogHeader, DialogTrigger } from "./ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
-import { Copy, Check } from "lucide-react";
+import { useRemoteTextContent } from "@/hooks/use-asset-text-content";
+import { RawTextPanel } from "@/components/content-preview/RawTextPanel";
 
 const CONTENT_TYPE_TO_FILE_TYPE: Record<string, string> = {
   "text/csv": "csv",
@@ -39,31 +40,16 @@ interface DocumentViewerProps {
 export const DocumentViewer = ({ contentUrl, contentType }: DocumentViewerProps) => {
   const fileType = CONTENT_TYPE_TO_FILE_TYPE[contentType];
   const showRawTab = RAW_SUPPORTED_TYPES.has(contentType);
-
-  const [rawText, setRawText] = useState("");
-  const [copied, setCopied] = useState(false);
-  const rawRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (!showRawTab) return;
-    fetch(contentUrl)
-      .then((res) => res.text())
-      .then((text) => setRawText(text));
-  }, [contentUrl, showRawTab]);
-
-  const handleCopy = () => {
-    const el = rawRef.current;
-    if (!el) return;
-    navigator.clipboard.writeText(el.value).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
+  const [open, setOpen] = useState(false);
+  const rawContent = useRemoteTextContent(
+    contentUrl,
+    open && showRawTab,
+  );
 
   if (!fileType) return null;
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger className="text-sm text-secondary dark:text-secondary-light underline">
         View
       </DialogTrigger>
@@ -87,19 +73,11 @@ export const DocumentViewer = ({ contentUrl, contentType }: DocumentViewerProps)
                 />
               </div>
             </TabsContent>
-            <TabsContent value="raw" className="flex-1 min-h-0 relative">
-              <button
-                onClick={handleCopy}
-                className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-muted hover:bg-muted/80 transition-colors"
-                title={copied ? "Copied!" : "Copy selected or all"}
-              >
-                {copied ? <Check size={16} /> : <Copy size={16} />}
-              </button>
-              <textarea
-                ref={rawRef}
-                readOnly
-                value={rawText}
-                className="w-full h-[450px] p-4 text-sm bg-background rounded-lg resize-none border-none outline-none font-mono"
+            <TabsContent value="raw" className="flex-1 min-h-0">
+              <RawTextPanel
+                value={rawContent.text}
+                loading={rawContent.loading}
+                error={rawContent.error}
               />
             </TabsContent>
           </Tabs>

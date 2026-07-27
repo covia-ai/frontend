@@ -8,7 +8,7 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/component
 import { Button } from "@/components/ui/button";
 import { Copy, Check, ChevronRight, KeyRound, Globe, ExternalLink, Eye, EyeOff } from "lucide-react";
 import { CopyField } from "@/components/CopyField";
-import { useAuthStore } from "@/hooks/use-auth";
+import { useCurrentAuth } from "@/hooks/use-auth";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { Ed25519Auth, type DIDDocument } from "@covia/covia-sdk";
 import { PageHeading } from "@/components/PageHeading";
@@ -58,7 +58,7 @@ function SecretCopyField({ label, value }: { label: string; value: string }) {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const auth = useAuthStore((x) => x.auth);
+  const auth = useCurrentAuth();
   const venue = useAuthenticatedVenue();
 
   const [didDocument, setDidDocument] = useState<DIDDocument | null>(null);

@@ -3,19 +3,19 @@
 import { Suspense, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/hooks/use-auth";
-import { useVenue } from "@/hooks/use-venue";
+import { useVenues } from "@/hooks/use-venues";
 import { gtmEvent } from "@/lib/utils";
 
 function AuthCallbackInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const loginWithToken = useAuthStore((x) => x.loginWithToken);
-  const currentVenue = useVenue((x) => x.currentVenue);
+  const selectedVenueId = useVenues((state) => state.selectedVenueId);
 
   useEffect(() => {
     const token = searchParams.get("token");
     const did = searchParams.get("did");
-    const venueId = searchParams.get("venueId") || currentVenue?.venueId;
+    const venueId = searchParams.get("venueId") || selectedVenueId;
 
     if (token && did && venueId) {
       loginWithToken(venueId, token, did);
@@ -24,7 +24,7 @@ function AuthCallbackInner() {
     } else {
       router.replace("/signUp");
     }
-  }, [searchParams, loginWithToken, router, currentVenue]);
+  }, [searchParams, loginWithToken, router, selectedVenueId]);
 
   return (
     <div className="flex items-center justify-center min-h-screen">

@@ -1,11 +1,10 @@
 'use client'
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Asset, Venue } from "@covia/covia-sdk";
 import { Calendar, Copyright, Download, FileText, Info, InfoIcon, Tag, User, Wrench }from "lucide-react";
 import Link from "next/link";
 import { Badge } from "./ui/badge";
-import { JsonEditor } from "json-edit-react";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "./ui/dialog";
 import { LucideIcon } from "lucide-react";
 import {
@@ -16,7 +15,14 @@ import {
 } from "@/components/ui/accordion"
 
 import dynamic from "next/dynamic";
-import { JsonViewer } from "./JSONViewer";
+const JsonEditor = dynamic(
+  () => import("json-edit-react").then((module) => module.JsonEditor),
+  { ssr: false },
+);
+const JsonViewer = dynamic(
+  () => import("./JSONViewer").then((module) => module.JsonViewer),
+  { ssr: false },
+);
 const XmlViewer = dynamic(() => import("./XmlViewer").then(mod => mod.XmlViewer), { ssr: false });
 const DocumentViewer = dynamic(() => import("./DocumentViewer").then(mod => mod.DocumentViewer), { ssr: false });
 
@@ -140,9 +146,6 @@ const renderMetadataFields = (asset: Asset, fields: MetadataFieldConfig[]) => {
 };
 
 export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
-  const [contentURL, setContentUrl] = useState("");
-  const [defaultValue, setDefaultValue] = useState("metadata");
-
   // Skills and other inline assets carry their body in `content.inline`, with
   // no separate blob — the content endpoint 500s for them. Render the inline
   // text directly and never point Download at a URL that doesn't exist.
@@ -152,20 +155,12 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
   const skillTools: string[] = Array.isArray(asset.metadata?.skill?.tools)
     ? asset.metadata.skill.tools
     : [];
-
-  useEffect(() => {
-  if(asset.metadata.operation != undefined) {
-    setContentUrl('NA');
-    setDefaultValue('NA');
-  }
-  else if (typeof asset.metadata?.content?.inline === "string") {
-    // Content lives in metadata, so there is nothing to fetch or download.
-    setContentUrl('NA');
-  }
-  else {
-    setContentUrl(asset.getContentURL());
-  }
-  },[asset])
+  const hasBlobContent =
+    asset.metadata.operation === undefined && inlineContent === null;
+  const contentURL = hasBlobContent ? asset.getContentURL() : null;
+  const defaultValue = asset.metadata.operation === undefined
+    ? "metadata"
+    : undefined;
   
   return (
      <Accordion
@@ -209,7 +204,7 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
                         </pre>
                       </div>
                     )}
-                    {contentURL &&  contentURL !='NA'  && (
+                    {contentURL && (
                       <div className="flex flex-row items-center space-x-2 my-2">
                         <Download size={18}></Download>
                         <span className="text-md">Data:</span>

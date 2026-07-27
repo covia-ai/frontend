@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Venue } from "@covia/covia-sdk";
 import { getVenueFor } from "@/hooks/use-authenticated-venue";
+import type { VenueDescriptor } from "@/hooks/use-venues";
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from "@/hooks/use-auth";
 import { RemoveVenueModal } from "./RemoveVenueModal";
@@ -12,7 +12,7 @@ import { Copy, Database, PlayCircle } from "lucide-react";
 import { copyDataToClipBoard } from "@/lib/utils";
 
 interface VenueCardProps {
-  venue: Venue | { baseUrl?: string; venueId: string; metadata?: { name?: string } };
+  venue: VenueDescriptor;
   compact:boolean;
 }
 
@@ -20,9 +20,10 @@ export function VenueCard({ venue: venueProp, compact }: VenueCardProps) {
   const router = useRouter();
   const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
 
-  const venue = venueProp instanceof Venue
-    ? venueProp
-    : getVenueFor(venueProp, getAuthForVenue(venueProp.venueId))
+  const venue = getVenueFor(
+    venueProp,
+    getAuthForVenue(venueProp.venueId),
+  );
 
   // Same job-free /api/v1/status read the venue detail page uses for its
   // stat panel — surfaced here too so the list view isn't just a name and a

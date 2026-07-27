@@ -1,10 +1,10 @@
 "use client"
 import { SignupSignInButton } from "@/components/sign-in-button"
-import { useAuthStore } from "@/hooks/use-auth"
+import { useCurrentAuth } from "@/hooks/use-auth"
 import { Badge } from "@/components/ui/badge"
 
 export default function SignUp() {
-  const auth = useAuthStore((x) => x.auth);
+  const auth = useCurrentAuth();
 
   if (!auth) {
     return (

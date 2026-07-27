@@ -1,7 +1,5 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import { ChevronDown, Check, Building2 } from "lucide-react";
 import {
   DropdownMenu,
@@ -10,63 +8,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { useVenue } from "@/hooks/use-venue";
 import { useVenues } from "@/hooks/use-venues";
-import { useAuthStore } from "@/hooks/use-auth";
-import { Venue } from "@covia/covia-sdk";
+import type { VenueDescriptor } from "@/hooks/use-venues";
 import { VenueHealthDot } from "./VenueHealthDot";
 
 export function VenueSelector() {
-  const pathname = usePathname();
-  const  venues = useVenues().getVenue();
-  const { currentVenue, setCurrentVenue } = useVenue();
-  const setActiveVenue = useAuthStore((x) => x.setActiveVenue);
-  const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
-;
+  const venues = useVenues((state) => state.venues);
+  const selectedVenueId = useVenues((state) => state.selectedVenueId);
+  const selectVenue = useVenues((state) => state.selectVenue);
+  const selectedVenue = venues.find(
+    (venue) => venue.venueId === selectedVenueId,
+  );
 
-  useEffect(() => {  
-  
-    // Check if the pathname contains a venue slug
-    const venueMatch = pathname.match(/\/venues\/([^\/]+)/);
-    if (venueMatch) {
-      let venueSlug = venueMatch[1];
-      try { venueSlug = decodeURIComponent(venueSlug); } catch { /* use the raw segment */ }
-      const venue = venues.find(v => v.venueId === venueSlug);
-      if (venue) {
-        if (currentVenue?.venueId !== venue.venueId) setCurrentVenue(venue);
-        setSelectedVenue(venue);
-        setActiveVenue(venue.venueId);
-        return;
-      }
-    }
-
-    // Keep an existing selection only while it remains connected.
-    const liveCurrent = currentVenue
-      ? venues.find((venue) => venue.venueId === currentVenue.venueId)
-      : undefined;
-    if (liveCurrent) {
-      setSelectedVenue(liveCurrent);
-      setActiveVenue(liveCurrent.venueId);
-      return;
-    }
-
-    // Default to first venue if no specific venue is found
-    if (venues.length > 0) {
-      const defaultVenue = venues[0]
-      setCurrentVenue(defaultVenue);
-      setSelectedVenue(defaultVenue);
-      setActiveVenue(defaultVenue.venueId);
-    } else {
-      setSelectedVenue(null);
-      setCurrentVenue(null);
-      setActiveVenue(null);
-    }
-  }, [pathname, venues, currentVenue, setCurrentVenue, setActiveVenue]);
-
-  const handleVenueSelect = (venue: Venue) => {
-    setCurrentVenue(venue);
-    setSelectedVenue(venue);
-    setActiveVenue(venue.venueId);
+  const handleVenueSelect = (venue: VenueDescriptor) => {
+    selectVenue(venue.venueId);
   };
   if (!selectedVenue || venues.length === 0) {
       
