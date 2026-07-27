@@ -307,7 +307,7 @@ export function HitlInbox() {
         </Button>
       </div>
 
-      {!loading && (
+      {!loading && requests.length > 0 && (
         <div className="flex flex-row flex-nowrap items-center justify-between w-full gap-4">
           <span className="text-card-foreground text-xs whitespace-nowrap">
             Showing {visible.length} of {requests.length}
