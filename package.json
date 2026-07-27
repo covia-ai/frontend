@@ -50,7 +50,6 @@
     "mime-types": "^3.0.2",
     "net": "^1.0.2",
     "next": "^15.5.18",
-    "next-auth": "5.0.0-beta.30",
     "next-themes": "^0.4.6",
     "react": "^19.2.3",
     "react-clipboardjs-copy": "^2.1.0",
@@ -83,7 +82,9 @@
       "brace-expansion@^1": "^1.1.16",
       "brace-expansion@^2": "^2.1.2",
       "brace-expansion@^5": "^5.0.6",
-      "@babel/core": "^7.29.6"
+      "@babel/core": "^7.29.6",
+      "fast-uri": "^3.1.4",
+      "sharp": "^0.35.0"
     }
   },
   "devDependencies": {

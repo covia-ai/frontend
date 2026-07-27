@@ -12,9 +12,6 @@ jest.mock('@/hooks/use-venues', () => ({
     venues: [],
   }),
 }));
-jest.mock('next-auth/react', () => ({
-  useSession: () => ({ data: { user: { email: 'test@test.com' } } }),
-}));
 jest.mock('sonner', () => ({
   toast: jest.fn(),
 }));
