@@ -213,9 +213,9 @@ export function HitlInbox() {
   // login has no client key. null disables signing with an explanation.
   const signingKeyHex = credsForVenue?.type === "keypair" ? credsForVenue.privateKeyHex : null;
 
-  // Defaults to just "open" rather than empty (= everything) — an inbox
-  // should surface what's actionable first.
-  const [statusFilter, setStatusFilter] = useState<string[]>(["open"]);
+  // No filter pre-selected — the inbox shows everything until the user
+  // narrows it down, rather than silently hiding non-open requests.
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   // Only one request is ever open for editing, so its draft can live here
   // rather than in a map keyed by request id.
   const [expandedId, setExpandedId] = useState<string | null>(null);
