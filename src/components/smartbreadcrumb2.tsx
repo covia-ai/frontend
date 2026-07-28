@@ -14,9 +14,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown } from "lucide-react";
-import { Fragment } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 
-const COLLAPSE_THRESHOLD = 4;
 const SHOW_START = 2;
 const SHOW_END = 1;
 
@@ -124,70 +123,73 @@ export function SmartBreadcrumb({
 
   const handleBreadcrumbClick = (href: string) => onNavigate?.(href);
 
-  const collapsed = breadcrumbs.length > COLLAPSE_THRESHOLD;
+  // Whether the full, uncollapsed trail actually overflows the space this
+  // component has been given — measured, not guessed from segment count.
+  // Available width varies with sidebar state and the other topbar controls
+  // (see TopBar.tsx), so a fixed crumb-count threshold either collapses a
+  // short trail unnecessarily on a wide screen or lets a long one overflow
+  // on a narrow one. Same ResizeObserver-on-a-ref idiom as
+  // use-grid-page-size.ts, just measuring a hidden full-width copy against
+  // this container instead of a grid.
+  const containerRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
+  const [overflows, setOverflows] = useState(false);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const measure = measureRef.current;
+    if (!container || !measure) return;
+
+    const check = () => setOverflows(measure.scrollWidth > container.clientWidth);
+    check();
+
+    const ro = new ResizeObserver(check);
+    ro.observe(container);
+    window.addEventListener("resize", check);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", check);
+    };
+    // Label lengths (and the count of crumbs) change the measured width, so
+    // re-check whenever the trail itself changes, not just on resize.
+  }, [pathname, assetOrJobName, venueName]);
+
+  // Collapsing only makes sense if there's something to hide behind the "…".
+  const collapsed = overflows && breadcrumbs.length > SHOW_START + SHOW_END;
   const startCrumbs = collapsed ? breadcrumbs.slice(0, SHOW_START) : [];
   const hiddenCrumbs = collapsed ? breadcrumbs.slice(SHOW_START, breadcrumbs.length - SHOW_END) : [];
   const endCrumbs = collapsed ? breadcrumbs.slice(breadcrumbs.length - SHOW_END) : [];
 
   return (
-    <Breadcrumb>
-      <BreadcrumbList className="flex-nowrap">
-        {/* Separators are <li>s themselves — they must be siblings of
-            BreadcrumbItem (also an <li>), never children: li-in-li is invalid
-            HTML and breaks hydration. */}
-        {!collapsed && breadcrumbs.map((item, index) => (
+    <div ref={containerRef} className="relative min-w-0">
+      {/* Hidden full-width render of the uncollapsed trail, purely to
+          measure whether it would overflow — never shown, taken out of
+          flow so it can't affect this container's own width. */}
+      <div
+        ref={measureRef}
+        aria-hidden="true"
+        className="invisible absolute left-0 top-0 -z-10 flex items-center whitespace-nowrap"
+      >
+        {breadcrumbs.map((item, index) => (
           <Fragment key={index}>
             <BreadcrumbItem>
-              <BreadcrumbLink
-                onClick={() => item.href && handleBreadcrumbClick(item.href)}
-                className="cursor-pointer hover:underline"
-              >
+              <BreadcrumbLink className="cursor-pointer hover:underline">
                 {item.label}
               </BreadcrumbLink>
             </BreadcrumbItem>
             {index < breadcrumbs.length - 1 && <BreadcrumbSeparator />}
           </Fragment>
         ))}
+      </div>
 
-        {collapsed && (
-          <>
-            {startCrumbs.map((item, index) => (
-              <Fragment key={`s-${index}`}>
-                <BreadcrumbItem>
-                  <BreadcrumbLink
-                    onClick={() => item.href && handleBreadcrumbClick(item.href)}
-                    className="cursor-pointer hover:underline"
-                  >
-                    {item.label}
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-              </Fragment>
-            ))}
-
-            <BreadcrumbItem>
-              <DropdownMenu>
-                <DropdownMenuTrigger className="flex items-center gap-1 cursor-pointer text-muted-foreground hover:text-foreground">
-                  <span>…</span>
-                  <ChevronDown className="h-3 w-3" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  {hiddenCrumbs.map((item, idx) => (
-                    <DropdownMenuItem
-                      key={idx}
-                      onClick={() => item.href && handleBreadcrumbClick(item.href)}
-                      className="cursor-pointer"
-                    >
-                      {item.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-
-            {endCrumbs.map((item, index) => (
-              <BreadcrumbItem key={`e-${index}`}>
+      <Breadcrumb>
+        <BreadcrumbList className="flex-nowrap">
+          {/* Separators are <li>s themselves — they must be siblings of
+              BreadcrumbItem (also an <li>), never children: li-in-li is invalid
+              HTML and breaks hydration. */}
+          {!collapsed && breadcrumbs.map((item, index) => (
+            <Fragment key={index}>
+              <BreadcrumbItem>
                 <BreadcrumbLink
                   onClick={() => item.href && handleBreadcrumbClick(item.href)}
                   className="cursor-pointer hover:underline"
@@ -195,10 +197,61 @@ export function SmartBreadcrumb({
                   {item.label}
                 </BreadcrumbLink>
               </BreadcrumbItem>
-            ))}
-          </>
-        )}
-      </BreadcrumbList>
-    </Breadcrumb>
+              {index < breadcrumbs.length - 1 && <BreadcrumbSeparator />}
+            </Fragment>
+          ))}
+
+          {collapsed && (
+            <>
+              {startCrumbs.map((item, index) => (
+                <Fragment key={`s-${index}`}>
+                  <BreadcrumbItem>
+                    <BreadcrumbLink
+                      onClick={() => item.href && handleBreadcrumbClick(item.href)}
+                      className="cursor-pointer hover:underline"
+                    >
+                      {item.label}
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator />
+                </Fragment>
+              ))}
+
+              <BreadcrumbItem>
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="flex items-center gap-1 cursor-pointer text-muted-foreground hover:text-foreground">
+                    <span>…</span>
+                    <ChevronDown className="h-3 w-3" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {hiddenCrumbs.map((item, idx) => (
+                      <DropdownMenuItem
+                        key={idx}
+                        onClick={() => item.href && handleBreadcrumbClick(item.href)}
+                        className="cursor-pointer"
+                      >
+                        {item.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+
+              {endCrumbs.map((item, index) => (
+                <BreadcrumbItem key={`e-${index}`}>
+                  <BreadcrumbLink
+                    onClick={() => item.href && handleBreadcrumbClick(item.href)}
+                    className="cursor-pointer hover:underline"
+                  >
+                    {item.label}
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+              ))}
+            </>
+          )}
+        </BreadcrumbList>
+      </Breadcrumb>
+    </div>
   );
 }
