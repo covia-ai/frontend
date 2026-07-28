@@ -13,7 +13,7 @@ export default function HitlPage() {
     <ContentLayout>
       <TopBar />
       <div className="py-4">
-        <PageHeading className="mb-4" size="sm" align="left" text="Manage your" highlight="requests" />
+        <PageHeading className="mb-4" size="sm" align="left" text="Manage your" highlight="Inbox" />
 
         {isAuthenticated ? (
           <HitlInbox />
