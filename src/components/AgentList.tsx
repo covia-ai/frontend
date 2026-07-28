@@ -128,11 +128,11 @@ export function AgentList() {
                    {/* Fixed-size header */}
                    <div className={` ${ compact ? 'h-10' : 'h-14'  } p-2 flex flex-row items-center border-b`}>
                       {isAssistant && (
-                        <div className="flex-shrink-0 flex items-center justify-center rounded-full size-6 bg-primary/15 mr-1.5">
-                          <Bot size={14} className="text-primary" />
+                        <div className="flex-shrink-0 flex items-center justify-center rounded-full size-6 bg-primary/15 dark:bg-primary/25 mr-1.5">
+                          <Bot size={14} className="text-primary dark:text-violet-300" />
                         </div>
                       )}
-                      <div data-testid="agent-name" className={`truncate flex-1 mr-2 text-md font-mono ${isAssistant ? 'text-primary' : 'text-foreground'}`}> {agent.agentId}</div>
+                      <div data-testid="agent-name" className={`truncate flex-1 mr-2 text-md font-mono ${isAssistant ? 'text-primary dark:text-violet-300' : 'text-foreground'}`}> {agent.agentId}</div>
                       {agent.status && <StatusBadge status={agent.status} kind="agent" as="dot" className="ml-1" />}
                     </div>
                    {/* Flexible middle section */}

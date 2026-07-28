@@ -111,14 +111,14 @@ export function AgentChatPanel({
               size={20}
               className={
                 selectedAgentDetail.agentId === DEFAULT_AGENT_ID
-                  ? "text-primary"
+                  ? "text-primary dark:text-violet-300"
                   : "text-blue-600 dark:text-blue-400"
               }
             />
             <h3
               className={`text-lg font-bold font-mono ${
                 selectedAgentDetail.agentId === DEFAULT_AGENT_ID
-                  ? "text-primary"
+                  ? "text-primary dark:text-violet-300"
                   : "text-foreground"
               }`}
             >
