@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname } from "next/navigation";
 import { toast } from "sonner";
 import {
   connectDefaultVenues,
@@ -15,7 +14,6 @@ export function VenueRuntimeProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
   const venues = useVenues((state) => state.venues);
   const selectedVenueId = useVenues((state) => state.selectedVenueId);
   const selectVenue = useVenues((state) => state.selectVenue);
@@ -59,24 +57,11 @@ export function VenueRuntimeProvider({
     };
   }, []);
 
+  // Keeps the global selection valid, nothing more — venue-scoped routes
+  // (/venues/<id>/...) read their own venue via useVenueForRoute without
+  // touching this, so viewing a venue's page never silently reassigns what
+  // "selected" means for the rest of the app (covia-ai/frontend#199).
   useEffect(() => {
-    const match = pathname.match(/\/venues\/([^/]+)/);
-    if (match) {
-      let routeVenueId = match[1];
-      try {
-        routeVenueId = decodeURIComponent(routeVenueId);
-      } catch {
-        // The route resolver will report malformed identifiers.
-      }
-      if (
-        routeVenueId !== selectedVenueId &&
-        venues.some((venue) => venue.venueId === routeVenueId)
-      ) {
-        selectVenue(routeVenueId);
-      }
-      return;
-    }
-
     if (
       selectedVenueId &&
       venues.some((venue) => venue.venueId === selectedVenueId)
@@ -84,7 +69,7 @@ export function VenueRuntimeProvider({
       return;
     }
     selectVenue(venues[0]?.venueId ?? null);
-  }, [pathname, venues, selectedVenueId, selectVenue]);
+  }, [venues, selectedVenueId, selectVenue]);
 
   return children;
 }
