@@ -14,10 +14,25 @@ jest.mock('@/hooks/use-authenticated-venue', () => ({
   useAuthenticatedVenue: () => mockUseAuthenticatedVenue(),
 }));
 
+// Mirrors the real venue/src/main/resources/agent-templates/skilled.json —
+// note it carries its own `model`, which proceedWithKey must never forward
+// (a model pinned for one provider is meaningless once llmOperation is
+// swapped for whichever key was actually detected).
+const SKILLED_TEMPLATE = {
+  name: 'Skilled Agent Template',
+  systemPrompt: 'You are a general-purpose agent on the Covia platform.',
+  tools: ['v/ops/covia/read', 'v/ops/covia/list'],
+  skills: ['w/skills', 'v/skills'],
+  llmOperation: 'v/ops/langchain/openai',
+  model: 'gpt-5.4-mini',
+  defaultTools: false,
+};
+
 function makeVenue(overrides: {
   existingAgents?: string[] | Array<{ agentId: string; status: string }>;
   agentStatus?: string;
   secrets?: string[];
+  templateRead?: { exists: boolean; value?: unknown };
 } = {}) {
   const rawAgents = overrides.existingAgents ?? [];
   const agentStatus = overrides.agentStatus ?? 'active';
@@ -33,6 +48,11 @@ function makeVenue(overrides: {
     },
     secrets: {
       list: jest.fn().mockResolvedValue(overrides.secrets ?? []),
+    },
+    workspace: {
+      read: jest.fn().mockResolvedValue(
+        overrides.templateRead ?? { exists: true, value: SKILLED_TEMPLATE },
+      ),
     },
   };
 }
@@ -164,6 +184,85 @@ describe('AIPrompt — default agent reuse vs creation', () => {
     });
   });
 
+  it('builds the new assistant from the skilled template, not a hardcoded prompt', async () => {
+    const venue = makeVenue({ existingAgents: [], secrets: ['ANTHROPIC_API_KEY'] });
+    mockUseAuthenticatedVenue.mockReturnValue(venue);
+    const user = userEvent.setup();
+
+    render(<AIPrompt />);
+    await user.type(screen.getByLabelText('prompt'), 'Do something useful');
+    await user.click(screen.getByTestId('chat-button'));
+
+    await waitFor(() => {
+      expect(venue.workspace.read).toHaveBeenCalledWith('v/agents/templates/skilled');
+    });
+    await waitFor(() => {
+      expect(venue.agents.create).toHaveBeenCalledWith({
+        agentId: 'assistant',
+        overwrite: true,
+        config: {
+          skills: SKILLED_TEMPLATE.skills,
+          tools: SKILLED_TEMPLATE.tools,
+          defaultTools: SKILLED_TEMPLATE.defaultTools,
+          // The detected key's provider wins over the template's own
+          // llmOperation, and the template's model is dropped entirely —
+          // it was pinned for a different provider.
+          operation: 'v/ops/llmagent/chat',
+          llmOperation: 'v/ops/langchain/anthropic',
+          systemPrompt: SKILLED_TEMPLATE.systemPrompt,
+        },
+      });
+    });
+  });
+
+  it('fails closed with a toast when the skilled template cannot be read', async () => {
+    const venue = makeVenue({
+      existingAgents: [],
+      secrets: ['ANTHROPIC_API_KEY'],
+      templateRead: { exists: false },
+    });
+    mockUseAuthenticatedVenue.mockReturnValue(venue);
+    const user = userEvent.setup();
+
+    render(<AIPrompt />);
+    await user.type(screen.getByLabelText('prompt'), 'Do something useful');
+    await user.click(screen.getByTestId('chat-button'));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith('Failed to create agent', expect.anything());
+    });
+    expect(venue.agents.create).not.toHaveBeenCalled();
+    expect(venue.agents.chat).not.toHaveBeenCalled();
+  });
+
+  it('treats a legacy "default-agent" as an ordinary agent, never the reserved assistant', async () => {
+    const venue = makeVenue({
+      existingAgents: [{ agentId: 'default-agent', status: 'active' }],
+      secrets: ['ANTHROPIC_API_KEY'],
+    });
+    mockUseAuthenticatedVenue.mockReturnValue(venue);
+    const user = userEvent.setup();
+
+    render(<AIPrompt />);
+    // The picker's reserved slot still offers to create "assistant" fresh —
+    // the old agent under the legacy id doesn't satisfy it.
+    await user.hover(screen.getByTestId('agent-picker'));
+    expect((await screen.findAllByText(/Your message will go to the assistant/))[0]).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('prompt'), 'Do something useful');
+    await user.click(screen.getByTestId('chat-button'));
+
+    // Creates the new reserved slot — never touches/overwrites the legacy one.
+    await waitFor(() => {
+      expect(venue.agents.create).toHaveBeenCalledWith(
+        expect.objectContaining({ agentId: 'assistant' }),
+      );
+    });
+    expect(venue.agents.create).not.toHaveBeenCalledWith(
+      expect.objectContaining({ agentId: 'default-agent' }),
+    );
+  });
+
   it('shows the LLM key picker when assistant does not exist and multiple keys are present', async () => {
     const venue = makeVenue({
       existingAgents: [],
@@ -211,7 +310,7 @@ describe('AIPrompt — agent picker', () => {
 
     render(<AIPrompt />);
     await user.hover(screen.getByTestId('agent-picker'));
-    expect((await screen.findAllByText(/Your message will go to the default agent/))[0]).toBeInTheDocument();
+    expect((await screen.findAllByText(/Your message will go to the assistant/))[0]).toBeInTheDocument();
 
     await user.click(screen.getByTestId('agent-picker'));
     expect(await screen.findByRole('menuitemradio', { name: 'research-bot' })).toBeInTheDocument();

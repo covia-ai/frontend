@@ -29,6 +29,7 @@ import { useTypewriterPlaceholder } from "@/hooks/use-typewriter-placeholder";
 import { toast } from "sonner";
 import { KNOWN_LLM_KEYS, LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
+import type { AgentTemplate } from "@/hooks/use-agent-templates";
 import { normalizeAgentEntries } from "@/lib/agent-list";
 import { AgentStatus } from "@covia/covia-sdk";
 import { useRouter } from "next/navigation";
@@ -92,7 +93,7 @@ export const AIPrompt = () => {
       const { agents } = await venue.agents.list();
       setAgentOptions(normalizeAgentEntries(agents));
     } catch {
-      // Non-fatal — picker just falls back to Default agent / New agent.
+      // Non-fatal — picker just falls back to Assistant / New agent.
     }
   }
 
@@ -104,7 +105,7 @@ export const AIPrompt = () => {
   const { defaultAgentLabel, otherAgents } = useMemo(() => {
     const hasDefault = agentOptions.some((a) => a.agentId === DEFAULT_AGENT_ID);
     return {
-      defaultAgentLabel: hasDefault ? "Default agent" : "Default agent (new)",
+      defaultAgentLabel: hasDefault ? "Assistant" : "Assistant (new)",
       otherAgents: agentOptions.filter((a) => a.agentId !== DEFAULT_AGENT_ID),
     };
   }, [agentOptions]);
@@ -114,7 +115,7 @@ export const AIPrompt = () => {
   const selectedAgentLabel = selectedAgentId === NEW_AGENT_OPTION
     ? "a new agent"
     : selectedAgentId === DEFAULT_AGENT_ID
-      ? "the default agent"
+      ? "the assistant"
       : `"${selectedAgentId}"`;
 
   // Conversational dispatch on an already-existing, ready agent — shared by
@@ -167,6 +168,20 @@ export const AIPrompt = () => {
 
     setCreating(true);
     try {
+      // The reserved assistant is built from the venue's own skilled template
+      // (read job-free, same surface useAgentTemplates uses) rather than a
+      // prompt/tools/skills set hardcoded here — so it gets the normal
+      // read/list + skill-loading contract instead of a bare chat loop, and
+      // stays in sync with the template instead of drifting from it. Only
+      // the LLM provider is ours to decide, from the detected key; the
+      // template's own model is never carried over, since it may not exist
+      // for a different provider.
+      const templateRead = await venue.workspace.read("v/agents/templates/skilled");
+      if (!templateRead?.exists || !templateRead.value) {
+        throw new Error("Skilled agent template not found on this venue");
+      }
+      const template = templateRead.value as Omit<AgentTemplate, "key">;
+
       await venue.agents.create({
         agentId,
         // overwrite:true only matters when the slot is occupied — the venue
@@ -175,10 +190,12 @@ export const AIPrompt = () => {
         // it's always safe here.
         overwrite: true,
         config: {
-          operation: "v/ops/llmagent/chat",
+          ...(template.skills?.length ? { skills: template.skills } : {}),
+          ...(template.tools?.length ? { tools: template.tools } : {}),
+          ...(template.defaultTools != null ? { defaultTools: template.defaultTools } : {}),
+          operation: template.operation ?? "v/ops/llmagent/chat",
           llmOperation: provider.operation,
-          systemPrompt:
-            "You are a helpful AI assistant working on the Covia grid. Complete the user's task thoroughly and report your results clearly.",
+          ...(template.systemPrompt && { systemPrompt: template.systemPrompt }),
         },
       });
     } catch (err: any) {
