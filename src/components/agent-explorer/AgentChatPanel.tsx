@@ -39,6 +39,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { AgentTranscript } from "@/components/agent-explorer/AgentTranscript";
 import type { AgentExplorerController } from "@/hooks/use-agent-explorer";
 import { formatSessionLabel } from "@/lib/agent-sessions";
+import { DEFAULT_AGENT_ID } from "@/config/agents";
 
 export function AgentChatPanel({
   controller,
@@ -106,8 +107,21 @@ export function AgentChatPanel({
       {!detailLoading && selectedAgentDetail && (
         <>
           <div className="px-6 py-4 border-b border-border flex flex-wrap items-center gap-3">
-            <Bot size={20} className="text-blue-600 dark:text-blue-400" />
-            <h3 className="text-lg font-bold font-mono text-foreground">
+            <Bot
+              size={20}
+              className={
+                selectedAgentDetail.agentId === DEFAULT_AGENT_ID
+                  ? "text-primary"
+                  : "text-blue-600 dark:text-blue-400"
+              }
+            />
+            <h3
+              className={`text-lg font-bold font-mono ${
+                selectedAgentDetail.agentId === DEFAULT_AGENT_ID
+                  ? "text-primary"
+                  : "text-foreground"
+              }`}
+            >
               {selectedAgentDetail.agentId}
             </h3>
             <StatusBadge

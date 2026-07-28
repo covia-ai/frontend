@@ -1,6 +1,7 @@
 import { Bot, Loader2 } from "lucide-react";
 import type { AgentListItem } from "@/config/types";
 import { StatusBadge } from "@/components/StatusBadge";
+import { DEFAULT_AGENT_ID } from "@/config/agents";
 
 type AgentListPanelProps = {
   agents: AgentListItem[];
@@ -33,6 +34,7 @@ export function AgentListPanel({
       )}
       {agents.map((agent) => {
         const selected = selectedAgentId === agent.agentId;
+        const isAssistant = agent.agentId === DEFAULT_AGENT_ID;
         return (
           <button
             key={agent.agentId}
@@ -43,16 +45,24 @@ export function AgentListPanel({
                 : "hover:bg-accent text-foreground"
             }`}
           >
-            <Bot
-              size={14}
-              className={`flex-shrink-0 ${
-                selected
-                  ? "text-blue-600 dark:text-blue-400"
-                  : "text-muted-foreground"
+            <div
+              className={`flex-shrink-0 flex items-center justify-center rounded-full size-6 ${
+                isAssistant ? "bg-primary/15" : ""
               }`}
-            />
+            >
+              <Bot
+                size={14}
+                className={
+                  isAssistant
+                    ? "text-primary"
+                    : selected
+                      ? "text-blue-600 dark:text-blue-400"
+                      : "text-muted-foreground"
+                }
+              />
+            </div>
             <div className="min-w-0 flex-1">
-              <p className="font-medium text-base truncate">{agent.agentId}</p>
+              <p className={`font-medium text-base truncate ${isAssistant ? "text-primary" : ""}`}>{agent.agentId}</p>
               {(agent.tasks != null || agent.status) && (
                 <div className="flex items-center gap-1.5 text-[10px] opacity-70">
                   {agent.tasks != null && (
