@@ -293,7 +293,7 @@ export function HitlInbox() {
           <>
             <FiltersSheet
               title="Filter Requests"
-              description="Narrow down HITL requests by status."
+              description="Narrow down Inbox requests by status."
               groups={[
                 { label: "Status", options: STATUS_OPTIONS, selected: statusFilter, onChange: changeStatusFilter },
               ]}
@@ -304,14 +304,14 @@ export function HitlInbox() {
                   variant="outline"
                   size="icon"
                   data-testid="hitl-refresh"
-                  aria-label="Refresh HITL requests"
+                  aria-label="Refresh Inbox requests"
                   disabled={loading}
                   onClick={refresh}
                 >
                   <RefreshCw size={16} className={loading ? "animate-spin" : undefined} />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Refresh HITL requests</TooltipContent>
+              <TooltipContent>Refresh Inbox requests</TooltipContent>
             </Tooltip>
           </>
         }

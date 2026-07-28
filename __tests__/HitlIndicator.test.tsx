@@ -19,7 +19,7 @@ describe('HitlIndicator', () => {
     mockCount.mockReturnValue(3);
     render(<HitlIndicator />);
 
-    expect(screen.getByTestId('hitl-topbar-indicator')).toHaveAttribute('href', '/hitl');
+    expect(screen.getByTestId('hitl-topbar-indicator')).toHaveAttribute('href', '/inbox');
     expect(screen.getByTestId('hitl-topbar-count')).toHaveTextContent('3');
   });
 

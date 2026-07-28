@@ -81,8 +81,8 @@ export function   getMenuList(): Group[] {
             icon: User
           },
           {
-            href: "/hitl",
-            label: "HITL",
+            href: "/inbox",
+            label: "Inbox",
             icon: Inbox
           },
         ]
@@ -157,8 +157,8 @@ export function   getMenuList(): Group[] {
             icon: User
           },
           {
-            href: "/hitl",
-            label: "HITL",
+            href: "/inbox",
+            label: "Inbox",
             icon: Inbox
           },
         ]

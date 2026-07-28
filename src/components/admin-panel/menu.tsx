@@ -28,11 +28,11 @@ interface MenuProps {
 // per-user, Secrets are per-user credentials, and the HITL inbox is the
 // caller's own h/ namespace) — hide them from the sidebar entirely rather than
 // showing a sign-in wall after navigating in.
-const AUTH_ONLY_LABELS = new Set(["Workspace", "Secrets", "HITL"]);
+const AUTH_ONLY_LABELS = new Set(["Workspace", "Secrets", "Inbox"]);
 
 // Only this entry carries a live count, so the badge is wired by label rather
 // than threading a value through the static menu definition.
-const HITL_LABEL = "HITL";
+const HITL_LABEL = "Inbox";
 
 export function Menu({ isOpen }: MenuProps) {
   const pathname = usePathname();

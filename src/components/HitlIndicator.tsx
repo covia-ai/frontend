@@ -18,7 +18,7 @@ export function HitlIndicator() {
 
   return (
     <Link
-      href="/hitl"
+      href="/inbox"
       aria-label={summary}
       title={summary}
       data-testid="hitl-topbar-indicator"
