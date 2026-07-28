@@ -89,9 +89,9 @@ describe('JobList windowed fetching', () => {
     await user.type(await screen.findByPlaceholderText(/Search by id/), 'job-9');
     await user.click(screen.getByRole('button', { name: /apply filters/i }));
 
-    // One 500-record window: slice('j', 498, 500), after the 300ms debounce.
+    // One FILTER_WINDOW-record window: slice('j', 898, 100), after the 300ms debounce.
     await waitFor(() => {
-      expect(mockVenue.workspace.slice).toHaveBeenCalledWith('j', TOTAL - 500, 500);
+      expect(mockVenue.workspace.slice).toHaveBeenCalledWith('j', TOTAL - 100, 100);
     });
     expect(mockVenue.jobs.get).not.toHaveBeenCalled();
   });

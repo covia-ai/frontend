@@ -18,6 +18,7 @@ import { useLatestQuery } from "@/hooks/use-latest-query";
 import { useClientPagination } from "@/hooks/use-pagination";
 import { CARD_GRID_CLASS } from "@/lib/grid";
 import { FiltersSheet } from "./FiltersSheet";
+import { ListToolbar } from "./ListToolbar";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 
 interface OperationsListProps {
@@ -157,33 +158,32 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
     <ContentLayout>
       <TopBar venueName={venueObj?.metadata.name}/>
       <div className="flex flex-col items-center justify-center">
-        <div className="flex gap-2 items-center w-full mt-4 justify-end">
-          <FiltersSheet
-            title="Filter Operations"
-            description="Search and narrow down operations by tag."
-            search={{ value: searchInput, onChange: handleSearchChange, placeholder: "Type keyword to search…" }}
-            groups={tagOptions.length > 0 ? [{ label: "Tags", options: tagOptions, selected: selectedTags, onChange: setSelectedTags }] : []}
-          />
-          <Button
-            variant="outline"
-            size="icon"
-            data-testid="refresh-operations"
-            aria-label="Refresh operations"
-            title="Refresh operations"
-            disabled={isLoading}
-            onClick={() => setRefreshTick((t) => t + 1)}
-          >
-            <RefreshCw size={16} className={isLoading ? "animate-spin" : undefined} />
-          </Button>
-        </div>
-        <div className="flex flex-row flex-nowrap items-center justify-between w-full my-2 gap-4">
-          <div className="text-card-foreground text-xs whitespace-nowrap">
-            {!isLoading && `Page ${currentPage} : Showing ${pageItems.length} of ${filteredAssets.length}`}
-          </div>
-          <div className="shrink-0">
-            <PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={isLoading}></PaginationHeader>
-          </div>
-        </div>
+        <ListToolbar
+          className="mt-4"
+          actions={
+            <>
+              <FiltersSheet
+                title="Filter Operations"
+                description="Search and narrow down operations by tag."
+                search={{ value: searchInput, onChange: handleSearchChange, placeholder: "Type keyword to search…" }}
+                groups={tagOptions.length > 0 ? [{ label: "Tags", options: tagOptions, selected: selectedTags, onChange: setSelectedTags }] : []}
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                data-testid="refresh-operations"
+                aria-label="Refresh operations"
+                title="Refresh operations"
+                disabled={isLoading}
+                onClick={() => setRefreshTick((t) => t + 1)}
+              >
+                <RefreshCw size={16} className={isLoading ? "animate-spin" : undefined} />
+              </Button>
+            </>
+          }
+          summary={!isLoading && `Page ${currentPage} : Showing ${pageItems.length} of ${filteredAssets.length}`}
+          pagination={<PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={isLoading}></PaginationHeader>}
+        />
 
         {loadError && <ErrorDisplay error={loadError} className="mb-4 w-full" />}
 

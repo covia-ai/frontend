@@ -74,7 +74,10 @@ export function useDeviceKeySignIn(options: { trackSignUp?: boolean } = {}) {
     const auth = Ed25519Auth.fromHex(key);
     loginWithKeypair(venueId, key, auth.getDID());
     setDialogOpen(false);
-    router.push("/operations");
+    // Only the dedicated /signUp page's button wants to land in the app on
+    // success — the topbar's sign-in button can be opened from any page and
+    // should leave the user right where they were.
+    if (trackSignUp) router.push("/operations");
   };
 
   const handleSubmitProvidedKey = () => {

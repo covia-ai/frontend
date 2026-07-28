@@ -9,7 +9,8 @@ import { DarkLightToggle } from "../DarkLightToggle";
 import { SmartBreadcrumb } from "../smartbreadcrumb2";
 import { Separator } from "../ui/separator";
 import { usePathname, useRouter } from "next/navigation";
-import { BookOpen } from "lucide-react";
+import { Info } from "lucide-react";
+import { Button } from "../ui/button";
 
 // Checked most-specific first — a venue-scoped route like /venues/x/jobs
 // must resolve to the Jobs doc, not the generic Venues one, so Jobs/Agents/
@@ -40,19 +41,15 @@ export function TopBar(props:any) {
         <div className="flex flex-1 items-center justify-between space-x-4 w-full ml-4">
           <div className="flex items-center gap-3 min-w-0">
             <SmartBreadcrumb onNavigate={(href) => router.push(href)} pathname={pathname} assetOrJobName= {props.assetOrJobName} venueName={props.venueName}/>
-            {docsHref && (
-              <a
-                href={docsHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground shrink-0"
-              >
-                <BookOpen size={12} />
-                Docs
-              </a>
-            )}
           </div>
           <div className="flex flex-1 items-center justify-end space-x-4">
+              {docsHref && (
+                <Button asChild variant="ghost" size="icon" aria-label="Documentation" title="Documentation">
+                  <a href={docsHref} target="_blank" rel="noopener noreferrer">
+                    <Info size={16} />
+                  </a>
+                </Button>
+              )}
               <HitlIndicator />
               <DarkLightToggle/>
               <VenueSelector />

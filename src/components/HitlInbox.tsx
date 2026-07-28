@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { FiltersSheet } from "@/components/FiltersSheet";
+import { ListToolbar } from "@/components/ListToolbar";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
@@ -286,34 +287,31 @@ export function HitlInbox() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-2 items-center justify-end">
-        <FiltersSheet
-          title="Filter Requests"
-          description="Narrow down HITL requests by status."
-          groups={[
-            { label: "Status", options: STATUS_OPTIONS, selected: statusFilter, onChange: changeStatusFilter },
-          ]}
-        />
-        <Button
-          variant="outline"
-          size="icon"
-          data-testid="hitl-refresh"
-          aria-label="Refresh HITL requests"
-          title="Refresh HITL requests"
-          disabled={loading}
-          onClick={refresh}
-        >
-          <RefreshCw size={16} className={loading ? "animate-spin" : undefined} />
-        </Button>
-      </div>
-
-      {!loading && requests.length > 0 && (
-        <div className="flex flex-row flex-nowrap items-center justify-between w-full gap-4">
-          <span className="text-card-foreground text-xs whitespace-nowrap">
-            Showing {visible.length} of {requests.length}
-          </span>
-        </div>
-      )}
+      <ListToolbar
+        actions={
+          <>
+            <FiltersSheet
+              title="Filter Requests"
+              description="Narrow down HITL requests by status."
+              groups={[
+                { label: "Status", options: STATUS_OPTIONS, selected: statusFilter, onChange: changeStatusFilter },
+              ]}
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              data-testid="hitl-refresh"
+              aria-label="Refresh HITL requests"
+              title="Refresh HITL requests"
+              disabled={loading}
+              onClick={refresh}
+            >
+              <RefreshCw size={16} className={loading ? "animate-spin" : undefined} />
+            </Button>
+          </>
+        }
+        summary={!loading && requests.length > 0 && `Showing ${visible.length} of ${requests.length}`}
+      />
 
       {loading && (
         <div className="flex items-center justify-center py-20">

@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { PlusIcon }from "lucide-react";
+import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { TbCircleDashedNumber1, TbCircleDashedNumber3 }from "react-icons/tb";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -177,7 +177,7 @@ export const CreateAssetComponent = ({sendDataToParent, venue: venueProp}: {send
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
                   <Button data-testid="create-asset-trigger" className="shrink-0 gap-2">
-                        <PlusIcon />
+                        <PlusCircledIcon />
                         Create Asset
                   </Button>
           </DialogTrigger>

@@ -12,6 +12,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { AddNewVenueModal } from "@/components/AddNewVenueModal";
+import { ListToolbar } from "@/components/ListToolbar";
 
 export default function VenuesPage() {
   const { venues } = useVenues();
@@ -50,24 +51,22 @@ export default function VenuesPage() {
       <TopBar />
 
       <div className="flex flex-col items-center justify-center">
-        <div className="flex gap-2 items-center w-full mt-4 justify-end">
-          <AddNewVenueModal/>
-          <FiltersSheet
-            title="Filter Venues"
-            description="Search for a venue by name or id."
-            search={{ value: searchInput, onChange: handleSearchChange, placeholder: "Type keyword to search…" }}
-            groups={[]}
-          />
-        </div>
-
-        <div className="flex flex-row flex-nowrap items-center justify-between w-full my-2 gap-4">
-          <div className="text-card-foreground text-xs whitespace-nowrap">
-            {`Page ${currentPage} : Showing ${pageItems.length} of ${filteredVenues.length}`}
-          </div>
-          <div className="shrink-0">
-            <PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage}></PaginationHeader>
-          </div>
-        </div>
+        <ListToolbar
+          className="mt-4"
+          actions={
+            <>
+              <AddNewVenueModal/>
+              <FiltersSheet
+                title="Filter Venues"
+                description="Search for a venue by name or id."
+                search={{ value: searchInput, onChange: handleSearchChange, placeholder: "Type keyword to search…" }}
+                groups={[]}
+              />
+            </>
+          }
+          summary={`Page ${currentPage} : Showing ${pageItems.length} of ${filteredVenues.length}`}
+          pagination={<PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage}></PaginationHeader>}
+        />
 
         <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 3xl:grid-cols-5 4xl:grid-cols-6 items-stretch justify-center gap-4 my-4">
           {pageItems.map((venue) => (

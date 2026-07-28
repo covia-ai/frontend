@@ -49,18 +49,25 @@ export function AgentList() {
     router.push(encodedUrl);
   };
 
-   return (<ContentLayout>
-     <TopBar/>
- <AgentTemplates onCreated={fetchAgents} />
- <SeparatorWithText text="or"/>
+   // Once agents exist, the list itself is what the user wants to act on —
+   // it goes on top, with the template picker demoted below as a secondary
+   // "or start from a template" path. Before that (no agents yet), there's
+   // nothing to list, so the template picker is the primary way in and
+   // leads.
+   const hasAgents = !loading && agentData.length > 0;
+
+   const agentTemplates = <AgentTemplates onCreated={fetchAgents} />;
+   const orSeparator = <SeparatorWithText text="or"/>;
+
+   const createOrChooseSection = (
      <div className="w-full pt-10">
        <PageHeading
          className="w-full"
          align="center"
-         text={agentData.length > 0 ? "Choose an existing" : "Create a new"}
+         text={hasAgents ? "Choose an existing" : "Create a new"}
          highlight="agent"
        />
-       {agentData.length > 0 && (
+       {hasAgents && (
          <div className="flex items-center justify-center gap-2 shrink-0 mt-4">
            {isAuthenticated ? (
              <>
@@ -84,8 +91,14 @@ export function AgentList() {
          </div>
        )}
      </div>
-     {loading && <div className="flex items-center justify-center py-10"><Loader2 className="animate-spin text-primary" size={32} /></div>}
-     {!loading && agentData.length == 0 &&  <div className="flex flex-col items-center justify-center w-full space-y-2 pt-4">
+   );
+
+   const loadingSpinner = loading && (
+     <div className="flex items-center justify-center py-10"><Loader2 className="animate-spin text-primary" size={32} /></div>
+   );
+
+   const emptyState = !loading && agentData.length == 0 && (
+     <div className="flex flex-col items-center justify-center w-full space-y-2 pt-4">
             <Bot size={48} className="text-primary"></Bot>
             {isAuthenticated ? (
               <AddNewAgent onCreated={fetchAgents} />
@@ -95,8 +108,11 @@ export function AgentList() {
                 Sign in to create agents
               </Button>
             )}
-      </div>}
-      {agentData.length > 0 && <div className="flex flex-col items-center justify-center space-y-4">
+      </div>
+   );
+
+   const agentGrid = agentData.length > 0 && (
+      <div className="flex flex-col items-center justify-center space-y-4">
 
          <div className="mt-10 w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 items-stretch justify-center gap-4">
 
@@ -128,8 +144,27 @@ export function AgentList() {
 
          </div>
       </div>
-      }
-     
+   );
+
+   return (<ContentLayout>
+     <TopBar/>
+     {hasAgents ? (
+       <>
+         {createOrChooseSection}
+         {loadingSpinner}
+         {agentGrid}
+         {orSeparator}
+         {agentTemplates}
+       </>
+     ) : (
+       <>
+         {agentTemplates}
+         {orSeparator}
+         {createOrChooseSection}
+         {loadingSpinner}
+         {emptyState}
+       </>
+     )}
      </ContentLayout>
   );
-} 
+}

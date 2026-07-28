@@ -20,6 +20,7 @@ import { FileKey, Lock }from "lucide-react";
 import { CreateAssetComponent } from "./CreateAssetComponent";
 import { TopBar } from "./admin-panel/TopBar";
 import { FiltersSheet } from "./FiltersSheet";
+import { ListToolbar } from "./ListToolbar";
 import { Button } from "./ui/button";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 
@@ -162,31 +163,29 @@ export function AssetList({ venueId }: AssetListProps = {}) {
         <TopBar venueName={venueObj?.metadata.name}/>
   
         <div className="flex flex-col items-center justify-center">
-          <div className="flex gap-2 items-center w-full mt-4 justify-end">
-            {isAuthenticated ? (
-              <CreateAssetComponent sendDataToParent={handleDataFromChild} venue={venue ?? undefined}></CreateAssetComponent>
-            ) : (
-              <Button variant="outline" disabled className="gap-2 text-muted-foreground">
-                <Lock size={14} />
-                Sign in to create assets
-              </Button>
-            )}
-            <FiltersSheet
-              title="Filter Assets"
-              description="Search and narrow down assets by tag."
-              search={{ value: searchInput, onChange: handleSearchChange, placeholder: "Type keyword to search…" }}
-              groups={tagOptions.length > 0 ? [{ label: "Tags", options: tagOptions, selected: selectedTags, onChange: setSelectedTags }] : []}
-            />
-          </div>
-
-          <div className="flex flex-row flex-nowrap items-center justify-between w-full my-2 gap-4">
-            <div className="text-card-foreground text-xs whitespace-nowrap">
-              {!isLoading && `Page ${currentPage} : Showing ${pageItems.length} of ${filteredAssets.length}`}
-            </div>
-            <div className="shrink-0">
-              <PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={isLoading}></PaginationHeader>
-            </div>
-          </div>
+          <ListToolbar
+            className="mt-4"
+            actions={
+              <>
+                {isAuthenticated ? (
+                  <CreateAssetComponent sendDataToParent={handleDataFromChild} venue={venue ?? undefined}></CreateAssetComponent>
+                ) : (
+                  <Button variant="outline" disabled className="gap-2 text-muted-foreground">
+                    <Lock size={14} />
+                    Sign in to create assets
+                  </Button>
+                )}
+                <FiltersSheet
+                  title="Filter Assets"
+                  description="Search and narrow down assets by tag."
+                  search={{ value: searchInput, onChange: handleSearchChange, placeholder: "Type keyword to search…" }}
+                  groups={tagOptions.length > 0 ? [{ label: "Tags", options: tagOptions, selected: selectedTags, onChange: setSelectedTags }] : []}
+                />
+              </>
+            }
+            summary={!isLoading && `Page ${currentPage} : Showing ${pageItems.length} of ${filteredAssets.length}`}
+            pagination={<PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={isLoading}></PaginationHeader>}
+          />
 
           {loadError && <ErrorDisplay error={loadError} className="mb-4 w-full" />}
 

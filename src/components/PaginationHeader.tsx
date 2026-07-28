@@ -4,10 +4,8 @@ import {
   PaginationContent,
   PaginationItem,
   PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
 } from "@/components/ui/pagination"
-import { ChevronsLeft, ChevronsRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
 
 interface PaginationProps {
   currentPage: number;
@@ -39,11 +37,15 @@ export function PaginationHeader({
               </PaginationItem>}
 
               {!onLastPage && <PaginationItem>
-                <PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (!disabled) onPageChange(currentPage + 1); }} />
+                <PaginationLink href="#" aria-label="Go to next page" onClick={(e) => { e.preventDefault(); if (!disabled) onPageChange(currentPage + 1); }}>
+                  <ChevronRight />
+                </PaginationLink>
               </PaginationItem>}
 
               {!onFirstPage && <PaginationItem>
-                <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (!disabled) onPageChange(currentPage - 1); }} />
+                <PaginationLink href="#" aria-label="Go to previous page" onClick={(e) => { e.preventDefault(); if (!disabled) onPageChange(currentPage - 1); }}>
+                  <ChevronLeft />
+                </PaginationLink>
               </PaginationItem>}
 
               {!onFirstPage && <PaginationItem>

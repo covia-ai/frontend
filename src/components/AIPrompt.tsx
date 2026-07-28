@@ -45,6 +45,7 @@ function makeWorkspaceAgentId(): string {
 
 export const AIPrompt = () => {
   const [prompt, setPrompt] = useState('')
+  const [promptFocused, setPromptFocused] = useState(false)
   const [checking, setChecking] = useState(false)
   const [creating, setCreating] = useState(false)
   const [showKeyDialog, setShowKeyDialog] = useState(false)
@@ -79,7 +80,7 @@ export const AIPrompt = () => {
     'Infer a JSON schema from sample data',
   ]
 
-  const animatedPlaceholder = useTypewriterPlaceholder(typingPromptSamples, prompt.length === 0);
+  const animatedPlaceholder = useTypewriterPlaceholder(typingPromptSamples, prompt.length === 0 && !promptFocused);
 
   // Populates the picker's option list. Best-effort and separate from the
   // fresh venue.agents.list() call in handleMagicWand — that one drives the
@@ -287,7 +288,7 @@ export const AIPrompt = () => {
 
         <Card className="w-full max-w-4xl mt-6 gap-1 p-3">
           <Textarea
-            placeholder={animatedPlaceholder}
+            placeholder={promptFocused ? '' : animatedPlaceholder}
             className="min-h-12 resize-none border-none bg-transparent p-0 shadow-none placeholder:text-muted-foreground focus-visible:ring-0 dark:bg-transparent"
             aria-label="prompt"
             value={prompt}
@@ -298,6 +299,8 @@ export const AIPrompt = () => {
                 handleMagicWand();
               }
             }}
+            onFocus={() => setPromptFocused(true)}
+            onBlur={() => setPromptFocused(false)}
             disabled={busy}
           />
 

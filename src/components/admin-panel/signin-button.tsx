@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { LogInIcon, Globe, CircleUserRound } from "lucide-react";
@@ -17,7 +16,6 @@ export function ChromeSignInButton(props: any) {
   const auth = useCurrentAuth();
   const logout = useAuthStore((x) => x.logout);
   const selectedVenueId = useVenues((state) => state.selectedVenueId);
-  const router = useRouter();
 
   const {
     dialogOpen, setDialogOpen, openDialog, step, setStep, deviceKey, isExisting,
@@ -93,7 +91,6 @@ export function ChromeSignInButton(props: any) {
             <DropdownMenuItem
               onClick={() => {
                 if (selectedVenueId) logout(selectedVenueId);
-                router.push("/");
               }}
               className="items-start text-center hover:bg-primary-vlight"
             >

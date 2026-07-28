@@ -9,9 +9,11 @@ import { getExecutionTime } from "@/lib/utils";
 import { StatusBadge } from "@/components/StatusBadge";
 import { PaginationHeader } from "@/components/PaginationHeader";
 import { FiltersSheet } from "@/components/FiltersSheet";
+import { ListToolbar } from "@/components/ListToolbar";
 import { StatTile } from "@/components/StatTile";
 import { TONE_STYLES } from "@/lib/status";
 import { useVenues } from "@/hooks/use-venues";
+import { useIsAuthenticated } from "@/hooks/use-auth";
 import { Activity, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2, Clock, Layers } from "lucide-react";
 import { TopBar } from "./admin-panel/TopBar";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
@@ -41,7 +43,7 @@ const DATE_OPTIONS = [
 ];
 
 const ITEMS_PER_PAGE = 10;
-const FILTER_WINDOW = 500;
+const FILTER_WINDOW = 100;
 const EMPTY_JOB_QUERY = { records: [] as JobMetadata[], totalCount: 0 };
 
 interface JobListProps {
@@ -73,6 +75,7 @@ export function JobList({ venueId }: JobListProps = {}) {
     reset: resetRecentQuery,
   } = useLatestQuery(EMPTY_JOB_QUERY);
   const { venues } = useVenues();
+  const isAuthenticated = useIsAuthenticated();
   const { descriptor: venueObj, venue } = useResolvedVenueContext(venueId);
   const router = useRouter();
   const prevVenueId = useRef<string | undefined>(undefined);
@@ -197,24 +200,6 @@ export function JobList({ venueId }: JobListProps = {}) {
       .filter(m => !q || [m.id, m.operation, m.name].some(v => v?.toLowerCase().includes(q)));
   }, [hasFilters, windowRecords, statusFilter, dateFilter, debouncedQuery, isInRange]);
 
-  // Headline stats for the tile row — read over the same recent window
-  // (last FILTER_WINDOW records) used for client-side filtering, not the
-  // full history, so this stays a job-free, bounded read like everything
-  // else on this page.
-  const jobStats = useMemo(() => {
-    const terminal = windowRecords.filter(j => TERMINAL_STATUSES.has(j.status as RunStatus));
-    const completed = terminal.filter(j => j.status === RunStatus.COMPLETE);
-    const successRate = terminal.length > 0 ? (completed.length / terminal.length) * 100 : null;
-    const durationsMs = terminal
-      .filter(j => j.created && j.updated)
-      .map(j => new Date(j.updated as string).getTime() - new Date(j.created as string).getTime());
-    const avgDurationMs = durationsMs.length > 0
-      ? durationsMs.reduce((sum, ms) => sum + ms, 0) / durationsMs.length
-      : null;
-    const activeNow = windowRecords.filter(j => ACTIVE_STATUSES.has(j.status as RunStatus)).length;
-    return { successRate, avgDurationMs, activeNow, sampleSize: windowRecords.length };
-  }, [windowRecords]);
-
   // What the table renders: the server-paged window, or a client-side page
   // of the filtered records.
   const totalCount = hasFilters
@@ -238,6 +223,23 @@ export function JobList({ venueId }: JobListProps = {}) {
         currentPage * ITEMS_PER_PAGE,
       )
     : pageData.records;
+
+  // Headline stats for the tile row — scoped to just the records shown on
+  // the current page, so the numbers always match the table below instead
+  // of summarizing a separate FILTER_WINDOW behind the scenes.
+  const jobStats = useMemo(() => {
+    const terminal = pageRecords.filter(j => TERMINAL_STATUSES.has(j.status as RunStatus));
+    const completed = terminal.filter(j => j.status === RunStatus.COMPLETE);
+    const successRate = terminal.length > 0 ? (completed.length / terminal.length) * 100 : null;
+    const durationsMs = terminal
+      .filter(j => j.created && j.updated)
+      .map(j => new Date(j.updated as string).getTime() - new Date(j.created as string).getTime());
+    const avgDurationMs = durationsMs.length > 0
+      ? durationsMs.reduce((sum, ms) => sum + ms, 0) / durationsMs.length
+      : null;
+    return { successRate, avgDurationMs, sampleSize: pageRecords.length };
+  }, [pageRecords]);
+
   const loading = hasFilters ? recentLoading : pageLoading;
   const loadError = hasFilters ? recentError : pageError ?? recentError;
 
@@ -246,8 +248,9 @@ export function JobList({ venueId }: JobListProps = {}) {
     if (!hasFilters) fetchPage(currentPage);
   }, [fetchPage, currentPage, hasFilters, refreshTick]);
 
-  // Also kept fresh outside filter mode — the stat tile row above the table
-  // reads this same window (recent-activity stats), not just the filter path.
+  // Also kept fresh outside filter mode — it's the totalCount fallback for
+  // the header count, and stays warm so switching into filter mode doesn't
+  // start from an empty window.
   useEffect(() => {
     fetchWindow();
   }, [fetchWindow, refreshTick]);
@@ -314,66 +317,39 @@ export function JobList({ venueId }: JobListProps = {}) {
     <ContentLayout >
       <TopBar venueName={venueObj?.metadata.name}/>
       <div className="flex flex-col items-center justify-center  mt-2 bg-background">
-        <div className="flex flex-row flex-wrap w-full items-center justify-end mt-4 gap-4">
-          <FiltersSheet
-            search={{ value: searchQuery, onChange: setSearchQuery, placeholder: "Search by id, operation, or name..." }}
-            groups={[
-              { label: "Status", options: STATUS_OPTIONS, selected: statusFilter, onChange: setStatusFilter },
-              { label: "Date", options: DATE_OPTIONS, selected: dateFilter, onChange: setDateFilter },
-            ]}
-          />
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full mt-4">
-          <StatTile
-            icon={Layers}
-            label="Total Jobs"
-            value={totalCount.toLocaleString()}
-            caption="across this venue"
-          />
-          <StatTile
-            icon={CheckCircle2}
-            label="Success Rate"
-            value={jobStats.successRate != null ? `${Math.round(jobStats.successRate)}%` : "–"}
-            caption={jobStats.sampleSize > 0 ? `of the last ${jobStats.sampleSize} jobs` : undefined}
-            iconClassName={TONE_STYLES.success.text}
-          />
-          <StatTile
-            icon={Clock}
-            label="Avg Duration"
-            value={jobStats.avgDurationMs != null
-              ? getExecutionTime("1970-01-01T00:00:00.000Z", new Date(jobStats.avgDurationMs).toISOString())
-              : "–"}
-            caption={jobStats.sampleSize > 0 ? `of the last ${jobStats.sampleSize} jobs` : undefined}
-          />
-          <StatTile
-            icon={Activity}
-            label="Active Now"
-            value={jobStats.activeNow.toLocaleString()}
-            caption="pending, running, or paused"
-            iconClassName={TONE_STYLES.active.text}
-          />
-        </div>
-
-        <div className="flex flex-row flex-nowrap items-center justify-between w-full my-2 gap-4">
-          <div className="text-card-foreground text-xs whitespace-nowrap">
-            Page {currentPage} : Showing {pageRecords.length} of {matchTotal}
-            {hasFilters && matchTotal === 0 && !loading && (
-              <span className="ml-2 text-muted-foreground">— no jobs match this filter</span>
-            )}
-          </div>
-          {!loading && (
-            <div className="shrink-0">
+        <ListToolbar
+          className="mt-4"
+          actions={
+            <FiltersSheet
+              search={{ value: searchQuery, onChange: setSearchQuery, placeholder: "Search by id, operation, or name..." }}
+              groups={[
+                { label: "Status", options: STATUS_OPTIONS, selected: statusFilter, onChange: setStatusFilter },
+                { label: "Date", options: DATE_OPTIONS, selected: dateFilter, onChange: setDateFilter },
+              ]}
+            />
+          }
+          summary={
+            <>
+              Page {currentPage} : Showing {pageRecords.length} of {matchTotal}
+              {hasFilters && matchTotal === 0 && !loading && (
+                <span className="ml-2 text-muted-foreground">— no jobs match this filter</span>
+              )}
+            </>
+          }
+          pagination={
+            !loading && (
               <PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={loading}></PaginationHeader>
-            </div>
-          )}
-        </div>
+            )
+          }
+        />
         {loadError && <ErrorDisplay error={loadError} className="mb-4 w-full" />}
         {loading && (
           <div className="flex items-center justify-center py-10 w-full">
             <Spinner variant="ellipsis" className="text-primary" size={40} />
           </div>
         )}
-        {!loading && <Table className="  border border-border rounded-lg shadow-md">
+        {!loading && <div className="w-full min-h-[45vh] border border-border rounded-lg shadow-md overflow-hidden">
+        <Table>
           <TableHeader >
             <TableRow className="bg-secondary hover:bg-secondary rounded-full text-secondary-foreground ">
               <TableCell className="text-left">
@@ -399,8 +375,14 @@ export function JobList({ venueId }: JobListProps = {}) {
             </TableRow>
           </TableHeader>
 
-          <TableBody>
-            {[...pageRecords]
+          <TableBody className="[&_tr:last-child]:border-b!">
+            {pageRecords.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={5} className="h-[38vh] text-center text-muted-foreground">
+                  No jobs found
+                </TableCell>
+              </TableRow>
+            ) : [...pageRecords]
               .sort((a, b) => {
                 let cmp = 0;
                 if (sort.col === "date") cmp = new Date(a.created ?? "").getTime() - new Date(b.created ?? "").getTime();
@@ -429,10 +411,35 @@ export function JobList({ venueId }: JobListProps = {}) {
                 );
               })}
           </TableBody>
-        </Table>}
+        </Table>
+        </div>}
         {!loading && (
           <PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={loading}></PaginationHeader>
         )}
+
+        <div className="grid grid-cols-3 gap-4 w-full mt-4">
+          <StatTile
+            icon={Layers}
+            label="Total Jobs"
+            value={totalCount.toLocaleString()}
+            caption={isAuthenticated ? "for this user" : "across this venue"}
+          />
+          <StatTile
+            icon={CheckCircle2}
+            label="Success Rate"
+            value={jobStats.successRate != null ? `${Math.round(jobStats.successRate)}%` : "–"}
+            caption={jobStats.sampleSize > 0 ? `of ${jobStats.sampleSize} jobs on this page` : undefined}
+            iconClassName={TONE_STYLES.success.text}
+          />
+          <StatTile
+            icon={Clock}
+            label="Avg Duration"
+            value={jobStats.avgDurationMs != null
+              ? getExecutionTime("1970-01-01T00:00:00.000Z", new Date(jobStats.avgDurationMs).toISOString())
+              : "–"}
+            caption={jobStats.sampleSize > 0 ? `of ${jobStats.sampleSize} jobs on this page` : undefined}
+          />
+        </div>
       </div>
     </ContentLayout>
 );
