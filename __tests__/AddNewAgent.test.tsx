@@ -182,11 +182,11 @@ describe('AddNewAgent', () => {
     expect(screen.getByText('Initial Command:')).toBeInTheDocument();
   });
 
-  it('blocks "default-agent" as a reserved id — warns and disables Create', async () => {
+  it('blocks "assistant" as a reserved id — warns and disables Create', async () => {
     const user = await renderAndOpenDialog();
 
     const input = screen.getByPlaceholderText('e.g., Customer Support Agent');
-    await user.type(input, 'Default Agent');
+    await user.type(input, 'Assistant');
 
     expect(screen.getByText(/is reserved for the workspace prompt bar/i)).toBeInTheDocument();
     const createButton = screen.getByTestId('create-agent');
@@ -198,16 +198,16 @@ describe('AddNewAgent', () => {
     expect(mockVenue.agents.create).not.toHaveBeenCalled();
   });
 
-  it('allows editing the Agent ID away from the reserved default-agent id', async () => {
+  it('allows editing the Agent ID away from the reserved assistant id', async () => {
     const user = await renderAndOpenDialog();
 
     const nameInput = screen.getByPlaceholderText('e.g., Customer Support Agent');
-    await user.type(nameInput, 'Default Agent');
+    await user.type(nameInput, 'Assistant');
     expect(screen.getByTestId('create-agent')).toBeDisabled();
 
     const idInput = screen.getByPlaceholderText('e.g., customer-support-agent');
     await user.clear(idInput);
-    await user.type(idInput, 'my-default-agent');
+    await user.type(idInput, 'my-assistant');
 
     expect(screen.queryByText(/is reserved for the workspace prompt bar/i)).not.toBeInTheDocument();
     expect(screen.getByTestId('create-agent')).not.toBeDisabled();

@@ -27,9 +27,9 @@ function makeVenue(overrides: {
   return {
     agents: {
       list: jest.fn().mockResolvedValue({ agents }),
-      create: jest.fn().mockResolvedValue({ agentId: 'default-agent', status: 'active', created: true }),
-      chat: jest.fn().mockResolvedValue({ agentId: 'default-agent', sessionId: 's-1', response: 'Reply text' }),
-      resume: jest.fn().mockResolvedValue({ agentId: 'default-agent', status: 'SLEEPING' }),
+      create: jest.fn().mockResolvedValue({ agentId: 'assistant', status: 'active', created: true }),
+      chat: jest.fn().mockResolvedValue({ agentId: 'assistant', sessionId: 's-1', response: 'Reply text' }),
+      resume: jest.fn().mockResolvedValue({ agentId: 'assistant', status: 'SLEEPING' }),
     },
     secrets: {
       list: jest.fn().mockResolvedValue(overrides.secrets ?? []),
@@ -75,8 +75,8 @@ describe('AIPrompt — default agent reuse vs creation', () => {
     mockUseAuthenticatedVenue.mockReset();
   });
 
-  it('reuses an existing default-agent directly — no secrets lookup, no create call', async () => {
-    const venue = makeVenue({ existingAgents: ['default-agent'] });
+  it('reuses an existing assistant directly — no secrets lookup, no create call', async () => {
+    const venue = makeVenue({ existingAgents: ['assistant'] });
     mockUseAuthenticatedVenue.mockReturnValue(venue);
     const user = userEvent.setup();
 
@@ -86,7 +86,7 @@ describe('AIPrompt — default agent reuse vs creation', () => {
 
     await waitFor(() => {
       expect(venue.agents.chat).toHaveBeenCalledWith(
-        'default-agent',
+        'assistant',
         'Do something useful',
       );
     });
@@ -94,8 +94,8 @@ describe('AIPrompt — default agent reuse vs creation', () => {
     expect(venue.secrets.list).not.toHaveBeenCalled();
   });
 
-  it('resumes a SUSPENDED default-agent before sending the message', async () => {
-    const venue = makeVenue({ existingAgents: ['default-agent'], agentStatus: 'SUSPENDED' });
+  it('resumes a SUSPENDED assistant before sending the message', async () => {
+    const venue = makeVenue({ existingAgents: ['assistant'], agentStatus: 'SUSPENDED' });
     mockUseAuthenticatedVenue.mockReturnValue(venue);
     const user = userEvent.setup();
 
@@ -104,20 +104,20 @@ describe('AIPrompt — default agent reuse vs creation', () => {
     await user.click(screen.getByTestId('chat-button'));
 
     await waitFor(() => {
-      expect(venue.agents.resume).toHaveBeenCalledWith('default-agent');
+      expect(venue.agents.resume).toHaveBeenCalledWith('assistant');
     });
     await waitFor(() => {
       expect(venue.agents.chat).toHaveBeenCalledWith(
-        'default-agent',
+        'assistant',
         'Do something useful',
       );
     });
     expect(venue.agents.create).not.toHaveBeenCalled();
   });
 
-  it('recreates a TERMINATED default-agent instead of resuming it', async () => {
+  it('recreates a TERMINATED assistant instead of resuming it', async () => {
     const venue = makeVenue({
-      existingAgents: ['default-agent'],
+      existingAgents: ['assistant'],
       agentStatus: 'TERMINATED',
       secrets: ['ANTHROPIC_API_KEY'],
     });
@@ -130,19 +130,19 @@ describe('AIPrompt — default agent reuse vs creation', () => {
 
     await waitFor(() => {
       expect(venue.agents.create).toHaveBeenCalledWith(
-        expect.objectContaining({ agentId: 'default-agent', overwrite: true }),
+        expect.objectContaining({ agentId: 'assistant', overwrite: true }),
       );
     });
     expect(venue.agents.resume).not.toHaveBeenCalled();
     await waitFor(() => {
       expect(venue.agents.chat).toHaveBeenCalledWith(
-        'default-agent',
+        'assistant',
         'Do something useful',
       );
     });
   });
 
-  it('creates default-agent on first use when a single LLM key is present, then sends the message', async () => {
+  it('creates assistant on first use when a single LLM key is present, then sends the message', async () => {
     const venue = makeVenue({ existingAgents: [], secrets: ['ANTHROPIC_API_KEY'] });
     mockUseAuthenticatedVenue.mockReturnValue(venue);
     const user = userEvent.setup();
@@ -153,18 +153,18 @@ describe('AIPrompt — default agent reuse vs creation', () => {
 
     await waitFor(() => {
       expect(venue.agents.create).toHaveBeenCalledWith(
-        expect.objectContaining({ agentId: 'default-agent' }),
+        expect.objectContaining({ agentId: 'assistant' }),
       );
     });
     await waitFor(() => {
       expect(venue.agents.chat).toHaveBeenCalledWith(
-        'default-agent',
+        'assistant',
         'Do something useful',
       );
     });
   });
 
-  it('shows the LLM key picker when default-agent does not exist and multiple keys are present', async () => {
+  it('shows the LLM key picker when assistant does not exist and multiple keys are present', async () => {
     const venue = makeVenue({
       existingAgents: [],
       secrets: ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY'],
@@ -180,7 +180,7 @@ describe('AIPrompt — default agent reuse vs creation', () => {
     expect(venue.agents.create).not.toHaveBeenCalled();
   });
 
-  it('shows the add-key dialog when default-agent does not exist and no key is present', async () => {
+  it('shows the add-key dialog when assistant does not exist and no key is present', async () => {
     const venue = makeVenue({ existingAgents: [], secrets: [] });
     mockUseAuthenticatedVenue.mockReturnValue(venue);
     const user = userEvent.setup();
@@ -202,7 +202,7 @@ describe('AIPrompt — agent picker', () => {
   it('lists other existing agents plus a New agent option in the ⋮ menu', async () => {
     const venue = makeVenue({
       existingAgents: [
-        { agentId: 'default-agent', status: 'active' },
+        { agentId: 'assistant', status: 'active' },
         { agentId: 'research-bot', status: 'active' },
       ],
     });
@@ -221,7 +221,7 @@ describe('AIPrompt — agent picker', () => {
   it('sends directly to a different existing agent selected from the picker', async () => {
     const venue = makeVenue({
       existingAgents: [
-        { agentId: 'default-agent', status: 'active' },
+        { agentId: 'assistant', status: 'active' },
         { agentId: 'research-bot', status: 'active' },
       ],
     });
@@ -272,7 +272,7 @@ describe('AIPrompt — agent picker', () => {
 
   it('creates a distinctly-named workspace agent when "+ New agent" is selected', async () => {
     const venue = makeVenue({
-      existingAgents: [{ agentId: 'default-agent', status: 'active' }],
+      existingAgents: [{ agentId: 'assistant', status: 'active' }],
       secrets: ['ANTHROPIC_API_KEY'],
     });
     mockUseAuthenticatedVenue.mockReturnValue(venue);
@@ -311,8 +311,8 @@ describe('AIPrompt — chat outcome surfacing', () => {
   });
 
   it('toasts when the agent sends an empty reply', async () => {
-    const venue = makeVenue({ existingAgents: ['default-agent'] });
-    venue.agents.chat.mockResolvedValue({ agentId: 'default-agent', sessionId: 's-1', response: '  ' });
+    const venue = makeVenue({ existingAgents: ['assistant'] });
+    venue.agents.chat.mockResolvedValue({ agentId: 'assistant', sessionId: 's-1', response: '  ' });
     mockUseAuthenticatedVenue.mockReturnValue(venue);
     const user = userEvent.setup();
 
@@ -327,7 +327,7 @@ describe('AIPrompt — chat outcome surfacing', () => {
   });
 
   it('toasts when the chat call fails', async () => {
-    const venue = makeVenue({ existingAgents: ['default-agent'] });
+    const venue = makeVenue({ existingAgents: ['assistant'] });
     venue.agents.chat.mockRejectedValue(new Error('venue unreachable'));
     mockUseAuthenticatedVenue.mockReturnValue(venue);
     const user = userEvent.setup();
