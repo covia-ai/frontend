@@ -18,6 +18,7 @@ import { toastError } from "@/lib/toast-error";
 import { normalizeAgentEntries } from "@/lib/agent-list";
 import { PageHeading } from "./PageHeading";
 import { StatusBadge } from "./StatusBadge";
+import { DEFAULT_AGENT_ID } from "@/config/agents";
 
 export function AgentList() {
   const router = useRouter();
@@ -116,14 +117,22 @@ export function AgentList() {
 
          <div className="mt-10 w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 items-stretch justify-center gap-4">
 
-            {agentData.map((agent) => (
+            {agentData.map((agent) => {
+              const isAssistant = agent.agentId === DEFAULT_AGENT_ID;
+              return (
               <Card
                    key={agent.agentId}  onClick={() => handleCardClick(agent.agentId)}
-                   className={`shadow-md border-2 h-full bg-card flex flex-col rounded-md border-muted hover:border-accent hover:border-2
+                   className={`shadow-md border-2 h-full bg-card flex flex-col rounded-md hover:border-2
+                       ${ isAssistant ? 'border-primary/40 hover:border-primary' : 'border-muted hover:border-accent' }
                        ${ compact ? 'h-32 p-1' : 'h-48 p-2'  }`}>
                    {/* Fixed-size header */}
-                   <div className={` ${ compact ? 'h-10' : 'h-14'  } p-2 flex flex-row items-start border-b`}>
-                      <div data-testid="agent-name" className="truncate flex-1 mr-2 text-md text-foreground font-mono"> {agent.agentId}</div>
+                   <div className={` ${ compact ? 'h-10' : 'h-14'  } p-2 flex flex-row items-center border-b`}>
+                      {isAssistant && (
+                        <div className="flex-shrink-0 flex items-center justify-center rounded-full size-6 bg-primary/15 mr-1.5">
+                          <Bot size={14} className="text-primary" />
+                        </div>
+                      )}
+                      <div data-testid="agent-name" className={`truncate flex-1 mr-2 text-md font-mono ${isAssistant ? 'text-primary' : 'text-foreground'}`}> {agent.agentId}</div>
                       {agent.status && <StatusBadge status={agent.status} kind="agent" as="dot" className="ml-1" />}
                     </div>
                    {/* Flexible middle section */}
@@ -140,7 +149,8 @@ export function AgentList() {
                        )}
                    </div>
                  </Card>
-            ))}
+              );
+            })}
 
          </div>
       </div>
