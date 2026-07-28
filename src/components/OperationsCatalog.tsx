@@ -31,6 +31,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { listCatalogOperations, resolveOperationByAddress, type CatalogOp } from "@/lib/operations-catalog";
 import { useRouter } from "next/navigation";
 import { PlayCircle, RefreshCw, Search } from "lucide-react";
@@ -178,18 +179,22 @@ export function OperationsCatalog() {
               {filtered.length} ops · {grouped.length} adapters
             </span>
           )}
-          <Button
-            variant="outline"
-            size="icon"
-            className="shrink-0"
-            data-testid="refresh-catalog"
-            aria-label="Refresh operation catalog"
-            title="Refresh operation catalog"
-            disabled={loading}
-            onClick={() => setRefreshTick((t) => t + 1)}
-          >
-            <RefreshCw size={16} className={loading ? "animate-spin" : undefined} />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="shrink-0"
+                data-testid="refresh-catalog"
+                aria-label="Refresh operation catalog"
+                disabled={loading}
+                onClick={() => setRefreshTick((t) => t + 1)}
+              >
+                <RefreshCw size={16} className={loading ? "animate-spin" : undefined} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Refresh operation catalog</TooltipContent>
+          </Tooltip>
         </div>
 
         {loading && (

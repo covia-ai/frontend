@@ -11,6 +11,7 @@ import { Separator } from "../ui/separator";
 import { usePathname, useRouter } from "next/navigation";
 import { Info } from "lucide-react";
 import { Button } from "../ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 // Checked most-specific first — a venue-scoped route like /venues/x/jobs
 // must resolve to the Jobs doc, not the generic Venues one, so Jobs/Agents/
@@ -44,11 +45,16 @@ export function TopBar(props:any) {
           </div>
           <div className="flex flex-1 items-center justify-end space-x-4">
               {docsHref && (
-                <Button asChild variant="ghost" size="icon" aria-label="Documentation" title="Documentation">
-                  <a href={docsHref} target="_blank" rel="noopener noreferrer">
-                    <Info size={16} />
-                  </a>
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button asChild variant="ghost" size="icon" aria-label="Documentation">
+                      <a href={docsHref} target="_blank" rel="noopener noreferrer">
+                        <Info size={16} />
+                      </a>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>View documentation for this page</TooltipContent>
+                </Tooltip>
               )}
               <HitlIndicator />
               <DarkLightToggle/>

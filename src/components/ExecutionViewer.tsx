@@ -23,6 +23,7 @@ import { TopBar } from "@/components/admin-panel/TopBar";
 import { ExecutionChildJobs } from "@/components/execution/ExecutionChildJobs";
 import { ExecutionDataTable } from "@/components/execution/ExecutionDataTable";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { useExecutionLifecycle } from "@/hooks/use-execution-lifecycle";
@@ -109,16 +110,21 @@ export function ExecutionViewer({
                 <span className="text-card-foreground font-mono break-all">
                   {jobId}
                 </span>
-                <button
-                  type="button"
-                  aria-label="copy job id"
-                  onClick={() =>
-                    copyDataToClipBoard(jobId, "Job ID copied")
-                  }
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <Copy size={14} />
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="copy job id"
+                      onClick={() =>
+                        copyDataToClipBoard(jobId, "Job ID copied")
+                      }
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <Copy size={14} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Copy job ID</TooltipContent>
+                </Tooltip>
               </div>
 
               {job.status === RunStatus.INPUT_REQUIRED && (

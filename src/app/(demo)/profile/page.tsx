@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/component
 import { Button } from "@/components/ui/button";
 import { Copy, Check, ChevronRight, KeyRound, Globe, ExternalLink, Eye, EyeOff } from "lucide-react";
 import { CopyField } from "@/components/CopyField";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCurrentAuth } from "@/hooks/use-auth";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { Ed25519Auth, type DIDDocument } from "@covia/covia-sdk";
@@ -35,19 +36,29 @@ function SecretCopyField({ label, value }: { label: string; value: string }) {
         <code data-testid="secret-field-value" className="bg-muted flex-1 rounded-md px-3 py-2 text-xs font-mono break-all select-all">
           {revealed ? value : "•".repeat(48)}
         </code>
-        <Button
-          data-testid="secret-field-reveal"
-          variant="outline"
-          size="icon"
-          onClick={() => setRevealed((v) => !v)}
-          aria-label={revealed ? "Hide" : "Show"}
-          className="shrink-0"
-        >
-          {revealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-        </Button>
-        <Button variant="outline" size="icon" onClick={copy} className="shrink-0">
-          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              data-testid="secret-field-reveal"
+              variant="outline"
+              size="icon"
+              onClick={() => setRevealed((v) => !v)}
+              aria-label={revealed ? "Hide" : "Show"}
+              className="shrink-0"
+            >
+              {revealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{revealed ? "Hide private key" : "Show private key"}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" size="icon" onClick={copy} aria-label="Copy private key" className="shrink-0">
+              {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{copied ? "Copied!" : "Copy private key"}</TooltipContent>
+        </Tooltip>
       </div>
       <p className="text-xs text-muted-foreground mt-1">
         Anyone with this key can act as you. Never share it.

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { FiltersSheet } from "@/components/FiltersSheet";
 import { ListToolbar } from "@/components/ListToolbar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
@@ -297,17 +298,21 @@ export function HitlInbox() {
                 { label: "Status", options: STATUS_OPTIONS, selected: statusFilter, onChange: changeStatusFilter },
               ]}
             />
-            <Button
-              variant="outline"
-              size="icon"
-              data-testid="hitl-refresh"
-              aria-label="Refresh HITL requests"
-              title="Refresh HITL requests"
-              disabled={loading}
-              onClick={refresh}
-            >
-              <RefreshCw size={16} className={loading ? "animate-spin" : undefined} />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  data-testid="hitl-refresh"
+                  aria-label="Refresh HITL requests"
+                  disabled={loading}
+                  onClick={refresh}
+                >
+                  <RefreshCw size={16} className={loading ? "animate-spin" : undefined} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Refresh HITL requests</TooltipContent>
+            </Tooltip>
           </>
         }
         summary={!loading && requests.length > 0 && `Showing ${visible.length} of ${requests.length}`}

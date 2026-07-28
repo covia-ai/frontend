@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -38,15 +39,20 @@ export function CopyField({ label, value, href, className }: CopyFieldProps) {
         ) : (
           <code className={cn(valueClasses, "select-all")}>{value}</code>
         )}
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={copy}
-          aria-label={`Copy ${label}`}
-          className="shrink-0"
-        >
-          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={copy}
+              aria-label={`Copy ${label}`}
+              className="shrink-0"
+            >
+              {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{copied ? "Copied!" : `Copy ${label}`}</TooltipContent>
+        </Tooltip>
       </div>
     </div>
   );

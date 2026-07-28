@@ -27,6 +27,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -243,18 +244,24 @@ export function AgentChatPanel({
                 className="text-sm"
                 disabled={sending || !canSend}
               />
-              <Button
-                data-testid="composer-send"
-                size="sm"
-                onClick={send}
-                disabled={sending || !canSend || !messageText.trim()}
-              >
-                {sending ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <Send size={14} />
-                )}
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    data-testid="composer-send"
+                    aria-label="Send message"
+                    size="sm"
+                    onClick={send}
+                    disabled={sending || !canSend || !messageText.trim()}
+                  >
+                    {sending ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Send size={14} />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Send message</TooltipContent>
+              </Tooltip>
             </div>
             {!canSend &&
               selectedAgentDetail.status === AgentStatus.SUSPENDED && (

@@ -6,6 +6,7 @@ import {
   PaginationLink,
 } from "@/components/ui/pagination"
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface PaginationProps {
   currentPage: number;
@@ -31,27 +32,47 @@ export function PaginationHeader({
             {/* flex-row-reverse: first JSX child renders rightmost */}
             <PaginationContent className="flex flex-row-reverse w-full">
               {!onLastPage && <PaginationItem>
-                <PaginationLink href="#" aria-label="Go to last page" onClick={(e) => { e.preventDefault(); if (!disabled) onPageChange(totalPages); }}>
-                  <ChevronsRight />
-                </PaginationLink>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <PaginationLink href="#" aria-label="Go to last page" onClick={(e) => { e.preventDefault(); if (!disabled) onPageChange(totalPages); }}>
+                      <ChevronsRight />
+                    </PaginationLink>
+                  </TooltipTrigger>
+                  <TooltipContent>Last page</TooltipContent>
+                </Tooltip>
               </PaginationItem>}
 
               {!onLastPage && <PaginationItem>
-                <PaginationLink href="#" aria-label="Go to next page" onClick={(e) => { e.preventDefault(); if (!disabled) onPageChange(currentPage + 1); }}>
-                  <ChevronRight />
-                </PaginationLink>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <PaginationLink href="#" aria-label="Go to next page" onClick={(e) => { e.preventDefault(); if (!disabled) onPageChange(currentPage + 1); }}>
+                      <ChevronRight />
+                    </PaginationLink>
+                  </TooltipTrigger>
+                  <TooltipContent>Next page</TooltipContent>
+                </Tooltip>
               </PaginationItem>}
 
               {!onFirstPage && <PaginationItem>
-                <PaginationLink href="#" aria-label="Go to previous page" onClick={(e) => { e.preventDefault(); if (!disabled) onPageChange(currentPage - 1); }}>
-                  <ChevronLeft />
-                </PaginationLink>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <PaginationLink href="#" aria-label="Go to previous page" onClick={(e) => { e.preventDefault(); if (!disabled) onPageChange(currentPage - 1); }}>
+                      <ChevronLeft />
+                    </PaginationLink>
+                  </TooltipTrigger>
+                  <TooltipContent>Previous page</TooltipContent>
+                </Tooltip>
               </PaginationItem>}
 
               {!onFirstPage && <PaginationItem>
-                <PaginationLink href="#" aria-label="Go to first page" onClick={(e) => { e.preventDefault(); if (!disabled) onPageChange(1); }}>
-                  <ChevronsLeft />
-                </PaginationLink>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <PaginationLink href="#" aria-label="Go to first page" onClick={(e) => { e.preventDefault(); if (!disabled) onPageChange(1); }}>
+                      <ChevronsLeft />
+                    </PaginationLink>
+                  </TooltipTrigger>
+                  <TooltipContent>First page</TooltipContent>
+                </Tooltip>
               </PaginationItem>}
             </PaginationContent>
           </Pagination>

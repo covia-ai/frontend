@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type RawTextPanelProps = {
   value: string;
@@ -42,15 +43,19 @@ export function RawTextPanel({
 
   return (
     <div className="relative h-full">
-      <button
-        onClick={() => void copy()}
-        className="absolute right-2 top-2 z-10 rounded-md bg-muted p-1.5 transition-colors hover:bg-muted/80"
-        title={copied ? "Copied!" : "Copy all"}
-        aria-label={copied ? "Copied" : "Copy all"}
-        disabled={loading}
-      >
-        {copied ? <Check size={16} /> : <Copy size={16} />}
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={() => void copy()}
+            className="absolute right-2 top-2 z-10 rounded-md bg-muted p-1.5 transition-colors hover:bg-muted/80"
+            aria-label={copied ? "Copied" : "Copy all"}
+            disabled={loading}
+          >
+            {copied ? <Check size={16} /> : <Copy size={16} />}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>{copied ? "Copied!" : "Copy all"}</TooltipContent>
+      </Tooltip>
       <textarea
         readOnly
         value={loading ? "Loading…" : value}

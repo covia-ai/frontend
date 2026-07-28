@@ -17,6 +17,7 @@ import type {
 } from "@/hooks/use-workspace-explorer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type WorkspaceBrowserPaneProps = {
   entries: WorkspaceEntry[];
@@ -71,13 +72,18 @@ export function WorkspaceBrowserPane({
       )}
 
       <div className="flex flex-wrap items-center gap-1 border-b border-border p-2 text-xs">
-        <button
-          onClick={() => onNavigate("/")}
-          className="font-medium text-primary hover:underline"
-          aria-label="Workspace root"
-        >
-          <Database size={14} />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => onNavigate("/")}
+              className="font-medium text-primary hover:underline"
+              aria-label="Workspace root"
+            >
+              <Database size={14} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Go to workspace root</TooltipContent>
+        </Tooltip>
         {pathSegments.map((segment, index) => {
           const path = pathSegments.slice(0, index + 1).join("/");
           return (
@@ -96,13 +102,18 @@ export function WorkspaceBrowserPane({
             </span>
           );
         })}
-        <button
-          onClick={onRefresh}
-          className="ml-auto text-muted-foreground hover:text-foreground"
-          aria-label="Refresh workspace"
-        >
-          <RefreshCw size={12} />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={onRefresh}
+              className="ml-auto text-muted-foreground hover:text-foreground"
+              aria-label="Refresh workspace"
+            >
+              <RefreshCw size={12} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Refresh workspace</TooltipContent>
+        </Tooltip>
       </div>
 
       {loading && (
@@ -141,17 +152,21 @@ export function WorkspaceBrowserPane({
             >
               <Folder size={14} className="shrink-0 text-muted-foreground" />
               <span className="flex-1 truncate">{entry.key}</span>
-              <button
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onNavigate(fullPath);
-                }}
-                className="shrink-0 text-muted-foreground hover:text-foreground"
-                title="Browse into"
-                aria-label={`Browse into ${entry.key}`}
-              >
-                <ChevronRight size={14} />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onNavigate(fullPath);
+                    }}
+                    className="shrink-0 text-muted-foreground hover:text-foreground"
+                    aria-label={`Browse into ${entry.key}`}
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Browse into {entry.key}</TooltipContent>
+              </Tooltip>
             </div>
           );
         })}

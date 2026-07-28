@@ -11,6 +11,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { DeviceKeyStep } from "@/hooks/use-device-key-signin";
 
 interface DeviceKeyDialogProps {
@@ -124,9 +125,14 @@ export function DeviceKeyDialog({
                 <code className="bg-muted flex-1 rounded-md px-3 py-2 text-xs font-mono break-all select-all">
                   {deviceKey}
                 </code>
-                <Button variant="outline" size="icon" onClick={onCopy} className="shrink-0">
-                  {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" onClick={onCopy} aria-label="Copy device key" className="shrink-0">
+                      {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{copied ? "Copied!" : "Copy device key"}</TooltipContent>
+                </Tooltip>
               </div>
             </div>
             <DialogFooter>

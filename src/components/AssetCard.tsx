@@ -98,15 +98,26 @@ export function AssetCard({ asset,type,compact,venue: venueProp,authenticated }:
                             <DialogContent className="h-11/12 min-w-10/12 bg-card text-card-foreground content-start">
                             <DialogTitle className="flex flex-row items-center justify-between mr-4">
                                 Copy asset
-                                <DialogClose>
                                 {JSON.stringify(newJsonData) != "{}" &&
-                                    <Button aria-label="save" role="button" type="button" onClick={() => copyAsset(newJsonData)}> <Save></Save></Button>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <DialogClose asChild>
+                                          <Button aria-label="save" role="button" type="button" onClick={() => copyAsset(newJsonData)}> <Save></Save></Button>
+                                        </DialogClose>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Save copied asset</TooltipContent>
+                                    </Tooltip>
                                 }
                                 {JSON.stringify(newJsonData) == "{}" &&
-                                    <Button aria-label="save" role="button" type="button" disabled><Save></Save></Button>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="inline-block">
+                                          <Button aria-label="save" role="button" type="button" disabled><Save></Save></Button>
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Edit the metadata before saving</TooltipContent>
+                                    </Tooltip>
                                 }
-
-                                </DialogClose>
                             </DialogTitle>
                             <div className="rounded-lg bg-white">
                             {Object.keys(newJsonData).length == 0 && <JsonEditor data={asset.metadata}

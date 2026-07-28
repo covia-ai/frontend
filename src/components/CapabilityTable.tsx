@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { HitlCap } from "@/lib/hitl";
 
 export type CapRow = HitlCap & { included?: boolean };
@@ -73,13 +74,18 @@ export function CapabilityTable({ mode, rows, onChange, disabled }: CapabilityTa
                 className="h-8 font-mono text-xs"
                 onChange={(e) => update(i, { can: e.target.value })}
               />
-              <Button
-                type="button" variant="ghost" size="icon" className="h-8 w-8"
-                aria-label="Remove capability" disabled={disabled}
-                onClick={() => remove(i)}
-              >
-                <Trash2 size={14} />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button" variant="ghost" size="icon" className="h-8 w-8"
+                    aria-label="Remove capability" disabled={disabled}
+                    onClick={() => remove(i)}
+                  >
+                    <Trash2 size={14} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Remove capability</TooltipContent>
+              </Tooltip>
             </>
           ) : (
             <>

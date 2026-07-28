@@ -11,6 +11,7 @@ import { Identicon } from "@/components/Identicon";
 import { useDeviceKeySignIn } from "@/hooks/use-device-key-signin";
 import { useAuthStore, useCurrentAuth } from "@/hooks/use-auth";
 import { useVenues } from "@/hooks/use-venues";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function ChromeSignInButton(props: any) {
   const auth = useCurrentAuth();
@@ -74,15 +75,20 @@ export function ChromeSignInButton(props: any) {
       <div className="flex flex-row mr-4" >
 
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full" aria-label="Account menu">
-              {/* A did:key login shows its identicon; other identities keep the
-                  generic icon until avatars land. */}
-              {auth?.type === "keypair"
-                ? <Identicon did={auth.did} size={24} title={auth.did} />
-                : <CircleUserRound className="!size-6" />}
-            </Button>
-          </DropdownMenuTrigger>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full" aria-label="Account menu">
+                  {/* A did:key login shows its identicon; other identities keep the
+                      generic icon until avatars land. */}
+                  {auth?.type === "keypair"
+                    ? <Identicon did={auth.did} size={24} title={auth.did} />
+                    : <CircleUserRound className="!size-6" />}
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Account menu</TooltipContent>
+          </Tooltip>
           <DropdownMenuContent className="w-48 mr-8">
             <DropdownMenuItem asChild className="items-start text-center hover:bg-primary-vlight">
               <Link href="/profile">My Profile</Link>

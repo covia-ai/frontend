@@ -14,6 +14,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import {
   AlertDialog,
@@ -141,11 +142,16 @@ export function SecretList() {
               />
               {nameGroups.length > 0 && (
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button type="button" variant="outline" size="icon" aria-label="Suggested key names" data-testid="key-name-suggestions">
-                      <ChevronDown size={16} />
-                    </Button>
-                  </DropdownMenuTrigger>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button type="button" variant="outline" size="icon" aria-label="Suggested key names" data-testid="key-name-suggestions">
+                          <ChevronDown size={16} />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>Suggested key names</TooltipContent>
+                  </Tooltip>
                   <DropdownMenuContent align="end" className="max-h-72 overflow-auto">
                     {nameGroups.map((group, i) => (
                       <div key={group.label}>
@@ -231,11 +237,16 @@ export function SecretList() {
                   <TableCell>
                     {isAuthenticated ? (
                       <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
-                            <Trash2 size={14} />
-                          </Button>
-                        </AlertDialogTrigger>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+                                <Trash2 size={14} />
+                              </Button>
+                            </AlertDialogTrigger>
+                          </TooltipTrigger>
+                          <TooltipContent>Delete secret</TooltipContent>
+                        </Tooltip>
                         <AlertDialogContent>
                           <AlertDialogHeader>
                             <AlertDialogTitle>Delete secret &quot;{name}&quot;?</AlertDialogTitle>
@@ -248,9 +259,12 @@ export function SecretList() {
                         </AlertDialogContent>
                       </AlertDialog>
                     ) : (
-                      <Button variant="ghost" size="sm" disabled>
-                        <Lock size={14} className="text-muted-foreground" />
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger className="inline-flex h-8 items-center px-2">
+                          <Lock size={14} className="text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent>Sign in to delete secrets</TooltipContent>
+                      </Tooltip>
                     )}
                   </TableCell>
                 </TableRow>

@@ -19,6 +19,7 @@ import { useClientPagination } from "@/hooks/use-pagination";
 import { CARD_GRID_CLASS } from "@/lib/grid";
 import { FiltersSheet } from "./FiltersSheet";
 import { ListToolbar } from "./ListToolbar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 
 interface OperationsListProps {
@@ -168,17 +169,21 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
                 search={{ value: searchInput, onChange: handleSearchChange, placeholder: "Type keyword to search…" }}
                 groups={tagOptions.length > 0 ? [{ label: "Tags", options: tagOptions, selected: selectedTags, onChange: setSelectedTags }] : []}
               />
-              <Button
-                variant="outline"
-                size="icon"
-                data-testid="refresh-operations"
-                aria-label="Refresh operations"
-                title="Refresh operations"
-                disabled={isLoading}
-                onClick={() => setRefreshTick((t) => t + 1)}
-              >
-                <RefreshCw size={16} className={isLoading ? "animate-spin" : undefined} />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    data-testid="refresh-operations"
+                    aria-label="Refresh operations"
+                    disabled={isLoading}
+                    onClick={() => setRefreshTick((t) => t + 1)}
+                  >
+                    <RefreshCw size={16} className={isLoading ? "animate-spin" : undefined} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Refresh operations</TooltipContent>
+              </Tooltip>
             </>
           }
           summary={!isLoading && `Page ${currentPage} : Showing ${pageItems.length} of ${filteredAssets.length}`}
