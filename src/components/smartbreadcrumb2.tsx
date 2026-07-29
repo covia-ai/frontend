@@ -140,7 +140,10 @@ export function SmartBreadcrumb({
     const measure = measureRef.current;
     if (!container || !measure) return;
 
-    const check = () => setOverflows(measure.scrollWidth > container.clientWidth);
+    // Collapse before the trail actually hits the container's edge, leaving
+    // headroom for other topbar controls that can still grow (e.g.
+    // VenueSelector) without immediately forcing a re-collapse.
+    const check = () => setOverflows(measure.scrollWidth > container.clientWidth * 0.8);
     check();
 
     const ro = new ResizeObserver(check);
@@ -161,7 +164,7 @@ export function SmartBreadcrumb({
   const endCrumbs = collapsed ? breadcrumbs.slice(breadcrumbs.length - SHOW_END) : [];
 
   return (
-    <div ref={containerRef} className="relative min-w-0">
+    <div ref={containerRef} className="relative min-w-0 flex-1">
       {/* Hidden full-width render of the uncollapsed trail, purely to
           measure whether it would overflow — never shown, taken out of
           flow so it can't affect this container's own width. */}

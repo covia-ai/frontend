@@ -40,10 +40,10 @@ export function TopBar(props:any) {
           <SheetMenu />
         </div>
         <div className="flex flex-1 items-center justify-between space-x-4 w-full ml-4">
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex flex-1 items-center gap-3 min-w-0">
             <SmartBreadcrumb onNavigate={(href) => router.push(href)} pathname={pathname} assetOrJobName= {props.assetOrJobName} venueName={props.venueName}/>
           </div>
-          <div className="flex flex-1 items-center justify-end space-x-4">
+          <div className="flex items-center justify-end space-x-4">
               {docsHref && (
                 <Tooltip>
                   <TooltipTrigger asChild>
