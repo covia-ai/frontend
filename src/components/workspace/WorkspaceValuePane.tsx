@@ -1,26 +1,23 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
 import { useTheme } from "next-themes";
 import {
   Database,
   Eye,
   FileText,
-  ListPlus,
   Loader2,
   Lock,
   PenLine,
-  Save,
   Trash2,
 } from "lucide-react";
-import type {
-  WorkspaceMutation,
-  WorkspaceValue,
+import {
+  isWritableWorkspaceEntry,
+  type WorkspaceMutation,
+  type WorkspaceValue,
 } from "@/hooks/use-workspace-explorer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
@@ -33,6 +30,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const WorkspaceJsonEditor = dynamic(
   () =>
@@ -53,9 +51,7 @@ type WorkspaceValuePaneProps = {
   pendingMutation: WorkspaceMutation;
   onEditedDataChange: (value: unknown) => void;
   onEditModeChange: (editing: boolean) => void;
-  onCancelEdit: () => void;
-  onSave: () => Promise<boolean>;
-  onAppend: (value: string) => Promise<boolean>;
+  onSave: (value?: unknown) => Promise<boolean>;
   onDelete: () => Promise<boolean>;
 };
 
@@ -70,20 +66,17 @@ export function WorkspaceValuePane({
   pendingMutation,
   onEditedDataChange,
   onEditModeChange,
-  onCancelEdit,
   onSave,
-  onAppend,
   onDelete,
 }: WorkspaceValuePaneProps) {
   const { theme } = useTheme();
-  const [showAppend, setShowAppend] = useState(false);
-  const [appendValue, setAppendValue] = useState("");
 
-  const append = async () => {
-    if (await onAppend(appendValue)) {
-      setAppendValue("");
-      setShowAppend(false);
-    }
+  // Edits autosave as they happen (see onChange/onBlur below), so leaving
+  // edit mode just flushes whatever hasn't committed yet — there's nothing
+  // to discard, unlike a traditional cancel.
+  const exitEditMode = async () => {
+    await onSave();
+    onEditModeChange(false);
   };
 
   if (loading) {
@@ -123,6 +116,7 @@ export function WorkspaceValuePane({
 
   const readData = selectedValue.value;
   const isObject = typeof readData === "object" && readData !== null;
+  const canMutate = isAuthenticated && isWritableWorkspaceEntry(selectedPath);
 
   return (
     <>
@@ -135,55 +129,65 @@ export function WorkspaceValuePane({
         </Badge>
 
         <div className="ml-auto flex items-center gap-1">
-          {isAuthenticated ? (
+          {canMutate ? (
             <>
               {!editMode ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onEditModeChange(true)}
-                >
-                  <PenLine size={14} className="mr-1" /> Edit
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => onEditModeChange(true)}
+                      aria-label="Edit"
+                    >
+                      <PenLine size={14} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit</TooltipContent>
+                </Tooltip>
               ) : (
-                <>
-                  <Button variant="outline" size="sm" onClick={onCancelEdit}>
-                    <Eye size={14} className="mr-1" /> View
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => void onSave()}
-                    disabled={pendingMutation === "save"}
-                  >
-                    <Save size={14} className="mr-1" />
-                    {pendingMutation === "save" ? "Saving..." : "Save"}
-                  </Button>
-                </>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => void exitEditMode()}
+                      disabled={pendingMutation === "save"}
+                      aria-label={pendingMutation === "save" ? "Saving" : "View"}
+                    >
+                      <Eye size={14} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {pendingMutation === "save" ? "Saving..." : "View"}
+                  </TooltipContent>
+                </Tooltip>
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowAppend((visible) => !visible)}
-              >
-                <ListPlus size={14} className="mr-1" /> Append
-              </Button>
               <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 size={14} className="mr-1" /> Delete
-                  </Button>
-                </AlertDialogTrigger>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="text-red-600 hover:text-red-700"
+                        aria-label="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    </AlertDialogTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>Delete</TooltipContent>
+                </Tooltip>
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>
                       Delete &quot;{selectedPath}&quot;?
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                      This action cannot be undone.
+                      {isObject
+                        ? "This deletes the entire key, including everything nested under it. This action cannot be undone."
+                        : "This deletes the key. This action cannot be undone."}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -199,42 +203,22 @@ export function WorkspaceValuePane({
               </AlertDialog>
             </>
           ) : (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Lock size={12} /> Read-only
+            <span
+              className="flex items-center gap-1 text-xs text-muted-foreground"
+              title={
+                !isAuthenticated
+                  ? "Read-only — sign in to modify workspace data"
+                  : selectedPath === "w"
+                    ? "Read-only — select a key inside Workspace to edit it"
+                    : "Read-only — only paths under \"w\" (Workspace) can be edited"
+              }
+            >
+              <Lock size={14} aria-label="Read-only" />
+              {selectedPath === "w" && "Choose a key to edit"}
             </span>
           )}
         </div>
       </div>
-
-      {isAuthenticated && showAppend && (
-        <div className="flex items-center gap-2 border-b border-border bg-muted/50 px-3 py-2">
-          <Input
-            placeholder="Value to append (text or JSON)"
-            value={appendValue}
-            onChange={(event) => setAppendValue(event.target.value)}
-            className="flex-1 text-sm"
-          />
-          <Button
-            size="sm"
-            onClick={() => void append()}
-            disabled={
-              !appendValue.trim() || pendingMutation === "append"
-            }
-          >
-            {pendingMutation === "append" ? "Appending..." : "Append"}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setShowAppend(false);
-              setAppendValue("");
-            }}
-          >
-            Cancel
-          </Button>
-        </div>
-      )}
 
       <div className="flex-1 overflow-auto p-4">
         {isObject ? (
@@ -243,7 +227,12 @@ export function WorkspaceValuePane({
             editable={editMode}
             rootName={selectedPath.split("/").pop() || "data"}
             dark={theme === "dark"}
-            onChange={onEditedDataChange}
+            onChange={(value) => {
+              onEditedDataChange(value);
+              // The tree editor's onChange only fires once a field edit is
+              // confirmed (not per keystroke), so it's safe to save right away.
+              void onSave(value);
+            }}
           />
         ) : (
           <div className="space-y-2">
@@ -264,6 +253,7 @@ export function WorkspaceValuePane({
                     onEditedDataChange(event.target.value);
                   }
                 }}
+                onBlur={() => void onSave()}
                 className="min-h-[200px] font-mono text-sm"
               />
             ) : (

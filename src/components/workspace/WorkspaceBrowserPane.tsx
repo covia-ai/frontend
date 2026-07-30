@@ -7,17 +7,35 @@ import {
   Folder,
   FolderOpen,
   Loader2,
-  Lock,
   Plus,
   RefreshCw,
 } from "lucide-react";
-import type {
-  WorkspaceEntry,
-  WorkspaceMutation,
+import {
+  isMutableWorkspacePath,
+  type WorkspaceEntry,
+  type WorkspaceMutation,
 } from "@/hooks/use-workspace-explorer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
+// Root-level lattice namespace keys (see covia/venue Namespace.java) have
+// fixed meanings — only the top segment, nested keys under it (job ids,
+// agent ids, secret names, ...) are real user data and stay as typed.
+const ROOT_LABELS: Record<string, string> = {
+  j: "Jobs",
+  g: "Agents",
+  s: "Secrets",
+  a: "Assets",
+  o: "Operations",
+  h: "Inbox",
+  w: "Workspace",
+  meta: "Metadata",
+};
+
+function labelForSegment(segment: string, index: number): string {
+  return index === 0 ? ROOT_LABELS[segment] ?? segment : segment;
+}
 
 type WorkspaceBrowserPaneProps = {
   entries: WorkspaceEntry[];
@@ -62,15 +80,10 @@ export function WorkspaceBrowserPane({
     if (await onCreate(key, value)) closeCreate();
   };
 
+  const canCreate = isAuthenticated && isMutableWorkspacePath(currentPath);
+
   return (
     <div className="flex h-full flex-col overflow-y-auto">
-      {!isAuthenticated && (
-        <div className="flex items-center gap-2 border-b border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-          <Lock size={11} className="shrink-0" />
-          Read-only — sign in to modify workspace data
-        </div>
-      )}
-
       <div className="flex flex-wrap items-center gap-1 border-b border-border p-2 text-xs">
         <Tooltip>
           <TooltipTrigger asChild>
@@ -97,7 +110,7 @@ export function WorkspaceBrowserPane({
                     : "text-primary hover:underline"
                 }
               >
-                {segment}
+                {labelForSegment(segment, index)}
               </button>
             </span>
           );
@@ -140,6 +153,7 @@ export function WorkspaceBrowserPane({
               ? entry.key
               : `${currentPath}/${entry.key}`;
           const isSelected = selectedPath === fullPath;
+          const label = currentPath === "/" ? labelForSegment(entry.key, 0) : entry.key;
           return (
             <div
               key={entry.key}
@@ -151,7 +165,7 @@ export function WorkspaceBrowserPane({
               onClick={() => onSelect(fullPath)}
             >
               <Folder size={14} className="shrink-0 text-muted-foreground" />
-              <span className="flex-1 truncate">{entry.key}</span>
+              <span className="flex-1 truncate">{label}</span>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -171,7 +185,7 @@ export function WorkspaceBrowserPane({
           );
         })}
 
-      {isAuthenticated && (
+      {canCreate && (
         <div className="mt-auto border-t border-border p-2">
           {!showCreate ? (
             <Button

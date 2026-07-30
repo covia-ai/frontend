@@ -17,12 +17,7 @@ export type WorkspaceValue = {
   type: string;
 };
 
-export type WorkspaceMutation =
-  | "save"
-  | "create"
-  | "append"
-  | "delete"
-  | null;
+export type WorkspaceMutation = "save" | "create" | "delete" | null;
 
 const EMPTY_VALUE: WorkspaceValue = {
   exists: false,
@@ -33,6 +28,25 @@ const EMPTY_VALUE: WorkspaceValue = {
 export function normalizeWorkspacePath(path?: string): string {
   const segments = path?.split("/").filter(Boolean) ?? [];
   return segments.length > 0 ? segments.join("/") : "/";
+}
+
+// Root namespace keys (see covia/venue Namespace.java) are venue-managed —
+// jobs, agents, secrets, assets, operations, inbox, and account metadata are
+// all written through their own proper lifecycles, not this raw explorer.
+// Only "w" (the free-form user workspace) is safe to edit/delete here.
+export function isMutableWorkspacePath(path: string): boolean {
+  const [root] = normalizeWorkspacePath(path).split("/");
+  return root === "w";
+}
+
+// The venue rejects writes to the bare "w" root itself — CoviaAdapter
+// requires a namespace *and* a key (e.g. "w/my-key"). So an individual
+// entry is only writable/deletable when it's under "w" AND at least one
+// level deep; "w" as a directory can still be a valid target to CREATE
+// a new child key in (see isMutableWorkspacePath above).
+export function isWritableWorkspaceEntry(path: string): boolean {
+  const segments = normalizeWorkspacePath(path).split("/");
+  return segments[0] === "w" && segments.length >= 2;
 }
 
 export function joinWorkspacePath(parent: string, child: string): string {
@@ -114,20 +128,25 @@ export function useWorkspaceExplorer() {
     resetValue();
   }, [invalidateMutation, resetValue]);
 
+  // Returns the entries it listed so callers can auto-select the first one
+  // without waiting a tick for `entries` state to catch up.
   const loadListing = useCallback(
-    async (path: string) => {
+    async (path: string): Promise<WorkspaceEntry[]> => {
       if (!venue) {
         resetListing();
-        return;
+        return [];
       }
       const normalizedPath = normalizeWorkspacePath(path);
+      let listed: WorkspaceEntry[] = [];
       await runListing(
         async () => {
           const result = await venue.workspace.list(normalizedPath);
-          return (result.keys ?? []).map((key) => ({ key }));
+          listed = (result.keys ?? []).map((key) => ({ key }));
+          return listed;
         },
         { clear: true },
       );
+      return listed;
     },
     [resetListing, runListing, venue],
   );
@@ -146,6 +165,31 @@ export function useWorkspaceExplorer() {
     [resetValue, runValue, venue],
   );
 
+  const selectPath = useCallback(
+    (path: string) => {
+      invalidateMutation();
+      selectedPathRef.current = path;
+      setSelectedPath(path);
+      setEditedData(null);
+      setEditMode(false);
+      void loadValue(path);
+    },
+    [invalidateMutation, loadValue],
+  );
+
+  // After listing a directory, auto-select its first entry so browsing into
+  // a folder immediately shows data instead of requiring a second click.
+  // Guarded on currentPathRef so a stale listing can't select into a
+  // directory the user has since navigated away from.
+  const selectFirstEntry = useCallback(
+    (path: string, listedEntries: WorkspaceEntry[]) => {
+      if (currentPathRef.current !== path) return;
+      const first = listedEntries[0];
+      if (first) selectPath(joinWorkspacePath(path, first.key));
+    },
+    [selectPath],
+  );
+
   useEffect(() => {
     mutationGeneration.current += 1;
     setPendingMutation(null);
@@ -156,8 +200,8 @@ export function useWorkspaceExplorer() {
     setEditedData(null);
     setEditMode(false);
     resetValue();
-    void loadListing("/");
-  }, [loadListing, resetValue]);
+    void loadListing("/").then((listed) => selectFirstEntry("/", listed));
+  }, [loadListing, resetValue, selectFirstEntry]);
 
   useEffect(() => {
     if (listingError) toast("Unable to list workspace");
@@ -179,31 +223,16 @@ export function useWorkspaceExplorer() {
       currentPathRef.current = normalizedPath;
       setCurrentPath(normalizedPath);
       clearSelection();
-      void loadListing(normalizedPath);
+      void loadListing(normalizedPath).then((listed) =>
+        selectFirstEntry(normalizedPath, listed),
+      );
     },
-    [clearSelection, loadListing],
-  );
-
-  const selectPath = useCallback(
-    (path: string) => {
-      invalidateMutation();
-      selectedPathRef.current = path;
-      setSelectedPath(path);
-      setEditedData(null);
-      setEditMode(false);
-      void loadValue(path);
-    },
-    [invalidateMutation, loadValue],
+    [clearSelection, loadListing, selectFirstEntry],
   );
 
   const refreshListing = useCallback(() => {
     void loadListing(currentPathRef.current);
   }, [loadListing]);
-
-  const cancelEdit = useCallback(() => {
-    setEditedData(selectedValue.value);
-    setEditMode(false);
-  }, [selectedValue.value]);
 
   const mutationIsCurrent = useCallback(
     (
@@ -219,42 +248,42 @@ export function useWorkspaceExplorer() {
     [],
   );
 
-  const save = useCallback(async (): Promise<boolean> => {
-    if (!venue || !isAuthenticated || !selectedPath) return false;
-    const generation = ++mutationGeneration.current;
-    const path = selectedPath;
-    const value = editedData;
-    setPendingMutation("save");
-    try {
-      await venue.workspace.write(path, value);
-      toast("Saved successfully");
-      if (mutationIsCurrent(generation, venue, path)) {
-        setEditMode(false);
-        void loadValue(path);
+  // Accepts an optional fresh value so callers that just received a new
+  // value from an onChange handler (e.g. the JSON editor) can save it
+  // immediately without waiting a tick for `editedData` state to catch up.
+  const save = useCallback(
+    async (nextValue?: unknown): Promise<boolean> => {
+      if (!venue || !isAuthenticated || !selectedPath) return false;
+      if (!isWritableWorkspaceEntry(selectedPath)) return false;
+      const generation = ++mutationGeneration.current;
+      const path = selectedPath;
+      const value = nextValue !== undefined ? nextValue : editedData;
+      setPendingMutation("save");
+      try {
+        await venue.workspace.write(path, value);
+        toast("Saved successfully");
+        if (mutationIsCurrent(generation, venue, path)) {
+          void loadValue(path);
+        }
+        return true;
+      } catch {
+        toast("Unable to save");
+        return false;
+      } finally {
+        if (mutationIsCurrent(generation, venue, path)) {
+          setPendingMutation(null);
+        }
       }
-      return true;
-    } catch {
-      toast("Unable to save");
-      return false;
-    } finally {
-      if (mutationIsCurrent(generation, venue, path)) {
-        setPendingMutation(null);
-      }
-    }
-  }, [
-    editedData,
-    isAuthenticated,
-    loadValue,
-    mutationIsCurrent,
-    selectedPath,
-    venue,
-  ]);
+    },
+    [editedData, isAuthenticated, loadValue, mutationIsCurrent, selectedPath, venue],
+  );
 
   const create = useCallback(
     async (key: string, rawValue: string): Promise<boolean> => {
       if (!venue || !isAuthenticated || !key.trim()) return false;
-      const generation = ++mutationGeneration.current;
       const directory = currentPathRef.current;
+      if (!isMutableWorkspacePath(directory)) return false;
+      const generation = ++mutationGeneration.current;
       const path = joinWorkspacePath(directory, key);
       setPendingMutation("create");
       try {
@@ -276,40 +305,9 @@ export function useWorkspaceExplorer() {
     [isAuthenticated, loadListing, mutationIsCurrent, venue],
   );
 
-  const append = useCallback(
-    async (rawValue: string): Promise<boolean> => {
-      if (
-        !venue ||
-        !isAuthenticated ||
-        !selectedPath ||
-        !rawValue.trim()
-      ) {
-        return false;
-      }
-      const generation = ++mutationGeneration.current;
-      const path = selectedPath;
-      setPendingMutation("append");
-      try {
-        await venue.workspace.append(path, parseWorkspaceInput(rawValue));
-        toast("Appended successfully");
-        if (mutationIsCurrent(generation, venue, path)) {
-          void loadValue(path);
-        }
-        return true;
-      } catch {
-        toast("Unable to append");
-        return false;
-      } finally {
-        if (mutationIsCurrent(generation, venue, path)) {
-          setPendingMutation(null);
-        }
-      }
-    },
-    [isAuthenticated, loadValue, mutationIsCurrent, selectedPath, venue],
-  );
-
   const remove = useCallback(async (): Promise<boolean> => {
     if (!venue || !isAuthenticated || !selectedPath) return false;
+    if (!isWritableWorkspaceEntry(selectedPath)) return false;
     const generation = ++mutationGeneration.current;
     const path = selectedPath;
     const directory = currentPathRef.current;
@@ -361,13 +359,11 @@ export function useWorkspaceExplorer() {
     pendingMutation,
     setEditedData,
     setEditMode,
-    cancelEdit,
     navigateTo,
     selectPath,
     refreshListing,
     save,
     create,
-    append,
     remove,
   };
 }

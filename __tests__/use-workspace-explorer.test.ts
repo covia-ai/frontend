@@ -38,7 +38,6 @@ function createVenue() {
       }),
       read: jest.fn(),
       write: jest.fn(),
-      append: jest.fn(),
       delete: jest.fn(),
     },
   };
@@ -48,6 +47,45 @@ describe("useWorkspaceExplorer", () => {
   beforeEach(() => {
     mockAuthenticated = false;
     mockVenue = createVenue();
+  });
+
+  it("auto-selects the first entry on initial load, without an extra click", async () => {
+    const { result } = renderHook(() => useWorkspaceExplorer());
+
+    await waitFor(() => expect(result.current.listingLoading).toBe(false));
+    expect(result.current.selectedPath).toBe("root");
+  });
+
+  it("auto-selects the first entry after navigating into a directory", async () => {
+    mockVenue.workspace.list.mockImplementation((path: string) => {
+      if (path === "w") {
+        return Promise.resolve({ exists: true, type: "map", keys: ["alpha", "beta"] });
+      }
+      return Promise.resolve({ exists: true, type: "map", keys: ["root"] });
+    });
+    mockVenue.workspace.read.mockResolvedValue({ exists: true, value: "v" });
+    const { result } = renderHook(() => useWorkspaceExplorer());
+    await waitFor(() => expect(result.current.listingLoading).toBe(false));
+
+    act(() => result.current.navigateTo("w"));
+    await waitFor(() => expect(result.current.selectedPath).toBe("w/alpha"));
+
+    expect(mockVenue.workspace.read).toHaveBeenCalledWith("w/alpha");
+  });
+
+  it("does not auto-select into an empty directory", async () => {
+    mockVenue.workspace.list.mockImplementation((path: string) => {
+      if (path === "empty") {
+        return Promise.resolve({ exists: true, type: "map", keys: [] });
+      }
+      return Promise.resolve({ exists: true, type: "map", keys: ["root"] });
+    });
+    const { result } = renderHook(() => useWorkspaceExplorer());
+    await waitFor(() => expect(result.current.listingLoading).toBe(false));
+
+    act(() => result.current.navigateTo("empty"));
+    await waitFor(() => expect(result.current.currentPath).toBe("empty"));
+    expect(result.current.selectedPath).toBeNull();
   });
 
   it("keeps the newest directory listing when an older request finishes last", async () => {
@@ -115,17 +153,82 @@ describe("useWorkspaceExplorer", () => {
 
     await act(async () => {
       expect(await result.current.create("key", '{"value":1}')).toBe(false);
-      expect(await result.current.append("value")).toBe(false);
       expect(await result.current.save()).toBe(false);
       expect(await result.current.remove()).toBe(false);
     });
 
     expect(mockVenue.workspace.write).not.toHaveBeenCalled();
-    expect(mockVenue.workspace.append).not.toHaveBeenCalled();
     expect(mockVenue.workspace.delete).not.toHaveBeenCalled();
   });
 
+  it("blocks save, delete, and create outside the \"w\" namespace even when authenticated", async () => {
+    mockAuthenticated = true;
+    mockVenue.workspace.read.mockResolvedValue({
+      exists: true,
+      value: "v",
+      type: "string",
+    });
+    const { result } = renderHook(() => useWorkspaceExplorer());
+    await waitFor(() => expect(result.current.listingLoading).toBe(false));
+
+    act(() => result.current.selectPath("j/some-job-id"));
+    await waitFor(() => expect(result.current.valueLoading).toBe(false));
+
+    await act(async () => {
+      expect(await result.current.save()).toBe(false);
+      expect(await result.current.remove()).toBe(false);
+      expect(await result.current.create("key", "value")).toBe(false);
+    });
+
+    expect(mockVenue.workspace.write).not.toHaveBeenCalled();
+    expect(mockVenue.workspace.delete).not.toHaveBeenCalled();
+  });
+
+  it("blocks save and delete on the bare \"w\" root itself (venue requires namespace + key)", async () => {
+    mockAuthenticated = true;
+    mockVenue.workspace.read.mockResolvedValue({
+      exists: true,
+      value: { daily: {} },
+      type: "object",
+    });
+    const { result } = renderHook(() => useWorkspaceExplorer());
+    await waitFor(() => expect(result.current.listingLoading).toBe(false));
+
+    act(() => result.current.selectPath("w"));
+    await waitFor(() => expect(result.current.valueLoading).toBe(false));
+
+    await act(async () => {
+      expect(await result.current.save()).toBe(false);
+      expect(await result.current.remove()).toBe(false);
+    });
+
+    expect(mockVenue.workspace.write).not.toHaveBeenCalled();
+    expect(mockVenue.workspace.delete).not.toHaveBeenCalled();
+  });
+
+  it("allows save under the \"w\" namespace when authenticated", async () => {
+    mockAuthenticated = true;
+    mockVenue.workspace.read.mockResolvedValue({
+      exists: true,
+      value: "v",
+      type: "string",
+    });
+    mockVenue.workspace.write.mockResolvedValue({});
+    const { result } = renderHook(() => useWorkspaceExplorer());
+    await waitFor(() => expect(result.current.listingLoading).toBe(false));
+
+    act(() => result.current.selectPath("w/notes"));
+    await waitFor(() => expect(result.current.valueLoading).toBe(false));
+
+    await act(async () => {
+      expect(await result.current.save()).toBe(true);
+    });
+
+    expect(mockVenue.workspace.write).toHaveBeenCalledWith("w/notes", "v");
+  });
+
   it("does not refresh an old directory when its create completes after navigation", async () => {
+    // "w" is the only namespace create() will act on — see isMutableWorkspacePath.
     mockAuthenticated = true;
     const write = deferred<any>();
     mockVenue.workspace.write.mockReturnValue(write.promise);
@@ -137,13 +240,18 @@ describe("useWorkspaceExplorer", () => {
     const { result } = renderHook(() => useWorkspaceExplorer());
 
     await waitFor(() => expect(result.current.listingLoading).toBe(false));
+    act(() => result.current.navigateTo("w"));
+    await waitFor(() =>
+      expect(mockVenue.workspace.list).toHaveBeenLastCalledWith("w"),
+    );
+
     let creation!: Promise<boolean>;
     act(() => {
       creation = result.current.create("key", "value");
     });
-    act(() => result.current.navigateTo("other"));
+    act(() => result.current.navigateTo("w/other"));
     await waitFor(() =>
-      expect(mockVenue.workspace.list).toHaveBeenLastCalledWith("other"),
+      expect(mockVenue.workspace.list).toHaveBeenLastCalledWith("w/other"),
     );
 
     await act(async () => {
@@ -151,10 +259,11 @@ describe("useWorkspaceExplorer", () => {
       await creation;
     });
 
-    expect(mockVenue.workspace.write).toHaveBeenCalledWith("key", "value");
+    expect(mockVenue.workspace.write).toHaveBeenCalledWith("w/key", "value");
     expect(mockVenue.workspace.list.mock.calls.map(([path]: [string]) => path)).toEqual([
       "/",
-      "other",
+      "w",
+      "w/other",
     ]);
   });
 });

@@ -70,9 +70,7 @@ export function WorkspaceExplorer() {
           pendingMutation={explorer.pendingMutation}
           onEditedDataChange={explorer.setEditedData}
           onEditModeChange={explorer.setEditMode}
-          onCancelEdit={explorer.cancelEdit}
           onSave={explorer.save}
-          onAppend={explorer.append}
           onDelete={explorer.remove}
         />
       </div>
