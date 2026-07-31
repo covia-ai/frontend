@@ -2,11 +2,12 @@
 
 import { useAuthStore, type VenueAuth } from "@/hooks/use-auth";
 import { useVenues } from "@/hooks/use-venues";
+import { DidDisplay } from "@/components/DidDisplay";
 import { abbreviateDid } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { KeyRound, Globe, LogOut, Trash2, Users } from "lucide-react";
+import { Globe, LogOut, Trash2, Users } from "lucide-react";
 
 // Every account known to this browser, grouped by venue. Auth is per-venue
 // (authMap holds the active account; accountsMap holds every account used),
@@ -101,10 +102,7 @@ export function AccountsPanel() {
                       data-active={active}
                       className="flex items-center gap-2 px-3 py-2 text-sm"
                     >
-                      <KeyRound size={13} className="text-muted-foreground shrink-0" />
-                      <code className="font-mono text-xs truncate flex-1 min-w-0" title={account.did}>
-                        {account.did}
-                      </code>
+                      <DidDisplay value={account.did} className="flex-1" />
                       <Badge variant="outline" className="text-xs shrink-0">
                         {account.type === "keypair" ? "Device key" : "OAuth"}
                       </Badge>

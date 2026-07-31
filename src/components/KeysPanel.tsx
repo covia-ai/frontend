@@ -5,6 +5,7 @@ import { Ed25519Auth, generateKeyPair, privateKeyToHex } from "@covia/covia-sdk"
 import { useAuthStore } from "@/hooks/use-auth";
 import { useVenues } from "@/hooks/use-venues";
 import { notifySuccess, notifyWarning } from "@/lib/notify";
+import { DidDisplay } from "@/components/DidDisplay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -130,10 +131,11 @@ export function KeysPanel() {
                 className="flex flex-col gap-1 px-3 py-2"
               >
                 <div className="flex items-center gap-2 text-sm">
-                  <KeyRound size={13} className="text-muted-foreground shrink-0" />
-                  <code className="font-mono text-xs truncate flex-1 min-w-0" title={did ?? undefined}>
-                    {did ?? "(unreadable key)"}
-                  </code>
+                  {did ? (
+                    <DidDisplay value={did} className="flex-1" />
+                  ) : (
+                    <code className="font-mono text-xs flex-1 min-w-0">(unreadable key)</code>
+                  )}
                   {isDefault ? (
                     <Badge className="text-xs shrink-0">default</Badge>
                   ) : (

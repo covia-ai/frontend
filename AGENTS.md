@@ -102,6 +102,11 @@ Every notification is recorded to the in-memory session log
 - UI primitives from `components/ui/` (shadcn/ui pattern)
 - Styling via Tailwind utility classes
 - Icons from `lucide-react` and `react-icons`
+- DIDs and public keys render via `DidDisplay` (`components/DidDisplay.tsx`):
+  Convex-standard 7×7 identicon (`lib/identicon.ts` — the grid resolution is
+  fixed, never per-use), monospace middle-elided text keeping the last 4 chars
+  (`abbreviateDid`), full value on hover, and a click menu with Copy plus
+  caller-supplied actions. Pass `chars="full"` where the whole value belongs.
 
 ## Testing
 

@@ -22,7 +22,7 @@ import {
   type HitlAsk,
   type HitlRequest,
 } from "@/lib/hitl";
-import { Identicon } from "@/components/Identicon";
+import { DidDisplay } from "@/components/DidDisplay";
 import { HitlGrantAsk } from "@/components/HitlGrantAsk";
 import { Bot, ChevronDown, ChevronUp, Inbox, RefreshCw } from "lucide-react";
 import { notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
@@ -40,12 +40,6 @@ const STATUS_OPTIONS = [
 
 function formatWhen(ms?: number): string {
   return ms ? new Date(ms).toLocaleString() : "";
-}
-
-// DIDs are too long to sit in a card row; the full value stays in `title`.
-function shortDid(did?: string): string {
-  if (!did) return "unknown sender";
-  return did.length > 28 ? `${did.slice(0, 18)}…${did.slice(-6)}` : did;
 }
 
 // Answers come back as raw option ids, so they have to be mapped through the
@@ -99,10 +93,13 @@ function Requester({ request, selfDid }: { request: HitlRequest; selfDid?: strin
     );
   }
   const isSelf = !!selfDid && selfDid === request.from;
+  if (!request.from) {
+    return <span className="text-xs text-muted-foreground">unknown sender</span>;
+  }
   return (
-    <div className="flex items-center gap-1.5 min-w-0 text-xs text-muted-foreground" title={request.from}>
-      <Identicon did={request.from} size={16} />
-      <span className="font-mono truncate">{shortDid(request.from)}{isSelf ? " (you)" : ""}</span>
+    <div className="flex items-center gap-1.5 min-w-0 text-xs text-muted-foreground">
+      <DidDisplay value={request.from} chars={18} />
+      {isSelf && <span className="shrink-0">(you)</span>}
     </div>
   );
 }

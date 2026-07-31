@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Identicon } from "@/components/Identicon";
+import { DidDisplay } from "@/components/DidDisplay";
 import { CapabilityTable, type CapRow } from "@/components/CapabilityTable";
 import { useVenues } from "@/hooks/use-venues";
 import {
@@ -124,9 +124,12 @@ export function HitlGrantAsk({ request, ask, kind, venue, signingKeyHex, onDone,
       {/* Audience + target venue */}
       <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs items-center">
         <span className="text-muted-foreground">To</span>
-        <span className="flex items-center gap-1.5 min-w-0" title={audience}>
-          <Identicon did={audience} size={14} />
-          <span className="font-mono truncate">{audience || "(the requester)"}</span>
+        <span className="flex items-center gap-1.5 min-w-0">
+          {audience ? (
+            <DidDisplay value={audience} chars={24} iconSize={14} />
+          ) : (
+            <span className="font-mono truncate">(the requester)</span>
+          )}
         </span>
         {isToken && spec?.venue && (
           <>

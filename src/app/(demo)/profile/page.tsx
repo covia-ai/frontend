@@ -8,7 +8,7 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/component
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Copy, Check, ChevronRight, KeyRound, Globe, ExternalLink, Eye, EyeOff } from "lucide-react";
-import { CopyField } from "@/components/CopyField";
+import { DidDisplay } from "@/components/DidDisplay";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCurrentAuth, useAuthStore } from "@/hooks/use-auth";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
@@ -135,14 +135,22 @@ export default function ProfilePage() {
                     </span>
                   )}
                 </h3>
-                <CopyField label="DID" value={auth.did} />
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">DID</p>
+                  <DidDisplay value={auth.did} chars="full" iconSize={20} />
+                </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Login type</p>
                   <p className="text-sm">
                     {auth.type === "keypair" ? "Device Key (Ed25519)" : "Bearer Token (OAuth)"}
                   </p>
                 </div>
-                {publicKeyHex && <CopyField label="Public Key" value={publicKeyHex} />}
+                {publicKeyHex && (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Public Key</p>
+                    <DidDisplay value={publicKeyHex} chars="full" iconSize={20} />
+                  </div>
+                )}
                 {auth.type === "keypair" && (
                   <SecretCopyField label="Private Key" value={auth.privateKeyHex} />
                 )}

@@ -118,11 +118,13 @@ export function friendlyError(error: string): { summary: string; detail: string 
   return { summary, detail: embeddedMessage(error) ?? error };
 }
 
-// "did:key:z6MkmZJJ…bidkGXCK" — for showing a DID where space is tight or the
-// full value would read as noise. Short values pass through unchanged.
-export function abbreviateDid(did: string): string {
-  if (did.length <= 28) return did;
-  return `${did.slice(0, 16)}…${did.slice(-8)}`;
+// "did:key:z6MkmZJJ…TkBR" — middle-elided identifier: first `chars` characters,
+// then an ellipsis, then the last 4 (the tail is what humans compare, the head
+// names the scheme). Short values pass through unchanged. This is the standard
+// elision for DIDs and public keys — render them via components/DidDisplay.
+export function abbreviateDid(did: string, chars = 16): string {
+  if (did.length <= chars + 5) return did;
+  return `${did.slice(0, chars)}…${did.slice(-4)}`;
 }
 
 export function copyDataToClipBoard(entityId:string, message:string) {
