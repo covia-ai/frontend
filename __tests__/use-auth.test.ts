@@ -15,7 +15,7 @@ const descriptor = (venueId: string) => ({
 describe("useAuthStore", () => {
   beforeEach(() => {
     act(() => {
-      useAuthStore.setState({ authMap: {}, deviceKeyHex: null });
+      useAuthStore.setState({ authMap: {}, accountsMap: {}, deviceKeyHex: null });
       useVenues.setState({
         venues: [descriptor(VENUE_A), descriptor(VENUE_B)],
         selectedVenueId: VENUE_A,
@@ -88,5 +88,84 @@ describe("useAuthStore", () => {
     expect(useAuthStore.getState().getDeviceKeyHex()).toBeNull();
     act(() => useAuthStore.getState().setDeviceKeyHex(MOCK_HEX));
     expect(useAuthStore.getState().getDeviceKeyHex()).toBe(MOCK_HEX);
+  });
+
+  it("records every login in the venue's account history, most recent first", () => {
+    act(() => {
+      useAuthStore.getState().loginWithToken(VENUE_A, "token1", "did:a1");
+      useAuthStore.getState().loginWithKeypair(VENUE_A, MOCK_HEX, "did:a2");
+    });
+
+    const accounts = useAuthStore.getState().accountsMap[VENUE_A];
+    expect(accounts.map((a) => a.did)).toEqual(["did:a2", "did:a1"]);
+    // Active follows the latest login.
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toMatchObject({ did: "did:a2" });
+  });
+
+  it("keeps the account choosable after logout and reactivates it via switchAccount", () => {
+    act(() => {
+      useAuthStore.getState().loginWithToken(VENUE_A, "token1", "did:a1");
+      useAuthStore.getState().logout(VENUE_A);
+    });
+
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toBeNull();
+    expect(useAuthStore.getState().accountsMap[VENUE_A]).toHaveLength(1);
+
+    act(() => useAuthStore.getState().switchAccount(VENUE_A, "did:a1"));
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toMatchObject({
+      did: "did:a1",
+      token: "token1",
+    });
+  });
+
+  it("switches between two accounts on the same venue and marks the chosen one last-used", () => {
+    act(() => {
+      useAuthStore.getState().loginWithToken(VENUE_A, "token1", "did:a1");
+      useAuthStore.getState().loginWithToken(VENUE_A, "token2", "did:a2");
+      useAuthStore.getState().switchAccount(VENUE_A, "did:a1");
+    });
+
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toMatchObject({ did: "did:a1" });
+    expect(useAuthStore.getState().accountsMap[VENUE_A].map((a) => a.did)).toEqual([
+      "did:a1",
+      "did:a2",
+    ]);
+  });
+
+  it("re-login with the same identity dedups the history instead of growing it", () => {
+    act(() => {
+      useAuthStore.getState().loginWithToken(VENUE_A, "old-token", "did:a1");
+      useAuthStore.getState().loginWithToken(VENUE_A, "fresh-token", "did:a1");
+    });
+
+    const accounts = useAuthStore.getState().accountsMap[VENUE_A];
+    expect(accounts).toHaveLength(1);
+    expect(accounts[0]).toMatchObject({ token: "fresh-token" });
+  });
+
+  it("removeAccount forgets the account and clears the active slot when it was active", () => {
+    act(() => {
+      useAuthStore.getState().loginWithToken(VENUE_A, "token1", "did:a1");
+      useAuthStore.getState().loginWithToken(VENUE_A, "token2", "did:a2");
+      useAuthStore.getState().removeAccount(VENUE_A, "did:a2");
+    });
+
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toBeNull();
+    expect(useAuthStore.getState().accountsMap[VENUE_A].map((a) => a.did)).toEqual(["did:a1"]);
+
+    act(() => useAuthStore.getState().removeAccount(VENUE_A, "did:a1"));
+    expect(useAuthStore.getState().accountsMap[VENUE_A]).toBeUndefined();
+  });
+
+  it("switching the selected venue restores that venue's last-used account", () => {
+    act(() => {
+      useAuthStore.getState().loginWithToken(VENUE_A, "tokenA", "did:a");
+      useAuthStore.getState().loginWithKeypair(VENUE_B, MOCK_HEX, "did:b");
+    });
+    const { result } = renderHook(() => useCurrentAuth());
+
+    expect(result.current).toMatchObject({ did: "did:a", type: "bearer" });
+    act(() => useVenues.getState().selectVenue(VENUE_B));
+    expect(result.current).toMatchObject({ did: "did:b", type: "keypair" });
   });
 });

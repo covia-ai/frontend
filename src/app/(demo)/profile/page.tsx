@@ -9,10 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Copy, Check, ChevronRight, KeyRound, Globe, ExternalLink, Eye, EyeOff } from "lucide-react";
 import { CopyField } from "@/components/CopyField";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useCurrentAuth } from "@/hooks/use-auth";
+import { useCurrentAuth, useAuthStore } from "@/hooks/use-auth";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { Ed25519Auth, type DIDDocument } from "@covia/covia-sdk";
 import { PageHeading } from "@/components/PageHeading";
+import { AccountsPanel } from "@/components/AccountsPanel";
 import { NotificationLog } from "@/components/NotificationLog";
 
 function toHex(bytes: Uint8Array): string {
@@ -72,15 +73,22 @@ export default function ProfilePage() {
   const router = useRouter();
   const auth = useCurrentAuth();
   const venue = useAuthenticatedVenue();
+  // Accounts are per-venue, so "not signed in on the selected venue" is not
+  // the same as "not signed in at all" — only the latter leaves the page.
+  const hasAnyAccount = useAuthStore(
+    (state) =>
+      Object.keys(state.accountsMap).length > 0 ||
+      Object.keys(state.authMap).length > 0,
+  );
 
   const [didDocument, setDidDocument] = useState<DIDDocument | null>(null);
   const [didDocError, setDidDocError] = useState(false);
 
   useEffect(() => {
-    if (!auth) {
+    if (!auth && !hasAnyAccount) {
       router.push("/signUp");
     }
-  }, [auth, router]);
+  }, [auth, hasAnyAccount, router]);
 
   useEffect(() => {
     if (!venue) return;
@@ -96,7 +104,7 @@ export default function ProfilePage() {
     }
   }, [auth]);
 
-  if (!auth) return null;
+  if (!auth && !hasAnyAccount) return null;
 
   return (
     <ContentLayout>
@@ -104,23 +112,40 @@ export default function ProfilePage() {
       <div className="py-4">
         <PageHeading className="mb-4" size="sm" align="left" text="Your" highlight="profile" />
 
-        <div className="border rounded-lg p-4 mb-6 space-y-4">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
-            <KeyRound size={16} className="text-blue-500" />
-            Your Identity
-          </h3>
-          <CopyField label="DID" value={auth.did} />
-          <div>
-            <p className="text-sm text-muted-foreground mb-1">Login type</p>
-            <p className="text-sm">
-              {auth.type === "keypair" ? "Device Key (Ed25519)" : "Bearer Token (OAuth)"}
-            </p>
+        {auth ? (
+          <div className="border rounded-lg p-4 mb-6 space-y-4">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <KeyRound size={16} className="text-blue-500" />
+              Your Identity
+              {venue && (
+                <span className="text-xs font-normal text-muted-foreground">
+                  on {venue.metadata?.name ?? venue.venueId}
+                </span>
+              )}
+            </h3>
+            <CopyField label="DID" value={auth.did} />
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Login type</p>
+              <p className="text-sm">
+                {auth.type === "keypair" ? "Device Key (Ed25519)" : "Bearer Token (OAuth)"}
+              </p>
+            </div>
+            {publicKeyHex && <CopyField label="Public Key" value={publicKeyHex} />}
+            {auth.type === "keypair" && (
+              <SecretCopyField label="Private Key" value={auth.privateKeyHex} />
+            )}
           </div>
-          {publicKeyHex && <CopyField label="Public Key" value={publicKeyHex} />}
-          {auth.type === "keypair" && (
-            <SecretCopyField label="Private Key" value={auth.privateKeyHex} />
-          )}
-        </div>
+        ) : (
+          <p
+            data-testid="profile-no-venue-auth"
+            className="border rounded-lg p-4 mb-6 text-sm text-muted-foreground"
+          >
+            You are not signed in on the selected venue — choose an account below,
+            or sign in from the top bar.
+          </p>
+        )}
+
+        <AccountsPanel />
 
         {venue && (
           <div className="border rounded-lg p-4 space-y-4">
