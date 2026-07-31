@@ -44,7 +44,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${aetherFont.className}  antialiased`}
+        className={`${aetherFont.className} ${aetherFont.variable} antialiased`}
       >
           <ThemeProvider
             attribute="class"
