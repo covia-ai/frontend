@@ -26,7 +26,7 @@ import { Badge } from "./ui/badge";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { usePendingChats } from "@/hooks/use-pending-chats";
 import { useTypewriterPlaceholder } from "@/hooks/use-typewriter-placeholder";
-import { toast } from "sonner";
+import { notifyError, notifyInfo, notifySuccess, notifyWarning } from "@/lib/notify";
 import { KNOWN_LLM_KEYS, LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
 import type { AgentTemplate } from "@/hooks/use-agent-templates";
@@ -140,7 +140,7 @@ export const AIPrompt = () => {
         if (result?.sessionId) attachSessionId(chat, result.sessionId);
         const r = result?.response;
         if (r == null || (typeof r === "string" && r.trim() === "")) {
-          toast("The agent sent an empty reply", {
+          notifyWarning("The agent sent an empty reply", {
             description: "It may have hit an error — check its session in the explorer.",
           });
         }
@@ -148,7 +148,7 @@ export const AIPrompt = () => {
       })
       .catch((err: any) => {
         gtmEvent.sendAgentMessageFailed(agentId, err?.message);
-        toast("Chat failed", { description: err?.message ?? "Please try again." });
+        notifyError("Unable to send message", err);
       })
       .finally(() => clearPendingChat(chat));
     router.push(`/agents/explorer?agentId=${encodeURIComponent(agentId)}`);
@@ -161,7 +161,7 @@ export const AIPrompt = () => {
       ([, p]) => p.secretKey === secretName
     );
     if (!providerEntry) {
-      toast("Unknown provider for key " + secretName);
+      notifyWarning("Unknown provider for key " + secretName);
       return;
     }
     const [, provider] = providerEntry;
@@ -201,7 +201,7 @@ export const AIPrompt = () => {
     } catch (err: any) {
       setCreating(false);
       gtmEvent.createAgentFailed(agentId, err?.message);
-      toast("Failed to create agent", { description: err?.message ?? "Please try again." });
+      notifyError("Unable to create agent", err);
       return;
     }
     setCreating(false);
@@ -217,7 +217,7 @@ export const AIPrompt = () => {
     const matchedKeys = secrets.filter((s: string) => s in KNOWN_LLM_KEYS);
 
     if (matchedKeys.length === 1) {
-      toast(`Using ${KNOWN_LLM_KEYS[matchedKeys[0]]}`);
+      notifyInfo(`Using ${KNOWN_LLM_KEYS[matchedKeys[0]]}`);
       await proceedWithKey(matchedKeys[0], agentId);
     } else if (matchedKeys.length > 1) {
       setDetectedKeys(matchedKeys);
@@ -231,7 +231,7 @@ export const AIPrompt = () => {
   async function handleMagicWand() {
     if (!prompt.trim()) return;
     if (!venue) {
-      toast("Please connect to a venue first");
+      notifyWarning("Please connect to a venue first");
       return;
     }
 
@@ -259,7 +259,7 @@ export const AIPrompt = () => {
             gtmEvent.resumeAgent(selectedAgentId);
           } catch (err: any) {
             gtmEvent.resumeAgentFailed(selectedAgentId, err?.message);
-            toast("Failed to resume agent", { description: err?.message ?? "Please try again." });
+            notifyError("Unable to resume agent", err);
             return;
           }
         }
@@ -268,8 +268,8 @@ export const AIPrompt = () => {
       }
 
       await routeThroughKeyDetection(selectedAgentId);
-    } catch {
-      toast("Unable to prepare agent. Please try again.");
+    } catch (err) {
+      notifyError("Unable to prepare agent", err, venue.baseUrl);
     } finally {
       setChecking(false);
     }
@@ -286,12 +286,12 @@ export const AIPrompt = () => {
     setSavingKey(true);
     try {
       await venue.secrets.set(selectedSecretName, keyInput.trim());
-      toast(`${selectedSecretName} saved`);
+      notifySuccess(`${selectedSecretName} saved`);
       setShowKeyDialog(false);
       setKeyInput('');
       await proceedWithKey(selectedSecretName, pendingAgentId);
-    } catch {
-      toast("Failed to store the API key. Please try again.");
+    } catch (err) {
+      notifyError("Unable to store API key", err, venue.baseUrl);
     } finally {
       setSavingKey(false);
     }

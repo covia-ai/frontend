@@ -25,7 +25,7 @@ import {
 import { Identicon } from "@/components/Identicon";
 import { HitlGrantAsk } from "@/components/HitlGrantAsk";
 import { Bot, ChevronDown, ChevronUp, Inbox, RefreshCw } from "lucide-react";
-import { toast } from "sonner";
+import { notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 
 // Empty selection means "no filter" (show every status) — same convention as
 // the Status group on the Jobs filter sheet — so there's no separate "All"
@@ -259,7 +259,7 @@ export function HitlInbox() {
     if (outcome === "answer") {
       const missing = missingRequiredAnswers(request.asks ?? [], body);
       if (missing.length > 0) {
-        toast("Some required asks are unanswered", { description: missing.join(", ") });
+        notifyWarning("Some required asks are unanswered", { description: missing.join(", ") });
         return;
       }
     }
@@ -271,16 +271,14 @@ export function HitlInbox() {
         ...(outcome === "answer" ? { answers: body } : {}),
         ...(comment.trim() ? { comment: comment.trim() } : {}),
       });
-      toast(outcome === "answer" ? "Response sent" : "Request rejected");
+      notifySuccess(outcome === "answer" ? "Response sent" : "Request rejected");
       setExpandedId(null);
       setAnswers({});
       setComment("");
       setJustAnsweredId(request.id);
       refresh();
     } catch (err) {
-      toast("Unable to send response", {
-        description: err instanceof Error ? err.message : undefined,
-      });
+      notifyError("Unable to send response", err, venue.baseUrl);
     } finally {
       setSubmittingId(null);
     }

@@ -12,8 +12,11 @@ jest.mock('@/hooks/use-venues', () => ({
     venues: [],
   }),
 }));
-jest.mock('sonner', () => ({
-  toast: jest.fn(),
+jest.mock('@/lib/notify', () => ({
+  notifySuccess: jest.fn(),
+  notifyError: jest.fn(),
+  notifyWarning: jest.fn(),
+  notifyInfo: jest.fn(),
 }));
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),

@@ -2,7 +2,7 @@ import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import * as mime from 'mime-types'
 import copy from 'copy-to-clipboard';
-import { toast } from "sonner"
+import { notifySuccess } from "@/lib/notify"
 import { sendGTMEvent } from '@next/third-parties/google'
 
 export function cn(...inputs: ClassValue[]) {
@@ -121,7 +121,7 @@ export function friendlyError(error: string): { summary: string; detail: string 
 export function copyDataToClipBoard(entityId:string, message:string) {
          const result = copy(entityId)
           if(result) {
-            toast(message)
+            notifySuccess(message)
        }
       }
 

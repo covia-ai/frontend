@@ -14,7 +14,7 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useIsAuthenticated } from "@/hooks/use-auth";
-import { toastError } from "@/lib/toast-error";
+import { notifyError } from "@/lib/notify";
 import { normalizeAgentEntries } from "@/lib/agent-list";
 import { PageHeading } from "./PageHeading";
 import { StatusBadge } from "./StatusBadge";
@@ -34,7 +34,7 @@ export function AgentList() {
     venue.agents.list(true).then((result) => {
       setAgentData(normalizeAgentEntries(result.agents));
     }).catch((err: any) => {
-      toastError("Unable to load agents", err, venue.baseUrl);
+      notifyError("Unable to load agents", err, venue.baseUrl);
     }).finally(() => {
       setLoading(false);
     });

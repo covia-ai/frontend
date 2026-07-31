@@ -35,7 +35,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { listCatalogOperations, resolveOperationByAddress, type CatalogOp } from "@/lib/operations-catalog";
 import { useRouter } from "next/navigation";
 import { PlayCircle, RefreshCw, Search } from "lucide-react";
-import { toast } from "sonner";
+import { notifyError, notifyWarning } from "@/lib/notify";
 
 function adapterOf(path: string): string {
   const parts = path.split("/");
@@ -79,7 +79,7 @@ export function OperationsCatalog() {
     setLoading(true);
     listCatalogOperations(venue, { includeUserOps: isAuthenticated })
       .then((list) => setOps(list))
-      .catch(() => toast("Failed to load operation catalog"))
+      .catch((err) => notifyError("Unable to load operation catalog", err, venue.baseUrl))
       .finally(() => setLoading(false));
   }, [venue, isAuthenticated, refreshTick]);
 
@@ -124,7 +124,7 @@ export function OperationsCatalog() {
     try {
       input = JSON.parse(runInput);
     } catch {
-      toast("Input must be valid JSON");
+      notifyWarning("Input must be valid JSON");
       return;
     }
     setRunning(true);
@@ -135,10 +135,10 @@ export function OperationsCatalog() {
         setSheetOpen(false);
         router.push(`/venues/${encodeURIComponent(venue.venueId)}/jobs/${res.id}`);
       } else {
-        toast("Operation returned no job ID");
+        notifyWarning("Operation returned no job ID");
       }
     } catch (e: any) {
-      toast(e?.message || "Run failed");
+      notifyError("Unable to run operation", e, venue.baseUrl);
     } finally {
       setRunning(false);
     }

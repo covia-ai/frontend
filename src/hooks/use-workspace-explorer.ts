@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Venue, WorkspaceReadResult } from "@covia/covia-sdk";
-import { toast } from "sonner";
+import { notifyError, notifySuccess } from "@/lib/notify";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { useLatestQuery } from "@/hooks/use-latest-query";
@@ -204,11 +204,11 @@ export function useWorkspaceExplorer() {
   }, [loadListing, resetValue, selectFirstEntry]);
 
   useEffect(() => {
-    if (listingError) toast("Unable to list workspace");
+    if (listingError) notifyError("Unable to list workspace", listingError);
   }, [listingError]);
 
   useEffect(() => {
-    if (valueError) toast("Unable to read path");
+    if (valueError) notifyError("Unable to read path", valueError);
   }, [valueError]);
 
   useEffect(() => {
@@ -261,13 +261,13 @@ export function useWorkspaceExplorer() {
       setPendingMutation("save");
       try {
         await venue.workspace.write(path, value);
-        toast("Saved successfully");
+        notifySuccess("Saved successfully");
         if (mutationIsCurrent(generation, venue, path)) {
           void loadValue(path);
         }
         return true;
-      } catch {
-        toast("Unable to save");
+      } catch (err) {
+        notifyError("Unable to save", err, venue.baseUrl);
         return false;
       } finally {
         if (mutationIsCurrent(generation, venue, path)) {
@@ -288,13 +288,13 @@ export function useWorkspaceExplorer() {
       setPendingMutation("create");
       try {
         await venue.workspace.write(path, parseWorkspaceInput(rawValue));
-        toast("Created successfully");
+        notifySuccess("Created successfully");
         if (mutationIsCurrent(generation, venue, undefined, directory)) {
           void loadListing(directory);
         }
         return true;
-      } catch {
-        toast("Unable to create");
+      } catch (err) {
+        notifyError("Unable to create", err, venue.baseUrl);
         return false;
       } finally {
         if (mutationIsCurrent(generation, venue, undefined, directory)) {
@@ -314,14 +314,14 @@ export function useWorkspaceExplorer() {
     setPendingMutation("delete");
     try {
       await venue.workspace.delete(path);
-      toast("Deleted successfully");
+      notifySuccess("Deleted successfully");
       if (mutationIsCurrent(generation, venue, path, directory)) {
         clearSelection();
         void loadListing(directory);
       }
       return true;
-    } catch {
-      toast("Unable to delete");
+    } catch (err) {
+      notifyError("Unable to delete", err, venue.baseUrl);
       return false;
     } finally {
       if (mutationIsCurrent(generation, venue, path, directory)) {

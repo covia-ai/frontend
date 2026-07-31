@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { toast } from "sonner";
+import { notifyWarning } from "@/lib/notify";
 import {
   connectDefaultVenues,
   reconcileVenues,
@@ -42,7 +42,7 @@ export function VenueRuntimeProvider({
 
       for (const replacement of replacements) {
         evictVenueInstances(replacement.oldId);
-        toast.warning(`Venue at ${replacement.baseUrl} has a new identity`, {
+        notifyWarning(`Venue at ${replacement.baseUrl} has a new identity`, {
           description:
             `${replacement.name ?? "The venue"} restarted with a fresh DID. ` +
             "Sign-ins, agents and secrets from its previous run no longer apply.",

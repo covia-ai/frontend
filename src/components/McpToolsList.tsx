@@ -12,7 +12,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
 import { Copy, Play, Wrench } from "lucide-react";
-import { toast } from "sonner";
+import { notifyError, notifyWarning } from "@/lib/notify";
 
 interface McpTool {
   name: string;
@@ -38,8 +38,8 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
     setLoading(true);
     listMcpTools(venue.baseUrl)
       .then((tools) => setTools(tools))
-      .catch(() => {
-        toast("Unable to load MCP tools");
+      .catch((err) => {
+        notifyError("Unable to load MCP tools", err, venue.baseUrl);
         setTools([]);
       })
       .finally(() => setLoading(false));
@@ -51,7 +51,7 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
     try {
       args = JSON.parse(toolArgs);
     } catch {
-      toast("Arguments must be valid JSON");
+      notifyWarning("Arguments must be valid JSON");
       return;
     }
     setRunning(true);
@@ -61,10 +61,10 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
         if (res?.id) {
           router.push(`/venues/${encodeURIComponent(venue.venueId)}/jobs/${res.id}`);
         } else {
-          toast("Tool ran but returned no job ID");
+          notifyWarning("Tool ran but returned no job ID");
         }
       })
-      .catch(() => toast("Tool call failed"))
+      .catch((err) => notifyError("Unable to run tool", err, venue.baseUrl))
       .finally(() => setRunning(false));
   };
 

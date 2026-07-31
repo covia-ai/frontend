@@ -17,7 +17,7 @@ import {
 import { PauseCircleIcon, StopCircle, Trash2 }from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
-import { toast } from "sonner";
+import { notifyError, notifySuccess } from "@/lib/notify";
 import { gtmEvent } from "@/lib/utils";
 
 interface ExecutionToolBarProps {
@@ -38,32 +38,32 @@ export const ExecutionToolbar = ({ jobData, venue }: ExecutionToolBarProps) => {
           if (!venue || !jobData.id) return;
           gtmEvent.buttonClick('Cancel Job', jobData.id);
           venue.jobs.cancel(jobData.id)
-            .then(() => toast("Job cancelled"))
-            .catch(() => toast("Unable to cancel job right now"))
+            .then(() => notifySuccess("Job cancelled"))
+            .catch((err) => notifyError("Unable to cancel job", err))
       }
       function deleteExecution() {
           if (!venue || !jobData.id) return;
           gtmEvent.buttonClick('Delete Job', jobData.id);
           venue.jobs.delete(jobData.id).then(() => {
             router.push("/venues/"+venue.venueId+"/jobs");
-          }).catch(() => toast("Unable to delete job right now"))
+          }).catch((err) => notifyError("Unable to delete job", err))
       }
       function pauseExecution() {
           if (!venue || !jobData.id) return;
           gtmEvent.buttonClick('Pause Job', jobData.id);
           venue.jobs.pause(jobData.id).then(() => {
-            toast("Job paused");
-          }).catch(() => {
-            toast("Unable to pause job");
+            notifySuccess("Job paused");
+          }).catch((err) => {
+            notifyError("Unable to pause job", err);
           });
       }
       function resumeExecution() {
           if (!venue || !jobData.id) return;
           gtmEvent.buttonClick('Resume Job', jobData.id);
           venue.jobs.resume(jobData.id).then(() => {
-            toast("Job resumed");
-          }).catch(() => {
-            toast("Unable to resume job");
+            notifySuccess("Job resumed");
+          }).catch((err) => {
+            notifyError("Unable to resume job", err);
           });
       }
 

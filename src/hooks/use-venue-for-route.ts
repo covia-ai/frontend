@@ -10,7 +10,7 @@ import {
 import { useAuthStore } from "@/hooks/use-auth";
 import { createAuthProvider } from "@/lib/auth-provider";
 import { reportVenueHealth } from "@/hooks/use-venue-health";
-import { toastError } from "@/lib/toast-error";
+import { notifyError } from "@/lib/notify";
 
 // Resolves the venue a page should read from. When `routeVenueId` is given
 // (e.g. the [slug] segment of /venues/[slug]/assets), that venue is always
@@ -52,7 +52,7 @@ export function useVenueForRoute(routeVenueId?: string): VenueDescriptor | null 
         failed.current.add(attemptKey);
         const detail = err instanceof Error ? err.message : String(err);
         reportVenueHealth(identifier, { state: "unreachable", detail });
-        toastError("Unable to connect to venue", err, identifier);
+        notifyError("Unable to connect to venue", err, identifier);
       })
       .finally(() => {
         connecting.current.delete(routeVenueId);

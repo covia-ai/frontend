@@ -21,9 +21,8 @@ import {
 import { normalizeAgentEntries } from "@/lib/agent-list";
 import { messageContentToString } from "@/lib/agent-turns";
 import { sessionEntriesToSessions } from "@/lib/agent-sessions";
-import { toastError } from "@/lib/toast-error";
+import { notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { gtmEvent } from "@/lib/utils";
-import { toast } from "sonner";
 
 const POLL_INTERVAL_MS = 3000;
 const SESSION_LIMIT = 50;
@@ -86,7 +85,7 @@ export function useAgentExplorer(initialAgentId?: string) {
             requestId === listRequest.current &&
             venueRef.current === venue
           ) {
-            toastError("Unable to load agents", error, venue.baseUrl);
+            notifyError("Unable to load agents", error, venue.baseUrl);
           }
         });
     },
@@ -129,7 +128,7 @@ export function useAgentExplorer(initialAgentId?: string) {
           setSelectedAgentDetail(detail);
           setDetailError(false);
         } else if (surfaceErrors) {
-          toast("Unable to load agent details");
+          notifyError("Unable to load agent details");
           setSelectedAgentDetail(null);
           setDetailError(true);
         }
@@ -285,7 +284,7 @@ export function useAgentExplorer(initialAgentId?: string) {
       .suspend()
       .then(() => {
         gtmEvent.suspendAgent(selectedAgentId);
-        toast("Agent suspended");
+        notifySuccess("Agent suspended");
         void refreshAgentDetail(selectedAgentId);
         void refreshAgentList();
       })
@@ -294,7 +293,7 @@ export function useAgentExplorer(initialAgentId?: string) {
           selectedAgentId,
           error instanceof Error ? error.message : undefined,
         );
-        toast("Unable to suspend agent");
+        notifyError("Unable to suspend agent", error);
       });
   };
 
@@ -304,7 +303,7 @@ export function useAgentExplorer(initialAgentId?: string) {
       .resume()
       .then(() => {
         gtmEvent.resumeAgent(selectedAgentId);
-        toast("Agent resumed");
+        notifySuccess("Agent resumed");
         void refreshAgentDetail(selectedAgentId);
         void refreshAgentList();
       })
@@ -313,7 +312,7 @@ export function useAgentExplorer(initialAgentId?: string) {
           selectedAgentId,
           error instanceof Error ? error.message : undefined,
         );
-        toast("Unable to resume agent");
+        notifyError("Unable to resume agent", error);
       });
   };
 
@@ -324,7 +323,7 @@ export function useAgentExplorer(initialAgentId?: string) {
       .delete()
       .then(() => {
         gtmEvent.deleteAgent(agentId);
-        toast("Agent deleted");
+        notifySuccess("Agent deleted");
         if (selectedAgentIdRef.current === agentId) {
           setSelectedAgentId(null);
           setSelectedAgentDetail(null);
@@ -338,7 +337,7 @@ export function useAgentExplorer(initialAgentId?: string) {
           agentId,
           error instanceof Error ? error.message : undefined,
         );
-        toast("Unable to delete agent");
+        notifyError("Unable to delete agent", error);
       });
   };
 
@@ -383,7 +382,7 @@ export function useAgentExplorer(initialAgentId?: string) {
           response == null ||
           (typeof response === "string" && response.trim() === "")
         ) {
-          toast("The agent sent an empty reply", {
+          notifyWarning("The agent sent an empty reply", {
             description:
               "It may have hit an error — check the Details panel.",
           });
@@ -410,7 +409,7 @@ export function useAgentExplorer(initialAgentId?: string) {
         const message =
           error instanceof Error ? error.message : "see console";
         gtmEvent.sendAgentMessageFailed(agentId, message);
-        toast(`Chat failed: ${message}`);
+        notifyError("Unable to send message", error);
         if (
           venueRef.current === venue &&
           selectedAgentIdRef.current === agentId

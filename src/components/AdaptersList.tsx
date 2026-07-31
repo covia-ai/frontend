@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { Plug, Search } from "lucide-react";
-import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
 
 interface AdaptersListProps {
   venueId: string;
@@ -35,9 +35,9 @@ export function AdaptersList({ venueId }: AdaptersListProps) {
     venue.adapters
       .list()
       .then((result) => { if (!ignore) setAdapters(result); })
-      .catch(() => {
+      .catch((err) => {
         if (!ignore) {
-          toast("Unable to load adapters");
+          notifyError("Unable to load adapters", err, venue.baseUrl);
           setAdapters([]);
         }
       })

@@ -86,6 +86,16 @@ operations|secrets|status`), the values API (`GET /api/v1/values/*`), the native
 `/mcp` JSON-RPC endpoint, and `/.well-known/*`. Treat a non-user-driven
 `operations.run`/`invoke` as a defect.
 
+### Notifications
+
+All user-facing notifications go through `src/lib/notify.ts` — never bare
+sonner `toast()`. `notifyError(title, err, target?)` for failures (always pass
+the caught error — it becomes a copyable description, and bare network
+failures get the unreachable target named); `notifySuccess` / `notifyWarning`
+/ `notifyInfo` for the rest. Failure titles read "Unable to <verb> <object>".
+Every notification is recorded to the in-memory session log
+(`use-notification-log.ts`), viewable on the Profile page.
+
 ### Components
 
 - All components are functional, use `"use client"` directive

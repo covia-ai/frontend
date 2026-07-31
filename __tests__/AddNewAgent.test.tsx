@@ -1,9 +1,12 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { toast } from 'sonner';
+import { notifySuccess } from '@/lib/notify';
 
-jest.mock('sonner', () => ({
-  toast: jest.fn(),
+jest.mock('@/lib/notify', () => ({
+  notifySuccess: jest.fn(),
+  notifyError: jest.fn(),
+  notifyWarning: jest.fn(),
+  notifyInfo: jest.fn(),
 }));
 
 jest.mock('next/navigation', () => ({
@@ -106,7 +109,7 @@ describe('AddNewAgent', () => {
     await user.click(createButton);
 
     await waitFor(() => {
-      expect(toast).toHaveBeenCalledWith('Agent created', {
+      expect(notifySuccess).toHaveBeenCalledWith('Agent created', {
         description: 'Agent "test-agent" is now active',
       });
     });

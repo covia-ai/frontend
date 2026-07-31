@@ -26,7 +26,7 @@ import { Button } from "./ui/button";
 import { Asset, AssetMetadata, Venue } from "@covia/covia-sdk";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { getContentTypeForFile, getLicenseUrl, gtmEvent } from "@/lib/utils";
-import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
 
 export const CreateAssetComponent = ({sendDataToParent, venue: venueProp}: {sendDataToParent: (status: boolean) => void; venue?: Venue}) => {
     const [step, setStep] = useState(0);
@@ -70,9 +70,7 @@ export const CreateAssetComponent = ({sendDataToParent, venue: venueProp}: {send
             jsonData.name ?? "unknown",
             error instanceof Error ? error.message : undefined,
           );
-          toast("Unable to create asset", {
-            description: error instanceof Error ? error.message : "Please try again.",
-          });
+          notifyError("Unable to create asset", error, venue?.baseUrl);
         }
     }
   
@@ -100,9 +98,7 @@ export const CreateAssetComponent = ({sendDataToParent, venue: venueProp}: {send
         }
         setStep(2);
       } catch (error: unknown) {
-        toast("Unable to read file", {
-          description: error instanceof Error ? error.message : "Please try again.",
-        });
+        notifyError("Unable to read file", error);
       }
     }
 

@@ -21,7 +21,7 @@ import {
 } from "./ui/select";
 import { Textarea } from "./ui/textarea";
 import { Separator } from "./ui/separator";
-import { toast } from "sonner";
+import { notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
@@ -137,11 +137,11 @@ export function AddNewAgent({
 
   const handleNewAgent = async () => {
     if (!venue) {
-      toast("Please connect to a venue first");
+      notifyWarning("Please connect to a venue first");
       return;
     }
     if (!agentName.trim()) {
-      toast("Please enter an agent name");
+      notifyWarning("Please enter an agent name");
       return;
     }
     const provider = LLM_PROVIDERS[llmProvider];
@@ -149,11 +149,11 @@ export function AddNewAgent({
     // than making the user leave for the Secrets page.
     const needsKey = !!provider?.requiresKey && !isProviderReady(llmProvider);
     if (needsKey && !apiKeyInput.trim()) {
-      toast(`Enter an API key for ${provider.label}, or add one in Secrets`);
+      notifyWarning(`Enter an API key for ${provider.label}, or add one in Secrets`);
       return;
     }
     if (isReservedAgentId) {
-      toast(`"${DEFAULT_AGENT_ID}" is reserved for the workspace prompt bar — pick another id`);
+      notifyWarning(`"${DEFAULT_AGENT_ID}" is reserved for the workspace prompt bar — pick another id`);
       return;
     }
     setCreating(true);
@@ -188,7 +188,7 @@ export function AddNewAgent({
       }
 
       gtmEvent.createAgent(result.agentId, llmProvider);
-      toast("Agent created", {
+      notifySuccess("Agent created", {
         description: `Agent "${result.agentId}" is now ${result.status}`,
       });
       setAgentName("");
@@ -200,9 +200,7 @@ export function AddNewAgent({
       onCreated?.();
     } catch (err) {
       gtmEvent.createAgentFailed(resolvedAgentId, err instanceof Error ? err.message : undefined);
-      toast("Unable to create agent", {
-        description: err instanceof Error ? err.message : undefined,
-      });
+      notifyError("Unable to create agent", err, venue.baseUrl);
     } finally {
       setCreating(false);
     }

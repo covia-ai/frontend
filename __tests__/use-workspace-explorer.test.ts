@@ -23,8 +23,11 @@ jest.mock("@/hooks/use-authenticated-venue", () => ({
 jest.mock("@/hooks/use-auth", () => ({
   useIsAuthenticated: () => mockAuthenticated,
 }));
-jest.mock("sonner", () => ({
-  toast: jest.fn(),
+jest.mock("@/lib/notify", () => ({
+  notifySuccess: jest.fn(),
+  notifyError: jest.fn(),
+  notifyWarning: jest.fn(),
+  notifyInfo: jest.fn(),
 }));
 
 function createVenue() {

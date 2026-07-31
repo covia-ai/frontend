@@ -4,9 +4,15 @@ import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { AIPrompt } from '@/components/AIPrompt';
 
+// One recorder across every notify kind — most tests only care that a
+// notification fired, and the kind rides along as the first argument.
 const mockToast = jest.fn();
-jest.mock('sonner', () => ({
-  toast: (...args: any[]) => mockToast(...args),
+jest.mock('@/lib/notify', () => ({
+  notifySuccess: (...args: any[]) => mockToast('success', ...args),
+  notifyError: (title: string, err?: unknown, _target?: string) =>
+    mockToast('error', title, { description: err instanceof Error ? err.message : err === undefined ? undefined : String(err) }),
+  notifyWarning: (...args: any[]) => mockToast('warning', ...args),
+  notifyInfo: (...args: any[]) => mockToast('info', ...args),
 }));
 
 const mockUseAuthenticatedVenue = jest.fn();
@@ -229,7 +235,7 @@ describe('AIPrompt — default agent reuse vs creation', () => {
     await user.click(screen.getByTestId('chat-button'));
 
     await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith('Failed to create agent', expect.anything());
+      expect(mockToast).toHaveBeenCalledWith('error', 'Unable to create agent', expect.anything());
     });
     expect(venue.agents.create).not.toHaveBeenCalled();
     expect(venue.agents.chat).not.toHaveBeenCalled();
@@ -437,7 +443,7 @@ describe('AIPrompt — chat outcome surfacing', () => {
 
     // The wire error must reach the user, not vanish into the un-awaited promise.
     await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
+      expect(mockToast).toHaveBeenCalledWith('error', expect.any(String), expect.objectContaining({
         description: 'venue unreachable',
       }));
     });

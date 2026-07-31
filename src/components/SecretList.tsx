@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
-import { toastError } from "@/lib/toast-error";
-import { toast } from "sonner";
+import { notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { KeyRound, Loader2, Plus, Trash2, EyeOff, Lock, ChevronDown } from "lucide-react";
@@ -59,7 +58,7 @@ export function SecretList() {
         setSecrets(Array.isArray(result) ? result : []);
       })
       .catch((err: any) => {
-        toastError("Unable to load secrets", err, venue.baseUrl);
+        notifyError("Unable to load secrets", err, venue.baseUrl);
         setSecrets([]);
       })
       .finally(() => {
@@ -73,14 +72,14 @@ export function SecretList() {
 
   const handleAdd = () => {
     if (!venue || !newName.trim() || !newValue.trim()) {
-      toast("Name and value are required");
+      notifyWarning("Name and value are required");
       return;
     }
     setAdding(true);
     venue.secrets
       .set(newName.trim(), newValue)
       .then(() => {
-        toast(`Secret "${newName}" stored`);
+        notifySuccess(`Secret "${newName}" stored`);
         rememberKeyName(newName.trim());
         setRecent(recentKeyNames());
         setNewName("");
@@ -89,7 +88,7 @@ export function SecretList() {
       })
       .catch((err: any) => {
         // Surface the cause — a blind toast hid a JWT-audience 401 for days.
-        toastError("Unable to store secret", err, venue.baseUrl);
+        notifyError("Unable to store secret", err, venue.baseUrl);
       })
       .finally(() => {
         setAdding(false);
@@ -101,11 +100,11 @@ export function SecretList() {
     venue.secrets
       .delete(name)
       .then(() => {
-        toast(`Secret "${name}" deleted`);
+        notifySuccess(`Secret "${name}" deleted`);
         loadSecrets();
       })
       .catch((err: any) => {
-        toastError("Unable to delete secret", err, venue.baseUrl);
+        notifyError("Unable to delete secret", err, venue.baseUrl);
       });
   };
 

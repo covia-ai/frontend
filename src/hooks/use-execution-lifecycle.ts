@@ -9,7 +9,7 @@ import {
 } from "@covia/covia-sdk";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { resolveOperationByAddress } from "@/lib/operations-catalog";
-import { toast } from "sonner";
+import { notifyError, notifySuccess } from "@/lib/notify";
 
 const POLL_INTERVAL_MS = 1000;
 
@@ -211,11 +211,11 @@ export function useExecutionLifecycle({
     setSendingMessage(true);
     try {
       await venue.jobs.sendMessage(jobId, parseJobMessage(message));
-      toast("Message sent");
+      notifySuccess("Message sent");
       if (sendGeneration.current === generation) setMessage("");
       await refreshRef.current?.();
-    } catch {
-      toast("Unable to send message");
+    } catch (err) {
+      notifyError("Unable to send message", err, venue.baseUrl);
     } finally {
       if (sendGeneration.current === generation) {
         setSendingMessage(false);

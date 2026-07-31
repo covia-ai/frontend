@@ -13,6 +13,7 @@ import { useCurrentAuth } from "@/hooks/use-auth";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { Ed25519Auth, type DIDDocument } from "@covia/covia-sdk";
 import { PageHeading } from "@/components/PageHeading";
+import { NotificationLog } from "@/components/NotificationLog";
 
 function toHex(bytes: Uint8Array): string {
   return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -161,6 +162,8 @@ export default function ProfilePage() {
             )}
           </div>
         )}
+
+        <NotificationLog />
       </div>
     </ContentLayout>
   );

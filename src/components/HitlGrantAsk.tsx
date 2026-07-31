@@ -16,7 +16,7 @@ import {
 } from "@/lib/hitl";
 import type { Venue } from "@covia/covia-sdk";
 import { KeyRound, ShieldCheck } from "lucide-react";
-import { toast } from "sonner";
+import { notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 
 const LIFETIMES = [
   { value: "900", label: "15 minutes" },
@@ -71,15 +71,15 @@ export function HitlGrantAsk({ request, ask, kind, venue, signingKeyHex, onDone,
     try {
       if (outcome === "reject") {
         await respondToHitl(venue, { id: request.id, outcome: "reject" });
-        toast("Request rejected");
+        notifySuccess("Request rejected");
         onDone();
         return;
       }
 
       if (kind === "token") {
         const caps = rows.filter((r) => r.with.trim() && r.can.trim());
-        if (caps.length === 0) { toast("Add at least one capability to sign"); return; }
-        if (!signingKeyHex) { toast("Signing needs a device-key sign-in on this venue"); return; }
+        if (caps.length === 0) { notifyWarning("Add at least one capability to sign"); return; }
+        if (!signingKeyHex) { notifyWarning("Signing needs a device-key sign-in on this venue"); return; }
         const jwt = signAccessToken({
           privateKeyHex: signingKeyHex,
           audience,
@@ -89,15 +89,15 @@ export function HitlGrantAsk({ request, ask, kind, venue, signingKeyHex, onDone,
         // The JWT is a secret; the venue routes it to the requester's `tokens`
         // output and keeps it out of the durable record (COG-19).
         await respondToHitl(venue, { id: request.id, outcome: "answer", answers: { [ask.id]: jwt } });
-        toast("Access token signed and returned");
+        notifySuccess("Access token signed and returned");
       } else {
         const grants: HitlCap[] = rows.filter((r) => r.included !== false).map((c) => ({ with: c.with, can: c.can, ...(c.exp ? { exp: c.exp } : {}) }));
         await respondToHitl(venue, { id: request.id, outcome: "answer", answers: { [ask.id]: true }, grants });
-        toast(grants.length ? "Capabilities granted" : "Approved without granting any capability");
+        notifySuccess(grants.length ? "Capabilities granted" : "Approved without granting any capability");
       }
       onDone();
     } catch (err) {
-      toast("Couldn't complete the response", { description: err instanceof Error ? err.message : undefined });
+      notifyError("Unable to send response", err, venue.baseUrl);
     } finally {
       setSubmitting(false);
     }

@@ -9,7 +9,7 @@ import { useState } from "react"
 import { useVenues } from "@/hooks/use-venues";
 import { Venue } from "@covia/covia-sdk";
 import { createAuthProvider } from "@/lib/auth-provider";
-import { toast } from "sonner";
+import { notifySuccess } from "@/lib/notify";
 import { useAuthStore } from "@/hooks/use-auth";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { Label } from "@/components/ui/label";
@@ -51,7 +51,7 @@ export const AddNewVenueModal = () => {
         const venue = await Venue.connect(processVenueDidOrUrl, authOption);
         addVenue(venue);
         gtmEvent.connectVenue(venue.venueId);
-        toast("Venue connected successfully");
+        notifySuccess("Venue connected successfully");
         setVenueDidOrUrl("");
         setOpen(false);
       } catch {

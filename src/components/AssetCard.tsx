@@ -17,7 +17,7 @@ import { useState } from "react";
 import { JsonEditor } from "json-edit-react";
 import { AssetInfoSheet } from "./AssetInfoSheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
-import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
 
 interface AssetCardProps {
   asset: Asset;
@@ -58,9 +58,7 @@ export function AssetCard({ asset,type,compact,venue: venueProp,authenticated }:
           }
         }
         catch (error: unknown) {
-          toast("Unable to copy asset", {
-            description: error instanceof Error ? error.message : "Please try again.",
-          });
+          notifyError("Unable to copy asset", error, venue?.baseUrl);
         }
     }
     return (
