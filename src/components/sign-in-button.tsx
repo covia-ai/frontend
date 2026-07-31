@@ -7,9 +7,11 @@ import { useDeviceKeySignIn } from "@/hooks/use-device-key-signin";
 
 export const SignupSignInButton = () => {
   const {
-    dialogOpen, setDialogOpen, openDialog, step, setStep, deviceKey, isExisting,
-    pastedKey, keyError, copied, handleGenerate, handleProvideKey,
-    handlePastedKeyChange, handleSubmitProvidedKey, handleCopy, handleContinue,
+    dialogOpen, setDialogOpen, openDialog, step, setStep, deviceKey, deviceKeyDid,
+    isExisting, pastedKey, keyError, copied, checking, authError, storedKeys,
+    handleGenerate, handleProvideKey, handlePastedKeyChange,
+    handleSubmitProvidedKey, handleCopy, handleContinue,
+    handleUseStoredKey, handleUseDifferentKey,
   } = useDeviceKeySignIn({ trackSignUp: true });
 
   return (
@@ -32,16 +34,22 @@ export const SignupSignInButton = () => {
         step={step}
         setStep={setStep}
         deviceKey={deviceKey}
+        deviceKeyDid={deviceKeyDid}
         isExisting={isExisting}
         pastedKey={pastedKey}
         onPastedKeyChange={handlePastedKeyChange}
         keyError={keyError}
         copied={copied}
+        checking={checking}
+        authError={authError}
+        storedKeys={storedKeys}
         onGenerate={handleGenerate}
         onProvideKey={handleProvideKey}
         onSubmitProvidedKey={handleSubmitProvidedKey}
         onCopy={handleCopy}
         onContinue={handleContinue}
+        onUseStoredKey={handleUseStoredKey}
+        onUseDifferentKey={handleUseDifferentKey}
       />
     </>
   );
