@@ -26,8 +26,6 @@ export function AccountsPanel() {
     new Set([...Object.keys(accountsMap), ...Object.keys(authMap)]),
   ).sort((a, b) => Number(b === selectedVenueId) - Number(a === selectedVenueId));
 
-  if (venueIds.length === 0) return null;
-
   const venueLabel = (venueId: string) =>
     venues.find((venue) => venue.venueId === venueId)?.metadata?.name ?? venueId;
 
@@ -37,7 +35,7 @@ export function AccountsPanel() {
   };
 
   return (
-    <div className="border rounded-lg p-4 mb-6 space-y-4" data-testid="accounts-panel">
+    <div className="border rounded-lg p-4 space-y-4" data-testid="accounts-panel">
       <h3 className="text-sm font-semibold flex items-center gap-2">
         <Users size={16} className="text-blue-500" />
         Accounts
@@ -46,6 +44,12 @@ export function AccountsPanel() {
         Sign-ins are per venue. Switching venue restores the account you last used
         there; signing out keeps the account here so you can use it again later.
       </p>
+
+      {venueIds.length === 0 && (
+        <p className="text-sm text-muted-foreground" data-testid="accounts-empty">
+          No sign-ins yet — connect to a venue and sign in from the top bar.
+        </p>
+      )}
 
       <div className="flex flex-col gap-4">
         {venueIds.map((venueId) => {

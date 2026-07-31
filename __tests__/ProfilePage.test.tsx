@@ -16,13 +16,16 @@ jest.mock('@/hooks/use-auth', () => ({
   }),
   // The page's hasAnyAccount selector runs against this minimal state.
   useAuthStore: (selector: (state: unknown) => unknown) =>
-    selector({ authMap: {}, accountsMap: {} }),
+    selector({ authMap: {}, accountsMap: {}, deviceKeys: [] }),
 }));
 jest.mock('@/hooks/use-authenticated-venue', () => ({
   useAuthenticatedVenue: () => null,
 }));
 jest.mock('@/components/AccountsPanel', () => ({
   AccountsPanel: () => <div data-testid="accounts-panel-stub" />,
+}));
+jest.mock('@/components/KeysPanel', () => ({
+  KeysPanel: () => <div data-testid="keys-panel-stub" />,
 }));
 
 import ProfilePage from '@/app/(demo)/profile/page';

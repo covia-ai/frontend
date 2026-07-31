@@ -18,7 +18,7 @@ export function NotificationLog() {
   const clear = useNotificationLog((state) => state.clear);
 
   return (
-    <div className="border rounded-lg p-4 space-y-4 mt-6" data-testid="notification-log">
+    <div className="border rounded-lg p-4 space-y-4" data-testid="notification-log">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold flex items-center gap-2">
           <Bell size={16} className="text-blue-500" />

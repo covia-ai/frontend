@@ -15,7 +15,7 @@ const descriptor = (venueId: string) => ({
 describe("useAuthStore", () => {
   beforeEach(() => {
     act(() => {
-      useAuthStore.setState({ authMap: {}, accountsMap: {}, deviceKeyHex: null });
+      useAuthStore.setState({ authMap: {}, accountsMap: {}, deviceKeyHex: null, deviceKeys: [] });
       useVenues.setState({
         venues: [descriptor(VENUE_A), descriptor(VENUE_B)],
         selectedVenueId: VENUE_A,
@@ -155,6 +155,38 @@ describe("useAuthStore", () => {
 
     act(() => useAuthStore.getState().removeAccount(VENUE_A, "did:a1"));
     expect(useAuthStore.getState().accountsMap[VENUE_A]).toBeUndefined();
+  });
+
+  it("addDeviceKey dedups and makes the first key the default", () => {
+    const KEY_B = "b".repeat(64);
+    act(() => {
+      useAuthStore.getState().addDeviceKey(MOCK_HEX);
+      useAuthStore.getState().addDeviceKey(KEY_B);
+      useAuthStore.getState().addDeviceKey(MOCK_HEX);
+    });
+
+    expect(useAuthStore.getState().deviceKeys).toEqual([MOCK_HEX, KEY_B]);
+    expect(useAuthStore.getState().deviceKeyHex).toBe(MOCK_HEX);
+  });
+
+  it("removeDeviceKey promotes the next key to default when the default is removed", () => {
+    const KEY_B = "b".repeat(64);
+    act(() => {
+      useAuthStore.getState().addDeviceKey(MOCK_HEX);
+      useAuthStore.getState().addDeviceKey(KEY_B);
+      useAuthStore.getState().removeDeviceKey(MOCK_HEX);
+    });
+
+    expect(useAuthStore.getState().deviceKeys).toEqual([KEY_B]);
+    expect(useAuthStore.getState().deviceKeyHex).toBe(KEY_B);
+
+    act(() => useAuthStore.getState().removeDeviceKey(KEY_B));
+    expect(useAuthStore.getState().deviceKeyHex).toBeNull();
+  });
+
+  it("setDeviceKeyHex records the key in the known list", () => {
+    act(() => useAuthStore.getState().setDeviceKeyHex(MOCK_HEX));
+    expect(useAuthStore.getState().deviceKeys).toEqual([MOCK_HEX]);
   });
 
   it("switching the selected venue restores that venue's last-used account", () => {

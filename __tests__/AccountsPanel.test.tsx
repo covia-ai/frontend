@@ -26,9 +26,10 @@ describe('AccountsPanel', () => {
     });
   });
 
-  it('renders nothing when no accounts exist anywhere', () => {
+  it('shows an empty state when no accounts exist anywhere', () => {
     render(<AccountsPanel />);
-    expect(screen.queryByTestId('accounts-panel')).not.toBeInTheDocument();
+    expect(screen.getByTestId('accounts-empty')).toBeInTheDocument();
+    expect(screen.queryAllByTestId('account-entry')).toHaveLength(0);
   });
 
   it('groups accounts by venue, selected venue first, active account marked', () => {
@@ -85,6 +86,7 @@ describe('AccountsPanel', () => {
 
     await user.click(screen.getByTestId('account-remove'));
     expect(useAuthStore.getState().accountsMap[VENUE_A]).toBeUndefined();
-    expect(screen.queryByTestId('accounts-panel')).not.toBeInTheDocument();
+    expect(screen.queryAllByTestId('account-entry')).toHaveLength(0);
+    expect(screen.getByTestId('accounts-empty')).toBeInTheDocument();
   });
 });

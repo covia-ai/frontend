@@ -35,7 +35,13 @@ type AuthStore = {
   // switch (or a sign-out) keep its accounts choosable without re-entering
   // tokens or keys. Forgotten only via removeAccount.
   accountsMap: Record<string, VenueAuth[]>;
+  // The default device key — what the sign-in dialog offers first.
   deviceKeyHex: string | null;
+  // Every local Ed25519 keypair this browser knows (private key hex). The
+  // default key is one of these; managed on the profile's Keys tab.
+  deviceKeys: string[];
+  addDeviceKey: (hex: string) => void;
+  removeDeviceKey: (hex: string) => void;
   loginWithToken: (venueId: string, token: string, did: string) => void;
   loginWithKeypair: (venueId: string, privateKeyHex: string, did: string) => void;
   // Reactivate a known account on a venue (also marks it most recently used).
@@ -67,6 +73,25 @@ export const useAuthStore = create(
       authMap: {},
       accountsMap: {},
       deviceKeyHex: null,
+      deviceKeys: [],
+
+      addDeviceKey: (hex: string) => {
+        const { deviceKeys, deviceKeyHex } = get();
+        set({
+          deviceKeys: deviceKeys.includes(hex) ? deviceKeys : [...deviceKeys, hex],
+          // The first key a browser learns becomes its default.
+          deviceKeyHex: deviceKeyHex ?? hex,
+        });
+      },
+
+      removeDeviceKey: (hex: string) => {
+        const { deviceKeys, deviceKeyHex } = get();
+        const remaining = deviceKeys.filter((k) => k !== hex);
+        set({
+          deviceKeys: remaining,
+          deviceKeyHex: deviceKeyHex === hex ? remaining[0] ?? null : deviceKeyHex,
+        });
+      },
 
       loginWithToken: (venueId: string, token: string, did: string) => {
         const auth: VenueAuth = { type: "bearer", token, did };
@@ -117,7 +142,12 @@ export const useAuthStore = create(
       },
 
       setDeviceKeyHex: (hex: string) => {
-        set({ deviceKeyHex: hex });
+        const { deviceKeys } = get();
+        set({
+          deviceKeyHex: hex,
+          // Every key that becomes default is also a known key.
+          deviceKeys: deviceKeys.includes(hex) ? deviceKeys : [...deviceKeys, hex],
+        });
       },
 
       logout: (venueId: string) => {
@@ -140,6 +170,7 @@ export const useAuthStore = create(
           authMap?: Record<string, VenueAuth>;
           accountsMap?: Record<string, VenueAuth[]>;
           deviceKeyHex?: string | null;
+          deviceKeys?: string[];
           auth?: VenueAuth | Omit<BearerVenueAuth, "type">;
           activeVenueId?: string | null;
         };
@@ -161,11 +192,17 @@ export const useAuthStore = create(
           Object.fromEntries(
             Object.entries(authMap).map(([venueId, auth]) => [venueId, [auth]]),
           );
+        const deviceKeyHex = old.deviceKeyHex ?? null;
+        // The key list arrived after the single default key — seed it so the
+        // existing key shows up on the Keys tab.
+        const deviceKeys =
+          old.deviceKeys ?? (deviceKeyHex ? [deviceKeyHex] : []);
         return {
           ...current,
           authMap,
           accountsMap,
-          deviceKeyHex: old.deviceKeyHex ?? null,
+          deviceKeyHex,
+          deviceKeys,
         };
       },
     }
