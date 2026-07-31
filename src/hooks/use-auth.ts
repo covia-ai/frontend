@@ -53,6 +53,10 @@ type AuthStore = {
   // Deactivates the venue's account but keeps it in accountsMap, so it can be
   // re-chosen later without re-authenticating. removeAccount forgets for real.
   logout: (venueId: string) => void;
+  // Drops ALL auth state for a venue id — used when a venue's identity is
+  // replaced (restart with a fresh DID): credentials scoped to the dead
+  // identity can never be valid again, so keeping them only leaves orphans.
+  purgeVenueAuth: (venueId: string) => void;
   getAuthForVenue: (venueId: string) => VenueAuth | null;
 };
 
@@ -156,6 +160,13 @@ export const useAuthStore = create(
           const { [venueId]: _, ...rest } = authMap;
           set({ authMap: rest });
         }
+      },
+
+      purgeVenueAuth: (venueId: string) => {
+        const { authMap, accountsMap } = get();
+        const { [venueId]: _droppedAuth, ...restAuth } = authMap;
+        const { [venueId]: _droppedAccounts, ...restAccounts } = accountsMap;
+        set({ authMap: restAuth, accountsMap: restAccounts });
       },
 
       getAuthForVenue: (venueId: string) => {

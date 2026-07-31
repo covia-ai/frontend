@@ -52,6 +52,19 @@ describe('AccountsPanel', () => {
     expect(within(aEntries[1]).getByTestId('account-use')).toBeInTheDocument();
   });
 
+  it('marks sign-ins for venues no longer in the list instead of showing a raw DID name', () => {
+    const GONE = 'did:key:z6MkDeadVenueIdentityXXXXXXXXXXXXXXXXXXXXXXX';
+    act(() => {
+      useAuthStore.getState().loginWithToken(GONE, 'stale-token', 'did:a1');
+    });
+    render(<AccountsPanel />);
+
+    const group = screen.getByTestId('accounts-venue');
+    expect(group).toHaveAttribute('data-known', 'false');
+    // The full venue DID must not be rendered as if it were a venue name.
+    expect(group.textContent).not.toContain(GONE);
+  });
+
   it('reactivates a stored account via Use', async () => {
     act(() => {
       useAuthStore.getState().loginWithToken(VENUE_A, 'token1', 'did:a1');

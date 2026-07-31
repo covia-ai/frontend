@@ -157,6 +157,19 @@ describe("useAuthStore", () => {
     expect(useAuthStore.getState().accountsMap[VENUE_A]).toBeUndefined();
   });
 
+  it("purgeVenueAuth drops both the active account and the history for one venue only", () => {
+    act(() => {
+      useAuthStore.getState().loginWithToken(VENUE_A, "tokenA", "did:a");
+      useAuthStore.getState().loginWithToken(VENUE_B, "tokenB", "did:b");
+      useAuthStore.getState().purgeVenueAuth(VENUE_A);
+    });
+
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toBeNull();
+    expect(useAuthStore.getState().accountsMap[VENUE_A]).toBeUndefined();
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_B)).toMatchObject({ token: "tokenB" });
+    expect(useAuthStore.getState().accountsMap[VENUE_B]).toHaveLength(1);
+  });
+
   it("addDeviceKey dedups and makes the first key the default", () => {
     const KEY_B = "b".repeat(64);
     act(() => {

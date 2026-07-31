@@ -2,6 +2,7 @@
 
 import { useAuthStore, type VenueAuth } from "@/hooks/use-auth";
 import { useVenues } from "@/hooks/use-venues";
+import { abbreviateDid } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -26,8 +27,15 @@ export function AccountsPanel() {
     new Set([...Object.keys(accountsMap), ...Object.keys(authMap)]),
   ).sort((a, b) => Number(b === selectedVenueId) - Number(a === selectedVenueId));
 
+  // A venueId with no entry in the venues list is an orphan — a venue that
+  // was removed, or a dead identity from before replacement purging existed.
+  // Its raw id is a DID, which reads confusingly like an account key, so
+  // label it for what it is instead.
+  const knownVenue = (venueId: string) =>
+    venues.find((venue) => venue.venueId === venueId);
   const venueLabel = (venueId: string) =>
-    venues.find((venue) => venue.venueId === venueId)?.metadata?.name ?? venueId;
+    knownVenue(venueId)?.metadata?.name ??
+    `Removed venue (${abbreviateDid(venueId)})`;
 
   const isActive = (venueId: string, account: VenueAuth) => {
     const active = authMap[venueId];
@@ -56,7 +64,12 @@ export function AccountsPanel() {
           const accounts = accountsMap[venueId] ?? [];
           const hasActive = !!authMap[venueId];
           return (
-            <div key={venueId} data-testid="accounts-venue" data-venue={venueId}>
+            <div
+              key={venueId}
+              data-testid="accounts-venue"
+              data-venue={venueId}
+              data-known={!!knownVenue(venueId)}
+            >
               <div className="flex items-center justify-between gap-2 mb-1.5">
                 <p className="text-sm font-medium flex items-center gap-2 min-w-0">
                   <Globe size={13} className="text-muted-foreground shrink-0" />

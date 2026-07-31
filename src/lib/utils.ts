@@ -118,6 +118,13 @@ export function friendlyError(error: string): { summary: string; detail: string 
   return { summary, detail: embeddedMessage(error) ?? error };
 }
 
+// "did:key:z6MkmZJJ…bidkGXCK" — for showing a DID where space is tight or the
+// full value would read as noise. Short values pass through unchanged.
+export function abbreviateDid(did: string): string {
+  if (did.length <= 28) return did;
+  return `${did.slice(0, 16)}…${did.slice(-8)}`;
+}
+
 export function copyDataToClipBoard(entityId:string, message:string) {
          const result = copy(entityId)
           if(result) {

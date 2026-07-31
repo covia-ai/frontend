@@ -40,10 +40,19 @@ export function KeysPanel() {
     venues.find((venue) => venue.venueId === venueId)?.metadata?.name ?? venueId;
 
   // Venues currently signed in with a given key — shows what a removal touches.
-  const venuesUsing = (hex: string) =>
-    Object.entries(authMap)
+  // A venueId with no entry in the venues list is an orphaned sign-in (removed
+  // or replaced venue); its raw id is a DID that reads like a key, so count
+  // those instead of listing them. They can be cleaned up on the Logins tab.
+  const venuesUsing = (hex: string) => {
+    const venueIds = Object.entries(authMap)
       .filter(([, auth]) => auth.type === "keypair" && auth.privateKeyHex === hex)
-      .map(([venueId]) => venueLabel(venueId));
+      .map(([venueId]) => venueId);
+    const known = venueIds.filter((id) => venues.some((v) => v.venueId === id));
+    const orphans = venueIds.length - known.length;
+    const parts = known.map(venueLabel);
+    if (orphans > 0) parts.push(`${orphans} removed venue${orphans === 1 ? "" : "s"}`);
+    return parts;
+  };
 
   const handleGenerate = () => {
     const { privateKey } = generateKeyPair();

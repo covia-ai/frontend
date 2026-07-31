@@ -88,6 +88,22 @@ describe('KeysPanel', () => {
     expect(useAuthStore.getState().accountsMap[VENUE]).toHaveLength(1);
   });
 
+  it('counts orphaned sign-ins instead of listing dead venue DIDs under a key', () => {
+    const GONE = 'did:key:z6MkDeadVenueIdentityXXXXXXXXXXXXXXXXXXXXXXX';
+    act(() => {
+      useAuthStore.getState().addDeviceKey(KEY_A);
+      // Signed in on a live venue and on a venue that no longer exists.
+      useAuthStore.getState().loginWithKeypair(VENUE, KEY_A, 'did:me');
+      useAuthStore.getState().loginWithKeypair(GONE, KEY_A, 'did:me');
+    });
+    render(<KeysPanel />);
+
+    const entry = screen.getByTestId('key-entry');
+    expect(entry.textContent).toContain('Venue');
+    // The dead venue's DID must not appear — it reads like an account key.
+    expect(entry.textContent).not.toContain(GONE);
+  });
+
   it('removes a key and promotes the remaining one to default', async () => {
     act(() => {
       useAuthStore.getState().addDeviceKey(KEY_A);

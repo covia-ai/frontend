@@ -7,6 +7,7 @@ import {
   reconcileVenues,
   useVenues,
 } from "@/hooks/use-venues";
+import { useAuthStore } from "@/hooks/use-auth";
 import { evictVenueInstances } from "@/hooks/use-authenticated-venue";
 
 export function VenueRuntimeProvider({
@@ -42,6 +43,9 @@ export function VenueRuntimeProvider({
 
       for (const replacement of replacements) {
         evictVenueInstances(replacement.oldId);
+        // Credentials for the dead identity can never be valid again — drop
+        // them so they don't linger as orphans on the profile's Logins tab.
+        useAuthStore.getState().purgeVenueAuth(replacement.oldId);
         notifyWarning(`Venue at ${replacement.baseUrl} has a new identity`, {
           description:
             `${replacement.name ?? "The venue"} restarted with a fresh DID. ` +
