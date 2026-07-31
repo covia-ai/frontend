@@ -1,4 +1,4 @@
-import { LocationEdit, Database, PlayCircle, LucideIcon, Home, FolderOpen, User, BookKey, LibraryBig, BotIcon, KeyRound, Inbox }from "lucide-react";
+import { LocationEdit, Database, PlayCircle, LucideIcon, Home, FolderOpen, User, BookKey, LibraryBig, BotIcon, KeyRound, Inbox, FlaskConical }from "lucide-react";
 
 type Submenu = {
   href: string;
@@ -95,10 +95,20 @@ export function   getMenuList(): Group[] {
             label: "Secrets",
             icon: KeyRound
           },
+        ]
+      },
+      {
+        groupLabel: "Learn",
+        menus: [
           {
             href: "/learning",
             label: "Resources",
             icon: LibraryBig
+          },
+          {
+            href: "/demos",
+            label: "Demos",
+            icon: FlaskConical
           },
         ]
       },
@@ -171,10 +181,20 @@ export function   getMenuList(): Group[] {
             label: "Secrets",
             icon: KeyRound
           },
+        ]
+      },
+      {
+        groupLabel: "Learn",
+        menus: [
           {
             href: "/learning",
             label: "Resources",
             icon: LibraryBig
+          },
+          {
+            href: "/demos",
+            label: "Demos",
+            icon: FlaskConical
           },
         ]
       },
