@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { useVenues } from "@/hooks/use-venues";
+import { browserStorage } from "@/lib/persist-storage";
 
 export type BearerVenueAuth = {
   type: "bearer";
@@ -175,7 +176,7 @@ export const useAuthStore = create(
     }),
     {
       name: "venue-auth",
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(browserStorage),
       merge: (persisted, current) => {
         const old = persisted as {
           authMap?: Record<string, VenueAuth>;

@@ -5,6 +5,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { Venue } from "@covia/covia-sdk";
 import type { Auth } from "@covia/covia-sdk";
 import { reportVenueHealth } from "@/hooks/use-venue-health";
+import { browserStorage } from "@/lib/persist-storage";
 
 export type VenueDescriptor = {
   venueId: string;
@@ -112,7 +113,7 @@ export function connectDefaultVenues(): Promise<Venue[]> {
 
 function legacySelectedVenueId(): string | null {
   try {
-    const raw = localStorage.getItem("current-venue");
+    const raw = browserStorage().getItem("current-venue");
     const parsed = raw ? JSON.parse(raw) : null;
     return parsed?.state?.currentVenue?.venueId ?? null;
   } catch {
@@ -158,7 +159,7 @@ export const useVenues = create(
     }),
     {
       name: "venues",
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(browserStorage),
       merge: (persisted, current) => {
         const saved = persisted as Partial<VenuesStore>;
         const venues = (saved.venues ?? [])
