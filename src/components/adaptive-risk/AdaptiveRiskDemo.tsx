@@ -237,8 +237,10 @@ function HonestyPanel() {
           scorecards.
         </li>
         <li>
-          Beat 4&apos;s approval mints a real venue-signed grant with a real
-          expiry, and you can verify it here. It confers write access to the
+          Beat 4&apos;s approval produces a real capability grant with a real
+          expiry, signed by you with your own device key — this venue cannot
+          root-sign a grant over a self-sovereign holder&apos;s namespace, and
+          says so. You can verify it here. It confers write access to the
           reviewed-limit record — it does not silently widen the credit
           agent&apos;s authority, and the gate&apos;s device-flag condition keeps
           applying whatever the limit says. Applying a reviewed limit to the

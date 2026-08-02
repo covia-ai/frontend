@@ -240,8 +240,6 @@ export async function runBeat4(
     ? monitorFinding(analysis.output)
     : (analysis.metadata?.error ?? "(the monitor's analysis did not complete)");
   const paths = riskPaths(addresses.root);
-  const exp = Math.floor(Date.now() / 1000) + GRANT_LIFETIME_DAYS * 24 * 3600;
-
   const hitlOp = await resolveOperationByAddress(venue, HITL_REQUEST_OP);
   // No `wait` — this job PARKS in INPUT_REQUIRED until a human answers, which
   // may be minutes or days away.
@@ -254,14 +252,26 @@ export async function runBeat4(
       `limit gate continues to apply regardless of the limit.\n\n` +
       `_Raised by the Adaptive Risk demo page carrying the monitor's finding: ` +
       `agents cannot raise HITL asks on this venue build (covia-ai/covia#316)._`,
+    // A `token` ask (COG-19), not an approval-with-grants (COG-17. The venue
+    // can only mint a root grant over resources IT controls; a device-key
+    // signer is self-sovereign, so w/risk/... under their DID is theirs, and
+    // the venue refuses to root-sign it — verbatim: "Cannot issue a
+    // venue-signed root grant … the resource is not controlled by this venue.
+    // Self-sovereign DID owners must sign the UCAN with their own key". So the
+    // human signs it with their own device key; the venue only transports and
+    // verifies it. Stronger, not weaker: the venue never holds the authority.
     asks: [
       {
         id: "raise",
-        type: "approval",
-        prompt: "Approve the temporary limit raise to S$800?",
+        type: "token",
+        prompt:
+          `Approve a temporary raise of the reviewed limit to S$800 for ` +
+          `${GRANT_LIFETIME_DAYS} days by signing a grant with your own key.`,
         required: true,
-        comment: true,
-        grants: [{ with: `${paths.limitReview}/`, can: "crud/write", exp }],
+        token: {
+          caps: [{ with: `${paths.limitReview}/`, can: "crud/write" }],
+          exp: GRANT_LIFETIME_DAYS * 24 * 3600,
+        },
       },
     ],
   });

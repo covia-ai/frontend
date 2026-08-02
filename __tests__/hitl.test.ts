@@ -157,3 +157,31 @@ describe('respondToHitl', () => {
     expect(runMock.mock.calls[0][0]).not.toHaveProperty('grants');
   });
 });
+
+describe('respondToHitl error surfacing', () => {
+  it("surfaces the venue's reason, not just the job id", async () => {
+    const reason =
+      'echoed grant 0 was not offered by the choices made — the venue issues only offered-and-triggered grants';
+    const { venue } = venueWithInbox({});
+    venue.workspace.read = jest.fn().mockResolvedValue({
+      exists: true, value: { operation: { adapter: 'hitl:respond' } },
+    });
+    runMock.mockRejectedValueOnce(
+      Object.assign(new Error('Job 0xabc FAILED'), { jobData: { error: reason } }),
+    );
+    await expect(
+      respondToHitl(venue, { id: 'r1', outcome: 'answer' }),
+    ).rejects.toThrow(reason);
+  });
+
+  it('rethrows untouched when the venue gave no reason', async () => {
+    const { venue } = venueWithInbox({});
+    venue.workspace.read = jest.fn().mockResolvedValue({
+      exists: true, value: { operation: { adapter: 'hitl:respond' } },
+    });
+    runMock.mockRejectedValueOnce(new Error('Failed to fetch'));
+    await expect(
+      respondToHitl(venue, { id: 'r1', outcome: 'answer' }),
+    ).rejects.toThrow('Failed to fetch');
+  });
+});

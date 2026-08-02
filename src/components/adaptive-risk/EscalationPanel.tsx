@@ -156,9 +156,9 @@ export function EscalationPanel({
         )}
       </div>
       <p className="text-xs text-muted-foreground">
-        Approve as the risk officer: tick the approval, echo the offered grant,
-        and type a rationale. Then come back and refresh above — the parked job
-        resumes on its own.
+        Approve as the risk officer: review the requested capability, sign it
+        with your own device key, and add a rationale. Then come back and
+        refresh above — the parked job resumes on its own.
       </p>
 
       {grant && (
@@ -168,13 +168,15 @@ export function EscalationPanel({
         >
           <p className="text-sm font-medium flex items-center gap-2">
             <ShieldCheck className="size-4 text-primary" aria-hidden="true" />
-            Venue-signed grant
+            Self-signed grant
             <Badge variant={grant.valid ? "default" : "destructive"}>
               {grant.valid ? "verified" : (grant.reason ?? "invalid")}
             </Badge>
           </p>
           <p className="text-xs text-muted-foreground">
-            Checked with the venue&apos;s own <span className="font-mono">ucan:verify</span>
+            You signed this with your own device key — the venue transports and
+            verifies it but never holds the authority. Checked with the
+            venue&apos;s own <span className="font-mono">ucan:verify</span>
             {grant.issuer ? <> · issued by <span className="font-mono break-all">{grant.issuer}</span></> : null}
           </p>
           {grant.expiresAt && (
