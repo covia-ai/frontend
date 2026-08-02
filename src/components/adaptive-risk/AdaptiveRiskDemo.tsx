@@ -4,6 +4,7 @@ import { Landmark, ShieldAlert } from "lucide-react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { ADAPTIVE_RISK_BEATS } from "./story";
+import { SetupPanel } from "./SetupPanel";
 
 // Adaptive Risk: a guided walkthrough over real venue calls. Fictional issuer
 // Meridian Bank Singapore, thin-file starter card, base limit S$500, twelve
@@ -31,15 +32,7 @@ export function AdaptiveRiskDemo() {
         </p>
       )}
 
-      <section aria-label="Set up this demo" data-testid="ar-setup">
-        <h3 className="text-base font-semibold mb-1">Set up this demo</h3>
-        <p className="text-sm text-muted-foreground">
-          The seeding panel lands in the next slice: it will show every
-          operation, agent and fixture address in an editable form before
-          registering anything, report exactly what it created, and offer a
-          teardown.
-        </p>
-      </section>
+      <SetupPanel venue={venue} isAuthenticated={isAuthenticated} />
 
       <section aria-label="Beats" className="flex flex-col gap-3">
         <ol className="flex flex-col gap-3">
