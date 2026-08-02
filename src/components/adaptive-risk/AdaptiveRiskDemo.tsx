@@ -1,10 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { Landmark, ShieldAlert } from "lucide-react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useIsAuthenticated } from "@/hooks/use-auth";
+import { useAdaptiveRiskConfig } from "@/hooks/use-adaptive-risk-config";
 import { ADAPTIVE_RISK_BEATS } from "./story";
 import { SetupPanel } from "./SetupPanel";
+import { BeatCard } from "./BeatCard";
+import { LedgerPanel } from "./LedgerPanel";
+import { runBeat1 } from "./beats";
 
 // Adaptive Risk: a guided walkthrough over real venue calls. Fictional issuer
 // Meridian Bank Singapore, thin-file starter card, base limit S$500, twelve
@@ -14,6 +19,15 @@ import { SetupPanel } from "./SetupPanel";
 export function AdaptiveRiskDemo() {
   const venue = useAuthenticatedVenue();
   const isAuthenticated = useIsAuthenticated();
+  const { addresses, reports } = useAdaptiveRiskConfig();
+  const [ledgerRefresh, setLedgerRefresh] = useState(0);
+
+  const seeded = !!venue && !!reports[venue.venueId];
+  const beatHint = !venue
+    ? "Select a venue first."
+    : !isAuthenticated
+      ? "Sign in first."
+      : "Run setup above first — the beats need the seeded agents and fixtures.";
 
   return (
     <div className="flex flex-col gap-6 max-w-3xl">
@@ -37,18 +51,27 @@ export function AdaptiveRiskDemo() {
       <section aria-label="Beats" className="flex flex-col gap-3">
         <ol className="flex flex-col gap-3">
           {ADAPTIVE_RISK_BEATS.map((beat) => (
-            <li
+            <BeatCard
               key={beat.id}
-              data-testid={`ar-beat-${beat.id}`}
-              className="rounded-lg border p-4"
+              beat={beat}
+              venue={venue}
+              enabled={seeded}
+              disabledHint={beatHint}
+              run={beat.id === "silos" ? (v) => runBeat1(v, addresses) : undefined}
+              onSettled={
+                beat.id === "silos"
+                  ? () => setLedgerRefresh((token) => token + 1)
+                  : undefined
+              }
             >
-              <p className="text-sm font-medium">{beat.title}</p>
-              <p className="text-sm text-muted-foreground mt-1">{beat.narration}</p>
-              <p className="text-xs text-muted-foreground mt-2">
-                <span className="font-medium text-foreground">Watch:</span>{" "}
-                {beat.watch}
-              </p>
-            </li>
+              {beat.id === "silos" && (
+                <LedgerPanel
+                  venue={venue}
+                  addresses={addresses}
+                  refreshToken={ledgerRefresh}
+                />
+              )}
+            </BeatCard>
           ))}
         </ol>
       </section>
