@@ -45,8 +45,11 @@ export function generateIdenticonGrid(input: Uint8Array, size = IDENTICON_GRID_S
   return grid;
 }
 
-/** Only did:key identities are self-sovereign keys we render an identicon for. */
-export function isDidKey(did: string | null | undefined): did is string {
+/** Only did:key identities are self-sovereign keys we render an identicon for.
+ *  Deliberately not a type predicate: the prefix is a property of the value,
+ *  not of the type, so `did is string` would narrow an already-string argument
+ *  to `never` on the false branch and silently kill the code after it. */
+export function isDidKey(did: string | null | undefined): boolean {
   return typeof did === "string" && did.startsWith("did:key:");
 }
 
@@ -59,7 +62,7 @@ function multikeyOf(did: string): string {
 
 /** Identicon grid for a did:key, or null for any other identity or a bad key. */
 export function identiconGridForDid(did: string | null | undefined, size = IDENTICON_GRID_SIZE): number[] | null {
-  if (!isDidKey(did)) return null;
+  if (typeof did !== "string" || !isDidKey(did)) return null;
   try {
     return generateIdenticonGrid(decodePublicKey(multikeyOf(did)), size);
   } catch {
