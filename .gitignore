@@ -43,3 +43,10 @@ next-env.d.ts
 .vercel
 .project
 /.settings/
+
+# Internal planning/decision records — must never reach this PUBLIC repo.
+# Candid rationale (venue gaps, trade-offs, what was rejected and why) is
+# invaluable internally and dangerous once exposed. Canonical home for this
+# material is the private covia-demos-program/planning/<slug>/.
+DECISIONS.md
+**/DECISIONS.md

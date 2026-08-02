@@ -9,7 +9,9 @@ import { ADAPTIVE_RISK_BEATS } from "./story";
 import { SetupPanel } from "./SetupPanel";
 import { BeatCard } from "./BeatCard";
 import { LedgerPanel } from "./LedgerPanel";
-import { runBeat1 } from "./beats";
+import { DecisionsPanel } from "./DecisionsPanel";
+import { runBeat1, runAssessorBeat } from "./beats";
+import { APPLICANTS, STARTER_CARD_LIMIT } from "./fixtures";
 
 // Adaptive Risk: a guided walkthrough over real venue calls. Fictional issuer
 // Meridian Bank Singapore, thin-file starter card, base limit S$500, twelve
@@ -21,6 +23,15 @@ export function AdaptiveRiskDemo() {
   const isAuthenticated = useIsAuthenticated();
   const { addresses, reports } = useAdaptiveRiskConfig();
   const [ledgerRefresh, setLedgerRefresh] = useState(0);
+  const [decisionsRefresh, setDecisionsRefresh] = useState(0);
+
+  // Beat 2's clean applicant: asks for exactly the base limit on a device
+  // nobody else shares, so the gate has nothing to object to.
+  const clean = APPLICANTS.find(
+    (a) =>
+      a.requestedAmount <= STARTER_CARD_LIMIT &&
+      APPLICANTS.filter((other) => other.device === a.device).length === 1,
+  )!;
 
   const seeded = !!venue && !!reports[venue.venueId];
   const beatHint = !venue
@@ -57,11 +68,26 @@ export function AdaptiveRiskDemo() {
               venue={venue}
               enabled={seeded}
               disabledHint={beatHint}
-              run={beat.id === "silos" ? (v) => runBeat1(v, addresses) : undefined}
+              run={
+                beat.id === "silos"
+                  ? (v) => runBeat1(v, addresses)
+                  : beat.id === "clean-approval"
+                    ? (v) =>
+                        runAssessorBeat(
+                          v,
+                          addresses,
+                          clean.id,
+                          clean.requestedAmount,
+                          clean.device,
+                        )
+                    : undefined
+              }
               onSettled={
                 beat.id === "silos"
                   ? () => setLedgerRefresh((token) => token + 1)
-                  : undefined
+                  : beat.id === "clean-approval"
+                    ? () => setDecisionsRefresh((token) => token + 1)
+                    : undefined
               }
             >
               {beat.id === "silos" && (
@@ -69,6 +95,13 @@ export function AdaptiveRiskDemo() {
                   venue={venue}
                   addresses={addresses}
                   refreshToken={ledgerRefresh}
+                />
+              )}
+              {beat.id === "clean-approval" && (
+                <DecisionsPanel
+                  venue={venue}
+                  addresses={addresses}
+                  refreshToken={decisionsRefresh}
                 />
               )}
             </BeatCard>
