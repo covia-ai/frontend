@@ -14,6 +14,7 @@ import {
   readLedger,
   readDecisions,
   findOpenAsk,
+  extractGrantToken,
   AGENT_REQUEST_OP,
 } from '@/components/adaptive-risk/beats';
 import { BeatCard } from '@/components/adaptive-risk/BeatCard';
@@ -286,5 +287,27 @@ describe('findOpenAsk (beat 4)', () => {
       },
     } as never;
     expect(await findOpenAsk(venue)).toBeNull();
+  });
+});
+
+describe('extractGrantToken (beat 4)', () => {
+  const jwt =
+    'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkaWQ6a2V5OnoxMjMiLCJleHAiOjk5OTk5fQ.c2lnbmF0dXJlLWJ5dGVzLWhlcmU';
+
+  it('finds a self-signed COG-19 token under tokens keyed by ask id', () => {
+    expect(
+      extractGrantToken({ outcome: 'answer', id: 'r1', tokens: { raise: jwt } }),
+    ).toBe(jwt);
+  });
+
+  it('finds a venue-minted COG-17 grant on token', () => {
+    expect(extractGrantToken({ outcome: 'answer', token: jwt })).toBe(jwt);
+  });
+
+  it('does not mistake ordinary strings for a token', () => {
+    expect(
+      extractGrantToken({ outcome: 'answer', comment: 'approved for 7 days', id: 'r1' }),
+    ).toBeNull();
+    expect(extractGrantToken(null)).toBeNull();
   });
 });

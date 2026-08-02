@@ -328,15 +328,22 @@ export async function verifyGrantToken(
   };
 }
 
-/** The UCAN the venue minted when the human approved, if the job carried one. */
+// A JWT by shape, not by key name. The venue delivers a capability token two
+// different ways: a venue-minted COG-17 grant lands on `token`, while a
+// self-signed COG-19 transported token rides `tokens` keyed by ask id
+// (HITLAdapter.resolveAnswer). Matching the shape covers both, and anything
+// else the envelope grows later.
+const JWT_SHAPE = /^[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}$/;
+
 export function extractGrantToken(output: unknown): string | null {
   const seen = new Set<unknown>();
   const walk = (value: unknown, depth: number): string | null => {
     if (depth > 6 || value == null || seen.has(value)) return null;
+    if (typeof value === "string") {
+      return JWT_SHAPE.test(value) ? value : null;
+    }
     if (typeof value === "object") {
       seen.add(value);
-      const token = (value as { token?: unknown }).token;
-      if (typeof token === "string" && token.split(".").length === 3) return token;
       for (const nested of Object.values(value as Record<string, unknown>)) {
         const hit = walk(nested, depth + 1);
         if (hit) return hit;

@@ -193,6 +193,20 @@ export function EscalationPanel({
         </div>
       )}
 
+      {job?.status === "COMPLETE" && job.output != null && (
+        <details className="text-xs">
+          <summary className="cursor-pointer text-muted-foreground">
+            What the resumed job returned
+          </summary>
+          <pre
+            data-testid="ar-resumed-output"
+            className="mt-1 whitespace-pre-wrap break-all bg-muted rounded p-2 max-h-56 overflow-y-auto"
+          >
+            {JSON.stringify(job.output, null, 2)}
+          </pre>
+        </details>
+      )}
+
       {job?.status === "COMPLETE" && !grant && (
         <p className="text-xs text-muted-foreground" data-testid="ar-grant-none">
           The job resumed, but carried no capability token — the approval was
