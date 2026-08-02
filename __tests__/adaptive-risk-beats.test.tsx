@@ -16,6 +16,7 @@ import {
   AGENT_REQUEST_OP,
 } from '@/components/adaptive-risk/beats';
 import { BeatCard } from '@/components/adaptive-risk/BeatCard';
+import { RefusalPanel, extractDenial } from '@/components/adaptive-risk/RefusalPanel';
 import { DEFAULT_ADDRESSES } from '@/components/adaptive-risk/fixtures';
 import { ADAPTIVE_RISK_BEATS } from '@/components/adaptive-risk/story';
 
@@ -203,5 +204,59 @@ describe('BeatCard', () => {
     await waitFor(() =>
       expect(screen.getByTestId('ar-error-silos')).toHaveTextContent(denial),
     );
+  });
+});
+
+describe('extractDenial (beat 3)', () => {
+  it("finds the venue's denial nested in an agent task envelope", () => {
+    const denial =
+      'Error: covia.exception.JobFailedException: Capability denied by gate: gate w/ops/risk/limit-gate: ... output schema violation: $.result.amount: value 2500.0 above maximum 500.0.';
+    const state = {
+      jobId: 'j1',
+      status: 'COMPLETE',
+      error: null,
+      output: { output: { error: denial, status: 'failed' }, status: 'COMPLETE' },
+    };
+    expect(extractDenial(state)).toBe(denial);
+  });
+
+  it('finds a denial on the job error when the invoke was denied directly', () => {
+    const denial = 'Capability denied by gate: gate w/ops/risk/limit-gate: nope';
+    expect(
+      extractDenial({ jobId: 'j', status: 'FAILED', error: denial, output: null }),
+    ).toBe(denial);
+  });
+
+  it('returns null rather than claiming a refusal that did not happen', () => {
+    expect(
+      extractDenial({
+        jobId: 'j',
+        status: 'COMPLETE',
+        error: null,
+        output: { output: { decision: { amount: 500 } } },
+      }),
+    ).toBeNull();
+    expect(extractDenial(null)).toBeNull();
+  });
+});
+
+describe('RefusalPanel', () => {
+  it('renders the denial verbatim and names the two-level outcome', () => {
+    const denial = 'Capability denied by gate: gate w/ops/risk/limit-gate: refused';
+    render(
+      <RefusalPanel
+        state={{ jobId: 'j', status: 'COMPLETE', error: null, output: { output: { error: denial } } }}
+      />,
+    );
+    expect(screen.getByTestId('ar-refusal-denial')).toHaveTextContent(denial);
+    expect(screen.getByTestId('ar-refusal')).toHaveTextContent(/not permitted/i);
+    expect(screen.getByTestId('ar-refusal')).toHaveTextContent(/reads COMPLETE/i);
+  });
+
+  it('says plainly when the gate did not refuse', () => {
+    render(
+      <RefusalPanel state={{ jobId: 'j', status: 'COMPLETE', error: null, output: { ok: true } }} />,
+    );
+    expect(screen.getByTestId('ar-refusal-none')).toHaveTextContent(/did not refuse/i);
   });
 });

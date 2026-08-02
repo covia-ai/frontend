@@ -10,6 +10,9 @@ import { SetupPanel } from "./SetupPanel";
 import { BeatCard } from "./BeatCard";
 import { LedgerPanel } from "./LedgerPanel";
 import { DecisionsPanel } from "./DecisionsPanel";
+import { PolicyLinks } from "./PolicyLinks";
+import { RefusalPanel } from "./RefusalPanel";
+import type { BeatJobState } from "./BeatCard";
 import { runBeat1, runAssessorBeat } from "./beats";
 import { APPLICANTS, STARTER_CARD_LIMIT } from "./fixtures";
 
@@ -24,6 +27,7 @@ export function AdaptiveRiskDemo() {
   const { addresses, reports } = useAdaptiveRiskConfig();
   const [ledgerRefresh, setLedgerRefresh] = useState(0);
   const [decisionsRefresh, setDecisionsRefresh] = useState(0);
+  const [refusalState, setRefusalState] = useState<BeatJobState | null>(null);
 
   // Beat 2's clean applicant: asks for exactly the base limit on a device
   // nobody else shares, so the gate has nothing to object to.
@@ -31,6 +35,14 @@ export function AdaptiveRiskDemo() {
     (a) =>
       a.requestedAmount <= STARTER_CARD_LIMIT &&
       APPLICANTS.filter((other) => other.device === a.device).length === 1,
+  )!;
+
+  // Beat 3's planted case: over the base limit AND sharing a device with
+  // another application, so the gate has two independent reasons to refuse.
+  const planted = APPLICANTS.find(
+    (a) =>
+      a.requestedAmount > STARTER_CARD_LIMIT &&
+      APPLICANTS.filter((other) => other.device === a.device).length > 1,
   )!;
 
   const seeded = !!venue && !!reports[venue.venueId];
@@ -80,14 +92,32 @@ export function AdaptiveRiskDemo() {
                           clean.requestedAmount,
                           clean.device,
                         )
-                    : undefined
+                    : beat.id === "refusal"
+                      ? (v) => {
+                          // Drop the previous verdict before re-running, so a
+                          // stale refusal never sits next to a live job.
+                          setRefusalState(null);
+                          return runAssessorBeat(
+                            v,
+                            addresses,
+                            planted.id,
+                            planted.requestedAmount,
+                            planted.device,
+                          );
+                        }
+                      : undefined
               }
               onSettled={
                 beat.id === "silos"
                   ? () => setLedgerRefresh((token) => token + 1)
                   : beat.id === "clean-approval"
                     ? () => setDecisionsRefresh((token) => token + 1)
-                    : undefined
+                    : beat.id === "refusal"
+                      ? (state) => {
+                          setRefusalState(state);
+                          setDecisionsRefresh((token) => token + 1);
+                        }
+                      : undefined
               }
             >
               {beat.id === "silos" && (
@@ -103,6 +133,18 @@ export function AdaptiveRiskDemo() {
                   addresses={addresses}
                   refreshToken={decisionsRefresh}
                 />
+              )}
+              {beat.id === "refusal" && (
+                <>
+                  <RefusalPanel state={refusalState} />
+                  <PolicyLinks venue={venue} addresses={addresses} />
+                  <DecisionsPanel
+                    venue={venue}
+                    addresses={addresses}
+                    refreshToken={decisionsRefresh}
+                    absenceOf={planted.id}
+                  />
+                </>
               )}
             </BeatCard>
           ))}
