@@ -87,13 +87,13 @@ export function SmartBreadcrumb({
 
   // Check if a segment represents an asset (not a known route)
   const isAssetOrJobSegment = (segment: string): boolean => {
-    const knownRoutes = ['demo', 'publicartificats','venues', 'assets', 'operations', 'jobs', 'learning', 'workspace', 'myvenues', 'myassets', 'signup', 'privacypolicy'];
+    const knownRoutes = ['demo', 'demos', 'sdk-job-lifecycle', 'adaptive-risk', 'publicartificats','venues', 'assets', 'operations', 'jobs', 'learning', 'workspace', 'myvenues', 'myassets', 'signup', 'privacypolicy'];
     return !knownRoutes.includes(segment) && !segment.startsWith('[') && !segment.endsWith(']');
   };
 
   // Check if a segment represents an venue (not a known route)
   const isVenueSegment = (segment: string, prevSegment: string): boolean => {
-    const knownRoutes = ['demo', 'publicartificats','venues', 'assets', 'operations', 'jobs', 'learning', 'workspace', 'myvenues', 'myassets', 'signup', 'privacypolicy'];
+    const knownRoutes = ['demo', 'demos', 'sdk-job-lifecycle', 'adaptive-risk', 'publicartificats','venues', 'assets', 'operations', 'jobs', 'learning', 'workspace', 'myvenues', 'myassets', 'signup', 'privacypolicy'];
     const isPrevSegmentVenues = prevSegment == "venues" ? true : false;
     return !knownRoutes.includes(segment) && !segment.startsWith('[') && !segment.endsWith(']') && isPrevSegmentVenues;
   };
@@ -102,6 +102,9 @@ export function SmartBreadcrumb({
   const getCustomLabel = (segment: string, _path: string): string | null => {
     const labelMap: Record<string, string> = {
       'demo': 'Demo',
+      'demos': 'Demos',
+      'sdk-job-lifecycle': 'TypeScript SDK',
+      'adaptive-risk': 'Adaptive Risk',
       'venues': 'Venues',
       'assets': 'Assets',
       'publicartifacts': 'Public Artifacts',
