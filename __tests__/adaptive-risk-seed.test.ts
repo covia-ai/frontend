@@ -20,6 +20,11 @@ function stubVenue(overrides: {
   failWriteWith?: Error;
 } = {}) {
   const existingPaths = overrides.existingPaths ?? new Set<string>();
+  // The venue ships the HITL skill; seeding shadows it into w/skills so a
+  // capped agent can load it.
+  const venueValues: Record<string, unknown> = {
+    'v/skills/hitl': { name: 'hitl', skill: { tools: ['v/ops/hitl/request'] } },
+  };
   const existingAgents = overrides.existingAgents ?? new Set<string>();
   const writes: Array<{ path: string; value: unknown }> = [];
   const deletes: string[] = [];
@@ -28,7 +33,11 @@ function stubVenue(overrides: {
     venueId: 'did:key:zTestVenue',
     baseUrl: 'http://venue.test',
     workspace: {
-      read: jest.fn(async (path: string) => ({ exists: existingPaths.has(path) })),
+      read: jest.fn(async (path: string) =>
+        path in venueValues
+          ? { exists: true, value: venueValues[path] }
+          : { exists: existingPaths.has(path) },
+      ),
       write: jest.fn(async (path: string, value: unknown) => {
         if (overrides.failWriteWith) throw overrides.failWriteWith;
         writes.push({ path, value });
@@ -111,8 +120,9 @@ describe('seedAdaptiveRisk', () => {
     const outcome = await seedAdaptiveRisk(venue, DEFAULT_ADDRESSES);
     expect(outcome.ok).toBe(true);
     expect(outcome.policyRef).toBe('abc123policyhash');
-    // policy + 2 ops + 12 applications + 2 windows + pointer + 3 agents
-    expect(outcome.report.items).toHaveLength(21);
+    // policy + 2 ops + 12 applications + 2 windows + pointer
+    // + shadowed hitl skill + 3 agents
+    expect(outcome.report.items).toHaveLength(22);
     expect(outcome.report.items.every((i) => i.status === 'created')).toBe(true);
     expect(created).toEqual(['rk-sentinel', 'rk-assessor', 'rk-monitor']);
   });
@@ -150,6 +160,25 @@ describe('seedAdaptiveRisk', () => {
     expect(failed.error).toBe(denial);
     // Nothing after the failed item ran.
     expect(outcome.report.items.filter((i) => i.kind === 'agent')).toHaveLength(0);
+  });
+});
+
+describe('HITL skill shadowing', () => {
+  it("copies the venue's hitl skill into the caller's own namespace", async () => {
+    const { venue, writes } = stubVenue();
+    await seedAdaptiveRisk(venue, DEFAULT_ADDRESSES);
+    const shadow = writes.find((w) => w.path === 'w/skills/hitl');
+    expect(shadow).toBeDefined();
+    expect(shadow!.value).toMatchObject({ name: 'hitl' });
+  });
+
+  it('fails honestly when the venue ships no hitl skill', async () => {
+    const { venue } = stubVenue();
+    const stub = venue as unknown as { workspace: { read: jest.Mock } };
+    stub.workspace.read.mockImplementation(async () => ({ exists: false }));
+    const outcome = await seedAdaptiveRisk(venue, DEFAULT_ADDRESSES);
+    expect(outcome.ok).toBe(false);
+    expect(outcome.report.items.at(-1)!.error).toMatch(/No HITL skill at v\/skills\/hitl/);
   });
 });
 

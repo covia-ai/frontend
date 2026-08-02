@@ -22,6 +22,9 @@ import {
 // Errors are reported with the venue's own message, verbatim — never
 // paraphrased, never silently recovered from.
 
+export const VENUE_HITL_SKILL = "v/skills/hitl";
+export const SHADOW_SKILLS_PATH = "w/skills";
+
 export type SeedProgress = (item: SeedItemResult) => void;
 
 export type SeedOutcome = {
@@ -142,6 +145,31 @@ export async function seedAdaptiveRisk(
     } catch (err) {
       return fail(item, err);
     }
+  }
+
+  // 3b. Shadow the venue HITL skill into the caller's own namespace.
+  // hitl:request is Job-carried and reachable only through the `hitl` skill,
+  // but loading a skill pins crud/read on its source, and a caps-pinned
+  // agent's bare paths canonicalise against its OWNER's DID — so the
+  // venue-global v/skills is out of reach for a scoped grant. A user's own
+  // w/skills/<name> shadows the venue skill (SkillsAdapter), which keeps the
+  // monitor properly capped instead of unrestricted.
+  const skillItem = {
+    kind: "value" as const,
+    label: "HITL skill (shadowed into your namespace)",
+    address: `${SHADOW_SKILLS_PATH}/hitl`,
+  };
+  try {
+    if (await pathExists(venue, skillItem.address)) {
+      push({ ...skillItem, status: "existing" });
+    } else {
+      const source = await venue.workspace.read(VENUE_HITL_SKILL);
+      if (!source.exists) throw new Error(`No HITL skill at ${VENUE_HITL_SKILL} on this venue`);
+      await venue.workspace.write(skillItem.address, source.value);
+      push({ ...skillItem, status: "created" });
+    }
+  } catch (err) {
+    return fail(skillItem, err);
   }
 
   // 4. The three agents. agent:create without overwrite is a no-op on an

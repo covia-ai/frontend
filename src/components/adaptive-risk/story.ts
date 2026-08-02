@@ -38,8 +38,8 @@ export const ADAPTIVE_RISK_BEATS: AdaptiveRiskBeat[] = [
     id: "drift",
     title: "4 · Drift becomes a governed event",
     narration:
-      "Week two: device-reuse velocity across the cohort has tripled. rk-monitor raises a real HITL ask proposing a temporary S$800 authority, and its job parks until the risk officer decides in the Inbox. An agent cannot answer it — the runtime refuses on identity, not on scope.",
-    watch: "The ask is answered in the real Inbox; approval mints a venue-signed, expiring grant and the parked job completes.",
+      "Week two: device-reuse velocity across the cohort has tripled. rk-monitor raises a real HITL ask proposing a temporary raise of the reviewed limit to S$800 for 7 days, and its job parks until the risk officer decides in the Inbox. An agent cannot answer it — the runtime refuses on identity, not on scope, because approving an ask issues a capability grant.",
+    watch: "The ask is answered in the real Inbox; approval mints a venue-signed grant with a real expiry, verified here by the venue's own ucan:verify, and the parked job resumes.",
   },
   {
     id: "reconstruction",

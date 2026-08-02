@@ -13,6 +13,7 @@ import {
   runAssessorBeat,
   readLedger,
   readDecisions,
+  findOpenAsk,
   AGENT_REQUEST_OP,
 } from '@/components/adaptive-risk/beats';
 import { BeatCard } from '@/components/adaptive-risk/BeatCard';
@@ -258,5 +259,32 @@ describe('RefusalPanel', () => {
       <RefusalPanel state={{ jobId: 'j', status: 'COMPLETE', error: null, output: { ok: true } }} />,
     );
     expect(screen.getByTestId('ar-refusal-none')).toHaveTextContent(/did not refuse/i);
+  });
+});
+
+describe('findOpenAsk (beat 4)', () => {
+  it('prefers the newest open ask, so a stale one never captures the deep link', async () => {
+    const records: Record<string, unknown> = {
+      'h/001': { status: 'answered', title: 'Raise ... S$800 ...' },
+      'h/002': { status: 'open', title: 'Raise ... S$800 ...' },
+      'h/003': { status: 'open', title: 'Raise ... S$800 ...' },
+    };
+    const venue = {
+      workspace: {
+        list: jest.fn(async () => ({ exists: true, keys: ['001', '002', '003'] })),
+        read: jest.fn(async (path: string) => ({ exists: true, value: records[path] })),
+      },
+    } as never;
+    expect((await findOpenAsk(venue))?.id).toBe('003');
+  });
+
+  it('returns null when nothing is open rather than guessing', async () => {
+    const venue = {
+      workspace: {
+        list: jest.fn(async () => ({ exists: true, keys: ['001'] })),
+        read: jest.fn(async () => ({ exists: true, value: { status: 'answered', title: 'S$800' } })),
+      },
+    } as never;
+    expect(await findOpenAsk(venue)).toBeNull();
   });
 });

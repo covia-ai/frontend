@@ -89,6 +89,7 @@ export const riskPaths = (root: string) => ({
   decisions: `${root}/decisions`,
   windows: `${root}/windows`,
   window: `${root}/window`,
+  limitReview: `${root}/limit-review`,
 });
 
 // ---------------------------------------------------------------------------
@@ -282,19 +283,29 @@ export function agentConfigs(addresses: AdaptiveRiskAddresses) {
           "You are rk-monitor, the drift watch for Meridian Bank Singapore's starter card. Read the " +
           `current cohort window pointer at ${paths.window} and the window records under ${paths.windows}. ` +
           "Compare the current window's deviceReuseRate to the week-1 baseline. If it has at least doubled, " +
-          "raise a human-in-the-loop request with v/ops/hitl/request: title it clearly, describe the breach " +
-          "with both numbers, and ask for approval to raise rk-assessor's autonomous limit to S$800, " +
-          "conditional on a clean device signal. Do not change any policy yourself.",
-        tools: ["v/ops/covia/read", "v/ops/covia/list", "v/ops/hitl/request"],
+          "load the `hitl` skill and raise the escalation with the hitl_request tool it activates — " +
+          "hitl:request is Job-carried, so it is only reachable through the skill, never as a plain tool. " +
+          "Title the ask clearly, describe the breach with both real numbers, and attach the offered grant " +
+          "exactly as instructed in the task. Do not change any policy yourself.",
+        tools: ["v/ops/covia/read", "v/ops/covia/list"],
+        skills: ["w/skills"],
         defaultTools: false,
+        // Reads are broad enough to cover the demo's own data AND the venue
+        // skill library: hitl:request is Job-carried, reachable only via the
+        // `hitl` skill, and skill loading confers no authority of its own —
+        // a caps-pinned agent must be able to read v/skills and invoke the op
+        // (skills/hitl/SKILL.md §agent, point 5). The boundary that matters
+        // is unchanged: the monitor holds NO grant on issue-limit and no
+        // write to the decision ledger. It watches and escalates.
         caps: [
-          { with: `${paths.signals}/`, can: "crud/read" },
-          { with: `${paths.flags}/`, can: "crud/read" },
-          { with: `${paths.windows}/`, can: "crud/read" },
-          { with: addresses.root + "/window", can: "crud/read" },
+          { with: `${addresses.root}/`, can: "crud/read" },
+          { with: "w/skills/", can: "crud/read" },
+          { with: `${paths.limitReview}/`, can: "crud/write" },
           { with: "v/ops/covia/read", can: "invoke" },
           { with: "v/ops/covia/list", can: "invoke" },
           { with: "v/ops/hitl/request", can: "invoke" },
+          { with: "v/ops/hitl/list", can: "invoke" },
+          { with: "v/ops/grid/job-status", can: "invoke" },
         ],
       },
     },

@@ -12,8 +12,9 @@ import { LedgerPanel } from "./LedgerPanel";
 import { DecisionsPanel } from "./DecisionsPanel";
 import { PolicyLinks } from "./PolicyLinks";
 import { RefusalPanel } from "./RefusalPanel";
+import { EscalationPanel } from "./EscalationPanel";
 import type { BeatJobState } from "./BeatCard";
-import { runBeat1, runAssessorBeat } from "./beats";
+import { runBeat1, runAssessorBeat, runBeat4, swapToWeekTwo } from "./beats";
 import { APPLICANTS, STARTER_CARD_LIMIT } from "./fixtures";
 
 // Adaptive Risk: a guided walkthrough over real venue calls. Fictional issuer
@@ -24,10 +25,12 @@ import { APPLICANTS, STARTER_CARD_LIMIT } from "./fixtures";
 export function AdaptiveRiskDemo() {
   const venue = useAuthenticatedVenue();
   const isAuthenticated = useIsAuthenticated();
-  const { addresses, reports } = useAdaptiveRiskConfig();
+  const { addresses, reports, escalations, setEscalation } = useAdaptiveRiskConfig();
   const [ledgerRefresh, setLedgerRefresh] = useState(0);
   const [decisionsRefresh, setDecisionsRefresh] = useState(0);
   const [refusalState, setRefusalState] = useState<BeatJobState | null>(null);
+  const [driftState, setDriftState] = useState<BeatJobState | null>(null);
+  const [monitorAnalysis, setMonitorAnalysis] = useState<BeatJobState | null>(null);
 
   // Beat 2's clean applicant: asks for exactly the base limit on a device
   // nobody else shares, so the gate has nothing to object to.
@@ -105,7 +108,31 @@ export function AdaptiveRiskDemo() {
                             planted.device,
                           );
                         }
-                      : undefined
+                      : beat.id === "drift"
+                        ? async (v) => {
+                            setDriftState(null);
+                            setMonitorAnalysis(null);
+                            // The drift IS this fixture swap — labelled as
+                            // such on screen, not smuggled in as a metric.
+                            await swapToWeekTwo(v, addresses);
+                            const { analysis, ask } = await runBeat4(v, addresses);
+                            // Persist before returning: the viewer is about to
+                            // leave for the Inbox, and React state will not
+                            // survive that round trip.
+                            setEscalation(v.venueId, {
+                              analysisJobId: analysis.id,
+                              askJobId: ask.id,
+                            });
+                            setMonitorAnalysis({
+                              jobId: analysis.id,
+                              status: analysis.metadata?.status ?? null,
+                              error: analysis.metadata?.error ?? null,
+                              output: analysis.isComplete ? analysis.output : null,
+                            });
+                            // The card tracks the ASK — it is the job that parks.
+                            return ask;
+                          }
+                        : undefined
               }
               onSettled={
                 beat.id === "silos"
@@ -117,7 +144,9 @@ export function AdaptiveRiskDemo() {
                           setRefusalState(state);
                           setDecisionsRefresh((token) => token + 1);
                         }
-                      : undefined
+                      : beat.id === "drift"
+                        ? (state) => setDriftState(state)
+                        : undefined
               }
             >
               {beat.id === "silos" && (
@@ -132,6 +161,14 @@ export function AdaptiveRiskDemo() {
                   venue={venue}
                   addresses={addresses}
                   refreshToken={decisionsRefresh}
+                />
+              )}
+              {beat.id === "drift" && (
+                <EscalationPanel
+                  venue={venue}
+                  state={driftState}
+                  analysis={monitorAnalysis}
+                  escalation={venue ? escalations[venue.venueId] ?? null : null}
                 />
               )}
               {beat.id === "refusal" && (
@@ -198,6 +235,14 @@ function HonestyPanel() {
         <li>
           The agents are LLM components executing policy, not trained
           scorecards.
+        </li>
+        <li>
+          Beat 4&apos;s approval mints a real venue-signed grant with a real
+          expiry, and you can verify it here. It confers write access to the
+          reviewed-limit record — it does not silently widen the credit
+          agent&apos;s authority, and the gate&apos;s device-flag condition keeps
+          applying whatever the limit says. Applying a reviewed limit to the
+          live policy is an operator action, outside this demo.
         </li>
         <li>
           If your venue runs <code className="font-mono text-xs">auth.public.caps: &quot;unrestricted&quot;</code>{" "}

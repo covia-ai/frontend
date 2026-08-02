@@ -1,6 +1,6 @@
 import type { Job, Venue } from "@covia/covia-sdk";
 import { resolveOperationByAddress } from "@/lib/operations-catalog";
-import { AdaptiveRiskAddresses, riskPaths } from "./fixtures";
+import { AdaptiveRiskAddresses, STARTER_CARD_LIMIT, riskPaths } from "./fixtures";
 
 // Beat runners. Each beat is ONE real job on the venue: the agent:request
 // invocation, whose record adopts the task outcome (verified live — a failed
@@ -142,4 +142,197 @@ export async function readDecisions(
     })),
   );
   return { applicants, records };
+}
+
+// ---------------------------------------------------------------------------
+// Beat 4. The drift itself is a fixture swap — the venue has no drift metric
+// and the demo says so on screen. Everything after the swap is real: the
+// monitor's escalation, the parked job, the human's answer in the Inbox, the
+// venue-signed grant, and the resumption.
+
+export const GRANT_LIFETIME_DAYS = 7;
+
+/** Points the cohort-window pointer at week two. A real write, a real job. */
+export async function swapToWeekTwo(
+  venue: Venue,
+  addresses: AdaptiveRiskAddresses,
+): Promise<void> {
+  await venue.workspace.write(riskPaths(addresses.root).window, "week-2");
+}
+
+function monitorTask(addresses: AdaptiveRiskAddresses): string {
+  const paths = riskPaths(addresses.root);
+  // The grant offered is deliberately NOT invoke-on-issue-limit: an ungated
+  // grant covering that op would short-circuit the limit gate entirely
+  // (CapabilityChecker prefers an ungated covering grant), which would
+  // dismantle the very thing beats 2 and 3 establish. It grants write on the
+  // reviewed-limit path instead; the gate's device-flag condition keeps
+  // applying whatever the limit says.
+  const exp = Math.floor(Date.now() / 1000) + GRANT_LIFETIME_DAYS * 24 * 3600;
+  return (
+    `First load the \`hitl\` skill (skill_load), which activates the hitl_request tool — ` +
+    `hitl:request is Job-carried and cannot be invoked as a plain tool. Then read the ` +
+    `current cohort window pointer at ${paths.window} and both window ` +
+    `records under ${paths.windows}. Compare the current window's deviceReuseRate ` +
+    `to the week-1 baseline. If it has at least doubled, raise a human-in-the-loop ` +
+    `request by calling hitl_request with EXACTLY this input, substituting ` +
+    `the two real rates you read into the description:\n` +
+    `{"title": "Raise starter-card autonomous limit to S$800 for ${GRANT_LIFETIME_DAYS} days",` +
+    `"description": "Device-reuse velocity across the cohort has risen from <baseline> ` +
+    `(week 1) to <current> (week 2). Proposing a temporary raise of the assessor's ` +
+    `reviewed limit from S$500 to S$800 for ${GRANT_LIFETIME_DAYS} days. The device-flag ` +
+    `condition in the limit gate continues to apply regardless of the limit.",` +
+    `"asks": [{"id": "raise", "type": "approval", "prompt": "Approve the temporary ` +
+    `limit raise to S$800?", "grants": [{"with": "${paths.limitReview}/", ` +
+    `"can": "crud/write", "exp": ${exp}}]}]}\n` +
+    `Do not change any policy yourself. Report the request id you received.`
+  );
+}
+
+export const HITL_REQUEST_OP = "v/ops/hitl/request";
+
+/** Whatever the monitor said, for embedding in the ask verbatim. */
+function monitorFinding(output: unknown): string {
+  const walk = (value: unknown, depth: number): string | null => {
+    if (depth > 5 || value == null) return null;
+    if (typeof value === "string" && value.length > 40) return value;
+    if (typeof value === "object") {
+      for (const nested of Object.values(value as Record<string, unknown>)) {
+        const hit = walk(nested, depth + 1);
+        if (hit) return hit;
+      }
+    }
+    return null;
+  };
+  return walk(output, 0) ?? "(the monitor returned no narrative)";
+}
+
+export type Beat4Result = { analysis: Job; ask: Job };
+
+/**
+ * Beat 4 runs in two parts, and the UI says so rather than blurring them.
+ *
+ * The monitor's ANALYSIS is real: it reads both cohort windows under its own
+ * capped authority and decides whether the threshold is breached.
+ *
+ * The ASK is raised by this page, not by the agent — not a shortcut, a venue
+ * limitation: every agent tool call is dispatched through invokeInternal, and
+ * HITLAdapter refuses hitl:request on that path ("Job-carried — invoke it as
+ * an operation, not internally"), so an agent currently cannot raise one at
+ * all (covia-ai/covia#316). The monitor's own words are carried into the
+ * ask's description verbatim, and everything downstream — the parked job,
+ * the Inbox answer, the venue-signed grant, the resumption — is real.
+ */
+export async function runBeat4(
+  venue: Venue,
+  addresses: AdaptiveRiskAddresses,
+): Promise<Beat4Result> {
+  await resumeIfSuspended(venue, addresses.monitorAgent);
+  const agentOp = await resolveOperationByAddress(venue, AGENT_REQUEST_OP);
+  const analysis = await agentOp.invoke({
+    agentId: addresses.monitorAgent,
+    input: { task: monitorTask(addresses) },
+    wait: true,
+  });
+  await analysis.refresh();
+
+  const finding = analysis.isComplete
+    ? monitorFinding(analysis.output)
+    : (analysis.metadata?.error ?? "(the monitor's analysis did not complete)");
+  const paths = riskPaths(addresses.root);
+  const exp = Math.floor(Date.now() / 1000) + GRANT_LIFETIME_DAYS * 24 * 3600;
+
+  const hitlOp = await resolveOperationByAddress(venue, HITL_REQUEST_OP);
+  // No `wait` — this job PARKS in INPUT_REQUIRED until a human answers, which
+  // may be minutes or days away.
+  const ask = await hitlOp.invoke({
+    title: `Raise starter-card autonomous limit to S$800 for ${GRANT_LIFETIME_DAYS} days`,
+    description:
+      `**${addresses.monitorAgent} reported:**\n\n> ${finding}\n\n` +
+      `Proposing a temporary raise of the reviewed limit from S$${STARTER_CARD_LIMIT} ` +
+      `to S$800 for ${GRANT_LIFETIME_DAYS} days. The device-flag condition in the ` +
+      `limit gate continues to apply regardless of the limit.\n\n` +
+      `_Raised by the Adaptive Risk demo page carrying the monitor's finding: ` +
+      `agents cannot raise HITL asks on this venue build (covia-ai/covia#316)._`,
+    asks: [
+      {
+        id: "raise",
+        type: "approval",
+        prompt: "Approve the temporary limit raise to S$800?",
+        required: true,
+        comment: true,
+        grants: [{ with: `${paths.limitReview}/`, can: "crud/write", exp }],
+      },
+    ],
+  });
+
+  return { analysis, ask };
+}
+
+/** The open ask this demo raised, if any — used to deep-link into the Inbox. */
+export async function findOpenAsk(
+  venue: Venue,
+): Promise<{ id: string; title: string } | null> {
+  const listed = await venue.workspace.list("h");
+  // Request ids are time-ordered, so the newest sorts last — take that one
+  // first. Repeated runs leave earlier asks open, and linking at a stale one
+  // would send the viewer to a decision they already made.
+  const ids = (listed.exists ? (listed.keys ?? []) : [])
+    .map(String)
+    .sort()
+    .reverse();
+  for (const id of ids) {
+    const record = (await venue.workspace.read(`h/${id}`)).value as
+      | { status?: string; title?: string }
+      | null;
+    if (record?.status === "open" && record.title?.includes("S$800")) {
+      return { id, title: record.title };
+    }
+  }
+  return null;
+}
+
+export type GrantVerification = {
+  valid: boolean;
+  reason?: string;
+  expiresAt: number | null;
+  attenuations: Array<{ with?: string; can?: string }>;
+  issuer?: string;
+};
+
+/**
+ * Verifies the minted token with the venue's own `ucan:verify`, so the grant
+ * on screen is cryptographically checked rather than merely displayed.
+ */
+export async function verifyGrantToken(
+  venue: Venue,
+  token: string,
+): Promise<GrantVerification> {
+  const result = await venue.ucan.verify(token);
+  return {
+    valid: !!result.valid,
+    reason: result.reason,
+    expiresAt: typeof result.exp === "number" ? result.exp : null,
+    attenuations: (result.att ?? []) as Array<{ with?: string; can?: string }>,
+    issuer: result.iss,
+  };
+}
+
+/** The UCAN the venue minted when the human approved, if the job carried one. */
+export function extractGrantToken(output: unknown): string | null {
+  const seen = new Set<unknown>();
+  const walk = (value: unknown, depth: number): string | null => {
+    if (depth > 6 || value == null || seen.has(value)) return null;
+    if (typeof value === "object") {
+      seen.add(value);
+      const token = (value as { token?: unknown }).token;
+      if (typeof token === "string" && token.split(".").length === 3) return token;
+      for (const nested of Object.values(value as Record<string, unknown>)) {
+        const hit = walk(nested, depth + 1);
+        if (hit) return hit;
+      }
+    }
+    return null;
+  };
+  return walk(output, 0);
 }
