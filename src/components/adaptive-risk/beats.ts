@@ -21,10 +21,23 @@ function sentinelTask(addresses: AdaptiveRiskAddresses): string {
   );
 }
 
+// A failed task leaves an agent SUSPENDED with the old failure as its
+// reason; resume is idempotent, so always clear that before dispatching —
+// otherwise every retry reports the stale error instead of trying again.
+async function resumeIfSuspended(venue: Venue, agentId: string): Promise<void> {
+  try {
+    const info = await venue.agents.info(agentId);
+    if (info?.status === "SUSPENDED") await venue.agents.resume(agentId);
+  } catch {
+    // Missing agent surfaces properly on the request itself.
+  }
+}
+
 export async function runBeat1(
   venue: Venue,
   addresses: AdaptiveRiskAddresses,
 ): Promise<Job> {
+  await resumeIfSuspended(venue, addresses.sentinelAgent);
   const op = await resolveOperationByAddress(venue, AGENT_REQUEST_OP);
   return op.invoke({
     agentId: addresses.sentinelAgent,
