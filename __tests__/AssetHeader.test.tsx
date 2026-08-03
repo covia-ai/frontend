@@ -52,6 +52,44 @@ describe('AssetHeader Component', () => {
     expect(screen.getByTestId('assetH_descr')).toHaveTextContent('Runs another op after a delay');
   });
 
+  describe('description', () => {
+    test('shows a fallback instead of a blank paragraph when missing', () => {
+      const mockAsset = new DataAsset(HASH, makeVenue(), { name: 'no description' });
+      render(<AssetHeader asset={mockAsset} />);
+      const descr = screen.getByTestId('assetH_descr');
+      expect(descr).toHaveTextContent('No description available');
+      expect(descr.className).toContain('italic');
+    });
+
+    test('does not show a "Show more" toggle when the text is not actually clamped', () => {
+      const mockAsset = new DataAsset(HASH, makeVenue(), { name: 'short', description: 'A short line.' });
+      render(<AssetHeader asset={mockAsset} />);
+      expect(screen.queryByTestId('assetH_descr_toggle')).not.toBeInTheDocument();
+    });
+
+    // jsdom never computes real layout, so scrollHeight/clientHeight are both
+    // 0 by default — stub them to simulate line-clamp-2 actually cutting text.
+    test('shows a "Show more" toggle that expands the full text when clamped', async () => {
+      const user = userEvent.setup();
+      Object.defineProperty(HTMLElement.prototype, 'scrollHeight', { configurable: true, value: 40 });
+      Object.defineProperty(HTMLElement.prototype, 'clientHeight', { configurable: true, value: 20 });
+
+      const mockAsset = new DataAsset(HASH, makeVenue(), { name: 'long', description: 'A very long description.' });
+      render(<AssetHeader asset={mockAsset} />);
+
+      const toggle = screen.getByTestId('assetH_descr_toggle');
+      expect(toggle).toHaveTextContent('Show more');
+      expect(screen.getByTestId('assetH_descr').className).toContain('line-clamp-2');
+
+      await user.click(toggle);
+      expect(toggle).toHaveTextContent('Show less');
+      expect(screen.getByTestId('assetH_descr').className).not.toContain('line-clamp-2');
+
+      Reflect.deleteProperty(HTMLElement.prototype, 'scrollHeight');
+      Reflect.deleteProperty(HTMLElement.prototype, 'clientHeight');
+    });
+  });
+
   test('content-addressed asset gets a venue-qualified a/<hash> DID URL', () => {
     const mockAsset = new DataAsset(HASH, makeVenue(), delayMetadata);
     render(<AssetHeader asset={mockAsset} />);

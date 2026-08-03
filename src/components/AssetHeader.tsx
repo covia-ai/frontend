@@ -1,7 +1,8 @@
 'use client'
 
+import { useEffect, useRef, useState } from "react";
 import { Asset, Namespace, assetHash, didUrl, parseDidUrl } from "@covia/covia-sdk";
-import { copyDataToClipBoard } from "@/lib/utils";
+import { cn, copyDataToClipBoard } from "@/lib/utils";
 import { ASSET_KIND_LABELS, getAssetKind } from "@/lib/asset-kind";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { Badge } from "./ui/badge";
@@ -64,6 +65,20 @@ function assetDidUrl(asset: Asset): ResolvedDidUrl | null {
 export const AssetHeader = ({ asset }: AssetHeaderProps) => {
   const didUrlInfo = assetDidUrl(asset);
   const kind = getAssetKind(asset?.metadata);
+  const description = asset?.metadata?.description as string | undefined;
+
+  const descriptionRef = useRef<HTMLParagraphElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  useEffect(() => {
+    setExpanded(false);
+    const el = descriptionRef.current;
+    // Measured against the clamped (collapsed) layout, so this only ever
+    // reflects whether line-clamp-2 is actually cutting text off — not
+    // whatever the height happens to be after the reader expands it.
+    setIsTruncated(!!el && el.scrollHeight > el.clientHeight + 1);
+  }, [description]);
 
   return (
     <div className="flex flex-col w-full mb-2 mt-2 border border-slate-200 bg-card text-bg-card-foreground rounded-md p-2">
@@ -75,7 +90,27 @@ export const AssetHeader = ({ asset }: AssetHeaderProps) => {
                  {ASSET_KIND_LABELS[kind]}
                </Badge>
              </div>
-              <p data-testid="assetH_descr"  className="line-clamp-2 text-sm text-card-foreground ">{asset?.metadata?.description}</p>
+              <p
+                ref={descriptionRef}
+                data-testid="assetH_descr"
+                className={cn(
+                  "text-sm",
+                  !expanded && "line-clamp-2",
+                  description ? "text-card-foreground" : "text-muted-foreground italic",
+                )}
+              >
+                {description || "No description available"}
+              </p>
+              {isTruncated && (
+                <button
+                  type="button"
+                  data-testid="assetH_descr_toggle"
+                  onClick={() => setExpanded((value) => !value)}
+                  className="text-xs text-secondary hover:underline mt-0.5"
+                >
+                  {expanded ? "Show less" : "Show more"}
+                </button>
+              )}
       </div>
 
       {didUrlInfo && (
