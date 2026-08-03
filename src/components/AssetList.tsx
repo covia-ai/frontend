@@ -154,10 +154,6 @@ export function AssetList({ venueId }: AssetListProps = {}) {
      )
   }
 
-  function handleDataFromChild(_status: boolean) {
-    void fetchAssets();
-  }
-
   return (
     <ContentLayout>
         <TopBar venueName={venueObj?.metadata.name}/>
@@ -168,7 +164,7 @@ export function AssetList({ venueId }: AssetListProps = {}) {
             actions={
               <>
                 {isAuthenticated ? (
-                  <CreateAssetComponent sendDataToParent={handleDataFromChild} venue={venue ?? undefined}></CreateAssetComponent>
+                  <CreateAssetComponent venue={venue ?? undefined}></CreateAssetComponent>
                 ) : (
                   <Button variant="outline" disabled className="gap-2 text-muted-foreground">
                     <Lock size={14} />

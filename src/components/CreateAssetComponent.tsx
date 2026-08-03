@@ -21,6 +21,7 @@ import { TbCircleDashedNumber1, TbCircleDashedNumber3 }from "react-icons/tb";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { JsonEditor } from "json-edit-react";
 import { Button } from "./ui/button";
 import { Asset, AssetMetadata, Venue } from "@covia/covia-sdk";
@@ -29,7 +30,8 @@ import { getContentTypeForFile, getLicenseUrl, gtmEvent } from "@/lib/utils";
 import { notifyError } from "@/lib/notify";
 import { FORM_DIALOG_CLASS, JSON_EDITOR_DIALOG_CLASS, JSON_EDITOR_MAX_WIDTH } from "@/lib/dialog-sizes";
 
-export const CreateAssetComponent = ({sendDataToParent, venue: venueProp}: {sendDataToParent: (status: boolean) => void; venue?: Venue}) => {
+export const CreateAssetComponent = ({venue: venueProp}: {venue?: Venue}) => {
+    const router = useRouter();
     const [step, setStep] = useState(0);
     const [jsonData, setJsonData] = useState<any>({});
     const [assetType, setAssetType] = useState("file");
@@ -64,8 +66,8 @@ export const CreateAssetComponent = ({sendDataToParent, venue: venueProp}: {send
             await asset.putContent(assetFileData);
           }
           gtmEvent.createAsset(jsonData.name ?? asset.id);
-          sendDataToParent(true);
-          setStep(1);
+          setOpen(false);
+          router.push(`/venues/${encodeURIComponent(venue.venueId)}/assets/${asset.id}`);
         } catch (error: unknown) {
           gtmEvent.createAssetFailed(
             jsonData.name ?? "unknown",
