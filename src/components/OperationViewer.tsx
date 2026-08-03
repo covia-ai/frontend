@@ -4,9 +4,9 @@ import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { AssetHeader } from "@/components/AssetHeader";
+import { AssetLoadState } from "@/components/AssetLoadState";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
-import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { MetadataViewer } from "@/components/MetadataViewer";
 import { OperationInputForm } from "@/components/OperationInputForm";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,7 @@ export function OperationViewer({
 }: OperationViewerProps) {
   const router = useRouter();
   const { venue, isAuthenticated } = useResolvedVenueContext(venueId);
-  const { asset, errorMessage: loadError, notFound } = useOperationAsset(
+  const { asset, errorMessage: loadError, notFound, loading: assetLoading } = useOperationAsset(
     venue,
     assetId,
   );
@@ -116,22 +116,16 @@ export function OperationViewer({
         venueName={venue?.metadata.name}
       />
       <div className="flex flex-col w-full items-center justify-center">
-        {loadError && <ErrorDisplay error={loadError} className="mb-4" />}
+        <AssetLoadState
+          loading={assetLoading}
+          error={loadError || null}
+          notFound={notFound}
+          notFoundMessage={`The asset ID "${assetId}" does not exist on this venue.`}
+        />
 
-        {notFound && (
-          <div className="text-center p-8">
-            <h2 className="text-xl font-semibold text-foreground mb-2">
-              Asset Not Found
-            </h2>
-            <p className="text-muted-foreground">
-              The asset ID &quot;{assetId}&quot; does not exist on this venue.
-            </p>
-          </div>
-        )}
-
-        {!notFound && asset && <AssetHeader asset={asset} />}
-        {!notFound && asset && <MetadataViewer asset={asset} venue={venue} />}
-        {!notFound && asset?.metadata?.operation && (
+        {asset && <AssetHeader asset={asset} />}
+        {asset && <MetadataViewer asset={asset} venue={venue} />}
+        {asset?.metadata?.operation && (
           <>
             <div className="w-full flex justify-end mb-1">
               <Button
@@ -172,7 +166,7 @@ export function OperationViewer({
             )}
           </>
         )}
-        {!notFound && asset && !asset.metadata?.operation && (
+        {asset && !asset.metadata?.operation && (
           <div className="text-center p-4">
             <p className="text-destructive">
               This asset is not an operation and cannot be executed.
