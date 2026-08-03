@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { HitlInbox } from "@/components/HitlInbox";
@@ -8,6 +9,9 @@ import { useIsAuthenticated } from "@/hooks/use-auth";
 
 export default function HitlPage() {
   const isAuthenticated = useIsAuthenticated();
+  // Deep link target, e.g. /inbox?requestId=<id> — same pattern as
+  // /agents/explorer?agentId=…
+  const requestId = useSearchParams().get("requestId") ?? undefined;
 
   return (
     <ContentLayout>
@@ -16,7 +20,7 @@ export default function HitlPage() {
         <PageHeading className="mb-4" size="sm" align="left" text="Manage your" highlight="Inbox" />
 
         {isAuthenticated ? (
-          <HitlInbox />
+          <HitlInbox initialRequestId={requestId} />
         ) : (
           <p className="text-sm text-muted-foreground py-8 text-center">
             Sign in to view requests awaiting your decision.

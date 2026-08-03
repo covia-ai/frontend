@@ -1,0 +1,281 @@
+"use client";
+
+import { useState } from "react";
+import { Landmark, ShieldAlert } from "lucide-react";
+import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useIsAuthenticated } from "@/hooks/use-auth";
+import { useAdaptiveRiskConfig } from "@/hooks/use-adaptive-risk-config";
+import { ADAPTIVE_RISK_BEATS } from "./story";
+import { SetupPanel } from "./SetupPanel";
+import { BeatCard } from "./BeatCard";
+import { LedgerPanel } from "./LedgerPanel";
+import { DecisionsPanel } from "./DecisionsPanel";
+import { PolicyLinks } from "./PolicyLinks";
+import { RefusalPanel } from "./RefusalPanel";
+import { EscalationPanel } from "./EscalationPanel";
+import { ReconstructionPanel } from "./ReconstructionPanel";
+import type { BeatJobState } from "./BeatCard";
+import { runBeat1, runAssessorBeat, runBeat4, swapToWeekTwo } from "./beats";
+import { APPLICANTS, STARTER_CARD_LIMIT } from "./fixtures";
+
+// Adaptive Risk: a guided walkthrough over real venue calls. Fictional issuer
+// Meridian Bank Singapore, thin-file starter card, base limit S$500, twelve
+// synthetic applicants. Three agents and one gate, created by the seeding
+// step; every beat runs a real job on the selected venue and renders the real
+// record — a failed call is shown as a failure, never animated over.
+export function AdaptiveRiskDemo() {
+  const venue = useAuthenticatedVenue();
+  const isAuthenticated = useIsAuthenticated();
+  const {
+    addresses,
+    reports,
+    escalations,
+    setEscalation,
+    refusals,
+    setRefusal,
+  } = useAdaptiveRiskConfig();
+  const [ledgerRefresh, setLedgerRefresh] = useState(0);
+  const [decisionsRefresh, setDecisionsRefresh] = useState(0);
+  const [refusalState, setRefusalState] = useState<BeatJobState | null>(null);
+  const [driftState, setDriftState] = useState<BeatJobState | null>(null);
+  const [monitorAnalysis, setMonitorAnalysis] = useState<BeatJobState | null>(null);
+
+  // Beat 2's clean applicant: asks for exactly the base limit on a device
+  // nobody else shares, so the gate has nothing to object to.
+  const clean = APPLICANTS.find(
+    (a) =>
+      a.requestedAmount <= STARTER_CARD_LIMIT &&
+      APPLICANTS.filter((other) => other.device === a.device).length === 1,
+  )!;
+
+  // Beat 3's planted case: over the base limit AND sharing a device with
+  // another application, so the gate has two independent reasons to refuse.
+  const planted = APPLICANTS.find(
+    (a) =>
+      a.requestedAmount > STARTER_CARD_LIMIT &&
+      APPLICANTS.filter((other) => other.device === a.device).length > 1,
+  )!;
+
+  const seeded = !!venue && !!reports[venue.venueId];
+  const beatHint = !venue
+    ? "Select a venue first."
+    : !isAuthenticated
+      ? "Sign in first."
+      : "Run setup above first — the beats need the seeded agents and fixtures.";
+
+  return (
+    <div className="flex flex-col gap-6 max-w-3xl">
+      <ScenarioIntro />
+      <HonestyPanel />
+
+      {!venue && (
+        <p className="text-sm text-muted-foreground" data-testid="ar-no-venue">
+          Select a venue to run this demo.
+        </p>
+      )}
+      {venue && !isAuthenticated && (
+        <p className="text-sm text-muted-foreground" data-testid="ar-no-auth">
+          Sign in to run this demo — seeding registers agents and fixtures under
+          your own identity, and the Inbox beat needs you to answer as yourself.
+        </p>
+      )}
+
+      <SetupPanel venue={venue} isAuthenticated={isAuthenticated} />
+
+      <section aria-label="Beats" className="flex flex-col gap-3">
+        <ol className="flex flex-col gap-3">
+          {ADAPTIVE_RISK_BEATS.map((beat) => (
+            <BeatCard
+              key={beat.id}
+              beat={beat}
+              venue={venue}
+              enabled={seeded}
+              disabledHint={beatHint}
+              run={
+                beat.id === "silos"
+                  ? (v) => runBeat1(v, addresses)
+                  : beat.id === "clean-approval"
+                    ? (v) =>
+                        runAssessorBeat(
+                          v,
+                          addresses,
+                          clean.id,
+                          clean.requestedAmount,
+                          clean.device,
+                        )
+                    : beat.id === "refusal"
+                      ? (v) => {
+                          // Drop the previous verdict before re-running, so a
+                          // stale refusal never sits next to a live job.
+                          setRefusalState(null);
+                          return runAssessorBeat(
+                            v,
+                            addresses,
+                            planted.id,
+                            planted.requestedAmount,
+                            planted.device,
+                          );
+                        }
+                      : beat.id === "drift"
+                        ? async (v) => {
+                            setDriftState(null);
+                            setMonitorAnalysis(null);
+                            // The drift IS this fixture swap — labelled as
+                            // such on screen, not smuggled in as a metric.
+                            await swapToWeekTwo(v, addresses);
+                            const { analysis, ask } = await runBeat4(v, addresses);
+                            // Persist before returning: the viewer is about to
+                            // leave for the Inbox, and React state will not
+                            // survive that round trip.
+                            setEscalation(v.venueId, {
+                              analysisJobId: analysis.id,
+                              askJobId: ask.id,
+                            });
+                            setMonitorAnalysis({
+                              jobId: analysis.id,
+                              status: analysis.metadata?.status ?? null,
+                              error: analysis.metadata?.error ?? null,
+                              output: analysis.isComplete ? analysis.output : null,
+                            });
+                            // The card tracks the ASK — it is the job that parks.
+                            return ask;
+                          }
+                        : undefined
+              }
+              onSettled={
+                beat.id === "silos"
+                  ? () => setLedgerRefresh((token) => token + 1)
+                  : beat.id === "clean-approval"
+                    ? () => setDecisionsRefresh((token) => token + 1)
+                    : beat.id === "refusal"
+                      ? (state) => {
+                          setRefusalState(state);
+                          setDecisionsRefresh((token) => token + 1);
+                          // Beat 5 reconstructs this exact record later, so the
+                          // id has to outlive the page.
+                          if (venue && state.jobId) {
+                            setRefusal(venue.venueId, {
+                              jobId: state.jobId,
+                              applicant: planted.id,
+                            });
+                          }
+                        }
+                      : beat.id === "drift"
+                        ? (state) => setDriftState(state)
+                        : undefined
+              }
+            >
+              {beat.id === "silos" && (
+                <LedgerPanel
+                  venue={venue}
+                  addresses={addresses}
+                  refreshToken={ledgerRefresh}
+                />
+              )}
+              {beat.id === "clean-approval" && (
+                <DecisionsPanel
+                  venue={venue}
+                  addresses={addresses}
+                  refreshToken={decisionsRefresh}
+                />
+              )}
+              {beat.id === "drift" && (
+                <EscalationPanel
+                  venue={venue}
+                  state={driftState}
+                  analysis={monitorAnalysis}
+                  escalation={venue ? escalations[venue.venueId] ?? null : null}
+                />
+              )}
+              {beat.id === "reconstruction" && (
+                <ReconstructionPanel
+                  venue={venue}
+                  jobId={venue ? refusals[venue.venueId]?.jobId ?? null : null}
+                  label={`the ${planted.id} refusal`}
+                />
+              )}
+              {beat.id === "refusal" && (
+                <>
+                  <RefusalPanel state={refusalState} />
+                  <PolicyLinks venue={venue} addresses={addresses} />
+                  <DecisionsPanel
+                    venue={venue}
+                    addresses={addresses}
+                    refreshToken={decisionsRefresh}
+                    absenceOf={planted.id}
+                  />
+                </>
+              )}
+            </BeatCard>
+          ))}
+        </ol>
+      </section>
+    </div>
+  );
+}
+
+function ScenarioIntro() {
+  return (
+    <div className="flex items-start gap-3">
+      <Landmark className="size-5 mt-0.5 text-primary shrink-0" aria-hidden="true" />
+      <p className="text-sm text-muted-foreground">
+        Meridian Bank Singapore — a fictional issuer — runs a thin-file starter
+        card with a base limit of S$500. A fraud agent, a credit agent and a
+        drift monitor share one venue. The credit agent cannot issue a limit
+        unless the fraud agent&apos;s signals pass a policy gate: the two are not
+        integrated by a model, they are joined at the execution layer, and the
+        join is enforced.
+      </p>
+    </div>
+  );
+}
+
+// The honesty panel is a permanent part of the page, not a dismissible note:
+// a reviewer who catches an unlabelled simulation discards everything else.
+function HonestyPanel() {
+  return (
+    <aside
+      role="note"
+      aria-label="What is real in this demo"
+      data-testid="ar-honesty"
+      className="rounded-lg border bg-muted/40 p-4"
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <ShieldAlert className="size-4 text-primary" aria-hidden="true" />
+        <h3 className="text-sm font-semibold">What is real here, and what is not</h3>
+      </div>
+      <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
+        <li>
+          All data is synthetic: twelve applicants, one fictional bank. Nothing
+          here describes a real person or a real lender.
+        </li>
+        <li>
+          Covia has no training loop, model registry or drift metric. The drift
+          event in beat 4 is a fixture swap and the threshold breach is
+          scripted. The escalation, the ask, the approval, the minted grant and
+          the resumed job are real venue operations.
+        </li>
+        <li>
+          The agents are LLM components executing policy, not trained
+          scorecards.
+        </li>
+        <li>
+          Beat 4&apos;s approval produces a real capability grant with a real
+          expiry, signed by you with your own device key — this venue cannot
+          root-sign a grant over a self-sovereign holder&apos;s namespace, and
+          says so. You can verify it here. It confers write access to the
+          reviewed-limit record — it does not silently widen the credit
+          agent&apos;s authority, and the gate&apos;s device-flag condition keeps
+          applying whatever the limit says. Applying a reviewed limit to the
+          live policy is an operator action, outside this demo.
+        </li>
+        <li>
+          If your venue runs <code className="font-mono text-xs">auth.public.caps: &quot;unrestricted&quot;</code>{" "}
+          so seeding can write, that widens the anonymous caller only —
+          per-agent capability scopes, the gate and the grants in this demo are
+          still enforced per agent.
+        </li>
+      </ul>
+    </aside>
+  );
+}
