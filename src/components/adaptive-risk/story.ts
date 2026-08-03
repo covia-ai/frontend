@@ -2,17 +2,17 @@
 // and reviewable apart from the runner. One entry per beat; `watch` is the
 // single thing the viewer should look at while the beat runs.
 //
+// This demo makes ONE claim: fraud and credit are joined at the execution
+// layer, and the join is enforced. Beats 1-3 establish it and beat 4 shows it
+// is on the record. Human-in-the-loop escalation is a different claim and
+// lives in its own demo (governed-escalation).
+//
 // Wording rule (JOBS.md): recovery stabilises and never re-executes — the
 // demo says "reconstruct", never "re-run the past".
 
-export type AdaptiveRiskBeat = {
-  id: string;
-  title: string;
-  narration: string;
-  watch: string;
-};
+import type { DemoBeat } from "@/components/demo-kit/BeatCard";
 
-export const ADAPTIVE_RISK_BEATS: AdaptiveRiskBeat[] = [
+export const ADAPTIVE_RISK_BEATS: DemoBeat[] = [
   {
     id: "silos",
     title: "1 · Two silos, one substrate",
@@ -35,15 +35,8 @@ export const ADAPTIVE_RISK_BEATS: AdaptiveRiskBeat[] = [
     watch: "The venue's own denial string, verbatim, frozen on a failed job record. No decision is written.",
   },
   {
-    id: "drift",
-    title: "4 · Drift becomes a governed event",
-    narration:
-      "Week two: device-reuse velocity across the cohort has tripled. rk-monitor raises a real HITL ask proposing a temporary raise of the reviewed limit to S$800 for 7 days, and its job parks until the risk officer decides in the Inbox. An agent cannot answer it — the runtime refuses on identity, not on scope, because approving an ask issues a capability grant.",
-    watch: "The ask is answered in the real Inbox; you sign the grant with your own device key, its real expiry is verified here by the venue's own ucan:verify, and the parked job resumes.",
-  },
-  {
     id: "reconstruction",
-    title: "5 · Reconstruction",
+    title: "4 · Reconstruction",
     narration:
       "Open the APP-1071 refusal and read the same record back over plain REST: the inputs, the caller, the error, the prev chain of every state it passed through. Reconstruct the decision — the venue stabilises records and never re-executes them.",
     watch: "The curl below returns the same record from your terminal.",

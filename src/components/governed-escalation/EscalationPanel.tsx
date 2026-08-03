@@ -14,7 +14,7 @@ import {
   findOpenAsk,
   verifyGrantToken,
 } from "./beats";
-import type { BeatJobState } from "./BeatCard";
+import type { BeatJobState } from "@/components/demo-kit/BeatCard";
 
 // Beat 4's surface. The approval itself happens in the REAL Inbox — this
 // panel deep-links there and never rebuilds an approval form. On return it
@@ -104,9 +104,9 @@ export function EscalationPanel({
   const parked = job?.status === "INPUT_REQUIRED";
 
   return (
-    <div className="rounded border p-3 flex flex-col gap-3" data-testid="ar-escalation">
+    <div className="rounded border p-3 flex flex-col gap-3" data-testid="ge-escalation">
       {analysis && (
-        <p className="text-xs text-muted-foreground" data-testid="ar-analysis-note">
+        <p className="text-xs text-muted-foreground" data-testid="ge-analysis-note">
           The monitor evaluated the threshold itself, under its own capped
           authority (job{" "}
           <span className="font-mono">{analysis.jobId}</span>,{" "}
@@ -131,7 +131,7 @@ export function EscalationPanel({
       </div>
 
       {parked && (
-        <p className="text-xs text-muted-foreground" data-testid="ar-parked">
+        <p className="text-xs text-muted-foreground" data-testid="ge-parked">
           The monitor&apos;s job is parked in{" "}
           <span className="font-mono">INPUT_REQUIRED</span>. Nothing moves until a
           person decides — and the agent cannot decide for itself: the venue
@@ -144,7 +144,7 @@ export function EscalationPanel({
       <div className="flex flex-wrap items-center gap-2">
         <Link
           href={ask ? `/inbox?requestId=${encodeURIComponent(ask.id)}` : "/inbox"}
-          data-testid="ar-inbox-link"
+          data-testid="ge-inbox-link"
           className="inline-flex items-center gap-1 text-sm underline underline-offset-2"
         >
           Answer it in your Inbox <ExternalLink className="size-3" />
@@ -164,7 +164,7 @@ export function EscalationPanel({
       {grant && (
         <div
           className="rounded border p-2 flex flex-col gap-1"
-          data-testid="ar-grant"
+          data-testid="ge-grant"
         >
           <p className="text-sm font-medium flex items-center gap-2">
             <ShieldCheck className="size-4 text-primary" aria-hidden="true" />
@@ -180,7 +180,7 @@ export function EscalationPanel({
             {grant.issuer ? <> · issued by <span className="font-mono break-all">{grant.issuer}</span></> : null}
           </p>
           {grant.expiresAt && (
-            <p className="text-xs" data-testid="ar-grant-expiry">
+            <p className="text-xs" data-testid="ge-grant-expiry">
               Expires {new Date(grant.expiresAt * 1000).toLocaleString()} — the
               authority lapses on its own.
             </p>
@@ -199,7 +199,7 @@ export function EscalationPanel({
             What the resumed job returned
           </summary>
           <pre
-            data-testid="ar-resumed-output"
+            data-testid="ge-resumed-output"
             className="mt-1 whitespace-pre-wrap break-all bg-muted rounded p-2 max-h-56 overflow-y-auto"
           >
             {JSON.stringify(job.output, null, 2)}
@@ -208,7 +208,7 @@ export function EscalationPanel({
       )}
 
       {job?.status === "COMPLETE" && !grant && (
-        <p className="text-xs text-muted-foreground" data-testid="ar-grant-none">
+        <p className="text-xs text-muted-foreground" data-testid="ge-grant-none">
           The job resumed, but carried no capability token — the approval was
           answered without echoing the offered grant, or it was rejected.
         </p>
