@@ -1,5 +1,6 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { Venue } from "@covia/covia-sdk";
@@ -183,6 +184,19 @@ export const useVenues = create(
     },
   ),
 );
+
+// Storage reads are synchronous, but persist still defers `hasHydrated()`
+// through a microtask, so the very first render of anything reading this
+// store precedes it. Callers that treat an empty/default store as meaningful
+// (e.g. VenueRuntimeProvider's stale-selection guard, covia-ai/frontend#209)
+// must wait for this before acting.
+export function useVenuesHydrated(): boolean {
+  return useSyncExternalStore(
+    useVenues.persist.onFinishHydration,
+    useVenues.persist.hasHydrated,
+    () => false,
+  );
+}
 
 export type VenueReplacement = {
   oldId: string;
