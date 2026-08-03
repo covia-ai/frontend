@@ -197,7 +197,12 @@ function AskControl({
   );
 }
 
-export function HitlInbox() {
+/**
+ * @param initialRequestId Opens this request expanded on mount, for deep links
+ *   such as /inbox?requestId=… — the demo pages send a viewer to the ask they
+ *   just raised rather than rebuilding an approval surface of their own.
+ */
+export function HitlInbox({ initialRequestId }: { initialRequestId?: string } = {}) {
   const venue = useAuthenticatedVenue();
   const { requests, loading, error, refresh } = useHitlRequests();
   // Whether stored credentials exist for *the venue actually being read*. The
@@ -215,7 +220,7 @@ export function HitlInbox() {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   // Only one request is ever open for editing, so its draft can live here
   // rather than in a map keyed by request id.
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(initialRequestId ?? null);
   const [answers, setAnswers] = useState<Record<string, HitlAnswer>>({});
   const [comment, setComment] = useState("");
   const [submittingId, setSubmittingId] = useState<string | null>(null);

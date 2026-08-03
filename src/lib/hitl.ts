@@ -188,7 +188,19 @@ export async function respondToHitl(
   input: HitlRespondInput,
 ): Promise<HitlRespondResult> {
   const op = await resolveOperationByAddress(venue, HITL_RESPOND_ADDRESS);
-  return (await op.run(input)) as HitlRespondResult;
+  try {
+    return (await op.run(input)) as HitlRespondResult;
+  } catch (err) {
+    // JobFailedError.message is only "Job <id> FAILED" — the venue's actual
+    // reason (an echoed grant that was never offered, a missing required
+    // answer, a rejected identity) lives on jobData.error. Without this the
+    // toast names a job id and nothing a person can act on.
+    const reason = (err as { jobData?: { error?: string } })?.jobData?.error;
+    if (typeof reason === "string" && reason) {
+      throw new Error(reason, { cause: err });
+    }
+    throw err;
+  }
 }
 
 // Sign a self-sovereign UCAN with the responder's own device key (COG-19). The
