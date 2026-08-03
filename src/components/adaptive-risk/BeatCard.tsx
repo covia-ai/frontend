@@ -61,7 +61,12 @@ export function BeatCard({
       const started = await run(venue);
       if (!owns()) return;
       setJob({ jobId: started.id, status: started.metadata?.status ?? null, error: null, output: null });
-      while (!started.isFinished) {
+      // A job parked awaiting a human (INPUT_REQUIRED) is NOT finished, but it
+      // is settled as far as this beat is concerned — the next move is the
+      // person's. Polling until isFinished would spin forever and leave the
+      // Run button disabled for as long as the ask goes unanswered.
+      const settledEnough = () => started.isFinished || started.isPaused;
+      while (!settledEnough()) {
         await new Promise((resolve) => setTimeout(resolve, POLL_MS));
         if (!owns()) return;
         await started.refresh();

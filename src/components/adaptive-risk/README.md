@@ -29,6 +29,39 @@ at the execution layer, and the join is enforced by the runtime.
 Only the assessor holds any grant to `issue-limit`, and that grant is
 conditional (`nb: { gate: … }`). The sentinel and the monitor hold none.
 
+## The five beats
+
+| # | Beat | What is real |
+|---|---|---|
+| 1 | Two silos, one substrate | `rk-sentinel` reads the applications and writes signals + device flags under its own capped authority. It never contacts the credit agent. |
+| 2 | A clean approval | `rk-assessor` reads both sources and issues S$500 for a clean applicant. The gate evaluates and passes; a decision is written. |
+| 3 | The refusal | Same agent, same capabilities, S$2,500 on a flagged device. The gate denies before execution and the venue's own denial string is shown verbatim. No decision is written. |
+| 4 | Drift becomes a governed event | Fixture swaps to week two; the monitor evaluates the breach; a HITL ask parks in `INPUT_REQUIRED`; you answer in the real Inbox and sign a capability with your own key; the parked job resumes and the token is verified. |
+| 5 | Reconstruction | The APP-1071 refusal read back over plain REST — inputs, caller, error, and the `prev` chain — with a curl that works in your terminal. |
+
+Beats 2 and 3 share one runner deliberately: nothing about the agent changes
+between the approval and the refusal, only what it is asked to issue. **Beat 2
+alone does not prove the gate is live — the pair does.**
+
+### Two places the runtime differs from the obvious story
+
+Both are stated on the page itself, not just here.
+
+**Beat 4's ask is raised by the page, not by the agent.** Every agent tool call
+is dispatched internally, and the venue requires `hitl:request` to carry its own
+job, so an agent cannot raise one at all on this build
+([covia#316](https://github.com/covia-ai/covia/issues/316)). The monitor's
+*analysis* is real and its finding is carried into the ask verbatim.
+
+**Beat 4's grant is signed by you, not minted by the venue.** A device-key
+sign-in is self-sovereign, so the venue refuses to root-sign a grant over your
+own namespace — it says so plainly. The demo uses a COG-19 `token` ask instead:
+you sign the capability with your own key and the venue only transports and
+verifies it. The lifetime is 7 days (venue-capped), and the grant confers write
+on the reviewed-limit record — deliberately **not** invoke on `issue-limit`,
+since an ungated covering grant would short-circuit the gate that beats 2 and 3
+exist to demonstrate.
+
 ## Run it against a local venue
 
 1. **Start a venue** (from `covia-repo`):
@@ -55,7 +88,8 @@ conditional (`nb: { gate: … }`). The sentinel and the monitor hold none.
    `OPENAI_API_KEY` for `v/ops/langchain/openai`). The key is stored in the
    venue's per-user encrypted secret store, under your DID.
 
-5. **Run setup**, then the beats in order.
+5. **Run setup**, then the beats in order. Beat 4 stops and waits for you in
+   the Inbox — that pause is the point, not a hang.
 
 Any venue works, not just a local one — the only requirement is an identity
 that venue admits. The public Covia venues do not auto-create users, so ask
@@ -119,3 +153,13 @@ Two things deliberately survive:
 - Narration lives in `story.ts` as data. Per `JOBS.md`, recovery *stabilises
   and never re-executes* — this demo says **reconstruct**, and a test asserts
   the word "replay" appears nowhere.
+- Beat 5's curl carries a short-lived identity token signed in the browser,
+  because job records are per-caller and an anonymous read 404s. It is a
+  credential: it lasts ten minutes and is never transmitted by the page.
+- A capped agent needs `crud/read` on a tool's *definition* as well as `invoke`
+  on the operation; without it the tool is silently dropped and the model may
+  report an action it never performed
+  ([covia#317](https://github.com/covia-ai/covia/issues/317)). That is why the
+  agents hold read on the demo's operation namespace.
+- If a beat reports that the gate did not refuse, believe it. The panels are
+  written to say what happened rather than what the script expects.

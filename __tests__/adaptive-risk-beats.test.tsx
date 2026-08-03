@@ -352,3 +352,43 @@ describe('reconstruction (beat 5)', () => {
     expect(JOBS_MD_RULE).not.toMatch(/replay/i);
   });
 });
+
+describe('BeatCard parked jobs', () => {
+  const venue = { venueId: 'test-venue', baseUrl: 'http://venue.test' } as never;
+
+  it('settles on a job parked awaiting a human instead of polling forever', async () => {
+    const user = userEvent.setup();
+    const onSettled = jest.fn();
+    // INPUT_REQUIRED: not finished, but paused — the next move is the human's.
+    const parked = {
+      id: 'job-parked',
+      isFinished: false,
+      isPaused: true,
+      isComplete: false,
+      metadata: { status: 'INPUT_REQUIRED' },
+      output: null,
+      refresh: jest.fn(),
+    };
+    render(
+      <BeatCard
+        beat={beat1}
+        venue={venue}
+        enabled
+        run={asRun(async () => parked)}
+        onSettled={onSettled}
+      />,
+    );
+
+    await user.click(screen.getByTestId('ar-run-silos'));
+
+    await waitFor(() => expect(onSettled).toHaveBeenCalled());
+    expect(onSettled.mock.calls[0][0]).toMatchObject({
+      jobId: 'job-parked',
+      status: 'INPUT_REQUIRED',
+    });
+    // Never polled: a parked job is settled on arrival.
+    expect(parked.refresh).not.toHaveBeenCalled();
+    // And the beat is runnable again rather than stuck behind a spinner.
+    await waitFor(() => expect(screen.getByTestId('ar-run-silos')).toBeEnabled());
+  });
+});
