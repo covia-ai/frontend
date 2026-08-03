@@ -3,21 +3,26 @@
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { useRouter } from "next/navigation";
 import { useSearchParams, usePathname } from 'next/navigation';
-import { Input } from "@/components/ui/input";
-import { useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 
 import { Asset, DataAsset }from "@covia/covia-sdk";
-import { getVenueFor } from "@/hooks/use-authenticated-venue";
-import { useVenueForRoute } from "@/hooks/use-venue-for-route";
-import { useAuthStore } from "@/hooks/use-auth";
+import { loadAssetEntries } from "@/lib/asset-metadata";
+import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { Spinner } from '@/components/ui/shadcn-io/spinner';
 import { AssetCard } from "./AssetCard";
 import { PaginationHeader } from "./PaginationHeader";
 import { useVenues } from "@/hooks/use-venues";
-import { FileKey, Search, X }from "lucide-react";
+import { useGridPageSize } from "@/hooks/use-grid-page-size";
+import { useLatestQuery } from "@/hooks/use-latest-query";
+import { useClientPagination } from "@/hooks/use-pagination";
+import { CARD_GRID_CLASS } from "@/lib/grid";
+import { FileKey, Lock }from "lucide-react";
 import { CreateAssetComponent } from "./CreateAssetComponent";
 import { TopBar } from "./admin-panel/TopBar";
-import { TagFilterDropdown } from "./TagFilterDropdown";
+import { FiltersSheet } from "./FiltersSheet";
+import { ListToolbar } from "./ListToolbar";
+import { Button } from "./ui/button";
+import { ErrorDisplay } from "@/components/ErrorDisplay";
 
 
 interface AssetListProps {
@@ -26,71 +31,80 @@ interface AssetListProps {
 
 export function AssetList({ venueId }: AssetListProps = {}) {
   const searchParams = useSearchParams()
-  const [assetsMetadata, setAssetsMetadata] = useState<Asset[]>([]);
-  const [isLoading, setLoading] = useState(true);
+  const {
+    data: assetsMetadata,
+    loading: isLoading,
+    error: loadError,
+    run: runAssetQuery,
+    reset: resetAssetQuery,
+    invalidate: invalidateAssetQuery,
+  } = useLatestQuery<Asset[]>([], { initialLoading: true });
   const router = useRouter();
 
-  const itemsPerPage = 12
-  const [totalPages, setTotalPages] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
+  // Page size follows the grid: columns it renders, times rows that fit in the
+  // space below it, so both a wider and a taller window show more assets.
+  const { ref: gridRef, pageSize: itemsPerPage } = useGridPageSize();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchInput, setSearchInput] = useState(searchParams.get('search') ?? "");
   const pathname = usePathname();
 
   const { venues } = useVenues();
-  const venueObj = useVenueForRoute(venueId);
-  const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
-  const authMap = useAuthStore((x) => x.authMap);
-  const authData = getAuthForVenue(venueObj?.venueId ?? "");
-  const nextPage = (page: number) => {
-    setCurrentPage(page)
-  }
-  const prevPage = (page: number) => {
-    setCurrentPage(page)
-  }
-  const clearSearch = () => {
-    setSearchInput("");
-    router.replace(pathname);
+  const {
+    descriptor: venueObj,
+    venue,
+    isAuthenticated,
+  } = useResolvedVenueContext(venueId);
+  const handleSearchChange = (value: string) => {
+    setSearchInput(value);
+    if (!value) router.replace(pathname);
   }
   // Shared by the initial-load effect and the create-asset refresh; isStale
   // drops in-flight results after venue change or unmount, so stale assets
-  // never land in the fresh list. Fetches the full list unconditionally —
+  // never land in the fresh list. Fetches the full id list unconditionally —
   // search text only filters client-side (see filteredAssets) so typing
-  // never triggers a refetch.
-  function fetchAssets(isStale: () => boolean = () => false) {
-    if (!venueObj) return;
-    const venue = getVenueFor(venueObj, authData)
-    setAssetsMetadata([]);
-    setLoading(true);
-    try {
-      venue.listAssets().then((assetList) => {
-        // getAsset() already fetches the asset's metadata (GET /api/v1/assets/{id}),
-        // so asset.metadata is used directly below instead of a redundant getMetadata() call.
-        Promise.all(assetList.items.map((assetId: string) => venue.getAsset(assetId).catch(() => null))).then((assets) => {
-          if (isStale()) return;
-          const dataAssets = assets
-            .filter((asset): asset is Asset => asset != null && asset.metadata.name != undefined && asset.metadata.operation == undefined)
-            .map((asset) => new DataAsset(asset.id, asset.venue, asset.metadata));
-          setAssetsMetadata(dataAssets);
-          setLoading(false);
-        })
-      })
+  // never triggers a refetch. Metadata resolves through the content-addressed
+  // cache (immutable, so revisits are near-free) and streams in per batch,
+  // so the grid fills incrementally instead of blocking on the slowest of
+  // N individual GETs.
+  const fetchAssets = useCallback(() => {
+    if (!venue) {
+      resetAssetQuery();
+      return Promise.resolve();
     }
-    catch (error) {
-      console.error('Error fetching data:', error);
-    }
-  }
+    return runAssetQuery(
+      async (publish) => {
+        const assetList = await venue.listAssets();
+        const toDataAssets = (entries: Awaited<ReturnType<typeof loadAssetEntries>>) =>
+          entries
+            // Everything except operations (which have their own page) is an
+            // artifact here — skills and agent templates included.
+            .filter((e) => e.metadata.name != undefined && e.metadata.operation == undefined)
+            .map((e) => new DataAsset(e.id, venue, e.metadata));
+        const entries = await loadAssetEntries(
+          venue,
+          assetList.items,
+          (progress) => publish(toDataAssets(progress), { loading: false }),
+        );
+        return toDataAssets(entries);
+      },
+      { clear: true },
+    );
+  }, [venue, resetAssetQuery, runAssetQuery]);
 
   useEffect(() => {
-    let ignore = false;
-    fetchAssets(() => ignore);
-    return () => { ignore = true; };
-  }, [venueObj, authMap, getAuthForVenue]);
+    void fetchAssets();
+    return invalidateAssetQuery;
+  }, [fetchAssets, invalidateAssetQuery]);
 
   const keywordOptions = useMemo(() => {
     const all = assetsMetadata.flatMap(a => Array.isArray(a.metadata?.keywords) ? a.metadata.keywords : []);
     return [...new Set(all)].sort();
   }, [assetsMetadata]);
+
+  const tagOptions = useMemo(
+    () => keywordOptions.map((k) => ({ value: k, label: k, groupTag: "Keyword" })),
+    [keywordOptions],
+  );
 
   const filteredAssets = useMemo(() => {
     const term = searchInput.trim().toLowerCase();
@@ -104,10 +118,16 @@ export function AssetList({ venueId }: AssetListProps = {}) {
     });
   }, [assetsMetadata, selectedTags, searchInput]);
 
-  useEffect(() => {
-    setTotalPages(Math.ceil(filteredAssets.length / itemsPerPage))
-    setCurrentPage(1)
-  }, [filteredAssets])
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    pageItems,
+  } = useClientPagination({
+    items: filteredAssets,
+    pageSize: itemsPerPage,
+    resetKey: `${searchInput}\u0000${selectedTags.join("\u0000")}`,
+  });
 
   if(venues.length == 0 ) {
      return (
@@ -115,26 +135,13 @@ export function AssetList({ venueId }: AssetListProps = {}) {
       <TopBar venueName={venueObj?.metadata.name}/>
 
       <div className="flex flex-col items-center justify-center">
-        <div className="flex gap-2 items-center w-full mt-4">
-          <div className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Type keyword to search…"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="pl-8 pr-8"
-            />
-            {searchInput && (
-              <button
-                type="button"
-                aria-label="Clear search"
-                onClick={clearSearch}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
+        <div className="flex gap-2 items-center w-full mt-4 justify-end">
+          <FiltersSheet
+            title="Filter Assets"
+            description="Search and narrow down assets by tag."
+            search={{ value: searchInput, onChange: handleSearchChange, placeholder: "Type keyword to search…" }}
+            groups={[]}
+          />
         </div>
       </div>
       <div className="flex flex-col items-center justify-center w-full h-100 space-y-2">
@@ -148,7 +155,7 @@ export function AssetList({ venueId }: AssetListProps = {}) {
   }
 
   function handleDataFromChild(_status: boolean) {
-    fetchAssets();
+    void fetchAssets();
   }
 
   return (
@@ -156,55 +163,47 @@ export function AssetList({ venueId }: AssetListProps = {}) {
         <TopBar venueName={venueObj?.metadata.name}/>
   
         <div className="flex flex-col items-center justify-center">
-          <div className="flex gap-2 items-center w-full mt-4">
-            <div className="relative flex-1">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Type keyword to search…"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                className="pl-8 pr-8"
-              />
-              {searchInput && (
-                <button
-                  type="button"
-                  aria-label="Clear search"
-                  onClick={clearSearch}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-            <TagFilterDropdown
-              adapterOptions={[]}
-              keywordOptions={keywordOptions}
-              selected={selectedTags}
-              onChange={setSelectedTags}
-            />
-          </div>
+          <ListToolbar
+            className="mt-4"
+            actions={
+              <>
+                {isAuthenticated ? (
+                  <CreateAssetComponent sendDataToParent={handleDataFromChild} venue={venue ?? undefined}></CreateAssetComponent>
+                ) : (
+                  <Button variant="outline" disabled className="gap-2 text-muted-foreground">
+                    <Lock size={14} />
+                    Sign in to create assets
+                  </Button>
+                )}
+                <FiltersSheet
+                  title="Filter Assets"
+                  description="Search and narrow down assets by tag."
+                  search={{ value: searchInput, onChange: handleSearchChange, placeholder: "Type keyword to search…" }}
+                  groups={tagOptions.length > 0 ? [{ label: "Tags", options: tagOptions, selected: selectedTags, onChange: setSelectedTags }] : []}
+                />
+              </>
+            }
+            summary={!isLoading && `Page ${currentPage} : Showing ${pageItems.length} of ${filteredAssets.length}`}
+            pagination={<PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={isLoading}></PaginationHeader>}
+          />
 
-          <div className="text-card-foreground text-xs flex flex-row my-2 ">
-            {isLoading ? "Loading…" : `Page ${currentPage} : Showing ${filteredAssets.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).length} of ${filteredAssets.length}`}
-          </div>
-          <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage} disabled={isLoading}></PaginationHeader>
+          {loadError && <ErrorDisplay error={loadError} className="mb-4 w-full" />}
 
           {isLoading ? (
             <div className="flex flex-row items-center justify-center w-full h-100">
               <Spinner variant="ellipsis" className="text-primary" size={64}/>
             </div>
           ) : (
-            <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 3xl:grid-cols-5 4xl:grid-cols-6 items-stretch justify-center gap-4">
-              {filteredAssets.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage).map((asset) =>
-                <AssetCard key={asset.id} asset={asset} type="assets" compact={true}/>
+            <div ref={gridRef} className={CARD_GRID_CLASS}>
+              {pageItems.map((asset) =>
+                <AssetCard key={asset.id} asset={asset} type="assets" compact={true} venue={venue ?? undefined} authenticated={isAuthenticated}/>
               )}
             </div>
           )}
 
-          <CreateAssetComponent sendDataToParent={handleDataFromChild} ></CreateAssetComponent>
-          <PaginationHeader currentPage={currentPage} totalPages={totalPages} nextPage={nextPage} prevPage={prevPage} disabled={isLoading}></PaginationHeader>
+          <PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={isLoading}></PaginationHeader>
 
         </div>
       </ContentLayout>
   );
-} 
+}

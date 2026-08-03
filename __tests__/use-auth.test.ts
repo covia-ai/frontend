@@ -1,137 +1,216 @@
-import '@testing-library/jest-dom';
-import { useAuthStore } from '@/hooks/use-auth';
-import { act } from '@testing-library/react';
+import "@testing-library/jest-dom";
+import { act, renderHook } from "@testing-library/react";
+import { useAuthStore, useCurrentAuth } from "@/hooks/use-auth";
+import { useVenues } from "@/hooks/use-venues";
 
-const MOCK_HEX = '0101010101010101010101010101010101010101010101010101010101010101';
-const VENUE_A = 'did:web:venue-a.example.com';
-const VENUE_B = 'did:web:venue-b.example.com';
+const MOCK_HEX = "0101010101010101010101010101010101010101010101010101010101010101";
+const VENUE_A = "did:web:venue-a.example.com";
+const VENUE_B = "did:web:venue-b.example.com";
+const descriptor = (venueId: string) => ({
+  venueId,
+  baseUrl: `https://${venueId.slice("did:web:".length)}`,
+  metadata: { name: venueId },
+});
 
-describe('useAuthStore', () => {
+describe("useAuthStore", () => {
   beforeEach(() => {
     act(() => {
-      useAuthStore.setState({ authMap: {}, activeVenueId: null, auth: null, deviceKeyHex: null });
+      useAuthStore.setState({ authMap: {}, accountsMap: {}, deviceKeyHex: null, deviceKeys: [] });
+      useVenues.setState({
+        venues: [descriptor(VENUE_A), descriptor(VENUE_B)],
+        selectedVenueId: VENUE_A,
+      });
     });
   });
 
-  describe('loginWithKeypair', () => {
-    it('should set keypair auth for a venue', () => {
-      act(() => {
-        useAuthStore.getState().loginWithKeypair(VENUE_A, 'abc123', 'did:key:z6Mk...');
-      });
-      const auth = useAuthStore.getState().auth;
-      expect(auth).toEqual({
-        type: 'keypair',
-        privateKeyHex: 'abc123',
-        did: 'did:key:z6Mk...',
-      });
-      expect(useAuthStore.getState().activeVenueId).toBe(VENUE_A);
+  it("stores keypair auth by venue", () => {
+    act(() => {
+      useAuthStore
+        .getState()
+        .loginWithKeypair(VENUE_A, "abc123", "did:key:z6Mk...");
+    });
+
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toEqual({
+      type: "keypair",
+      privateKeyHex: "abc123",
+      did: "did:key:z6Mk...",
     });
   });
 
-  describe('loginWithToken', () => {
-    it('should set bearer auth for a venue', () => {
-      act(() => {
-        useAuthStore.getState().loginWithToken(VENUE_A, 'token123', 'did:key:z6Mk...');
-      });
-      const auth = useAuthStore.getState().auth;
-      expect(auth).toEqual({
-        type: 'bearer',
-        token: 'token123',
-        did: 'did:key:z6Mk...',
-      });
-      expect(useAuthStore.getState().activeVenueId).toBe(VENUE_A);
+  it("stores bearer auth by venue", () => {
+    act(() => {
+      useAuthStore
+        .getState()
+        .loginWithToken(VENUE_A, "token123", "did:key:z6Mk...");
+    });
+
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toEqual({
+      type: "bearer",
+      token: "token123",
+      did: "did:key:z6Mk...",
     });
   });
 
-  describe('per-venue auth', () => {
-    it('should store separate auth per venue', () => {
-      act(() => {
-        useAuthStore.getState().loginWithToken(VENUE_A, 'tokenA', 'did:a');
-        useAuthStore.getState().loginWithToken(VENUE_B, 'tokenB', 'did:b');
-      });
-      // Active venue should be the last one logged in
-      expect(useAuthStore.getState().auth).toEqual({
-        type: 'bearer',
-        token: 'tokenB',
-        did: 'did:b',
-      });
-      // Switch back to venue A
-      act(() => {
-        useAuthStore.getState().setActiveVenue(VENUE_A);
-      });
-      expect(useAuthStore.getState().auth).toEqual({
-        type: 'bearer',
-        token: 'tokenA',
-        did: 'did:a',
-      });
+  it("derives current auth from the selected venue without duplicating it", () => {
+    act(() => {
+      useAuthStore.getState().loginWithToken(VENUE_A, "tokenA", "did:a");
+      useAuthStore.getState().loginWithToken(VENUE_B, "tokenB", "did:b");
+    });
+    const { result } = renderHook(() => useCurrentAuth());
+
+    expect(result.current).toMatchObject({ token: "tokenA" });
+    act(() => useVenues.getState().selectVenue(VENUE_B));
+    expect(result.current).toMatchObject({ token: "tokenB" });
+  });
+
+  it("returns null for a venue with no stored auth", () => {
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toBeNull();
+  });
+
+  it("logs out one venue and preserves other credentials and the device key", () => {
+    act(() => {
+      useAuthStore.getState().setDeviceKeyHex(MOCK_HEX);
+      useAuthStore
+        .getState()
+        .loginWithKeypair(VENUE_A, MOCK_HEX, "did:key:z6Mk...");
+      useAuthStore.getState().loginWithToken(VENUE_B, "tokenB", "did:b");
+      useAuthStore.getState().logout(VENUE_A);
     });
 
-    it('should return null auth for a venue with no stored auth', () => {
-      expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toBeNull();
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toBeNull();
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_B)).toMatchObject({
+      token: "tokenB",
+    });
+    expect(useAuthStore.getState().deviceKeyHex).toBe(MOCK_HEX);
+  });
+
+  it("stores and returns the reusable device key", () => {
+    expect(useAuthStore.getState().getDeviceKeyHex()).toBeNull();
+    act(() => useAuthStore.getState().setDeviceKeyHex(MOCK_HEX));
+    expect(useAuthStore.getState().getDeviceKeyHex()).toBe(MOCK_HEX);
+  });
+
+  it("records every login in the venue's account history, most recent first", () => {
+    act(() => {
+      useAuthStore.getState().loginWithToken(VENUE_A, "token1", "did:a1");
+      useAuthStore.getState().loginWithKeypair(VENUE_A, MOCK_HEX, "did:a2");
     });
 
-    it('should return auth for a specific venue', () => {
-      act(() => {
-        useAuthStore.getState().loginWithToken(VENUE_A, 'tokenA', 'did:a');
-      });
-      expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toEqual({
-        type: 'bearer',
-        token: 'tokenA',
-        did: 'did:a',
-      });
-      expect(useAuthStore.getState().getAuthForVenue(VENUE_B)).toBeNull();
+    const accounts = useAuthStore.getState().accountsMap[VENUE_A];
+    expect(accounts.map((a) => a.did)).toEqual(["did:a2", "did:a1"]);
+    // Active follows the latest login.
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toMatchObject({ did: "did:a2" });
+  });
+
+  it("keeps the account choosable after logout and reactivates it via switchAccount", () => {
+    act(() => {
+      useAuthStore.getState().loginWithToken(VENUE_A, "token1", "did:a1");
+      useAuthStore.getState().logout(VENUE_A);
+    });
+
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toBeNull();
+    expect(useAuthStore.getState().accountsMap[VENUE_A]).toHaveLength(1);
+
+    act(() => useAuthStore.getState().switchAccount(VENUE_A, "did:a1"));
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toMatchObject({
+      did: "did:a1",
+      token: "token1",
     });
   });
 
-  describe('logout', () => {
-    it('should clear auth for active venue only and preserve deviceKeyHex', () => {
-      act(() => {
-        useAuthStore.getState().setDeviceKeyHex(MOCK_HEX);
-        useAuthStore.getState().loginWithKeypair(VENUE_A, MOCK_HEX, 'did:key:z6Mk...');
-        useAuthStore.getState().loginWithToken(VENUE_B, 'tokenB', 'did:b');
-      });
-      // Switch to venue A and logout
-      act(() => {
-        useAuthStore.getState().setActiveVenue(VENUE_A);
-      });
-      act(() => {
-        useAuthStore.getState().logout();
-      });
-      expect(useAuthStore.getState().auth).toBeNull();
-      expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toBeNull();
-      // Venue B should still have auth
-      expect(useAuthStore.getState().getAuthForVenue(VENUE_B)).toEqual({
-        type: 'bearer',
-        token: 'tokenB',
-        did: 'did:b',
-      });
-      expect(useAuthStore.getState().deviceKeyHex).toBe(MOCK_HEX);
+  it("switches between two accounts on the same venue and marks the chosen one last-used", () => {
+    act(() => {
+      useAuthStore.getState().loginWithToken(VENUE_A, "token1", "did:a1");
+      useAuthStore.getState().loginWithToken(VENUE_A, "token2", "did:a2");
+      useAuthStore.getState().switchAccount(VENUE_A, "did:a1");
     });
+
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toMatchObject({ did: "did:a1" });
+    expect(useAuthStore.getState().accountsMap[VENUE_A].map((a) => a.did)).toEqual([
+      "did:a1",
+      "did:a2",
+    ]);
   });
 
-  describe('getDeviceKeyHex / setDeviceKeyHex', () => {
-    it('should return null when no key exists', () => {
-      expect(useAuthStore.getState().getDeviceKeyHex()).toBeNull();
+  it("re-login with the same identity dedups the history instead of growing it", () => {
+    act(() => {
+      useAuthStore.getState().loginWithToken(VENUE_A, "old-token", "did:a1");
+      useAuthStore.getState().loginWithToken(VENUE_A, "fresh-token", "did:a1");
     });
 
-    it('should store and return device key', () => {
-      act(() => {
-        useAuthStore.getState().setDeviceKeyHex(MOCK_HEX);
-      });
-      expect(useAuthStore.getState().getDeviceKeyHex()).toBe(MOCK_HEX);
+    const accounts = useAuthStore.getState().accountsMap[VENUE_A];
+    expect(accounts).toHaveLength(1);
+    expect(accounts[0]).toMatchObject({ token: "fresh-token" });
+  });
+
+  it("removeAccount forgets the account and clears the active slot when it was active", () => {
+    act(() => {
+      useAuthStore.getState().loginWithToken(VENUE_A, "token1", "did:a1");
+      useAuthStore.getState().loginWithToken(VENUE_A, "token2", "did:a2");
+      useAuthStore.getState().removeAccount(VENUE_A, "did:a2");
     });
 
-    it('should preserve device key across logout cycles', () => {
-      act(() => {
-        useAuthStore.getState().setDeviceKeyHex(MOCK_HEX);
-        useAuthStore.getState().loginWithKeypair(VENUE_A, MOCK_HEX, 'did:key:z6Mk...');
-      });
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toBeNull();
+    expect(useAuthStore.getState().accountsMap[VENUE_A].map((a) => a.did)).toEqual(["did:a1"]);
 
-      act(() => {
-        useAuthStore.getState().logout();
-      });
+    act(() => useAuthStore.getState().removeAccount(VENUE_A, "did:a1"));
+    expect(useAuthStore.getState().accountsMap[VENUE_A]).toBeUndefined();
+  });
 
-      expect(useAuthStore.getState().getDeviceKeyHex()).toBe(MOCK_HEX);
+  it("purgeVenueAuth drops both the active account and the history for one venue only", () => {
+    act(() => {
+      useAuthStore.getState().loginWithToken(VENUE_A, "tokenA", "did:a");
+      useAuthStore.getState().loginWithToken(VENUE_B, "tokenB", "did:b");
+      useAuthStore.getState().purgeVenueAuth(VENUE_A);
     });
+
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toBeNull();
+    expect(useAuthStore.getState().accountsMap[VENUE_A]).toBeUndefined();
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_B)).toMatchObject({ token: "tokenB" });
+    expect(useAuthStore.getState().accountsMap[VENUE_B]).toHaveLength(1);
+  });
+
+  it("addDeviceKey dedups and makes the first key the default", () => {
+    const KEY_B = "b".repeat(64);
+    act(() => {
+      useAuthStore.getState().addDeviceKey(MOCK_HEX);
+      useAuthStore.getState().addDeviceKey(KEY_B);
+      useAuthStore.getState().addDeviceKey(MOCK_HEX);
+    });
+
+    expect(useAuthStore.getState().deviceKeys).toEqual([MOCK_HEX, KEY_B]);
+    expect(useAuthStore.getState().deviceKeyHex).toBe(MOCK_HEX);
+  });
+
+  it("removeDeviceKey promotes the next key to default when the default is removed", () => {
+    const KEY_B = "b".repeat(64);
+    act(() => {
+      useAuthStore.getState().addDeviceKey(MOCK_HEX);
+      useAuthStore.getState().addDeviceKey(KEY_B);
+      useAuthStore.getState().removeDeviceKey(MOCK_HEX);
+    });
+
+    expect(useAuthStore.getState().deviceKeys).toEqual([KEY_B]);
+    expect(useAuthStore.getState().deviceKeyHex).toBe(KEY_B);
+
+    act(() => useAuthStore.getState().removeDeviceKey(KEY_B));
+    expect(useAuthStore.getState().deviceKeyHex).toBeNull();
+  });
+
+  it("setDeviceKeyHex records the key in the known list", () => {
+    act(() => useAuthStore.getState().setDeviceKeyHex(MOCK_HEX));
+    expect(useAuthStore.getState().deviceKeys).toEqual([MOCK_HEX]);
+  });
+
+  it("switching the selected venue restores that venue's last-used account", () => {
+    act(() => {
+      useAuthStore.getState().loginWithToken(VENUE_A, "tokenA", "did:a");
+      useAuthStore.getState().loginWithKeypair(VENUE_B, MOCK_HEX, "did:b");
+    });
+    const { result } = renderHook(() => useCurrentAuth());
+
+    expect(result.current).toMatchObject({ did: "did:a", type: "bearer" });
+    act(() => useVenues.getState().selectVenue(VENUE_B));
+    expect(result.current).toMatchObject({ did: "did:b", type: "keypair" });
   });
 });

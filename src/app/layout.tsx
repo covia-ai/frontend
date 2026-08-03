@@ -36,8 +36,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.dataLayer=window.dataLayer||[];window.gtag=window.gtag||function(){window.dataLayer.push(arguments)};window.gtag('consent','default',{analytics_storage:'denied',ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',wait_for_update:500});`,
+          }}
+        />
+      </head>
       <body
-        className={`${aetherFont.className}  antialiased`}
+        className={`${aetherFont.className} ${aetherFont.variable} antialiased`}
       >
           <ThemeProvider
             attribute="class"

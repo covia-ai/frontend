@@ -1,98 +1,124 @@
-import { useEffect, useRef, useState } from "react";
+"use client";
+
+import { useMemo, useState } from "react";
+import type { Venue } from "@covia/covia-sdk";
 import { useTheme } from "next-themes";
-import { Dialog, DialogContent, DialogHeader, DialogTrigger } from "./ui/dialog";
-import { ScrollArea, ScrollBar } from "./ui/scroll-area";
 import { JsonEditor, githubDarkTheme, githubLightTheme } from "json-edit-react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
-import { Copy, Check } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useAssetTextContent } from "@/hooks/use-asset-text-content";
+import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { RawTextPanel } from "@/components/content-preview/RawTextPanel";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
-export const JsonViewer = (props:any) => {
-   const venue = useAuthenticatedVenue();
-   const { theme } = useTheme();
+type JsonViewerProps = {
+  assetId: string;
+  venue?: Venue;
+};
 
-   const [renderData, setRenderData] = useState({});
-   const [rawText, setRawText] = useState("");
-   const [copied, setCopied] = useState(false);
-   const rawRef = useRef<HTMLTextAreaElement>(null);
+export const JsonViewer = ({ assetId, venue: providedVenue }: JsonViewerProps) => {
+  const fallbackVenue = useAuthenticatedVenue();
+  const venue = providedVenue ?? fallbackVenue;
+  const { theme } = useTheme();
+  const [open, setOpen] = useState(false);
+  const content = useAssetTextContent(venue, assetId, open);
+  const parsed = useMemo(() => {
+    if (!content.loaded || content.loading || content.error) {
+      return { value: null as unknown, error: null as string | null };
+    }
+    try {
+      return { value: JSON.parse(content.text) as unknown, error: null };
+    } catch (error: unknown) {
+      return {
+        value: null,
+        error:
+          error instanceof Error ? error.message : "Invalid JSON content",
+      };
+    }
+  }, [content.error, content.loaded, content.loading, content.text]);
 
-   const handleCopy = () => {
-     const el = rawRef.current;
-     if (!el) return;
-      navigator.clipboard.writeText(el.value).then(() => {
-       setCopied(true);
-       setTimeout(() => setCopied(false), 2000);
-     });
-   };
-
-   useEffect(() => {
-      if (!venue) return;
-      venue.assets.getContent(props.assetId).then(async (response) => {
-        const reader = response?.getReader();
-        if (!reader) return;
-        const decoder = new TextDecoder();
-        let text = "";
-        while (true) {
-          const { value, done } = await reader.read();
-          if (value) text += decoder.decode(value, { stream: !done });
-          if (done) break;
-        }
-        setRawText(text);
-        const jsonData = JSON.parse(text);
-        setRenderData(jsonData)
-      })
-    },[props.assetId, venue])
-
+  const renderPreview = () => {
+    if (content.loading) {
+      return (
+        <div className="flex h-[500px] items-center justify-center">
+          <Loader2 className="animate-spin text-primary" size={28} />
+        </div>
+      );
+    }
+    if (content.error || parsed.error) {
+      return (
+        <ErrorDisplay
+          error={content.error ?? parsed.error ?? "Unable to preview JSON"}
+          className="p-4"
+        />
+      );
+    }
+    if (typeof parsed.value !== "object" || parsed.value === null) {
+      return (
+        <pre className="whitespace-pre-wrap rounded-lg bg-background p-4 font-mono text-sm">
+          {JSON.stringify(parsed.value, null, 2)}
+        </pre>
+      );
+    }
+    return (
+      <JsonEditor
+        data={parsed.value}
+        rootName="content"
+        rootFontSize="0.875em"
+        maxWidth="80vh"
+        restrictEdit
+        restrictAdd
+        restrictDelete
+        collapse={3}
+        theme={theme === "dark" ? githubDarkTheme : githubLightTheme}
+      />
+    );
+  };
 
   return (
-  <Dialog>
-  <DialogTrigger className="text-sm text-secondary dark:text-secondary-light underline">View</DialogTrigger>
-  <DialogContent className="bg-card text-card-foreground max-h-[90vh] w-full max-w-4xl p-4 flex flex-col overflow-hidden border border-border">
-     <DialogHeader className="text-sm font-medium text-muted-foreground">
-        JSON Preview
-    </DialogHeader>
-
-    <Tabs defaultValue="preview" className="flex-1 flex flex-col min-h-0">
-      <TabsList>
-        <TabsTrigger value="preview">Preview</TabsTrigger>
-        <TabsTrigger value="raw">Raw</TabsTrigger>
-      </TabsList>
-      <TabsContent value="preview" className="flex-1 min-h-0">
-        <ScrollArea className="h-[500px] w-full [&>[data-radix-scroll-area-viewport]>div]:!block rounded-lg">
-          <div className="p-4 bg-background rounded-lg">
-            <JsonEditor
-                              data={renderData}
-                              rootName="content"
-                              rootFontSize="0.875em"
-                              maxWidth="80vh"
-                              restrictEdit={true}
-                              restrictAdd={true}
-                              restrictDelete={true}
-                              collapse={3}
-                              theme={theme === "dark" ? githubDarkTheme : githubLightTheme}
-                            />
-          </div>
-          <ScrollBar orientation="horizontal" />
-          <ScrollBar orientation="vertical" />
-        </ScrollArea>
-      </TabsContent>
-      <TabsContent value="raw" className="flex-1 min-h-0 relative">
-        <button
-          onClick={handleCopy}
-          className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-muted hover:bg-muted/80 transition-colors"
-          title={copied ? "Copied!" : "Copy selected or all"}
-        >
-          {copied ? <Check size={16} /> : <Copy size={16} />}
-        </button>
-        <textarea
-          ref={rawRef}
-          readOnly
-          value={rawText}
-          className="w-full h-[450px] p-4 text-sm bg-background rounded-lg resize-none border-none outline-none font-mono"
-        />
-      </TabsContent>
-    </Tabs>
-  </DialogContent>
-</Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger className="text-sm text-secondary underline dark:text-secondary-light">
+        View
+      </DialogTrigger>
+      <DialogContent className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden border border-border bg-card p-4 text-card-foreground">
+        <DialogHeader className="text-sm font-medium text-muted-foreground">
+          JSON Preview
+        </DialogHeader>
+        <Tabs defaultValue="preview" className="flex min-h-0 flex-1 flex-col">
+          <TabsList>
+            <TabsTrigger value="preview">Preview</TabsTrigger>
+            <TabsTrigger value="raw">Raw</TabsTrigger>
+          </TabsList>
+          <TabsContent value="preview" className="min-h-0 flex-1">
+            <ScrollArea className="h-[500px] w-full rounded-lg [&>[data-radix-scroll-area-viewport]>div]:!block">
+              <div className="rounded-lg bg-background p-4">
+                {renderPreview()}
+              </div>
+              <ScrollBar orientation="horizontal" />
+              <ScrollBar orientation="vertical" />
+            </ScrollArea>
+          </TabsContent>
+          <TabsContent value="raw" className="min-h-0 flex-1">
+            <RawTextPanel
+              value={content.text}
+              loading={content.loading}
+              error={content.error}
+            />
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
   );
-}
+};

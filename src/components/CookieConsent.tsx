@@ -6,6 +6,19 @@ import CookieConsent from "react-cookie-consent";
 // accepting or declining the banner has no effect on tracking.
 function pushConsent(granted: boolean) {
   window.dataLayer = window.dataLayer || [];
+  const consentWindow = window as Window & {
+    gtag?: (...args: unknown[]) => void;
+  };
+  consentWindow.gtag?.(
+    "consent",
+    "update",
+    {
+      analytics_storage: granted ? "granted" : "denied",
+      ad_storage: granted ? "granted" : "denied",
+      ad_user_data: granted ? "granted" : "denied",
+      ad_personalization: granted ? "granted" : "denied",
+    },
+  );
   window.dataLayer.push({
     event: "consent_update",
     analytics_storage: granted ? "granted" : "denied",
@@ -31,7 +44,7 @@ export const CookieConsentComponent = () => {
         onDecline={() => pushConsent(false)}
       >
         This website uses cookies to enhance your experience. By using our website, you consent to the use of cookies. 
-        You can read more in our <a href="/privacy-policy">privacy policy</a>.
+        You can read more in our <a href="/privacypolicy">privacy policy</a>.
       </CookieConsent>
     </div>
   );

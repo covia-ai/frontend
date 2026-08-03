@@ -3,11 +3,11 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "./ui/button";
-import { Iconbutton } from "./Iconbutton";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
@@ -21,20 +21,36 @@ import {
 } from "./ui/select";
 import { Textarea } from "./ui/textarea";
 import { Separator } from "./ui/separator";
-import { toast } from "sonner";
+import { notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
+import { gtmEvent } from "@/lib/utils";
+
+// The capability half of a venue agent template (COG-18 skills + tool palette)
+// that the dialog carries into the created agent unchanged — name, prompt,
+// provider and model are edited in the form, these ride along.
+export interface AgentTemplateConfig {
+  operation?: string;
+  skills?: string[];
+  tools?: string[];
+  defaultTools?: boolean;
+}
 
 interface AddNewAgentProps {
   trigger?: React.ReactNode;
   initialAgentName?: string;
   initialSystemPrompt?: string;
   initialProvider?: string;
+  /** Skills/tools/operation from a venue template, applied to the created agent. */
+  initialConfig?: AgentTemplateConfig;
   onCreated?: () => void;
 }
+
+const CUSTOM_MODEL_OPTION = "__custom__";
+const DEFAULT_MODEL_OPTION = "__default__";
 
 const slugify = (name: string) =>
   name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
@@ -44,17 +60,25 @@ export function AddNewAgent({
   initialAgentName = "",
   initialSystemPrompt = "",
   initialProvider = "anthropic",
+  initialConfig,
   onCreated,
 }: AddNewAgentProps = {}) {
   const [agentName, setAgentName] = useState(initialAgentName);
   const [agentId, setAgentId] = useState("");
   const [agentIdEdited, setAgentIdEdited] = useState(false);
   const [llmProvider, setLlmProvider] = useState(initialProvider);
+  // "" = venue default (model omitted from config); CUSTOM_MODEL_OPTION shows
+  // a free-text input for ids not in the curated list.
+  const [model, setModel] = useState("");
+  const [customModel, setCustomModel] = useState("");
   const [systemPrompt, setSystemPrompt] = useState(initialSystemPrompt);
   const [initialCommand, setInitialCommand] = useState("");
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState(false);
   const [availableKeys, setAvailableKeys] = useState<string[]>([]);
+  // A key pasted inline when the chosen provider has none — stored on create
+  // so you don't have to leave the dialog to add it in Secrets first.
+  const [apiKeyInput, setApiKeyInput] = useState("");
 
 
   const venue = useAuthenticatedVenue();
@@ -69,13 +93,40 @@ export function AddNewAgent({
     setAgentIdEdited(false);
     setSystemPrompt(initialSystemPrompt);
     setLlmProvider(initialProvider);
+    setModel("");
+    setCustomModel("");
     setInitialCommand("");
+    setApiKeyInput("");
     if (!venue) return;
     venue.secrets
       .list()
-      .then((secrets: string[]) => setAvailableKeys(secrets))
+      .then((secrets: string[]) => {
+        setAvailableKeys(secrets);
+        // Templates all default to OpenAI, but most users hold a different key.
+        // If the seeded provider has no key and another does, switch to a ready
+        // one so "Use Template" just works instead of showing "No API key".
+        const ready = (id: string) => {
+          const p = LLM_PROVIDERS[id];
+          return !!p && (!p.requiresKey || secrets.includes(p.secretKey));
+        };
+        if (!ready(initialProvider)) {
+          const pick = Object.keys(LLM_PROVIDERS).find(ready);
+          if (pick) setLlmProvider(pick);
+        }
+      })
       .catch(() => setAvailableKeys([]));
   }, [open, venue, initialAgentName, initialSystemPrompt, initialProvider]);
+
+  // The model actually sent in the agent config; "" means omit (venue default).
+  const resolvedModel =
+    model === CUSTOM_MODEL_OPTION ? customModel.trim() : model === DEFAULT_MODEL_OPTION ? "" : model;
+
+  const handleProviderChange = (providerId: string) => {
+    setLlmProvider(providerId);
+    // Model ids are provider-specific — a Claude id is meaningless on OpenAI.
+    setModel("");
+    setCustomModel("");
+  };
 
   const isProviderReady = (providerId: string) => {
     const provider = LLM_PROVIDERS[providerId];
@@ -86,38 +137,58 @@ export function AddNewAgent({
 
   const handleNewAgent = async () => {
     if (!venue) {
-      toast("Please connect to a venue first");
+      notifyWarning("Please connect to a venue first");
       return;
     }
     if (!agentName.trim()) {
-      toast("Please enter an agent name");
+      notifyWarning("Please enter an agent name");
       return;
     }
-    if (!isProviderReady(llmProvider)) {
-      toast("No API key found for this provider");
+    const provider = LLM_PROVIDERS[llmProvider];
+    // The provider needs a key it doesn't have. Accept one pasted inline rather
+    // than making the user leave for the Secrets page.
+    const needsKey = !!provider?.requiresKey && !isProviderReady(llmProvider);
+    if (needsKey && !apiKeyInput.trim()) {
+      notifyWarning(`Enter an API key for ${provider.label}, or add one in Secrets`);
       return;
     }
     if (isReservedAgentId) {
-      toast(`"${DEFAULT_AGENT_ID}" is reserved for the workspace prompt bar — pick another id`);
+      notifyWarning(`"${DEFAULT_AGENT_ID}" is reserved for the workspace prompt bar — pick another id`);
       return;
     }
     setCreating(true);
     try {
-      const provider = LLM_PROVIDERS[llmProvider];
+      // Store the pasted key first so the provider op can resolve it.
+      if (needsKey && apiKeyInput.trim()) {
+        await venue.secrets.set(provider.secretKey, apiKeyInput.trim());
+      }
       const result = await venue.agents.create({
         agentId: resolvedAgentId,
         config: {
-          operation: "v/ops/llmagent/chat",
+          // Template capabilities (skills, tools, defaultTools) ride along; the
+          // form's provider/model/prompt below always win over the template's.
+          ...(initialConfig?.skills?.length ? { skills: initialConfig.skills } : {}),
+          ...(initialConfig?.tools?.length ? { tools: initialConfig.tools } : {}),
+          ...(initialConfig?.defaultTools != null ? { defaultTools: initialConfig.defaultTools } : {}),
+          operation: initialConfig?.operation ?? "v/ops/llmagent/chat",
           llmOperation: provider.operation,
+          // The agent loop forwards `model` into the LLM op input
+          // (AbstractLLMAdapter K_MODEL); omitted → provider default.
+          ...(resolvedModel && { model: resolvedModel }),
           ...(systemPrompt.trim() && { systemPrompt: systemPrompt.trim() }),
         },
       });
 
       if (initialCommand.trim()) {
-        await venue.agents.request(result.agentId, { task: initialCommand.trim() });
+        // Fire-and-forget (wait:false): without it the SDK blocks until the
+        // initial task reaches a terminal state, so a failed task would surface
+        // below as a false "Unable to create agent" even though creation already
+        // succeeded. Task failures instead show up via normal job polling (#142).
+        await venue.agents.request(result.agentId, { task: initialCommand.trim() }, false);
       }
 
-      toast("Agent created", {
+      gtmEvent.createAgent(result.agentId, llmProvider);
+      notifySuccess("Agent created", {
         description: `Agent "${result.agentId}" is now ${result.status}`,
       });
       setAgentName("");
@@ -127,8 +198,9 @@ export function AddNewAgent({
       setInitialCommand("");
       setOpen(false);
       onCreated?.();
-    } catch {
-      toast("Unable to create agent");
+    } catch (err) {
+      gtmEvent.createAgentFailed(resolvedAgentId, err instanceof Error ? err.message : undefined);
+      notifyError("Unable to create agent", err, venue.baseUrl);
     } finally {
       setCreating(false);
     }
@@ -138,11 +210,10 @@ export function AddNewAgent({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger ?? (
-          <Iconbutton
-            icon={PlusCircledIcon}
-            message="Create a new agent"
-            label="Create a new agent"
-          />
+          <Button data-testid="create-agent-trigger" className="shrink-0 gap-2">
+            <PlusCircledIcon />
+            Create Agent
+          </Button>
         )}
       </DialogTrigger>
       <DialogContent className="flex flex-col bg-card text-card-foreground max-h-[85vh] overflow-y-auto">
@@ -150,8 +221,19 @@ export function AddNewAgent({
           <Label className="text-md">Create a new agent</Label>
           <Separator />
         </DialogTitle>
+        <DialogDescription className="sr-only">
+          Configure the identity, model, and initial prompt for a new venue agent.
+        </DialogDescription>
 
         <div className="flex flex-col items-start justify-center space-y-6">
+          {/* What a template contributes beyond the editable fields below. */}
+          {initialConfig && Boolean(initialConfig.skills?.length || initialConfig.tools?.length || initialConfig.defaultTools) && (
+            <p data-testid="template-capabilities" className="w-full text-xs text-muted-foreground border rounded-md p-2">
+              This template adds{initialConfig.skills?.length ? ` a skills index (${initialConfig.skills.join(", ")})` : ""}
+              {initialConfig.tools?.length ? `${initialConfig.skills?.length ? "," : ""} ${initialConfig.tools.length} tool${initialConfig.tools.length === 1 ? "" : "s"}` : ""}
+              {initialConfig.defaultTools ? `${(initialConfig.skills?.length || initialConfig.tools?.length) ? ", and" : ""} read-only workspace access` : ""}. Set the name, provider and prompt below.
+            </p>
+          )}
           {/* Agent Name */}
           <div className="space-y-2 w-full">
             <Label htmlFor="agent-name" className="w-32 text-sm">
@@ -197,7 +279,7 @@ export function AddNewAgent({
           {/* LLM Provider */}
           <div className="space-y-2 w-full">
             <Label>LLM Provider:</Label>
-            <Select value={llmProvider} onValueChange={setLlmProvider}>
+            <Select value={llmProvider} onValueChange={handleProviderChange}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -210,14 +292,56 @@ export function AddNewAgent({
               </SelectContent>
             </Select>
             {!isProviderReady(llmProvider) && LLM_PROVIDERS[llmProvider]?.requiresKey && (
-              <p className="text-xs text-amber-500 flex items-center gap-1">
-                <AlertTriangle size={12} />
-                No API key found for this provider.{" "}
-                <Link href="/secrets" className="underline">
-                  Add one in Secrets
-                </Link>
-              </p>
+              <div className="space-y-1">
+                <p className="text-xs text-amber-500 flex items-center gap-1">
+                  <AlertTriangle size={12} />
+                  No {LLM_PROVIDERS[llmProvider]?.label} key yet — paste one to store it, or{" "}
+                  <Link href="/secrets" className="underline">add it in Secrets</Link>.
+                </p>
+                <Input
+                  type="password"
+                  data-testid="inline-api-key"
+                  placeholder={`${LLM_PROVIDERS[llmProvider]?.secretKey}`}
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  autoComplete="new-password"
+                  data-1p-ignore
+                  data-lpignore="true"
+                  spellCheck={false}
+                />
+              </div>
             )}
+          </div>
+
+          {/* Model */}
+          <div className="space-y-2 w-full">
+            <Label>Model:</Label>
+            <Select
+              value={model || DEFAULT_MODEL_OPTION}
+              onValueChange={(v) => setModel(v === DEFAULT_MODEL_OPTION ? "" : v)}
+            >
+              <SelectTrigger data-testid="model-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={DEFAULT_MODEL_OPTION}>Venue default</SelectItem>
+                {(LLM_PROVIDERS[llmProvider]?.models ?? []).map((m) => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+                <SelectItem value={CUSTOM_MODEL_OPTION}>Custom…</SelectItem>
+              </SelectContent>
+            </Select>
+            {model === CUSTOM_MODEL_OPTION && (
+              <Input
+                data-testid="model-custom-input"
+                placeholder="e.g. claude-opus-4-8"
+                value={customModel}
+                onChange={(e) => setCustomModel(e.target.value)}
+              />
+            )}
+            <p className="text-xs text-muted-foreground">
+              Venue default uses the provider&apos;s configured model.
+            </p>
           </div>
 
           {/* System Prompt */}

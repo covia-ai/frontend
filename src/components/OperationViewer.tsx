@@ -1,587 +1,185 @@
+"use client";
 
-'use client'
-
-import { Input } from "./ui/input";
-import { Button } from "./ui/button";
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-
-import { Fragment, useEffect, useState }from "react";
-import {  Venue, Asset, getParsedAssetId } from "@covia/covia-sdk";
-import { createAuthProvider } from "@/lib/auth-provider";
-import { formatLabel, gtmEvent } from "@/lib/utils";
-import { resolveOperationByAddress } from "@/lib/operations-catalog";
-import { ErrorDisplay } from "./ErrorDisplay";
+import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { Textarea } from "./ui/textarea";
-import { useStore } from "zustand";
-import { useVenue } from "@/hooks/use-venue";
-import { getVenueFor } from "@/hooks/use-authenticated-venue";
-import { DiagramViewer } from "./DiagramViewer";
-import { MetadataViewer } from "./MetadataViewer";
-import { AssetHeader } from "./AssetHeader";
-import { usePathname } from "next/navigation";
-import { useVenues } from "@/hooks/use-venues";
-import { useAuthStore } from "@/hooks/use-auth";
-import { AssetLookup } from "./AssetLookup";
-import { TopBar } from "./admin-panel/TopBar";
-import { ContentLayout } from "./admin-panel/content-layout";
-import { Card, CardContent } from "./ui/card";
+import { AssetHeader } from "@/components/AssetHeader";
+import { ContentLayout } from "@/components/admin-panel/content-layout";
+import { TopBar } from "@/components/admin-panel/TopBar";
+import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { MetadataViewer } from "@/components/MetadataViewer";
+import { OperationInputForm } from "@/components/OperationInputForm";
+import { Button } from "@/components/ui/button";
+import { useOperationAsset } from "@/hooks/use-operation-asset";
+import { useOperationInput } from "@/hooks/use-operation-input";
+import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
+import {
+  validateOperationInput,
+  type OperationInputSchema,
+} from "@/lib/operation-input";
+import { gtmEvent } from "@/lib/utils";
 
+const DiagramViewer = dynamic(
+  () =>
+    import("@/components/DiagramViewer").then(
+      (module) => module.DiagramViewer,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-100 animate-pulse rounded-md bg-muted" />
+    ),
+  },
+);
 
-export const OperationViewer = (props: any) => {
-  const [asset, setAsset] = useState<Asset>();
-  const [errorMessage, setErrorMessage] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [buttonText, setButtonText] = useState("Run");
-  const [input, setInput] = useState<any>({}); // actual input values to be passed to the operation, can be any JSON value
-  const [rawInput, setRawInput] = useState<Record<string, string>>({}); // raw input content before parsing per field name
-  const [typeMap, setTypeMap] = useState<Record<string, string>>({}); // user-specified types of the values to be passed to the operation, affects parsing
-  const [assetNotFound, setAssetNotFound] = useState(false);
-  const [showSchema, setShowSchema] = useState(false);
-  const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
-  const authMap = useAuthStore((x) => x.authMap);
+type OperationViewerProps = {
+  assetId: string;
+  venueId: string;
+};
 
-  const { venues, addVenue } = useVenues();
-  const [venue, setVenue] = useState<Venue>();
-  const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
-
-  // Session storage key based on asset ID
-  const getStorageKey = (suffix: string) => `operation_input_${props.assetId}_${suffix}`;
-
-  // Fake key to indicate top level input
-  const TOP_LEVEL_INPUT_KEY = "__top__";
-
-  // Save input values to session storage
-  const saveToSessionStorage = (inputData: any, rawInputData: Record<string, string>, typeData: Record<string, string>) => {
-    try {
-      sessionStorage.setItem(getStorageKey('input'), JSON.stringify(inputData));
-      sessionStorage.setItem(getStorageKey('rawInput'), JSON.stringify(rawInputData));
-      sessionStorage.setItem(getStorageKey('types'), JSON.stringify(typeData));
-    } catch (error) {
-      console.warn('Failed to save to session storage:', error);
-    }
-  };
-
-  // Restore input values from session storage
-  const restoreFromSessionStorage = () => {
-    try {
-      const savedInput = sessionStorage.getItem(getStorageKey('input'));
-      const savedRawInput = sessionStorage.getItem(getStorageKey('rawInput'));
-      const savedTypes = sessionStorage.getItem(getStorageKey('types'));
-
-      if (savedInput) {
-        const parsedInput = JSON.parse(savedInput);
-        setInput(parsedInput);
-      }
-
-      if (savedRawInput) {
-        const parsedRawInput = JSON.parse(savedRawInput);
-        setRawInput(parsedRawInput);
-      }
-
-      if (savedTypes) {
-        const parsedTypes = JSON.parse(savedTypes);
-        setTypeMap(parsedTypes);
-      }
-    } catch (error) {
-      console.warn('Failed to restore from session storage:', error);
-    }
-  };
-
-  // Clear session storage
-  const clearSessionStorage = () => {
-    try {
-      sessionStorage.removeItem(getStorageKey('input'));
-      sessionStorage.removeItem(getStorageKey('rawInput'));
-      sessionStorage.removeItem(getStorageKey('types'));
-    } catch (error) {
-      console.warn('Failed to clear session storage:', error);
-    }
-  };
-
+export function OperationViewer({
+  assetId,
+  venueId,
+}: OperationViewerProps) {
   const router = useRouter();
-  const pathname = usePathname();
+  const { venue, isAuthenticated } = useResolvedVenueContext(venueId);
+  const { asset, errorMessage: loadError, notFound } = useOperationAsset(
+    venue,
+    assetId,
+  );
+  const schema = useMemo(
+    () =>
+      asset?.metadata?.operation
+        ? ((asset.metadata.operation.input ?? {}) as OperationInputSchema)
+        : undefined,
+    [asset],
+  );
+  const inputController = useOperationInput(venue?.venueId, assetId, schema);
+  const [invocationError, setInvocationError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [confirmationRequired, setConfirmationRequired] = useState(false);
+  const [showSchema, setShowSchema] = useState(false);
 
-   useEffect(() => {
-      const authData = getAuthForVenue(props.venueId ?? venueObj?.venueId ?? '');
-      const authOption = createAuthProvider(authData);
-      if(props.venueId != venueObj?.venueId) {
-        const venue = venues.find(v => v.venueId === props.venueId);
-        if (venue) {
-            setVenue(getVenueFor(venue, authData))
-         }
-         else {
-          Venue.connect(decodeURIComponent(props.venueId), authOption)
-          .then((venue) => {
-            addVenue(venue)
-            setVenue(venue)
-          });
-         }
+  const runOperation = async () => {
+    if (!asset || !venue) {
+      setInvocationError("This asset is not an operation and cannot be invoked");
+      return;
     }
-    else {
-        if (venueObj) setVenue(getVenueFor(venueObj, authData));
-    }
-   }, [authMap, props.venueId, venueObj, getAuthForVenue]);
 
-  useEffect(() => {
-    if (!venue) return;
-    setAssetNotFound(false);
-    setErrorMessage("");
-    // props.assetId is a namespace-explicit address (v/ops/..., v/test/ops/...,
-    // or a/<hash>) — resolve it through the catalog/CAS, not hash-only getAsset.
-    resolveOperationByAddress(venue, props.assetId)
-      .then((asset: Asset) => {
-        setAsset(asset);
-
-        // Try to restore from session storage first
-        restoreFromSessionStorage();
-
-        // If no saved data and input schema specifies an object with properties
-        // then pre-populate defaults into input and types into typeMap
-        if (asset?.metadata?.operation?.input?.properties) {
-          const properties = asset.metadata.operation.input.properties;
-          const newInput: Record<string, any> = {};
-          const newTypeMap: Record<string, string> = {};
-
-          Object.keys(properties).forEach(key => {
-            const property = properties[key];
-            if (property.default !== undefined) {
-              newInput[key] = property.default;
-            }
-            if (property.type !== undefined) {
-              newTypeMap[key] = property.type;
-            }
-          });
-
-          // Only set defaults if no saved data exists
-          const hasSavedInput = sessionStorage.getItem(getStorageKey('input'));
-          const hasSavedTypes = sessionStorage.getItem(getStorageKey('types'));
-
-          if (!hasSavedInput) {
-            setInput(newInput);
-          }
-          if (!hasSavedTypes) {
-            setTypeMap(newTypeMap);
-          }
-        }
-      })
-      .catch((e: Error) => {
-        if (e?.message && (e.message.includes('404') || e.message.toLowerCase().includes('not found'))) {
-          setAssetNotFound(true);
-          return;
-        }
-        setErrorMessage(e?.message || 'Failed to load asset');
-      });
-
-  }, [props.assetId, venue]);
-
-  // Save to session storage whenever input changes
-  useEffect(() => {
-    if (input !== null && input !== undefined && (typeof input === 'object' ? Object.keys(input).length > 0 : true)) {
-      saveToSessionStorage(input, rawInput, typeMap);
-    }
-  }, [input, rawInput, typeMap]);
-
-  // Helper function to process a value based on its type
-  const parseValue = (rawValue: string, type: string) => {
-    if (type === "json" || type === "object" || type === "any" || type === "array") {
-      return JSON.parse(rawValue);
-    } else if (type === "number") {
-      return Number(rawValue);
-    } else if (type === "asset") {
-      return getParsedAssetId(rawValue);
-    }  else {
-      return rawValue;
+    setLoading(true);
+    setInvocationError("");
+    setConfirmationRequired(false);
+    try {
+      const response = await asset.invoke(inputController.input);
+      if (response?.id) {
+        router.push(
+          `/venues/${encodeURIComponent(venue.venueId)}/jobs/${response.id}`,
+        );
+      } else {
+        setInvocationError(
+          "The operation completed without returning a job ID",
+        );
+      }
+    } catch (error: unknown) {
+      setInvocationError(
+        error instanceof Error ? error.message : "Unable to run operation",
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Helper function to convert a value to appropriate raw input string based on type
-  const printValue = (value: any, type: string) => {
-   
-    if (type === "json" || type === "object" || type === "any" || type === "array") {
-      // Convert to JSON string
-      if (value !== undefined && value !== null && value != "") {
-        return JSON.stringify(value, null, 2);
-      } else {
-        return type === "array" ? "[]" : "{}";
+  const requestRun = (requiredKeys: string[]) => {
+    if (!confirmationRequired) {
+      const validationError = validateOperationInput(
+        inputController.input,
+        requiredKeys,
+      );
+      if (validationError) {
+        setInvocationError(validationError);
+        setConfirmationRequired(true);
+        return;
       }
-    } else if (type === "number") {
-      // Convert to number string
-      if(typeof(value) == "object")
-          return  0;
-      return String(value || 0);
-    } else {
-      // For string and other types, convert to string
-      if(typeof(value) == "object")
-          return  ''
-      return String(value) || '';
-      
     }
+
+    gtmEvent.buttonClick(
+      "Invoke Operation",
+      asset?.metadata?.name || asset?.id || "unknown",
+    );
+    void runOperation();
   };
-
-  function setKeyValue(key: any, value: any) {
-    if (key === TOP_LEVEL_INPUT_KEY) {
-      setInput(value);
-    } else {
-      setInput((prev: any) => {
-        if (typeof prev === 'object' && prev !== null) {
-          return { ...prev, [key]: value };
-        } else {
-          return { [key]: value };
-        }
-      });
-    }
-  }
-
-  function setKeyRawValue(key: any, value: string) {
-    setRawInput(prev => ({ ...prev, [key]: value }));
-  }
-
-  function setKeyTypeAndUpdateRawInput(key: any, newType: any) {
-    // Update the type
-    setTypeMap(prev => ({ ...prev, [key]: newType }));
-
-    // Update raw input based on the new type
-    const currentValue = key === TOP_LEVEL_INPUT_KEY ? input : input[key];
-    const newRawValue = printValue(currentValue, newType);
-
-    setRawInput(prev => ({ ...prev, [key]: newRawValue }));
-  }
-
-  async function resetForm() {
-    clearSessionStorage();
-    setInput({});
-    setRawInput({});
-    setTypeMap({});
-    router.replace(pathname);
-  }
-
-  function runOperation() {
-    return asset?.invoke(input)
-      .then(response => {
-        if (response?.id) {
-          router.push("/venues/"+venue?.venueId+"/jobs/" + response?.id);
-        }
-        return response;
-      });
-  }
-
-  function invokeOp(id: any, requiredKeys: string[] = []) {
-    //First attempt , do all validations and inform user of operation inputs
-    if (buttonText == "Run") {
-      //Check if any inputs are provided by user
-      try {
-        // Check if input exists and is not empty
-        const isObject = input !== null && input !== undefined &&
-          (typeof input === 'object' ? Object.keys(input).length > 0 : input !== '');
-
-        if (isObject) {
-          //Check if all required values are provided (only for object inputs)
-          if (typeof input === 'object' && input !== null) {
-            for (let index = 0; index < requiredKeys.length; index++) {
-              if (!(requiredKeys[index] in input)) {
-                throw new Error("The input \"" + requiredKeys[index] + "\" is expected as per the operation schema. please verify before running the operation");
-              }
-            }
-          }
-
-          //Values are already processed by the input components
-          gtmEvent.buttonClick('Invoke Operation', asset?.metadata?.name || asset?.id || 'unknown');
-          runOperation();
-
-        } else {
-          //No inputs provided
-          throw Error("No inputs provided for the operation, please verify before running the operation");
-        }
-      }
-      catch (e: any) {
-        console.log(e)
-        setErrorMessage(e.message);
-        setButtonText("Run anyway?")
-        setLoading(false);
-      }
-    } else {
-      //Second attempt for "Run Anyway?" button, we do not do any validation just run the operations
-      setLoading(true)
-      gtmEvent.buttonClick('Invoke Operation', asset?.metadata?.name || asset?.id || 'unknown');
-      const operationPromise = runOperation();
-      if (operationPromise) {
-        operationPromise.catch(e => {
-          setErrorMessage(e.message)
-          setLoading(false);
-        });
-      } else {
-        setErrorMessage("This asset is not an operation and cannot be invoked");
-        setLoading(false);
-      }
-    }
-  }
-
-  function renderInputComponent(
-    key: string,
-    schema: any,
-    onValueChange: (value: any) => void,
-    onRawValueChange: (value: string) => void,
-    onTypeChange: (type: any) => void
-  ) {
-    const defaultValue = schema.default || "";
-    const exampleValue = schema.examples ? `e.g. ${Array.isArray(schema.examples) ? schema.examples[0] : schema.examples}` : "";
-    const type = typeMap[key] || schema.type || "string";
-    const isSecret = schema.secret === true;
-
-    // Get current raw value from rawInput state or use default
-    const currentRawValue = key == TOP_LEVEL_INPUT_KEY ?
-      (rawInput[key] !== undefined ? rawInput[key] : printValue(input, type)) :
-      (rawInput[key] !== undefined ? rawInput[key] : printValue(defaultValue, type));
-
-    function setAssetIdFromSelection(assetId: string) {
-        onRawValueChange(assetId);
-        try {
-          const processedValue = parseValue(assetId, type);
-          onValueChange(processedValue);
-        } catch (err) {
-          // If parsing fails, still update raw input but don't update parsed input
-          // This allows users to see their raw input even if it's invalid JSON
-        }
-      }
-    const commonProps = {
-      className: "flex-1 placeholder:text-muted-foreground min-w-64 max-w-112",
-      value: currentRawValue,
-      placeholder: exampleValue,
-      type: isSecret ? "password" : undefined,
-     
-      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const rawValue = e.target.value;
-        // Always update raw input
-        onRawValueChange(rawValue);
-
-        try {
-          const processedValue = parseValue(rawValue, type);
-          onValueChange(processedValue);
-        } catch (err) {
-          // If parsing fails, still update raw input but don't update parsed input
-          // This allows users to see their raw input even if it's invalid JSON
-        }
-      }
-    };
-
-    const typeSelector = (
-      <Select value={type} onValueChange={onTypeChange}>
-        <SelectTrigger className="w-32">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="string">string</SelectItem>
-          <SelectItem value="number">number</SelectItem>
-          <SelectItem value="json">json</SelectItem>
-          <SelectItem value="object">object</SelectItem>
-          <SelectItem value="any">any</SelectItem>
-          <SelectItem value="asset">asset</SelectItem>
-          <SelectItem value="array">array</SelectItem>
-        </SelectContent>
-      </Select>
-    );
-
-    if (type === "string") {
-      return (
-        <div className="flex flex-row space-x-2 items-center">
-          <Input {...commonProps} type={isSecret ? "password" : "text"} />
-          {typeSelector}
-        </div>
-      );
-    }
-
-    if (type === "asset") {
-      return (
-        <div className="flex flex-row space-x-2 items-center ">
-          <Input {...commonProps} type={isSecret ? "password" : "text"} />
-          <AssetLookup sendAssetIdBackToForm={setAssetIdFromSelection}/>
-          {typeSelector}
-        
-        </div>
-      );
-    }
-
-    if (type === "number") {
-      return (
-        <div className="flex flex-row space-x-2 items-center">
-          <Input {...commonProps} type={isSecret ? "password" : "number"} />
-          {typeSelector}
-        </div>
-      );
-    }
-
-    if (type === "json" || type === "object" || type === "any" || type === "array") {
-      return (
-        <div className="flex flex-row space-x-2 items-center">
-          <Textarea
-            {...commonProps}
-            rows={5}
-            className={`flex-1 placeholder:text-muted-foreground ${isSecret ? 'font-mono' : ''}`}
-            style={isSecret ? { fontFamily: 'monospace', letterSpacing: '0.1em' } : undefined}
-          />
-          {typeSelector}
-        </div>
-      );
-    }
-
-    return null;
-  }
-
-  function renderDescription(description: string) {
-    return (
-      <div className="text-sm text-muted-foreground">{description}</div>
-    );
-  }
-
-  function renderInputFields(inputSchema: any) {
-    if (inputSchema && inputSchema.properties) {
-      // In this case the schema specifies a JSON object with properties so we render a form for each property
-      const properties = inputSchema.properties;
-      const requiredKeys = inputSchema.required || [];
-      const keys = Object.keys(properties);
-      return (
-        <Card className="bg-background border-muted w-full my-2 rounded-md">
-          <CardContent className=" ">
-           <div>
-  <div className="grid grid-cols-1 md:grid-cols-[min-content_1fr_1fr] lg:grid-cols-[min-content_1fr_1fr] md:gap-4 lg:gap-4 py-2">
-    {keys.map((key) => (
-      <Fragment key={key}>
-        {/* Label - full width on mobile, min-content on desktop */}
-        <div className="flex flex-row items-center min-w-0 my-2">
-          <Label className="whitespace-nowrap">{formatLabel(key)}</Label>
-          {requiredKeys?.indexOf(key) !== -1 && <span className="text-destructive ml-1">*</span>}
-        </div>
-        
-        {/* Input - full width on mobile, normal column on desktop */}
-        <div className="w-full">
-          {renderInputComponent(
-            key,
-            properties[key],
-            (value) => setKeyValue(key, value),
-            (value) => setKeyRawValue(key, value),
-            (type) => setKeyTypeAndUpdateRawInput(key, type)
-          )}
-        </div>
-        
-        {/* Description - below input on mobile, third column on desktop */}
-        <div className="md:contents lg:contents">
-          {renderDescription(properties[key].description || "")}
-        </div>
-      </Fragment>
-    ))}
-  </div>
-  
-  {errorMessage && <ErrorDisplay error={errorMessage} className="mb-4" />}
-  
-  <div className="flex flex-row space-x-2 items-center justify-center py-2">
-    {!loading && (
-      <>
-        <Button 
-          aria-label="invoke operation" 
-          role="button" 
-          type="button" 
-          className="w-32" 
-          onClick={() => invokeOp(asset?.id, requiredKeys)}
-        >
-          {buttonText}
-        </Button>
-        <Button 
-          type="button" 
-          aria-label="reset" 
-          role="button" 
-          className="w-32" 
-          onClick={() => resetForm()}
-        >
-          Reset
-        </Button>
-      </>
-    )}
-  </div>
-
-  <div className="flex flex-row space-x-2 items-center justify-center py-2">
-    {loading && (
-      <Button 
-        aria-label="invoke operation" 
-        role="button" 
-        type="button" 
-        className="w-32" 
-        disabled
-      >
-        Please wait ...
-      </Button>
-    )}
-  </div>
-</div>
-        </CardContent>
-        </Card>
-      )
-    }
-    else {
-      // fallback: render a single input field for the whole input object
-      return (
-        <div className="w-11/12 my-2">
-          <div className="grid  grid-cols-2 md:grid-cols-[min-content_1fr_1fr] lg:grid-cols-[min-content_1fr_1fr] gap-4 items-center">
-            <Label className="whitespace-nowrap">(Input)</Label>
-            {renderInputComponent(
-              TOP_LEVEL_INPUT_KEY,
-              { type: "any", description: "Provide input for the operation", default: "" },
-              (value) => setInput(value),
-              (value) => setKeyRawValue(TOP_LEVEL_INPUT_KEY, value),
-              (type) => setKeyTypeAndUpdateRawInput(TOP_LEVEL_INPUT_KEY, type)
-            )}
-            <div className="lg:contents">
-                   {renderDescription("Provide input for the operation")}
-            </div>
-          </div>
-
-          {errorMessage && <ErrorDisplay error={errorMessage} className="mb-4" />}
-          <div className="flex flex-row space-x-2 items-center justify-center py-2">{!loading && <Button  aria-label="invoke operation" role="button" type="button" className="w-32" onClick={() => invokeOp(asset?.id, [])}>{buttonText}</Button>}
-            {!loading && <Button type="button"  aria-label="reset" role="button" className="w-32" onClick={() => resetForm()}>Reset</Button>}
-          </div>
-          <div className="flex flex-row space-x-2 items-center justify-center py-2">{loading && <Button  aria-label="invoke operation" role="button" type="button" className="w-32" disabled>Please wait ...</Button>}</div>
-        </div>
-      )
-    }
-  }
 
   return (
     <ContentLayout>
-      <TopBar assetOrJobName={asset?.metadata?.name} venueName={venue?.metadata.name}/>
+      <TopBar
+        assetOrJobName={asset?.metadata?.name}
+        venueName={venue?.metadata.name}
+      />
       <div className="flex flex-col w-full items-center justify-center">
-        {assetNotFound && (
+        {loadError && <ErrorDisplay error={loadError} className="mb-4" />}
+
+        {notFound && (
           <div className="text-center p-8">
-            <h2 className="text-xl font-semibold text-foreground mb-2">Asset Not Found</h2>
-            <p className="text-muted-foreground">The asset ID &quot;{props.assetId}&quot; does not exist on this venue.</p>
+            <h2 className="text-xl font-semibold text-foreground mb-2">
+              Asset Not Found
+            </h2>
+            <p className="text-muted-foreground">
+              The asset ID &quot;{assetId}&quot; does not exist on this venue.
+            </p>
           </div>
         )}
 
-        {!assetNotFound && asset && <AssetHeader asset={asset} />}
-        {!assetNotFound && asset && <MetadataViewer asset={asset} />}
-        {!assetNotFound && asset?.metadata?.operation && (
+        {!notFound && asset && <AssetHeader asset={asset} />}
+        {!notFound && asset && <MetadataViewer asset={asset} venue={venue} />}
+        {!notFound && asset?.metadata?.operation && (
           <>
             <div className="w-full flex justify-end mb-1">
-              <Button variant="outline" size="sm" onClick={() => setShowSchema(v => !v)}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowSchema((visible) => !visible)}
+              >
                 {showSchema ? "Hide Schema" : "View Schema"}
               </Button>
             </div>
             {showSchema && (
               <pre className="w-full text-xs bg-muted rounded-md p-4 overflow-x-auto whitespace-pre-wrap break-all mb-2">
-                {JSON.stringify({ input: asset.metadata.operation.input, output: asset.metadata.operation.output }, null, 2)}
+                {JSON.stringify(
+                  {
+                    input: asset.metadata.operation.input,
+                    output: asset.metadata.operation.output,
+                  },
+                  null,
+                  2,
+                )}
               </pre>
             )}
-            {renderInputFields(asset?.metadata?.operation?.input)}
-            {asset?.metadata?.operation?.steps && <DiagramViewer metadata={asset.metadata}></DiagramViewer>}
+            {inputController.ready ? (
+              <OperationInputForm
+                schema={schema}
+                controller={inputController}
+                errorMessage={invocationError}
+                loading={loading}
+                confirmationRequired={confirmationRequired}
+                isAuthenticated={isAuthenticated}
+                onRun={requestRun}
+              />
+            ) : (
+              <div className="my-2 h-32 w-full animate-pulse rounded-md bg-muted" />
+            )}
+            {asset.metadata.operation.steps && (
+              <DiagramViewer metadata={asset.metadata} />
+            )}
           </>
         )}
-        {!assetNotFound && asset && !asset?.metadata?.operation && (
+        {!notFound && asset && !asset.metadata?.operation && (
           <div className="text-center p-4">
-            <p className="text-destructive">This asset is not an operation and cannot be executed.</p>
+            <p className="text-destructive">
+              This asset is not an operation and cannot be executed.
+            </p>
           </div>
         )}
       </div>
     </ContentLayout>
   );
-};
-
+}

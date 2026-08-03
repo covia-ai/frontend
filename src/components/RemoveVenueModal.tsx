@@ -13,6 +13,8 @@ import { useState } from "react"
 import { useVenues } from "@/hooks/use-venues";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { X } from "lucide-react";
+import { gtmEvent } from "@/lib/utils";
+import { evictVenueInstances } from "@/hooks/use-authenticated-venue";
 
 export const RemoveVenueModal = (props:any) => {
     const [open, setOpen] = useState(false)
@@ -20,19 +22,24 @@ export const RemoveVenueModal = (props:any) => {
     const handleRemoveVenue = (e: React.MouseEvent) => {
                 e.stopPropagation();
                 removeVenue(props.venueId);
+                evictVenueInstances(props.venueId);
+                gtmEvent.removeVenue(props.venueId);
      };
 
 
     return (
         <AlertDialog data-testid="remove-venue" open={open} onOpenChange={setOpen}>
-                    <AlertDialogTrigger  className="flex flex-row ">
-                        <Tooltip>
-                                                   <TooltipTrigger>
-                                                        <X className="" size={16} data-testid="remove_btn"/>
-                                                   </TooltipTrigger>
-                                                   <TooltipContent data-testid="btn-tootip">Remove Venue</TooltipContent>
-                                                    </Tooltip>
-                    </AlertDialogTrigger>
+                    {/* Single <button> (AlertDialogTrigger's) — TooltipTrigger
+                        adopts it via asChild; nested trigger buttons are invalid
+                        HTML and break hydration. */}
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <AlertDialogTrigger className="flex flex-row ">
+                                <X className="" size={16} data-testid="remove_btn"/>
+                            </AlertDialogTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent data-testid="btn-tootip">Remove Venue</TooltipContent>
+                    </Tooltip>
                     <AlertDialogContent className="bg-card text-card-foreground">
 
                         <AlertDialogHeader>

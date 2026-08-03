@@ -1,8 +1,15 @@
 "use client";
 import { Button } from "./ui/button";
+import { Card } from "./ui/card";
 import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
 import { useEffect, useMemo, useState } from "react";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,15 +19,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { MagicWandIcon } from "@radix-ui/react-icons";
 import { EllipsisVertical, Loader2 } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
-import { toast } from "sonner";
+import { usePendingChats } from "@/hooks/use-pending-chats";
+import { useTypewriterPlaceholder } from "@/hooks/use-typewriter-placeholder";
+import { notifyError, notifyInfo, notifySuccess, notifyWarning } from "@/lib/notify";
 import { KNOWN_LLM_KEYS, LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
+import type { AgentTemplate } from "@/hooks/use-agent-templates";
+import { normalizeAgentEntries } from "@/lib/agent-list";
 import { AgentStatus } from "@covia/covia-sdk";
 import { useRouter } from "next/navigation";
+import { PageHeading } from "./PageHeading";
+import { gtmEvent } from "@/lib/utils";
 
 // Sentinel picker value — never a real agentId — meaning "create a fresh,
 // distinctly-named agent" rather than targeting an existing one.
@@ -32,6 +46,7 @@ function makeWorkspaceAgentId(): string {
 
 export const AIPrompt = () => {
   const [prompt, setPrompt] = useState('')
+  const [promptFocused, setPromptFocused] = useState(false)
   const [checking, setChecking] = useState(false)
   const [creating, setCreating] = useState(false)
   const [showKeyDialog, setShowKeyDialog] = useState(false)
@@ -40,19 +55,33 @@ export const AIPrompt = () => {
   const [showPickerDialog, setShowPickerDialog] = useState(false)
   const [detectedKeys, setDetectedKeys] = useState<string[]>([])
   const [selectedSecretName, setSelectedSecretName] = useState('')
-  const [agentOptions, setAgentOptions] = useState<{ agentId: string; status: string }[]>([])
+  const [agentOptions, setAgentOptions] = useState<{ agentId: string; status?: string }[]>([])
   const [selectedAgentId, setSelectedAgentId] = useState<string>(DEFAULT_AGENT_ID)
   const [pendingAgentId, setPendingAgentId] = useState<string>(DEFAULT_AGENT_ID)
   const venue = useAuthenticatedVenue();
   const router = useRouter();
+  const startPendingChat = usePendingChats((s) => s.startPendingChat);
+  const attachSessionId = usePendingChats((s) => s.attachSessionId);
+  const clearPendingChat = usePendingChats((s) => s.clearPendingChat);
 
   const promptSamples = [
-    'Customer onboarding automation',
-    'Contract review and signature',
-    'Automate the security patching process for servers',
-    'Define a multi-agent orchestration strategy for a Content Publishing',
-    'Migrate a static HTML website to a modern React framework'
+    'Automate an AP invoice pipeline',
+    'Orchestrate a cross-venue workflow',
+    'Publish an operation to REST, MCP, and A2A',
   ]
+
+  const typingPromptSamples = [
+    'Automate an AP invoice pipeline with agents',
+    'Orchestrate a workflow across three venues',
+    'Publish an operation to REST, MCP, and A2A',
+    'Build an agent that scans and enriches vendor records',
+    'Chat with a Gemini-powered agent about my data',
+    'Set up a sovereign file store with DLFS',
+    'Issue a UCAN to share access with a partner venue',
+    'Infer a JSON schema from sample data',
+  ]
+
+  const animatedPlaceholder = useTypewriterPlaceholder(typingPromptSamples, prompt.length === 0 && !promptFocused);
 
   // Populates the picker's option list. Best-effort and separate from the
   // fresh venue.agents.list() call in handleMagicWand — that one drives the
@@ -62,9 +91,9 @@ export const AIPrompt = () => {
     if (!venue) { setAgentOptions([]); return; }
     try {
       const { agents } = await venue.agents.list();
-      setAgentOptions(agents);
+      setAgentOptions(normalizeAgentEntries(agents));
     } catch {
-      // Non-fatal — picker just falls back to Default agent / New agent.
+      // Non-fatal — picker just falls back to Assistant / New agent.
     }
   }
 
@@ -76,7 +105,7 @@ export const AIPrompt = () => {
   const { defaultAgentLabel, otherAgents } = useMemo(() => {
     const hasDefault = agentOptions.some((a) => a.agentId === DEFAULT_AGENT_ID);
     return {
-      defaultAgentLabel: hasDefault ? "Default agent" : "Default agent (new)",
+      defaultAgentLabel: hasDefault ? "Assistant" : "Assistant (new)",
       otherAgents: agentOptions.filter((a) => a.agentId !== DEFAULT_AGENT_ID),
     };
   }, [agentOptions]);
@@ -86,28 +115,43 @@ export const AIPrompt = () => {
   const selectedAgentLabel = selectedAgentId === NEW_AGENT_OPTION
     ? "a new agent"
     : selectedAgentId === DEFAULT_AGENT_ID
-      ? "the default agent"
+      ? "the assistant"
       : `"${selectedAgentId}"`;
 
-  // True once the selected target is a real, non-terminated agent — i.e. the
-  // task can be sent directly, no creation step needed.
-  const targetAgentReady = selectedAgentId !== NEW_AGENT_OPTION &&
-    agentOptions.some((a) => a.agentId === selectedAgentId && a.status !== AgentStatus.TERMINATED);
-
-  // Fire-and-forget task dispatch on an already-existing, ready agent —
-  // shared by every path once the target is confirmed usable.
-  async function sendPrompt(agentId: string) {
+  // Conversational dispatch on an already-existing, ready agent — shared by
+  // every path once the target is confirmed usable. The prompt travels over
+  // agent_chat as a plain string message, not an agent_request task envelope:
+  // a person typing here is starting a conversation, and an agent that judges
+  // the work deserves a durable, tracked job can spawn one itself (the
+  // manager-template pattern). chat() blocks until the agent replies, so the
+  // promise is deliberately left un-awaited — we publish the message as a
+  // pending chat first so the explorer we navigate to can echo it straight
+  // away, then poll up the recorded turn and the eventual reply. Failures and
+  // empty replies surface via toast, which is global (sonner) and so outlives
+  // this component — as does this promise chain, so clearing the pending chat
+  // on settle still runs after we have unmounted.
+  function sendPrompt(agentId: string) {
     if (!venue) return;
-    setCreating(true);
-    try {
-      // wait:false — fire-and-forget so a slow/failing task doesn't block navigation
-      await venue.agents.request(agentId, { task: prompt }, false);
-      router.push(`/agents/explorer?agentId=${encodeURIComponent(agentId)}`);
-    } catch (err: any) {
-      toast("Failed to send task", { description: err?.message ?? "Please try again." });
-    } finally {
-      setCreating(false);
-    }
+    // No session id — chat() with none makes the venue mint a fresh session,
+    // and it only comes back with the reply.
+    const chat = startPendingChat({ agentId, sessionId: null, text: prompt });
+    venue.agents.chat(agentId, prompt)
+      .then((result) => {
+        if (result?.sessionId) attachSessionId(chat, result.sessionId);
+        const r = result?.response;
+        if (r == null || (typeof r === "string" && r.trim() === "")) {
+          notifyWarning("The agent sent an empty reply", {
+            description: "It may have hit an error — check its session in the explorer.",
+          });
+        }
+        gtmEvent.sendAgentMessage(agentId);
+      })
+      .catch((err: any) => {
+        gtmEvent.sendAgentMessageFailed(agentId, err?.message);
+        notifyError("Unable to send message", err);
+      })
+      .finally(() => clearPendingChat(chat));
+    router.push(`/agents/explorer?agentId=${encodeURIComponent(agentId)}`);
   }
 
   async function proceedWithKey(secretName: string, agentId: string) {
@@ -117,13 +161,27 @@ export const AIPrompt = () => {
       ([, p]) => p.secretKey === secretName
     );
     if (!providerEntry) {
-      toast("Unknown provider for key " + secretName);
+      notifyWarning("Unknown provider for key " + secretName);
       return;
     }
     const [, provider] = providerEntry;
 
     setCreating(true);
     try {
+      // The reserved assistant is built from the venue's own skilled template
+      // (read job-free, same surface useAgentTemplates uses) rather than a
+      // prompt/tools/skills set hardcoded here — so it gets the normal
+      // read/list + skill-loading contract instead of a bare chat loop, and
+      // stays in sync with the template instead of drifting from it. Only
+      // the LLM provider is ours to decide, from the detected key; the
+      // template's own model is never carried over, since it may not exist
+      // for a different provider.
+      const templateRead = await venue.workspace.read("v/agents/templates/skilled");
+      if (!templateRead?.exists || !templateRead.value) {
+        throw new Error("Skilled agent template not found on this venue");
+      }
+      const template = templateRead.value as Omit<AgentTemplate, "key">;
+
       await venue.agents.create({
         agentId,
         // overwrite:true only matters when the slot is occupied — the venue
@@ -132,19 +190,23 @@ export const AIPrompt = () => {
         // it's always safe here.
         overwrite: true,
         config: {
-          operation: "v/ops/llmagent/chat",
+          ...(template.skills?.length ? { skills: template.skills } : {}),
+          ...(template.tools?.length ? { tools: template.tools } : {}),
+          ...(template.defaultTools != null ? { defaultTools: template.defaultTools } : {}),
+          operation: template.operation ?? "v/ops/llmagent/chat",
           llmOperation: provider.operation,
-          systemPrompt:
-            "You are a helpful AI assistant working on the Covia grid. Complete the user's task thoroughly and report your results clearly.",
+          ...(template.systemPrompt && { systemPrompt: template.systemPrompt }),
         },
       });
     } catch (err: any) {
       setCreating(false);
-      toast("Failed to create agent", { description: err?.message ?? "Please try again." });
+      gtmEvent.createAgentFailed(agentId, err?.message);
+      notifyError("Unable to create agent", err);
       return;
     }
     setCreating(false);
-    await sendPrompt(agentId);
+    gtmEvent.createAgent(agentId, provider.operation);
+    sendPrompt(agentId);
     refreshAgentOptions();
   }
 
@@ -155,7 +217,7 @@ export const AIPrompt = () => {
     const matchedKeys = secrets.filter((s: string) => s in KNOWN_LLM_KEYS);
 
     if (matchedKeys.length === 1) {
-      toast(`Using ${KNOWN_LLM_KEYS[matchedKeys[0]]}`);
+      notifyInfo(`Using ${KNOWN_LLM_KEYS[matchedKeys[0]]}`);
       await proceedWithKey(matchedKeys[0], agentId);
     } else if (matchedKeys.length > 1) {
       setDetectedKeys(matchedKeys);
@@ -169,7 +231,7 @@ export const AIPrompt = () => {
   async function handleMagicWand() {
     if (!prompt.trim()) return;
     if (!venue) {
-      toast("Please connect to a venue first");
+      notifyWarning("Please connect to a venue first");
       return;
     }
 
@@ -189,23 +251,25 @@ export const AIPrompt = () => {
       // below instead (only reachable for the reserved default agent — the
       // picker excludes terminated agents from its option list).
       const { agents } = await venue.agents.list();
-      const existing = agents.find((a) => a.agentId === selectedAgentId);
+      const existing = normalizeAgentEntries(agents).find((a) => a.agentId === selectedAgentId);
       if (existing && existing.status !== AgentStatus.TERMINATED) {
         if (existing.status === AgentStatus.SUSPENDED) {
           try {
             await venue.agents.resume(selectedAgentId);
+            gtmEvent.resumeAgent(selectedAgentId);
           } catch (err: any) {
-            toast("Failed to resume agent", { description: err?.message ?? "Please try again." });
+            gtmEvent.resumeAgentFailed(selectedAgentId, err?.message);
+            notifyError("Unable to resume agent", err);
             return;
           }
         }
-        await sendPrompt(selectedAgentId);
+        sendPrompt(selectedAgentId);
         return;
       }
 
       await routeThroughKeyDetection(selectedAgentId);
-    } catch {
-      toast("Unable to prepare agent. Please try again.");
+    } catch (err) {
+      notifyError("Unable to prepare agent", err, venue.baseUrl);
     } finally {
       setChecking(false);
     }
@@ -222,12 +286,12 @@ export const AIPrompt = () => {
     setSavingKey(true);
     try {
       await venue.secrets.set(selectedSecretName, keyInput.trim());
-      toast(`${selectedSecretName} saved`);
+      notifySuccess(`${selectedSecretName} saved`);
       setShowKeyDialog(false);
       setKeyInput('');
       await proceedWithKey(selectedSecretName, pendingAgentId);
-    } catch {
-      toast("Failed to store the API key. Please try again.");
+    } catch (err) {
+      notifyError("Unable to store API key", err, venue.baseUrl);
     } finally {
       setSavingKey(false);
     }
@@ -237,71 +301,84 @@ export const AIPrompt = () => {
 
   return (
     <div data-testid="chat-container" className="flex flex-col items-center justify-center py-10 px-10 ">
-        <h3 className="text-center text-4xl  font-thin">
-          Do anything on   {" "}
-          <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
-            the Grid ...
-          </span>
-        </h3>
+        <PageHeading text="Do anything on" highlight="the Grid" />
 
-        <div className="flex flex-col md:flex-row lg:flex-row items-center justify-center w-full space-x-2 space-y-2 ">
-            <Input
-            placeholder="Add a prompt and click the magic wand..."
-            className="bg-card placeholder:text-muted-foreground my-2"
+        <Card className="w-full max-w-4xl mt-6 gap-1 p-3">
+          <Textarea
+            placeholder={promptFocused ? '' : animatedPlaceholder}
+            className="min-h-12 resize-none border-none bg-transparent p-0 shadow-none placeholder:text-muted-foreground focus-visible:ring-0 dark:bg-transparent"
             aria-label="prompt"
             value={prompt}
-            onChange={ (e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !busy) handleMagicWand(); }}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey && !busy) {
+                e.preventDefault();
+                handleMagicWand();
+              }
+            }}
+            onFocus={() => setPromptFocused(true)}
+            onBlur={() => setPromptFocused(false)}
             disabled={busy}
           />
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                aria-label="Choose agent"
-                data-testid="agent-picker"
-                variant="ghost"
-                size="icon"
-                className="my-4 mx-0"
-                disabled={busy}
-              >
-                <EllipsisVertical size={16} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Send to</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuRadioGroup value={selectedAgentId} onValueChange={setSelectedAgentId}>
-                <DropdownMenuRadioItem value={DEFAULT_AGENT_ID}>{defaultAgentLabel}</DropdownMenuRadioItem>
-                {otherAgents.map((a) => (
-                  <DropdownMenuRadioItem key={a.agentId} value={a.agentId}>{a.agentId}</DropdownMenuRadioItem>
-                ))}
-                <DropdownMenuRadioItem value={NEW_AGENT_OPTION}>+ New agent</DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center justify-end gap-1">
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      aria-label="Choose agent"
+                      data-testid="agent-picker"
+                      variant="ghost"
+                      size="icon"
+                      disabled={busy}
+                    >
+                      <EllipsisVertical size={16} />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  Your message will go to {selectedAgentLabel}. Click to choose another agent.
+                </TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Send to</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuRadioGroup value={selectedAgentId} onValueChange={setSelectedAgentId}>
+                  <DropdownMenuRadioItem value={DEFAULT_AGENT_ID}>{defaultAgentLabel}</DropdownMenuRadioItem>
+                  {otherAgents.map((a) => (
+                    <DropdownMenuRadioItem key={a.agentId} value={a.agentId}>{a.agentId}</DropdownMenuRadioItem>
+                  ))}
+                  <DropdownMenuRadioItem value={NEW_AGENT_OPTION}>+ New agent</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-          <Button
-            aria-label="Run"
-            role="button"
-            data-testid="chat-button"
-            variant="default"
-            className="my-4 btn btn-xs mx-0 bg-primary text-primary-foreground"
-            disabled={!prompt.trim() || busy}
-            onClick={handleMagicWand}
-          >
-            {busy ? <Loader2 className="animate-spin" size={16} /> : <MagicWandIcon/>}
-          </Button>
-        </div>
-
-        <p className="text-xs text-muted-foreground text-center max-w-md">
-          This request will go to {selectedAgentLabel}. If you want to choose another agent,
-          click the <EllipsisVertical size={12} className="inline align-text-bottom" /> icon before the magic wand.
-        </p>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  aria-label="Run"
+                  role="button"
+                  data-testid="chat-button"
+                  variant="default"
+                  size="icon"
+                  className="rounded-full"
+                  disabled={!prompt.trim() || busy}
+                  onClick={handleMagicWand}
+                >
+                  {busy ? <Loader2 className="animate-spin" size={16} /> : <MagicWandIcon/>}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                This will send your message to {selectedAgentLabel}.
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </Card>
 
         {creating && (
           <p className="text-xs text-muted-foreground animate-pulse mt-1">
-            {targetAgentReady ? "Sending task…" : "Creating agent and sending task…"}
+            Creating agent…
           </p>
         )}
 
@@ -309,9 +386,9 @@ export const AIPrompt = () => {
         <Dialog open={showPickerDialog} onOpenChange={setShowPickerDialog}>
           <DialogContent data-testid="chat-picker-dialog" className="flex flex-col items-center justify-center bg-card text-card-foreground gap-4">
             <DialogTitle>Choose an LLM provider</DialogTitle>
-            <p className="text-sm text-muted-foreground text-center">
+            <DialogDescription className="text-center">
               Multiple API keys detected in your secrets. Select which provider to use.
-            </p>
+            </DialogDescription>
             <div className="flex flex-col gap-2 w-full">
               {detectedKeys.map((key) => (
                 <Button
@@ -336,9 +413,9 @@ export const AIPrompt = () => {
         <Dialog open={showKeyDialog} onOpenChange={setShowKeyDialog}>
           <DialogContent data-testid="chat-dialog" className="flex flex-col items-center justify-center bg-card text-card-foreground gap-4">
             <DialogTitle>No LLM API key found</DialogTitle>
-            <p className="text-sm text-muted-foreground text-center">
+            <DialogDescription className="text-center">
               Add an API key for one of the supported providers. It will be securely stored in your venue secrets.
-            </p>
+            </DialogDescription>
             <div className="flex flex-wrap gap-2 justify-center">
               {Object.entries(KNOWN_LLM_KEYS).map(([key, label]) => (
                 <Badge
@@ -372,17 +449,17 @@ export const AIPrompt = () => {
           </DialogContent>
         </Dialog>
 
-         <div className="flex flex-row flex-wrap items-center justify-center w-full space-x-2 space-y-2 mt-4">
+         <div className="flex flex-row flex-wrap items-center justify-center w-full gap-2 mt-6">
           {promptSamples.map( (promptText,_index) => (
 
              prompt == promptText ? (
 
-              <Badge key={promptText} variant="outline" className="bg-primary-light"
+              <Badge key={promptText} variant="outline" className="bg-primary-light cursor-pointer px-2 py-1 text-xs"
               onClick={() => setPrompt(promptText)}>
                 {promptText}
               </Badge>
              ) : (
-              <Badge key={promptText} variant="outline" className="bg-muted px-2 hover:border-white"
+              <Badge key={promptText} variant="outline" className="bg-muted px-2 py-1 text-xs cursor-pointer hover:border-accent"
               onClick={() => setPrompt(promptText)}>
                 {promptText}
               </Badge>

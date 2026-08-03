@@ -86,12 +86,27 @@ operations|secrets|status`), the values API (`GET /api/v1/values/*`), the native
 `/mcp` JSON-RPC endpoint, and `/.well-known/*`. Treat a non-user-driven
 `operations.run`/`invoke` as a defect.
 
+### Notifications
+
+All user-facing notifications go through `src/lib/notify.ts` — never bare
+sonner `toast()`. `notifyError(title, err, target?)` for failures (always pass
+the caught error — it becomes a copyable description, and bare network
+failures get the unreachable target named); `notifySuccess` / `notifyWarning`
+/ `notifyInfo` for the rest. Failure titles read "Unable to <verb> <object>".
+Every notification is recorded to the in-memory session log
+(`use-notification-log.ts`), viewable on the Profile page.
+
 ### Components
 
 - All components are functional, use `"use client"` directive
 - UI primitives from `components/ui/` (shadcn/ui pattern)
 - Styling via Tailwind utility classes
 - Icons from `lucide-react` and `react-icons`
+- DIDs and public keys render via `DidDisplay` (`components/DidDisplay.tsx`):
+  Convex-standard 7×7 identicon (`lib/identicon.ts` — the grid resolution is
+  fixed, never per-use), monospace middle-elided text keeping the last 4 chars
+  (`abbreviateDid`), full value on hover, and a click menu with Copy plus
+  caller-supplied actions. Pass `chars="full"` where the whole value belongs.
 
 ## Testing
 

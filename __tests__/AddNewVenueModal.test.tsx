@@ -12,16 +12,11 @@ jest.mock('@/hooks/use-venues', () => ({
     venues: [],
   }),
 }));
-jest.mock('next-auth/react', () => ({
-  useSession: () => ({ data: { user: { email: 'test@test.com' } } }),
-}));
-jest.mock('sonner', () => ({
-  toast: jest.fn(),
-}));
-jest.mock('@/components/Iconbutton', () => ({
-  Iconbutton: ({ icon, message, label }: any) => (
-    <button data-testid="icon-button">{label || message}</button>
-  ),
+jest.mock('@/lib/notify', () => ({
+  notifySuccess: jest.fn(),
+  notifyError: jest.fn(),
+  notifyWarning: jest.fn(),
+  notifyInfo: jest.fn(),
 }));
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),
@@ -36,7 +31,7 @@ describe('AddNewVenueModal', () => {
       const user = userEvent.setup();
       render(<AddNewVenueModal />);
       // Click the trigger to open the dialog
-      const triggerBtn = screen.getByTestId('icon-button');
+      const triggerBtn = screen.getByTestId('connect-venue-trigger');
       await user.click(triggerBtn);
 
       await waitFor(() => {
@@ -49,7 +44,7 @@ describe('AddNewVenueModal', () => {
     it('should have connect button', async () => {
         const user = userEvent.setup();
         render(<AddNewVenueModal />);
-        const triggerBtn = screen.getByTestId('icon-button');
+        const triggerBtn = screen.getByTestId('connect-venue-trigger');
         await user.click(triggerBtn);
 
         await waitFor(() => {

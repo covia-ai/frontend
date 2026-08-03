@@ -1,6 +1,13 @@
 "use client";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger }from "@/components/ui/sheet";
-import { Info }from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Lightbulb } from "lucide-react";
 import { Separator } from "./ui/separator";
 import { Table, TableBody, TableCell, TableRow }from "@/components/ui/table";
 import { Asset } from "@covia/covia-sdk";
@@ -46,18 +53,23 @@ export const AssetInfoSheet = ({asset,venueId}:AssetInfoSheetProps) => {
 
   return (
      <Sheet>
-                <SheetTrigger>
-                  <Tooltip>
-                            <TooltipTrigger>
-                                 <Info size={16} data-testid="info_btn"/>
-                            </TooltipTrigger>
-                            <TooltipContent data-testid="btn-tootip">Know More</TooltipContent>
-                             </Tooltip>
-                </SheetTrigger>
+                {/* One real <button> (the SheetTrigger's); TooltipTrigger adopts
+                    it via asChild — nesting two trigger buttons is invalid HTML
+                    and breaks hydration. */}
+                <Tooltip>
+                          <TooltipTrigger asChild>
+                            <SheetTrigger>
+                                 <Lightbulb size={16} data-testid="info_btn"/>
+                            </SheetTrigger>
+                          </TooltipTrigger>
+                          <TooltipContent data-testid="btn-tootip">Learn More</TooltipContent>
+                </Tooltip>
                   <SheetContent data-testid="info_sheet" className="min-w-2xl text-card-foreground bg-card">
                       <SheetHeader className="flex flex-col items-center justify-center">
                       <SheetTitle data-testid="info_assetname">{asset.metadata.name}</SheetTitle>
-                     
+                      <SheetDescription className="sr-only">
+                        Operation metadata and input and output fields for this asset.
+                      </SheetDescription>
                       </SheetHeader>
                       {asset.metadata.operation?.input?.properties && (
                       <div className="flex flex-center flex-col mx-4" >

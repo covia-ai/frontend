@@ -8,14 +8,17 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { TopBar } from "./admin-panel/TopBar";
 import { AgentListItem } from "@/config/types";
-import { SeperatorWithText } from "@/components/SeperatorWithText";
+import { SeparatorWithText } from "@/components/SeparatorWithText";
 import { AgentTemplates } from "./AgentTemplates";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { AgentStatus } from "@covia/covia-sdk";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useIsAuthenticated } from "@/hooks/use-auth";
-import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
+import { normalizeAgentEntries } from "@/lib/agent-list";
+import { PageHeading } from "./PageHeading";
+import { StatusBadge } from "./StatusBadge";
+import { DEFAULT_AGENT_ID } from "@/config/agents";
 
 export function AgentList() {
   const router = useRouter();
@@ -29,9 +32,9 @@ export function AgentList() {
     if (!venue) return;
     setLoading(true);
     venue.agents.list(true).then((result) => {
-      setAgentData(result.agents || []);
-    }).catch(() => {
-      toast("Unable to load agents");
+      setAgentData(normalizeAgentEntries(result.agents));
+    }).catch((err: any) => {
+      notifyError("Unable to load agents", err, venue.baseUrl);
     }).finally(() => {
       setLoading(false);
     });
@@ -47,33 +50,56 @@ export function AgentList() {
     router.push(encodedUrl);
   };
 
-  const getStatusConfig = (status: string) => {
-    switch(status) {
-      case AgentStatus.RUNNING:
-        return { className: 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600' };
-      case AgentStatus.SLEEPING:
-        return { className: 'bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600' };
-      case AgentStatus.SUSPENDED:
-        return { className: 'bg-amber-600 hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600' };
-      case AgentStatus.TERMINATED:
-        return { className: 'bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600' };
-      default:
-        return { className: 'bg-gray-600 hover:bg-gray-700 dark:bg-gray-500 dark:hover:bg-gray-600' };
-    }
-  };
+   // Once agents exist, the list itself is what the user wants to act on —
+   // it goes on top, with the template picker demoted below as a secondary
+   // "or start from a template" path. Before that (no agents yet), there's
+   // nothing to list, so the template picker is the primary way in and
+   // leads.
+   const hasAgents = !loading && agentData.length > 0;
 
-   return (<ContentLayout>
-     <TopBar/>
- <AgentTemplates onCreated={fetchAgents} />
- <SeperatorWithText text="or"/>
-     <h3 className="text-center text-4xl  font-thin pt-10">
-          {agentData.length > 0 ? "Choose an existing" : "Create a new"}  {" "}
-          <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
-             agent ...
-            </span>
-        </h3>
-     {loading && <div className="flex items-center justify-center py-10"><Loader2 className="animate-spin text-primary" size={32} /></div>}
-     {!loading && agentData.length == 0 &&  <div className="flex flex-col items-center justify-center w-full space-y-2 pt-4">
+   const agentTemplates = <AgentTemplates onCreated={fetchAgents} />;
+   const orSeparator = <SeparatorWithText text="or"/>;
+
+   const createOrChooseSection = (
+     <div className="w-full pt-10">
+       <PageHeading
+         className="w-full"
+         align="center"
+         text={hasAgents ? "Choose an existing" : "Create a new"}
+         highlight="agent"
+       />
+       {hasAgents && (
+         <div className="flex items-center justify-center gap-2 shrink-0 mt-4">
+           {isAuthenticated ? (
+             <>
+               <AddNewAgent onCreated={fetchAgents} />
+               <Button
+                 variant="outline"
+                 className="shrink-0 gap-2"
+                 data-testid="explorer-trigger"
+                 onClick={() => router.push('/agents/explorer')}
+               >
+                 <SquareChevronRight size={14} />
+                 Explore
+               </Button>
+             </>
+           ) : (
+             <Button variant="outline" disabled className="gap-2 text-muted-foreground">
+               <Lock size={14} />
+               Sign in to create agents
+             </Button>
+           )}
+         </div>
+       )}
+     </div>
+   );
+
+   const loadingSpinner = loading && (
+     <div className="flex items-center justify-center py-10"><Loader2 className="animate-spin text-primary" size={32} /></div>
+   );
+
+   const emptyState = !loading && agentData.length == 0 && (
+     <div className="flex flex-col items-center justify-center w-full space-y-2 pt-4">
             <Bot size={48} className="text-primary"></Bot>
             {isAuthenticated ? (
               <AddNewAgent onCreated={fetchAgents} />
@@ -83,23 +109,31 @@ export function AgentList() {
                 Sign in to create agents
               </Button>
             )}
-      </div>}
-      <div className="flex flex-row-reverse w-full">
-       <SquareChevronRight onClick={() => router.push('/agents/explorer')}/>
       </div>
-      {agentData.length > 0 && <div className="flex flex-col items-center justify-center space-y-4">
+   );
+
+   const agentGrid = agentData.length > 0 && (
+      <div className="flex flex-col items-center justify-center space-y-4">
 
          <div className="mt-10 w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 items-stretch justify-center gap-4">
 
-            {agentData.map((agent) => (
+            {agentData.map((agent) => {
+              const isAssistant = agent.agentId === DEFAULT_AGENT_ID;
+              return (
               <Card
                    key={agent.agentId}  onClick={() => handleCardClick(agent.agentId)}
-                   className={`shadow-md border-2 h-full bg-card flex flex-col rounded-md border-muted hover:border-accent hover:border-2
+                   className={`shadow-md border-2 h-full bg-card flex flex-col rounded-md hover:border-2
+                       ${ isAssistant ? 'border-primary/40 hover:border-primary' : 'border-muted hover:border-accent' }
                        ${ compact ? 'h-32 p-1' : 'h-48 p-2'  }`}>
                    {/* Fixed-size header */}
-                   <div className={` ${ compact ? 'h-10' : 'h-14'  } p-2 flex flex-row items-start border-b`}>
-                      <div data-testid="agent-name" className="truncate flex-1 mr-2 text-md text-foreground"> {agent.agentId}</div>
-                      <div className={`w-2 h-2 rounded-full shadow-lg ml-1 ${getStatusConfig(agent.status).className}`}></div>
+                   <div className={` ${ compact ? 'h-10' : 'h-14'  } p-2 flex flex-row items-center border-b`}>
+                      {isAssistant && (
+                        <div className="flex-shrink-0 flex items-center justify-center rounded-full size-6 bg-primary/15 dark:bg-primary/25 mr-1.5">
+                          <Bot size={14} className="text-primary dark:text-violet-300" />
+                        </div>
+                      )}
+                      <div data-testid="agent-name" className={`truncate flex-1 mr-2 text-md font-mono ${isAssistant ? 'text-primary dark:text-violet-300' : 'text-foreground'}`}> {agent.agentId}</div>
+                      {agent.status && <StatusBadge status={agent.status} kind="agent" as="dot" className="ml-1" />}
                     </div>
                    {/* Flexible middle section */}
                    <div className="flex-1 p-2 flex flex-col justify-between">
@@ -110,23 +144,37 @@ export function AgentList() {
 
                    {/* Fixed-size footer */}
                    <div className="p-1 h-8 flex flex-row-reverse" >
-                       <Badge variant="outline" className="bg-muted text-muted-foreground text-[10px]">{agent.tasks} task{agent.tasks !== 1 ? 's' : ''}</Badge>
+                       {agent.tasks != null && (
+                         <Badge variant="outline" className="bg-muted text-muted-foreground text-[10px]">{agent.tasks} task{agent.tasks !== 1 ? 's' : ''}</Badge>
+                       )}
                    </div>
                  </Card>
-            ))}
+              );
+            })}
 
          </div>
-         {isAuthenticated ? (
-           <AddNewAgent onCreated={fetchAgents} />
-         ) : (
-           <Button variant="outline" disabled className="gap-2 text-muted-foreground">
-             <Lock size={14} />
-             Sign in to create agents
-           </Button>
-         )}
       </div>
-      }
-     
+   );
+
+   return (<ContentLayout>
+     <TopBar/>
+     {hasAgents ? (
+       <>
+         {createOrChooseSection}
+         {loadingSpinner}
+         {agentGrid}
+         {orSeparator}
+         {agentTemplates}
+       </>
+     ) : (
+       <>
+         {agentTemplates}
+         {orSeparator}
+         {createOrChooseSection}
+         {loadingSpinner}
+         {emptyState}
+       </>
+     )}
      </ContentLayout>
   );
-} 
+}

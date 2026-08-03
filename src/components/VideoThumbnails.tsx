@@ -1,6 +1,7 @@
 "use client"
 
 import { Play } from "lucide-react";
+import Image from "next/image";
 export const VideoThumbnails = () => {
   const videos = [
     { id: 'b0HwKymJbnA', title: 'Covia.ai App Demo showing federated orchestration' },
@@ -19,8 +20,9 @@ export const VideoThumbnails = () => {
             >
               {/* Thumbnail */}
               <div className="relative aspect-video  overflow-hidden rounded-md">
-                <img
-                
+                <Image
+                  fill
+                  sizes={index === 1 ? "20rem" : "16rem"}
                   src={`https://img.youtube.com/vi/${video.id}/maxresdefault.jpg`}
                   alt={video.title}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"

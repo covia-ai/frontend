@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { produce } from "immer";
+import { browserStorage } from "@/lib/persist-storage";
 
 type SidebarSettings = { disabled: boolean; isHoverOpen: boolean };
 type SidebarStore = {
@@ -43,7 +44,7 @@ export const useSidebar = create(
     }),
     {
       name: "sidebar",
-      storage: createJSONStorage(() => localStorage)
+      storage: createJSONStorage(browserStorage)
     }
   )
 );

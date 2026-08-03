@@ -1,17 +1,14 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { toast } from 'sonner';
+import { notifySuccess } from '@/lib/notify';
 
-jest.mock('sonner', () => ({
-  toast: jest.fn(),
+jest.mock('@/lib/notify', () => ({
+  notifySuccess: jest.fn(),
+  notifyError: jest.fn(),
+  notifyWarning: jest.fn(),
+  notifyInfo: jest.fn(),
 }));
 
-// Must spread ...rest so DialogTrigger asChild can forward onClick/ref.
-jest.mock('@/components/Iconbutton', () => ({
-  Iconbutton: ({ icon, message, label, ...rest }: any) => (
-    <button data-testid="trigger-btn" {...rest}>{label || message}</button>
-  ),
-}));
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),
 }));
@@ -40,7 +37,7 @@ import { AddNewAgent } from '@/components/AddNewAgent';
 async function renderAndOpenDialog() {
   const user = userEvent.setup();
   render(<AddNewAgent />);
-  const trigger = screen.getByTestId('trigger-btn');
+  const trigger = screen.getByTestId('create-agent-trigger');
   await user.click(trigger);
   return user;
 }
@@ -52,8 +49,8 @@ describe('AddNewAgent', () => {
 
   it('renders the trigger button', () => {
     render(<AddNewAgent />);
-    expect(screen.getByTestId('trigger-btn')).toBeInTheDocument();
-    expect(screen.getByTestId('trigger-btn')).toHaveTextContent('Create a new agent');
+    expect(screen.getByTestId('create-agent-trigger')).toBeInTheDocument();
+    expect(screen.getByTestId('create-agent-trigger')).toHaveTextContent('Create Agent');
   });
 
   it('renders the component with initial state after opening dialog', async () => {
@@ -82,7 +79,7 @@ describe('AddNewAgent', () => {
 
   it('renders create button with correct attributes', async () => {
     await renderAndOpenDialog();
-    const createButton = screen.getByRole('button', { name: /create agent/i });
+    const createButton = screen.getByTestId('create-agent');
     expect(createButton).toHaveAttribute('aria-label', 'create agent');
   });
 
@@ -112,10 +109,65 @@ describe('AddNewAgent', () => {
     await user.click(createButton);
 
     await waitFor(() => {
-      expect(toast).toHaveBeenCalledWith('Agent created', {
+      expect(notifySuccess).toHaveBeenCalledWith('Agent created', {
         description: 'Agent "test-agent" is now active',
       });
     });
+  });
+
+  it('omits model from the agent config when left on venue default', async () => {
+    const user = await renderAndOpenDialog();
+    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    const config = mockVenue.agents.create.mock.calls[0][0].config;
+    expect(config).not.toHaveProperty('model');
+  });
+
+  it('passes a picked model into the agent config', async () => {
+    const user = await renderAndOpenDialog();
+    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+
+    await user.click(screen.getByTestId('model-select'));
+    await user.click(await screen.findByRole('option', { name: 'claude-opus-4-8' }));
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    const config = mockVenue.agents.create.mock.calls[0][0].config;
+    expect(config.model).toBe('claude-opus-4-8');
+  });
+
+  it('passes a custom-typed model into the agent config', async () => {
+    const user = await renderAndOpenDialog();
+    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+
+    await user.click(screen.getByTestId('model-select'));
+    await user.click(await screen.findByRole('option', { name: 'Custom…' }));
+    await user.type(screen.getByTestId('model-custom-input'), 'my-org/experimental-model');
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    const config = mockVenue.agents.create.mock.calls[0][0].config;
+    expect(config.model).toBe('my-org/experimental-model');
+  });
+
+  it('resets the model choice when the provider changes', async () => {
+    const user = await renderAndOpenDialog();
+    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+
+    // Pick an Anthropic model, then switch provider — the id must not leak.
+    await user.click(screen.getByTestId('model-select'));
+    await user.click(await screen.findByRole('option', { name: 'claude-opus-4-8' }));
+    const providerSelect = screen.getAllByRole('combobox')[0];
+    await user.click(providerSelect);
+    await user.click(await screen.findByRole('option', { name: 'Ollama (local)' }));
+
+    await user.click(screen.getByTestId('create-agent'));
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    const config = mockVenue.agents.create.mock.calls[0][0].config;
+    expect(config).not.toHaveProperty('model');
+    expect(config.llmOperation).toBe('v/ops/langchain/ollama');
   });
 
   it('create button is disabled when agent name is empty', async () => {
@@ -133,11 +185,11 @@ describe('AddNewAgent', () => {
     expect(screen.getByText('Initial Command:')).toBeInTheDocument();
   });
 
-  it('blocks "default-agent" as a reserved id — warns and disables Create', async () => {
+  it('blocks "assistant" as a reserved id — warns and disables Create', async () => {
     const user = await renderAndOpenDialog();
 
     const input = screen.getByPlaceholderText('e.g., Customer Support Agent');
-    await user.type(input, 'Default Agent');
+    await user.type(input, 'Assistant');
 
     expect(screen.getByText(/is reserved for the workspace prompt bar/i)).toBeInTheDocument();
     const createButton = screen.getByTestId('create-agent');
@@ -149,16 +201,16 @@ describe('AddNewAgent', () => {
     expect(mockVenue.agents.create).not.toHaveBeenCalled();
   });
 
-  it('allows editing the Agent ID away from the reserved default-agent id', async () => {
+  it('allows editing the Agent ID away from the reserved assistant id', async () => {
     const user = await renderAndOpenDialog();
 
     const nameInput = screen.getByPlaceholderText('e.g., Customer Support Agent');
-    await user.type(nameInput, 'Default Agent');
+    await user.type(nameInput, 'Assistant');
     expect(screen.getByTestId('create-agent')).toBeDisabled();
 
     const idInput = screen.getByPlaceholderText('e.g., customer-support-agent');
     await user.clear(idInput);
-    await user.type(idInput, 'my-default-agent');
+    await user.type(idInput, 'my-assistant');
 
     expect(screen.queryByText(/is reserved for the workspace prompt bar/i)).not.toBeInTheDocument();
     expect(screen.getByTestId('create-agent')).not.toBeDisabled();

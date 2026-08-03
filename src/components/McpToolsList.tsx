@@ -1,13 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Venue } from "@covia/covia-sdk";
-import { createAuthProvider } from "@/lib/auth-provider";
-import { useStore } from "zustand";
-import { useVenue } from "@/hooks/use-venue";
-import { getVenueFor } from "@/hooks/use-authenticated-venue";
-import { useVenues } from "@/hooks/use-venues";
-import { useAuthStore } from "@/hooks/use-auth";
+import { useResolvedVenue } from "@/hooks/use-resolved-venue";
 import { useRouter } from "next/navigation";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
@@ -18,7 +12,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
 import { Copy, Play, Wrench } from "lucide-react";
-import { toast } from "sonner";
+import { notifyError, notifyWarning } from "@/lib/notify";
 
 interface McpTool {
   name: string;
@@ -31,45 +25,21 @@ interface McpToolsListProps {
 }
 
 export function McpToolsList({ venueId }: McpToolsListProps) {
-  const [venue, setVenue] = useState<Venue | null>(null);
+  const venue = useResolvedVenue(venueId);
   const [tools, setTools] = useState<McpTool[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTool, setSelectedTool] = useState<McpTool | null>(null);
   const [toolArgs, setToolArgs] = useState("{}");
   const [running, setRunning] = useState(false);
-
-  const venueObj = useStore(useVenue, (x) => x.getCurrentVenue());
-  const { venues, addVenue } = useVenues();
-  const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
-  const authMap = useAuthStore((x) => x.authMap);
   const router = useRouter();
-
-  useEffect(() => {
-    const authData = getAuthForVenue(venueId ?? venueObj?.venueId ?? "");
-    const authOption = createAuthProvider(authData);
-
-    if (venueId && venueId !== venueObj?.venueId) {
-      const found = venues.find((v) => v.venueId === venueId);
-      if (found) {
-        setVenue(getVenueFor(found, authData));
-      } else {
-        Venue.connect(decodeURIComponent(venueId), authOption).then((v) => {
-          addVenue(v);
-          setVenue(v);
-        });
-      }
-    } else if (venueObj) {
-      setVenue(getVenueFor(venueObj, authData));
-    }
-  }, [venueId, authMap, venueObj, venues, getAuthForVenue]);
 
   useEffect(() => {
     if (!venue) return;
     setLoading(true);
     listMcpTools(venue.baseUrl)
       .then((tools) => setTools(tools))
-      .catch(() => {
-        toast("Unable to load MCP tools");
+      .catch((err) => {
+        notifyError("Unable to load MCP tools", err, venue.baseUrl);
         setTools([]);
       })
       .finally(() => setLoading(false));
@@ -81,7 +51,7 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
     try {
       args = JSON.parse(toolArgs);
     } catch {
-      toast("Arguments must be valid JSON");
+      notifyWarning("Arguments must be valid JSON");
       return;
     }
     setRunning(true);
@@ -91,10 +61,10 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
         if (res?.id) {
           router.push(`/venues/${encodeURIComponent(venue.venueId)}/jobs/${res.id}`);
         } else {
-          toast("Tool ran but returned no job ID");
+          notifyWarning("Tool ran but returned no job ID");
         }
       })
-      .catch(() => toast("Tool call failed"))
+      .catch((err) => notifyError("Unable to run tool", err, venue.baseUrl))
       .finally(() => setRunning(false));
   };
 

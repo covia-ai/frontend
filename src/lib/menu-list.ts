@@ -1,4 +1,4 @@
-import { LocationEdit, Database, PlayCircle, LucideIcon, Home, User, BookKey, LibraryBig, BotIcon, KeyRound }from "lucide-react";
+import { LocationEdit, Database, PlayCircle, LucideIcon, Home, FolderOpen, User, BookKey, LibraryBig, BotIcon, KeyRound, Inbox, FlaskConical }from "lucide-react";
 
 type Submenu = {
   href: string;
@@ -28,8 +28,18 @@ export function   getMenuList(): Group[] {
         menus: [
           {
             href: "/",
-            label: "Workspace",
+            label: "Home",
             icon: Home
+          },
+        ]
+      },
+      {
+        groupLabel: "Build",
+        menus: [
+          {
+            href: "/workspace",
+            label: "Workspace",
+            icon: FolderOpen
           },
           {
             href: "/assets",
@@ -55,6 +65,11 @@ export function   getMenuList(): Group[] {
             label: "Agents",
             icon: BotIcon,
           } ,
+        ]
+      },
+      {
+        groupLabel: "Operate",
+        menus: [
           {
             href: "/venues",
             label: "Venues",
@@ -66,17 +81,35 @@ export function   getMenuList(): Group[] {
             icon: User
           },
           {
+            href: "/inbox",
+            label: "Inbox",
+            icon: Inbox
+          },
+        ]
+      },
+      {
+        groupLabel: "Manage",
+        menus: [
+          {
             href: "/secrets",
             label: "Secrets",
             icon: KeyRound
           },
+        ]
+      },
+      {
+        groupLabel: "Learn",
+        menus: [
           {
             href: "/learning",
-            label: "Learning corner",
+            label: "Resources",
             icon: LibraryBig
           },
-
-
+          {
+            href: "/demos",
+            label: "Demos",
+            icon: FlaskConical
+          },
         ]
       },
 
@@ -87,8 +120,18 @@ export function   getMenuList(): Group[] {
         menus: [
           {
             href: "/",
-            label: "Workspace",
+            label: "Home",
             icon: Home
+          },
+        ]
+      },
+      {
+        groupLabel: "Build",
+        menus: [
+          {
+            href: "/workspace",
+            label: "Workspace",
+            icon: FolderOpen
           },
           {
             href: "/assets",
@@ -108,6 +151,11 @@ export function   getMenuList(): Group[] {
 
             ]
           },
+        ]
+      },
+      {
+        groupLabel: "Operate",
+        menus: [
           {
             href: "/venues",
             label: "Venues",
@@ -119,17 +167,35 @@ export function   getMenuList(): Group[] {
             icon: User
           },
           {
+            href: "/inbox",
+            label: "Inbox",
+            icon: Inbox
+          },
+        ]
+      },
+      {
+        groupLabel: "Manage",
+        menus: [
+          {
             href: "/secrets",
             label: "Secrets",
             icon: KeyRound
           },
+        ]
+      },
+      {
+        groupLabel: "Learn",
+        menus: [
           {
             href: "/learning",
-            label: "Learning corner",
+            label: "Resources",
             icon: LibraryBig
           },
-
-
+          {
+            href: "/demos",
+            label: "Demos",
+            icon: FlaskConical
+          },
         ]
       },
 

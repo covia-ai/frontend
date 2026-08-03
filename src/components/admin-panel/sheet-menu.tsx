@@ -3,6 +3,7 @@ import { MenuIcon, PanelsTopLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Menu } from "@/components/admin-panel/menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Sheet,
   SheetHeader,
@@ -14,11 +15,16 @@ import {
 export function SheetMenu() {
   return (
     <Sheet>
-      <SheetTrigger className="lg:hidden" asChild>
-        <Button aria-label="menu"  className="h-8" variant="outline" size="icon">
-          <MenuIcon size={20} />
-        </Button>
-      </SheetTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <SheetTrigger className="lg:hidden" asChild>
+            <Button aria-label="menu"  className="h-8" variant="outline" size="icon">
+              <MenuIcon size={20} />
+            </Button>
+          </SheetTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Open navigation menu</TooltipContent>
+      </Tooltip>
       <SheetContent className="sm:w-56 px-3 h-full flex flex-col" side="left">
         <SheetHeader>
           <Button

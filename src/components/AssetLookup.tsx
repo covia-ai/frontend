@@ -3,9 +3,10 @@
 import { Building2, Check, ChevronDown, EllipsisVertical }from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTrigger }from "./ui/dialog";
 import { useEffect, useState } from "react";
-import { Asset, Venue, getAssetIdFromVenueId } from "@covia/covia-sdk";
+import { Venue, getAssetIdFromVenueId } from "@covia/covia-sdk";
+import { AssetEntry, loadAssetEntries } from "@/lib/asset-metadata";
 import { getVenueFor, useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
-import { useAuthStore } from "@/hooks/use-auth";
+import { useCurrentAuth } from "@/hooks/use-auth";
 import { ScrollArea } from "./ui/scroll-area";
 import { DialogClose } from "@radix-ui/react-dialog";
 import { Button } from "./ui/button";
@@ -17,32 +18,41 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useVenues } from "@/hooks/use-venues";
+import type { VenueDescriptor } from "@/hooks/use-venues";
 
 export const AssetLookup = ({sendAssetIdBackToForm}: {sendAssetIdBackToForm: (id: string) => void}) => {
 
   const venue = useAuthenticatedVenue();
-  const authData = useAuthStore((x) => x.auth);
+  const authData = useCurrentAuth();
 
-  const [assetsMetadata, setAssetsMetadata] = useState<Asset[]>([]);
-  const [filteredAsset, setFilteredAsset] = useState<Asset[]>([]);
+  const [assetsMetadata, setAssetsMetadata] = useState<AssetEntry[]>([]);
+  const [filteredAsset, setFilteredAsset] = useState<AssetEntry[]>([]);
   const [assetId, setAssetId] =  useState("");
   const [filterValue, setFilterValue] =  useState("");
   const [selectedVenue, setSelectedVenue]=  useState<Venue | null>();
+  const [open, setOpen] = useState(false);
   const { venues } = useVenues();
 
    useEffect( () => {
      setSelectedVenue(venue)
   },[venue]);
 
+  // Fetch only while the dialog is actually open — this component is mounted
+  // inside forms, and previously hydrated the venue's entire asset store on
+  // mount even if the picker was never used. Metadata streams in per batch
+  // through the content-addressed cache.
   useEffect( () => {
+      if (!open || !selectedVenue) return;
+      let ignore = false;
       setAssetsMetadata([]);
-      selectedVenue?.listAssets().then((assetList) => {
-          Promise.all(assetList.items.map((assetId: string) => selectedVenue.getAsset(assetId))).then((assets) => {
-            setAssetsMetadata(assets);
-            setFilteredAsset(assets)
-          })
-      })
-  },[selectedVenue]);
+      selectedVenue.listAssets().then((assetList) =>
+        loadAssetEntries(selectedVenue, assetList.items, (entries) => {
+          if (ignore) return;
+          setAssetsMetadata(entries);
+        })
+      ).catch(() => {});
+      return () => { ignore = true; };
+  },[open, selectedVenue]);
 
   const setSelectedAsset = (assetId:string) => {
     setAssetId(assetId)
@@ -60,11 +70,11 @@ export const AssetLookup = ({sendAssetIdBackToForm}: {sendAssetIdBackToForm: (id
     }
   },[filterValue, assetsMetadata])
 
-  const handleVenueSelect = (venue: Venue) => {
+  const handleVenueSelect = (venue: VenueDescriptor) => {
     setSelectedVenue(getVenueFor(venue, authData));
   };
   return (
-     <Dialog>
+     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger>
       
       <EllipsisVertical className=" bg-muted text-muted-foreground rounded-md shadow-md p-1 h-8 "/>
@@ -87,7 +97,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}: {sendAssetIdBackToForm: (id
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="start">
-                    {venues.map((venue:Venue) => (
+                    {venues.map((venue) => (
                       <DropdownMenuItem
                         key={venue.venueId}
                         onClick={() => handleVenueSelect(venue)}
@@ -111,7 +121,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}: {sendAssetIdBackToForm: (id
               
                 
                   {
-                    filteredAsset && filteredAsset.map((asset:Asset) =>
+                    filteredAsset && filteredAsset.map((asset: AssetEntry) =>
 
 
                         asset.id != assetId ?

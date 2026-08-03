@@ -1,12 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
-import { toast } from "sonner";
+import { notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { KeyRound, Loader2, Plus, Trash2, EyeOff, Lock } from "lucide-react";
+import { KeyRound, Loader2, Plus, Trash2, EyeOff, Lock, ChevronDown } from "lucide-react";
 import { useIsAuthenticated } from "@/hooks/use-auth";
+import { KNOWN_LLM_KEYS } from "@/config/llm-providers";
+import { keyNameSuggestions, recentKeyNames, rememberKeyName } from "@/lib/recent-keys";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "./ui/table";
 import {
   AlertDialog,
@@ -26,11 +33,20 @@ export function SecretList() {
   const [newName, setNewName] = useState("");
   const [newValue, setNewValue] = useState("");
   const [adding, setAdding] = useState(false);
+  const [recent, setRecent] = useState<string[]>([]);
+  useEffect(() => setRecent(recentKeyNames()), []);
+
+  // Grouped name suggestions: recent → your existing keys → common LLM keys.
+  const nameGroups = keyNameSuggestions({
+    recent,
+    existing: secrets,
+    common: Object.keys(KNOWN_LLM_KEYS),
+  });
 
   const venue = useAuthenticatedVenue();
   const isAuthenticated = useIsAuthenticated();
 
-  const loadSecrets = () => {
+  const loadSecrets = useCallback(() => {
     if (!venue || !isAuthenticated) {
       setLoading(false);
       return;
@@ -41,35 +57,38 @@ export function SecretList() {
       .then((result) => {
         setSecrets(Array.isArray(result) ? result : []);
       })
-      .catch(() => {
-        toast("Unable to load secrets");
+      .catch((err: any) => {
+        notifyError("Unable to load secrets", err, venue.baseUrl);
         setSecrets([]);
       })
       .finally(() => {
         setLoading(false);
       });
-  };
+  }, [venue, isAuthenticated]);
 
   useEffect(() => {
     loadSecrets();
-  }, [venue, isAuthenticated]);
+  }, [loadSecrets]);
 
   const handleAdd = () => {
     if (!venue || !newName.trim() || !newValue.trim()) {
-      toast("Name and value are required");
+      notifyWarning("Name and value are required");
       return;
     }
     setAdding(true);
     venue.secrets
       .set(newName.trim(), newValue)
       .then(() => {
-        toast(`Secret "${newName}" stored`);
+        notifySuccess(`Secret "${newName}" stored`);
+        rememberKeyName(newName.trim());
+        setRecent(recentKeyNames());
         setNewName("");
         setNewValue("");
         loadSecrets();
       })
-      .catch(() => {
-        toast("Unable to store secret");
+      .catch((err: any) => {
+        // Surface the cause — a blind toast hid a JWT-audience 401 for days.
+        notifyError("Unable to store secret", err, venue.baseUrl);
       })
       .finally(() => {
         setAdding(false);
@@ -81,11 +100,11 @@ export function SecretList() {
     venue.secrets
       .delete(name)
       .then(() => {
-        toast(`Secret "${name}" deleted`);
+        notifySuccess(`Secret "${name}" deleted`);
         loadSecrets();
       })
-      .catch(() => {
-        toast("Unable to delete secret");
+      .catch((err: any) => {
+        notifyError("Unable to delete secret", err, venue.baseUrl);
       });
   };
 
@@ -107,18 +126,59 @@ export function SecretList() {
             <Plus size={16} /> Add Secret
           </h3>
           <div className="flex flex-col sm:flex-row gap-2">
-            <Input
-              placeholder="Secret name"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              className="flex-1"
-            />
+            {/* This is not a login form. Without these opt-outs the browser
+                treats name+password as credentials and autofills a saved
+                password into the value field. autoComplete="new-password" is the
+                reliable signal to suppress filling an existing password; the
+                data-* attrs cover 1Password / LastPass. */}
+            <div className="flex-1 flex gap-1">
+              <Input
+                placeholder="Secret name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                className="flex-1"
+                autoComplete="off"
+              />
+              {nameGroups.length > 0 && (
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button type="button" variant="outline" size="icon" aria-label="Suggested key names" data-testid="key-name-suggestions">
+                          <ChevronDown size={16} />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>Suggested key names</TooltipContent>
+                  </Tooltip>
+                  <DropdownMenuContent align="end" className="max-h-72 overflow-auto">
+                    {nameGroups.map((group, i) => (
+                      <div key={group.label}>
+                        {i > 0 && <DropdownMenuSeparator />}
+                        <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                          {group.label}
+                        </DropdownMenuLabel>
+                        {group.names.map((name) => (
+                          <DropdownMenuItem key={name} className="font-mono text-xs" onSelect={() => setNewName(name)}>
+                            {name}
+                          </DropdownMenuItem>
+                        ))}
+                      </div>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
             <Input
               type="password"
               placeholder="Secret value"
               value={newValue}
               onChange={(e) => setNewValue(e.target.value)}
               className="flex-1"
+              autoComplete="new-password"
+              data-1p-ignore
+              data-lpignore="true"
+              spellCheck={false}
             />
             <Button onClick={handleAdd} disabled={adding || !newName.trim() || !newValue.trim()}>
               {adding ? "Storing..." : "Add"}
@@ -176,11 +236,16 @@ export function SecretList() {
                   <TableCell>
                     {isAuthenticated ? (
                       <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
-                            <Trash2 size={14} />
-                          </Button>
-                        </AlertDialogTrigger>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+                                <Trash2 size={14} />
+                              </Button>
+                            </AlertDialogTrigger>
+                          </TooltipTrigger>
+                          <TooltipContent>Delete secret</TooltipContent>
+                        </Tooltip>
                         <AlertDialogContent>
                           <AlertDialogHeader>
                             <AlertDialogTitle>Delete secret &quot;{name}&quot;?</AlertDialogTitle>
@@ -193,9 +258,12 @@ export function SecretList() {
                         </AlertDialogContent>
                       </AlertDialog>
                     ) : (
-                      <Button variant="ghost" size="sm" disabled>
-                        <Lock size={14} className="text-muted-foreground" />
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger className="inline-flex h-8 items-center px-2">
+                          <Lock size={14} className="text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent>Sign in to delete secrets</TooltipContent>
+                      </Tooltip>
                     )}
                   </TableCell>
                 </TableRow>

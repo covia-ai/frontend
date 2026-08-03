@@ -1,24 +1,24 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { useState } from "react"
 import { useVenues } from "@/hooks/use-venues";
-import { Iconbutton } from "./Iconbutton";
 import { Venue } from "@covia/covia-sdk";
 import { createAuthProvider } from "@/lib/auth-provider";
-import { toast } from "sonner";
+import { notifySuccess } from "@/lib/notify";
 import { useAuthStore } from "@/hooks/use-auth";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
-import { Label } from "@radix-ui/react-dropdown-menu";
+import { Label } from "@/components/ui/label";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { gtmEvent } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
-export const AddNewVenueModal = (_props:any) => {
+export const AddNewVenueModal = () => {
     const [open, setOpen] = useState(false)
     const { addVenue, venues } = useVenues();
     const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
@@ -29,7 +29,6 @@ export const AddNewVenueModal = (_props:any) => {
     const addVenueToList = async () => {
       let processVenueDidOrUrl = venueDidOrUrl.trim();
       if (!processVenueDidOrUrl) return;
-      gtmEvent.buttonClick('Add Venue', processVenueDidOrUrl);
 
       if (processVenueDidOrUrl.endsWith("/"))
         processVenueDidOrUrl = processVenueDidOrUrl.slice(0, -1);
@@ -51,10 +50,12 @@ export const AddNewVenueModal = (_props:any) => {
         const authOption = createAuthProvider(getAuthForVenue(processVenueDidOrUrl));
         const venue = await Venue.connect(processVenueDidOrUrl, authOption);
         addVenue(venue);
-        toast("Venue connected successfully");
+        gtmEvent.connectVenue(venue.venueId);
+        notifySuccess("Venue connected successfully");
         setVenueDidOrUrl("");
         setOpen(false);
       } catch {
+        gtmEvent.connectVenueFailed(processVenueDidOrUrl);
         setError("Could not connect to venue. Check the URL or DID and try again.");
       } finally {
         setLoading(false);
@@ -63,18 +64,25 @@ export const AddNewVenueModal = (_props:any) => {
 
     return (
        <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setError(""); setVenueDidOrUrl(""); } }}>
-            <DialogTrigger>
-                  <Iconbutton icon={PlusCircledIcon} message="Connect to new venue" label="Connect to venue"/>
+            <DialogTrigger asChild>
+                  <Button data-testid="connect-venue-trigger" className="shrink-0 gap-2">
+                        <PlusCircledIcon />
+                        Connect Venue
+                  </Button>
             </DialogTrigger>
             <DialogContent className="bg-card text-card-foreground">
                 <DialogTitle data-testid="add-title" className="flex flex-row items-center space-x-2">
                       Connect to a venue
-              </DialogTitle>
+                </DialogTitle>
+                <DialogDescription>
+                  Connect using a venue URL or decentralized identifier.
+                </DialogDescription>
 
                     <div className="flex flex-col items-center justify-between space-y-4">
                       <div className="flex flex-row items-center justify-center space-x-2 w-full">
-                        <Label className="w-32">Venue Url/DID</Label>
+                        <Label htmlFor="venue-urlid" className="w-32">Venue URL/DID</Label>
                         <Input
+                          id="venue-urlid"
                           data-testid="venue-urlid"
                           required
                           value={venueDidOrUrl}

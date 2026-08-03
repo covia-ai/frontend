@@ -5,18 +5,15 @@ import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { ShowCase } from "@/components/ShowCase";
 import { AIPrompt } from "@/components/AIPrompt";
 import { TopBar } from "@/components/admin-panel/TopBar";
-import { SeperatorWithText } from "@/components/SeperatorWithText";
-import { WorkspaceExplorer } from "@/components/WorkspaceExplorer";
+import { SeparatorWithText } from "@/components/SeparatorWithText";
 
-export default function Workspace() {
+export default function Home() {
   return (
     <ContentLayout>
       <TopBar/>
       <AIPrompt/>
-      <SeperatorWithText text="or"/>
+      <SeparatorWithText text="or"/>
       <ShowCase/>
-      <SeperatorWithText text="Workspace Data"/>
-      <WorkspaceExplorer/>
     </ContentLayout>
   );
 }

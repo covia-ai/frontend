@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useIsAuthenticated } from "@/hooks/use-auth";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { Input } from "@/components/ui/input";
@@ -30,10 +31,11 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { listCatalogOperations, resolveOperationByAddress, type CatalogOp } from "@/lib/operations-catalog";
 import { useRouter } from "next/navigation";
-import { PlayCircle, Search } from "lucide-react";
-import { toast } from "sonner";
+import { PlayCircle, RefreshCw, Search } from "lucide-react";
+import { notifyError, notifyWarning } from "@/lib/notify";
 
 function adapterOf(path: string): string {
   const parts = path.split("/");
@@ -58,6 +60,10 @@ function defaultsFromSchema(schema: any): string {
 
 export function OperationsCatalog() {
   const venue = useAuthenticatedVenue();
+  const isAuthenticated = useIsAuthenticated();
+  // Bumped by the refresh control so ops registered after page load show up
+  // without a reload — the catalog is otherwise fetched once per venue.
+  const [refreshTick, setRefreshTick] = useState(0);
   const [ops, setOps] = useState<CatalogOp[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -71,11 +77,11 @@ export function OperationsCatalog() {
   useEffect(() => {
     if (!venue) return;
     setLoading(true);
-    listCatalogOperations(venue)
+    listCatalogOperations(venue, { includeUserOps: isAuthenticated })
       .then((list) => setOps(list))
-      .catch(() => toast("Failed to load operation catalog"))
+      .catch((err) => notifyError("Unable to load operation catalog", err, venue.baseUrl))
       .finally(() => setLoading(false));
-  }, [venue]);
+  }, [venue, isAuthenticated, refreshTick]);
 
   const adapters = useMemo(
     () => Array.from(new Set(ops.map((op) => adapterOf(op.path)))).sort(),
@@ -118,7 +124,7 @@ export function OperationsCatalog() {
     try {
       input = JSON.parse(runInput);
     } catch {
-      toast("Input must be valid JSON");
+      notifyWarning("Input must be valid JSON");
       return;
     }
     setRunning(true);
@@ -129,10 +135,10 @@ export function OperationsCatalog() {
         setSheetOpen(false);
         router.push(`/venues/${encodeURIComponent(venue.venueId)}/jobs/${res.id}`);
       } else {
-        toast("Operation returned no job ID");
+        notifyWarning("Operation returned no job ID");
       }
     } catch (e: any) {
-      toast(e?.message || "Run failed");
+      notifyError("Unable to run operation", e, venue.baseUrl);
     } finally {
       setRunning(false);
     }
@@ -173,6 +179,22 @@ export function OperationsCatalog() {
               {filtered.length} ops · {grouped.length} adapters
             </span>
           )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="shrink-0"
+                data-testid="refresh-catalog"
+                aria-label="Refresh operation catalog"
+                disabled={loading}
+                onClick={() => setRefreshTick((t) => t + 1)}
+              >
+                <RefreshCw size={16} className={loading ? "animate-spin" : undefined} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Refresh operation catalog</TooltipContent>
+          </Tooltip>
         </div>
 
         {loading && (

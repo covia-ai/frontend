@@ -1,7 +1,5 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import { ChevronDown, Check, Building2 } from "lucide-react";
 import {
   DropdownMenu,
@@ -10,54 +8,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { useVenue } from "@/hooks/use-venue";
 import { useVenues } from "@/hooks/use-venues";
-import { useAuthStore } from "@/hooks/use-auth";
-import { Venue } from "@covia/covia-sdk";
+import type { VenueDescriptor } from "@/hooks/use-venues";
+import { VenueHealthDot } from "./VenueHealthDot";
 
 export function VenueSelector() {
-  const pathname = usePathname();
-  const  venues = useVenues().getVenue();
-  const { currentVenue, setCurrentVenue } = useVenue();
-  const setActiveVenue = useAuthStore((x) => x.setActiveVenue);
-  const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
-;
+  const venues = useVenues((state) => state.venues);
+  const selectedVenueId = useVenues((state) => state.selectedVenueId);
+  const selectVenue = useVenues((state) => state.selectVenue);
+  const selectedVenue = venues.find(
+    (venue) => venue.venueId === selectedVenueId,
+  );
 
-  useEffect(() => {  
-  
-    // If we already have a current venue, use it
-    if (currentVenue) {
-      setSelectedVenue(currentVenue);
-      setActiveVenue(currentVenue.venueId);
-      return;
-    }
-
-    // Check if the pathname contains a venue slug
-    const venueMatch = pathname.match(/\/venues\/([^\/]+)/);
-    if (venueMatch) {
-      const venueSlug = venueMatch[1];
-      const venue = venues.find(v => v.venueId === venueSlug);
-      if (venue) {
-        setCurrentVenue(venue);
-        setSelectedVenue(venue);
-        setActiveVenue(venue.venueId);
-        return;
-      }
-    }
-
-    // Default to first venue if no specific venue is found
-    if (venues.length > 0) {
-      const defaultVenue = venues[0]
-      setCurrentVenue(defaultVenue);
-      setSelectedVenue(defaultVenue);
-      setActiveVenue(defaultVenue.venueId);
-    }
-  }, [pathname, venues, currentVenue, setCurrentVenue, setActiveVenue]);
-
-  const handleVenueSelect = (venue: Venue) => {
-    setCurrentVenue(venue);
-    setSelectedVenue(venue);
-    setActiveVenue(venue.venueId);
+  const handleVenueSelect = (venue: VenueDescriptor) => {
+    selectVenue(venue.venueId);
   };
   if (!selectedVenue || venues.length === 0) {
       
@@ -77,6 +41,7 @@ export function VenueSelector() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button aria-label="venue" variant="outline" className="hover:bg-primary-vlight hover:text-foreground">
+          <VenueHealthDot baseUrl={selectedVenue.baseUrl} />
           <Building2 size={14} />
           <span className="hidden md:block lg:block">{selectedVenue.metadata.name}</span>
           <ChevronDown size={14} />
@@ -90,6 +55,7 @@ export function VenueSelector() {
             className="flex items-center justify-between cursor-pointer hover:bg-primary-vlight hover:text-foreground"
           >
             <div className="flex items-center gap-2">
+              <VenueHealthDot baseUrl={venue.baseUrl} />
               <Building2 size={16} />
               <span className="truncate">{venue.metadata.name}</span>
             </div>

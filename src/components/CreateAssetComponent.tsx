@@ -16,25 +16,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { PlusIcon }from "lucide-react";
+import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { TbCircleDashedNumber1, TbCircleDashedNumber3 }from "react-icons/tb";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useEffect, useState } from "react";
 import { JsonEditor } from "json-edit-react";
 import { Button } from "./ui/button";
-import { Asset, AssetMetadata } from "@covia/covia-sdk";
+import { Asset, AssetMetadata, Venue } from "@covia/covia-sdk";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { getContentTypeForFile, getLicenseUrl, gtmEvent } from "@/lib/utils";
-import { Iconbutton } from "./Iconbutton";
+import { notifyError } from "@/lib/notify";
 
-export const CreateAssetComponent = ({sendDataToParent}: {sendDataToParent: (status: boolean) => void}) => {
+export const CreateAssetComponent = ({sendDataToParent, venue: venueProp}: {sendDataToParent: (status: boolean) => void; venue?: Venue}) => {
     const [step, setStep] = useState(0);
     const [jsonData, setJsonData] = useState<any>({});
     const [assetType, setAssetType] = useState("file");
     const [assetJSONData, setAssetJSONData] = useState<any>({});
     const [assetStringData, setAssetStringDate] = useState("");
-    const [assetFileData, setAssetFileDate] = useState("");
+    const [assetFileData, setAssetFileData] = useState<File | null>(null);
     const [name, setName] = useState("");
     const [creator, setCreator] = useState("");
     const [description, setDescription] = useState("");
@@ -48,46 +48,35 @@ export const CreateAssetComponent = ({sendDataToParent}: {sendDataToParent: (sta
     const [baseData, setBaseData] = useState<AssetMetadata>({});
     const [metadataUpdated, setMetadataUpdated] = useState(false);
     const [open, setOpen] = useState(false)
-    const venue = useAuthenticatedVenue();
+    const fallbackVenue = useAuthenticatedVenue();
+    const venue = venueProp ?? fallbackVenue;
     
-    function createNewAsset(jsonData: AssetMetadata) {
-        gtmEvent.buttonClick('Create Asset', jsonData.name!);
-        
-        try {    
-          venue?.assets.register(jsonData).then( (asset: Asset) => {
-                if(assetType == "string") {
-                      asset.putContent(assetStringData).then((_response) =>{
-                      sendDataToParent(true)
-                       setStep(1)
+    async function createNewAsset(jsonData: AssetMetadata) {
+        if (!venue) return;
 
-                    })
-
-                  }
-                  if(assetType == "json") {
-                      asset.putContent((JSON.stringify(assetJSONData))).then((_response) =>{
-                      sendDataToParent(true)
-                       setStep(1)
-                    })
-
-                  }
-                  if(assetType == "file") {
-                      asset.putContent(assetFileData).then((_response) =>{
-                      sendDataToParent(true)
-                       setStep(1)
-                    })
-
-                  }
-                  
-          })
-        }
-        catch(error) {
-          console.log(error)
+        try {
+          const asset: Asset = await venue.assets.register(jsonData);
+          if (assetType === "string") await asset.putContent(assetStringData);
+          if (assetType === "json") await asset.putContent(JSON.stringify(assetJSONData));
+          if (assetType === "file") {
+            if (!assetFileData) throw new Error("Choose a file before continuing");
+            await asset.putContent(assetFileData);
+          }
+          gtmEvent.createAsset(jsonData.name ?? asset.id);
+          sendDataToParent(true);
+          setStep(1);
+        } catch (error: unknown) {
+          gtmEvent.createAssetFailed(
+            jsonData.name ?? "unknown",
+            error instanceof Error ? error.message : undefined,
+          );
+          notifyError("Unable to create asset", error, venue?.baseUrl);
         }
     }
   
-    const getSHA256Hash = async (input:any) => {
-      const textAsBuffer = new TextEncoder().encode(input);
-      const hashBuffer = await window.crypto.subtle.digest("SHA-256", textAsBuffer);
+    const getSHA256Hash = async (input: string | ArrayBuffer) => {
+      const bytes = typeof input === "string" ? new TextEncoder().encode(input) : input;
+      const hashBuffer = await window.crypto.subtle.digest("SHA-256", bytes);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const hash = hashArray
         .map((item) => item.toString(16).padStart(2, "0"))
@@ -95,50 +84,33 @@ export const CreateAssetComponent = ({sendDataToParent}: {sendDataToParent: (sta
       return hash;
     };
      
-    function uploadContent(_event: any) {
-       if(assetType == "string" ) {
-        getSHA256Hash(assetStringData).then((hash) => {
-                setHash(hash)
-                setContentType("text/plain")
-                setStep(2);  
-        });
-       
-      }
-      else if(assetType == "json"   ) {
-        getSHA256Hash(JSON.stringify(assetJSONData)).then((hash) => {
-        setHash(hash)
-        setContentType("application/json")
-        setStep(2);  
-        });
-      }
-      else if(assetType == "file" ) {
-        getSHA256Hash(assetFileData).then((hash) => {
-        setHash(hash)
-        setStep(2);  
-        });
-      }
-      else {
-        setStep(2)
+    async function uploadContent(_event: React.MouseEvent) {
+      try {
+        if (assetType === "string") {
+          setHash(await getSHA256Hash(assetStringData));
+          setContentType("text/plain");
+        } else if (assetType === "json") {
+          setHash(await getSHA256Hash(JSON.stringify(assetJSONData)));
+          setContentType("application/json");
+        } else if (assetType === "file") {
+          if (!assetFileData) throw new Error("Choose a file before continuing");
+          setHash(await getSHA256Hash(await assetFileData.arrayBuffer()));
+        }
+        setStep(2);
+      } catch (error: unknown) {
+        notifyError("Unable to read file", error);
       }
     }
 
-    function handleFileChange (event: any) {
-     const file = event.target.files[0]; // Get the selected file
+    function handleFileChange (event: React.ChangeEvent<HTMLInputElement>) {
+     const file = event.target.files?.[0];
+     if (!file) return;
      setName(file.name)
      const [contentType, encoding] = getContentTypeForFile(file.name);
      setContentType(contentType);
      setEncoding(encoding)
      
-      if (file) {
-      const reader = new FileReader(); // Create a new FileReader object
-
-      reader.onload = (e) => {
-        // When the file is loaded, set its content to state
-        setAssetFileDate((e.target?.result as string) ?? "");
-      };
-
-      reader.readAsText(file); // Read the file as text
-    }
+     setAssetFileData(file);
     }
     
     function createMetadata(nextStep: number){
@@ -198,10 +170,12 @@ export const CreateAssetComponent = ({sendDataToParent}: {sendDataToParent: (sta
       }, [open]);
     
     return (
-    <div className="h-48 flex flex-center items-center justify-center ">
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger>
-                  <Iconbutton icon={PlusIcon} message="Add new asset" label="Add new asset"></Iconbutton>
+          <DialogTrigger asChild>
+                  <Button data-testid="create-asset-trigger" className="shrink-0 gap-2">
+                        <PlusCircledIcon />
+                        Create Asset
+                  </Button>
           </DialogTrigger>
           <DialogContent className="bg-card text-card-foreground">
                 <DialogTitle className="flex flex-row items-center space-x-2">
@@ -359,6 +333,5 @@ export const CreateAssetComponent = ({sendDataToParent}: {sendDataToParent: (sta
             </DialogContent>
             }
         </Dialog>
-    </div>
     );
 };
