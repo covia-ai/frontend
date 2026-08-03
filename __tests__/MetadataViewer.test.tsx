@@ -172,3 +172,42 @@ describe('MetadataViewer operation fields', () => {
     expect(screen.queryByTestId('operation-fields')).not.toBeInTheDocument();
   });
 });
+
+describe('MetadataViewer agent template fields', () => {
+  const venue = new Venue({ baseUrl: 'https://venue-test.covia.ai', venueId: 'did:web:venue-test.covia.ai', name: 'TestVenue' });
+  const asset = (metadata: any) => new DataAsset('template-asset', venue, metadata);
+
+  // covia-ai/frontend follow-up: the exact shape reported as rendering blank —
+  // v/agents/templates/skilled has none of the operation/artifact/reference
+  // fields MetadataViewer originally checked for.
+  const SKILLED_TEMPLATE = {
+    name: 'Skilled Agent Template',
+    description: 'Recommended default: a lean read/list base plus the full skills index.',
+    systemPrompt: 'You are a general-purpose agent on the Covia platform...',
+    tools: ['v/ops/covia/read', 'v/ops/covia/list'],
+    skills: ['w/skills', 'v/skills'],
+    llmOperation: 'v/ops/langchain/openai',
+    model: 'gpt-5.4-mini',
+    defaultTools: false,
+  };
+
+  test('shows model, tools, skills and system prompt instead of an empty panel', () => {
+    render(<MetadataViewer asset={asset(SKILLED_TEMPLATE)} />);
+    expect(screen.getByTestId('asset-fields')).toBeInTheDocument();
+    expect(screen.getByTestId('agent-template-fields')).toHaveTextContent('gpt-5.4-mini');
+    expect(screen.getByTestId('agent-template-tools')).toHaveTextContent('v/ops/covia/read');
+    expect(screen.getByTestId('agent-template-tools')).toHaveTextContent('v/ops/covia/list');
+    expect(screen.getByTestId('agent-template-skills')).toHaveTextContent('w/skills');
+    expect(screen.getByTestId('system-prompt')).toHaveTextContent('general-purpose agent');
+  });
+
+  test('falls back to the llmOperation address when model is absent', () => {
+    render(<MetadataViewer asset={asset({ name: 'bare template', llmOperation: 'v/ops/langchain/openai', skills: ['v/skills'] })} />);
+    expect(screen.getByTestId('agent-template-fields')).toHaveTextContent('v/ops/langchain/openai');
+  });
+
+  test('an agent template with no tools/skills/model shows no agent-template-fields block', () => {
+    render(<MetadataViewer asset={asset({ name: 'quiet template', skills: [] })} />);
+    expect(screen.queryByTestId('agent-template-fields')).not.toBeInTheDocument();
+  });
+});
