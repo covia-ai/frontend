@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useTheme } from "next-themes";
 import {
   Database,
   Eye,
@@ -32,10 +31,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-const WorkspaceJsonEditor = dynamic(
+const ThemedJsonEditor = dynamic(
   () =>
-    import("./WorkspaceJsonEditor").then(
-      (module) => module.WorkspaceJsonEditor,
+    import("@/components/ThemedJsonEditor").then(
+      (module) => module.ThemedJsonEditor,
     ),
   { ssr: false },
 );
@@ -69,8 +68,6 @@ export function WorkspaceValuePane({
   onSave,
   onDelete,
 }: WorkspaceValuePaneProps) {
-  const { theme } = useTheme();
-
   // Edits autosave as they happen (see onChange/onBlur below), so leaving
   // edit mode just flushes whatever hasn't committed yet — there's nothing
   // to discard, unlike a traditional cancel.
@@ -222,11 +219,11 @@ export function WorkspaceValuePane({
 
       <div className="flex-1 overflow-auto p-4">
         {isObject ? (
-          <WorkspaceJsonEditor
+          <ThemedJsonEditor
             data={editedData as object}
             editable={editMode}
             rootName={selectedPath.split("/").pop() || "data"}
-            dark={theme === "dark"}
+            collapse={2}
             onChange={(value) => {
               onEditedDataChange(value);
               // The tree editor's onChange only fires once a field edit is

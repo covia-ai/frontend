@@ -11,8 +11,12 @@ import { ThemedJsonEditor } from '@/components/ThemedJsonEditor';
 // defined entirely inside the factory (not referencing an outer const) so
 // there's no jest.mock hoisting/TDZ issue to work around.
 jest.mock('json-edit-react', () => ({
+  // The real theme prop is [baseTheme, inputOverride] — an editable-input
+  // color layer applied unconditionally, inert when restrictEdit is set.
   JsonEditor: (props: any) => (
-    <div data-testid="json-editor">{props.theme?.name ?? 'none'}</div>
+    <div data-testid="json-editor" data-restrict-edit={String(props.restrictEdit)} data-has-set-data={String(!!props.setData)}>
+      {props.theme?.[0]?.name ?? 'none'}
+    </div>
   ),
   githubDarkTheme: { name: 'dark' },
   githubLightTheme: { name: 'light' },
@@ -40,5 +44,22 @@ describe('ThemedJsonEditor', () => {
     mockTheme = undefined as any;
     render(<ThemedJsonEditor data={{ a: 1 }} />);
     expect(screen.getByTestId('json-editor')).toHaveTextContent('light');
+  });
+
+  // Workspace's value pane relies on this: read-only by default (metadata,
+  // schema panels), but editable for the workspace explorer.
+  it('is read-only by default', () => {
+    render(<ThemedJsonEditor data={{ a: 1 }} />);
+    const el = screen.getByTestId('json-editor');
+    expect(el).toHaveAttribute('data-restrict-edit', 'true');
+    expect(el).toHaveAttribute('data-has-set-data', 'false');
+  });
+
+  it('wires onChange through as setData when editable', () => {
+    const onChange = jest.fn();
+    render(<ThemedJsonEditor data={{ a: 1 }} editable onChange={onChange} />);
+    const el = screen.getByTestId('json-editor');
+    expect(el).toHaveAttribute('data-restrict-edit', 'false');
+    expect(el).toHaveAttribute('data-has-set-data', 'true');
   });
 });

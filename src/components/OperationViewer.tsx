@@ -10,6 +10,8 @@ import { TopBar } from "@/components/admin-panel/TopBar";
 import { MetadataViewer } from "@/components/MetadataViewer";
 import { OperationInputForm } from "@/components/OperationInputForm";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
+import { FileJson } from "lucide-react";
 import { useOperationAsset } from "@/hooks/use-operation-asset";
 import { useOperationInput } from "@/hooks/use-operation-input";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
@@ -17,7 +19,8 @@ import {
   validateOperationInput,
   type OperationInputSchema,
 } from "@/lib/operation-input";
-import { gtmEvent } from "@/lib/utils";
+import { cn, gtmEvent } from "@/lib/utils";
+import { JSON_EDITOR_DIALOG_CLASS, JSON_EDITOR_MAX_WIDTH } from "@/lib/dialog-sizes";
 
 const DiagramViewer = dynamic(
   () =>
@@ -63,7 +66,6 @@ export function OperationViewer({
   const [invocationError, setInvocationError] = useState("");
   const [loading, setLoading] = useState(false);
   const [confirmationRequired, setConfirmationRequired] = useState(false);
-  const [showSchema, setShowSchema] = useState(false);
 
   const runOperation = async () => {
     if (!asset || !venue) {
@@ -133,26 +135,26 @@ export function OperationViewer({
         {asset?.metadata?.operation && (
           <>
             <div className="w-full flex justify-end mb-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowSchema((visible) => !visible)}
-              >
-                {showSchema ? "Hide Schema" : "View Schema"}
-              </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground">
+                    <FileJson size={14} />
+                    View Schema
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className={cn(JSON_EDITOR_DIALOG_CLASS, "content-start overflow-y-auto")}>
+                  <DialogTitle>Operation Schema</DialogTitle>
+                  <ThemedJsonEditor
+                    data={{
+                      input: asset.metadata.operation.input,
+                      output: asset.metadata.operation.output,
+                    }}
+                    rootName="schema"
+                    maxWidth={JSON_EDITOR_MAX_WIDTH}
+                  />
+                </DialogContent>
+              </Dialog>
             </div>
-            {showSchema && (
-              <div className="w-full max-h-96 overflow-auto rounded-md mb-2" data-testid="schema-panel">
-                <ThemedJsonEditor
-                  data={{
-                    input: asset.metadata.operation.input,
-                    output: asset.metadata.operation.output,
-                  }}
-                  rootName="schema"
-                  collapse={2}
-                />
-              </div>
-            )}
             {inputController.ready ? (
               <OperationInputForm
                 schema={schema}
