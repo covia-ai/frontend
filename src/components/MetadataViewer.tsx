@@ -2,11 +2,13 @@
 
 import React from "react";
 import { Asset, Venue } from "@covia/covia-sdk";
-import { Calendar, Copyright, Download, FileText, Info, InfoIcon, Tag, User, Wrench }from "lucide-react";
+import { Calendar, Copyright, Download, FileText, Info, InfoIcon, LogIn, LogOut, Puzzle, Tag, User, Workflow, Wrench }from "lucide-react";
 import Link from "next/link";
 import { Badge } from "./ui/badge";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "./ui/dialog";
 import { LucideIcon } from "lucide-react";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { formatLabel } from "@/lib/utils";
 import {
   Accordion,
   AccordionContent,
@@ -145,6 +147,41 @@ const renderMetadataFields = (asset: Asset, fields: MetadataFieldConfig[]) => {
   );
 };
 
+type OperationSchema = {
+  adapter?: string;
+  input?: { properties?: Record<string, { type?: string; description?: string }>; required?: string[] };
+  output?: { properties?: Record<string, { type?: string; description?: string }> };
+  steps?: unknown[];
+};
+
+// Renders a JSON-schema `properties` map as a label/description table —
+// the same shape AssetInfoSheet uses for its input/output preview.
+const renderSchemaProperties = (
+  properties: Record<string, { type?: string; description?: string }> | undefined,
+  required: string[] = [],
+) => {
+  const keys = properties ? Object.keys(properties) : [];
+  if (keys.length === 0) return null;
+
+  return (
+    <Table>
+      <TableBody>
+        {keys.map((key) => (
+          <TableRow key={key}>
+            <TableCell className="whitespace-nowrap align-top">
+              {formatLabel(key)}
+              {required.includes(key) && <span className="text-red-400"> *</span>}
+            </TableCell>
+            <TableCell className="text-muted-foreground">
+              {properties?.[key]?.description ?? properties?.[key]?.type ?? ""}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+};
+
 export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
   // Skills and other inline assets carry their body in `content.inline`, with
   // no separate blob — the content endpoint 500s for them. Render the inline
@@ -155,12 +192,30 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
   const skillTools: string[] = Array.isArray(asset.metadata?.skill?.tools)
     ? asset.metadata.skill.tools
     : [];
-  const hasBlobContent =
-    asset.metadata.operation === undefined && inlineContent === null;
+  // Operation, artifact, reference (root CLAUDE.md's asset taxonomy): only an
+  // operation carries `metadata.operation`, and only then does the left
+  // column below switch from generic content fields to its input/output
+  // schema. Everything else (artifact or reference) uses the fixed fields.
+  const operation = asset.metadata?.operation as OperationSchema | undefined;
+  const isOperation = operation !== undefined;
+  const hasAdapter = typeof operation?.adapter === "string" && operation.adapter.length > 0;
+  const hasOperationInput = Boolean(operation?.input?.properties && Object.keys(operation.input.properties).length > 0);
+  const hasOperationOutput = Boolean(operation?.output?.properties && Object.keys(operation.output.properties).length > 0);
+  const hasSteps = Array.isArray(operation?.steps) && operation.steps.length > 0;
+  const hasOperationFields = isOperation && (hasAdapter || hasOperationInput || hasOperationOutput || hasSteps);
+
+  // A "Download" link only makes sense when the asset actually declares a
+  // content descriptor (covia-ai/frontend#209 follow-up) — a bare reference
+  // asset (no `content`, no `operation`) has nothing at that URL to fetch.
+  const hasContentMetadata = asset.metadata?.content !== undefined;
+  const hasBlobContent = !isOperation && hasContentMetadata && inlineContent === null;
   const contentURL = hasBlobContent ? asset.getContentURL() : null;
   const defaultValue = asset.metadata.operation === undefined
     ? "metadata"
     : undefined;
+
+  const genericFields = renderMetadataFields(asset, METADATA_FIELDS);
+  const hasLeftContent = hasOperationFields || genericFields !== null;
   
   return (
      <Accordion
@@ -174,9 +229,51 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
          <AccordionContent>
               <div className="text-sm p-2 items-center justify-between min-w-lg w-full">
                 <div className="flex flex-col md:flex-row lg:flex-row">
-                  <div className="flex flex-col flex-3 md:border-r-2 lg:border-r-2 border-border px-2 ">
-                    {renderMetadataFields(asset, METADATA_FIELDS)}
-                  </div>
+                  {hasLeftContent && (
+                    <div className="flex flex-col flex-3 md:border-r-2 lg:border-r-2 border-border px-2 " data-testid="asset-fields">
+                      {hasOperationFields && (
+                        <div className="flex flex-col space-y-3 mb-3" data-testid="operation-fields">
+                          {hasAdapter && (
+                            <div className="flex items-center space-x-2">
+                              <Puzzle size={18} />
+                              <span className="text-md whitespace-nowrap">Adapter:</span>
+                              <Badge variant="outline" className="font-mono text-[10px] text-muted-foreground">
+                                {operation?.adapter}
+                              </Badge>
+                            </div>
+                          )}
+                          {hasOperationInput && (
+                            <div data-testid="operation-input">
+                              <div className="flex items-center space-x-2 mb-1">
+                                <LogIn size={18} />
+                                <span className="text-md">Input:</span>
+                              </div>
+                              {renderSchemaProperties(operation?.input?.properties, operation?.input?.required)}
+                            </div>
+                          )}
+                          {hasOperationOutput && (
+                            <div data-testid="operation-output">
+                              <div className="flex items-center space-x-2 mb-1">
+                                <LogOut size={18} />
+                                <span className="text-md">Output:</span>
+                              </div>
+                              {renderSchemaProperties(operation?.output?.properties)}
+                            </div>
+                          )}
+                          {hasSteps && (
+                            <div className="flex items-center space-x-2 text-xs text-muted-foreground" data-testid="operation-steps">
+                              <Workflow size={14} />
+                              <span>
+                                Composite operation — {operation?.steps?.length}{" "}
+                                step{operation?.steps?.length === 1 ? "" : "s"}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {genericFields}
+                    </div>
+                  )}
                   <div className="flex flex-col flex-2 px-2 ">
                     {skillTools.length > 0 && (
                       <div className="my-2" data-testid="skill-tools">

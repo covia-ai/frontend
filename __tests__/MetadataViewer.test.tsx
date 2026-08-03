@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import {MetadataViewer} from '@/components/MetadataViewer';
 import { DataAsset, Venue } from '@covia/covia-sdk';
@@ -108,5 +108,67 @@ describe('MetadataViewer skill / inline content', () => {
     expect(screen.queryByTestId('inline-content')).not.toBeInTheDocument();
     expect(screen.queryByTestId('skill-tools')).not.toBeInTheDocument();
     expect(screen.queryByText('Download')).not.toBeInTheDocument();
+  });
+
+  test('does not offer a Download link for a bare reference asset (no content, no operation)', () => {
+    render(<MetadataViewer asset={asset({ name: 'a reference', description: 'points elsewhere' })} />);
+    expect(screen.queryByText('Download')).not.toBeInTheDocument();
+  });
+
+  test('collapses the left column instead of an empty bordered box when no fields apply', () => {
+    render(<MetadataViewer asset={asset(SKILL)} />);
+    expect(screen.queryByTestId('asset-fields')).not.toBeInTheDocument();
+  });
+});
+
+describe('MetadataViewer operation fields', () => {
+  const venue = new Venue({ baseUrl: 'https://venue-test.covia.ai', venueId: 'did:web:venue-test.covia.ai', name: 'TestVenue' });
+  const asset = (metadata: any) => new DataAsset('op-asset', venue, metadata);
+
+  const OPERATION = {
+    name: 'resize',
+    description: 'Resize an image.',
+    operation: {
+      adapter: 'http:image',
+      input: {
+        properties: {
+          width: { type: 'number', description: 'Target width in pixels' },
+          height: { type: 'number', description: 'Target height in pixels' },
+        },
+        required: ['width'],
+      },
+      output: {
+        properties: {
+          url: { type: 'string', description: 'Resized image URL' },
+        },
+      },
+      steps: ['fetch', 'resize', 'store'],
+    },
+  };
+
+  // Operation assets start with the accordion collapsed (existing behavior —
+  // OperationViewer shows the run form below it by default), and Radix
+  // unmounts collapsed content, so these open it first.
+  test('shows the adapter, input schema, output schema and step count', () => {
+    render(<MetadataViewer asset={asset(OPERATION)} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Asset Metadata' }));
+    expect(screen.getByTestId('operation-fields')).toHaveTextContent('http:image');
+    expect(screen.getByTestId('operation-input')).toHaveTextContent('Width');
+    expect(screen.getByTestId('operation-input')).toHaveTextContent('Target width in pixels');
+    expect(screen.getByTestId('operation-output')).toHaveTextContent('Resized image URL');
+    expect(screen.getByTestId('operation-steps')).toHaveTextContent('3 steps');
+  });
+
+  test('marks required input fields', () => {
+    render(<MetadataViewer asset={asset(OPERATION)} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Asset Metadata' }));
+    const inputSection = screen.getByTestId('operation-input');
+    expect(inputSection).toHaveTextContent('Width *');
+    expect(inputSection).not.toHaveTextContent('Height *');
+  });
+
+  test('an operation with none of adapter/input/output/steps shows no operation-fields block', () => {
+    render(<MetadataViewer asset={asset({ name: 'bare op', operation: {} })} />);
+    expect(screen.queryByTestId('operation-fields')).not.toBeInTheDocument();
   });
 });
