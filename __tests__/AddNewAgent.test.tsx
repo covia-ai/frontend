@@ -9,8 +9,9 @@ jest.mock('@/lib/notify', () => ({
   notifyInfo: jest.fn(),
 }));
 
+const pushMock = jest.fn();
 jest.mock('next/navigation', () => ({
-  useRouter: () => ({ push: jest.fn() }),
+  useRouter: () => ({ push: pushMock }),
 }));
 
 // Return a stable object reference so the useEffect dep [venue] doesn't
@@ -112,6 +113,23 @@ describe('AddNewAgent', () => {
       expect(notifySuccess).toHaveBeenCalledWith('Agent created', {
         description: 'Agent "test-agent" is now active',
       });
+    });
+  });
+
+  // covia-ai/frontend follow-up: creation used to just call onCreated (a
+  // list-refetch callback), leaving the user on whichever page they created
+  // the agent from — now it should take them straight to the new agent.
+  it("navigates to the new agent's explorer page instead of just refetching the list", async () => {
+    const user = await renderAndOpenDialog();
+
+    const input = screen.getByPlaceholderText('e.g., Customer Support Agent');
+    await user.type(input, 'My Test Agent');
+
+    const createButton = screen.getByTestId('create-agent');
+    await user.click(createButton);
+
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith('/agents/explorer?agentId=test-agent');
     });
   });
 

@@ -12,6 +12,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Select,
   SelectContent,
@@ -46,7 +47,6 @@ interface AddNewAgentProps {
   initialProvider?: string;
   /** Skills/tools/operation from a venue template, applied to the created agent. */
   initialConfig?: AgentTemplateConfig;
-  onCreated?: () => void;
 }
 
 const CUSTOM_MODEL_OPTION = "__custom__";
@@ -61,8 +61,8 @@ export function AddNewAgent({
   initialSystemPrompt = "",
   initialProvider = "anthropic",
   initialConfig,
-  onCreated,
 }: AddNewAgentProps = {}) {
+  const router = useRouter();
   const [agentName, setAgentName] = useState(initialAgentName);
   const [agentId, setAgentId] = useState("");
   const [agentIdEdited, setAgentIdEdited] = useState(false);
@@ -197,7 +197,7 @@ export function AddNewAgent({
       setSystemPrompt("");
       setInitialCommand("");
       setOpen(false);
-      onCreated?.();
+      router.push(`/agents/explorer?agentId=${encodeURIComponent(result.agentId)}`);
     } catch (err) {
       gtmEvent.createAgentFailed(resolvedAgentId, err instanceof Error ? err.message : undefined);
       notifyError("Unable to create agent", err, venue.baseUrl);
