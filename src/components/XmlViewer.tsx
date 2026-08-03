@@ -23,6 +23,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { CONTENT_PREVIEW_DIALOG_CLASS } from "@/lib/dialog-sizes";
 
 type XmlViewerProps = {
   assetId: string;
@@ -43,7 +44,7 @@ export const XmlViewer = ({ assetId, venue: providedVenue }: XmlViewerProps) => 
           View
         </Button>
       </DialogTrigger>
-      <DialogContent className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden border border-border bg-card p-4 text-card-foreground">
+      <DialogContent className={CONTENT_PREVIEW_DIALOG_CLASS}>
         <DialogHeader className="text-sm font-medium text-muted-foreground">
           XML Preview
         </DialogHeader>

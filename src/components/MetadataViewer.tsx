@@ -9,8 +9,9 @@ import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "./ui/dialog";
 import { LucideIcon } from "lucide-react";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { formatLabel } from "@/lib/utils";
+import { cn, formatLabel } from "@/lib/utils";
 import { getAssetKind } from "@/lib/asset-kind";
+import { JSON_EDITOR_DIALOG_CLASS, JSON_EDITOR_MAX_WIDTH } from "@/lib/dialog-sizes";
 import {
   Accordion,
   AccordionContent,
@@ -421,14 +422,14 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
                             View metadata
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="h-11/12 min-w-10/12 bg-card text-card-foreground content-start overflow-y-auto">
+                        <DialogContent className={cn(JSON_EDITOR_DIALOG_CLASS, "content-start overflow-y-auto")}>
                           <DialogTitle>Asset Metadata</DialogTitle>
                           <div className="rounded-lg bg-white p-3">
                             <JsonEditor
                               data={asset.metadata}
                               rootName="metadata"
                               rootFontSize="1em"
-                              maxWidth="90vw"
+                              maxWidth={JSON_EDITOR_MAX_WIDTH}
                               restrictEdit={true}
                               restrictAdd={true}
                               restrictDelete={true}

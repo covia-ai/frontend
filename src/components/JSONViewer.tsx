@@ -23,6 +23,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { CONTENT_PREVIEW_DIALOG_CLASS } from "@/lib/dialog-sizes";
 
 type JsonViewerProps = {
   assetId: string;
@@ -78,7 +79,7 @@ export const JsonViewer = ({ assetId, venue: providedVenue }: JsonViewerProps) =
         data={parsed.value}
         rootName="content"
         rootFontSize="0.875em"
-        maxWidth="80vh"
+        maxWidth="100%"
         restrictEdit
         restrictAdd
         restrictDelete
@@ -96,7 +97,7 @@ export const JsonViewer = ({ assetId, venue: providedVenue }: JsonViewerProps) =
           View
         </Button>
       </DialogTrigger>
-      <DialogContent className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden border border-border bg-card p-4 text-card-foreground">
+      <DialogContent className={CONTENT_PREVIEW_DIALOG_CLASS}>
         <DialogHeader className="text-sm font-medium text-muted-foreground">
           JSON Preview
         </DialogHeader>

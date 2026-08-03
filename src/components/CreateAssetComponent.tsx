@@ -27,6 +27,7 @@ import { Asset, AssetMetadata, Venue } from "@covia/covia-sdk";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { getContentTypeForFile, getLicenseUrl, gtmEvent } from "@/lib/utils";
 import { notifyError } from "@/lib/notify";
+import { FORM_DIALOG_CLASS, JSON_EDITOR_DIALOG_CLASS, JSON_EDITOR_MAX_WIDTH } from "@/lib/dialog-sizes";
 
 export const CreateAssetComponent = ({sendDataToParent, venue: venueProp}: {sendDataToParent: (status: boolean) => void; venue?: Venue}) => {
     const [step, setStep] = useState(0);
@@ -177,7 +178,7 @@ export const CreateAssetComponent = ({sendDataToParent, venue: venueProp}: {send
                         Create Asset
                   </Button>
           </DialogTrigger>
-          <DialogContent className="bg-card text-card-foreground">
+          <DialogContent className={FORM_DIALOG_CLASS}>
                 <DialogTitle className="flex flex-row items-center space-x-2">
                         <TbCircleDashedNumber1 size={32}></TbCircleDashedNumber1>
                         <Label>Choose Asset Type & Upload Content </Label>
@@ -224,8 +225,8 @@ export const CreateAssetComponent = ({sendDataToParent, venue: venueProp}: {send
                         </div> 
                                 
           </DialogContent>
-          {step == 2 && 
-            <DialogContent className="bg-card text-card-foreground">
+          {step == 2 &&
+            <DialogContent className={FORM_DIALOG_CLASS}>
                   <DialogTitle>Provide Metadata</DialogTitle>
                   <div>
                     <Label>Name</Label>
@@ -292,21 +293,21 @@ export const CreateAssetComponent = ({sendDataToParent, venue: venueProp}: {send
                   </div>
             </DialogContent>            
           }
-          { step ==3  && 
-              <DialogContent className="h-11/12 min-w-10/12 bg-card text-card-foreground">
+          { step ==3  &&
+              <DialogContent className={JSON_EDITOR_DIALOG_CLASS}>
               <DialogTitle className="flex flex-row items-center space-x-2">
-                      <TbCircleDashedNumber3 size={32}></TbCircleDashedNumber3> 
+                      <TbCircleDashedNumber3 size={32}></TbCircleDashedNumber3>
                       <Label> Edit metadata </Label>
-                      
+
                 </DialogTitle>
-                
+
                 { JSON.stringify(jsonData) == "{}"  && <JsonEditor
                                 data={ baseData }
                                 setData={ setJsonData }
                                 rootName="metadata"
                                 rootFontSize="1em"
                                 collapse={false}
-                                maxWidth="90vw"
+                                maxWidth={JSON_EDITOR_MAX_WIDTH}
                                 minWidth="50vw"
                                     />
                               }
@@ -316,7 +317,7 @@ export const CreateAssetComponent = ({sendDataToParent, venue: venueProp}: {send
                                 rootName="metadata"
                                 rootFontSize="1em"
                                 collapse={false}
-                                maxWidth="90vw"
+                                maxWidth={JSON_EDITOR_MAX_WIDTH}
                                 minWidth="50vw"
                                 onChange={({ newValue }) => { setMetadataUpdated(true); return newValue; }}
                                     />

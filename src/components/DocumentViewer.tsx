@@ -12,6 +12,7 @@ import { Button } from "./ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { useRemoteTextContent } from "@/hooks/use-asset-text-content";
 import { RawTextPanel } from "@/components/content-preview/RawTextPanel";
+import { CONTENT_PREVIEW_DIALOG_CLASS } from "@/lib/dialog-sizes";
 
 const CONTENT_TYPE_TO_FILE_TYPE: Record<string, string> = {
   "text/csv": "csv",
@@ -58,7 +59,7 @@ export const DocumentViewer = ({ contentUrl, contentType }: DocumentViewerProps)
           View
         </Button>
       </DialogTrigger>
-      <DialogContent className="bg-card text-card-foreground max-h-[90vh] w-full max-w-4xl p-4 flex flex-col overflow-hidden border border-border">
+      <DialogContent className={CONTENT_PREVIEW_DIALOG_CLASS}>
         <DialogHeader className="text-sm font-medium text-muted-foreground">
           Document Preview
         </DialogHeader>
