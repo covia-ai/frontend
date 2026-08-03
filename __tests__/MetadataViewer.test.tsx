@@ -4,13 +4,14 @@ import '@testing-library/jest-dom';
 import {MetadataViewer} from '@/components/MetadataViewer';
 import { DataAsset, Venue } from '@covia/covia-sdk';
 
+jest.mock('@/lib/utils', () => ({
+  ...jest.requireActual('@/lib/utils'),
+  copyDataToClipBoard: jest.fn(),
+}));
+import { copyDataToClipBoard } from '@/lib/utils';
+
 // Mock fetch for DataAsset.getContentURL()
 global.fetch = jest.fn();
-
-// Mock json-edit-react
-jest.mock('json-edit-react', () => ({
-  JsonEditor: ({ data: _data }: any) => <div data-testid="json-editor">JSON Editor</div>,
-}));
 
 // Mock dynamically imported components
 jest.mock('next/dynamic', () => () => {
@@ -95,6 +96,18 @@ describe('MetadataViewer skill / inline content', () => {
   test('lists the skill tools', () => {
     render(<MetadataViewer asset={asset(SKILL)} />);
     expect(screen.getByTestId('skill-tools')).toHaveTextContent('v/ops/langchain/models');
+  });
+
+  // covia-ai/frontend#202: the inline-content preview had no copy affordance,
+  // unlike comparable content areas elsewhere in the app.
+  test('copies the inline content to the clipboard', () => {
+    (copyDataToClipBoard as jest.Mock).mockClear();
+    render(<MetadataViewer asset={asset(SKILL)} />);
+    fireEvent.click(screen.getByTestId('copy-inline-content'));
+    expect(copyDataToClipBoard).toHaveBeenCalledWith(
+      '## Models\nCall v/ops/langchain/models',
+      'Content copied to clipboard',
+    );
   });
 
   test('still offers Download for a blob-backed artifact', () => {

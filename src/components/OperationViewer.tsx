@@ -32,6 +32,11 @@ const DiagramViewer = dynamic(
   },
 );
 
+const ThemedJsonEditor = dynamic(
+  () => import("@/components/ThemedJsonEditor").then((module) => module.ThemedJsonEditor),
+  { ssr: false },
+);
+
 type OperationViewerProps = {
   assetId: string;
   venueId: string;
@@ -137,16 +142,16 @@ export function OperationViewer({
               </Button>
             </div>
             {showSchema && (
-              <pre className="w-full text-xs bg-muted rounded-md p-4 overflow-x-auto whitespace-pre-wrap break-all mb-2">
-                {JSON.stringify(
-                  {
+              <div className="w-full max-h-96 overflow-auto rounded-md mb-2" data-testid="schema-panel">
+                <ThemedJsonEditor
+                  data={{
                     input: asset.metadata.operation.input,
                     output: asset.metadata.operation.output,
-                  },
-                  null,
-                  2,
-                )}
-              </pre>
+                  }}
+                  rootName="schema"
+                  collapse={2}
+                />
+              </div>
             )}
             {inputController.ready ? (
               <OperationInputForm

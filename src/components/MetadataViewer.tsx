@@ -2,14 +2,14 @@
 
 import React from "react";
 import { Asset, Venue } from "@covia/covia-sdk";
-import { Calendar, Copyright, Cpu, Download, FileJson, FileText, InfoIcon, Layers, LogIn, LogOut, MessageSquareText, Puzzle, Tag, User, Workflow, Wrench }from "lucide-react";
+import { Calendar, Copy, Copyright, Cpu, Download, FileJson, FileText, InfoIcon, Layers, LogIn, LogOut, MessageSquareText, Puzzle, Tag, User, Workflow, Wrench }from "lucide-react";
 import Link from "next/link";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "./ui/dialog";
 import { LucideIcon } from "lucide-react";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { cn, formatLabel } from "@/lib/utils";
+import { cn, copyDataToClipBoard, formatLabel } from "@/lib/utils";
 import { getAssetKind } from "@/lib/asset-kind";
 import { JSON_EDITOR_DIALOG_CLASS, JSON_EDITOR_MAX_WIDTH } from "@/lib/dialog-sizes";
 import {
@@ -20,8 +20,8 @@ import {
 } from "@/components/ui/accordion"
 
 import dynamic from "next/dynamic";
-const JsonEditor = dynamic(
-  () => import("json-edit-react").then((module) => module.JsonEditor),
+const ThemedJsonEditor = dynamic(
+  () => import("./ThemedJsonEditor").then((module) => module.ThemedJsonEditor),
   { ssr: false },
 );
 const JsonViewer = dynamic(
@@ -376,9 +376,20 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
                     )}
                     {inlineContent != null && (
                       <div className="my-2" data-testid="inline-content">
-                        <div className="flex flex-row items-center space-x-2">
-                          <FileText size={18} />
-                          <span className="text-md">Content{contentType ? ` (${contentType})` : ""}:</span>
+                        <div className="flex flex-row items-center justify-between space-x-2">
+                          <div className="flex flex-row items-center space-x-2">
+                            <FileText size={18} />
+                            <span className="text-md">Content{contentType ? ` (${contentType})` : ""}:</span>
+                          </div>
+                          <button
+                            type="button"
+                            aria-label="Copy content"
+                            data-testid="copy-inline-content"
+                            onClick={() => copyDataToClipBoard(inlineContent, "Content copied to clipboard")}
+                            className="text-muted-foreground hover:text-foreground"
+                          >
+                            <Copy size={14} />
+                          </button>
                         </div>
                         {/* Fixed dark code-panel background (matches XmlViewer/
                             JsonViewer's preview) rather than the theme's bg-muted,
@@ -407,10 +418,10 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
                             Download
                           </Link>
                         </Button>
-                        {asset.metadata?.content?.contentType?.split(";")[0] == "application/json" && <JsonViewer assetId={asset.id} venue={venue} />}
-                        {XML_CONTENT_TYPES.includes(asset.metadata?.content?.contentType?.split(";")[0]) && <XmlViewer assetId={asset.id} venue={venue} />}
-                        {asset.metadata?.content?.contentType?.split(";")[0] != "application/json" && !XML_CONTENT_TYPES.includes(asset.metadata?.content?.contentType?.split(";")[0]) && (
-                          <DocumentViewer contentUrl={contentURL} contentType={asset.metadata?.content?.contentType?.split(";")[0]} />
+                        {contentType == "application/json" && <JsonViewer assetId={asset.id} venue={venue} />}
+                        {XML_CONTENT_TYPES.includes(contentType ?? "") && <XmlViewer assetId={asset.id} venue={venue} />}
+                        {contentType != "application/json" && !XML_CONTENT_TYPES.includes(contentType ?? "") && (
+                          <DocumentViewer contentUrl={contentURL} contentType={contentType ?? ""} />
                         )}
                       </div>
                     )}
@@ -424,18 +435,11 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
                         </DialogTrigger>
                         <DialogContent className={cn(JSON_EDITOR_DIALOG_CLASS, "content-start overflow-y-auto")}>
                           <DialogTitle>Asset Metadata</DialogTitle>
-                          <div className="rounded-lg bg-white p-3">
-                            <JsonEditor
-                              data={asset.metadata}
-                              rootName="metadata"
-                              rootFontSize="1em"
-                              maxWidth={JSON_EDITOR_MAX_WIDTH}
-                              restrictEdit={true}
-                              restrictAdd={true}
-                              restrictDelete={true}
-                              collapse={3}
-                            />
-                          </div>
+                          <ThemedJsonEditor
+                            data={asset.metadata}
+                            rootName="metadata"
+                            maxWidth={JSON_EDITOR_MAX_WIDTH}
+                          />
                         </DialogContent>
                       </Dialog>
                     </div>
