@@ -1,9 +1,19 @@
 
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { AssetHeader } from '@/components/AssetHeader';
 import { DataAsset, Operation, Venue } from '@covia/covia-sdk';
+
+// AssetHeader's copy button goes through copyDataToClipBoard (the
+// copy-to-clipboard package), not navigator.clipboard directly — mock just
+// that export, since ui/tooltip.tsx also depends on this module's `cn`.
+jest.mock('@/lib/utils', () => ({
+  ...jest.requireActual('@/lib/utils'),
+  copyDataToClipBoard: jest.fn(),
+}));
+import { copyDataToClipBoard } from '@/lib/utils';
 
 const VENUE_DID = 'did:web:venue-test.covia.ai';
 const HASH = 'a'.repeat(64);
@@ -73,5 +83,67 @@ describe('AssetHeader Component', () => {
     const mockAsset = new DataAsset('test-asset', makeVenue(), delayMetadata);
     render(<AssetHeader asset={mockAsset} />);
     expect(screen.queryByTestId('idcopy_btn')).not.toBeInTheDocument();
+  });
+
+  test('an a/<hash> DID URL links to this asset\'s own viewer', () => {
+    const mockAsset = new DataAsset(HASH, makeVenue(), delayMetadata);
+    render(<AssetHeader asset={mockAsset} />);
+    const link = screen.getByRole('link', { name: `${VENUE_DID}/a/${HASH}` });
+    expect(link).toHaveAttribute('href', `/venues/${encodeURIComponent(VENUE_DID)}/assets/${HASH}`);
+  });
+
+  test('a venue catalogue path links to the operation viewer', () => {
+    const op = new Operation('v/test/ops/delay', makeVenue(), delayMetadata);
+    render(<AssetHeader asset={op} />);
+    const link = screen.getByRole('link', { name: `${VENUE_DID}/v/test/ops/delay` });
+    expect(link).toHaveAttribute('href', `/venues/${encodeURIComponent(VENUE_DID)}/operations/test/ops/delay`);
+  });
+
+  test('caller-owned workspace paths stay plain text — nowhere venue-scoped to send them', () => {
+    const op = new Operation('w/ops/my-op', makeVenue(), delayMetadata);
+    render(<AssetHeader asset={op} />);
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    expect(screen.getByTestId('idcopy_btn')).toHaveTextContent('w/ops/my-op');
+  });
+
+  // Regression: TooltipTrigger renders a real <button> unless asChild chains
+  // it onto the pill directly — nesting the new <Link> (an <a>) inside that
+  // button would be invalid, interactive-in-interactive HTML.
+  test('does not nest the link inside a button', () => {
+    const mockAsset = new DataAsset(HASH, makeVenue(), delayMetadata);
+    const { container } = render(<AssetHeader asset={mockAsset} />);
+    expect(container.querySelector('button a')).toBeNull();
+  });
+
+  describe('copy button', () => {
+    beforeEach(() => {
+      (copyDataToClipBoard as jest.Mock).mockClear();
+    });
+
+    // A bare DID string isn't something anyone else can paste and open —
+    // when there's an app route for it, copy an absolute link to that
+    // instead of the DID URL itself.
+    test('copies an absolute app link, not the bare DID URL', async () => {
+      const user = userEvent.setup();
+      const mockAsset = new DataAsset(HASH, makeVenue(), delayMetadata);
+      render(<AssetHeader asset={mockAsset} />);
+
+      await user.click(screen.getByTestId('idcopy_btn').querySelector('svg')!);
+
+      expect(copyDataToClipBoard).toHaveBeenCalledWith(
+        `${window.location.origin}/venues/${encodeURIComponent(VENUE_DID)}/assets/${HASH}`,
+        'Asset Url copied to clipboard',
+      );
+    });
+
+    test('falls back to the raw DID text when there is nowhere venue-scoped to link to', async () => {
+      const user = userEvent.setup();
+      const op = new Operation('w/ops/my-op', makeVenue(), delayMetadata);
+      render(<AssetHeader asset={op} />);
+
+      await user.click(screen.getByTestId('idcopy_btn').querySelector('svg')!);
+
+      expect(copyDataToClipBoard).toHaveBeenCalledWith('w/ops/my-op', 'DID URL copied to clipboard');
+    });
   });
 });
