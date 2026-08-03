@@ -1,9 +1,6 @@
 import '@testing-library/jest-dom';
-import {
-  seedAdaptiveRisk,
-  teardownAdaptiveRisk,
-  verbatimVenueError,
-} from '@/components/adaptive-risk/seed';
+import { seedAdaptiveRisk, teardownAdaptiveRisk } from '@/components/adaptive-risk/seed';
+import { verbatimVenueError } from '@/components/demo-kit/seeding';
 import {
   APPLICANTS,
   DEFAULT_ADDRESSES,
@@ -22,9 +19,7 @@ function stubVenue(overrides: {
   const existingPaths = overrides.existingPaths ?? new Set<string>();
   // The venue ships the HITL skill; seeding shadows it into w/skills so a
   // capped agent can load it.
-  const venueValues: Record<string, unknown> = {
-    'v/skills/hitl': { name: 'hitl', skill: { tools: ['v/ops/hitl/request'] } },
-  };
+  const venueValues: Record<string, unknown> = {};
   const existingAgents = overrides.existingAgents ?? new Set<string>();
   const writes: Array<{ path: string; value: unknown }> = [];
   const deletes: string[] = [];
@@ -106,11 +101,11 @@ describe('fixtures', () => {
       can: 'invoke',
       nb: { gate: DEFAULT_ADDRESSES.limitGate },
     });
-    for (const other of [agents.sentinel, agents.monitor]) {
-      expect(
-        other.config.caps.some((cap) => cap.with === DEFAULT_ADDRESSES.issueLimit),
-      ).toBe(false);
-    }
+    expect(
+      agents.sentinel.config.caps.some(
+        (cap: { with: string }) => cap.with === DEFAULT_ADDRESSES.issueLimit,
+      ),
+    ).toBe(false);
   });
 });
 
@@ -120,11 +115,10 @@ describe('seedAdaptiveRisk', () => {
     const outcome = await seedAdaptiveRisk(venue, DEFAULT_ADDRESSES);
     expect(outcome.ok).toBe(true);
     expect(outcome.policyRef).toBe('abc123policyhash');
-    // policy + 2 ops + 12 applications + 2 windows + pointer
-    // + shadowed hitl skill + 3 agents
-    expect(outcome.report.items).toHaveLength(22);
+    // policy + 2 ops + 12 applications + 2 agents
+    expect(outcome.report.items).toHaveLength(17);
     expect(outcome.report.items.every((i) => i.status === 'created')).toBe(true);
-    expect(created).toEqual(['rk-sentinel', 'rk-assessor', 'rk-monitor']);
+    expect(created).toEqual(['rk-sentinel', 'rk-assessor']);
   });
 
   it('is idempotent: a second run creates nothing', async () => {
@@ -163,35 +157,16 @@ describe('seedAdaptiveRisk', () => {
   });
 });
 
-describe('HITL skill shadowing', () => {
-  it("copies the venue's hitl skill into the caller's own namespace", async () => {
-    const { venue, writes } = stubVenue();
-    await seedAdaptiveRisk(venue, DEFAULT_ADDRESSES);
-    const shadow = writes.find((w) => w.path === 'w/skills/hitl');
-    expect(shadow).toBeDefined();
-    expect(shadow!.value).toMatchObject({ name: 'hitl' });
-  });
-
-  it('fails honestly when the venue ships no hitl skill', async () => {
-    const { venue } = stubVenue();
-    const stub = venue as unknown as { workspace: { read: jest.Mock } };
-    stub.workspace.read.mockImplementation(async () => ({ exists: false }));
-    const outcome = await seedAdaptiveRisk(venue, DEFAULT_ADDRESSES);
-    expect(outcome.ok).toBe(false);
-    expect(outcome.report.items.at(-1)!.error).toMatch(/No HITL skill at v\/skills\/hitl/);
-  });
-});
-
 describe('teardownAdaptiveRisk', () => {
   it('removes the subtree, both op addresses, and the agents', async () => {
     const { venue, deletes } = stubVenue({
-      existingAgents: new Set(['rk-sentinel', 'rk-assessor', 'rk-monitor']),
+      existingAgents: new Set(['rk-sentinel', 'rk-assessor']),
     });
     const result = await teardownAdaptiveRisk(venue, DEFAULT_ADDRESSES);
     expect(result.ok).toBe(true);
     expect(deletes).toEqual(['w/risk', 'w/ops/risk/limit-gate', 'w/ops/risk/issue-limit']);
     const stub = venue as unknown as { agents: { delete: jest.Mock } };
-    expect(stub.agents.delete).toHaveBeenCalledTimes(3);
+    expect(stub.agents.delete).toHaveBeenCalledTimes(2);
   });
 });
 

@@ -31,29 +31,13 @@ export const APPLICANTS: Applicant[] = [
   { id: "APP-1071", requestedAmount: 2500, device: "dev-9903", tenureMonths: 1, monthlyIncomeSgd: 5200 },
 ];
 
-// Cohort windows for beat 4. The "drift" is this fixture swap — the venue has
-// no drift metric; what is real is everything that happens after the monitor
-// reads the numbers.
-export const WEEK_ONE = {
-  window: "week-1",
-  cohortSize: APPLICANTS.length,
-  deviceReuseRate: 0.08,
-  note: "Baseline week: device reuse across the cohort within normal range.",
-};
-
-export const WEEK_TWO = {
-  window: "week-2",
-  cohortSize: APPLICANTS.length,
-  deviceReuseRate: 0.26,
-  note: "Device-reuse velocity across the cohort has tripled against baseline.",
-};
 
 // ---------------------------------------------------------------------------
 // Addresses. Everything is editable in the setup panel before seeding, so a
 // user can point the demo at operations they already run.
 
 export type AdaptiveRiskAddresses = {
-  /** Root lattice path for the demo's data (applications, signals, flags, decisions, windows). */
+  /** Root lattice path for the demo's data (applications, signals, flags, decisions). */
   root: string;
   /** The gate operation — the assessor's invoke grant is conditional on it. */
   limitGate: string;
@@ -63,7 +47,6 @@ export type AdaptiveRiskAddresses = {
   policyAsset: string;
   sentinelAgent: string;
   assessorAgent: string;
-  monitorAgent: string;
   /** LLM provider operation for the agents (e.g. v/ops/langchain/openai). */
   llmOperation: string;
   /** Model id forwarded to the provider; empty = provider default. */
@@ -77,19 +60,27 @@ export const DEFAULT_ADDRESSES: AdaptiveRiskAddresses = {
   policyAsset: "",
   sentinelAgent: "rk-sentinel",
   assessorAgent: "rk-assessor",
-  monitorAgent: "rk-monitor",
   llmOperation: "v/ops/langchain/openai",
   model: "",
 };
+
+/** Setup-panel fields. Only `common` ones show without expanding Advanced. */
+export const ADDRESS_FIELDS = [
+  { key: "root", label: "Data root", hint: "applications, signals, flags and decisions live under here", common: true },
+  { key: "llmOperation", label: "LLM provider operation", hint: "the venue needs this provider's API key in Secrets", common: true },
+  { key: "model", label: "Model", hint: "empty = provider default", common: true },
+  { key: "limitGate", label: "Limit gate operation" },
+  { key: "issueLimit", label: "Issue-limit operation" },
+  { key: "policyAsset", label: "Policy operation (content-addressed)", hint: "left empty, setup registers ours and fills in the hash" },
+  { key: "sentinelAgent", label: "Fraud agent id" },
+  { key: "assessorAgent", label: "Credit agent id" },
+];
 
 export const riskPaths = (root: string) => ({
   applications: `${root}/applications`,
   signals: `${root}/signals`,
   flags: `${root}/flags`,
   decisions: `${root}/decisions`,
-  windows: `${root}/windows`,
-  window: `${root}/window`,
-  limitReview: `${root}/limit-review`,
 });
 
 // ---------------------------------------------------------------------------
@@ -282,40 +273,6 @@ export function agentConfigs(addresses: AdaptiveRiskAddresses) {
           { with: "v/ops/covia/write", can: "invoke" },
           { with: addresses.issueLimit, can: "invoke", nb: { gate: addresses.limitGate } },
           { with: addresses.policyAsset ? addresses.policyAsset : "a/", can: "invoke" },
-        ],
-      },
-    },
-    monitor: {
-      agentId: addresses.monitorAgent,
-      config: {
-        ...llm,
-        systemPrompt:
-          "You are rk-monitor, the drift watch for Meridian Bank Singapore's starter card. Read the " +
-          `current cohort window pointer at ${paths.window} and the window records under ${paths.windows}. ` +
-          "Compare the current window's deviceReuseRate to the week-1 baseline. If it has at least doubled, " +
-          "load the `hitl` skill and raise the escalation with the hitl_request tool it activates — " +
-          "hitl:request is Job-carried, so it is only reachable through the skill, never as a plain tool. " +
-          "Title the ask clearly, describe the breach with both real numbers, and attach the offered grant " +
-          "exactly as instructed in the task. Do not change any policy yourself.",
-        tools: ["v/ops/covia/read", "v/ops/covia/list"],
-        skills: ["w/skills"],
-        defaultTools: false,
-        // Reads are broad enough to cover the demo's own data AND the venue
-        // skill library: hitl:request is Job-carried, reachable only via the
-        // `hitl` skill, and skill loading confers no authority of its own —
-        // a caps-pinned agent must be able to read v/skills and invoke the op
-        // (skills/hitl/SKILL.md §agent, point 5). The boundary that matters
-        // is unchanged: the monitor holds NO grant on issue-limit and no
-        // write to the decision ledger. It watches and escalates.
-        caps: [
-          { with: `${addresses.root}/`, can: "crud/read" },
-          { with: "w/skills/", can: "crud/read" },
-          { with: `${paths.limitReview}/`, can: "crud/write" },
-          { with: "v/ops/covia/read", can: "invoke" },
-          { with: "v/ops/covia/list", can: "invoke" },
-          { with: "v/ops/hitl/request", can: "invoke" },
-          { with: "v/ops/hitl/list", can: "invoke" },
-          { with: "v/ops/grid/job-status", can: "invoke" },
         ],
       },
     },

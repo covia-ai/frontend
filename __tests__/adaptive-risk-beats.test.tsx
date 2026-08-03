@@ -13,14 +13,13 @@ import {
   runAssessorBeat,
   readLedger,
   readDecisions,
-  findOpenAsk,
-  extractGrantToken,
   reconstructionCurl,
   summariseRecord,
   JOBS_MD_RULE,
   AGENT_REQUEST_OP,
 } from '@/components/adaptive-risk/beats';
-import { BeatCard } from '@/components/adaptive-risk/BeatCard';
+import { findOpenAsk, extractGrantToken } from '@/components/governed-escalation/beats';
+import { BeatCard } from '@/components/demo-kit/BeatCard';
 import { RefusalPanel, extractDenial } from '@/components/adaptive-risk/RefusalPanel';
 import { DEFAULT_ADDRESSES } from '@/components/adaptive-risk/fixtures';
 import { ADAPTIVE_RISK_BEATS } from '@/components/adaptive-risk/story';
@@ -156,8 +155,8 @@ describe('BeatCard', () => {
 
   it('renders narration without a Run button when the beat is not wired', () => {
     render(<BeatCard beat={beat1} venue={venue} enabled={false} />);
-    expect(screen.getByTestId('ar-beat-silos')).toHaveTextContent(beat1.title);
-    expect(screen.queryByTestId('ar-run-silos')).not.toBeInTheDocument();
+    expect(screen.getByTestId('beat-silos')).toHaveTextContent(beat1.title);
+    expect(screen.queryByTestId('run-silos')).not.toBeInTheDocument();
   });
 
   it('shows the disabled hint until the venue is seeded', () => {
@@ -170,8 +169,8 @@ describe('BeatCard', () => {
         run={asRun(async () => finishedJob())}
       />,
     );
-    expect(screen.getByTestId('ar-run-silos')).toBeDisabled();
-    expect(screen.getByTestId('ar-hint-silos')).toHaveTextContent('Run setup above first');
+    expect(screen.getByTestId('run-silos')).toBeDisabled();
+    expect(screen.getByTestId('hint-silos')).toHaveTextContent('Run setup above first');
   });
 
   it('runs the beat and renders the job record with a Jobs deep link', async () => {
@@ -179,13 +178,13 @@ describe('BeatCard', () => {
     const run = asRun(async () => finishedJob());
     render(<BeatCard beat={beat1} venue={venue} enabled run={run} />);
 
-    await user.click(screen.getByTestId('ar-run-silos'));
+    await user.click(screen.getByTestId('run-silos'));
 
     await waitFor(() =>
-      expect(screen.getByTestId('ar-job-silos')).toHaveTextContent('job-77'),
+      expect(screen.getByTestId('job-silos')).toHaveTextContent('job-77'),
     );
-    expect(screen.getByTestId('ar-output-silos')).toHaveTextContent('flagged dev-9903');
-    expect(screen.getByTestId('ar-job-link-silos')).toHaveAttribute(
+    expect(screen.getByTestId('output-silos')).toHaveTextContent('flagged dev-9903');
+    expect(screen.getByTestId('job-link-silos')).toHaveAttribute(
       'href',
       '/venues/test-venue/jobs/job-77',
     );
@@ -204,10 +203,10 @@ describe('BeatCard', () => {
     );
     render(<BeatCard beat={beat1} venue={venue} enabled run={run} />);
 
-    await user.click(screen.getByTestId('ar-run-silos'));
+    await user.click(screen.getByTestId('run-silos'));
 
     await waitFor(() =>
-      expect(screen.getByTestId('ar-error-silos')).toHaveTextContent(denial),
+      expect(screen.getByTestId('error-silos')).toHaveTextContent(denial),
     );
   });
 });
@@ -379,7 +378,7 @@ describe('BeatCard parked jobs', () => {
       />,
     );
 
-    await user.click(screen.getByTestId('ar-run-silos'));
+    await user.click(screen.getByTestId('run-silos'));
 
     await waitFor(() => expect(onSettled).toHaveBeenCalled());
     expect(onSettled.mock.calls[0][0]).toMatchObject({
@@ -389,6 +388,6 @@ describe('BeatCard parked jobs', () => {
     // Never polled: a parked job is settled on arrival.
     expect(parked.refresh).not.toHaveBeenCalled();
     // And the beat is runnable again rather than stuck behind a spinner.
-    await waitFor(() => expect(screen.getByTestId('ar-run-silos')).toBeEnabled());
+    await waitFor(() => expect(screen.getByTestId('run-silos')).toBeEnabled());
   });
 });

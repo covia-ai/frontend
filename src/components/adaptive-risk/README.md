@@ -1,6 +1,6 @@
 # Adaptive Risk demo
 
-A guided walkthrough, inside the Covia app, of three agents and one policy
+A guided walkthrough, inside the Covia app, of two agents and one policy
 gate. Fictional issuer **Meridian Bank Singapore**, thin-file starter card,
 base limit **S$500**, twelve synthetic applicants.
 
@@ -23,27 +23,25 @@ at the execution layer, and the join is enforced by the runtime.
 |---|---|---|
 | `rk-sentinel` | fraud signals | read applications; write signals and flags |
 | `rk-assessor` | credit decisions | read applications + signals; write decisions; **invoke `issue-limit` gated by the limit gate** |
-| `rk-monitor` | drift watch | read signals and cohort windows; invoke `hitl:request` |
 | limit gate | the policy itself, as an ordinary content-addressed operation | — |
 
 Only the assessor holds any grant to `issue-limit`, and that grant is
-conditional (`nb: { gate: … }`). The sentinel and the monitor hold none.
+conditional (`nb: { gate: … }`). The fraud agent holds none.
 
-## The five beats
+## The four beats
 
 | # | Beat | What is real |
 |---|---|---|
 | 1 | Two silos, one substrate | `rk-sentinel` reads the applications and writes signals + device flags under its own capped authority. It never contacts the credit agent. |
 | 2 | A clean approval | `rk-assessor` reads both sources and issues S$500 for a clean applicant. The gate evaluates and passes; a decision is written. |
 | 3 | The refusal | Same agent, same capabilities, S$2,500 on a flagged device. The gate denies before execution and the venue's own denial string is shown verbatim. No decision is written. |
-| 4 | Drift becomes a governed event | Fixture swaps to week two; the monitor evaluates the breach; a HITL ask parks in `INPUT_REQUIRED`; you answer in the real Inbox and sign a capability with your own key; the parked job resumes and the token is verified. |
-| 5 | Reconstruction | The APP-1071 refusal read back over plain REST — inputs, caller, error, and the `prev` chain — with a curl that works in your terminal. |
+| 4 | Reconstruction | The APP-1071 refusal read back over plain REST — inputs, caller, error, and the `prev` chain — with a curl that works in your terminal. |
 
 Beats 2 and 3 share one runner deliberately: nothing about the agent changes
 between the approval and the refusal, only what it is asked to issue. **Beat 2
 alone does not prove the gate is live — the pair does.**
 
-### Two places the runtime differs from the obvious story
+### A note on scope
 
 Both are stated on the page itself, not just here.
 
@@ -88,8 +86,7 @@ exist to demonstrate.
    `OPENAI_API_KEY` for `v/ops/langchain/openai`). The key is stored in the
    venue's per-user encrypted secret store, under your DID.
 
-5. **Run setup**, then the beats in order. Beat 4 stops and waits for you in
-   the Inbox — that pause is the point, not a hang.
+5. **Run setup**, then the beats in order. All four run unattended.
 
 Any venue works, not just a local one — the only requirement is an identity
 that venue admits. The public Covia venues do not auto-create users, so ask
@@ -98,7 +95,8 @@ an operator to admit your DID first.
 ## Swap in your own operations
 
 Every address is editable in the setup panel **before** anything is
-registered, and your edits are persisted per browser:
+registered, and your edits are persisted per browser. Only the data root, LLM
+provider and model show up front; the rest sit behind **Show every address**:
 
 | Field | What it is |
 |---|---|
@@ -106,7 +104,7 @@ registered, and your edits are persisted per browser:
 | Limit gate operation | the gate the assessor's grant is conditional on |
 | Issue-limit operation | the decision-writing operation |
 | Policy operation | content-addressed; left empty, setup registers ours and fills in the hash |
-| Agent ids | `rk-sentinel`, `rk-assessor`, `rk-monitor` |
+| Agent ids | `rk-sentinel`, `rk-assessor` |
 | LLM provider operation / Model | e.g. `v/ops/langchain/openai`; empty model = provider default |
 
 Point any of them at something you already run and setup will use yours
@@ -133,7 +131,7 @@ setup panel.
 
 The **Tear down** button removes what setup created on this venue: the data
 subtree (`w/risk`), the gate and issue-limit operation addresses, and the
-three agents.
+two agents.
 
 Two things deliberately survive:
 
@@ -153,7 +151,7 @@ Two things deliberately survive:
 - Narration lives in `story.ts` as data. Per `JOBS.md`, recovery *stabilises
   and never re-executes* — this demo says **reconstruct**, and a test asserts
   the word "replay" appears nowhere.
-- Beat 5's curl carries a short-lived identity token signed in the browser,
+- Beat 4's curl carries a short-lived identity token signed in the browser,
   because job records are per-caller and an anonymous read 404s. It is a
   credential: it lasts ten minutes and is never transmitted by the page.
 - A capped agent needs `crud/read` on a tool's *definition* as well as `invoke`

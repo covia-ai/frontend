@@ -1,7 +1,7 @@
 "use client";
 
 import { ShieldX } from "lucide-react";
-import type { BeatJobState } from "./BeatCard";
+import type { BeatJobState } from "@/components/demo-kit/BeatCard";
 
 // Beat 3 has two levels, and glossing over that would be dishonest:
 //

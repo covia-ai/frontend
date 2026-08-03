@@ -1,63 +1,66 @@
 "use client";
 
 import { useState } from "react";
-import { Landmark, ShieldAlert } from "lucide-react";
+import { Landmark } from "lucide-react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useIsAuthenticated } from "@/hooks/use-auth";
-import { useAdaptiveRiskConfig } from "@/hooks/use-adaptive-risk-config";
+import { useDemoConfig, useDemoAddresses } from "@/hooks/use-demo-config";
+import { BeatCard, type BeatJobState } from "@/components/demo-kit/BeatCard";
+import { SetupPanel } from "@/components/demo-kit/SetupPanel";
+import { HonestyPanel } from "@/components/demo-kit/HonestyPanel";
 import { ADAPTIVE_RISK_BEATS } from "./story";
-import { SetupPanel } from "./SetupPanel";
-import { BeatCard } from "./BeatCard";
+import {
+  ADDRESS_FIELDS,
+  APPLICANTS,
+  DEFAULT_ADDRESSES,
+  STARTER_CARD_LIMIT,
+} from "./fixtures";
+import { seedAdaptiveRisk, teardownAdaptiveRisk } from "./seed";
+import { runBeat1, runAssessorBeat } from "./beats";
 import { LedgerPanel } from "./LedgerPanel";
 import { DecisionsPanel } from "./DecisionsPanel";
 import { PolicyLinks } from "./PolicyLinks";
 import { RefusalPanel } from "./RefusalPanel";
-import { EscalationPanel } from "./EscalationPanel";
 import { ReconstructionPanel } from "./ReconstructionPanel";
-import type { BeatJobState } from "./BeatCard";
-import { runBeat1, runAssessorBeat, runBeat4, swapToWeekTwo } from "./beats";
-import { APPLICANTS, STARTER_CARD_LIMIT } from "./fixtures";
 
-// Adaptive Risk: a guided walkthrough over real venue calls. Fictional issuer
-// Meridian Bank Singapore, thin-file starter card, base limit S$500, twelve
-// synthetic applicants. Three agents and one gate, created by the seeding
-// step; every beat runs a real job on the selected venue and renders the real
-// record — a failed call is shown as a failure, never animated over.
+export const DEMO_ID = "adaptive-risk";
+
+// Adaptive Risk makes ONE claim: a credit agent cannot issue a limit unless a
+// fraud agent's signals pass a policy gate — the two are joined at the
+// execution layer, and the join is enforced. Four beats: the fraud agent
+// writes (1), a clean case flows through the gate (2), a bad one is refused
+// (3), and the refusal is read back off the record (4).
+//
+// Human-in-the-loop escalation is a different claim and has its own demo.
 export function AdaptiveRiskDemo() {
   const venue = useAuthenticatedVenue();
   const isAuthenticated = useIsAuthenticated();
-  const {
-    addresses,
-    reports,
-    escalations,
-    setEscalation,
-    refusals,
-    setRefusal,
-  } = useAdaptiveRiskConfig();
+  const { addresses, setAddresses, reset } = useDemoAddresses(DEMO_ID, DEFAULT_ADDRESSES);
+  const report = useDemoConfig((s) => (venue ? s.reports[DEMO_ID]?.[venue.venueId] : undefined));
+  const memos = useDemoConfig((s) => (venue ? s.memos[DEMO_ID]?.[venue.venueId] : undefined));
+  const setMemo = useDemoConfig((s) => s.setMemo);
+
   const [ledgerRefresh, setLedgerRefresh] = useState(0);
   const [decisionsRefresh, setDecisionsRefresh] = useState(0);
   const [refusalState, setRefusalState] = useState<BeatJobState | null>(null);
-  const [driftState, setDriftState] = useState<BeatJobState | null>(null);
-  const [monitorAnalysis, setMonitorAnalysis] = useState<BeatJobState | null>(null);
 
-  // Beat 2's clean applicant: asks for exactly the base limit on a device
-  // nobody else shares, so the gate has nothing to object to.
+  // Beat 2's applicant asks for exactly the base limit on a device nobody
+  // shares, so the gate has nothing to object to. Beat 3's is wrong twice:
+  // over the limit AND sharing a device. Both are derived from the fixture
+  // data rather than hardcoded, so editing the data cannot desync the story.
   const clean = APPLICANTS.find(
     (a) =>
       a.requestedAmount <= STARTER_CARD_LIMIT &&
-      APPLICANTS.filter((other) => other.device === a.device).length === 1,
+      APPLICANTS.filter((o) => o.device === a.device).length === 1,
   )!;
-
-  // Beat 3's planted case: over the base limit AND sharing a device with
-  // another application, so the gate has two independent reasons to refuse.
   const planted = APPLICANTS.find(
     (a) =>
       a.requestedAmount > STARTER_CARD_LIMIT &&
-      APPLICANTS.filter((other) => other.device === a.device).length > 1,
+      APPLICANTS.filter((o) => o.device === a.device).length > 1,
   )!;
 
-  const seeded = !!venue && !!reports[venue.venueId];
-  const beatHint = !venue
+  const seeded = !!venue && !!report;
+  const hint = !venue
     ? "Select a venue first."
     : !isAuthenticated
       ? "Sign in first."
@@ -65,8 +68,26 @@ export function AdaptiveRiskDemo() {
 
   return (
     <div className="flex flex-col gap-6 max-w-3xl">
-      <ScenarioIntro />
-      <HonestyPanel />
+      <div className="flex items-start gap-3">
+        <Landmark className="size-5 mt-0.5 text-primary shrink-0" aria-hidden="true" />
+        <p className="text-sm text-muted-foreground">
+          Meridian Bank Singapore — a fictional issuer — runs a thin-file starter
+          card with a base limit of S${STARTER_CARD_LIMIT}. A fraud agent and a
+          credit agent share one venue. The credit agent cannot issue a limit
+          unless the fraud agent&apos;s signals pass a policy gate: the two are not
+          integrated by a model, they are joined at the execution layer, and the
+          join is enforced.
+        </p>
+      </div>
+
+      <HonestyPanel
+        points={[
+          "All data is synthetic: twelve applicants, one fictional bank. Nothing here describes a real person or a real lender.",
+          "The agents are LLM components executing policy, not trained scorecards. The policy is a content-addressed operation whose output schema IS the rule.",
+          "Every beat is a real job on the venue you have selected. A failure is shown as a failure, with the venue's own error string.",
+          'If your venue runs auth.public.caps: "unrestricted" so seeding can write, that widens the anonymous caller only — per-agent capability scopes and the gate are still enforced per agent.',
+        ]}
+      />
 
       {!venue && (
         <p className="text-sm text-muted-foreground" data-testid="ar-no-venue">
@@ -76,13 +97,32 @@ export function AdaptiveRiskDemo() {
       {venue && !isAuthenticated && (
         <p className="text-sm text-muted-foreground" data-testid="ar-no-auth">
           Sign in to run this demo — seeding registers agents and fixtures under
-          your own identity, and the Inbox beat needs you to answer as yourself.
+          your own identity.
         </p>
       )}
 
-      <SetupPanel venue={venue} isAuthenticated={isAuthenticated} />
+      <SetupPanel
+        demoId={DEMO_ID}
+        venue={venue}
+        isAuthenticated={isAuthenticated}
+        fields={ADDRESS_FIELDS}
+        addresses={addresses}
+        setAddresses={setAddresses}
+        resetAddresses={reset}
+        llmField="llmOperation"
+        blurb={`Registers the policy, the gate, the decision operation, ${APPLICANTS.length} synthetic applications and two agents on the selected venue — under your identity. Re-running is a no-op; nothing is duplicated.`}
+        teardownDescription={`Removes the demo's data subtree (${addresses.root}), the gate and issue-limit operations, and the two agents. Job records stay — they are the audit trail. The content-addressed policy asset is immutable and remains, inert.`}
+        seed={async (v, onItem) => {
+          const outcome = await seedAdaptiveRisk(v, addresses, onItem);
+          if (outcome.ok && outcome.policyRef && outcome.policyRef !== addresses.policyAsset) {
+            setAddresses({ policyAsset: outcome.policyRef });
+          }
+          return outcome;
+        }}
+        teardown={(v) => teardownAdaptiveRisk(v, addresses)}
+      />
 
-      <section aria-label="Beats" className="flex flex-col gap-3">
+      <section aria-label="Beats">
         <ol className="flex flex-col gap-3">
           {ADAPTIVE_RISK_BEATS.map((beat) => (
             <BeatCard
@@ -90,23 +130,15 @@ export function AdaptiveRiskDemo() {
               beat={beat}
               venue={venue}
               enabled={seeded}
-              disabledHint={beatHint}
+              disabledHint={hint}
               run={
                 beat.id === "silos"
                   ? (v) => runBeat1(v, addresses)
                   : beat.id === "clean-approval"
                     ? (v) =>
-                        runAssessorBeat(
-                          v,
-                          addresses,
-                          clean.id,
-                          clean.requestedAmount,
-                          clean.device,
-                        )
+                        runAssessorBeat(v, addresses, clean.id, clean.requestedAmount, clean.device)
                     : beat.id === "refusal"
                       ? (v) => {
-                          // Drop the previous verdict before re-running, so a
-                          // stale refusal never sits next to a live job.
                           setRefusalState(null);
                           return runAssessorBeat(
                             v,
@@ -116,82 +148,34 @@ export function AdaptiveRiskDemo() {
                             planted.device,
                           );
                         }
-                      : beat.id === "drift"
-                        ? async (v) => {
-                            setDriftState(null);
-                            setMonitorAnalysis(null);
-                            // The drift IS this fixture swap — labelled as
-                            // such on screen, not smuggled in as a metric.
-                            await swapToWeekTwo(v, addresses);
-                            const { analysis, ask } = await runBeat4(v, addresses);
-                            // Persist before returning: the viewer is about to
-                            // leave for the Inbox, and React state will not
-                            // survive that round trip.
-                            setEscalation(v.venueId, {
-                              analysisJobId: analysis.id,
-                              askJobId: ask.id,
-                            });
-                            setMonitorAnalysis({
-                              jobId: analysis.id,
-                              status: analysis.metadata?.status ?? null,
-                              error: analysis.metadata?.error ?? null,
-                              output: analysis.isComplete ? analysis.output : null,
-                            });
-                            // The card tracks the ASK — it is the job that parks.
-                            return ask;
-                          }
-                        : undefined
+                      : undefined
               }
               onSettled={
                 beat.id === "silos"
-                  ? () => setLedgerRefresh((token) => token + 1)
+                  ? () => setLedgerRefresh((t) => t + 1)
                   : beat.id === "clean-approval"
-                    ? () => setDecisionsRefresh((token) => token + 1)
+                    ? () => setDecisionsRefresh((t) => t + 1)
                     : beat.id === "refusal"
                       ? (state) => {
                           setRefusalState(state);
-                          setDecisionsRefresh((token) => token + 1);
-                          // Beat 5 reconstructs this exact record later, so the
-                          // id has to outlive the page.
+                          setDecisionsRefresh((t) => t + 1);
+                          // Beat 4 reads this exact record back, so the id has
+                          // to outlive the page.
                           if (venue && state.jobId) {
-                            setRefusal(venue.venueId, {
-                              jobId: state.jobId,
-                              applicant: planted.id,
-                            });
+                            setMemo(DEMO_ID, venue.venueId, "refusalJobId", state.jobId);
                           }
                         }
-                      : beat.id === "drift"
-                        ? (state) => setDriftState(state)
-                        : undefined
+                      : undefined
               }
             >
               {beat.id === "silos" && (
-                <LedgerPanel
-                  venue={venue}
-                  addresses={addresses}
-                  refreshToken={ledgerRefresh}
-                />
+                <LedgerPanel venue={venue} addresses={addresses} refreshToken={ledgerRefresh} />
               )}
               {beat.id === "clean-approval" && (
                 <DecisionsPanel
                   venue={venue}
                   addresses={addresses}
                   refreshToken={decisionsRefresh}
-                />
-              )}
-              {beat.id === "drift" && (
-                <EscalationPanel
-                  venue={venue}
-                  state={driftState}
-                  analysis={monitorAnalysis}
-                  escalation={venue ? escalations[venue.venueId] ?? null : null}
-                />
-              )}
-              {beat.id === "reconstruction" && (
-                <ReconstructionPanel
-                  venue={venue}
-                  jobId={venue ? refusals[venue.venueId]?.jobId ?? null : null}
-                  label={`the ${planted.id} refusal`}
                 />
               )}
               {beat.id === "refusal" && (
@@ -206,76 +190,17 @@ export function AdaptiveRiskDemo() {
                   />
                 </>
               )}
+              {beat.id === "reconstruction" && (
+                <ReconstructionPanel
+                  venue={venue}
+                  jobId={memos?.refusalJobId ?? null}
+                  label={`the ${planted.id} refusal`}
+                />
+              )}
             </BeatCard>
           ))}
         </ol>
       </section>
     </div>
-  );
-}
-
-function ScenarioIntro() {
-  return (
-    <div className="flex items-start gap-3">
-      <Landmark className="size-5 mt-0.5 text-primary shrink-0" aria-hidden="true" />
-      <p className="text-sm text-muted-foreground">
-        Meridian Bank Singapore — a fictional issuer — runs a thin-file starter
-        card with a base limit of S$500. A fraud agent, a credit agent and a
-        drift monitor share one venue. The credit agent cannot issue a limit
-        unless the fraud agent&apos;s signals pass a policy gate: the two are not
-        integrated by a model, they are joined at the execution layer, and the
-        join is enforced.
-      </p>
-    </div>
-  );
-}
-
-// The honesty panel is a permanent part of the page, not a dismissible note:
-// a reviewer who catches an unlabelled simulation discards everything else.
-function HonestyPanel() {
-  return (
-    <aside
-      role="note"
-      aria-label="What is real in this demo"
-      data-testid="ar-honesty"
-      className="rounded-lg border bg-muted/40 p-4"
-    >
-      <div className="flex items-center gap-2 mb-2">
-        <ShieldAlert className="size-4 text-primary" aria-hidden="true" />
-        <h3 className="text-sm font-semibold">What is real here, and what is not</h3>
-      </div>
-      <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
-        <li>
-          All data is synthetic: twelve applicants, one fictional bank. Nothing
-          here describes a real person or a real lender.
-        </li>
-        <li>
-          Covia has no training loop, model registry or drift metric. The drift
-          event in beat 4 is a fixture swap and the threshold breach is
-          scripted. The escalation, the ask, the approval, the minted grant and
-          the resumed job are real venue operations.
-        </li>
-        <li>
-          The agents are LLM components executing policy, not trained
-          scorecards.
-        </li>
-        <li>
-          Beat 4&apos;s approval produces a real capability grant with a real
-          expiry, signed by you with your own device key — this venue cannot
-          root-sign a grant over a self-sovereign holder&apos;s namespace, and
-          says so. You can verify it here. It confers write access to the
-          reviewed-limit record — it does not silently widen the credit
-          agent&apos;s authority, and the gate&apos;s device-flag condition keeps
-          applying whatever the limit says. Applying a reviewed limit to the
-          live policy is an operator action, outside this demo.
-        </li>
-        <li>
-          If your venue runs <code className="font-mono text-xs">auth.public.caps: &quot;unrestricted&quot;</code>{" "}
-          so seeding can write, that widens the anonymous caller only —
-          per-agent capability scopes, the gate and the grants in this demo are
-          still enforced per agent.
-        </li>
-      </ul>
-    </aside>
   );
 }
