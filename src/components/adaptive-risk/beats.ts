@@ -1,5 +1,6 @@
 import type { Job, Venue } from "@covia/covia-sdk";
 import { resolveOperationByAddress } from "@/lib/operations-catalog";
+import { createUCANJWT, hexToPrivateKey } from "@covia/covia-sdk";
 import { AdaptiveRiskAddresses, STARTER_CARD_LIMIT, riskPaths } from "./fixtures";
 
 // Beat runners. Each beat is ONE real job on the venue: the agent:request
@@ -352,4 +353,92 @@ export function extractGrantToken(output: unknown): string | null {
     return null;
   };
   return walk(output, 0);
+}
+
+// ---------------------------------------------------------------------------
+// Beat 5. Reconstruction, never re-execution. JOBS.md is explicit that
+// recovery "stabilises, never re-executes" — a stored record is read back, and
+// nothing is ever re-fired. So this beat produces a plain REST read of a
+// record that already exists, not a way to run anything again.
+
+export const JOBS_MD_RULE =
+  "Recovery stabilises, never re-executes — a venue restart leaves every job " +
+  "in a stable, honest state so callers can resume, cancel, or retry as they " +
+  "wish. Re-execution would double side effects for non-idempotent ops, so " +
+  "nothing is ever re-fired.";
+
+/**
+ * The curl that returns the same record from plain REST.
+ *
+ * Job records live in the caller's own namespace, so an anonymous GET 404s —
+ * the read has to carry the caller's identity. `token` is a short-lived
+ * identity UCAN signed in the browser with the user's own device key; it is
+ * never sent anywhere by this page, only rendered for the user to copy.
+ */
+export function reconstructionCurl(
+  baseUrl: string,
+  jobId: string,
+  token: string | null,
+): string {
+  const url = `${baseUrl.replace(/\/$/, "")}/api/v1/jobs/${jobId}`;
+  if (!token) {
+    return [
+      `# Set COVIA_TOKEN to an identity token for this venue first`,
+      `curl -s -H "Authorization: Bearer $COVIA_TOKEN" \\`,
+      `  ${url} | jq`,
+    ].join("\n");
+  }
+  return [`curl -s -H "Authorization: Bearer ${token}" \\`, `  ${url} | jq`].join("\n");
+}
+
+export type RecordSummary = {
+  status: string | null;
+  /** Present only when the acting principal differs from the owner. */
+  actor: string | null;
+  caller: string | null;
+  error: string | null;
+  /** How many predecessor states the record carries. */
+  prevDepth: number;
+  states: string[];
+};
+
+/** Walks the embedded `prev` chain — the record's own state history. */
+export function summariseRecord(record: unknown): RecordSummary {
+  const top = (record ?? {}) as Record<string, unknown>;
+  const states: string[] = [];
+  let depth = 0;
+  let node: Record<string, unknown> | null = top;
+  while (node && depth <= 24) {
+    const status: unknown = node.status;
+    if (typeof status === "string") states.push(status);
+    const prev: unknown = node.prev;
+    node =
+      prev && typeof prev === "object" ? (prev as Record<string, unknown>) : null;
+    if (node) depth += 1;
+  }
+  return {
+    status: typeof top.status === "string" ? top.status : null,
+    actor: typeof top.actor === "string" ? top.actor : null,
+    caller: typeof top.caller === "string" ? top.caller : null,
+    error: typeof top.error === "string" ? top.error : null,
+    prevDepth: depth,
+    // Oldest first reads as a history rather than a stack.
+    states: states.reverse(),
+  };
+}
+
+/**
+ * A short-lived identity token for the curl, signed in the browser with the
+ * user's own device key. Deliberately minutes, not days: it is pasted into a
+ * terminal and should stop working soon after.
+ */
+export const CURL_TOKEN_LIFETIME_SECONDS = 600;
+
+export function signIdentityToken(privateKeyHex: string, venueDID: string): string {
+  return createUCANJWT(
+    hexToPrivateKey(privateKeyHex),
+    venueDID,
+    [],
+    CURL_TOKEN_LIFETIME_SECONDS,
+  );
 }

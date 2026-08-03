@@ -31,15 +31,20 @@ export type EscalationRef = {
   askJobId: string;
 };
 
+/** Beat 5 reconstructs beat 3's refusal, so that job id must outlive a reload. */
+export type RefusalRef = { jobId: string; applicant: string };
+
 type AdaptiveRiskConfigStore = {
   addresses: AdaptiveRiskAddresses;
   escalations: Record<string, EscalationRef>;
+  refusals: Record<string, RefusalRef>;
   /** Seed reports keyed by venueId — a seed on one venue says nothing about another. */
   reports: Record<string, SeedReport>;
   setAddresses: (patch: Partial<AdaptiveRiskAddresses>) => void;
   resetAddresses: () => void;
   setReport: (venueId: string, report: SeedReport | null) => void;
   setEscalation: (venueId: string, ref: EscalationRef | null) => void;
+  setRefusal: (venueId: string, ref: RefusalRef | null) => void;
 };
 
 export const useAdaptiveRiskConfig = create(
@@ -48,6 +53,7 @@ export const useAdaptiveRiskConfig = create(
       addresses: DEFAULT_ADDRESSES,
       reports: {},
       escalations: {},
+      refusals: {},
       setAddresses: (patch) =>
         set((state) => ({ addresses: { ...state.addresses, ...patch } })),
       resetAddresses: () => set({ addresses: DEFAULT_ADDRESSES }),
@@ -57,6 +63,13 @@ export const useAdaptiveRiskConfig = create(
           if (ref) escalations[venueId] = ref;
           else delete escalations[venueId];
           return { escalations };
+        }),
+      setRefusal: (venueId, ref) =>
+        set((state) => {
+          const refusals = { ...state.refusals };
+          if (ref) refusals[venueId] = ref;
+          else delete refusals[venueId];
+          return { refusals };
         }),
       setReport: (venueId, report) =>
         set((state) => {
@@ -77,6 +90,7 @@ export const useAdaptiveRiskConfig = create(
           addresses: { ...DEFAULT_ADDRESSES, ...(saved?.addresses ?? {}) },
           reports: saved?.reports ?? {},
           escalations: saved?.escalations ?? {},
+          refusals: saved?.refusals ?? {},
         };
       },
     },

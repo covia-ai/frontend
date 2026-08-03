@@ -13,6 +13,7 @@ import { DecisionsPanel } from "./DecisionsPanel";
 import { PolicyLinks } from "./PolicyLinks";
 import { RefusalPanel } from "./RefusalPanel";
 import { EscalationPanel } from "./EscalationPanel";
+import { ReconstructionPanel } from "./ReconstructionPanel";
 import type { BeatJobState } from "./BeatCard";
 import { runBeat1, runAssessorBeat, runBeat4, swapToWeekTwo } from "./beats";
 import { APPLICANTS, STARTER_CARD_LIMIT } from "./fixtures";
@@ -25,7 +26,14 @@ import { APPLICANTS, STARTER_CARD_LIMIT } from "./fixtures";
 export function AdaptiveRiskDemo() {
   const venue = useAuthenticatedVenue();
   const isAuthenticated = useIsAuthenticated();
-  const { addresses, reports, escalations, setEscalation } = useAdaptiveRiskConfig();
+  const {
+    addresses,
+    reports,
+    escalations,
+    setEscalation,
+    refusals,
+    setRefusal,
+  } = useAdaptiveRiskConfig();
   const [ledgerRefresh, setLedgerRefresh] = useState(0);
   const [decisionsRefresh, setDecisionsRefresh] = useState(0);
   const [refusalState, setRefusalState] = useState<BeatJobState | null>(null);
@@ -143,6 +151,14 @@ export function AdaptiveRiskDemo() {
                       ? (state) => {
                           setRefusalState(state);
                           setDecisionsRefresh((token) => token + 1);
+                          // Beat 5 reconstructs this exact record later, so the
+                          // id has to outlive the page.
+                          if (venue && state.jobId) {
+                            setRefusal(venue.venueId, {
+                              jobId: state.jobId,
+                              applicant: planted.id,
+                            });
+                          }
                         }
                       : beat.id === "drift"
                         ? (state) => setDriftState(state)
@@ -169,6 +185,13 @@ export function AdaptiveRiskDemo() {
                   state={driftState}
                   analysis={monitorAnalysis}
                   escalation={venue ? escalations[venue.venueId] ?? null : null}
+                />
+              )}
+              {beat.id === "reconstruction" && (
+                <ReconstructionPanel
+                  venue={venue}
+                  jobId={venue ? refusals[venue.venueId]?.jobId ?? null : null}
+                  label={`the ${planted.id} refusal`}
                 />
               )}
               {beat.id === "refusal" && (

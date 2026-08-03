@@ -14,6 +14,10 @@ jest.mock('@/hooks/use-authenticated-venue', () => ({
 }));
 jest.mock('@/hooks/use-auth', () => ({
   useIsAuthenticated: () => mockAuthenticated,
+  // Beat 5 signs the curl's identity token with the device key; the shell
+  // tests only need the selector to resolve.
+  useAuthStore: (selector: (state: unknown) => unknown) =>
+    selector({ authMap: {} }),
 }));
 
 import { AdaptiveRiskDemo } from '@/components/adaptive-risk/AdaptiveRiskDemo';

@@ -15,6 +15,9 @@ import {
   readDecisions,
   findOpenAsk,
   extractGrantToken,
+  reconstructionCurl,
+  summariseRecord,
+  JOBS_MD_RULE,
   AGENT_REQUEST_OP,
 } from '@/components/adaptive-risk/beats';
 import { BeatCard } from '@/components/adaptive-risk/BeatCard';
@@ -309,5 +312,43 @@ describe('extractGrantToken (beat 4)', () => {
       extractGrantToken({ outcome: 'answer', comment: 'approved for 7 days', id: 'r1' }),
     ).toBeNull();
     expect(extractGrantToken(null)).toBeNull();
+  });
+});
+
+describe('reconstruction (beat 5)', () => {
+  it('builds a curl that carries identity, since job records are per-caller', () => {
+    const curl = reconstructionCurl('http://127.0.0.1:8080/', '0xJOB', 'tok123');
+    expect(curl).toContain('Authorization: Bearer tok123');
+    expect(curl).toContain('http://127.0.0.1:8080/api/v1/jobs/0xJOB');
+    expect(curl).not.toContain('//api'); // trailing slash normalised
+  });
+
+  it('falls back to a placeholder rather than a curl that would 404', () => {
+    const curl = reconstructionCurl('http://venue.test', '0xJOB', null);
+    expect(curl).toContain('$COVIA_TOKEN');
+  });
+
+  it('summarises the prev chain oldest-first', () => {
+    const record = {
+      status: 'COMPLETE',
+      caller: 'did:key:zOwner',
+      prev: { status: 'STARTED', prev: { status: 'PENDING' } },
+    };
+    const summary = summariseRecord(record);
+    expect(summary.states).toEqual(['PENDING', 'STARTED', 'COMPLETE']);
+    expect(summary.prevDepth).toBe(2);
+    expect(summary.caller).toBe('did:key:zOwner');
+    // actor appears only when the acting principal differs from the owner.
+    expect(summary.actor).toBeNull();
+  });
+
+  it('reports an actor when the acting principal differs from the owner', () => {
+    expect(summariseRecord({ status: 'FAILED', actor: 'did:key:zOwner:g:rk-assessor' }).actor)
+      .toBe('did:key:zOwner:g:rk-assessor');
+  });
+
+  it('never says "replay" — JOBS.md is reconstruct, never re-execute', () => {
+    expect(JOBS_MD_RULE).toMatch(/never re-executes/);
+    expect(JOBS_MD_RULE).not.toMatch(/replay/i);
   });
 });

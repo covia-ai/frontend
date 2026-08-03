@@ -220,6 +220,9 @@ export function issueLimitMetadata(addresses: AdaptiveRiskAddresses) {
 
 export function agentConfigs(addresses: AdaptiveRiskAddresses) {
   const paths = riskPaths(addresses.root);
+  // The namespace holding the demo's own operations, derived from where the
+  // gate lives so a user who repoints the addresses stays consistent.
+  const opsRoot = addresses.limitGate.split("/").slice(0, -1).join("/");
   const llm = {
     operation: "v/ops/llmagent/chat",
     llmOperation: addresses.llmOperation,
@@ -267,6 +270,13 @@ export function agentConfigs(addresses: AdaptiveRiskAddresses) {
           { with: `${paths.signals}/`, can: "crud/read" },
           { with: `${paths.flags}/`, can: "crud/read" },
           { with: `${paths.decisions}/`, can: "crud/write" },
+          // Reading the op's own metadata is what turns it into a usable tool:
+          // ContextBuilder.buildConfigTools resolves each configured tool and,
+          // when resolution is denied, DROPS it with only a WARN. The model is
+          // then told nothing and may report an action it never performed.
+          // Read on the definitions is not authority to invoke — that stays the
+          // single gated grant below.
+          { with: `${opsRoot}/`, can: "crud/read" },
           { with: "v/ops/covia/read", can: "invoke" },
           { with: "v/ops/covia/list", can: "invoke" },
           { with: "v/ops/covia/write", can: "invoke" },
