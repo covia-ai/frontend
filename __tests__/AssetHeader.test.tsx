@@ -33,6 +33,18 @@ const delayMetadata = {
 };
 
 describe('AssetHeader Component', () => {
+  test('shows a kind badge next to the name', () => {
+    const mockAsset = new DataAsset(HASH, makeVenue(), delayMetadata);
+    render(<AssetHeader asset={mockAsset} />);
+    expect(screen.getByTestId('asset-kind-badge')).toHaveTextContent('Operation');
+  });
+
+  test('badges a bare reference asset accordingly', () => {
+    const mockAsset = new DataAsset(HASH, makeVenue(), { name: 'a reference' });
+    render(<AssetHeader asset={mockAsset} />);
+    expect(screen.getByTestId('asset-kind-badge')).toHaveTextContent('Reference');
+  });
+
   test('renders name and description', () => {
     const mockAsset = new DataAsset(HASH, makeVenue(), delayMetadata);
     render(<AssetHeader asset={mockAsset} />);
@@ -115,6 +127,13 @@ describe('AssetHeader Component', () => {
     expect(container.querySelector('button a')).toBeNull();
   });
 
+  // The pill may also show a leading Link2 icon (when the DID is clickable);
+  // the copy action is always the last svg in the pill.
+  function getCopyIcon() {
+    const svgs = screen.getByTestId('idcopy_btn').querySelectorAll('svg');
+    return svgs[svgs.length - 1];
+  }
+
   describe('copy button', () => {
     beforeEach(() => {
       (copyDataToClipBoard as jest.Mock).mockClear();
@@ -128,7 +147,7 @@ describe('AssetHeader Component', () => {
       const mockAsset = new DataAsset(HASH, makeVenue(), delayMetadata);
       render(<AssetHeader asset={mockAsset} />);
 
-      await user.click(screen.getByTestId('idcopy_btn').querySelector('svg')!);
+      await user.click(getCopyIcon());
 
       expect(copyDataToClipBoard).toHaveBeenCalledWith(
         `${window.location.origin}/venues/${encodeURIComponent(VENUE_DID)}/assets/${HASH}`,
@@ -141,7 +160,7 @@ describe('AssetHeader Component', () => {
       const op = new Operation('w/ops/my-op', makeVenue(), delayMetadata);
       render(<AssetHeader asset={op} />);
 
-      await user.click(screen.getByTestId('idcopy_btn').querySelector('svg')!);
+      await user.click(getCopyIcon());
 
       expect(copyDataToClipBoard).toHaveBeenCalledWith('w/ops/my-op', 'DID URL copied to clipboard');
     });

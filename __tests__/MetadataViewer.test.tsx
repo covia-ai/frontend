@@ -119,6 +119,21 @@ describe('MetadataViewer skill / inline content', () => {
     render(<MetadataViewer asset={asset(SKILL)} />);
     expect(screen.queryByTestId('asset-fields')).not.toBeInTheDocument();
   });
+
+  test('a truly bare reference asset gets an explicit empty-state note, not blank space', () => {
+    render(<MetadataViewer asset={asset({ name: 'a reference', description: 'points elsewhere' })} />);
+    expect(screen.getByTestId('reference-empty-note')).toHaveTextContent('bare reference');
+  });
+
+  test('no empty-state note once there is something to show on the left', () => {
+    render(<MetadataViewer asset={asset({ name: 'tagged', keywords: ['test'] })} />);
+    expect(screen.queryByTestId('reference-empty-note')).not.toBeInTheDocument();
+  });
+
+  test('no empty-state note for a non-reference kind (e.g. a skill/artifact) even with nothing on the left', () => {
+    render(<MetadataViewer asset={asset(SKILL)} />);
+    expect(screen.queryByTestId('reference-empty-note')).not.toBeInTheDocument();
+  });
 });
 
 describe('MetadataViewer operation fields', () => {
@@ -170,6 +185,22 @@ describe('MetadataViewer operation fields', () => {
   test('an operation with none of adapter/input/output/steps shows no operation-fields block', () => {
     render(<MetadataViewer asset={asset({ name: 'bare op', operation: {} })} />);
     expect(screen.queryByTestId('operation-fields')).not.toBeInTheDocument();
+  });
+
+  test('de-emphasizes generic fields with a divider once kind-specific fields are shown', () => {
+    render(<MetadataViewer asset={asset({ ...OPERATION, keywords: ['image', 'resize'] })} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Asset Metadata' }));
+    const keywordsLabel = screen.getByTestId('keywords_label');
+    // The muted wrapper is the parent of the grid renderMetadataFields returns.
+    expect(keywordsLabel.closest('.opacity-70')).not.toBeNull();
+  });
+
+  test('does not mute generic fields when there are no kind-specific fields to rank them below', () => {
+    const venueLocal = new Venue({ baseUrl: 'https://venue-test.covia.ai', venueId: 'did:web:venue-test.covia.ai', name: 'TestVenue' });
+    const plain = new DataAsset('plain-asset', venueLocal, { name: 'plain', keywords: ['test'] });
+    render(<MetadataViewer asset={plain} />);
+    const keywordsLabel = screen.getByTestId('keywords_label');
+    expect(keywordsLabel.closest('.opacity-70')).toBeNull();
   });
 });
 

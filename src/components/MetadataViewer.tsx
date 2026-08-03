@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "./ui/dialog";
 import { LucideIcon } from "lucide-react";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { formatLabel } from "@/lib/utils";
+import { getAssetKind } from "@/lib/asset-kind";
 import {
   Accordion,
   AccordionContent,
@@ -205,24 +206,21 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
   const skillTools: string[] = Array.isArray(asset.metadata?.skill?.tools)
     ? asset.metadata.skill.tools
     : [];
-  // Operation, artifact, reference (root CLAUDE.md's asset taxonomy): only an
-  // operation carries `metadata.operation`, and only then does the left
-  // column below switch from generic content fields to its input/output
-  // schema. Everything else (artifact or reference) uses the fixed fields.
+  // Operation, artifact, reference (root CLAUDE.md's asset taxonomy), plus
+  // agent template as a fourth kind this app renders distinctly — one shared
+  // classifier (also used for AssetHeader's kind badge) decides which of the
+  // sections below apply.
+  const kind = getAssetKind(asset.metadata);
   const operation = asset.metadata?.operation as OperationSchema | undefined;
-  const isOperation = operation !== undefined;
+  const isOperation = kind === "operation";
   const hasAdapter = typeof operation?.adapter === "string" && operation.adapter.length > 0;
   const hasOperationInput = Boolean(operation?.input?.properties && Object.keys(operation.input.properties).length > 0);
   const hasOperationOutput = Boolean(operation?.output?.properties && Object.keys(operation.output.properties).length > 0);
   const hasSteps = Array.isArray(operation?.steps) && operation.steps.length > 0;
   const hasOperationFields = isOperation && (hasAdapter || hasOperationInput || hasOperationOutput || hasSteps);
 
-  // An agent template's own `operation` (when present) is a bare transition-op
-  // address string, not this schema — none of the operation fields above will
-  // match it, so the two kinds never collide here.
   const agentTemplate = asset.metadata as AgentTemplateSchema | undefined;
-  const isAgentTemplate =
-    typeof agentTemplate?.llmOperation === "string" || Array.isArray(agentTemplate?.skills);
+  const isAgentTemplate = kind === "agent-template";
   const hasModel = typeof agentTemplate?.llmOperation === "string" || typeof agentTemplate?.model === "string";
   const templateTools = Array.isArray(agentTemplate?.tools) ? agentTemplate.tools : [];
   const templateSkills = Array.isArray(agentTemplate?.skills) ? agentTemplate.skills : [];
@@ -230,18 +228,18 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
   const hasAgentTemplateFields =
     isAgentTemplate && (hasModel || templateTools.length > 0 || templateSkills.length > 0);
 
-  // A "Download" link only makes sense when the asset actually declares a
-  // content descriptor (covia-ai/frontend#209 follow-up) — a bare reference
-  // asset (no `content`, no `operation`) has nothing at that URL to fetch.
-  const hasContentMetadata = asset.metadata?.content !== undefined;
-  const hasBlobContent = !isOperation && hasContentMetadata && inlineContent === null;
+  // A "Download" link only makes sense for a genuine artifact — a bare
+  // reference asset (no `content`, no `operation`) has nothing at that URL to
+  // fetch (covia-ai/frontend#209 follow-up).
+  const hasBlobContent = kind === "artifact" && inlineContent === null;
   const contentURL = hasBlobContent ? asset.getContentURL() : null;
   // Collapsed by default only for a genuine invokable operation — a template
   // that merely names a transition op (e.g. "goaltree") isn't one.
   const defaultValue = hasOperationFields ? undefined : "metadata";
 
   const genericFields = renderMetadataFields(asset, METADATA_FIELDS);
-  const hasLeftContent = hasOperationFields || hasAgentTemplateFields || genericFields !== null;
+  const hasKindFields = hasOperationFields || hasAgentTemplateFields;
+  const hasLeftContent = hasKindFields || genericFields !== null;
   
   return (
      <Accordion
@@ -343,10 +341,23 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
                           )}
                         </div>
                       )}
-                      {genericFields}
+                      {genericFields && (
+                        // Kind-specific fields (adapter/schema, model/tools) are why
+                        // you're looking at this asset; creator/license/keywords are
+                        // provenance. De-emphasize the latter only when both are
+                        // present, so the hierarchy matches what's actually load-bearing.
+                        <div className={hasKindFields ? "pt-3 mt-1 border-t border-border/60 opacity-70" : undefined}>
+                          {genericFields}
+                        </div>
+                      )}
                     </div>
                   )}
                   <div className="flex flex-col flex-2 px-2 ">
+                    {kind === "reference" && !hasLeftContent && (
+                      <div className="my-2 text-muted-foreground" data-testid="reference-empty-note">
+                        This asset has no content or schema of its own — it&apos;s a bare reference.
+                      </div>
+                    )}
                     {skillTools.length > 0 && (
                       <div className="my-2" data-testid="skill-tools">
                         <div className="flex flex-row items-center space-x-2">
@@ -368,7 +379,10 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
                           <FileText size={18} />
                           <span className="text-md">Content{contentType ? ` (${contentType})` : ""}:</span>
                         </div>
-                        <pre className="mt-1 max-h-96 overflow-auto rounded bg-muted p-3 text-xs whitespace-pre-wrap break-words font-mono">
+                        {/* Fixed dark code-panel background (matches XmlViewer/
+                            JsonViewer's preview) rather than the theme's bg-muted,
+                            so this reads as a code/text panel in both themes. */}
+                        <pre className="mt-1 max-h-96 overflow-auto rounded bg-[hsl(220,13%,18%)] text-gray-100 p-3 text-xs whitespace-pre-wrap break-words font-mono">
                           {inlineContent}
                         </pre>
                       </div>

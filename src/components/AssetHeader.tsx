@@ -2,8 +2,10 @@
 
 import { Asset, Namespace, assetHash, didUrl, parseDidUrl } from "@covia/covia-sdk";
 import { copyDataToClipBoard } from "@/lib/utils";
+import { ASSET_KIND_LABELS, getAssetKind } from "@/lib/asset-kind";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
-import { Copy } from "lucide-react";
+import { Badge } from "./ui/badge";
+import { Copy, Link2 } from "lucide-react";
 import Link from "next/link";
 
 interface AssetHeaderProps {
@@ -61,12 +63,18 @@ function assetDidUrl(asset: Asset): ResolvedDidUrl | null {
 
 export const AssetHeader = ({ asset }: AssetHeaderProps) => {
   const didUrlInfo = assetDidUrl(asset);
+  const kind = getAssetKind(asset?.metadata);
 
   return (
     <div className="flex flex-col w-full mb-2 mt-2 border border-slate-200 bg-card text-bg-card-foreground rounded-md p-2">
       <div className="flex flex-col items-start justify-between w-full ">
 
-             <span>{asset?.metadata?.name}</span>
+             <div className="flex flex-row items-center gap-2">
+               <span>{asset?.metadata?.name}</span>
+               <Badge variant="secondary" className="font-normal text-[10px] text-secondary-foreground" data-testid="asset-kind-badge">
+                 {ASSET_KIND_LABELS[kind]}
+               </Badge>
+             </div>
               <p data-testid="assetH_descr"  className="line-clamp-2 text-sm text-card-foreground ">{asset?.metadata?.description}</p>
       </div>
 
@@ -76,12 +84,15 @@ export const AssetHeader = ({ asset }: AssetHeaderProps) => {
             <TooltipTrigger asChild>
               <div data-testid="idcopy_btn" className="p-1 flex flex-row items-center w-fit max-w-full border border-border text-muted-foreground rounded-md space-x-2">
                 {didUrlInfo.href ? (
-                  <Link
-                    href={didUrlInfo.href}
-                    className="select-text text-[10px] hover:text-secondary hover:underline"
-                  >
-                    {didUrlInfo.text}
-                  </Link>
+                  <>
+                    <Link2 size={10} className="shrink-0" />
+                    <Link
+                      href={didUrlInfo.href}
+                      className="select-text text-[10px] hover:text-secondary hover:underline"
+                    >
+                      {didUrlInfo.text}
+                    </Link>
+                  </>
                 ) : (
                   <div className="select-text text-[10px]">{didUrlInfo.text}</div>
                 )}
