@@ -2,9 +2,10 @@
 
 import React from "react";
 import { Asset, Venue } from "@covia/covia-sdk";
-import { Calendar, Copyright, Download, FileText, Info, InfoIcon, LogIn, LogOut, Puzzle, Tag, User, Workflow, Wrench }from "lucide-react";
+import { Calendar, Copyright, Download, FileJson, FileText, InfoIcon, LogIn, LogOut, Puzzle, Tag, User, Workflow, Wrench }from "lucide-react";
 import Link from "next/link";
 import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "./ui/dialog";
 import { LucideIcon } from "lucide-react";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
@@ -302,46 +303,44 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
                       </div>
                     )}
                     {contentURL && (
-                      <div className="flex flex-row items-center space-x-2 my-2">
-                        <Download size={18}></Download>
-                        <span className="text-md">Data:</span>
-                        <span>
-                          <Link href={contentURL} className="text-sm text-secondary dark:text-secondary-light underline" download={true}>
+                      <div className="flex flex-row flex-wrap items-center gap-2 my-2">
+                        <Button asChild variant="outline" size="sm" className="gap-1.5 text-muted-foreground">
+                          <Link href={contentURL} download>
+                            <Download size={14} />
                             Download
                           </Link>
-                        </span>
-                          
-                          {asset.metadata?.content?.contentType?.split(";")[0] == "application/json" && <JsonViewer assetId={asset.id} venue={venue} />}
-                          {XML_CONTENT_TYPES.includes(asset.metadata?.content?.contentType?.split(";")[0]) && <XmlViewer assetId={asset.id} venue={venue} />}
-                          {asset.metadata?.content?.contentType?.split(";")[0] != "application/json" && !XML_CONTENT_TYPES.includes(asset.metadata?.content?.contentType?.split(";")[0]) && (
-                            <DocumentViewer contentUrl={contentURL} contentType={asset.metadata?.content?.contentType?.split(";")[0]} />
-                          )}
-
+                        </Button>
+                        {asset.metadata?.content?.contentType?.split(";")[0] == "application/json" && <JsonViewer assetId={asset.id} venue={venue} />}
+                        {XML_CONTENT_TYPES.includes(asset.metadata?.content?.contentType?.split(";")[0]) && <XmlViewer assetId={asset.id} venue={venue} />}
+                        {asset.metadata?.content?.contentType?.split(";")[0] != "application/json" && !XML_CONTENT_TYPES.includes(asset.metadata?.content?.contentType?.split(";")[0]) && (
+                          <DocumentViewer contentUrl={contentURL} contentType={asset.metadata?.content?.contentType?.split(";")[0]} />
+                        )}
                       </div>
                     )}
-                    <div className="flex flex-row items-center space-x-2">
-                      <Info size={18}></Info>
-                      <span className="text-md">Metadata:</span>
-                      <span>
-                        <Dialog>
-                          <DialogTrigger>
-                            <span className="text-card-foreground dark:text-secondary-light underline underline"> View metadata</span>
-                          </DialogTrigger>
-                          <DialogContent className="bg-card text-card-foreground">
-                            <DialogTitle>Asset Metadata</DialogTitle>
-                            <JsonEditor 
+                    <div className="flex flex-row items-center mt-1">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground">
+                            <FileJson size={14} />
+                            View metadata
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="h-11/12 min-w-10/12 bg-card text-card-foreground content-start overflow-y-auto">
+                          <DialogTitle>Asset Metadata</DialogTitle>
+                          <div className="rounded-lg bg-white p-3">
+                            <JsonEditor
                               data={asset.metadata}
                               rootName="metadata"
                               rootFontSize="1em"
-                              maxWidth="120vw"
+                              maxWidth="90vw"
                               restrictEdit={true}
                               restrictAdd={true}
                               restrictDelete={true}
                               collapse={3}
                             />
-                          </DialogContent>
-                        </Dialog>
-                      </span>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     </div>
                   </div>
                 </div>

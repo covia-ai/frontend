@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import DocViewer, { DocViewerRenderers, TXTRenderer } from "@cyntler/react-doc-viewer";
+import { Eye } from "lucide-react";
 
 // TXTRenderer has an unpatched XSS (unsanitized file content cast to ReactNode).
 // We exclude it and rely on our own safe Raw tab for text/plain content instead.
 const SAFE_RENDERERS = DocViewerRenderers.filter((r) => r !== TXTRenderer);
 import { Dialog, DialogContent, DialogHeader, DialogTrigger } from "./ui/dialog";
+import { Button } from "./ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { useRemoteTextContent } from "@/hooks/use-asset-text-content";
 import { RawTextPanel } from "@/components/content-preview/RawTextPanel";
@@ -50,8 +52,11 @@ export const DocumentViewer = ({ contentUrl, contentType }: DocumentViewerProps)
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className="text-sm text-secondary dark:text-secondary-light underline">
-        View
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground">
+          <Eye size={14} />
+          View
+        </Button>
       </DialogTrigger>
       <DialogContent className="bg-card text-card-foreground max-h-[90vh] w-full max-w-4xl p-4 flex flex-col overflow-hidden border border-border">
         <DialogHeader className="text-sm font-medium text-muted-foreground">
