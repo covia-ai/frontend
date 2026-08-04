@@ -44,7 +44,6 @@ export function useAgentExplorer(initialAgentId?: string) {
   const [newChatRequested, setNewChatRequested] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [messageText, setMessageText] = useState("");
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const listRequest = useRef(0);
   const detailRequest = useRef(0);
   const sessionRequest = useRef(0);
@@ -446,8 +445,6 @@ export function useAgentExplorer(initialAgentId?: string) {
     currentSession,
     messageText,
     setMessageText,
-    detailsOpen,
-    setDetailsOpen,
     pendingChat,
     sending,
     canSend,

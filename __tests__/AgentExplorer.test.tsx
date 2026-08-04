@@ -373,7 +373,7 @@ describe('AgentExplorer new chat', () => {
     await setupWithSession([{ role: 'assistant', content: 'older-session-reply', ts: 1 }]);
     expect(await screen.findByText('older-session-reply')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('new-chat'));
+    fireEvent.click(screen.getByTestId('new-session'));
     await waitFor(() =>
       expect(screen.queryByText('older-session-reply')).not.toBeInTheDocument());
 
