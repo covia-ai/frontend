@@ -22,7 +22,7 @@ import {
 } from "./ui/select";
 import { Textarea } from "./ui/textarea";
 import { Separator } from "./ui/separator";
-import { notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
+import { notifyError, notifyWarning } from "@/lib/notify";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
@@ -188,9 +188,6 @@ export function AddNewAgent({
       }
 
       gtmEvent.createAgent(result.agentId, llmProvider);
-      notifySuccess("Agent created", {
-        description: `Agent "${result.agentId}" is now ${result.status}`,
-      });
       setAgentName("");
       setAgentId("");
       setAgentIdEdited(false);
