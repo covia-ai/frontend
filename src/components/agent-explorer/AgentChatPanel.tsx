@@ -52,10 +52,9 @@ import { AgentTranscript } from "@/components/agent-explorer/AgentTranscript";
 import { ConfigFields } from "@/components/agent-explorer/ConfigFields";
 import { AgentTimelineView } from "@/components/agent-explorer/AgentTimelineView";
 import type { AgentExplorerController } from "@/hooks/use-agent-explorer";
-import { formatSessionLabel } from "@/lib/agent-sessions";
+import type { Session } from "@/config/types";
+import { defaultSessionTitle, formatSessionLabel } from "@/lib/agent-sessions";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
-import { useVenues } from "@/hooks/use-venues";
-import { sessionNameKey, useSessionNames } from "@/hooks/use-session-names";
 
 export function AgentChatPanel({
   controller,
@@ -80,15 +79,13 @@ export function AgentChatPanel({
     suspend,
     resume,
     deleteAgent,
+    renameSession,
     startNewChat,
     selectSession,
     send,
   } = controller;
   const transcriptRef = useRef<HTMLDivElement | null>(null);
 
-  const venueId = useVenues((state) => state.selectedVenueId);
-  const sessionNames = useSessionNames((state) => state.names);
-  const setSessionName = useSessionNames((state) => state.setName);
   const [renaming, setRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [showTimeline, setShowTimeline] = useState(false);
@@ -100,17 +97,15 @@ export function AgentChatPanel({
     setShowTimeline(false);
   }, [selectedAgentId]);
 
-  const nameFor = (sessionId: string): string | undefined =>
-    venueId && selectedAgentId
-      ? sessionNames[sessionNameKey(venueId, selectedAgentId, sessionId)]
-      : undefined;
+  // Venue-persisted title (if set) beats the auto-derived first-message
+  // title, which beats the raw timestamp/id/turns label — see
+  // formatSessionLabel/defaultSessionTitle in @/lib/agent-sessions.
+  const displayTitle = (session: Session): string =>
+    session.title ?? defaultSessionTitle(session) ?? formatSessionLabel(session);
 
   const saveName = () => {
-    if (venueId && selectedAgentId && selectedSessionId) {
-      setSessionName(
-        sessionNameKey(venueId, selectedAgentId, selectedSessionId),
-        nameDraft,
-      );
+    if (selectedAgentId && selectedSessionId) {
+      renameSession(selectedAgentId, selectedSessionId, nameDraft);
     }
     setRenaming(false);
   };
@@ -343,13 +338,12 @@ export function AgentChatPanel({
                     <SelectTrigger className="h-8 text-sm">
                       <SelectValue placeholder="New session (no session yet)">
                         {selectedSessionId
-                          ? (nameFor(selectedSessionId) ??
-                            formatSessionLabel(
+                          ? displayTitle(
                               currentSession ?? {
                                 sessionId: selectedSessionId,
                                 conversation: [],
                               },
-                            ))
+                            )
                           : sessions.length === 0
                             ? "No sessions yet — send a message to start one"
                             : "New session"}
@@ -362,8 +356,7 @@ export function AgentChatPanel({
                           key={session.sessionId}
                           value={session.sessionId}
                         >
-                          {nameFor(session.sessionId) ??
-                            formatSessionLabel(session)}
+                          {displayTitle(session)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -379,7 +372,7 @@ export function AgentChatPanel({
                         size="sm"
                         className="h-8 px-2"
                         onClick={() => {
-                          setNameDraft(nameFor(selectedSessionId) ?? "");
+                          setNameDraft(currentSession?.title ?? "");
                           setRenaming(true);
                         }}
                       >

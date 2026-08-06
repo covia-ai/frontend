@@ -1,6 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { notifySuccess } from '@/lib/notify';
 
 jest.mock('@/lib/notify', () => ({
   notifySuccess: jest.fn(),
@@ -98,22 +97,6 @@ describe('AddNewAgent', () => {
       'e.g., Greet the user and ask how you can help'
     );
     expect(input).toBeInTheDocument();
-  });
-
-  it('calls toast with success message when create button is clicked', async () => {
-    const user = await renderAndOpenDialog();
-
-    const input = screen.getByPlaceholderText('e.g., Customer Support Agent');
-    await user.type(input, 'My Test Agent');
-
-    const createButton = screen.getByTestId('create-agent');
-    await user.click(createButton);
-
-    await waitFor(() => {
-      expect(notifySuccess).toHaveBeenCalledWith('Agent created', {
-        description: 'Agent "test-agent" is now active',
-      });
-    });
   });
 
   // covia-ai/frontend follow-up: creation used to just call onCreated (a

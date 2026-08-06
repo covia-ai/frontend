@@ -340,6 +340,18 @@ export function useAgentExplorer(initialAgentId?: string) {
       });
   };
 
+  const renameSession = (agentId: string, sessionId: string, title: string) => {
+    if (!venue) return;
+    venue.agents
+      .renameSession(agentId, sessionId, title)
+      .then(() => {
+        void refreshSessions(agentId);
+      })
+      .catch((error: unknown) => {
+        notifyError("Unable to rename session", error, venue.baseUrl);
+      });
+  };
+
   const startNewChat = () => {
     setChatSession(null);
     setNewChatRequested(true);
@@ -452,6 +464,7 @@ export function useAgentExplorer(initialAgentId?: string) {
     suspend,
     resume,
     deleteAgent,
+    renameSession,
     startNewChat,
     selectSession,
     send,

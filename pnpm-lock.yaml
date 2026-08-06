@@ -29,8 +29,8 @@ importers:
   .:
     dependencies:
       '@covia/covia-sdk':
-        specifier: ^1.7.2
-        version: 1.7.2
+        specifier: ^1.7.4
+        version: 1.7.4
       '@cyntler/react-doc-viewer':
         specifier: ^1.17.1
         version: 1.17.1(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -416,8 +416,8 @@ packages:
   '@bcoe/v8-coverage@0.2.3':
     resolution: {integrity: sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==}
 
-  '@covia/covia-sdk@1.7.2':
-    resolution: {integrity: sha512-PdA8bfhsDVENUSc6QbxVtfbUiMzNPISAf6Ln7P7Lu2s11Ji1RvsrD0fAkfTFXU/9BsPS3r6/wMaN+P49kNWUNQ==}
+  '@covia/covia-sdk@1.7.4':
+    resolution: {integrity: sha512-uCRcYcVqykIuh88Ci/Gywkp1grePh0sAoAnJQgGy/Xx9NxjGd7FRo3a18cX2v2QVsREOgDbKORasaEnDcNXL/g==}
     engines: {node: '>=18'}
 
   '@cspotcode/source-map-support@0.8.1':
@@ -4674,7 +4674,7 @@ snapshots:
 
   '@bcoe/v8-coverage@0.2.3': {}
 
-  '@covia/covia-sdk@1.7.2':
+  '@covia/covia-sdk@1.7.4':
     dependencies:
       '@noble/ed25519': 3.1.0
       '@noble/hashes': 2.2.0
