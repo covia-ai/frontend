@@ -22,7 +22,7 @@ import {
 } from "./ui/select";
 import { Textarea } from "./ui/textarea";
 import { Separator } from "./ui/separator";
-import { notifyError, notifyWarning } from "@/lib/notify";
+import { jobFailure, notifyError, notifyWarning } from "@/lib/notify";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
@@ -197,7 +197,8 @@ export function AddNewAgent({
       router.push(`/agents/explorer?agentId=${encodeURIComponent(result.agentId)}`);
     } catch (err) {
       gtmEvent.createAgentFailed(resolvedAgentId, err instanceof Error ? err.message : undefined);
-      notifyError("Unable to create agent", err, venue.baseUrl);
+      const { reason, jobHref } = jobFailure(err, venue.venueId);
+      notifyError("Unable to create agent", reason, venue.baseUrl, jobHref);
     } finally {
       setCreating(false);
     }

@@ -21,7 +21,7 @@ import {
 import { normalizeAgentEntries } from "@/lib/agent-list";
 import { messageContentToString } from "@/lib/agent-turns";
 import { sessionEntriesToSessions } from "@/lib/agent-sessions";
-import { notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
+import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { gtmEvent } from "@/lib/utils";
 
 const POLL_INTERVAL_MS = 3000;
@@ -92,8 +92,8 @@ export function useAgentExplorer(initialAgentId?: string) {
   );
 
   const loadAgentDetail = useCallback(
-    (agentId: string): Promise<AgentDetail | null> => {
-      if (!venue) return Promise.resolve(null);
+    (agentId: string): Promise<AgentDetail> => {
+      if (!venue) return Promise.reject(new Error("No venue connected"));
       return Promise.all([
         venue.agents.info(agentId),
         venue.workspace
@@ -102,11 +102,9 @@ export function useAgentExplorer(initialAgentId?: string) {
             Array.isArray(result?.value) ? result.value : [],
           )
           .catch(() => []),
-      ])
-        .then(
-          ([info, timeline]) => ({ ...info, timeline }) as AgentDetail,
-        )
-        .catch(() => null);
+      ]).then(
+        ([info, timeline]) => ({ ...info, timeline }) as AgentDetail,
+      );
     },
     [venue],
   );
@@ -115,23 +113,23 @@ export function useAgentExplorer(initialAgentId?: string) {
     (agentId: string | null, surfaceErrors = false) => {
       if (!agentId) return Promise.resolve();
       const requestId = ++detailRequest.current;
-      return loadAgentDetail(agentId).then((detail) => {
-        if (
-          requestId !== detailRequest.current ||
-          venueRef.current !== venue ||
-          selectedAgentIdRef.current !== agentId
-        ) {
-          return;
-        }
-        if (detail) {
+      const stillCurrent = () =>
+        requestId === detailRequest.current &&
+        venueRef.current === venue &&
+        selectedAgentIdRef.current === agentId;
+      return loadAgentDetail(agentId)
+        .then((detail) => {
+          if (!stillCurrent()) return;
           setSelectedAgentDetail(detail);
           setDetailError(false);
-        } else if (surfaceErrors) {
-          notifyError("Unable to load agent details");
+        })
+        .catch((error: unknown) => {
+          if (!stillCurrent() || !surfaceErrors) return;
+          const { reason, jobHref } = jobFailure(error, venue?.venueId);
+          notifyError("Unable to load agent details", reason, venue?.baseUrl, jobHref);
           setSelectedAgentDetail(null);
           setDetailError(true);
-        }
-      });
+        });
     },
     [loadAgentDetail, venue],
   );
@@ -292,7 +290,8 @@ export function useAgentExplorer(initialAgentId?: string) {
           selectedAgentId,
           error instanceof Error ? error.message : undefined,
         );
-        notifyError("Unable to suspend agent", error);
+        const { reason, jobHref } = jobFailure(error, venue?.venueId);
+        notifyError("Unable to suspend agent", reason, undefined, jobHref);
       });
   };
 
@@ -311,7 +310,8 @@ export function useAgentExplorer(initialAgentId?: string) {
           selectedAgentId,
           error instanceof Error ? error.message : undefined,
         );
-        notifyError("Unable to resume agent", error);
+        const { reason, jobHref } = jobFailure(error, venue?.venueId);
+        notifyError("Unable to resume agent", reason, undefined, jobHref);
       });
   };
 
@@ -336,7 +336,8 @@ export function useAgentExplorer(initialAgentId?: string) {
           agentId,
           error instanceof Error ? error.message : undefined,
         );
-        notifyError("Unable to delete agent", error);
+        const { reason, jobHref } = jobFailure(error, venue?.venueId);
+        notifyError("Unable to delete agent", reason, undefined, jobHref);
       });
   };
 
@@ -348,7 +349,8 @@ export function useAgentExplorer(initialAgentId?: string) {
         void refreshSessions(agentId);
       })
       .catch((error: unknown) => {
-        notifyError("Unable to rename session", error, venue.baseUrl);
+        const { reason, jobHref } = jobFailure(error, venue.venueId);
+        notifyError("Unable to rename session", reason, venue.baseUrl, jobHref);
       });
   };
 
@@ -420,7 +422,8 @@ export function useAgentExplorer(initialAgentId?: string) {
         const message =
           error instanceof Error ? error.message : "see console";
         gtmEvent.sendAgentMessageFailed(agentId, message);
-        notifyError("Unable to send message", error);
+        const { reason, jobHref } = jobFailure(error, venue?.venueId);
+        notifyError("Unable to send message", reason, undefined, jobHref);
         if (
           venueRef.current === venue &&
           selectedAgentIdRef.current === agentId

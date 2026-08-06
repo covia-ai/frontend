@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Venue, WorkspaceReadResult } from "@covia/covia-sdk";
-import { notifyError, notifySuccess } from "@/lib/notify";
+import { jobFailure, notifyError, notifySuccess } from "@/lib/notify";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { useLatestQuery } from "@/hooks/use-latest-query";
@@ -267,7 +267,8 @@ export function useWorkspaceExplorer() {
         }
         return true;
       } catch (err) {
-        notifyError("Unable to save", err, venue.baseUrl);
+        const { reason, jobHref } = jobFailure(err, venue.venueId);
+        notifyError("Unable to save", reason, venue.baseUrl, jobHref);
         return false;
       } finally {
         if (mutationIsCurrent(generation, venue, path)) {
@@ -294,7 +295,8 @@ export function useWorkspaceExplorer() {
         }
         return true;
       } catch (err) {
-        notifyError("Unable to create", err, venue.baseUrl);
+        const { reason, jobHref } = jobFailure(err, venue.venueId);
+        notifyError("Unable to create", reason, venue.baseUrl, jobHref);
         return false;
       } finally {
         if (mutationIsCurrent(generation, venue, undefined, directory)) {
@@ -321,7 +323,8 @@ export function useWorkspaceExplorer() {
       }
       return true;
     } catch (err) {
-      notifyError("Unable to delete", err, venue.baseUrl);
+      const { reason, jobHref } = jobFailure(err, venue.venueId);
+      notifyError("Unable to delete", reason, venue.baseUrl, jobHref);
       return false;
     } finally {
       if (mutationIsCurrent(generation, venue, path, directory)) {

@@ -6,6 +6,7 @@ jest.mock('@/lib/notify', () => ({
   notifyError: jest.fn(),
   notifyWarning: jest.fn(),
   notifyInfo: jest.fn(),
+  jobFailure: (err: unknown) => ({ reason: err, jobHref: undefined }),
 }));
 
 const pushMock = jest.fn();

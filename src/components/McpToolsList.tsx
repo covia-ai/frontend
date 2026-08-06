@@ -12,7 +12,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
 import { Copy, Play, Wrench } from "lucide-react";
-import { notifyError, notifyWarning } from "@/lib/notify";
+import { jobFailure, notifyError, notifyWarning } from "@/lib/notify";
 
 interface McpTool {
   name: string;
@@ -64,7 +64,10 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
           notifyWarning("Tool ran but returned no job ID");
         }
       })
-      .catch((err) => notifyError("Unable to run tool", err, venue.baseUrl))
+      .catch((err) => {
+        const { reason, jobHref } = jobFailure(err, venue.venueId);
+        notifyError("Unable to run tool", reason, venue.baseUrl, jobHref);
+      })
       .finally(() => setRunning(false));
   };
 

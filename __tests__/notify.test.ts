@@ -8,8 +8,18 @@ const mockSonner = {
 };
 jest.mock('sonner', () => ({ toast: mockSonner }));
 
-import { notifyError, notifyInfo, notifySuccess, notifyWarning } from '@/lib/notify';
+import { jobFailure, notifyError, notifyInfo, notifySuccess, notifyWarning } from '@/lib/notify';
 import { useNotificationLog, MAX_LOG_ENTRIES } from '@/hooks/use-notification-log';
+import { JobFailedError, type JobMetadata } from '@covia/covia-sdk';
+
+function jobFailedError(overrides: Partial<JobMetadata> = {}): JobFailedError {
+  return new JobFailedError({
+    id: '0x019fd5dae9aa0000ea26d3ef7c4509f6',
+    status: 'FAILED',
+    error: "Cannot resume agent 'x': status is SLEEPING; agent:resume requires SUSPENDED",
+    ...overrides,
+  });
+}
 
 describe('notify helpers', () => {
   beforeEach(() => {
@@ -52,13 +62,13 @@ describe('notify helpers', () => {
     expect(opts.description).toBeUndefined();
   });
 
-  it('routes each kind to the matching sonner variant', () => {
+  it('routes each kind to the matching sonner variant, each dismissable', () => {
     notifySuccess('Saved');
     notifyWarning('Careful');
     notifyInfo('FYI');
-    expect(mockSonner.success).toHaveBeenCalledWith('Saved', undefined);
-    expect(mockSonner.warning).toHaveBeenCalledWith('Careful', undefined);
-    expect(mockSonner.info).toHaveBeenCalledWith('FYI', undefined);
+    expect(mockSonner.success).toHaveBeenCalledWith('Saved', { closeButton: true });
+    expect(mockSonner.warning).toHaveBeenCalledWith('Careful', { closeButton: true });
+    expect(mockSonner.info).toHaveBeenCalledWith('FYI', { closeButton: true });
   });
 
   it('records every notification to the session log, newest first', () => {
@@ -82,5 +92,74 @@ describe('notify helpers', () => {
     notifyInfo('one');
     useNotificationLog.getState().clear();
     expect(useNotificationLog.getState().entries).toHaveLength(0);
+  });
+
+  describe('jobFailure', () => {
+    it('extracts the real reason and a job link from a JobFailedError, dropping the id/status prefix', () => {
+      const err = jobFailedError();
+      const { reason, jobHref } = jobFailure(err, 'did:key:venue123');
+
+      expect((reason as Error).message).toBe(
+        "Cannot resume agent 'x': status is SLEEPING; agent:resume requires SUSPENDED",
+      );
+      expect(jobHref).toBe(
+        '/venues/did%3Akey%3Avenue123/jobs/0x019fd5dae9aa0000ea26d3ef7c4509f6',
+      );
+    });
+
+    it('omits jobHref when no venueId is available', () => {
+      const { jobHref } = jobFailure(jobFailedError(), undefined);
+      expect(jobHref).toBeUndefined();
+    });
+
+    it('unwraps a pre-cleaned Error carrying the original JobFailedError as cause (lib/hitl.ts pattern)', () => {
+      const original = jobFailedError({ error: 'An echoed grant was never offered' });
+      const wrapped = new Error('An echoed grant was never offered', { cause: original });
+
+      const { reason, jobHref } = jobFailure(wrapped, 'did:key:venue123');
+
+      expect(reason).toBe(wrapped); // reused as-is, not re-derived
+      expect(jobHref).toBe(
+        '/venues/did%3Akey%3Avenue123/jobs/0x019fd5dae9aa0000ea26d3ef7c4509f6',
+      );
+    });
+
+    it('passes non-job errors through unchanged with no jobHref', () => {
+      const err = new TypeError('Failed to fetch');
+      const { reason, jobHref } = jobFailure(err, 'did:key:venue123');
+
+      expect(reason).toBe(err);
+      expect(jobHref).toBeUndefined();
+    });
+  });
+
+  describe('notifyError with jobHref', () => {
+    it('truncates a long reason to a preview and offers a "View job" action', () => {
+      const longReason = 'A'.repeat(200);
+      notifyError('Unable to send message', new Error(longReason), undefined, '/venues/v/jobs/j1');
+
+      const [, opts] = mockSonner.error.mock.calls[0];
+      expect(opts.description).toHaveLength(81); // 80 chars + ellipsis
+      expect(opts.description.startsWith('A'.repeat(80))).toBe(true);
+      expect(opts.action.label).toBe('View job');
+    });
+
+    it('still offers Copy (in the cancel slot) carrying the untruncated text', () => {
+      Object.assign(navigator, { clipboard: { writeText: jest.fn() } });
+      const longReason = 'B'.repeat(200);
+      notifyError('Unable to send message', new Error(longReason), undefined, '/venues/v/jobs/j1');
+
+      const [, opts] = mockSonner.error.mock.calls[0];
+      opts.cancel.onClick();
+      const copied = (navigator.clipboard.writeText as jest.Mock).mock.calls[0][0];
+      expect(copied).toContain(longReason); // full text, not the preview
+    });
+
+    it('does not truncate short reasons even with a jobHref', () => {
+      notifyError('Unable to send message', new Error('short'), undefined, '/venues/v/jobs/j1');
+
+      const [, opts] = mockSonner.error.mock.calls[0];
+      expect(opts.description).toBe('short');
+    });
   });
 });

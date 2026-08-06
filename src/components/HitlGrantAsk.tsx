@@ -16,7 +16,7 @@ import {
 } from "@/lib/hitl";
 import type { Venue } from "@covia/covia-sdk";
 import { KeyRound, ShieldCheck } from "lucide-react";
-import { notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
+import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 
 const LIFETIMES = [
   { value: "900", label: "15 minutes" },
@@ -97,7 +97,8 @@ export function HitlGrantAsk({ request, ask, kind, venue, signingKeyHex, onDone,
       }
       onDone();
     } catch (err) {
-      notifyError("Unable to send response", err, venue.baseUrl);
+      const { reason, jobHref } = jobFailure(err, venue.venueId);
+      notifyError("Unable to send response", reason, venue.baseUrl, jobHref);
     } finally {
       setSubmitting(false);
     }

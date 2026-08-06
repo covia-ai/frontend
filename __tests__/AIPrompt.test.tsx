@@ -13,6 +13,7 @@ jest.mock('@/lib/notify', () => ({
     mockToast('error', title, { description: err instanceof Error ? err.message : err === undefined ? undefined : String(err) }),
   notifyWarning: (...args: any[]) => mockToast('warning', ...args),
   notifyInfo: (...args: any[]) => mockToast('info', ...args),
+  jobFailure: (err: unknown) => ({ reason: err, jobHref: undefined }),
 }));
 
 const mockUseAuthenticatedVenue = jest.fn();
