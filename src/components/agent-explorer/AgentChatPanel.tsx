@@ -5,7 +5,6 @@ import {
   Bot,
   Check,
   History,
-  Info,
   Loader2,
   MessageSquare,
   Pause,
@@ -13,6 +12,7 @@ import {
   Play,
   Plus,
   Send,
+  Settings,
   Trash2,
   X,
 } from "lucide-react";
@@ -189,7 +189,7 @@ export function AgentChatPanel({
                         aria-label="Agent configuration"
                         className="text-muted-foreground hover:text-foreground"
                       >
-                        <Info size={16} />
+                        <Settings size={16} />
                       </button>
                     </DialogTrigger>
                   </TooltipTrigger>
@@ -327,7 +327,7 @@ export function AgentChatPanel({
               </div>
             ) : (
               <>
-                <div className="flex-1 max-w-md">
+                <div className="max-w-md">
                   <Select
                     value={selectedSessionId ?? "__new__"}
                     onValueChange={(value) => {
@@ -386,6 +386,7 @@ export function AgentChatPanel({
                   data-testid="new-session"
                   variant="outline"
                   size="sm"
+                  className="ml-auto"
                   onClick={startNewChat}
                   disabled={!hasChatSession}
                 >
