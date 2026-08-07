@@ -38,8 +38,11 @@ export function toVenueDescriptor(venue: VenueLike): VenueDescriptor {
   };
 }
 
-// Released (prod) venues — running the stable build, used in every environment.
-const prodVenueUrls = [
+// Venues offered in every environment. venue-test leads because the first
+// reachable venue becomes a new user's default, and venue-1/venue-2 (stable
+// builds) currently 403 unauthenticated users.
+const commonVenueUrls = [
+  "https://venue-test.covia.ai",
   "https://venue-1.covia.ai",
   "https://venue-2.covia.ai",
 ];
@@ -48,12 +51,11 @@ const prodVenueUrls = [
 const devVenueUrls = [
   "https://venue-3.covia.ai",
   "https://venue-4.covia.ai",
-  "https://venue-test.covia.ai",
   "http://127.0.0.1:8080",
 ];
 
 const isProd = process.env.NEXT_PUBLIC_IS_ENV_PROD !== "false";
-const defaultVenueUrls = isProd ? prodVenueUrls : [...prodVenueUrls, ...devVenueUrls];
+const defaultVenueUrls = isProd ? commonVenueUrls : [...commonVenueUrls, ...devVenueUrls];
 
 const CONNECT_TIMEOUT_MS = 2000;
 export const connectWithTimeout = (
