@@ -8,6 +8,7 @@ type OperationAssetState = {
   asset?: Asset;
   errorMessage: string;
   notFound: boolean;
+  loading: boolean;
 };
 
 export function useOperationAsset(
@@ -17,18 +18,21 @@ export function useOperationAsset(
   const [state, setState] = useState<OperationAssetState>({
     errorMessage: "",
     notFound: false,
+    loading: true,
   });
 
   useEffect(() => {
     let active = true;
-    setState({ errorMessage: "", notFound: false });
+    setState({ errorMessage: "", notFound: false, loading: true });
+    // Stays loading while waiting on the venue — there's nothing to resolve
+    // against yet, not a resolved-and-empty state.
     if (!venue) return () => {
       active = false;
     };
 
     void resolveOperationByAddress(venue, assetId)
       .then((asset) => {
-        if (active) setState({ asset, errorMessage: "", notFound: false });
+        if (active) setState({ asset, errorMessage: "", notFound: false, loading: false });
       })
       .catch((error: unknown) => {
         if (!active) return;
@@ -39,6 +43,7 @@ export function useOperationAsset(
         setState({
           errorMessage: notFound ? "" : message,
           notFound,
+          loading: false,
         });
       });
 

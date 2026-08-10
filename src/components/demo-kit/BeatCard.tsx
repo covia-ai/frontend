@@ -9,8 +9,10 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { notifyError } from "@/lib/notify";
-import { verbatimVenueError } from "./seed";
-import type { AdaptiveRiskBeat } from "./story";
+import { verbatimVenueError } from "./seeding";
+
+/** The narration a beat renders. Demos define their own beat lists. */
+export type DemoBeat = { id: string; title: string; narration: string; watch: string };
 
 // One beat: narration, a Run button, then the real job record. A failed call
 // renders as a failure with the venue's error string verbatim — never
@@ -34,7 +36,7 @@ export function BeatCard({
   onSettled,
   children,
 }: {
-  beat: AdaptiveRiskBeat;
+  beat: DemoBeat;
   venue: Venue | null;
   enabled: boolean;
   disabledHint?: string;
@@ -104,7 +106,7 @@ export function BeatCard({
   };
 
   return (
-    <li data-testid={`ar-beat-${beat.id}`} className="rounded-lg border p-4 flex flex-col gap-2">
+    <li data-testid={`beat-${beat.id}`} className="rounded-lg border p-4 flex flex-col gap-2">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-medium">{beat.title}</p>
@@ -116,7 +118,7 @@ export function BeatCard({
         {run && (
           <Button
             size="sm"
-            data-testid={`ar-run-${beat.id}`}
+            data-testid={`run-${beat.id}`}
             onClick={start}
             disabled={!enabled || running}
           >
@@ -126,13 +128,13 @@ export function BeatCard({
         )}
       </div>
       {run && !enabled && disabledHint && (
-        <p className="text-xs text-muted-foreground" data-testid={`ar-hint-${beat.id}`}>
+        <p className="text-xs text-muted-foreground" data-testid={`hint-${beat.id}`}>
           {disabledHint}
         </p>
       )}
 
       {job && (
-        <div className="rounded border bg-muted/30 p-3 flex flex-col gap-2" data-testid={`ar-job-${beat.id}`}>
+        <div className="rounded border bg-muted/30 p-3 flex flex-col gap-2" data-testid={`job-${beat.id}`}>
           <div className="flex items-center gap-2 text-sm">
             <StatusBadge status={job.status ?? undefined} kind="job" as="pill" />
             {job.jobId && (
@@ -141,7 +143,7 @@ export function BeatCard({
                 {venue && (
                   <Link
                     className="inline-flex items-center gap-1 text-xs underline underline-offset-2"
-                    data-testid={`ar-job-link-${beat.id}`}
+                    data-testid={`job-link-${beat.id}`}
                     href={`/venues/${encodeURIComponent(venue.venueId)}/jobs/${job.jobId}`}
                   >
                     open in Jobs <ExternalLink className="size-3" />
@@ -152,7 +154,7 @@ export function BeatCard({
           </div>
           {job.error && (
             <pre
-              data-testid={`ar-error-${beat.id}`}
+              data-testid={`error-${beat.id}`}
               className="text-xs text-destructive whitespace-pre-wrap break-all bg-muted rounded p-2"
             >
               {job.error}
@@ -160,7 +162,7 @@ export function BeatCard({
           )}
           {job.output != null && (
             <pre
-              data-testid={`ar-output-${beat.id}`}
+              data-testid={`output-${beat.id}`}
               className="text-xs whitespace-pre-wrap break-all bg-muted rounded p-2 max-h-56 overflow-y-auto"
             >
               {JSON.stringify(job.output, null, 2)}

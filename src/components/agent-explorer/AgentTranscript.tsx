@@ -29,6 +29,7 @@ export function AgentTranscript({
   return (
     <div
       ref={transcriptRef}
+      data-testid="agent-transcript"
       className="flex-1 overflow-y-auto p-6 space-y-3 bg-background"
     >
       {!session?.conversation.length && !pendingChat && (

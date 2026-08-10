@@ -286,7 +286,12 @@ describe('AgentExplorer with a chat in flight', () => {
 
     await screen.findByTestId('agent-thinking');
     expect(screen.queryByTestId('pending-user-message')).not.toBeInTheDocument();
-    expect(screen.getAllByText('sent elsewhere')).toHaveLength(1);
+    // Scoped to the transcript: the session picker also shows this text as
+    // its default title (derived from the first user message), which is
+    // expected and not the "doubled echo" this test guards against.
+    expect(
+      within(screen.getByTestId('agent-transcript')).getAllByText('sent elsewhere'),
+    ).toHaveLength(1);
   });
 
   it('ignores a send dispatched to a different agent', async () => {
@@ -373,7 +378,7 @@ describe('AgentExplorer new chat', () => {
     await setupWithSession([{ role: 'assistant', content: 'older-session-reply', ts: 1 }]);
     expect(await screen.findByText('older-session-reply')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('new-chat'));
+    fireEvent.click(screen.getByTestId('new-session'));
     await waitFor(() =>
       expect(screen.queryByText('older-session-reply')).not.toBeInTheDocument());
 
@@ -454,7 +459,10 @@ describe('AgentExplorer transcript rendering', () => {
 
     // {task: "..."} is a lossless envelope — shown as its text, with a
     // provenance label marking it as task-originated rather than typed chat.
-    expect(await screen.findByText('Tell me about the grid')).toBeInTheDocument();
+    // Scoped to the transcript: the session picker also shows this text as
+    // its default title (derived from the first user message).
+    const transcript = await screen.findByTestId('agent-transcript');
+    expect(within(transcript).getByText('Tell me about the grid')).toBeInTheDocument();
     expect(screen.getByTestId('turn-source-label')).toBeInTheDocument();
     expect(screen.getByText('Here is the grid overview')).toBeInTheDocument();
   });

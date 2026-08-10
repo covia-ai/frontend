@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import { JobLifecycleDemo } from "@/components/JobLifecycleDemo";
 import { AdaptiveRiskDemo } from "@/components/adaptive-risk/AdaptiveRiskDemo";
+import { GovernedEscalationDemo } from "@/components/governed-escalation/GovernedEscalationDemo";
 
 // The demo registry. /demos lists these entries and /demos/[slug] renders
 // them, so adding a demo is adding an entry here (plus, optionally, a
@@ -24,10 +25,17 @@ export const DEMOS: DemoEntry[] = [
   },
   {
     slug: "adaptive-risk",
-    title: { text: "Adaptive", highlight: "Risk" },
+    title: { text: "Adaptive", highlight: "risk" },
     blurb:
-      "Three agents, one policy gate: fraud and credit joined at the execution layer, with refusal, escalation and reconstruction on the record.",
+      "Two agents, one policy gate: a credit agent cannot issue a limit unless a fraud agent's signals pass. Watch the runtime refuse, then read the refusal back off the record.",
     Component: AdaptiveRiskDemo,
+  },
+  {
+    slug: "governed-escalation",
+    title: { text: "Governed", highlight: "escalation" },
+    blurb:
+      "An agent reaches the edge of its authority and stops. A human decides in the real Inbox, and signs a capability with a real expiry.",
+    Component: GovernedEscalationDemo,
   },
 ];
 

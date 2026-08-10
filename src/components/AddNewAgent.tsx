@@ -12,6 +12,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Select,
   SelectContent,
@@ -21,7 +22,7 @@ import {
 } from "./ui/select";
 import { Textarea } from "./ui/textarea";
 import { Separator } from "./ui/separator";
-import { notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
+import { jobFailure, notifyError, notifyWarning } from "@/lib/notify";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
@@ -46,7 +47,6 @@ interface AddNewAgentProps {
   initialProvider?: string;
   /** Skills/tools/operation from a venue template, applied to the created agent. */
   initialConfig?: AgentTemplateConfig;
-  onCreated?: () => void;
 }
 
 const CUSTOM_MODEL_OPTION = "__custom__";
@@ -61,8 +61,8 @@ export function AddNewAgent({
   initialSystemPrompt = "",
   initialProvider = "anthropic",
   initialConfig,
-  onCreated,
 }: AddNewAgentProps = {}) {
+  const router = useRouter();
   const [agentName, setAgentName] = useState(initialAgentName);
   const [agentId, setAgentId] = useState("");
   const [agentIdEdited, setAgentIdEdited] = useState(false);
@@ -188,19 +188,17 @@ export function AddNewAgent({
       }
 
       gtmEvent.createAgent(result.agentId, llmProvider);
-      notifySuccess("Agent created", {
-        description: `Agent "${result.agentId}" is now ${result.status}`,
-      });
       setAgentName("");
       setAgentId("");
       setAgentIdEdited(false);
       setSystemPrompt("");
       setInitialCommand("");
       setOpen(false);
-      onCreated?.();
+      router.push(`/agents/explorer?agentId=${encodeURIComponent(result.agentId)}`);
     } catch (err) {
       gtmEvent.createAgentFailed(resolvedAgentId, err instanceof Error ? err.message : undefined);
-      notifyError("Unable to create agent", err, venue.baseUrl);
+      const { reason, jobHref } = jobFailure(err, venue.venueId);
+      notifyError("Unable to create agent", reason, venue.baseUrl, jobHref);
     } finally {
       setCreating(false);
     }

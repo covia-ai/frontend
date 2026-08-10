@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
-import { notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
+import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { KeyRound, Loader2, Plus, Trash2, EyeOff, Lock, ChevronDown } from "lucide-react";
@@ -88,7 +88,8 @@ export function SecretList() {
       })
       .catch((err: any) => {
         // Surface the cause — a blind toast hid a JWT-audience 401 for days.
-        notifyError("Unable to store secret", err, venue.baseUrl);
+        const { reason, jobHref } = jobFailure(err, venue.venueId);
+        notifyError("Unable to store secret", reason, venue.baseUrl, jobHref);
       })
       .finally(() => {
         setAdding(false);

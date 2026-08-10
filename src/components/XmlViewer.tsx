@@ -4,11 +4,12 @@ import { useState } from "react";
 import type { Venue } from "@covia/covia-sdk";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { Loader2 } from "lucide-react";
+import { Eye, Loader2 } from "lucide-react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useAssetTextContent } from "@/hooks/use-asset-text-content";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { RawTextPanel } from "@/components/content-preview/RawTextPanel";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +23,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { CONTENT_PREVIEW_DIALOG_CLASS } from "@/lib/dialog-sizes";
 
 type XmlViewerProps = {
   assetId: string;
@@ -36,10 +38,13 @@ export const XmlViewer = ({ assetId, venue: providedVenue }: XmlViewerProps) => 
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className="text-sm text-secondary underline dark:text-secondary-light">
-        View
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground">
+          <Eye size={14} />
+          View
+        </Button>
       </DialogTrigger>
-      <DialogContent className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden border border-border bg-card p-4 text-card-foreground">
+      <DialogContent className={CONTENT_PREVIEW_DIALOG_CLASS}>
         <DialogHeader className="text-sm font-medium text-muted-foreground">
           XML Preview
         </DialogHeader>

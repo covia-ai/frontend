@@ -25,7 +25,7 @@ import {
 import { DidDisplay } from "@/components/DidDisplay";
 import { HitlGrantAsk } from "@/components/HitlGrantAsk";
 import { Bot, ChevronDown, ChevronUp, Inbox, RefreshCw } from "lucide-react";
-import { notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
+import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 
 // Empty selection means "no filter" (show every status) — same convention as
 // the Status group on the Jobs filter sheet — so there's no separate "All"
@@ -280,7 +280,8 @@ export function HitlInbox({ initialRequestId }: { initialRequestId?: string } = 
       setJustAnsweredId(request.id);
       refresh();
     } catch (err) {
-      notifyError("Unable to send response", err, venue.baseUrl);
+      const { reason, jobHref } = jobFailure(err, venue.venueId);
+      notifyError("Unable to send response", reason, venue.baseUrl, jobHref);
     } finally {
       setSubmittingId(null);
     }

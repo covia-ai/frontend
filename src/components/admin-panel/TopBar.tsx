@@ -9,7 +9,7 @@ import { DarkLightToggle } from "../DarkLightToggle";
 import { SmartBreadcrumb } from "../smartbreadcrumb2";
 import { Separator } from "../ui/separator";
 import { usePathname, useRouter } from "next/navigation";
-import { Info } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { Button } from "../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
@@ -49,7 +49,7 @@ export function TopBar(props:any) {
                   <TooltipTrigger asChild>
                     <Button asChild variant="ghost" size="icon" aria-label="Documentation">
                       <a href={docsHref} target="_blank" rel="noopener noreferrer">
-                        <Info size={16} />
+                        <BookOpen size={16} />
                       </a>
                     </Button>
                   </TooltipTrigger>

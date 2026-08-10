@@ -168,4 +168,34 @@ describe("asset detail lifecycle", () => {
     });
     expect(result.current.asset?.id).toBe("new");
   });
+
+  // covia-ai/frontend#201: AssetViewer used to show a generic technical error
+  // for a missing asset instead of the friendly not-found message
+  // OperationViewer already had — flatten AssetNotFoundError's "Asset not
+  // found: <id>" message into a notFound flag instead of a raw error string.
+  it("flags a not-found error instead of surfacing it as a generic error", async () => {
+    const venue = {
+      getAsset: jest.fn().mockRejectedValue(new Error("Asset not found: abc123")),
+    } as any;
+    const { result } = renderHook(
+      ({ assetId }) => useAssetDetails(venue, assetId),
+      { initialProps: { assetId: "abc123" } },
+    );
+
+    await waitFor(() => expect(result.current.notFound).toBe(true));
+    expect(result.current.error).toBeNull();
+  });
+
+  it("surfaces a real failure as an error, not notFound", async () => {
+    const venue = {
+      getAsset: jest.fn().mockRejectedValue(new Error("Network error")),
+    } as any;
+    const { result } = renderHook(
+      ({ assetId }) => useAssetDetails(venue, assetId),
+      { initialProps: { assetId: "abc123" } },
+    );
+
+    await waitFor(() => expect(result.current.error).toBe("Network error"));
+    expect(result.current.notFound).toBe(false);
+  });
 });

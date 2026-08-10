@@ -32,11 +32,7 @@ function providerForOperation(llmOperation?: string): string {
   return match?.[0] ?? "anthropic";
 }
 
-interface AgentTemplatesProps {
-  onCreated?: () => void;
-}
-
-export function AgentTemplates({ onCreated }: AgentTemplatesProps = {}) {
+export function AgentTemplates() {
   const isAuthenticated = useIsAuthenticated();
   const { templates, loading } = useAgentTemplates();
 
@@ -86,7 +82,6 @@ export function AgentTemplates({ onCreated }: AgentTemplatesProps = {}) {
                     initialSystemPrompt={template.systemPrompt ?? ""}
                     initialProvider={providerForOperation(template.llmOperation)}
                     initialConfig={configOf(template)}
-                    onCreated={onCreated}
                   />
                 ) : (
                   <Button variant="outline" size="sm" disabled className="w-full mt-2 gap-2 text-muted-foreground">

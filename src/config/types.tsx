@@ -32,4 +32,6 @@ export interface Session {
    turns?: number;
    pending?: any[];
    conversation: SessionMessage[];
+   /** Free-form human-facing title, venue-persisted (AGENT_SESSIONS.md §4.3). */
+   title?: string;
 }

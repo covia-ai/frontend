@@ -18,6 +18,8 @@ import { JsonEditor } from "json-edit-react";
 import { AssetInfoSheet } from "./AssetInfoSheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { notifyError } from "@/lib/notify";
+import { cn } from "@/lib/utils";
+import { JSON_EDITOR_DIALOG_CLASS, JSON_EDITOR_MAX_WIDTH } from "@/lib/dialog-sizes";
 
 interface AssetCardProps {
   asset: Asset;
@@ -93,7 +95,7 @@ export function AssetCard({ asset,type,compact,venue: venueProp,authenticated }:
                             </TooltipTrigger>
                             <TooltipContent data-testid="btn-tootip">Copy Asset</TooltipContent>
                              </Tooltip>
-                            <DialogContent className="h-11/12 min-w-10/12 bg-card text-card-foreground content-start">
+                            <DialogContent className={cn(JSON_EDITOR_DIALOG_CLASS, "content-start")}>
                             <DialogTitle className="flex flex-row items-center justify-between mr-4">
                                 Copy asset
                                 {JSON.stringify(newJsonData) != "{}" &&
@@ -123,14 +125,14 @@ export function AssetCard({ asset,type,compact,venue: venueProp,authenticated }:
                                 rootName="metadata"
                                 rootFontSize="1em"
                                 collapse={1}
-                                maxWidth="90vw"
+                                maxWidth={JSON_EDITOR_MAX_WIDTH}
                             />}
                             {Object.keys(newJsonData).length > 0 && <JsonEditor data={newJsonData}
                                 setData={setNewJsonData}
                                 rootName="metadata"
                                 rootFontSize="1em"
                                 collapse={1}
-                                maxWidth="90vw"
+                                maxWidth={JSON_EDITOR_MAX_WIDTH}
                             />}
                             <p className="px-8 pb-4 text-xs italic text-neutral-500">
                                 Editing any field above creates a copy — click the save icon to register it as a brand-new asset. The original is left untouched.

@@ -26,7 +26,7 @@ import { Badge } from "./ui/badge";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { usePendingChats } from "@/hooks/use-pending-chats";
 import { useTypewriterPlaceholder } from "@/hooks/use-typewriter-placeholder";
-import { notifyError, notifyInfo, notifySuccess, notifyWarning } from "@/lib/notify";
+import { jobFailure, notifyError, notifyInfo, notifySuccess, notifyWarning } from "@/lib/notify";
 import { KNOWN_LLM_KEYS, LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
 import type { AgentTemplate } from "@/hooks/use-agent-templates";
@@ -148,7 +148,8 @@ export const AIPrompt = () => {
       })
       .catch((err: any) => {
         gtmEvent.sendAgentMessageFailed(agentId, err?.message);
-        notifyError("Unable to send message", err);
+        const { reason, jobHref } = jobFailure(err, venue.venueId);
+        notifyError("Unable to send message", reason, undefined, jobHref);
       })
       .finally(() => clearPendingChat(chat));
     router.push(`/agents/explorer?agentId=${encodeURIComponent(agentId)}`);
@@ -201,7 +202,8 @@ export const AIPrompt = () => {
     } catch (err: any) {
       setCreating(false);
       gtmEvent.createAgentFailed(agentId, err?.message);
-      notifyError("Unable to create agent", err);
+      const { reason, jobHref } = jobFailure(err, venue.venueId);
+      notifyError("Unable to create agent", reason, undefined, jobHref);
       return;
     }
     setCreating(false);
@@ -259,7 +261,8 @@ export const AIPrompt = () => {
             gtmEvent.resumeAgent(selectedAgentId);
           } catch (err: any) {
             gtmEvent.resumeAgentFailed(selectedAgentId, err?.message);
-            notifyError("Unable to resume agent", err);
+            const { reason, jobHref } = jobFailure(err, venue.venueId);
+            notifyError("Unable to resume agent", reason, undefined, jobHref);
             return;
           }
         }
@@ -291,7 +294,8 @@ export const AIPrompt = () => {
       setKeyInput('');
       await proceedWithKey(selectedSecretName, pendingAgentId);
     } catch (err) {
-      notifyError("Unable to store API key", err, venue.baseUrl);
+      const { reason, jobHref } = jobFailure(err, venue.venueId);
+      notifyError("Unable to store API key", reason, venue.baseUrl, jobHref);
     } finally {
       setSavingKey(false);
     }

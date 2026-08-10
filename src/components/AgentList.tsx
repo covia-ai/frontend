@@ -57,7 +57,7 @@ export function AgentList() {
    // leads.
    const hasAgents = !loading && agentData.length > 0;
 
-   const agentTemplates = <AgentTemplates onCreated={fetchAgents} />;
+   const agentTemplates = <AgentTemplates />;
    const orSeparator = <SeparatorWithText text="or"/>;
 
    const createOrChooseSection = (
@@ -72,7 +72,7 @@ export function AgentList() {
          <div className="flex items-center justify-center gap-2 shrink-0 mt-4">
            {isAuthenticated ? (
              <>
-               <AddNewAgent onCreated={fetchAgents} />
+               <AddNewAgent />
                <Button
                  variant="outline"
                  className="shrink-0 gap-2"
@@ -102,7 +102,7 @@ export function AgentList() {
      <div className="flex flex-col items-center justify-center w-full space-y-2 pt-4">
             <Bot size={48} className="text-primary"></Bot>
             {isAuthenticated ? (
-              <AddNewAgent onCreated={fetchAgents} />
+              <AddNewAgent />
             ) : (
               <Button variant="outline" disabled className="gap-2 text-muted-foreground">
                 <Lock size={14} />

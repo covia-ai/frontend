@@ -1,16 +1,20 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Bot,
-  ChevronDown,
+  Check,
+  History,
   Loader2,
   MessageSquare,
   Pause,
+  Pencil,
   Play,
   Plus,
   Send,
+  Settings,
   Trash2,
+  X,
 } from "lucide-react";
 import { AgentStatus } from "@covia/covia-sdk";
 import {
@@ -26,7 +30,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Select,
@@ -37,8 +49,11 @@ import {
 } from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AgentTranscript } from "@/components/agent-explorer/AgentTranscript";
+import { ConfigFields } from "@/components/agent-explorer/ConfigFields";
+import { AgentTimelineView } from "@/components/agent-explorer/AgentTimelineView";
 import type { AgentExplorerController } from "@/hooks/use-agent-explorer";
-import { formatSessionLabel } from "@/lib/agent-sessions";
+import type { Session } from "@/config/types";
+import { defaultSessionTitle, formatSessionLabel } from "@/lib/agent-sessions";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
 
 export function AgentChatPanel({
@@ -57,8 +72,6 @@ export function AgentChatPanel({
     currentSession,
     messageText,
     setMessageText,
-    detailsOpen,
-    setDetailsOpen,
     pendingChat,
     sending,
     canSend,
@@ -66,11 +79,42 @@ export function AgentChatPanel({
     suspend,
     resume,
     deleteAgent,
+    renameSession,
     startNewChat,
     selectSession,
     send,
   } = controller;
   const transcriptRef = useRef<HTMLDivElement | null>(null);
+
+  const [renaming, setRenaming] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [showTimeline, setShowTimeline] = useState(false);
+
+  useEffect(() => {
+    // Switching agents while viewing a timeline must not leave the next
+    // agent's chat area stuck showing timeline (or a stale one, before its
+    // own detail has even loaded).
+    setShowTimeline(false);
+  }, [selectedAgentId]);
+
+  // Venue-persisted title (if set) beats the auto-derived first-message
+  // title, which beats the raw timestamp/id/turns label — see
+  // formatSessionLabel/defaultSessionTitle in @/lib/agent-sessions.
+  const displayTitle = (session: Session): string =>
+    session.title ?? defaultSessionTitle(session) ?? formatSessionLabel(session);
+
+  const saveName = () => {
+    if (selectedAgentId && selectedSessionId) {
+      renameSession(selectedAgentId, selectedSessionId, nameDraft);
+    }
+    setRenaming(false);
+  };
+
+  useEffect(() => {
+    // A session switch (or a rename left open when one happens) must not
+    // leak the previous session's draft into the newly selected one.
+    setRenaming(false);
+  }, [selectedSessionId]);
 
   useEffect(() => {
     if (transcriptRef.current) {
@@ -135,6 +179,65 @@ export function AgentChatPanel({
                 {selectedAgentDetail.tasks === 1 ? "" : "s"}
               </Badge>
             )}
+            {(selectedAgentDetail.config || selectedAgentDetail.stateConfig) && (
+              <Dialog>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DialogTrigger asChild>
+                      <button
+                        data-testid="agent-config-info"
+                        aria-label="Agent configuration"
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <Settings size={16} />
+                      </button>
+                    </DialogTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>Config</TooltipContent>
+                </Tooltip>
+                <DialogContent className="w-[75vw] max-w-[75vw] sm:max-w-[75vw] h-[75vh] max-h-[75vh] bg-card text-card-foreground overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>
+                      {selectedAgentDetail.agentId} — Configuration
+                    </DialogTitle>
+                  </DialogHeader>
+                  <Separator />
+                  <div className="space-y-5 text-xs">
+                    {selectedAgentDetail.config && (
+                      <div>
+                        <div className="font-semibold mb-2 text-foreground text-sm">
+                          Config
+                        </div>
+                        <ConfigFields data={selectedAgentDetail.config} />
+                      </div>
+                    )}
+                    {selectedAgentDetail.stateConfig && (
+                      <div>
+                        <div className="font-semibold mb-2 text-foreground text-sm">
+                          State Config (resolved)
+                        </div>
+                        <ConfigFields data={selectedAgentDetail.stateConfig} />
+                      </div>
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
+            {(selectedAgentDetail.timeline?.length ?? 0) > 0 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    data-testid="agent-timeline-info"
+                    aria-label="Agent timeline"
+                    className="text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowTimeline(true)}
+                  >
+                    <History size={16} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Timeline</TooltipContent>
+              </Tooltip>
+            )}
             <div className="ml-auto flex flex-row gap-2">
               {(selectedAgentDetail.status === AgentStatus.RUNNING ||
                 selectedAgentDetail.status === AgentStatus.SLEEPING) && (
@@ -177,55 +280,120 @@ export function AgentChatPanel({
             </div>
           </div>
 
+          {showTimeline ? (
+            <AgentTimelineView
+              agentId={selectedAgentDetail.agentId}
+              onBack={() => setShowTimeline(false)}
+            />
+          ) : (
+            <>
           <div className="px-6 py-3 border-b border-border flex items-center gap-2 bg-muted/30">
             <MessageSquare size={16} className="text-muted-foreground" />
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Session
             </span>
-            <div className="flex-1 max-w-md">
-              <Select
-                value={selectedSessionId ?? "__new__"}
-                onValueChange={(value) => {
-                  if (value === "__new__") startNewChat();
-                  else selectSession(value);
-                }}
-              >
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue placeholder="New chat (no session yet)">
-                    {selectedSessionId
-                      ? formatSessionLabel(
-                          currentSession ?? {
-                            sessionId: selectedSessionId,
-                            conversation: [],
-                          },
-                        )
-                      : sessions.length === 0
-                        ? "No sessions yet — send a message to start one"
-                        : "New chat"}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__new__">+ New chat</SelectItem>
-                  {sessions.map((session) => (
-                    <SelectItem
-                      key={session.sessionId}
-                      value={session.sessionId}
-                    >
-                      {formatSessionLabel(session)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              data-testid="new-chat"
-              variant="outline"
-              size="sm"
-              onClick={startNewChat}
-              disabled={!hasChatSession}
-            >
-              <Plus size={14} className="mr-1" /> New chat
-            </Button>
+            {renaming ? (
+              <div className="flex-1 max-w-md flex flex-row gap-1">
+                <Input
+                  data-testid="session-name-input"
+                  autoFocus
+                  value={nameDraft}
+                  onChange={(event) => setNameDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") saveName();
+                    if (event.key === "Escape") setRenaming(false);
+                  }}
+                  placeholder="Name this session…"
+                  className="h-8 text-sm"
+                />
+                <Button
+                  aria-label="Save session name"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2"
+                  onClick={saveName}
+                >
+                  <Check size={14} />
+                </Button>
+                <Button
+                  aria-label="Cancel rename"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2"
+                  onClick={() => setRenaming(false)}
+                >
+                  <X size={14} />
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="max-w-md">
+                  <Select
+                    value={selectedSessionId ?? "__new__"}
+                    onValueChange={(value) => {
+                      if (value === "__new__") startNewChat();
+                      else selectSession(value);
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="New session (no session yet)">
+                        {selectedSessionId
+                          ? displayTitle(
+                              currentSession ?? {
+                                sessionId: selectedSessionId,
+                                conversation: [],
+                              },
+                            )
+                          : sessions.length === 0
+                            ? "No sessions yet — send a message to start one"
+                            : "New session"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__new__">+ New session</SelectItem>
+                      {sessions.map((session) => (
+                        <SelectItem
+                          key={session.sessionId}
+                          value={session.sessionId}
+                        >
+                          {displayTitle(session)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {selectedSessionId && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        data-testid="rename-session"
+                        aria-label="Name this session"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-2"
+                        onClick={() => {
+                          setNameDraft(currentSession?.title ?? "");
+                          setRenaming(true);
+                        }}
+                      >
+                        <Pencil size={14} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Name this session</TooltipContent>
+                  </Tooltip>
+                )}
+                <Button
+                  data-testid="new-session"
+                  variant="outline"
+                  size="sm"
+                  className="ml-auto"
+                  onClick={startNewChat}
+                  disabled={!hasChatSession}
+                >
+                  <Plus size={14} className="mr-1" /> New session
+                </Button>
+              </>
+            )}
           </div>
 
           <AgentTranscript
@@ -284,64 +452,8 @@ export function AgentChatPanel({
                 </p>
               )}
           </div>
-
-          <div className="border-t border-border bg-background">
-            <button
-              onClick={() => setDetailsOpen((visible) => !visible)}
-              className="w-full px-6 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 hover:bg-accent"
-            >
-              <ChevronDown
-                size={14}
-                className={`transition-transform ${
-                  detailsOpen ? "" : "-rotate-90"
-                }`}
-              />
-              Details
-            </button>
-            {detailsOpen && (
-              <div className="px-6 pb-4 space-y-3 text-xs">
-                {selectedAgentDetail.config && (
-                  <div>
-                    <div className="font-semibold mb-1 text-foreground">
-                      Config
-                    </div>
-                    <pre className="font-mono bg-muted rounded px-2 py-2 overflow-x-auto">
-                      {JSON.stringify(selectedAgentDetail.config, null, 2)}
-                    </pre>
-                  </div>
-                )}
-                {selectedAgentDetail.stateConfig && (
-                  <div>
-                    <div className="font-semibold mb-1 text-foreground">
-                      State Config (resolved)
-                    </div>
-                    <pre className="font-mono bg-muted rounded px-2 py-2 overflow-x-auto">
-                      {JSON.stringify(
-                        selectedAgentDetail.stateConfig,
-                        null,
-                        2,
-                      )}
-                    </pre>
-                  </div>
-                )}
-                {selectedAgentDetail.timeline &&
-                  selectedAgentDetail.timeline.length > 0 && (
-                    <div>
-                      <div className="font-semibold mb-1 text-foreground">
-                        Timeline ({selectedAgentDetail.timeline.length})
-                      </div>
-                      <pre className="font-mono bg-muted rounded px-2 py-2 overflow-x-auto max-h-48">
-                        {JSON.stringify(
-                          selectedAgentDetail.timeline,
-                          null,
-                          2,
-                        )}
-                      </pre>
-                    </div>
-                  )}
-              </div>
-            )}
-          </div>
+            </>
+          )}
         </>
       )}
     </div>

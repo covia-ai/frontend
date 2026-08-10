@@ -12,7 +12,7 @@
     "jest:clear": "jest --clearCache"
   },
   "dependencies": {
-    "@covia/covia-sdk": "^1.7.2",
+    "@covia/covia-sdk": "^1.7.4",
     "@cyntler/react-doc-viewer": "^1.17.1",
     "@next/third-parties": "^16.1.6",
     "@radix-ui/react-accordion": "^1.2.12",
@@ -68,7 +68,7 @@
       "brace-expansion@^2": "^2.1.2",
       "brace-expansion@^5": "^5.0.6",
       "@babel/core": "^7.29.6",
-      "fast-uri": "^3.1.4",
+      "fast-uri": "^3.1.5",
       "sharp": "^0.35.0"
     }
   },

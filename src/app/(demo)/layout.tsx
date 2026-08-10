@@ -17,7 +17,12 @@ export default async function DemoLayout({
         </AdminPanelLayout>
       </VenueRuntimeProvider>
          {/* select-text overrides sonner's drag-to-dismiss styling so error
-             details can be selected and copied out of a toast. */}
-         <Toaster toastOptions={{ classNames: { toast: "select-text cursor-text", description: "select-text" } }} />
+             details can be selected and copied out of a toast. Widened a
+             little past sonner's 356px default so the longer job-error
+             previews (see lib/notify.ts) don't wrap as tightly. */}
+         <Toaster
+           style={{ "--width": "420px" } as React.CSSProperties}
+           toastOptions={{ classNames: { toast: "select-text cursor-text", description: "select-text" } }}
+         />
     </>
 }

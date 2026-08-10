@@ -2,14 +2,17 @@
 
 import { useState } from "react";
 import DocViewer, { DocViewerRenderers, TXTRenderer } from "@cyntler/react-doc-viewer";
+import { Eye } from "lucide-react";
 
 // TXTRenderer has an unpatched XSS (unsanitized file content cast to ReactNode).
 // We exclude it and rely on our own safe Raw tab for text/plain content instead.
 const SAFE_RENDERERS = DocViewerRenderers.filter((r) => r !== TXTRenderer);
 import { Dialog, DialogContent, DialogHeader, DialogTrigger } from "./ui/dialog";
+import { Button } from "./ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { useRemoteTextContent } from "@/hooks/use-asset-text-content";
 import { RawTextPanel } from "@/components/content-preview/RawTextPanel";
+import { CONTENT_PREVIEW_DIALOG_CLASS } from "@/lib/dialog-sizes";
 
 const CONTENT_TYPE_TO_FILE_TYPE: Record<string, string> = {
   "text/csv": "csv",
@@ -32,6 +35,14 @@ const CONTENT_TYPE_TO_FILE_TYPE: Record<string, string> = {
 
 const RAW_SUPPORTED_TYPES = new Set(["text/csv", "text/plain", "text/html", "application/xhtml+xml"]);
 
+// text/plain is the one type in CONTENT_TYPE_TO_FILE_TYPE with no working
+// DocViewer renderer at all — its TXTRenderer is excluded above for an
+// unpatched XSS, so the Preview tab could only ever show the library's own
+// generic "No renderer for file type: txt" fallback. Plain text has no
+// separate "rendered" form to preview anyway, so skip DocViewer entirely and
+// show the raw content directly instead of a tabbed dead end.
+const PLAIN_TEXT_TYPE = "text/plain";
+
 interface DocumentViewerProps {
   contentUrl: string;
   contentType: string;
@@ -39,25 +50,37 @@ interface DocumentViewerProps {
 
 export const DocumentViewer = ({ contentUrl, contentType }: DocumentViewerProps) => {
   const fileType = CONTENT_TYPE_TO_FILE_TYPE[contentType];
-  const showRawTab = RAW_SUPPORTED_TYPES.has(contentType);
+  const isPlainText = contentType === PLAIN_TEXT_TYPE;
+  const showRawTab = !isPlainText && RAW_SUPPORTED_TYPES.has(contentType);
   const [open, setOpen] = useState(false);
   const rawContent = useRemoteTextContent(
     contentUrl,
-    open && showRawTab,
+    open && (isPlainText || showRawTab),
   );
 
   if (!fileType) return null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className="text-sm text-secondary dark:text-secondary-light underline">
-        View
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground">
+          <Eye size={14} />
+          View
+        </Button>
       </DialogTrigger>
-      <DialogContent className="bg-card text-card-foreground max-h-[90vh] w-full max-w-4xl p-4 flex flex-col overflow-hidden border border-border">
+      <DialogContent className={CONTENT_PREVIEW_DIALOG_CLASS}>
         <DialogHeader className="text-sm font-medium text-muted-foreground">
           Document Preview
         </DialogHeader>
-        {showRawTab ? (
+        {isPlainText ? (
+          <div className="flex-1 min-h-0">
+            <RawTextPanel
+              value={rawContent.text}
+              loading={rawContent.loading}
+              error={rawContent.error}
+            />
+          </div>
+        ) : showRawTab ? (
           <Tabs defaultValue="preview" className="flex-1 flex flex-col min-h-0">
             <TabsList>
               <TabsTrigger value="preview">Preview</TabsTrigger>
