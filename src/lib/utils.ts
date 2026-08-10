@@ -127,12 +127,12 @@ export function abbreviateDid(did: string, chars = 16): string {
   return `${did.slice(0, chars)}…${did.slice(-4)}`;
 }
 
-export function copyDataToClipBoard(entityId:string, message:string) {
-         const result = copy(entityId)
-          if(result) {
-            notifySuccess(message)
-       }
-      }
+export async function copyDataToClipBoard(entityId: string, message: string) {
+  const result = await copy(entityId);
+  if (result) {
+    notifySuccess(message);
+  }
+}
 
 export const gtmEvent = {
   // Button clicks
