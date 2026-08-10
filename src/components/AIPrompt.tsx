@@ -35,6 +35,9 @@ import { AgentStatus } from "@covia/covia-sdk";
 import { useRouter } from "next/navigation";
 import { PageHeading } from "./PageHeading";
 import { gtmEvent } from "@/lib/utils";
+import { useIsAuthenticated } from "@/hooks/use-auth";
+import { useDeviceKeySignIn } from "@/hooks/use-device-key-signin";
+import { DeviceKeyDialog } from "@/components/DeviceKeyDialog";
 
 // Sentinel picker value — never a real agentId — meaning "create a fresh,
 // distinctly-named agent" rather than targeting an existing one.
@@ -60,9 +63,21 @@ export const AIPrompt = () => {
   const [pendingAgentId, setPendingAgentId] = useState<string>(DEFAULT_AGENT_ID)
   const venue = useAuthenticatedVenue();
   const router = useRouter();
+  const isAuthenticated = useIsAuthenticated();
   const startPendingChat = usePendingChats((s) => s.startPendingChat);
   const attachSessionId = usePendingChats((s) => s.attachSessionId);
   const clearPendingChat = usePendingChats((s) => s.clearPendingChat);
+
+  const {
+    dialogOpen: signInDialogOpen, setDialogOpen: setSignInDialogOpen, openDialog: openSignInDialog,
+    step: signInStep, setStep: setSignInStep, deviceKey: signInDeviceKey, deviceKeyDid: signInDeviceKeyDid,
+    isExisting: signInIsExisting, pastedKey: signInPastedKey, keyError: signInKeyError,
+    copied: signInCopied, checking: signInChecking, authError: signInAuthError, storedKeys: signInStoredKeys,
+    handleGenerate: handleSignInGenerate, handleProvideKey: handleSignInProvideKey,
+    handlePastedKeyChange: handleSignInPastedKeyChange, handleSubmitProvidedKey: handleSignInSubmitProvidedKey,
+    handleCopy: handleSignInCopy, handleContinue: handleSignInContinue,
+    handleUseStoredKey: handleSignInUseStoredKey, handleUseDifferentKey: handleSignInUseDifferentKey,
+  } = useDeviceKeySignIn();
 
   const promptSamples = [
     'Automate an AP invoice pipeline',
@@ -231,6 +246,10 @@ export const AIPrompt = () => {
 
   async function handleMagicWand() {
     if (!prompt.trim()) return;
+    if (!isAuthenticated) {
+      openSignInDialog();
+      return;
+    }
     if (!venue) {
       notifyWarning("Please connect to a venue first");
       return;
@@ -451,6 +470,30 @@ export const AIPrompt = () => {
             )}
           </DialogContent>
         </Dialog>
+
+        <DeviceKeyDialog
+          open={signInDialogOpen}
+          onOpenChange={setSignInDialogOpen}
+          step={signInStep}
+          setStep={setSignInStep}
+          deviceKey={signInDeviceKey}
+          deviceKeyDid={signInDeviceKeyDid}
+          isExisting={signInIsExisting}
+          pastedKey={signInPastedKey}
+          onPastedKeyChange={handleSignInPastedKeyChange}
+          keyError={signInKeyError}
+          copied={signInCopied}
+          checking={signInChecking}
+          authError={signInAuthError}
+          storedKeys={signInStoredKeys}
+          onGenerate={handleSignInGenerate}
+          onProvideKey={handleSignInProvideKey}
+          onSubmitProvidedKey={handleSignInSubmitProvidedKey}
+          onCopy={handleSignInCopy}
+          onContinue={handleSignInContinue}
+          onUseStoredKey={handleSignInUseStoredKey}
+          onUseDifferentKey={handleSignInUseDifferentKey}
+        />
 
          <div className="flex flex-row flex-wrap items-center justify-center w-full gap-2 mt-6">
           {promptSamples.map( (promptText,_index) => (
