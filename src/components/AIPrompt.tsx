@@ -26,7 +26,7 @@ import { Badge } from "./ui/badge";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { usePendingChats } from "@/hooks/use-pending-chats";
 import { useTypewriterPlaceholder } from "@/hooks/use-typewriter-placeholder";
-import { jobFailure, notifyError, notifyInfo, notifySuccess, notifyWarning } from "@/lib/notify";
+import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { KNOWN_LLM_KEYS, LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
 import type { AgentTemplate } from "@/hooks/use-agent-templates";
@@ -219,7 +219,6 @@ export const AIPrompt = () => {
     const matchedKeys = secrets.filter((s: string) => s in KNOWN_LLM_KEYS);
 
     if (matchedKeys.length === 1) {
-      notifyInfo(`Using ${KNOWN_LLM_KEYS[matchedKeys[0]]}`);
       await proceedWithKey(matchedKeys[0], agentId);
     } else if (matchedKeys.length > 1) {
       setDetectedKeys(matchedKeys);
