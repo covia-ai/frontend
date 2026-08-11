@@ -4,10 +4,11 @@
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { VenueCard } from "@/components/VenueCard";
 import { PaginationHeader } from "@/components/PaginationHeader";
-import { FiltersSheet } from "@/components/FiltersSheet";
+import { Input } from "@/components/ui/input";
 import { useVenues } from "@/hooks/use-venues";
 import { useClientPagination } from "@/hooks/use-pagination";
 
+import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { TopBar } from "@/components/admin-panel/TopBar";
@@ -55,13 +56,16 @@ export default function VenuesPage() {
           className="mt-4"
           actions={
             <>
+              <div className="relative w-full sm:w-64">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Type keyword to search…"
+                  value={searchInput}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
               <AddNewVenueModal/>
-              <FiltersSheet
-                title="Filter Venues"
-                description="Search for a venue by name or id."
-                search={{ value: searchInput, onChange: handleSearchChange, placeholder: "Type keyword to search…" }}
-                groups={[]}
-              />
             </>
           }
           summary={`Page ${currentPage} : Showing ${pageItems.length} of ${filteredVenues.length}`}

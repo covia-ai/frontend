@@ -14,6 +14,8 @@ import { cn, copyDataToClipBoard, formatLabel } from "@/lib/utils";
 import { getAssetKind } from "@/lib/asset-kind";
 import { JSON_EDITOR_DIALOG_CLASS, JSON_EDITOR_MAX_WIDTH } from "@/lib/dialog-sizes";
 import { notifyError } from "@/lib/notify";
+import { useIsAuthenticated } from "@/hooks/use-auth";
+import { CopyAssetDialog } from "./CopyAssetDialog";
 import {
   Accordion,
   AccordionContent,
@@ -200,6 +202,8 @@ const renderSchemaProperties = (
 };
 
 export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
+  const isAuthenticated = useIsAuthenticated();
+
   // Skills and other inline assets carry their body in `content.inline`, with
   // no separate blob — the content endpoint 500s for them. Render the inline
   // text directly and never point Download at a URL that doesn't exist.
@@ -470,7 +474,7 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
                         )}
                       </div>
                     )}
-                    <div className="flex flex-row items-center mt-1">
+                    <div className="flex flex-row items-center gap-2 mt-1">
                       <Dialog>
                         <DialogTrigger asChild>
                           <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground">
@@ -487,6 +491,7 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
                           />
                         </DialogContent>
                       </Dialog>
+                      <CopyAssetDialog asset={asset} venue={venue} isAuthenticated={isAuthenticated} />
                     </div>
                   </div>
                 </div>

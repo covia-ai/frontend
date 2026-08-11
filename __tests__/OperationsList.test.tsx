@@ -65,19 +65,19 @@ describe('OperationsList', () => {
     expect(mockListCatalogOperations).toHaveBeenCalledTimes(1);
   });
 
-  it('filters operations once a search is applied from the Filters sheet, without refetching', async () => {
+  // The search box lives directly in the toolbar now, not staged behind the
+  // Filters sheet — it filters live as you type, no "Apply Filters" step.
+  it('filters operations live as you type in the search box, without refetching', async () => {
     const user = userEvent.setup();
     render(<OperationsList />);
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
 
-    await user.click(screen.getByTestId('filters-trigger'));
-    await user.type(await screen.findByPlaceholderText('Type keyword to search…'), 'Alpha');
-    await user.click(screen.getByRole('button', { name: /apply filters/i }));
+    await user.type(screen.getByPlaceholderText('Type keyword to search…'), 'Alpha');
 
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(1));
     expect(screen.getByText('Alpha Chat')).toBeInTheDocument();
     expect(screen.queryByText('Beta Fetch')).not.toBeInTheDocument();
-    // Search is purely client-side now — applying it must never trigger a second fetch.
+    // Search is purely client-side — typing must never trigger a second fetch.
     expect(mockListCatalogOperations).toHaveBeenCalledTimes(1);
   });
 
@@ -86,26 +86,22 @@ describe('OperationsList', () => {
     render(<OperationsList />);
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
 
-    await user.click(screen.getByTestId('filters-trigger'));
-    await user.type(await screen.findByPlaceholderText('Type keyword to search…'), 'http/fetch');
-    await user.click(screen.getByRole('button', { name: /apply filters/i }));
+    await user.type(screen.getByPlaceholderText('Type keyword to search…'), 'http/fetch');
 
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(1));
     expect(screen.getByText('Beta Fetch')).toBeInTheDocument();
   });
 
-  it('resets search via Clear All in the Filters sheet', async () => {
+  it('clearing the search box resets to the full list and cleans up the URL', async () => {
     const user = userEvent.setup();
     render(<OperationsList />);
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
 
-    await user.click(screen.getByTestId('filters-trigger'));
-    await user.type(await screen.findByPlaceholderText('Type keyword to search…'), 'Alpha');
-    await user.click(screen.getByRole('button', { name: /apply filters/i }));
+    const searchBox = screen.getByPlaceholderText('Type keyword to search…');
+    await user.type(searchBox, 'Alpha');
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(1));
 
-    await user.click(screen.getByTestId('filters-trigger'));
-    await user.click(await screen.findByRole('button', { name: /clear all/i }));
+    await user.clear(searchBox);
 
     expect(mockReplace).toHaveBeenCalledWith('/operations');
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
@@ -113,9 +109,7 @@ describe('OperationsList', () => {
 
   it('seeds the search box from the ?search= URL param on load', async () => {
     mockSearchParam = 'beta';
-    const user = userEvent.setup();
     render(<OperationsList />);
-    await user.click(screen.getByTestId('filters-trigger'));
     expect(await screen.findByPlaceholderText('Type keyword to search…')).toHaveValue('beta');
   });
 });

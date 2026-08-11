@@ -40,11 +40,16 @@ export function Menu({ isOpen }: MenuProps) {
   const hitlOpenCount = useHitlOpenCount();
   const rawMenuList = getMenuList();
   const menuList = useMemo(() => {
-    if (isAuthenticated) return rawMenuList;
-    return rawMenuList.map((group) => ({
-      ...group,
-      menus: group.menus.filter((m) => !AUTH_ONLY_LABELS.has(m.label)),
-    }));
+    const list = isAuthenticated
+      ? rawMenuList
+      : rawMenuList.map((group) => ({
+          ...group,
+          menus: group.menus.filter((m) => !AUTH_ONLY_LABELS.has(m.label)),
+        }));
+    // A group with no menus left (e.g. "Manage" is just Secrets, hidden
+    // entirely when signed out) has nothing to head — drop the group
+    // rather than rendering a bare label over empty space.
+    return list.filter((group) => group.menus.length > 0);
   }, [rawMenuList, isAuthenticated]);
 
   return (

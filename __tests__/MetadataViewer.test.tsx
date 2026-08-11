@@ -11,6 +11,25 @@ jest.mock('@/lib/utils', () => ({
 }));
 import { copyDataToClipBoard } from '@/lib/utils';
 
+let mockAuthenticated = true;
+jest.mock('@/hooks/use-auth', () => ({
+  useIsAuthenticated: () => mockAuthenticated,
+}));
+
+jest.mock('json-edit-react', () => ({
+  // Mirrors the real library's two callbacks: setData is the controlled
+  // value setter (always called), onChange only fires on a genuine field
+  // edit (absent on CopyAssetDialog's first render of the JSON step).
+  JsonEditor: ({ setData, onChange }: any) => (
+    <div data-testid="json-editor">
+      <button onClick={() => {
+        const newValue = { name: 'Iris Dataset (copy)' };
+        setData(onChange ? onChange({ newValue }) : newValue);
+      }}>Update JSON</button>
+    </div>
+  ),
+}));
+
 // Mock fetch for DataAsset.getContentURL()
 global.fetch = jest.fn();
 
@@ -182,6 +201,55 @@ describe('MetadataViewer skill / inline content', () => {
   test('no empty-state note for a non-reference kind (e.g. a skill/artifact) even with nothing on the left', () => {
     render(<MetadataViewer asset={asset(SKILL)} />);
     expect(screen.queryByTestId('reference-empty-note')).not.toBeInTheDocument();
+  });
+
+  // covia-ai/frontend#217: moved from the /publicartifacts grid card onto
+  // the asset detail page itself, next to View metadata.
+  describe('Copy Asset', () => {
+    afterEach(() => { mockAuthenticated = true; });
+
+    test('shows a locked, disabled button instead when signed out', () => {
+      mockAuthenticated = false;
+      render(<MetadataViewer asset={asset({ name: 'Iris Dataset' })} venue={venue} />);
+
+      const copyBtn = screen.getByRole('button', { name: /copy asset/i });
+      expect(copyBtn).toBeDisabled();
+    });
+
+    test('is not offered at all without a venue (nothing to copy into)', () => {
+      render(<MetadataViewer asset={asset({ name: 'Iris Dataset' })} />);
+      expect(screen.queryByText('Copy Asset')).not.toBeInTheDocument();
+    });
+
+    test('opens on a Review Metadata form prepopulated from the source asset', () => {
+      render(<MetadataViewer asset={asset({ name: 'Iris Dataset', creator: 'Ada' })} venue={venue} />);
+      fireEvent.click(screen.getByRole('button', { name: /copy asset/i }));
+
+      expect(screen.getByText('Review Metadata')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Iris Dataset')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Ada')).toBeInTheDocument();
+    });
+
+    test('registers the edited metadata as a new asset and navigates to it', async () => {
+      const registerSpy = jest.fn().mockResolvedValue({ id: 'new-asset-id' });
+      jest.spyOn(venue.assets, 'register').mockImplementation(registerSpy);
+
+      render(<MetadataViewer asset={asset({ name: 'Iris Dataset' })} venue={venue} />);
+      fireEvent.click(screen.getByRole('button', { name: /copy asset/i }));
+      // Review Metadata (form) -> Edit metadata (JSON review)
+      fireEvent.click(screen.getByRole('button', { name: /^review$/i }));
+      // First click just seeds jsonData from baseData (no tracked edit yet);
+      // the second is a genuine edit that flips metadataUpdated.
+      fireEvent.click(await screen.findByText('Update JSON'));
+      fireEvent.click(screen.getByText('Update JSON'));
+      fireEvent.click(screen.getByTestId('copy-asset-register'));
+
+      await waitFor(() =>
+        expect(registerSpy).toHaveBeenCalledWith({ name: 'Iris Dataset (copy)' }),
+      );
+
+      registerSpy.mockRestore();
+    });
   });
 });
 

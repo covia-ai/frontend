@@ -38,6 +38,7 @@ const mockVenue: any = {
   getAsset: jest.fn(),
 };
 
+let mockAuthenticated = true;
 jest.mock('@/hooks/use-venues', () => ({
   useVenues: () => ({ venues: [mockVenue], addVenue: jest.fn() }),
 }));
@@ -46,7 +47,7 @@ jest.mock('@/hooks/use-resolved-venue', () => ({
     descriptor: mockVenue,
     venue: mockVenue,
     auth: { type: 'keypair' },
-    isAuthenticated: true,
+    isAuthenticated: mockAuthenticated,
   }),
 }));
 
@@ -68,6 +69,7 @@ describe('AssetList', () => {
     // test controls whether it exercises the fetch path or the cache path.
     window.localStorage.clear();
     mockSearchParam = null;
+    mockAuthenticated = true;
     mockVenue.listAssets.mockResolvedValue({ items: ['a1', 'a2'] });
     mockVenue.getAsset.mockImplementation((id: string) => {
       if (id === 'a1') return Promise.resolve(makeAsset('a1', 'Alpha Report'));
@@ -82,6 +84,19 @@ describe('AssetList', () => {
     expect(mockVenue.listAssets).toHaveBeenCalledTimes(1);
   });
 
+  it('shows the Create Asset button when signed in', async () => {
+    render(<AssetList />);
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
+    expect(screen.getByTestId('create-asset')).toBeInTheDocument();
+  });
+
+  it('hides the Create Asset button entirely when signed out', async () => {
+    mockAuthenticated = false;
+    render(<AssetList />);
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
+    expect(screen.queryByTestId('create-asset')).not.toBeInTheDocument();
+  });
+
   it('serves metadata from the content-addressed cache on revisit — no per-asset GETs', async () => {
     window.localStorage.setItem('asset-meta:a1', JSON.stringify({ name: 'Alpha Report' }));
     window.localStorage.setItem('asset-meta:a2', JSON.stringify({ name: 'Beta Dataset' }));
@@ -93,19 +108,19 @@ describe('AssetList', () => {
     expect(mockVenue.getAsset).not.toHaveBeenCalled();
   });
 
-  it('filters assets once a search is applied from the Filters sheet, without refetching', async () => {
+  // The search box lives directly in the toolbar now, not staged behind the
+  // Filters sheet — it filters live as you type, no "Apply Filters" step.
+  it('filters assets live as you type in the search box, without refetching', async () => {
     const user = userEvent.setup();
     render(<AssetList />);
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
 
-    await user.click(screen.getByTestId('filters-trigger'));
-    await user.type(await screen.findByPlaceholderText('Type keyword to search…'), 'Alpha');
-    await user.click(screen.getByRole('button', { name: /apply filters/i }));
+    await user.type(screen.getByPlaceholderText('Type keyword to search…'), 'Alpha');
 
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(1));
     expect(screen.getByText('Alpha Report')).toBeInTheDocument();
     expect(screen.queryByText('Beta Dataset')).not.toBeInTheDocument();
-    // Search is purely client-side now — applying it must never trigger a second fetch.
+    // Search is purely client-side — typing must never trigger a second fetch.
     expect(mockVenue.listAssets).toHaveBeenCalledTimes(1);
   });
 
@@ -114,26 +129,22 @@ describe('AssetList', () => {
     render(<AssetList />);
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
 
-    await user.click(screen.getByTestId('filters-trigger'));
-    await user.type(await screen.findByPlaceholderText('Type keyword to search…'), 'a2');
-    await user.click(screen.getByRole('button', { name: /apply filters/i }));
+    await user.type(screen.getByPlaceholderText('Type keyword to search…'), 'a2');
 
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(1));
     expect(screen.getByText('Beta Dataset')).toBeInTheDocument();
   });
 
-  it('resets search via Clear All in the Filters sheet', async () => {
+  it('clearing the search box resets to the full list and cleans up the URL', async () => {
     const user = userEvent.setup();
     render(<AssetList />);
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
 
-    await user.click(screen.getByTestId('filters-trigger'));
-    await user.type(await screen.findByPlaceholderText('Type keyword to search…'), 'Alpha');
-    await user.click(screen.getByRole('button', { name: /apply filters/i }));
+    const searchBox = screen.getByPlaceholderText('Type keyword to search…');
+    await user.type(searchBox, 'Alpha');
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(1));
 
-    await user.click(screen.getByTestId('filters-trigger'));
-    await user.click(await screen.findByRole('button', { name: /clear all/i }));
+    await user.clear(searchBox);
 
     expect(mockReplace).toHaveBeenCalledWith('/assets');
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
@@ -141,9 +152,7 @@ describe('AssetList', () => {
 
   it('seeds the search box from the ?search= URL param on load', async () => {
     mockSearchParam = 'beta';
-    const user = userEvent.setup();
     render(<AssetList />);
-    await user.click(screen.getByTestId('filters-trigger'));
     expect(await screen.findByPlaceholderText('Type keyword to search…')).toHaveValue('beta');
   });
 });

@@ -16,12 +16,12 @@ import { useGridPageSize } from "@/hooks/use-grid-page-size";
 import { useLatestQuery } from "@/hooks/use-latest-query";
 import { useClientPagination } from "@/hooks/use-pagination";
 import { CARD_GRID_CLASS } from "@/lib/grid";
-import { FileKey, Lock }from "lucide-react";
+import { FileKey, Search }from "lucide-react";
 import { CreateAssetComponent } from "./CreateAssetComponent";
 import { TopBar } from "./admin-panel/TopBar";
 import { FiltersSheet } from "./FiltersSheet";
 import { ListToolbar } from "./ListToolbar";
-import { Button } from "./ui/button";
+import { Input } from "./ui/input";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 
 
@@ -136,12 +136,15 @@ export function AssetList({ venueId }: AssetListProps = {}) {
 
       <div className="flex flex-col items-center justify-center">
         <div className="flex gap-2 items-center w-full mt-4 justify-end">
-          <FiltersSheet
-            title="Filter Assets"
-            description="Search and narrow down assets by tag."
-            search={{ value: searchInput, onChange: handleSearchChange, placeholder: "Type keyword to search…" }}
-            groups={[]}
-          />
+          <div className="relative w-full sm:w-64">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Type keyword to search…"
+              value={searchInput}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="pl-8"
+            />
+          </div>
         </div>
       </div>
       <div className="flex flex-col items-center justify-center w-full h-100 space-y-2">
@@ -163,18 +166,21 @@ export function AssetList({ venueId }: AssetListProps = {}) {
             className="mt-4"
             actions={
               <>
-                {isAuthenticated ? (
+                <div className="relative w-full sm:w-64">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Type keyword to search…"
+                    value={searchInput}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
+                {isAuthenticated && (
                   <CreateAssetComponent venue={venue ?? undefined}></CreateAssetComponent>
-                ) : (
-                  <Button variant="outline" disabled className="gap-2 text-muted-foreground">
-                    <Lock size={14} />
-                    Sign in to create assets
-                  </Button>
                 )}
                 <FiltersSheet
                   title="Filter Assets"
-                  description="Search and narrow down assets by tag."
-                  search={{ value: searchInput, onChange: handleSearchChange, placeholder: "Type keyword to search…" }}
+                  description="Narrow down assets by tag."
                   groups={tagOptions.length > 0 ? [{ label: "Tags", options: tagOptions, selected: selectedTags, onChange: setSelectedTags }] : []}
                 />
               </>
@@ -192,7 +198,7 @@ export function AssetList({ venueId }: AssetListProps = {}) {
           ) : (
             <div ref={gridRef} className={CARD_GRID_CLASS}>
               {pageItems.map((asset) =>
-                <AssetCard key={asset.id} asset={asset} type="assets" compact={true} venue={venue ?? undefined} authenticated={isAuthenticated}/>
+                <AssetCard key={asset.id} asset={asset} type="assets" compact={true} venue={venue ?? undefined}/>
               )}
             </div>
           )}

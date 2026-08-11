@@ -107,7 +107,11 @@ export function SmartBreadcrumb({
       'adaptive-risk': 'Adaptive Risk',
       'governed-escalation': 'Governed Escalation',
       'venues': 'Venues',
-      'assets': 'Assets',
+      // Matches the sidebar submenu label ("Public Artifacts", linking to
+      // /publicartifacts) — the venue-scoped asset routes use a different
+      // path segment ("assets") for the same concept, so without this the
+      // breadcrumb read differently than the nav the user just clicked.
+      'assets': 'Public Artifacts',
       'publicartifacts': 'Public Artifacts',
       'privateartifacts': 'Private Artifacts',
       'operations': 'Operations',
