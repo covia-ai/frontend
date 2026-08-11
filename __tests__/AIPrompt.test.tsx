@@ -78,7 +78,14 @@ function makeVenue(overrides: {
   );
   return {
     agents: {
-      list: jest.fn().mockResolvedValue({ agents }),
+      // Mirrors the real venue: list() hides TERMINATED agents unless
+      // includeTerminated is explicitly true — a caller that forgets the
+      // flag while checking "does this agent exist" silently sees nothing.
+      list: jest.fn().mockImplementation((includeTerminated?: boolean) =>
+        Promise.resolve({
+          agents: includeTerminated ? agents : agents.filter((a) => a.status !== 'TERMINATED'),
+        }),
+      ),
       create: jest.fn().mockResolvedValue({ agentId: 'assistant', status: 'active', created: true }),
       delete: jest.fn().mockResolvedValue({ agentId: 'assistant', status: 'TERMINATED', removed: true }),
       chat: jest.fn().mockResolvedValue({ agentId: 'assistant', sessionId: 's-1', response: 'Reply text' }),

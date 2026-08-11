@@ -202,8 +202,10 @@ export const AIPrompt = () => {
       // TERMINATED slot (the only occupied state this path ever runs
       // against, see callers below) must be cleared with an explicit
       // delete(remove=true) before recreating. A fresh agentId has nothing
-      // to clear.
-      const { agents: existingAgents } = await venue.agents.list();
+      // to clear. list() defaults to hiding TERMINATED agents, so
+      // includeTerminated=true is required here — without it this check
+      // never finds the very state it exists to catch.
+      const { agents: existingAgents } = await venue.agents.list(true);
       if (normalizeAgentEntries(existingAgents).some((a) => a.agentId === agentId)) {
         await venue.agents.delete(agentId, true);
       }
