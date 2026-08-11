@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { ReadableStream } from 'stream/web';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import {MetadataViewer} from '@/components/MetadataViewer';
 import { DataAsset, Venue } from '@covia/covia-sdk';
@@ -114,6 +115,41 @@ describe('MetadataViewer skill / inline content', () => {
     render(<MetadataViewer asset={asset({ name: 'Iris Dataset', content: { contentType: 'text/csv' } })} />);
     expect(screen.queryByTestId('inline-content')).not.toBeInTheDocument();
     expect(screen.getByText('Download')).toBeInTheDocument();
+  });
+
+  // A plain <a href download> only forces a save when the URL is
+  // same-origin — the content endpoint lives on the venue's own origin, so
+  // clicking it just navigated to/opened the URL instead (covia-ai/frontend
+  // download-button report). Download must instead fetch the bytes and
+  // save from a blob: URL, which always triggers a real download.
+  test('downloads via a blob: URL instead of navigating to the cross-origin content URL', async () => {
+    const testAsset = asset({ name: 'Iris Dataset', content: { contentType: 'text/csv' } });
+    const bytes = new TextEncoder().encode('a,b,c\n1,2,3');
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(bytes);
+        controller.close();
+      },
+    });
+    const getContentSpy = jest
+      .spyOn(venue.assets, 'getContent')
+      .mockResolvedValue(stream as unknown as globalThis.ReadableStream<Uint8Array>);
+    const createObjectURL = jest.fn().mockReturnValue('blob:mock-url');
+    const revokeObjectURL = jest.fn();
+    global.URL.createObjectURL = createObjectURL;
+    global.URL.revokeObjectURL = revokeObjectURL;
+    const clickSpy = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    render(<MetadataViewer asset={testAsset} venue={venue} />);
+    fireEvent.click(screen.getByText('Download'));
+
+    await waitFor(() => expect(getContentSpy).toHaveBeenCalledWith('abc'));
+    await waitFor(() => expect(createObjectURL).toHaveBeenCalled());
+    expect(clickSpy).toHaveBeenCalled();
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+
+    clickSpy.mockRestore();
+    getContentSpy.mockRestore();
   });
 
   test('shows no content blocks for an operation asset', () => {

@@ -1,8 +1,9 @@
 'use client'
 
-import React from "react";
+import React, { useState } from "react";
+import * as mime from "mime-types";
 import { Asset, Venue } from "@covia/covia-sdk";
-import { Calendar, Copy, Copyright, Cpu, Download, FileJson, FileText, InfoIcon, Layers, LogIn, LogOut, MessageSquareText, Puzzle, Tag, User, Workflow, Wrench }from "lucide-react";
+import { Calendar, Copy, Copyright, Cpu, Download, FileJson, FileText, InfoIcon, Layers, Loader2, LogIn, LogOut, MessageSquareText, Puzzle, Tag, User, Workflow, Wrench }from "lucide-react";
 import Link from "next/link";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -12,6 +13,7 @@ import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { cn, copyDataToClipBoard, formatLabel } from "@/lib/utils";
 import { getAssetKind } from "@/lib/asset-kind";
 import { JSON_EDITOR_DIALOG_CLASS, JSON_EDITOR_MAX_WIDTH } from "@/lib/dialog-sizes";
+import { notifyError } from "@/lib/notify";
 import {
   Accordion,
   AccordionContent,
@@ -234,6 +236,45 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
   // fetch (covia-ai/frontend#209 follow-up).
   const hasBlobContent = kind === "artifact" && inlineContent === null;
   const contentURL = hasBlobContent ? asset.getContentURL() : null;
+
+  const [downloading, setDownloading] = useState(false);
+  // A plain <a href download> only forces a save when the URL is
+  // same-origin (or the server sends Content-Disposition: attachment) —
+  // the content endpoint lives on the venue's own origin, so the browser
+  // just navigated to/opened it instead of downloading. Fetch the bytes
+  // through the SDK (authenticated the same way as every other read) and
+  // save from a blob: URL instead, which always triggers a real download.
+  const handleDownload = async () => {
+    if (!venue) return;
+    setDownloading(true);
+    try {
+      const stream = await venue.assets.getContent(asset.id);
+      if (!stream) throw new Error("Asset content is unavailable");
+      const reader = stream.getReader();
+      const chunks: Uint8Array[] = [];
+      while (true) {
+        const { value, done } = await reader.read();
+        if (value) chunks.push(value);
+        if (done) break;
+      }
+      const blob = new Blob(chunks as BlobPart[], contentType ? { type: contentType } : undefined);
+      const objectUrl = URL.createObjectURL(blob);
+      const base = asset.metadata?.name || asset.id;
+      const ext = contentType ? mime.extension(contentType) : false;
+      const filename = ext && !base.toLowerCase().endsWith(`.${ext}`) ? `${base}.${ext}` : base;
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      notifyError("Unable to download asset", err, venue.baseUrl);
+    } finally {
+      setDownloading(false);
+    }
+  };
   // Collapsed by default only for a genuine invokable operation — a template
   // that merely names a transition op (e.g. "goaltree") isn't one.
   const defaultValue = hasOperationFields ? undefined : "metadata";
@@ -412,11 +453,15 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
                     )}
                     {contentURL && (
                       <div className="flex flex-row flex-wrap items-center gap-2 my-2">
-                        <Button asChild variant="outline" size="sm" className="gap-1.5 text-muted-foreground">
-                          <Link href={contentURL} download>
-                            <Download size={14} />
-                            Download
-                          </Link>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 text-muted-foreground"
+                          onClick={handleDownload}
+                          disabled={downloading}
+                        >
+                          {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                          Download
                         </Button>
                         {contentType == "application/json" && <JsonViewer assetId={asset.id} venue={venue} />}
                         {XML_CONTENT_TYPES.includes(contentType ?? "") && <XmlViewer assetId={asset.id} venue={venue} />}
