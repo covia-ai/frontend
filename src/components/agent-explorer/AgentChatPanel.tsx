@@ -55,6 +55,7 @@ import type { AgentExplorerController } from "@/hooks/use-agent-explorer";
 import type { Session } from "@/config/types";
 import { defaultSessionTitle, formatSessionLabel } from "@/lib/agent-sessions";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
+import { cn, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
 
 export function AgentChatPanel({
   controller,
@@ -423,7 +424,12 @@ export function AgentChatPanel({
                     send();
                   }
                 }}
-                className="text-sm"
+                // disabled:opacity-100: the placeholder carries the reason
+                // it's disabled (e.g. "SUSPENDED — cannot send") — Input's
+                // default disabled:opacity-50 would fade that out further
+                // on top of the already-dim SUGGESTION_PLACEHOLDER_CLASS
+                // right when it matters most to read.
+                className={cn("text-sm disabled:opacity-100", SUGGESTION_PLACEHOLDER_CLASS)}
                 disabled={sending || !canSend}
               />
               <Tooltip>

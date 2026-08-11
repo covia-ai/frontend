@@ -9,6 +9,14 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// Chat/prompt-style inputs (AIPrompt, AgentChatPanel's composer) want their
+// placeholder to read as a soft suggestion, not full-strength body text —
+// shadcn's Input/Textarea default to placeholder:text-muted-foreground at
+// full opacity, which (especially against these components' very dark
+// backgrounds) looks as prominent as real typed text. Dial it down via a
+// call-site override rather than editing the shared ui/ primitives.
+export const SUGGESTION_PLACEHOLDER_CLASS = "placeholder:text-muted-foreground/60"
+
 export function getLicenseUrl(licenseName : string) {
   if(licenseName.trim() ==  "CC BY 4.0")
     return "https://creativecommons.org/licenses/by/4.0/"

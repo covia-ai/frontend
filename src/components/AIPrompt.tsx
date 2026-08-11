@@ -34,7 +34,7 @@ import { normalizeAgentEntries } from "@/lib/agent-list";
 import { AgentStatus } from "@covia/covia-sdk";
 import { useRouter } from "next/navigation";
 import { PageHeading } from "./PageHeading";
-import { gtmEvent } from "@/lib/utils";
+import { cn, gtmEvent, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { useDeviceKeySignIn } from "@/hooks/use-device-key-signin";
 import { DeviceKeyDialog } from "@/components/DeviceKeyDialog";
@@ -335,7 +335,10 @@ export const AIPrompt = () => {
         <Card className="w-full max-w-4xl mt-6 gap-1 p-3">
           <Textarea
             placeholder={promptFocused ? '' : animatedPlaceholder}
-            className="min-h-12 resize-none border-none bg-transparent p-0 shadow-none placeholder:text-muted-foreground focus-visible:ring-0 dark:bg-transparent"
+            className={cn(
+              "min-h-12 resize-none border-none bg-transparent p-0 shadow-none focus-visible:ring-0 dark:bg-transparent",
+              SUGGESTION_PLACEHOLDER_CLASS,
+            )}
             aria-label="prompt"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
