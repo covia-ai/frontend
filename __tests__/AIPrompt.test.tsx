@@ -21,6 +21,36 @@ jest.mock('@/hooks/use-authenticated-venue', () => ({
   useAuthenticatedVenue: () => mockUseAuthenticatedVenue(),
 }));
 
+// Every existing test below exercises the signed-in dispatch path, so this
+// defaults to authenticated — only the sign-in-gate suite flips it to false.
+const mockUseIsAuthenticated = jest.fn();
+jest.mock('@/hooks/use-auth', () => ({
+  useIsAuthenticated: () => mockUseIsAuthenticated(),
+}));
+
+// Stubbed out rather than exercised for real: the sign-in flow itself
+// (device key generation, venue probing) is use-device-key-signin's own
+// test surface. Here we only need to observe whether AIPrompt asked it to
+// open.
+const mockOpenSignInDialog = jest.fn();
+jest.mock('@/hooks/use-device-key-signin', () => ({
+  useDeviceKeySignIn: () => ({
+    dialogOpen: false, setDialogOpen: jest.fn(), openDialog: mockOpenSignInDialog,
+    step: 'choose', setStep: jest.fn(),
+    deviceKey: null, deviceKeyDid: null, isExisting: false, pastedKey: '', keyError: null, copied: false,
+    checking: false, authError: null, storedKeys: [],
+    handleGenerate: jest.fn(), handleProvideKey: jest.fn(), handlePastedKeyChange: jest.fn(),
+    handleSubmitProvidedKey: jest.fn(), handleCopy: jest.fn(), handleContinue: jest.fn(),
+    handleUseStoredKey: jest.fn(), handleUseDifferentKey: jest.fn(),
+  }),
+}));
+
+beforeEach(() => {
+  mockUseIsAuthenticated.mockReset();
+  mockUseIsAuthenticated.mockReturnValue(true);
+  mockOpenSignInDialog.mockReset();
+});
+
 // Mirrors the real venue/src/main/resources/agent-templates/skilled.json —
 // note it carries its own `model`, which proceedWithKey must never forward
 // (a model pinned for one provider is meaningless once llmOperation is
@@ -448,5 +478,31 @@ describe('AIPrompt — chat outcome surfacing', () => {
         description: 'venue unreachable',
       }));
     });
+  });
+});
+
+describe('AIPrompt — sign-in gate', () => {
+  beforeEach(() => {
+    mockUseAuthenticatedVenue.mockReset();
+  });
+
+  it('opens the sign-in dialog instead of dispatching when signed out', async () => {
+    const venue = makeVenue({ existingAgents: ['assistant'] });
+    mockUseAuthenticatedVenue.mockReturnValue(venue);
+    mockUseIsAuthenticated.mockReturnValue(false);
+    const user = userEvent.setup();
+
+    render(<AIPrompt />);
+    await user.type(screen.getByLabelText('prompt'), 'Do something useful');
+    await user.click(screen.getByTestId('chat-button'));
+
+    await waitFor(() => {
+      expect(mockOpenSignInDialog).toHaveBeenCalledTimes(1);
+    });
+    // The gate runs before any dispatch decision — no chat/create, no
+    // secrets lookup for an LLM key.
+    expect(venue.agents.chat).not.toHaveBeenCalled();
+    expect(venue.agents.create).not.toHaveBeenCalled();
+    expect(venue.secrets.list).not.toHaveBeenCalled();
   });
 });

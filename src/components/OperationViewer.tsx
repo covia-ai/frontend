@@ -9,9 +9,6 @@ import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { MetadataViewer } from "@/components/MetadataViewer";
 import { OperationInputForm } from "@/components/OperationInputForm";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
-import { FileJson } from "lucide-react";
 import { useOperationAsset } from "@/hooks/use-operation-asset";
 import { useOperationInput } from "@/hooks/use-operation-input";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
@@ -19,8 +16,7 @@ import {
   validateOperationInput,
   type OperationInputSchema,
 } from "@/lib/operation-input";
-import { cn, gtmEvent } from "@/lib/utils";
-import { JSON_EDITOR_DIALOG_CLASS, JSON_EDITOR_MAX_WIDTH } from "@/lib/dialog-sizes";
+import { gtmEvent } from "@/lib/utils";
 
 const DiagramViewer = dynamic(
   () =>
@@ -33,11 +29,6 @@ const DiagramViewer = dynamic(
       <div className="w-full h-100 animate-pulse rounded-md bg-muted" />
     ),
   },
-);
-
-const ThemedJsonEditor = dynamic(
-  () => import("@/components/ThemedJsonEditor").then((module) => module.ThemedJsonEditor),
-  { ssr: false },
 );
 
 type OperationViewerProps = {
@@ -134,30 +125,10 @@ export function OperationViewer({
         {asset && <MetadataViewer asset={asset} venue={venue} />}
         {asset?.metadata?.operation && (
           <>
-            <div className="w-full flex justify-end mb-1">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground">
-                    <FileJson size={14} />
-                    View Schema
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className={cn(JSON_EDITOR_DIALOG_CLASS, "content-start overflow-y-auto")}>
-                  <DialogTitle>Operation Schema</DialogTitle>
-                  <ThemedJsonEditor
-                    data={{
-                      input: asset.metadata.operation.input,
-                      output: asset.metadata.operation.output,
-                    }}
-                    rootName="schema"
-                    maxWidth={JSON_EDITOR_MAX_WIDTH}
-                  />
-                </DialogContent>
-              </Dialog>
-            </div>
             {inputController.ready ? (
               <OperationInputForm
                 schema={schema}
+                outputSchema={asset.metadata.operation.output}
                 controller={inputController}
                 errorMessage={invocationError}
                 loading={loading}
