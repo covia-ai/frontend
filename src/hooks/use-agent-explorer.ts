@@ -9,6 +9,7 @@ import {
 } from "react";
 import {
   AgentStatus,
+  NotFoundError,
   type Agent,
   type ChatSession,
 } from "@covia/covia-sdk";
@@ -124,7 +125,20 @@ export function useAgentExplorer(initialAgentId?: string) {
           setDetailError(false);
         })
         .catch((error: unknown) => {
-          if (!stillCurrent() || !surfaceErrors) return;
+          if (!stillCurrent()) return;
+          if (error instanceof NotFoundError) {
+            // This agentId doesn't exist on the currently connected venue —
+            // most commonly because the venue was switched while this agent
+            // was open (every agent belongs to one venue's own lattice).
+            // That's not a failure to report; just fall back to the
+            // explorer's list view, which will auto-select whatever the new
+            // venue actually has.
+            setSelectedAgentId(null);
+            setSelectedAgentDetail(null);
+            setAgentHandle(null);
+            return;
+          }
+          if (!surfaceErrors) return;
           const { reason, jobHref } = jobFailure(error, venue?.venueId);
           notifyError("Unable to load agent details", reason, venue?.baseUrl, jobHref);
           setSelectedAgentDetail(null);
