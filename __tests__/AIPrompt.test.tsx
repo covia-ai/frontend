@@ -80,6 +80,7 @@ function makeVenue(overrides: {
     agents: {
       list: jest.fn().mockResolvedValue({ agents }),
       create: jest.fn().mockResolvedValue({ agentId: 'assistant', status: 'active', created: true }),
+      delete: jest.fn().mockResolvedValue({ agentId: 'assistant', status: 'TERMINATED', removed: true }),
       chat: jest.fn().mockResolvedValue({ agentId: 'assistant', sessionId: 's-1', response: 'Reply text' }),
       resume: jest.fn().mockResolvedValue({ agentId: 'assistant', status: 'SLEEPING' }),
     },
@@ -186,10 +187,16 @@ describe('AIPrompt — default agent reuse vs creation', () => {
     await user.click(screen.getByTestId('chat-button'));
 
     await waitFor(() => {
+      // The venue no longer accepts create's overwrite flag — a TERMINATED
+      // slot must be cleared with an explicit delete(remove=true) first.
+      expect(venue.agents.delete).toHaveBeenCalledWith('assistant', true);
+    });
+    await waitFor(() => {
       expect(venue.agents.create).toHaveBeenCalledWith(
-        expect.objectContaining({ agentId: 'assistant', overwrite: true }),
+        expect.objectContaining({ agentId: 'assistant' }),
       );
     });
+    expect(venue.agents.create.mock.calls[0][0]).not.toHaveProperty('overwrite');
     expect(venue.agents.resume).not.toHaveBeenCalled();
     await waitFor(() => {
       expect(venue.agents.chat).toHaveBeenCalledWith(
@@ -236,7 +243,6 @@ describe('AIPrompt — default agent reuse vs creation', () => {
     await waitFor(() => {
       expect(venue.agents.create).toHaveBeenCalledWith({
         agentId: 'assistant',
-        overwrite: true,
         config: {
           skills: SKILLED_TEMPLATE.skills,
           tools: SKILLED_TEMPLATE.tools,
@@ -426,10 +432,11 @@ describe('AIPrompt — agent picker', () => {
       expect(venue.agents.create).toHaveBeenCalledWith(
         expect.objectContaining({
           agentId: expect.stringMatching(/^workspace-agent-/),
-          overwrite: true,
         }),
       );
     });
+    // A freshly minted agentId can't already exist — nothing to clear first.
+    expect(venue.agents.delete).not.toHaveBeenCalled();
     const createdAgentId = venue.agents.create.mock.calls[0][0].agentId;
     await waitFor(() => {
       expect(venue.agents.chat).toHaveBeenCalledWith(

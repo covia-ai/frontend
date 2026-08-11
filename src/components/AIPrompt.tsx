@@ -198,13 +198,18 @@ export const AIPrompt = () => {
       }
       const template = templateRead.value as Omit<AgentTemplate, "key">;
 
+      // The venue no longer accepts agents.create's overwrite flag — a
+      // TERMINATED slot (the only occupied state this path ever runs
+      // against, see callers below) must be cleared with an explicit
+      // delete(remove=true) before recreating. A fresh agentId has nothing
+      // to clear.
+      const { agents: existingAgents } = await venue.agents.list();
+      if (normalizeAgentEntries(existingAgents).some((a) => a.agentId === agentId)) {
+        await venue.agents.delete(agentId, true);
+      }
+
       await venue.agents.create({
         agentId,
-        // overwrite:true only matters when the slot is occupied — the venue
-        // allows that solely for a TERMINATED agent (recreates it fresh).
-        // This path only runs when the target is absent or TERMINATED, so
-        // it's always safe here.
-        overwrite: true,
         config: {
           ...(template.skills?.length ? { skills: template.skills } : {}),
           ...(template.tools?.length ? { tools: template.tools } : {}),
