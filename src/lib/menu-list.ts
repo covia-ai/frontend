@@ -36,11 +36,6 @@ export function getMenuList(): Group[] {
         groupLabel: "Build",
         menus: [
           {
-            href: "/workspace",
-            label: "Workspace",
-            icon: FolderOpen
-          },
-          {
             href: "/assets",
             label: "Assets",
             icon: Database,
@@ -78,6 +73,11 @@ export function getMenuList(): Group[] {
             href: "/jobs",
             label: "Jobs",
             icon: User
+          },
+          {
+            href: "/workspace",
+            label: "Workspace",
+            icon: FolderOpen
           },
           {
             href: "/inbox",

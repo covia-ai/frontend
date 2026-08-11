@@ -65,11 +65,9 @@ export function WorkspaceExplorer() {
           loading={explorer.valueLoading}
           error={explorer.valueError}
           editedData={explorer.editedData}
-          editMode={explorer.editMode}
           isAuthenticated={explorer.isAuthenticated}
           pendingMutation={explorer.pendingMutation}
           onEditedDataChange={explorer.setEditedData}
-          onEditModeChange={explorer.setEditMode}
           onSave={explorer.save}
           onDelete={explorer.remove}
         />

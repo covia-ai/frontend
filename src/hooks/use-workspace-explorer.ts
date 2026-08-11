@@ -6,6 +6,7 @@ import { jobFailure, notifyError, notifySuccess } from "@/lib/notify";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { useLatestQuery } from "@/hooks/use-latest-query";
+import { ROOT_NAMESPACES } from "@/lib/workspace-namespaces";
 
 export type WorkspaceEntry = {
   key: string;
@@ -65,6 +66,19 @@ export function parseWorkspaceInput(input: string): unknown {
   }
 }
 
+// The backend only reports root namespaces that already have data under
+// them. Every venue supports the full fixed set regardless, so the root
+// listing always shows all of them — with any extra keys the backend does
+// report (a namespace not in the fixed set) appended after.
+function withFixedRootNamespaces(keys: string[]): WorkspaceEntry[] {
+  const known = new Set(ROOT_NAMESPACES.map((n) => n.key));
+  const extras = keys.filter((key) => !known.has(key));
+  return [
+    ...ROOT_NAMESPACES.map(({ key }) => ({ key })),
+    ...extras.map((key) => ({ key })),
+  ];
+}
+
 function workspaceValue(result: WorkspaceReadResult): WorkspaceValue {
   const value = result.value;
   const inferredType = Array.isArray(value)
@@ -102,7 +116,6 @@ export function useWorkspaceExplorer() {
   const [currentPath, setCurrentPath] = useState("/");
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [editedData, setEditedData] = useState<unknown>(null);
-  const [editMode, setEditMode] = useState(false);
   const [pendingMutation, setPendingMutation] =
     useState<WorkspaceMutation>(null);
 
@@ -124,7 +137,6 @@ export function useWorkspaceExplorer() {
     selectedPathRef.current = null;
     setSelectedPath(null);
     setEditedData(null);
-    setEditMode(false);
     resetValue();
   }, [invalidateMutation, resetValue]);
 
@@ -141,7 +153,11 @@ export function useWorkspaceExplorer() {
       await runListing(
         async () => {
           const result = await venue.workspace.list(normalizedPath);
-          listed = (result.keys ?? []).map((key) => ({ key }));
+          const keys = result.keys ?? [];
+          listed =
+            normalizedPath === "/"
+              ? withFixedRootNamespaces(keys)
+              : keys.map((key) => ({ key }));
           return listed;
         },
         { clear: true },
@@ -171,7 +187,6 @@ export function useWorkspaceExplorer() {
       selectedPathRef.current = path;
       setSelectedPath(path);
       setEditedData(null);
-      setEditMode(false);
       void loadValue(path);
     },
     [invalidateMutation, loadValue],
@@ -198,7 +213,6 @@ export function useWorkspaceExplorer() {
     selectedPathRef.current = null;
     setSelectedPath(null);
     setEditedData(null);
-    setEditMode(false);
     resetValue();
     void loadListing("/").then((listed) => selectFirstEntry("/", listed));
   }, [loadListing, resetValue, selectFirstEntry]);
@@ -358,10 +372,8 @@ export function useWorkspaceExplorer() {
     valueLoading,
     valueError,
     editedData,
-    editMode,
     pendingMutation,
     setEditedData,
-    setEditMode,
     navigateTo,
     selectPath,
     refreshListing,

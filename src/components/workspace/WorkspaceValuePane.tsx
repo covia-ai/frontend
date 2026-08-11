@@ -3,11 +3,9 @@
 import dynamic from "next/dynamic";
 import {
   Database,
-  Eye,
   FileText,
   Loader2,
   Lock,
-  PenLine,
   Trash2,
 } from "lucide-react";
 import {
@@ -45,11 +43,9 @@ type WorkspaceValuePaneProps = {
   loading: boolean;
   error: string | null;
   editedData: unknown;
-  editMode: boolean;
   isAuthenticated: boolean;
   pendingMutation: WorkspaceMutation;
   onEditedDataChange: (value: unknown) => void;
-  onEditModeChange: (editing: boolean) => void;
   onSave: (value?: unknown) => Promise<boolean>;
   onDelete: () => Promise<boolean>;
 };
@@ -60,22 +56,12 @@ export function WorkspaceValuePane({
   loading,
   error,
   editedData,
-  editMode,
   isAuthenticated,
   pendingMutation,
   onEditedDataChange,
-  onEditModeChange,
   onSave,
   onDelete,
 }: WorkspaceValuePaneProps) {
-  // Edits autosave as they happen (see onChange/onBlur below), so leaving
-  // edit mode just flushes whatever hasn't committed yet — there's nothing
-  // to discard, unlike a traditional cancel.
-  const exitEditMode = async () => {
-    await onSave();
-    onEditModeChange(false);
-  };
-
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -128,38 +114,6 @@ export function WorkspaceValuePane({
         <div className="ml-auto flex items-center gap-1">
           {canMutate ? (
             <>
-              {!editMode ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => onEditModeChange(true)}
-                      aria-label="Edit"
-                    >
-                      <PenLine size={14} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Edit</TooltipContent>
-                </Tooltip>
-              ) : (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => void exitEditMode()}
-                      disabled={pendingMutation === "save"}
-                      aria-label={pendingMutation === "save" ? "Saving" : "View"}
-                    >
-                      <Eye size={14} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {pendingMutation === "save" ? "Saving..." : "View"}
-                  </TooltipContent>
-                </Tooltip>
-              )}
               <AlertDialog>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -221,7 +175,7 @@ export function WorkspaceValuePane({
         {isObject ? (
           <ThemedJsonEditor
             data={editedData as object}
-            editable={editMode}
+            editable={canMutate}
             rootName={selectedPath.split("/").pop() || "data"}
             collapse={2}
             onChange={(value) => {
@@ -236,7 +190,7 @@ export function WorkspaceValuePane({
             <div className="text-xs uppercase tracking-wider text-muted-foreground">
               Value
             </div>
-            {editMode ? (
+            {canMutate ? (
               <Textarea
                 value={
                   typeof editedData === "string"

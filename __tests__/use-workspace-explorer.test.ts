@@ -57,7 +57,10 @@ describe("useWorkspaceExplorer", () => {
     const { result } = renderHook(() => useWorkspaceExplorer());
 
     await waitFor(() => expect(result.current.listingLoading).toBe(false));
-    expect(result.current.selectedPath).toBe("root");
+    // Root always shows the fixed namespace set first (see
+    // withFixedRootNamespaces) — "j" (Jobs) leads regardless of what the
+    // backend's own listing reports.
+    expect(result.current.selectedPath).toBe("j");
   });
 
   it("auto-selects the first entry after navigating into a directory", async () => {
@@ -111,7 +114,9 @@ describe("useWorkspaceExplorer", () => {
     });
     const { result } = renderHook(() => useWorkspaceExplorer());
 
-    await waitFor(() => expect(result.current.entries).toEqual([{ key: "root" }]));
+    // Root's fixed namespace entries aren't what this test is about — just
+    // wait for the initial load to settle before exercising the race.
+    await waitFor(() => expect(result.current.listingLoading).toBe(false));
     act(() => result.current.navigateTo("old"));
     act(() => result.current.navigateTo("new"));
     await waitFor(() =>

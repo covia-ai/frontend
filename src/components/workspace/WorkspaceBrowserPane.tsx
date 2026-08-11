@@ -15,6 +15,7 @@ import {
   type WorkspaceEntry,
   type WorkspaceMutation,
 } from "@/hooks/use-workspace-explorer";
+import { ROOT_NAMESPACE_LABELS } from "@/lib/workspace-namespaces";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -22,19 +23,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 // Root-level lattice namespace keys (see covia/venue Namespace.java) have
 // fixed meanings — only the top segment, nested keys under it (job ids,
 // agent ids, secret names, ...) are real user data and stay as typed.
-const ROOT_LABELS: Record<string, string> = {
-  j: "Jobs",
-  g: "Agents",
-  s: "Secrets",
-  a: "Assets",
-  o: "Operations",
-  h: "Inbox",
-  w: "Workspace",
-  meta: "Metadata",
-};
-
 function labelForSegment(segment: string, index: number): string {
-  return index === 0 ? ROOT_LABELS[segment] ?? segment : segment;
+  return index === 0 ? ROOT_NAMESPACE_LABELS[segment] ?? segment : segment;
 }
 
 type WorkspaceBrowserPaneProps = {
