@@ -3,9 +3,10 @@ import type { AgentDetail, Session } from "@/config/types";
 import type { PendingChat } from "@/hooks/use-pending-chats";
 import {
   describeToolTurn,
+  groupTranscript,
   messageContentToString,
 } from "@/lib/agent-turns";
-import { AgentToolTurn } from "@/components/AgentToolTurn";
+import { AgentToolTurnGroup } from "@/components/AgentToolTurn";
 
 type AgentTranscriptProps = {
   agent: AgentDetail;
@@ -45,19 +46,25 @@ export function AgentTranscript({
           )}
         </div>
       )}
-      {session?.conversation.map((message, index) => {
-        const isUser = message.role === "user";
-        const isAssistant = message.role === "assistant";
-        if (!isUser && !isAssistant) {
+      {session?.conversation && groupTranscript(session.conversation).map((item) => {
+        if (item.kind === "toolGroup") {
           return (
-            <AgentToolTurn
-              key={index}
-              role={message.role}
-              tool={describeToolTurn(message)}
-              ts={message.ts}
+            <AgentToolTurnGroup
+              key={item.index}
+              turns={item.messages.map((message) => ({
+                role: message.role,
+                tool: describeToolTurn(message),
+                ts: message.ts,
+              }))}
             />
           );
         }
+
+        const { message, index } = item;
+        const isUser = message.role === "user";
+        const isAssistant = message.role === "assistant";
+        const hasTaskLabel = isUser && message.source === "request";
+        const text = messageContentToString(message.content);
 
         const time = message.ts
           ? new Date(message.ts).toLocaleTimeString()
@@ -81,7 +88,7 @@ export function AgentTranscript({
                   : "bg-muted text-foreground"
               }`}
             >
-              {isUser && message.source === "request" && (
+              {hasTaskLabel && (
                 <div
                   data-testid="turn-source-label"
                   className="text-[10px] font-semibold uppercase tracking-wide opacity-70 mb-1"
@@ -89,7 +96,7 @@ export function AgentTranscript({
                   task
                 </div>
               )}
-              {messageContentToString(message.content)}
+              {text}
             </div>
           </div>
         );

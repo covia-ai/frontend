@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { AgentToolTurn } from '@/components/AgentToolTurn';
+import { AgentToolTurn, AgentToolTurnGroup } from '@/components/AgentToolTurn';
 
 describe('AgentToolTurn', () => {
   it('hides a successful result until expanded', async () => {
@@ -37,5 +37,36 @@ describe('AgentToolTurn', () => {
     const toggle = screen.getByTestId('tool-turn-toggle');
     expect(toggle).toHaveTextContent('tool · auth_whoami');
     expect(toggle.className).not.toMatch(/uppercase/);
+  });
+});
+
+describe('AgentToolTurnGroup', () => {
+  const turns = [
+    { role: 'tool', tool: { name: 'skill_load', text: 'ok', isError: false } },
+    { role: 'tool', tool: { name: 'covia_list', text: 'ok', isError: false } },
+    { role: 'tool', tool: { name: 'covia_list', text: 'ok', isError: false } },
+  ];
+
+  it('shows only the first call and a "+N more" toggle for the rest', () => {
+    render(<AgentToolTurnGroup turns={turns} />);
+    expect(screen.getByText('tool · skill_load')).toBeInTheDocument();
+    expect(screen.queryAllByText('tool · covia_list')).toHaveLength(0);
+    expect(screen.getByTestId('tool-group-toggle')).toHaveTextContent('+2 more tool calls');
+  });
+
+  it('reveals the rest on click, and collapses them again on a second click', async () => {
+    render(<AgentToolTurnGroup turns={turns} />);
+    await userEvent.click(screen.getByTestId('tool-group-toggle'));
+    expect(screen.getAllByText('tool · covia_list')).toHaveLength(2);
+    expect(screen.getByTestId('tool-group-toggle')).toHaveTextContent('Show less');
+
+    await userEvent.click(screen.getByTestId('tool-group-toggle'));
+    expect(screen.queryAllByText('tool · covia_list')).toHaveLength(0);
+  });
+
+  it('renders a single-call group with no toggle', () => {
+    render(<AgentToolTurnGroup turns={[turns[0]]} />);
+    expect(screen.getByText('tool · skill_load')).toBeInTheDocument();
+    expect(screen.queryByTestId('tool-group-toggle')).not.toBeInTheDocument();
   });
 });

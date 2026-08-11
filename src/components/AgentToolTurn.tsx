@@ -58,3 +58,40 @@ export function AgentToolTurn({ role, tool, ts }: AgentToolTurnProps) {
     </div>
   );
 }
+
+interface AgentToolTurnGroupProps {
+  turns: AgentToolTurnProps[];
+}
+
+// A run of consecutive tool calls (e.g. skill_load, then two covia_list
+// calls). Only the first renders at full height; the rest sit behind a
+// "+N more" toggle so a burst of tool activity doesn't crowd out the actual
+// conversation around it.
+export function AgentToolTurnGroup({ turns }: AgentToolTurnGroupProps) {
+  const [expanded, setExpanded] = useState(false);
+  const [first, ...rest] = turns;
+
+  if (!first) return null;
+
+  return (
+    <div className="space-y-1">
+      <AgentToolTurn {...first} />
+      {rest.length > 0 && (
+        <div className="flex justify-start">
+          <button
+            type="button"
+            data-testid="tool-group-toggle"
+            aria-expanded={expanded}
+            onClick={() => setExpanded((e) => !e)}
+            className="flex items-center gap-1 pl-3 text-xs text-muted-foreground opacity-70 hover:opacity-100"
+          >
+            {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+            {expanded ? "Show less" : `+${rest.length} more tool call${rest.length === 1 ? "" : "s"}`}
+          </button>
+        </div>
+      )}
+      {expanded &&
+        rest.map((turn, i) => <AgentToolTurn key={i} {...turn} />)}
+    </div>
+  );
+}

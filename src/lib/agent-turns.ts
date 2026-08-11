@@ -34,6 +34,44 @@ export function messageContentToString(c: unknown): string {
   return JSON.stringify(c, null, 2);
 }
 
+// A run of consecutive tool/system turns, as they land in `conversation` —
+// e.g. skill_load then two covia_list calls back to back. Grouped so the
+// transcript can show the first and collapse the rest behind a toggle
+// instead of listing every call at full height.
+export type TranscriptItem<M> =
+  | { kind: "message"; message: M; index: number }
+  | { kind: "toolGroup"; messages: M[]; index: number };
+
+type Groupable = { role?: string; content?: unknown; source?: unknown };
+
+export function groupTranscript<M extends Groupable>(
+  conversation: M[],
+): TranscriptItem<M>[] {
+  const items: TranscriptItem<M>[] = [];
+  for (let index = 0; index < conversation.length; index++) {
+    const message = conversation[index];
+    const isUserOrAssistant = message.role === "user" || message.role === "assistant";
+
+    if (isUserOrAssistant) {
+      // An assistant turn that only decided to call a tool carries no text —
+      // it renders nothing, so it must not split an otherwise-consecutive
+      // run of tool calls into separate groups.
+      const hasTaskLabel = message.role === "user" && message.source === "request";
+      if (!messageContentToString(message.content).trim() && !hasTaskLabel) continue;
+      items.push({ kind: "message", message, index });
+      continue;
+    }
+
+    const last = items[items.length - 1];
+    if (last?.kind === "toolGroup") {
+      last.messages.push(message);
+    } else {
+      items.push({ kind: "toolGroup", messages: [message], index });
+    }
+  }
+  return items;
+}
+
 export type ToolTurn = { name?: string; text: string; isError: boolean };
 
 // Present a tool/system turn: its display text and whether it was a failure.
