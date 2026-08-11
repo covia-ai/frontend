@@ -59,12 +59,12 @@ export function CollapseMenuButton({
       className="w-full"
     >
       <CollapsibleTrigger
-        className="[&[data-state=open]>div>div>svg]:rotate-180 mb-1"
+        className="[&[data-state=open]>div>div>svg]:rotate-180 mb-0.5"
         asChild
       >
         <Button
           variant="ghost"
-          className="w-full justify-start h-10"
+          className="w-full justify-start h-8"
         >
           <div className="w-full items-center flex justify-between">
             <div className="flex items-center space-x-2">
@@ -107,7 +107,7 @@ export function CollapseMenuButton({
                 ? "secondary"
                 : "ghost"
             }
-            className="w-full justify-start h-10 mb-1"
+            className="w-full justify-start h-8 mb-0.5"
             asChild
           >
             <Link href={href}>
@@ -137,7 +137,7 @@ export function CollapseMenuButton({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="w-full justify-start h-10 mb-1"
+                className="w-full justify-start h-8 mb-0.5"
               >
                 <div className="w-full items-center flex justify-between">
                   <div className="flex items-center">
