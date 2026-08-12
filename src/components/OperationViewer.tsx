@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
 import { AssetHeader } from "@/components/AssetHeader";
 import { AssetLoadState } from "@/components/AssetLoadState";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
@@ -17,6 +16,7 @@ import {
   type OperationInputSchema,
 } from "@/lib/operation-input";
 import { gtmEvent } from "@/lib/utils";
+import { useJobExecution } from "@/hooks/use-job-execution";
 
 const DiagramViewer = dynamic(
   () =>
@@ -46,7 +46,6 @@ export function OperationViewer({
   venueId,
   onNotFound,
 }: OperationViewerProps) {
-  const router = useRouter();
   const { venue, isAuthenticated } = useResolvedVenueContext(venueId);
   const { asset, errorMessage: loadError, notFound, loading: assetLoading } = useOperationAsset(
     venue,
@@ -66,7 +65,7 @@ export function OperationViewer({
   );
   const inputController = useOperationInput(venue?.venueId, assetId, schema);
   const [invocationError, setInvocationError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { execute: executeJob, running: loading } = useJobExecution(venue);
   const [confirmationRequired, setConfirmationRequired] = useState(false);
 
   const runOperation = async () => {
@@ -75,27 +74,12 @@ export function OperationViewer({
       return;
     }
 
-    setLoading(true);
-    setInvocationError("");
     setConfirmationRequired(false);
-    try {
-      const response = await asset.invoke(inputController.input);
-      if (response?.id) {
-        router.push(
-          `/venues/${encodeURIComponent(venue.venueId)}/jobs/${response.id}`,
-        );
-      } else {
-        setInvocationError(
-          "The operation completed without returning a job ID",
-        );
-      }
-    } catch (error: unknown) {
-      setInvocationError(
-        error instanceof Error ? error.message : "Unable to run operation",
-      );
-    } finally {
-      setLoading(false);
-    }
+    await executeJob({
+      action: () => asset.invoke(inputController.input),
+      failureTitle: "Unable to run operation",
+      onError: setInvocationError,
+    });
   };
 
   const requestRun = (requiredKeys: string[]) => {

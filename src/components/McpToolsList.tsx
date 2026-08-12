@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useResolvedVenue } from "@/hooks/use-resolved-venue";
-import { useRouter } from "next/navigation";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +11,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
 import { Copy, Play, Wrench } from "lucide-react";
-import { jobFailure, notifyError, notifyWarning } from "@/lib/notify";
+import { notifyError, notifyWarning } from "@/lib/notify";
+import { useJobExecution } from "@/hooks/use-job-execution";
 
 interface McpTool {
   name: string;
@@ -30,8 +30,7 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
   const [loading, setLoading] = useState(true);
   const [selectedTool, setSelectedTool] = useState<McpTool | null>(null);
   const [toolArgs, setToolArgs] = useState("{}");
-  const [running, setRunning] = useState(false);
-  const router = useRouter();
+  const { execute: executeJob, running } = useJobExecution(venue);
 
   useEffect(() => {
     if (!venue) return;
@@ -45,7 +44,7 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
       .finally(() => setLoading(false));
   }, [venue]);
 
-  const handleRunTool = () => {
+  const handleRunTool = async () => {
     if (!venue || !selectedTool) return;
     let args: any;
     try {
@@ -54,21 +53,15 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
       notifyWarning("Arguments must be valid JSON");
       return;
     }
-    setRunning(true);
-    venue.operations
-      .run("v/ops/mcp/tools-call", { server: venue.baseUrl, toolName: selectedTool.name, arguments: args })
-      .then((res: any) => {
-        if (res?.id) {
-          router.push(`/venues/${encodeURIComponent(venue.venueId)}/jobs/${res.id}`);
-        } else {
-          notifyWarning("Tool ran but returned no job ID");
-        }
-      })
-      .catch((err) => {
-        const { reason, jobHref } = jobFailure(err, venue.venueId);
-        notifyError("Unable to run tool", reason, venue.baseUrl, jobHref);
-      })
-      .finally(() => setRunning(false));
+    await executeJob({
+      action: () => venue.operations.run("v/ops/mcp/tools-call", {
+        server: venue.baseUrl,
+        toolName: selectedTool.name,
+        arguments: args,
+      }),
+      failureTitle: "Unable to run tool",
+      missingJobMessage: "The tool completed without returning a job ID",
+    });
   };
 
   const mcpUrl = venue ? `${venue.baseUrl}/mcp` : "";

@@ -33,9 +33,9 @@ import {
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { listCatalogOperations, resolveOperationByAddress, type CatalogOp } from "@/lib/operations-catalog";
-import { useRouter } from "next/navigation";
 import { PlayCircle, RefreshCw, Search } from "lucide-react";
 import { notifyError, notifyWarning } from "@/lib/notify";
+import { useJobExecution } from "@/hooks/use-job-execution";
 
 function adapterOf(path: string): string {
   const parts = path.split("/");
@@ -71,8 +71,7 @@ export function OperationsCatalog() {
   const [selectedOp, setSelectedOp] = useState<CatalogOp | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [runInput, setRunInput] = useState("{}");
-  const [running, setRunning] = useState(false);
-  const router = useRouter();
+  const { execute: executeJob, running } = useJobExecution(venue);
 
   useEffect(() => {
     if (!venue) return;
@@ -127,21 +126,14 @@ export function OperationsCatalog() {
       notifyWarning("Input must be valid JSON");
       return;
     }
-    setRunning(true);
-    try {
+    await executeJob({
+      failureTitle: "Unable to run operation",
+      onSuccess: () => setSheetOpen(false),
+      action: async () => {
       const op = await resolveOperationByAddress(venue, selectedOp.path);
-      const res = (await op.invoke(input)) as any;
-      if (res?.id) {
-        setSheetOpen(false);
-        router.push(`/venues/${encodeURIComponent(venue.venueId)}/jobs/${res.id}`);
-      } else {
-        notifyWarning("Operation returned no job ID");
-      }
-    } catch (e: any) {
-      notifyError("Unable to run operation", e, venue.baseUrl);
-    } finally {
-      setRunning(false);
-    }
+        return op.invoke(input);
+      },
+    });
   }
 
   return (
