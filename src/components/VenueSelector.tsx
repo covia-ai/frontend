@@ -20,7 +20,16 @@ export function VenueSelector({ venueId }: { venueId?: string }) {
   const selectVenue = useVenues((state) => state.selectVenue);
   const pathname = usePathname();
   const router = useRouter();
-  const activeVenueId = venueId ?? selectedVenueId;
+  let routeVenueId = venueId;
+  if (routeVenueId) {
+    try {
+      routeVenueId = decodeURIComponent(routeVenueId);
+    } catch {
+      // Leave malformed route values untouched; the venue resolver will
+      // surface the connection error elsewhere.
+    }
+  }
+  const activeVenueId = routeVenueId ?? selectedVenueId;
   const selectedVenue = venues.find(
     (venue) => venue.venueId === activeVenueId,
   );

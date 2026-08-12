@@ -64,4 +64,27 @@ describe("VenueSelector", () => {
     );
     expect(screen.queryByText(venueId)).not.toBeInTheDocument();
   });
+
+  it("matches an encoded route segment to the stored venue DID", () => {
+    const venueId = "did:web:venue-test.covia.ai";
+    mockVenueState = {
+      ...mockVenueState,
+      venues: [
+        {
+          venueId,
+          baseUrl: "https://venue-test.covia.ai",
+          metadata: { name: "Covia Test" },
+        },
+      ],
+    };
+
+    render(<VenueSelector venueId={encodeURIComponent(venueId)} />);
+
+    expect(screen.getByRole("button", { name: "venue" })).toHaveTextContent(
+      "Covia Test",
+    );
+    expect(screen.getByRole("button", { name: "venue" })).not.toHaveTextContent(
+      "Resolving venue…",
+    );
+  });
 });
