@@ -10,6 +10,7 @@ import {
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { resolveOperationByAddress } from "@/lib/operations-catalog";
 import { notifyError, notifySuccess } from "@/lib/notify";
+import { errorMessage, isNotFoundError } from "@/lib/errors";
 
 const POLL_INTERVAL_MS = 1000;
 
@@ -19,14 +20,6 @@ function parseJobMessage(raw: string): unknown {
   } catch {
     return raw;
   }
-}
-
-// Mirrors the notFound check in use-asset-details.ts / use-operation-asset.ts:
-// JobNotFoundError's message ("Job not found: <id>") is told apart from a
-// real failure by matching the message text, since useState/catch here
-// flattens the thrown error to a string.
-function isNotFound(message: string | null): boolean {
-  return !!message && message.toLowerCase().includes("not found");
 }
 
 export function useExecutionLifecycle({
@@ -104,11 +97,7 @@ export function useExecutionLifecycle({
       } catch (fetchError: unknown) {
         if (!ownsLifecycle() || hasLoaded) return;
         setLoading(false);
-        setError(
-          fetchError instanceof Error
-            ? fetchError.message
-            : "Unable to load job",
-        );
+        setError(errorMessage(fetchError, "Unable to load job"));
       } finally {
         pollInFlight = false;
       }
@@ -231,7 +220,7 @@ export function useExecutionLifecycle({
     }
   }, [jobId, message, venue]);
 
-  const notFound = isNotFound(error);
+  const notFound = isNotFoundError(error);
   return {
     venue,
     job,

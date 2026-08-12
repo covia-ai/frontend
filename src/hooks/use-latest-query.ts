@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { errorMessage } from "@/lib/errors";
 
 type QueryState<T> = {
   data: T;
@@ -15,10 +16,6 @@ type QueryLoader<T> = (
 type RunOptions = {
   clear?: boolean;
 };
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 /**
  * Runs async reads with latest-request-wins semantics. Older requests may

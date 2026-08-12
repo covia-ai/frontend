@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Asset, Venue } from "@covia/covia-sdk";
 import { resolveOperationByAddress } from "@/lib/operations-catalog";
+import { errorMessage, isNotFoundError } from "@/lib/errors";
 
 type OperationAssetState = {
   asset?: Asset;
@@ -36,10 +37,8 @@ export function useOperationAsset(
       })
       .catch((error: unknown) => {
         if (!active) return;
-        const message =
-          error instanceof Error ? error.message : "Failed to load asset";
-        const notFound =
-          message.includes("404") || message.toLowerCase().includes("not found");
+        const message = errorMessage(error, "Failed to load asset");
+        const notFound = isNotFoundError(error);
         setState({
           errorMessage: notFound ? "" : message,
           notFound,
