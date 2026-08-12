@@ -124,6 +124,22 @@ describe('listCatalogOperations', () => {
 });
 
 describe('resolveOperationByAddress', () => {
+  it('reuses metadata already loaded by the catalog', async () => {
+    const metadata = { name: 'Agent Info', operation: { id: 'info' } };
+    const { venue, read, run } = venueWithTree({
+      'v/ops': { agent: { info: metadata } },
+    });
+
+    await listCatalogOperations(venue);
+    read.mockClear();
+
+    const op = await resolveOperationByAddress(venue, 'v/ops/agent/info');
+
+    expect(op.metadata).toBe(metadata);
+    expect(read).not.toHaveBeenCalled();
+    expect(run).not.toHaveBeenCalled();
+  });
+
   it('resolves a catalog path job-free and carries the address as the op id', async () => {
     const { venue, read, run } = venueWithTree({
       'v/ops/agent/suspend': { operation: { id: 'suspend' } },

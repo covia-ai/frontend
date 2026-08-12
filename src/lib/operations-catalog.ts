@@ -4,6 +4,11 @@ import { Operation, Venue } from "@covia/covia-sdk";
 // catalog path (e.g. "v/ops/agent/suspend"), not a content hash.
 export type CatalogOp = { path: string; metadata: any };
 
+// The catalog already contains each operation's complete inline metadata.
+// Keep it on the shared authenticated Venue instance so navigating from the
+// list to a detail page does not immediately read the same value again.
+const operationMetadataCache = new WeakMap<Venue, Map<string, any>>();
+
 // Job-free read of a lattice path. `venue.workspace.read` routes through the
 // venue's GET /api/v1/values/read (no Job persisted) and, in the SDK, falls
 // back to the invoke-based covia:read only on pre-0.3 venues that lack the
@@ -58,7 +63,12 @@ export async function listCatalogOperations(
   const bases = ["v/ops", "v/test/ops"];
   if (options.includeUserOps) bases.push("w/ops");
   const trees = await Promise.all(bases.map((base) => readCatalog(venue, base)));
-  return trees.flat();
+  const operations = trees.flat();
+  operationMetadataCache.set(
+    venue,
+    new Map(operations.map((operation) => [operation.path, operation.metadata])),
+  );
+  return operations;
 }
 
 // Resolve an operation from its namespace-explicit URL address:
@@ -69,7 +79,15 @@ export async function resolveOperationByAddress(venue: Venue, address: string): 
   if (address.startsWith("a/")) {
     return (await venue.getAsset(address.slice(2))) as Operation;
   }
-  const meta = await readValue(venue, address);
+  let meta = operationMetadataCache.get(venue)?.get(address);
+  if (!meta) {
+    meta = await readValue(venue, address);
+    if (meta?.operation) {
+      const cache = operationMetadataCache.get(venue) ?? new Map<string, any>();
+      cache.set(address, meta);
+      operationMetadataCache.set(venue, cache);
+    }
+  }
   if (!meta || !meta.operation) {
     throw new Error(`No operation found at ${address}`);
   }
