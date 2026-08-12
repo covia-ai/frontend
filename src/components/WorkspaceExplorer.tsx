@@ -41,10 +41,12 @@ export function WorkspaceExplorer() {
           selectedPath={explorer.selectedPath}
           isAuthenticated={explorer.isAuthenticated}
           pendingMutation={explorer.pendingMutation}
+          pendingEntryPath={explorer.pendingEntryPath}
           onNavigate={explorer.navigateTo}
           onSelect={explorer.selectPath}
           onRefresh={explorer.refreshListing}
           onCreate={explorer.create}
+          onSaveEntry={explorer.saveEntryValue}
         />
       </div>
 
