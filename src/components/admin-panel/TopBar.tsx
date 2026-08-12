@@ -28,7 +28,13 @@ function docsLinkFor(pathname: string): string | undefined {
   return DOCS_LINKS.find(({ test }) => test(pathname))?.href;
 }
 
-export function TopBar(props:any) {
+type TopBarProps = {
+  assetOrJobName?: string;
+  venueName?: string;
+  venueId?: string;
+};
+
+export function TopBar(props: TopBarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const docsHref = docsLinkFor(pathname);
@@ -58,8 +64,8 @@ export function TopBar(props:any) {
               )}
               <HitlIndicator />
               <DarkLightToggle/>
-              <VenueSelector />
-              <ChromeSignInButton/>
+              <VenueSelector venueId={props.venueId} />
+              <ChromeSignInButton venueId={props.venueId}/>
           </div>
         </div>
       </div>

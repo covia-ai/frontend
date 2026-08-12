@@ -121,6 +121,7 @@ export function OperationViewer({
   return (
     <ContentLayout>
       <TopBar
+        venueId={venueId}
         assetOrJobName={asset?.metadata?.name}
         venueName={venue?.metadata.name}
       />
@@ -133,7 +134,7 @@ export function OperationViewer({
         />
 
         {asset && <AssetHeader asset={asset} />}
-        {asset && <MetadataViewer asset={asset} venue={venue} />}
+        {asset && <MetadataViewer asset={asset} venue={venue} isAuthenticated={isAuthenticated} />}
         {asset?.metadata?.operation && (
           <>
             {inputController.ready ? (

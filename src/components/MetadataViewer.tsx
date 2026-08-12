@@ -14,7 +14,6 @@ import { cn, copyDataToClipBoard, formatLabel } from "@/lib/utils";
 import { getAssetKind } from "@/lib/asset-kind";
 import { JSON_EDITOR_DIALOG_CLASS, JSON_EDITOR_MAX_WIDTH } from "@/lib/dialog-sizes";
 import { notifyError } from "@/lib/notify";
-import { useIsAuthenticated } from "@/hooks/use-auth";
 import { CopyAssetDialog } from "./CopyAssetDialog";
 import {
   Accordion,
@@ -39,6 +38,7 @@ const XML_CONTENT_TYPES = ["text/xml", "application/xml"];
 interface MetadataViewerProps {
   asset: Asset;
   venue?: Venue;
+  isAuthenticated?: boolean;
 }
 
 interface MetadataFieldConfig {
@@ -201,8 +201,7 @@ const renderSchemaProperties = (
   );
 };
 
-export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
-  const isAuthenticated = useIsAuthenticated();
+export const MetadataViewer = ({ asset, venue, isAuthenticated = false }: MetadataViewerProps) => {
 
   // Skills and other inline assets carry their body in `content.inline`, with
   // no separate blob — the content endpoint 500s for them. Render the inline

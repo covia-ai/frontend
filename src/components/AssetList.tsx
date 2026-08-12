@@ -11,7 +11,6 @@ import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { Spinner } from '@/components/ui/shadcn-io/spinner';
 import { AssetCard } from "./AssetCard";
 import { PaginationHeader } from "./PaginationHeader";
-import { useVenues } from "@/hooks/use-venues";
 import { useGridPageSize } from "@/hooks/use-grid-page-size";
 import { useLatestQuery } from "@/hooks/use-latest-query";
 import { useClientPagination } from "@/hooks/use-pagination";
@@ -23,6 +22,7 @@ import { FiltersSheet } from "./FiltersSheet";
 import { ListToolbar } from "./ListToolbar";
 import { Input } from "./ui/input";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { VenueResolutionState } from "@/components/VenueResolutionState";
 
 
 interface AssetListProps {
@@ -48,12 +48,13 @@ export function AssetList({ venueId }: AssetListProps = {}) {
   const [searchInput, setSearchInput] = useState(searchParams.get('search') ?? "");
   const pathname = usePathname();
 
-  const { venues } = useVenues();
+  const resolvedVenue = useResolvedVenueContext(venueId);
   const {
     descriptor: venueObj,
     venue,
     isAuthenticated,
-  } = useResolvedVenueContext(venueId);
+  } = resolvedVenue;
+  const venueStatus = resolvedVenue.status ?? (venue ? "ready" : "absent");
   const handleSearchChange = (value: string) => {
     setSearchInput(value);
     if (!value) router.replace(pathname);
@@ -129,37 +130,23 @@ export function AssetList({ venueId }: AssetListProps = {}) {
     resetKey: `${searchInput}\u0000${selectedTags.join("\u0000")}`,
   });
 
-  if(venues.length == 0 ) {
+  if (venueStatus !== "ready") {
      return (
       <ContentLayout>
-      <TopBar venueName={venueObj?.metadata.name}/>
-
-      <div className="flex flex-col items-center justify-center">
-        <div className="flex gap-2 items-center w-full mt-4 justify-end">
-          <div className="relative w-full sm:w-64">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Type keyword to search…"
-              value={searchInput}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="pl-8"
-            />
-          </div>
-        </div>
-      </div>
-      <div className="flex flex-col items-center justify-center w-full h-100 space-y-2">
-            <FileKey size={64} className="text-primary"></FileKey>
-            <div className="text-primary text-lg">Get Started with Assets</div>
-            <div className="text-card-foreground text-sm">Connect to a venue to get started and see the available assets</div>
-
-        </div>
+        <TopBar venueId={venueId} venueName={venueObj?.metadata.name} />
+        <VenueResolutionState
+          status={venueStatus}
+          error={resolvedVenue.error}
+          icon={FileKey}
+          subject="Assets"
+        />
       </ContentLayout>
      )
   }
 
   return (
     <ContentLayout>
-        <TopBar venueName={venueObj?.metadata.name}/>
+        <TopBar venueId={venueId} venueName={venueObj?.metadata.name}/>
   
         <div className="flex flex-col items-center justify-center">
           <ListToolbar

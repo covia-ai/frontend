@@ -87,7 +87,7 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
 
   return (
     <ContentLayout>
-      <TopBar venueName={venue?.metadata.name} />
+      <TopBar venueId={venueId} venueName={venue?.metadata.name} />
 
       <div className="flex flex-col gap-6">
         {/* Header */}

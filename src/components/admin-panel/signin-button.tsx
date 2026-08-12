@@ -9,14 +9,23 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { DeviceKeyDialog } from "@/components/DeviceKeyDialog";
 import { Identicon } from "@/components/Identicon";
 import { useDeviceKeySignIn } from "@/hooks/use-device-key-signin";
-import { useAuthStore, useCurrentAuth } from "@/hooks/use-auth";
+import { useAuthStore } from "@/hooks/use-auth";
 import { useVenues } from "@/hooks/use-venues";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-export function ChromeSignInButton(props: any) {
-  const auth = useCurrentAuth();
+type ChromeSignInButtonProps = {
+  index?: string | number;
+  isOpen?: boolean;
+  venueId?: string;
+};
+
+export function ChromeSignInButton(props: ChromeSignInButtonProps) {
   const logout = useAuthStore((x) => x.logout);
   const selectedVenueId = useVenues((state) => state.selectedVenueId);
+  const activeVenueId = props.venueId ?? selectedVenueId;
+  const auth = useAuthStore((state) =>
+    activeVenueId ? state.authMap[activeVenueId] ?? null : null,
+  );
 
   const {
     dialogOpen, setDialogOpen, openDialog, step, setStep, deviceKey, deviceKeyDid,
@@ -24,7 +33,7 @@ export function ChromeSignInButton(props: any) {
     handleGenerate, handleProvideKey, handlePastedKeyChange,
     handleSubmitProvidedKey, handleCopy, handleContinue,
     handleUseStoredKey, handleUseDifferentKey,
-  } = useDeviceKeySignIn();
+  } = useDeviceKeySignIn({ venueId: props.venueId });
 
   if (!auth) {
     return (
@@ -104,7 +113,7 @@ export function ChromeSignInButton(props: any) {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => {
-                if (selectedVenueId) logout(selectedVenueId);
+                if (activeVenueId) logout(activeVenueId);
               }}
               className="items-start text-center hover:bg-primary-vlight"
             >

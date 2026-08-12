@@ -51,6 +51,28 @@ describe('useDeviceKeySignIn venue validation', () => {
     expect(result.current.dialogOpen).toBe(false);
   });
 
+  it('targets an explicitly scoped venue instead of the global selection', async () => {
+    const scopedVenue = 'did:web:venue-2.example.com';
+    mockProbe.mockResolvedValue({ ok: true });
+    act(() => {
+      useVenues.setState({
+        venues: [
+          ...useVenues.getState().venues,
+          { venueId: scopedVenue, baseUrl: 'https://venue-2.example.com', metadata: { name: 'Venue 2' } },
+        ],
+      });
+    });
+    const { result } = renderHook(() => useDeviceKeySignIn({ venueId: scopedVenue }));
+
+    act(() => useAuthStore.getState().setDeviceKeyHex(KEY));
+    act(() => result.current.openDialog());
+    await act(async () => result.current.handleContinue());
+
+    expect(mockProbe).toHaveBeenCalledWith('https://venue-2.example.com', scopedVenue, KEY);
+    expect(useAuthStore.getState().getAuthForVenue(scopedVenue)).toMatchObject({ privateKeyHex: KEY });
+    expect(useAuthStore.getState().getAuthForVenue(VENUE)).toBeNull();
+  });
+
   it('blocks the sign-in and surfaces the rejection when the venue returns 403', async () => {
     mockProbe.mockResolvedValue({ ok: false, kind: 'rejected', status: 403, message: 'Forbidden' });
     const { result } = renderHook(() => useDeviceKeySignIn());

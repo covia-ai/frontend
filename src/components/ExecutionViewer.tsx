@@ -76,6 +76,7 @@ export function ExecutionViewer({
   return (
     <>
       <TopBar
+        venueId={venueId}
         assetOrJobName={job?.name}
         venueName={venue?.metadata.name}
       />

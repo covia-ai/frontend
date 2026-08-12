@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   connectWithTimeout,
   toVenueDescriptor,
@@ -19,8 +19,16 @@ import { notifyError } from "@/lib/notify";
 // data. Falls back to the globally selected venue only when no
 // `routeVenueId` is given (e.g. the unscoped /assets, /operations, /jobs
 // pages). If the route's venue isn't already known, it's connected to and
-// added to the venues list, mirroring AdaptersList's resolution.
-export function useVenueForRoute(routeVenueId?: string): VenueDescriptor | null {
+// added to the venues list, mirroring AdaptersList's resolution. Returning an
+// explicit state keeps callers from rendering "no venues" while a routed
+// venue is still connecting, or from silently going blank after it fails.
+export type VenueResolution = {
+  descriptor: VenueDescriptor | null;
+  status: "absent" | "connecting" | "ready" | "unreachable";
+  error: string | null;
+};
+
+export function useVenueForRoute(routeVenueId?: string): VenueResolution {
   const venues = useVenues((state) => state.venues);
   const selectedVenueId = useVenues((state) => state.selectedVenueId);
   const addVenue = useVenues((state) => state.addVenue);
@@ -31,6 +39,10 @@ export function useVenueForRoute(routeVenueId?: string): VenueDescriptor | null 
   const authMap = useAuthStore((x) => x.authMap);
   const connecting = useRef(new Set<string>());
   const failed = useRef(new Set<string>());
+  const [failedAttempt, setFailedAttempt] = useState<{
+    key: string;
+    error: string;
+  } | null>(null);
 
   const found = routeVenueId ? venues.find((v) => v.venueId === routeVenueId) : undefined;
   const authData = routeVenueId ? authMap[routeVenueId] : undefined;
@@ -51,6 +63,7 @@ export function useVenueForRoute(routeVenueId?: string): VenueDescriptor | null 
       .catch((err: unknown) => {
         failed.current.add(attemptKey);
         const detail = err instanceof Error ? err.message : String(err);
+        setFailedAttempt({ key: attemptKey, error: detail });
         reportVenueHealth(identifier, { state: "unreachable", detail });
         notifyError("Unable to connect to venue", err, identifier);
       })
@@ -59,6 +72,20 @@ export function useVenueForRoute(routeVenueId?: string): VenueDescriptor | null 
       });
   }, [routeVenueId, found, addVenue, getAuthForVenue, authMap, attemptKey]);
 
-  if (!routeVenueId) return globalVenueObj ?? null;
-  return found ?? null;
+  if (!routeVenueId) {
+    return {
+      descriptor: globalVenueObj ?? null,
+      status: globalVenueObj ? "ready" : "absent",
+      error: null,
+    };
+  }
+  if (found) return { descriptor: found, status: "ready", error: null };
+  if (failedAttempt?.key === attemptKey) {
+    return {
+      descriptor: null,
+      status: "unreachable",
+      error: failedAttempt.error,
+    };
+  }
+  return { descriptor: null, status: "connecting", error: null };
 }

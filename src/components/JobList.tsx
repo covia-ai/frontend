@@ -12,14 +12,13 @@ import { FiltersSheet } from "@/components/FiltersSheet";
 import { ListToolbar } from "@/components/ListToolbar";
 import { StatTile } from "@/components/StatTile";
 import { TONE_STYLES } from "@/lib/status";
-import { useVenues } from "@/hooks/use-venues";
-import { useIsAuthenticated } from "@/hooks/use-auth";
 import { Activity, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2, Clock, Layers } from "lucide-react";
 import { TopBar } from "./admin-panel/TopBar";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { useLatestQuery } from "@/hooks/use-latest-query";
 import { usePageNumber } from "@/hooks/use-pagination";
+import { VenueResolutionState } from "@/components/VenueResolutionState";
 import {
   jobRecordsFromSlice,
   sliceJobWindow,
@@ -74,9 +73,9 @@ export function JobList({ venueId }: JobListProps = {}) {
     run: runRecentQuery,
     reset: resetRecentQuery,
   } = useLatestQuery(EMPTY_JOB_QUERY);
-  const { venues } = useVenues();
-  const isAuthenticated = useIsAuthenticated();
-  const { descriptor: venueObj, venue } = useResolvedVenueContext(venueId);
+  const resolvedVenue = useResolvedVenueContext(venueId);
+  const { descriptor: venueObj, venue, isAuthenticated } = resolvedVenue;
+  const venueStatus = resolvedVenue.status ?? (venue ? "ready" : "absent");
   const router = useRouter();
   const prevVenueId = useRef<string | undefined>(undefined);
 
@@ -276,26 +275,16 @@ export function JobList({ venueId }: JobListProps = {}) {
     return () => clearInterval(id);
   }, [pageRecords, venueObj]);
 
-  if(venues.length == 0)
+  if (venueStatus !== "ready")
     return (
       <ContentLayout>
-      <TopBar />
-        <div className="flex flex-col items-center justify-center  mt-2 bg-background">
-      <div className="flex flex-row w-full  items-center justify-end mt-4 gap-4">
-          <FiltersSheet
-            search={{ value: searchQuery, onChange: setSearchQuery, placeholder: "Search by id, operation, or name..." }}
-            groups={[
-              { label: "Status", options: STATUS_OPTIONS, selected: statusFilter, onChange: setStatusFilter },
-              { label: "Date", options: DATE_OPTIONS, selected: dateFilter, onChange: setDateFilter },
-            ]}
-          />
-      </div>
-  <div className="flex flex-col items-center justify-center w-full h-100 space-y-2">
-          <Activity size={64} className="text-primary"></Activity>
-          <div className="text-primary text-lg">Get Started with Operations</div>
-          <div className="text-card-foreground text-sm">Connect to a venue to get started and see the available operations</div>
-      </div>
-    </div>
+        <TopBar venueId={venueId} venueName={venueObj?.metadata.name} />
+        <VenueResolutionState
+          status={venueStatus}
+          error={resolvedVenue.error}
+          icon={Activity}
+          subject="Jobs"
+        />
       </ContentLayout>
   )
 
@@ -321,7 +310,7 @@ export function JobList({ venueId }: JobListProps = {}) {
     });
   return (
     <ContentLayout >
-      <TopBar venueName={venueObj?.metadata.name}/>
+      <TopBar venueId={venueId} venueName={venueObj?.metadata.name}/>
       <div className="flex flex-col items-center justify-center  mt-2 bg-background">
         <ListToolbar
           className="mt-4"

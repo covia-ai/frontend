@@ -210,7 +210,7 @@ describe('MetadataViewer skill / inline content', () => {
 
     test('shows a locked, disabled button instead when signed out', () => {
       mockAuthenticated = false;
-      render(<MetadataViewer asset={asset({ name: 'Iris Dataset' })} venue={venue} />);
+      render(<MetadataViewer asset={asset({ name: 'Iris Dataset' })} venue={venue} isAuthenticated={mockAuthenticated} />);
 
       const copyBtn = screen.getByRole('button', { name: /copy asset/i });
       expect(copyBtn).toBeDisabled();
@@ -222,7 +222,7 @@ describe('MetadataViewer skill / inline content', () => {
     });
 
     test('opens on a Review Metadata form prepopulated from the source asset', () => {
-      render(<MetadataViewer asset={asset({ name: 'Iris Dataset', creator: 'Ada' })} venue={venue} />);
+      render(<MetadataViewer asset={asset({ name: 'Iris Dataset', creator: 'Ada' })} venue={venue} isAuthenticated={mockAuthenticated} />);
       fireEvent.click(screen.getByRole('button', { name: /copy asset/i }));
 
       expect(screen.getByText('Review Metadata')).toBeInTheDocument();
@@ -234,7 +234,7 @@ describe('MetadataViewer skill / inline content', () => {
       const registerSpy = jest.fn().mockResolvedValue({ id: 'new-asset-id' });
       jest.spyOn(venue.assets, 'register').mockImplementation(registerSpy);
 
-      render(<MetadataViewer asset={asset({ name: 'Iris Dataset' })} venue={venue} />);
+      render(<MetadataViewer asset={asset({ name: 'Iris Dataset' })} venue={venue} isAuthenticated={mockAuthenticated} />);
       fireEvent.click(screen.getByRole('button', { name: /copy asset/i }));
       // Review Metadata (form) -> Edit metadata (JSON review)
       fireEvent.click(screen.getByRole('button', { name: /^review$/i }));

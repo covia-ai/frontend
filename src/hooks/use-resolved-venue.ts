@@ -21,12 +21,15 @@ export type ResolvedVenueContext = {
   venue: Venue | undefined;
   auth: VenueAuth | null;
   isAuthenticated: boolean;
+  status: "absent" | "connecting" | "ready" | "unreachable";
+  error: string | null;
 };
 
 export function useResolvedVenueContext(
   routeVenueId?: string,
 ): ResolvedVenueContext {
-  const venueDescriptor = useVenueForRoute(routeVenueId);
+  const resolution = useVenueForRoute(routeVenueId);
+  const venueDescriptor = resolution.descriptor;
   const authData = useAuthStore((x) =>
     venueDescriptor ? x.authMap[venueDescriptor.venueId] ?? null : null
   );
@@ -42,6 +45,8 @@ export function useResolvedVenueContext(
     venue,
     auth: authData,
     isAuthenticated: authData !== null,
+    status: resolution.status,
+    error: resolution.error,
   };
 }
 

@@ -91,7 +91,7 @@ export default function VenuePage({ params }: VenuePageProps) {
   if (!venue) {
     return (
       <ContentLayout>
-        <TopBar assetOrJobName={slug}/>
+        <TopBar venueId={slug} assetOrJobName={slug}/>
         <div className="flex items-center justify-center h-64">
           <p className="text-muted-foreground">Venue not found</p>
         </div>
@@ -101,7 +101,7 @@ export default function VenuePage({ params }: VenuePageProps) {
 
   return (
     <ContentLayout>
-      <TopBar  venueName={venue.metadata.name}/>
+      <TopBar venueId={slug} venueName={venue.metadata.name}/>
       
       <div className="flex flex-col space-y-6">
         {/* Venue Header */}

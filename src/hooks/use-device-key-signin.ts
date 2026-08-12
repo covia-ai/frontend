@@ -30,8 +30,8 @@ function didOf(hex: string): string | null {
 // keys with 401/403, and without the probe the sign-in "succeeds" locally
 // and every later call fails. A rejected key keeps the dialog open with the
 // error and a path to a different key.
-export function useDeviceKeySignIn(options: { trackSignUp?: boolean } = {}) {
-  const { trackSignUp = false } = options;
+export function useDeviceKeySignIn(options: { trackSignUp?: boolean; venueId?: string } = {}) {
+  const { trackSignUp = false, venueId: requestedVenueId } = options;
   const loginWithKeypair = useAuthStore((x) => x.loginWithKeypair);
   const getDeviceKeyHex = useAuthStore((x) => x.getDeviceKeyHex);
   const setDeviceKeyHex = useAuthStore((x) => x.setDeviceKeyHex);
@@ -109,7 +109,7 @@ export function useDeviceKeySignIn(options: { trackSignUp?: boolean } = {}) {
   };
 
   const completeLogin = async (key: string) => {
-    const venueId = selectedVenueId || venues[0]?.venueId;
+    const venueId = requestedVenueId || selectedVenueId || venues[0]?.venueId;
     if (!venueId) {
       notifyWarning("Connect to a venue before signing in");
       return;

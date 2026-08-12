@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useResolvedVenue } from "@/hooks/use-resolved-venue";
+import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { useAssetDetails } from "@/hooks/use-asset-details";
 import { MetadataViewer } from "./MetadataViewer";
 import { AssetHeader } from "./AssetHeader";
@@ -20,7 +20,7 @@ interface AssetViewerProps {
 }
 
 export function AssetViewer(props: AssetViewerProps) {
-  const venue = useResolvedVenue(props.venueId);
+  const { venue, isAuthenticated } = useResolvedVenueContext(props.venueId);
   const { asset, loading, error, notFound } = useAssetDetails(venue, props.assetId);
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export function AssetViewer(props: AssetViewerProps) {
 
   return (
     <ContentLayout>
-      <TopBar assetOrJobName={asset?.metadata?.name} venueName={venue?.metadata?.name ?? ""} />
+      <TopBar venueId={props.venueId} assetOrJobName={asset?.metadata?.name} venueName={venue?.metadata?.name ?? ""} />
       <AssetLoadState
         loading={loading}
         error={error}
@@ -40,7 +40,7 @@ export function AssetViewer(props: AssetViewerProps) {
       {asset && (
         <div className="flex flex-col w-full items-center justify-center">
           <AssetHeader asset={asset} />
-          <MetadataViewer asset={asset} venue={venue} />
+          <MetadataViewer asset={asset} venue={venue} isAuthenticated={isAuthenticated} />
         </div>
       )}
     </ContentLayout>
