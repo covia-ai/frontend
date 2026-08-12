@@ -63,7 +63,7 @@ export function VenueSelector({ venueId }: { venueId?: string }) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button aria-label="venue" variant="outline" className="hover:bg-primary-vlight hover:text-foreground">
-          {selectedVenue && <VenueHealthDot baseUrl={selectedVenue.baseUrl} />}
+          {selectedVenue && <VenueHealthDot baseUrl={selectedVenue.baseUrl} venueId={selectedVenue.venueId} />}
           <Building2 size={14} />
           <span className="hidden md:block lg:block">
             {selectedVenue?.metadata.name ?? routeVenueLabel}
@@ -79,7 +79,7 @@ export function VenueSelector({ venueId }: { venueId?: string }) {
             className="flex items-center justify-between cursor-pointer hover:bg-primary-vlight hover:text-foreground"
           >
             <div className="flex items-center gap-2">
-              <VenueHealthDot baseUrl={venue.baseUrl} />
+              <VenueHealthDot baseUrl={venue.baseUrl} venueId={venue.venueId} />
               <Building2 size={16} />
               <span className="truncate">{venue.metadata.name}</span>
             </div>

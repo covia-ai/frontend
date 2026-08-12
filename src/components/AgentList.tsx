@@ -2,7 +2,7 @@
 
 import { AddNewAgent } from "./AddNewAgent";
 import { ContentLayout } from "./admin-panel/content-layout";
-import { Bot, Loader2, SquareChevronRight, Lock }from "lucide-react";
+import { AlertTriangle, Bot, Loader2, SquareChevronRight, Lock, LogOut, Users }from "lucide-react";
 import { Card } from "./ui/card";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -13,12 +13,14 @@ import { AgentTemplates } from "./AgentTemplates";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
-import { useIsAuthenticated } from "@/hooks/use-auth";
+import { useAuthStore, useCurrentAuth } from "@/hooks/use-auth";
 import { notifyError } from "@/lib/notify";
 import { normalizeAgentEntries } from "@/lib/agent-list";
 import { PageHeading } from "./PageHeading";
 import { StatusBadge } from "./StatusBadge";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
+import { reportVenueAuthHealth, useVenueAccessState } from "@/hooks/use-venue-auth-health";
+import { errorMessage, errorStatus, isAuthenticationRejectedError } from "@/lib/errors";
 
 export function AgentList() {
   const router = useRouter();
@@ -26,14 +28,30 @@ export function AgentList() {
   const [loading, setLoading] = useState(true);
   const compact = true;
   const venue = useAuthenticatedVenue();
-  const isAuthenticated = useIsAuthenticated();
+  const auth = useCurrentAuth();
+  const logout = useAuthStore((state) => state.logout);
+  const access = useVenueAccessState(venue?.venueId);
+  const canUseAgents = access.state === "accepted" || access.state === "unverified";
 
   const fetchAgents = () => {
-    if (!venue) return;
+    if (!venue || !canUseAgents) {
+      setAgentData([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     venue.agents.list(true).then((result) => {
+      if (auth) reportVenueAuthHealth(venue.venueId, auth, { state: "accepted" });
       setAgentData(normalizeAgentEntries(result.agents));
-    }).catch((err: any) => {
+    }).catch((err: unknown) => {
+      if (auth && isAuthenticationRejectedError(err)) {
+        reportVenueAuthHealth(venue.venueId, auth, {
+          state: "rejected",
+          detail: errorMessage(err, "This venue rejected the stored account"),
+          status: errorStatus(err),
+        });
+        return;
+      }
       notifyError("Unable to load agents", err, venue.baseUrl);
     }).finally(() => {
       setLoading(false);
@@ -43,7 +61,7 @@ export function AgentList() {
   useEffect(() => {
     fetchAgents();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [venue]);
+  }, [venue, canUseAgents]);
 
   const handleCardClick = (agentId: string) => {
     const encodedUrl = "/agents/explorer?agentId=" + agentId;
@@ -70,7 +88,7 @@ export function AgentList() {
        />
        {hasAgents && (
          <div className="flex items-center justify-center gap-2 shrink-0 mt-4">
-           {isAuthenticated ? (
+           {canUseAgents ? (
              <>
                <AddNewAgent />
                <Button
@@ -101,7 +119,7 @@ export function AgentList() {
    const emptyState = !loading && agentData.length == 0 && (
      <div className="flex flex-col items-center justify-center w-full space-y-2 pt-4">
             <Bot size={48} className="text-primary"></Bot>
-            {isAuthenticated ? (
+            {canUseAgents ? (
               <AddNewAgent />
             ) : (
               <Button variant="outline" disabled className="gap-2 text-muted-foreground">
@@ -155,6 +173,44 @@ export function AgentList() {
          </div>
       </div>
    );
+
+   if (access.state === "checking") {
+     return (
+       <ContentLayout>
+         <TopBar />
+         <div className="flex min-h-80 items-center justify-center gap-2 text-muted-foreground" role="status">
+           <Loader2 className="animate-spin text-primary" size={24} />
+           Checking venue account…
+         </div>
+       </ContentLayout>
+     );
+   }
+
+   if (access.state === "rejected") {
+     return (
+       <ContentLayout>
+         <TopBar />
+         <div className="mx-auto mt-16 flex max-w-2xl flex-col items-center gap-4 rounded-lg border border-destructive/40 bg-destructive/5 p-8 text-center" data-testid="agent-auth-rejected">
+           <AlertTriangle className="text-destructive" size={40} />
+           <div>
+             <h2 className="text-lg font-semibold">This venue rejected the stored account</h2>
+             <p className="mt-2 text-sm text-muted-foreground">
+               Sign out and choose an admitted account, or ask the venue administrator to provision this identity.
+             </p>
+             <p className="mt-2 break-words font-mono text-xs text-muted-foreground">{access.detail}</p>
+           </div>
+           <div className="flex flex-wrap justify-center gap-2">
+             <Button variant="outline" onClick={() => venue && logout(venue.venueId)}>
+               <LogOut size={14} /> Sign out
+             </Button>
+             <Button onClick={() => router.push("/profile")}>
+               <Users size={14} /> Manage accounts
+             </Button>
+           </div>
+         </div>
+       </ContentLayout>
+     );
+   }
 
    return (<ContentLayout>
      <TopBar/>

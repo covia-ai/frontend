@@ -2,22 +2,36 @@
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useVenueHealth } from "@/hooks/use-venue-health";
+import { useVenueAccessState } from "@/hooks/use-venue-auth-health";
 
 // Reachability indicator for a venue's transport address. The tooltip carries
 // the same detail the error toasts would — an unreachable venue is visible
 // here before any page fails against it.
-export function VenueHealthDot({ baseUrl }: { baseUrl?: string }) {
+export function VenueHealthDot({ baseUrl, venueId }: { baseUrl?: string; venueId?: string }) {
   const health = useVenueHealth((x) => (baseUrl ? x.byUrl[baseUrl] : undefined));
-  const state = health?.state ?? "unknown";
+  const access = useVenueAccessState(venueId);
+  const transportState = health?.state ?? "unknown";
+  const state = transportState !== "connected" || !venueId
+    ? transportState
+    : access.state === "accepted" ? "connected"
+    : access.state === "signed-out" ? "signed-out"
+    : access.state === "rejected" ? "auth-rejected"
+    : access.state === "unverified" ? "auth-unverified"
+    : "auth-checking";
   const color =
     state === "connected" ? "bg-green-500"
-    : state === "connecting" ? "bg-amber-400 animate-pulse"
-    : state === "unreachable" ? "bg-red-500"
+    : state === "connecting" || state === "auth-checking" ? "bg-amber-400 animate-pulse"
+    : state === "signed-out" || state === "auth-unverified" ? "bg-amber-400"
+    : state === "unreachable" || state === "auth-rejected" ? "bg-red-500"
     : "bg-muted-foreground/40";
   const label =
-    health?.state === "connected" ? `Connected${health.version ? ` — venue ${health.version}` : ""}`
-    : health?.state === "connecting" ? "Connecting…"
-    : health?.state === "unreachable" ? `Unreachable — ${health.detail}`
+    state === "connected" ? `Connected and signed in${health?.state === "connected" && health.version ? ` — venue ${health.version}` : ""}`
+    : state === "signed-out" ? "Connected — signed out"
+    : state === "auth-checking" ? "Connected — checking account…"
+    : state === "auth-rejected" && access.state === "rejected" ? `Connected — account rejected: ${access.detail}`
+    : state === "auth-unverified" && access.state === "unverified" ? `Connected — account could not be verified: ${access.detail}`
+    : state === "connecting" ? "Connecting…"
+    : state === "unreachable" && health?.state === "unreachable" ? `Unreachable — ${health.detail}`
     : "Not checked yet";
   return (
     <Tooltip>

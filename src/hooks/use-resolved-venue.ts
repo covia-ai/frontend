@@ -38,7 +38,7 @@ export function useResolvedVenueContext(
     if (!venueDescriptor) return undefined;
     return getVenueFor(venueDescriptor, authData);
   }, [venueDescriptor, authData]);
-  useValidateVenue(venue);
+  useValidateVenue(venue, authData);
 
   return {
     descriptor: venueDescriptor,

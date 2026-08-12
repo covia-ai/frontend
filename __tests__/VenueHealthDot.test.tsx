@@ -4,8 +4,22 @@ import '@testing-library/jest-dom';
 
 import { VenueHealthDot } from '@/components/VenueHealthDot';
 import { reportVenueHealth } from '@/hooks/use-venue-health';
+import { useVenueHealth } from '@/hooks/use-venue-health';
+import { useAuthStore } from '@/hooks/use-auth';
+import { reportVenueAuthHealth, useVenueAuthHealth } from '@/hooks/use-venue-auth-health';
+
+const VENUE_ID = 'did:web:venue.example';
+const AUTH = { type: 'keypair' as const, privateKeyHex: 'abc', did: 'did:key:user' };
 
 describe('VenueHealthDot', () => {
+  beforeEach(() => {
+    act(() => {
+      useVenueHealth.setState({ byUrl: {} });
+      useVenueAuthHealth.setState({ byVenue: {} });
+      useAuthStore.setState({ authMap: {}, accountsMap: {} });
+    });
+  });
+
   it('tracks reported health for its baseUrl', () => {
     render(<VenueHealthDot baseUrl="http://venue.example" />);
     expect(screen.getByTestId('venue-health-dot')).toHaveAttribute('data-health', 'unknown');
@@ -24,5 +38,28 @@ describe('VenueHealthDot', () => {
     render(<VenueHealthDot baseUrl="http://a.example" />);
     act(() => reportVenueHealth('http://b.example', { state: 'connected' }));
     expect(screen.getByTestId('venue-health-dot')).toHaveAttribute('data-health', 'unknown');
+  });
+
+  it('shows reachable signed-out venues as amber rather than green', () => {
+    render(<VenueHealthDot baseUrl="http://venue.example" venueId={VENUE_ID} />);
+    act(() => reportVenueHealth('http://venue.example', { state: 'connected' }));
+    expect(screen.getByTestId('venue-health-dot')).toHaveAttribute('data-health', 'signed-out');
+  });
+
+  it('only becomes green after the active account is accepted', () => {
+    act(() => useAuthStore.setState({ authMap: { [VENUE_ID]: AUTH } }));
+    render(<VenueHealthDot baseUrl="http://venue.example" venueId={VENUE_ID} />);
+    act(() => reportVenueHealth('http://venue.example', { state: 'connected' }));
+    expect(screen.getByTestId('venue-health-dot')).toHaveAttribute('data-health', 'auth-checking');
+
+    act(() => reportVenueAuthHealth(VENUE_ID, AUTH, {
+      state: 'rejected',
+      status: 403,
+      detail: 'User is not registered',
+    }));
+    expect(screen.getByTestId('venue-health-dot')).toHaveAttribute('data-health', 'auth-rejected');
+
+    act(() => reportVenueAuthHealth(VENUE_ID, AUTH, { state: 'accepted' }));
+    expect(screen.getByTestId('venue-health-dot')).toHaveAttribute('data-health', 'connected');
   });
 });

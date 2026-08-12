@@ -6,6 +6,8 @@ import { useAuthStore, type VenueAuth } from "@/hooks/use-auth";
 import { useVenues, type VenueDescriptor } from "@/hooks/use-venues";
 import { createAuthProvider } from "@/lib/auth-provider";
 import { reportVenueHealth } from "@/hooks/use-venue-health";
+import { reportVenueAuthHealth } from "@/hooks/use-venue-auth-health";
+import { errorMessage, errorStatus, isAuthenticationRejectedError } from "@/lib/errors";
 
 // One shared Venue instance per (venue, auth). The SDK accumulates
 // per-instance state (asset cache, capability detection), which a fresh
@@ -56,20 +58,44 @@ export function getVenueFor(
 }
 
 const validatedVenues = new WeakSet<Venue>();
-export function useValidateVenue(venue: Venue | null | undefined): void {
+export function useValidateVenue(
+  venue: Venue | null | undefined,
+  authData: VenueAuth | null = null,
+): void {
   useEffect(() => {
     if (!venue || validatedVenues.has(venue)) return;
     validatedVenues.add(venue);
     let active = true;
+    if (authData) reportVenueAuthHealth(venue.venueId, authData, { state: "checking" });
     void venue
       .status()
       .then((status) => {
-        if (active) {
-          reportVenueHealth(venue.baseUrl, {
-            state: "connected",
-            version: status?.version,
+        if (!active) return;
+        reportVenueHealth(venue.baseUrl, {
+          state: "connected",
+          version: status?.version,
+        });
+        if (!authData) return;
+        // secrets.list() is an authenticated, job-free GET and is already the
+        // sign-in probe surface. It distinguishes a reachable venue from an
+        // account the venue actually accepts.
+        void venue.secrets.list()
+          .then(() => {
+            if (active) reportVenueAuthHealth(venue.venueId, authData, { state: "accepted" });
+          })
+          .catch((error: unknown) => {
+            if (!active) return;
+            const detail = errorMessage(error, "Unable to verify account");
+            if (isAuthenticationRejectedError(error)) {
+              reportVenueAuthHealth(venue.venueId, authData, {
+                state: "rejected",
+                detail,
+                status: errorStatus(error),
+              });
+            } else {
+              reportVenueAuthHealth(venue.venueId, authData, { state: "unverified", detail });
+            }
           });
-        }
       })
       .catch((error: unknown) => {
         if (active) {
@@ -82,7 +108,7 @@ export function useValidateVenue(venue: Venue | null | undefined): void {
     return () => {
       active = false;
     };
-  }, [venue]);
+  }, [venue, authData]);
 }
 
 export function useAuthenticatedVenue(): Venue | null {
@@ -97,6 +123,6 @@ export function useAuthenticatedVenue(): Venue | null {
     if (!venueObj) return null;
     return getVenueFor(venueObj, authData);
   }, [venueObj, authData]);
-  useValidateVenue(venue);
+  useValidateVenue(venue, authData);
   return venue;
 }

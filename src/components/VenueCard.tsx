@@ -50,7 +50,7 @@ export function VenueCard({ venue: venueProp, compact }: VenueCardProps) {
           ${ compact ? 'h-40 p-1' : 'h-60 p-2'  }`}>
       {/* Fixed-size header */}
       <div className={` ${ compact ? 'h-10' : 'h-14'  } p-2 flex flex-row items-center gap-2 border-b bg-card-banner`}>
-        <VenueHealthDot baseUrl={venue.baseUrl} />
+        <VenueHealthDot baseUrl={venue.baseUrl} venueId={venue.venueId} />
         <div data-testid="venue-name" className="truncate flex-1 mx-2 text-md text-foreground" onClick={handleCardClick}>{venue.metadata.name}</div>
             <RemoveVenueModal venueId={venue.venueId}/>
         </div>
