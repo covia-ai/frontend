@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { Venue } from "@covia/covia-sdk";
+import { fetchWithError, Venue } from "@covia/covia-sdk";
 import { useAuthStore, type VenueAuth } from "@/hooks/use-auth";
 import { useVenues, type VenueDescriptor } from "@/hooks/use-venues";
 import { createAuthProvider } from "@/lib/auth-provider";
@@ -22,6 +22,21 @@ type CachedVenue = {
 
 const venueCache = new Map<string, CachedVenue>();
 const AUTH_VALIDATION_TIMEOUT_MS = 10_000;
+
+async function verifyVenueAccount(venue: Venue): Promise<void> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  venue.auth.apply(headers, venue.venueId);
+
+  // This is the permission-neutral caller-owned collection on current Covia
+  // venues. Call the GET directly: AgentManager.list() may invoke on legacy
+  // venues, and a background health check must never create a job.
+  await fetchWithError(
+    `${venue.baseUrl}/api/v1/agents?includeTerminated=false`,
+    { headers },
+  );
+}
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -82,30 +97,31 @@ export function useValidateVenue(
   useEffect(() => {
     if (!venue || validatedVenues.has(venue)) return;
     validatedVenues.add(venue);
-    let active = true;
     if (authData) reportVenueAuthHealth(venue.venueId, authData, { state: "checking" });
+
+    // This validation belongs to the cached (venue, account) instance, not to
+    // the first indicator component that happened to request it. Let it finish
+    // after that component unmounts; otherwise React Strict Mode's deliberate
+    // effect cleanup would discard the result while the WeakSet prevents the
+    // remount from retrying it.
     void venue
       .status()
       .then((status) => {
-        if (!active) return;
         reportVenueHealth(venue.baseUrl, {
           state: "connected",
           version: status?.version,
         });
         if (!authData) return;
-        // secrets.list() is an authenticated, job-free GET and is already the
-        // sign-in probe surface. It distinguishes a reachable venue from an
-        // account the venue actually accepts.
+        // Verify the account separately from the public status endpoint.
         void withTimeout(
-          venue.secrets.list(),
+          verifyVenueAccount(venue),
           AUTH_VALIDATION_TIMEOUT_MS,
           "Timed out verifying this account",
         )
           .then(() => {
-            if (active) reportVenueAuthHealth(venue.venueId, authData, { state: "accepted" });
+            reportVenueAuthHealth(venue.venueId, authData, { state: "accepted" });
           })
           .catch((error: unknown) => {
-            if (!active) return;
             const detail = errorMessage(error, "Unable to verify account");
             if (isAuthenticationRejectedError(error)) {
               reportVenueAuthHealth(venue.venueId, authData, {
@@ -119,16 +135,11 @@ export function useValidateVenue(
           });
       })
       .catch((error: unknown) => {
-        if (active) {
-          reportVenueHealth(venue.baseUrl, {
-            state: "unreachable",
-            detail: error instanceof Error ? error.message : String(error),
-          });
-        }
+        reportVenueHealth(venue.baseUrl, {
+          state: "unreachable",
+          detail: error instanceof Error ? error.message : String(error),
+        });
       });
-    return () => {
-      active = false;
-    };
   }, [venue, authData]);
 }
 
