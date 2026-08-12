@@ -13,21 +13,24 @@ export function VenueHealthDot({ baseUrl, venueId }: { baseUrl?: string; venueId
   const health = useVenueHealth((x) => (baseUrl ? x.byUrl[baseUrl] : undefined));
   const access = useVenueAccessState(venueId);
   const transportState = health?.state ?? "unknown";
+  const publicAccess = health?.state === "connected" ? health.publicAccess : undefined;
   const state = transportState !== "connected" || !venueId
     ? transportState
     : access.state === "accepted" ? "connected"
+    : access.state === "signed-out" && publicAccess === true ? "public"
     : access.state === "signed-out" ? "signed-out"
     : access.state === "rejected" ? "auth-rejected"
     : access.state === "unverified" ? "auth-unverified"
     : "auth-checking";
   const color =
-    state === "connected" ? "bg-green-500"
+    state === "connected" || state === "public" ? "bg-green-500"
     : state === "connecting" || state === "auth-checking" ? "bg-amber-400 animate-pulse"
     : state === "signed-out" || state === "auth-unverified" ? "bg-amber-400"
-    : state === "unreachable" || state === "auth-rejected" ? "bg-red-500"
+    : state === "auth-rejected" ? "bg-red-500"
     : "bg-muted-foreground/40";
   const label =
     state === "connected" ? `Connected and signed in${health?.state === "connected" && health.version ? ` — venue ${health.version}` : ""}`
+    : state === "public" ? `Connected — public access${health?.state === "connected" && health.version ? ` — venue ${health.version}` : ""}`
     : state === "signed-out" ? "Connected — signed out"
     : state === "auth-checking" ? "Connected — checking account…"
     : state === "auth-rejected" && access.state === "rejected" ? `Connected — account rejected: ${access.detail}`

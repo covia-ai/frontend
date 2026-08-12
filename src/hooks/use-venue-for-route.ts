@@ -57,7 +57,11 @@ export function useVenueForRoute(routeVenueId?: string): VenueResolution {
     reportVenueHealth(identifier, { state: "connecting" });
     connectWithTimeout(identifier, authOption, 10_000)
       .then((v) => {
-        reportVenueHealth(v.baseUrl, { state: "connected", version: v.lastKnownStatus?.version });
+        reportVenueHealth(v.baseUrl, {
+          state: "connected",
+          version: v.lastKnownStatus?.version,
+          publicAccess: authData ? undefined : v.lastKnownStatus !== undefined,
+        });
         addVenue(toVenueDescriptor(v));
       })
       .catch((err: unknown) => {
@@ -70,7 +74,7 @@ export function useVenueForRoute(routeVenueId?: string): VenueResolution {
       .finally(() => {
         connecting.current.delete(routeVenueId);
       });
-  }, [routeVenueId, found, addVenue, getAuthForVenue, authMap, attemptKey]);
+  }, [routeVenueId, found, addVenue, getAuthForVenue, authMap, authData, attemptKey]);
 
   if (!routeVenueId) {
     return {

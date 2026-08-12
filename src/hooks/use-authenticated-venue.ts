@@ -110,6 +110,7 @@ export function useValidateVenue(
         reportVenueHealth(venue.baseUrl, {
           state: "connected",
           version: status?.version,
+          publicAccess: authData ? undefined : true,
         });
         if (!authData) return;
         // Verify the account separately from the public status endpoint.
@@ -135,6 +136,13 @@ export function useValidateVenue(
           });
       })
       .catch((error: unknown) => {
+        if (!authData && isAuthenticationRejectedError(error)) {
+          reportVenueHealth(venue.baseUrl, {
+            state: "connected",
+            publicAccess: false,
+          });
+          return;
+        }
         reportVenueHealth(venue.baseUrl, {
           state: "unreachable",
           detail: error instanceof Error ? error.message : String(error),

@@ -1,6 +1,6 @@
 import { StrictMode, type ReactNode } from "react";
 import { renderHook, waitFor } from "@testing-library/react";
-import type { Venue } from "@covia/covia-sdk";
+import { GridError, type Venue } from "@covia/covia-sdk";
 import { useValidateVenue } from "@/hooks/use-authenticated-venue";
 import { useVenueAuthHealth } from "@/hooks/use-venue-auth-health";
 import { useVenueHealth } from "@/hooks/use-venue-health";
@@ -64,5 +64,25 @@ describe("useValidateVenue", () => {
     );
     expect(apply).toHaveBeenCalledWith(expect.any(Object), VENUE_ID);
     expect(useVenueHealth.getState().byUrl[BASE_URL]?.state).toBe("connected");
+  });
+
+  it("records an auth-gated venue as reachable but not public", async () => {
+    global.fetch = jest.fn();
+    const venue = {
+      venueId: VENUE_ID,
+      baseUrl: BASE_URL,
+      auth: { apply: jest.fn() },
+      status: jest.fn().mockRejectedValue(new GridError(403, "Sign in required")),
+    } as unknown as Venue;
+
+    renderHook(() => useValidateVenue(venue));
+
+    await waitFor(() => {
+      expect(useVenueHealth.getState().byUrl[BASE_URL]).toMatchObject({
+        state: "connected",
+        publicAccess: false,
+      });
+    });
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 });

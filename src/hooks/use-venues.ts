@@ -88,9 +88,10 @@ async function connectToDefaultVenues(): Promise<Venue[]> {
       try {
         const venue = await connectWithTimeout(url);
         const version = venue.lastKnownStatus?.version;
-        reportVenueHealth(venue.baseUrl, { state: "connected", version });
+        const publicAccess = venue.lastKnownStatus !== undefined;
+        reportVenueHealth(venue.baseUrl, { state: "connected", version, publicAccess });
         if (venue.baseUrl !== url) {
-          reportVenueHealth(url, { state: "connected", version });
+          reportVenueHealth(url, { state: "connected", version, publicAccess });
         }
         return venue;
       } catch (error: unknown) {

@@ -40,6 +40,7 @@ describe('VenueHealthDot', () => {
 
     act(() => reportVenueHealth('http://venue.example', { state: 'unreachable', detail: 'Failed to fetch' }));
     expect(screen.getByTestId('venue-health-dot')).toHaveAttribute('data-health', 'unreachable');
+    expect(screen.getByTestId('venue-health-dot')).toHaveClass('bg-muted-foreground/40');
 
     act(() => reportVenueHealth('http://venue.example', { state: 'connected', version: '0.5.1' }));
     expect(screen.getByTestId('venue-health-dot')).toHaveAttribute('data-health', 'connected');
@@ -51,9 +52,15 @@ describe('VenueHealthDot', () => {
     expect(screen.getByTestId('venue-health-dot')).toHaveAttribute('data-health', 'unknown');
   });
 
-  it('shows reachable signed-out venues as amber rather than green', () => {
+  it('shows publicly accessible signed-out venues as green', () => {
     render(<VenueHealthDot baseUrl="http://venue.example" venueId={VENUE_ID} />);
-    act(() => reportVenueHealth('http://venue.example', { state: 'connected' }));
+    act(() => reportVenueHealth('http://venue.example', { state: 'connected', publicAccess: true }));
+    expect(screen.getByTestId('venue-health-dot')).toHaveAttribute('data-health', 'public');
+  });
+
+  it('shows private signed-out venues as amber', () => {
+    render(<VenueHealthDot baseUrl="http://venue.example" venueId={VENUE_ID} />);
+    act(() => reportVenueHealth('http://venue.example', { state: 'connected', publicAccess: false }));
     expect(screen.getByTestId('venue-health-dot')).toHaveAttribute('data-health', 'signed-out');
   });
 

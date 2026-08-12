@@ -10,7 +10,7 @@ import { create } from "zustand";
 // an unreachable venue is visible instead of silently failing page by page.
 export type VenueHealth =
   | { state: "connecting"; checkedAt: number }
-  | { state: "connected"; version?: string; checkedAt: number }
+  | { state: "connected"; version?: string; publicAccess?: boolean; checkedAt: number }
   | { state: "unreachable"; detail: string; checkedAt: number };
 
 type VenueHealthStore = {
@@ -26,7 +26,7 @@ export const useVenueHealth = create<VenueHealthStore>((set) => ({
 
 export function reportVenueHealth(
   baseUrl: string | undefined,
-  health: { state: "connecting" } | { state: "connected"; version?: string } | { state: "unreachable"; detail: string },
+  health: { state: "connecting" } | { state: "connected"; version?: string; publicAccess?: boolean } | { state: "unreachable"; detail: string },
 ): void {
   if (!baseUrl) return;
   useVenueHealth.getState().report(baseUrl, { ...health, checkedAt: Date.now() } as VenueHealth);
