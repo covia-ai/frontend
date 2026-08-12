@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useVenues } from "@/hooks/use-venues";
 import type { VenueDescriptor } from "@/hooks/use-venues";
+import { venueDisplayName } from "@/lib/venue-display";
 import { VenueHealthDot } from "./VenueHealthDot";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -36,14 +37,11 @@ export function VenueSelector({ venueId }: { venueId?: string }) {
       router.push(segments.join("/"));
     }
   };
-  const routeVenueLabel = (() => {
-    if (!venueId) return "No venues";
-    try {
-      return decodeURIComponent(venueId);
-    } catch {
-      return venueId;
-    }
-  })();
+  const selectedVenueLabel = selectedVenue
+    ? venueDisplayName(selectedVenue)
+    : activeVenueId
+      ? "Resolving venue…"
+      : "No venues";
 
   if (venues.length === 0) {
       
@@ -52,7 +50,7 @@ export function VenueSelector({ venueId }: { venueId?: string }) {
       <DropdownMenuTrigger asChild>
         <Button aria-label="venue" variant="outline" >
           <Building2 size={14} />
-          {routeVenueLabel}
+          {selectedVenueLabel}
         </Button>
       </DropdownMenuTrigger>
     </DropdownMenu>
@@ -66,7 +64,7 @@ export function VenueSelector({ venueId }: { venueId?: string }) {
           {selectedVenue && <VenueHealthDot baseUrl={selectedVenue.baseUrl} venueId={selectedVenue.venueId} />}
           <Building2 size={14} />
           <span className="hidden md:block lg:block">
-            {selectedVenue?.metadata.name ?? routeVenueLabel}
+            {selectedVenueLabel}
           </span>
           <ChevronDown size={14} />
         </Button>
@@ -81,7 +79,7 @@ export function VenueSelector({ venueId }: { venueId?: string }) {
             <div className="flex items-center gap-2">
               <VenueHealthDot baseUrl={venue.baseUrl} venueId={venue.venueId} />
               <Building2 size={16} />
-              <span className="truncate">{venue.metadata.name}</span>
+              <span className="truncate">{venueDisplayName(venue)}</span>
             </div>
             {activeVenueId === venue.venueId && (
               <Check size={16} className="text-primary" />

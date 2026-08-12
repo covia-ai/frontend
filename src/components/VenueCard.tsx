@@ -10,6 +10,7 @@ import { RemoveVenueModal } from "./RemoveVenueModal";
 import { VenueHealthDot } from "./VenueHealthDot";
 import { Copy, Database, PlayCircle } from "lucide-react";
 import { copyDataToClipBoard } from "@/lib/utils";
+import { venueDisplayName } from "@/lib/venue-display";
 
 interface VenueCardProps {
   venue: VenueDescriptor;
@@ -51,7 +52,7 @@ export function VenueCard({ venue: venueProp, compact }: VenueCardProps) {
       {/* Fixed-size header */}
       <div className={` ${ compact ? 'h-10' : 'h-14'  } p-2 flex flex-row items-center gap-2 border-b bg-card-banner`}>
         <VenueHealthDot baseUrl={venue.baseUrl} venueId={venue.venueId} />
-        <div data-testid="venue-name" className="truncate flex-1 mx-2 text-md text-foreground" onClick={handleCardClick}>{venue.metadata.name}</div>
+        <div data-testid="venue-name" className="truncate flex-1 mx-2 text-md text-foreground" onClick={handleCardClick}>{venueDisplayName(venue)}</div>
             <RemoveVenueModal venueId={venue.venueId}/>
         </div>
       {/* Flexible middle section */}
