@@ -38,6 +38,7 @@ import { cn, gtmEvent, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { useDeviceKeySignIn } from "@/hooks/use-device-key-signin";
 import { DeviceKeyDialog } from "@/components/DeviceKeyDialog";
+import { dispatchAgentMessage } from "@/lib/agent-chat";
 
 // Sentinel picker value — never a real agentId — meaning "create a fresh,
 // distinctly-named agent" rather than targeting an existing one.
@@ -147,25 +148,21 @@ export const AIPrompt = () => {
   // on settle still runs after we have unmounted.
   function sendPrompt(agentId: string) {
     if (!venue) return;
+    const text = prompt.trim();
     // No session id — chat() with none makes the venue mint a fresh session,
     // and it only comes back with the reply.
-    const chat = startPendingChat({ agentId, sessionId: null, text: prompt });
-    venue.agents.chat(agentId, prompt)
+    const chat = startPendingChat({ agentId, sessionId: null, text });
+    void dispatchAgentMessage({
+      agentId,
+      text,
+      venueId: venue.venueId,
+      venueBaseUrl: venue.baseUrl,
+      send: (message) => venue.agents.chat(agentId, message),
+    })
       .then((result) => {
         if (result?.sessionId) attachSessionId(chat, result.sessionId);
-        const r = result?.response;
-        if (r == null || (typeof r === "string" && r.trim() === "")) {
-          notifyWarning("The agent sent an empty reply", {
-            description: "It may have hit an error — check its session in the explorer.",
-          });
-        }
-        gtmEvent.sendAgentMessage(agentId);
       })
-      .catch((err: any) => {
-        gtmEvent.sendAgentMessageFailed(agentId, err?.message);
-        const { reason, jobHref } = jobFailure(err, venue.venueId);
-        notifyError("Unable to send message", reason, undefined, jobHref);
-      })
+      .catch(() => undefined)
       .finally(() => clearPendingChat(chat));
     router.push(`/agents/explorer?agentId=${encodeURIComponent(agentId)}`);
   }
