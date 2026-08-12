@@ -8,16 +8,27 @@ import { useVenueHealth } from '@/hooks/use-venue-health';
 import { useAuthStore } from '@/hooks/use-auth';
 import { reportVenueAuthHealth, useVenueAuthHealth } from '@/hooks/use-venue-auth-health';
 
+const mockValidateVenueById = jest.fn();
+jest.mock('@/hooks/use-authenticated-venue', () => ({
+  useValidateVenueById: (venueId?: string) => mockValidateVenueById(venueId),
+}));
+
 const VENUE_ID = 'did:web:venue.example';
 const AUTH = { type: 'keypair' as const, privateKeyHex: 'abc', did: 'did:key:user' };
 
 describe('VenueHealthDot', () => {
   beforeEach(() => {
+    mockValidateVenueById.mockClear();
     act(() => {
       useVenueHealth.setState({ byUrl: {} });
       useVenueAuthHealth.setState({ byVenue: {} });
       useAuthStore.setState({ authMap: {}, accountsMap: {} });
     });
+  });
+
+  it('starts validation for every venue represented by a dot', () => {
+    render(<VenueHealthDot baseUrl="http://venue.example" venueId={VENUE_ID} />);
+    expect(mockValidateVenueById).toHaveBeenCalledWith(VENUE_ID);
   });
 
   it('tracks reported health for its baseUrl', () => {

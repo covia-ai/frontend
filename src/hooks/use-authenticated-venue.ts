@@ -21,6 +21,23 @@ type CachedVenue = {
 };
 
 const venueCache = new Map<string, CachedVenue>();
+const AUTH_VALIDATION_TIMEOUT_MS = 10_000;
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
 
 // Drop every cached instance for a venueId — called when reconciliation
 // discovers the venue behind an id no longer exists (e.g. restarted with a
@@ -79,7 +96,11 @@ export function useValidateVenue(
         // secrets.list() is an authenticated, job-free GET and is already the
         // sign-in probe surface. It distinguishes a reachable venue from an
         // account the venue actually accepts.
-        void venue.secrets.list()
+        void withTimeout(
+          venue.secrets.list(),
+          AUTH_VALIDATION_TIMEOUT_MS,
+          "Timed out verifying this account",
+        )
           .then(() => {
             if (active) reportVenueAuthHealth(venue.venueId, authData, { state: "accepted" });
           })
@@ -109,6 +130,25 @@ export function useValidateVenue(
       active = false;
     };
   }, [venue, authData]);
+}
+
+// Venue selectors and venue cards render every configured venue, including
+// those not used by the current page. Each visible indicator calls this hook
+// so background venues cannot remain in the default "checking" state forever.
+// getVenueFor + useValidateVenue deduplicate the actual probes per
+// (descriptor, account) Venue instance.
+export function useValidateVenueById(venueId?: string): void {
+  const descriptor = useVenues((state) =>
+    venueId ? state.venues.find((venue) => venue.venueId === venueId) : undefined,
+  );
+  const authData = useAuthStore((state) =>
+    venueId ? state.authMap[venueId] ?? null : null,
+  );
+  const venue = useMemo(
+    () => descriptor ? getVenueFor(descriptor, authData) : undefined,
+    [descriptor, authData],
+  );
+  useValidateVenue(venue, authData);
 }
 
 export function useAuthenticatedVenue(): Venue | null {

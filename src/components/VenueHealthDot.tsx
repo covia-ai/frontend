@@ -3,11 +3,13 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useVenueHealth } from "@/hooks/use-venue-health";
 import { useVenueAccessState } from "@/hooks/use-venue-auth-health";
+import { useValidateVenueById } from "@/hooks/use-authenticated-venue";
 
 // Reachability indicator for a venue's transport address. The tooltip carries
 // the same detail the error toasts would — an unreachable venue is visible
 // here before any page fails against it.
 export function VenueHealthDot({ baseUrl, venueId }: { baseUrl?: string; venueId?: string }) {
+  useValidateVenueById(venueId);
   const health = useVenueHealth((x) => (baseUrl ? x.byUrl[baseUrl] : undefined));
   const access = useVenueAccessState(venueId);
   const transportState = health?.state ?? "unknown";
