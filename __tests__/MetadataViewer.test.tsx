@@ -9,7 +9,7 @@ jest.mock('@/lib/utils', () => ({
   ...jest.requireActual('@/lib/utils'),
   copyDataToClipBoard: jest.fn(),
 }));
-import { copyDataToClipBoard } from '@/lib/utils';
+import { copyDataToClipBoard, formatDateTime } from '@/lib/utils';
 
 let mockAuthenticated = true;
 jest.mock('@/hooks/use-auth', () => ({
@@ -83,9 +83,8 @@ describe('MetadataViewer Component with only inputs', () => {
 
     expect(screen.getByTestId('creator_value')).toHaveTextContent('William Shakespeare');
     expect(screen.getByTestId('license_value')).toHaveTextContent('Public Domain');
-    // Dates are now formatted by formatDate() using Intl.DateTimeFormat
-    expect(screen.getByTestId('dateCreated_value')).toHaveTextContent('Jun 5, 2025');
-    expect(screen.getByTestId('dateModified_value')).toHaveTextContent('Jun 5, 2025');
+    expect(screen.getByTestId('dateCreated_value')).toHaveTextContent(formatDateTime(mockMetadata.dateCreated));
+    expect(screen.getByTestId('dateModified_value')).toHaveTextContent(formatDateTime(mockMetadata.dateModified));
     expect(screen.getByTestId('keywords_value')).toBeInTheDocument();
     expect(screen.getByTestId('notes_value')).toHaveTextContent('Uploaded by Mike Anderson for use as an example Covia Asset');
 

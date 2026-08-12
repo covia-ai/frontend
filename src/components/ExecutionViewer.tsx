@@ -29,17 +29,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { useExecutionLifecycle } from "@/hooks/use-execution-lifecycle";
-import { copyDataToClipBoard, getExecutionTime } from "@/lib/utils";
-
-const dateFormatter = new Intl.DateTimeFormat("en-US", {
-  year: "numeric",
-  month: "short",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  second: "2-digit",
-  timeZone: "UTC",
-});
+import { copyDataToClipBoard, formatDateTime, getExecutionTime } from "@/lib/utils";
 
 function StatusIcon({ status }: { status?: string }) {
   if (status === RunStatus.COMPLETE) return <Check />;
@@ -186,7 +176,7 @@ export function ExecutionViewer({
                 <span className="w-28">Created Date</span>
                 <span className="text-card-foreground">
                   {job.created
-                    ? dateFormatter.format(new Date(job.created))
+                    ? formatDateTime(job.created)
                     : "N/A"}
                 </span>
               </div>
@@ -195,7 +185,7 @@ export function ExecutionViewer({
                 <span className="w-28">Updated Date:</span>
                 <span className="text-card-foreground">
                   {job.updated
-                    ? dateFormatter.format(new Date(job.updated))
+                    ? formatDateTime(job.updated)
                     : "N/A"}
                 </span>
               </div>

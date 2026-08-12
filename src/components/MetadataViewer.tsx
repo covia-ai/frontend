@@ -10,7 +10,7 @@ import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "./ui/dialog";
 import { LucideIcon } from "lucide-react";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { cn, copyDataToClipBoard, formatLabel } from "@/lib/utils";
+import { cn, copyDataToClipBoard, formatDateTime, formatLabel } from "@/lib/utils";
 import { getAssetKind } from "@/lib/asset-kind";
 import { JSON_EDITOR_DIALOG_CLASS, JSON_EDITOR_MAX_WIDTH } from "@/lib/dialog-sizes";
 import { notifyError } from "@/lib/notify";
@@ -49,22 +49,6 @@ interface MetadataFieldConfig {
   renderValue?: (value: any) => React.ReactNode;
 }
 
-const formatDate = (value: string) => {
-  try {
-    return new Intl.DateTimeFormat('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      second: '2-digit',
-      timeZone: 'UTC',
-    }).format(new Date(value));
-  } catch {
-    return value;
-  }
-};
-
 const METADATA_FIELDS: MetadataFieldConfig[] = [
   {
     key: 'creator',
@@ -88,14 +72,14 @@ const METADATA_FIELDS: MetadataFieldConfig[] = [
     label: 'Created on:',
     icon: Calendar,
     path: 'metadata.dateCreated',
-    renderValue: (value) => formatDate(value)
+    renderValue: (value) => formatDateTime(value)
   },
   {
     key: 'dateModified',
     label: 'Modified on:',
     icon: Calendar,
     path: 'metadata.dateModified',
-    renderValue: (value) => formatDate(value)
+    renderValue: (value) => formatDateTime(value)
   },
   {
     key: 'keywords',

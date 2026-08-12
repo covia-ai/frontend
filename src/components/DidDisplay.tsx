@@ -4,8 +4,8 @@ import { useMemo } from "react";
 import { didFromPublicKey } from "@covia/covia-sdk";
 import { Identicon } from "@/components/Identicon";
 import { isDidKey } from "@/lib/identicon";
-import { abbreviateDid, cn } from "@/lib/utils";
-import { notifySuccess } from "@/lib/notify";
+import { abbreviateDid, cn, writeTextToClipboard } from "@/lib/utils";
+import { notifyError, notifySuccess } from "@/lib/notify";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,8 +93,9 @@ export function DidDisplay({
         <DropdownMenuItem
           data-testid="did-copy"
           onSelect={() => {
-            void navigator.clipboard.writeText(value);
-            notifySuccess("Copied to clipboard", { description: abbreviateDid(value) });
+            void writeTextToClipboard(value)
+              .then(() => notifySuccess("Copied to clipboard", { description: abbreviateDid(value) }))
+              .catch((error: unknown) => notifyError("Unable to copy identifier", error));
           }}
         >
           Copy

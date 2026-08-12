@@ -2,7 +2,7 @@ import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import * as mime from 'mime-types'
 import copy from 'copy-to-clipboard';
-import { notifySuccess } from "@/lib/notify"
+import { notifyError, notifySuccess } from "@/lib/notify"
 import { sendGTMEvent } from '@next/third-parties/google'
 
 export function cn(...inputs: ClassValue[]) {
@@ -66,6 +66,23 @@ export function formatRelativeTime(date: string): string {
   const diffDay = Math.round(diffHour / 24);
   if (diffDay < 7) return `${diffDay}d ago`;
   return new Date(date).toLocaleDateString();
+}
+
+const DATE_TIME_FORMATTER = new Intl.DateTimeFormat(undefined, {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  second: "2-digit",
+});
+
+export function formatDateTime(value: string | number | Date): string {
+  try {
+    return DATE_TIME_FORMATTER.format(new Date(value));
+  } catch {
+    return String(value);
+  }
 }
 
 // List a venue's MCP tools via its native MCP endpoint (JSON-RPC tools/list).
@@ -135,10 +152,25 @@ export function abbreviateDid(did: string, chars = 16): string {
   return `${did.slice(0, chars)}…${did.slice(-4)}`;
 }
 
+export async function writeTextToClipboard(value: string): Promise<void> {
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return;
+    } catch {
+      // Fall through to copy-to-clipboard for browsers that expose the API
+      // but reject it outside a secure context or without permission.
+    }
+  }
+  if (!copy(value)) throw new Error("The browser did not accept the clipboard write");
+}
+
 export async function copyDataToClipBoard(entityId: string, message: string) {
-  const result = await copy(entityId);
-  if (result) {
+  try {
+    await writeTextToClipboard(entityId);
     notifySuccess(message);
+  } catch (error: unknown) {
+    notifyError("Unable to copy to clipboard", error);
   }
 }
 

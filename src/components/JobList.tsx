@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components
 import { useCallback, useEffect, useMemo, useRef, useState }from "react";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { JobMetadata, RunStatus }from "@covia/covia-sdk";
-import { getExecutionTime } from "@/lib/utils";
+import { formatDateTime, getExecutionTime } from "@/lib/utils";
 import { StatusBadge } from "@/components/StatusBadge";
 import { PaginationHeader } from "@/components/PaginationHeader";
 import { FiltersSheet } from "@/components/FiltersSheet";
@@ -299,15 +299,6 @@ export function JobList({ venueId }: JobListProps = {}) {
 
     };
 
-    const formatter = new Intl.DateTimeFormat(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true,
-    });
   return (
     <ContentLayout >
       <TopBar venueId={venueId} venueName={venueObj?.metadata.name}/>
@@ -392,7 +383,7 @@ export function JobList({ venueId }: JobListProps = {}) {
                 <TableCell className="font-mono">{job.id}</TableCell>
                 <TableCell>{job.name}</TableCell>
                 <TableCell>
-                  {job.created ? formatter.format(new Date(job.created)) : "--"}
+                  {job.created ? formatDateTime(job.created) : "--"}
                 </TableCell>
                 <TableCell>
                   {isTerminal && job.updated
