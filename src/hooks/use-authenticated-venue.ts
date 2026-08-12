@@ -10,6 +10,7 @@ import { errorMessage, errorStatus, isAuthenticationRejectedError } from "@/lib/
 import { verifyVenueAccount } from "@/lib/venue-auth-probe";
 import {
   evictVenueInstances,
+  getVenueStatus,
   getVenueFor,
 } from "@/lib/venue-registry";
 
@@ -48,13 +49,12 @@ export function useValidateVenue(
     // after that component unmounts; otherwise React Strict Mode's deliberate
     // effect cleanup would discard the result while the WeakSet prevents the
     // remount from retrying it.
-    void venue
-      .status()
+    void getVenueStatus(venue)
       .then((status) => {
         reportVenueHealth(venue.baseUrl, {
           state: "connected",
           version: status?.version,
-          publicAccess: authData ? undefined : true,
+          publicAccess: authData ? undefined : status !== undefined,
         });
         if (!authData) return;
         // Verify the account separately from the public status endpoint.

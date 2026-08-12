@@ -17,6 +17,7 @@ import {
   adoptVenueInstance,
   connectVenue,
   evictVenueInstances,
+  getVenueStatus,
   getVenueFor,
 } from "@/lib/venue-registry";
 
@@ -66,5 +67,39 @@ describe("venue registry", () => {
     resolveConnect(connected);
     await expect(first).resolves.toBe(connected);
     expect(getVenueFor(descriptor, null)).toBe(connected);
+  });
+
+  it("reuses status returned by Venue.connect", async () => {
+    const status = { version: "1.2.3" };
+    const connected = {
+      ...descriptor,
+      lastKnownStatus: status,
+      status: jest.fn(),
+    } as any;
+    adoptVenueInstance(connected);
+
+    await expect(getVenueStatus(connected)).resolves.toBe(status);
+    expect(connected.status).not.toHaveBeenCalled();
+  });
+
+  it("deduplicates concurrent status requests", async () => {
+    let resolveStatus!: (status: unknown) => void;
+    const venue = {
+      ...descriptor,
+      status: jest.fn().mockReturnValue(new Promise((resolve) => {
+        resolveStatus = resolve;
+      })),
+    } as any;
+
+    const first = getVenueStatus(venue);
+    const second = getVenueStatus(venue);
+    expect(second).toBe(first);
+    expect(venue.status).toHaveBeenCalledTimes(1);
+
+    const status = { version: "1.2.3" };
+    resolveStatus(status);
+    await expect(first).resolves.toBe(status);
+    await expect(getVenueStatus(venue)).resolves.toBe(status);
+    expect(venue.status).toHaveBeenCalledTimes(1);
   });
 });

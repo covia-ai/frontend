@@ -11,6 +11,7 @@ import { VenueHealthDot } from "./VenueHealthDot";
 import { Copy, Database, PlayCircle } from "lucide-react";
 import { copyDataToClipBoard } from "@/lib/utils";
 import { venueDisplayName } from "@/lib/venue-display";
+import { getVenueStatus } from "@/lib/venue-registry";
 
 interface VenueCardProps {
   venue: VenueDescriptor;
@@ -32,7 +33,7 @@ export function VenueCard({ venue: venueProp, compact }: VenueCardProps) {
   const [stats, setStats] = useState<{ assets?: number; ops?: number } | null>(null);
   useEffect(() => {
     let ignore = false;
-    venue.status()
+    getVenueStatus(venue)
       .then((status) => { if (!ignore) setStats(status?.stats ?? {}); })
       .catch(() => { /* leave stats unset */ });
     return () => { ignore = true; };

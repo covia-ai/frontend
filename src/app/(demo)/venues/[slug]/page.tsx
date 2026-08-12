@@ -12,6 +12,7 @@ import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
 import { CopyField } from "@/components/CopyField";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { useResolvedVenue } from "@/hooks/use-resolved-venue";
+import { getVenueStatus } from "@/lib/venue-registry";
 
 interface VenuePageProps {
   params: Promise<{
@@ -50,7 +51,7 @@ export default function VenuePage({ params }: VenuePageProps) {
       }
        const fetchStats = async () => {
          try {
-          const status =  await venue?.status();
+          const status = await getVenueStatus(venue);
           if(status?.stats) {
               setNoOfAssets(status?.stats?.assets ?? 0);
               setNoOfOps(status?.stats?.ops ?? 0);

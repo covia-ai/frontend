@@ -1,4 +1,4 @@
-import { Venue } from "@covia/covia-sdk";
+import { Venue, type StatusData } from "@covia/covia-sdk";
 import type { VenueAuth } from "@/hooks/use-auth";
 import { createAuthProvider } from "@/lib/auth-provider";
 
@@ -18,6 +18,13 @@ type CachedVenue = {
 // while keeping signed-out access in the null slot.
 const instances = new Map<string, Map<VenueAuth | null, CachedVenue>>();
 const connections = new Map<string, Map<VenueAuth | null, Promise<Venue>>>();
+const connectedInstances = new WeakSet<Venue>();
+const statusCache = new WeakMap<
+  Venue,
+  { status: StatusData | undefined; checkedAt: number }
+>();
+const statusRequests = new WeakMap<Venue, Promise<StatusData | undefined>>();
+const STATUS_MAX_AGE_MS = 30_000;
 
 function authMapFor<T>(
   registry: Map<string, Map<VenueAuth | null, T>>,
@@ -39,6 +46,12 @@ export function getVenueFor(
   const cached = byAuth.get(auth);
   if (cached && cached.baseUrl === descriptor.baseUrl) return cached.venue;
 
+  if (cached) {
+    connectedInstances.delete(cached.venue);
+    statusCache.delete(cached.venue);
+    statusRequests.delete(cached.venue);
+  }
+
   const venue = new Venue({
     baseUrl: descriptor.baseUrl,
     venueId: descriptor.venueId,
@@ -56,8 +69,49 @@ export function adoptVenueInstance(
   const byAuth = authMapFor(instances, venue.venueId);
   const cached = byAuth.get(auth);
   if (cached && cached.baseUrl === venue.baseUrl) return cached.venue;
+  if (cached) {
+    connectedInstances.delete(cached.venue);
+    statusCache.delete(cached.venue);
+    statusRequests.delete(cached.venue);
+  }
   byAuth.set(auth, { baseUrl: venue.baseUrl, venue });
+  connectedInstances.add(venue);
+  statusCache.set(venue, {
+    status: venue.lastKnownStatus,
+    checkedAt: Date.now(),
+  });
   return venue;
+}
+
+export function getVenueStatus(
+  venue: Venue,
+  maxAgeMs = STATUS_MAX_AGE_MS,
+): Promise<StatusData | undefined> {
+  const pending = statusRequests.get(venue);
+  if (pending) return pending;
+
+  const cached = statusCache.get(venue);
+  if (cached && Date.now() - cached.checkedAt <= maxAgeMs) {
+    return Promise.resolve(cached.status);
+  }
+  if (!cached && venue.lastKnownStatus) {
+    statusCache.set(venue, {
+      status: venue.lastKnownStatus,
+      checkedAt: Date.now(),
+    });
+    return Promise.resolve(venue.lastKnownStatus);
+  }
+
+  const request = venue.status()
+    .then((status) => {
+      statusCache.set(venue, { status, checkedAt: Date.now() });
+      return status;
+    })
+    .finally(() => {
+      statusRequests.delete(venue);
+    });
+  statusRequests.set(venue, request);
+  return request;
 }
 
 export function connectVenue(
@@ -94,6 +148,11 @@ export function connectVenue(
 }
 
 export function evictVenueInstances(venueId: string): void {
+  for (const entry of instances.get(venueId)?.values() ?? []) {
+    connectedInstances.delete(entry.venue);
+    statusCache.delete(entry.venue);
+    statusRequests.delete(entry.venue);
+  }
   instances.delete(venueId);
   connections.delete(venueId);
 }
