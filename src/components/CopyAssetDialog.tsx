@@ -11,22 +11,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Copy, Lock } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { getLicenseUrl, gtmEvent } from "@/lib/utils";
+import { gtmEvent } from "@/lib/utils";
 import { notifyError } from "@/lib/notify";
 import { FORM_DIALOG_CLASS, JSON_EDITOR_DIALOG_CLASS, JSON_EDITOR_MAX_WIDTH } from "@/lib/dialog-sizes";
+import { AssetMetadataForm } from "@/components/AssetMetadataForm";
+import { buildAssetMetadata, fieldsFromAssetMetadata } from "@/lib/asset-metadata-form";
 
 interface CopyAssetDialogProps {
   asset: Asset;
@@ -46,25 +38,12 @@ export function CopyAssetDialog({ asset, venue, isAuthenticated }: CopyAssetDial
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<"form" | "json">("form");
 
-  const [name, setName] = useState(asset.metadata?.name ?? "");
-  const [description, setDescription] = useState(asset.metadata?.description ?? "");
-  const [creator, setCreator] = useState(asset.metadata?.creator ?? "");
-  const [notes, setNotes] = useState(
-    Array.isArray(asset.metadata?.additionalInformation?.notes)
-      ? asset.metadata.additionalInformation.notes.join(", ")
-      : ""
-  );
-  const [keywords, setKeywords] = useState(
-    Array.isArray(asset.metadata?.keywords) ? asset.metadata.keywords.join(", ") : ""
-  );
-  const [contentType, setContentType] = useState(asset.metadata?.content?.contentType ?? "");
-  const [encoding, setEncoding] = useState(asset.metadata?.content?.encoding ?? "");
-  const [language, setLanguage] = useState(asset.metadata?.content?.inLanguage ?? "");
-  const [license, setLicense] = useState(asset.metadata?.license?.name ?? "");
+  const [fields, setFields] = useState(() => fieldsFromAssetMetadata(asset.metadata));
 
   const [baseData, setBaseData] = useState<AssetMetadata>({});
   const [jsonData, setJsonData] = useState<any>({});
   const [metadataUpdated, setMetadataUpdated] = useState(false);
+  const [registering, setRegistering] = useState(false);
 
   // Starts from the original asset's full metadata — including fields the
   // form above doesn't expose (operation, skill, content.sha256/dlfs/
@@ -72,44 +51,12 @@ export function CopyAssetDialog({ asset, venue, isAuthenticated }: CopyAssetDial
   // silently drop it. The form fields below then overlay their edits on
   // top of that clone.
   function buildMetadata(): AssetMetadata {
-    const merged: AssetMetadata = { ...asset.metadata };
-
-    if (name.trim()) merged.name = name.trim();
-    else delete merged.name;
-
-    if (description.trim()) merged.description = description.trim();
-    else delete merged.description;
-
-    if (creator.trim()) merged.creator = creator.trim();
-    else delete merged.creator;
-
-    if (keywords.trim()) merged.keywords = keywords.split(",").map((k) => k.trim()).filter(Boolean);
-    else delete merged.keywords;
-
-    if (notes.trim()) {
-      merged.additionalInformation = { ...merged.additionalInformation, notes: [notes.trim()] };
-    } else if (merged.additionalInformation) {
-      const { notes: _notes, ...rest } = merged.additionalInformation;
-      merged.additionalInformation = Object.keys(rest).length > 0 ? rest : undefined;
-    }
-
-    if (license.trim()) merged.license = { name: license, url: getLicenseUrl(license) };
-    else delete merged.license;
-
-    if (contentType.trim() || encoding.trim() || language.trim()) {
-      merged.content = { ...merged.content };
-      if (contentType.trim()) merged.content.contentType = contentType.trim();
-      if (encoding.trim()) merged.content.encoding = encoding.trim();
-      if (language.trim()) merged.content.inLanguage = language.trim();
-    }
-
-    merged.dateCreated = new Date().toISOString();
-    delete merged.dateModified;
-    return merged;
+    return buildAssetMetadata(fields, { base: asset.metadata });
   }
 
   async function registerCopy(metadata: AssetMetadata) {
     if (!venue) return;
+    setRegistering(true);
     try {
       const copiedAsset = await venue.assets.register(metadata);
       gtmEvent.createAsset(metadata.name ?? copiedAsset.id);
@@ -121,6 +68,8 @@ export function CopyAssetDialog({ asset, venue, isAuthenticated }: CopyAssetDial
         error instanceof Error ? error.message : undefined,
       );
       notifyError("Unable to copy asset", error, venue.baseUrl);
+    } finally {
+      setRegistering(false);
     }
   }
 
@@ -166,60 +115,7 @@ export function CopyAssetDialog({ asset, venue, isAuthenticated }: CopyAssetDial
       {step === "form" && (
         <DialogContent className={FORM_DIALOG_CLASS}>
           <DialogTitle>Review Metadata</DialogTitle>
-          <div>
-            <Label>Name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" />
-          </div>
-          <div>
-            <Label>Description</Label>
-            <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" />
-          </div>
-          <div>
-            <Label>Creator</Label>
-            <Input value={creator} onChange={(e) => setCreator(e.target.value)} placeholder="Creator" />
-          </div>
-          <div>
-            <Label>Notes</Label>
-            <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes" />
-          </div>
-          <div className="flex flex-row space-x-2 items-center justify-between">
-            <div>
-              <Label>Content Type</Label>
-              <Input value={contentType} onChange={(e) => setContentType(e.target.value)} />
-            </div>
-            <div>
-              <Label>Encoding</Label>
-              <Input value={encoding} onChange={(e) => setEncoding(e.target.value)} />
-            </div>
-          </div>
-          <div>
-            <Label>Keywords <span className="text-xs text-muted-foreground">(comma separated)</span></Label>
-            <Input value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="iris, dataset" />
-          </div>
-          <div className="flex flex-row space-x-2 items-center justify-between">
-            <div>
-              <Label>Choose a language</Label>
-              <Select value={language} onValueChange={setLanguage}>
-                <SelectTrigger><SelectValue placeholder="Select a language" /></SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="en-us">en-us</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Choose a license</Label>
-              <Select value={license} onValueChange={setLicense}>
-                <SelectTrigger><SelectValue placeholder="Select a license" /></SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="CC BY 4.0">CC BY 4.0</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <AssetMetadataForm fields={fields} onChange={setFields} />
           <div className="flex flex-row items-center justify-between">
             <DialogClose asChild>
               <Button aria-label="cancel" role="button" type="button" variant="outline">Cancel</Button>
@@ -262,9 +158,10 @@ export function CopyAssetDialog({ asset, venue, isAuthenticated }: CopyAssetDial
               role="button"
               type="button"
               className="mx-2 w-32"
+              disabled={registering}
               onClick={() => registerCopy(metadataUpdated ? jsonData : baseData)}
             >
-              Copy Asset
+              {registering ? "Copying…" : "Copy Asset"}
             </Button>
           </div>
         </DialogContent>

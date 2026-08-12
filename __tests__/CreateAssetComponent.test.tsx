@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { CreateAssetComponent } from '@/components/CreateAssetComponent';
+import { notifyError } from '@/lib/notify';
 
 const pushMock = jest.fn();
 jest.mock('next/navigation', () => ({
@@ -62,5 +63,29 @@ describe('CreateAssetComponent', () => {
     expect(pushMock).toHaveBeenCalledWith(
       `/venues/${encodeURIComponent('did:web:venue-test.covia.ai')}/assets/abc123`,
     );
+  });
+
+  it('keeps the dialog open when asset creation fails', async () => {
+    const user = userEvent.setup();
+    const venue = {
+      venueId: 'did:web:venue-test.covia.ai',
+      baseUrl: 'https://venue-test.covia.ai',
+      assets: { register: jest.fn().mockRejectedValue(new Error('registration failed')) },
+    } as any;
+
+    render(<CreateAssetComponent venue={venue} />);
+    await user.click(screen.getByTestId('create-asset-trigger'));
+    const file = new File(['hello world'], 'test.txt', { type: 'text/plain' });
+    await user.upload(document.querySelector('input[type="file"]') as HTMLInputElement, file);
+    await user.click(screen.getByRole('button', { name: 'upload' }));
+    await user.click(await screen.findByRole('button', { name: 'create asset' }));
+
+    expect(await screen.findByRole('button', { name: 'create asset' })).toBeInTheDocument();
+    expect(notifyError).toHaveBeenCalledWith(
+      'Unable to create asset',
+      expect.any(Error),
+      'https://venue-test.covia.ai',
+    );
+    expect(pushMock).not.toHaveBeenCalled();
   });
 });
