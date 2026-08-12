@@ -85,4 +85,25 @@ describe("useValidateVenue", () => {
     });
     expect(global.fetch).not.toHaveBeenCalled();
   });
+
+  it("records rejected authenticated status as reachable with rejected access", async () => {
+    global.fetch = jest.fn();
+    const venue = {
+      venueId: VENUE_ID,
+      baseUrl: BASE_URL,
+      auth: { apply: jest.fn() },
+      status: jest.fn().mockRejectedValue(new GridError(403, "User not registered")),
+    } as unknown as Venue;
+
+    renderHook(() => useValidateVenue(venue, AUTH));
+
+    await waitFor(() => {
+      expect(useVenueHealth.getState().byUrl[BASE_URL]?.state).toBe("connected");
+      expect(useVenueAuthHealth.getState().byVenue[VENUE_ID]).toMatchObject({
+        state: "rejected",
+        status: 403,
+      });
+    });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
 });

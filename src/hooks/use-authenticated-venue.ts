@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { fetchWithError, Venue } from "@covia/covia-sdk";
+import { Venue } from "@covia/covia-sdk";
 import { useAuthStore, type VenueAuth } from "@/hooks/use-auth";
 import { useVenues, type VenueDescriptor } from "@/hooks/use-venues";
 import { createAuthProvider } from "@/lib/auth-provider";
 import { reportVenueHealth } from "@/hooks/use-venue-health";
 import { reportVenueAuthHealth } from "@/hooks/use-venue-auth-health";
 import { errorMessage, errorStatus, isAuthenticationRejectedError } from "@/lib/errors";
+import { verifyVenueAccount } from "@/lib/venue-auth-probe";
 
 // One shared Venue instance per (venue, auth). The SDK accumulates
 // per-instance state (asset cache, capability detection), which a fresh
@@ -22,21 +23,6 @@ type CachedVenue = {
 
 const venueCache = new Map<string, CachedVenue>();
 const AUTH_VALIDATION_TIMEOUT_MS = 10_000;
-
-async function verifyVenueAccount(venue: Venue): Promise<void> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  venue.auth.apply(headers, venue.venueId);
-
-  // This is the permission-neutral caller-owned collection on current Covia
-  // venues. Call the GET directly: AgentManager.list() may invoke on legacy
-  // venues, and a background health check must never create a job.
-  await fetchWithError(
-    `${venue.baseUrl}/api/v1/agents?includeTerminated=false`,
-    { headers },
-  );
-}
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -136,11 +122,18 @@ export function useValidateVenue(
           });
       })
       .catch((error: unknown) => {
-        if (!authData && isAuthenticationRejectedError(error)) {
+        if (isAuthenticationRejectedError(error)) {
           reportVenueHealth(venue.baseUrl, {
             state: "connected",
-            publicAccess: false,
+            publicAccess: authData ? undefined : false,
           });
+          if (authData) {
+            reportVenueAuthHealth(venue.venueId, authData, {
+              state: "rejected",
+              detail: errorMessage(error, "This venue rejected the stored account"),
+              status: errorStatus(error),
+            });
+          }
           return;
         }
         reportVenueHealth(venue.baseUrl, {
