@@ -4,9 +4,9 @@ import { useSyncExternalStore } from "react";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { Venue } from "@covia/covia-sdk";
-import type { Auth } from "@covia/covia-sdk";
 import { reportVenueHealth } from "@/hooks/use-venue-health";
 import { browserStorage } from "@/lib/persist-storage";
+import { connectVenue } from "@/lib/venue-registry";
 
 export type VenueDescriptor = {
   venueId: string;
@@ -57,36 +57,12 @@ const devVenueUrls = [
 const isProd = process.env.NEXT_PUBLIC_IS_ENV_PROD !== "false";
 const defaultVenueUrls = isProd ? commonVenueUrls : [...commonVenueUrls, ...devVenueUrls];
 
-const CONNECT_TIMEOUT_MS = 2000;
-export const connectWithTimeout = (
-  venueId: string,
-  auth?: Auth,
-  timeoutMs = CONNECT_TIMEOUT_MS,
-): Promise<Venue> =>
-  new Promise((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error(`Timed out connecting to ${venueId}`)),
-      timeoutMs,
-    );
-
-    Venue.connect(venueId, auth).then(
-      (venue) => {
-        clearTimeout(timer);
-        resolve(venue);
-      },
-      (error: unknown) => {
-        clearTimeout(timer);
-        reject(error);
-      },
-    );
-  });
-
 async function connectToDefaultVenues(): Promise<Venue[]> {
   const venues = await Promise.allSettled(
     defaultVenueUrls.map(async (url) => {
       reportVenueHealth(url, { state: "connecting" });
       try {
-        const venue = await connectWithTimeout(url);
+        const venue = await connectVenue(url);
         const version = venue.lastKnownStatus?.version;
         const publicAccess = venue.lastKnownStatus !== undefined;
         reportVenueHealth(venue.baseUrl, { state: "connected", version, publicAccess });

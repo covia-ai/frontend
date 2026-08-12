@@ -3,25 +3,18 @@
 import { useEffect, useMemo } from "react";
 import { Venue } from "@covia/covia-sdk";
 import { useAuthStore, type VenueAuth } from "@/hooks/use-auth";
-import { useVenues, type VenueDescriptor } from "@/hooks/use-venues";
-import { createAuthProvider } from "@/lib/auth-provider";
+import { useVenues } from "@/hooks/use-venues";
 import { reportVenueHealth } from "@/hooks/use-venue-health";
 import { reportVenueAuthHealth } from "@/hooks/use-venue-auth-health";
 import { errorMessage, errorStatus, isAuthenticationRejectedError } from "@/lib/errors";
 import { verifyVenueAccount } from "@/lib/venue-auth-probe";
+import {
+  evictVenueInstances,
+  getVenueFor,
+} from "@/lib/venue-registry";
 
-// One shared Venue instance per (venue, auth). The SDK accumulates
-// per-instance state (asset cache, capability detection), which a fresh
-// instance per component or render would throw away. Instances are created
-// lazily on first use, and the connection is validated by a background
-// status() — never blocking navigation on a dead venue (f503fc8).
-type CachedVenue = {
-  descriptor: VenueDescriptor;
-  auth: VenueAuth | null;
-  venue: Venue;
-};
+export { evictVenueInstances, getVenueFor };
 
-const venueCache = new Map<string, CachedVenue>();
 const AUTH_VALIDATION_TIMEOUT_MS = 10_000;
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
@@ -38,41 +31,6 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string)
       },
     );
   });
-}
-
-// Drop every cached instance for a venueId — called when reconciliation
-// discovers the venue behind an id no longer exists (e.g. restarted with a
-// fresh identity), so stale instances can't keep signing JWTs for a dead
-// audience or serving its cached state.
-export function evictVenueInstances(venueId: string): void {
-  venueCache.delete(venueId);
-}
-
-export function getVenueFor(
-  venueObj: VenueDescriptor,
-  authData: VenueAuth | null,
-): Venue {
-  const cached = venueCache.get(venueObj.venueId);
-  if (
-    cached &&
-    cached.auth === authData &&
-    cached.descriptor.baseUrl === venueObj.baseUrl
-  ) {
-    return cached.venue;
-  }
-
-  const venue = new Venue({
-      baseUrl: venueObj.baseUrl,
-      venueId: venueObj.venueId,
-      name: venueObj.metadata?.name,
-      auth: createAuthProvider(authData),
-  });
-  venueCache.set(venueObj.venueId, {
-    descriptor: venueObj,
-    auth: authData,
-    venue,
-  });
-  return venue;
 }
 
 const validatedVenues = new WeakSet<Venue>();

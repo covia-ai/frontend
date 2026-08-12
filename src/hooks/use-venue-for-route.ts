@@ -2,13 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  connectWithTimeout,
   toVenueDescriptor,
   useVenues,
   type VenueDescriptor,
 } from "@/hooks/use-venues";
 import { useAuthStore } from "@/hooks/use-auth";
-import { createAuthProvider } from "@/lib/auth-provider";
+import { connectVenue } from "@/lib/venue-registry";
 import { reportVenueHealth } from "@/hooks/use-venue-health";
 import { notifyError } from "@/lib/notify";
 
@@ -51,11 +50,11 @@ export function useVenueForRoute(routeVenueId?: string): VenueResolution {
   useEffect(() => {
     if (!routeVenueId || found || connecting.current.has(routeVenueId) || failed.current.has(attemptKey)) return;
     connecting.current.add(routeVenueId);
-    const authOption = createAuthProvider(getAuthForVenue(routeVenueId));
+    const auth = getAuthForVenue(routeVenueId);
     let identifier = routeVenueId;
     try { identifier = decodeURIComponent(routeVenueId); } catch { /* connect will surface the invalid id */ }
     reportVenueHealth(identifier, { state: "connecting" });
-    connectWithTimeout(identifier, authOption, 10_000)
+    connectVenue(identifier, auth, 10_000)
       .then((v) => {
         reportVenueHealth(v.baseUrl, {
           state: "connected",
