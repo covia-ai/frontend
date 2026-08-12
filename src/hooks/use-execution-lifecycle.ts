@@ -21,6 +21,14 @@ function parseJobMessage(raw: string): unknown {
   }
 }
 
+// Mirrors the notFound check in use-asset-details.ts / use-operation-asset.ts:
+// JobNotFoundError's message ("Job not found: <id>") is told apart from a
+// real failure by matching the message text, since useState/catch here
+// flattens the thrown error to a string.
+function isNotFound(message: string | null): boolean {
+  return !!message && message.toLowerCase().includes("not found");
+}
+
 export function useExecutionLifecycle({
   venueId,
   jobId,
@@ -223,12 +231,14 @@ export function useExecutionLifecycle({
     }
   }, [jobId, message, venue]);
 
+  const notFound = isNotFound(error);
   return {
     venue,
     job,
     operationAsset,
     loading,
-    error,
+    error: notFound ? null : error,
+    notFound,
     streaming,
     message,
     setMessage,

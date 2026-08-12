@@ -198,7 +198,7 @@ export function AssetList({ venueId }: AssetListProps = {}) {
           ) : (
             <div ref={gridRef} className={CARD_GRID_CLASS}>
               {pageItems.map((asset) =>
-                <AssetCard key={asset.id} asset={asset} type="assets" compact={true} venue={venue ?? undefined}/>
+                <AssetCard key={asset.id} asset={asset} type="assets" compact={true} venue={venue ?? undefined} scoped={!!venueId}/>
               )}
             </div>
           )}

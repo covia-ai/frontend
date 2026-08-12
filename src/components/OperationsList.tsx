@@ -191,7 +191,7 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
           <div ref={gridRef} className={CARD_GRID_CLASS}>
             {
             pageItems.map((asset) => (
-              <AssetCard key={asset.id} asset={asset} type="operations" compact={true} venue={venue ?? undefined}/>
+              <AssetCard key={asset.id} asset={asset} type="operations" compact={true} venue={venue ?? undefined} scoped={!!venueId}/>
             ))}
           </div>
         )}

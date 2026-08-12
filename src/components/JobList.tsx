@@ -300,8 +300,14 @@ export function JobList({ venueId }: JobListProps = {}) {
   )
 
     const encodedPath = (jobId:string) => {
+        // No routeVenueId means this list is rendered from the unscoped
+        // /jobs route — link to the venue-less /job/{id} route (venue comes
+        // from whichever one is globally selected) instead of embedding the
+        // venue slug, matching AssetCard's `scoped` behavior for assets and
+        // operations.
+        if (!venueId) return "/job/"+jobId;
         return "/venues/"+encodeURIComponent(venueObj?.venueId || "")+"/jobs/"+jobId;
-        
+
     };
 
     const formatter = new Intl.DateTimeFormat(undefined, {

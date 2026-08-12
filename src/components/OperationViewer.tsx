@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { AssetHeader } from "@/components/AssetHeader";
@@ -34,11 +34,17 @@ const DiagramViewer = dynamic(
 type OperationViewerProps = {
   assetId: string;
   venueId: string;
+  // Fires once when the operation turns out not to exist on the resolved
+  // venue — e.g. PublicOperationViewer redirects back to /operations, since
+  // a venue-less operation page follows whichever venue is globally selected
+  // and has no "correct" venue to fall back to.
+  onNotFound?: () => void;
 };
 
 export function OperationViewer({
   assetId,
   venueId,
+  onNotFound,
 }: OperationViewerProps) {
   const router = useRouter();
   const { venue, isAuthenticated } = useResolvedVenueContext(venueId);
@@ -46,6 +52,11 @@ export function OperationViewer({
     venue,
     assetId,
   );
+
+  useEffect(() => {
+    if (notFound) onNotFound?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notFound]);
   const schema = useMemo(
     () =>
       asset?.metadata?.operation

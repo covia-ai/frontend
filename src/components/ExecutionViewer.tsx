@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import {
   Check,
   Clock,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import { RunStatus, isJobFinished } from "@covia/covia-sdk";
 import { TbSubtask } from "react-icons/tb";
+import { AssetLoadState } from "@/components/AssetLoadState";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { ExecutionHeader } from "@/components/ExecutionHeader";
 import { ExecutionToolbar } from "@/components/ExecutionToolbar";
@@ -51,14 +53,25 @@ function StatusIcon({ status }: { status?: string }) {
 export function ExecutionViewer({
   jobId,
   venueId,
+  onNotFound,
 }: {
   jobId: string;
   venueId?: string;
+  // Fires once when the job turns out not to exist on the resolved venue —
+  // e.g. PublicJobViewer redirects back to /jobs, since a venue-less job
+  // page follows whichever venue is globally selected and has no "correct"
+  // venue to fall back to.
+  onNotFound?: () => void;
 }) {
   const execution = useExecutionLifecycle({ jobId, venueId });
   const { venue, job, operationAsset } = execution;
   const resolvedVenueId = venue?.venueId ?? venueId ?? "";
   const operationSchema = operationAsset?.metadata?.operation;
+
+  useEffect(() => {
+    if (execution.notFound) onNotFound?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [execution.notFound]);
 
   return (
     <>
@@ -76,6 +89,11 @@ export function ExecutionViewer({
       {execution.error && (
         <ErrorDisplay error={execution.error} className="my-4" />
       )}
+      <AssetLoadState
+        notFound={execution.notFound}
+        notFoundTitle="Job Not Found"
+        notFoundMessage={`The job ID "${jobId}" does not exist on this venue.`}
+      />
 
       {job && (
         <div className="flex flex-col w-full items-center justify-center">

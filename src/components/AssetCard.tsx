@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { Asset, Venue } from "@covia/covia-sdk";
+import { Asset, Venue, assetHash } from "@covia/covia-sdk";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
@@ -10,9 +10,14 @@ interface AssetCardProps {
   type: string;
   compact:boolean;
   venue?: Venue;
+  // False when rendered outside a /venues/[slug] route (e.g. the unscoped
+  // /publicartifacts or /operations lists) — clicks then go to a venue-less
+  // route instead of /venues/{venueId}/{type}/{id}. Defaults true so every
+  // other caller keeps today's venue-scoped links.
+  scoped?: boolean;
 }
 
-export function AssetCard({ asset,type,compact,venue: venueProp }: AssetCardProps) {
+export function AssetCard({ asset,type,compact,venue: venueProp,scoped = true }: AssetCardProps) {
     const fallbackVenue = useAuthenticatedVenue();
     const venue = venueProp ?? fallbackVenue;
     const router = useRouter();
@@ -26,6 +31,25 @@ export function AssetCard({ asset,type,compact,venue: venueProp }: AssetCardProp
 
 
     const handleCardClick = (assetId:string) => {
+        if (!scoped) {
+          if (type === "assets") {
+            // Assets are content-hashed, so a bare hex hash alone (plus
+            // whichever venue is selected) is enough to resolve one — see
+            // PublicArtifactViewer. Non-hash ids (rare) fall through to the
+            // venue-scoped link below.
+            const hash = assetHash(assetId);
+            if (hash) {
+              router.push("/publicartifact/"+encodeURIComponent(hash));
+              return;
+            }
+          } else if (type === "operations") {
+            // Operations are catalog-path addressed (e.g. "v/ops/a2a/agent-
+            // card"), not content-hashed, so the full path — not a hash —
+            // is what a venue-less lookup needs. See PublicOperationViewer.
+            router.push("/operation/"+assetId);
+            return;
+          }
+        }
         if (!venue) return;
         const encodedUrl = "/venues/"+encodeURIComponent(venue.venueId)+"/"+type+"/"+assetId;
         router.push(encodedUrl);

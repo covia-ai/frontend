@@ -49,6 +49,20 @@ export function SmartBreadcrumb({
       { label: 'Home', href: '/' }
     ];
 
+    // /operation/[...path] carries a full catalog address (e.g.
+    // "v/ops/a2a/agent-card") as path segments — those middle segments
+    // aren't pages of their own, so skip straight from "Operations" to the
+    // operation's own name instead of a crumb per namespace segment.
+    if (segments[0] === 'operation' && segments.length > 1) {
+      const lastSegment = segments[segments.length - 1];
+      const label = assetOrJobName && isAssetOrJobSegment(lastSegment) ? assetOrJobName : lastSegment;
+      return [
+        ...breadcrumbs,
+        { label: 'Operations', href: '/operations' },
+        { label, href: pathname },
+      ];
+    }
+
     let currentPath = '';
     segments.forEach((segment, index) => {
       currentPath += `/${segment}`;
@@ -75,9 +89,20 @@ export function SmartBreadcrumb({
         else if (index === segments.length - 1 && assetOrJobName && isAssetOrJobSegment(segment)) {
           label = assetOrJobName;
         }
+        // `/publicartifact/{hash}` and `/operation/{hash}` are singular
+        // per-item detail routes — there's no page at the bare segment, so
+        // their crumb must link to the actual list route instead of the
+        // literal path so far.
+        const listRouteOverrides: Record<string, string> = {
+          publicartifact: '/publicartifacts',
+          operation: '/operations',
+          job: '/jobs',
+        };
+        const href = listRouteOverrides[segment] ?? currentPath;
+
         breadcrumbs.push({
           label,
-          href: currentPath,
+          href,
         });
       }
     });
@@ -87,13 +112,13 @@ export function SmartBreadcrumb({
 
   // Check if a segment represents an asset (not a known route)
   const isAssetOrJobSegment = (segment: string): boolean => {
-    const knownRoutes = ['demo', 'demos', 'sdk-job-lifecycle', 'adaptive-risk', 'governed-escalation', 'publicartificats','venues', 'assets', 'operations', 'jobs', 'learning', 'workspace', 'myvenues', 'myassets', 'signup', 'privacypolicy'];
+    const knownRoutes = ['demo', 'demos', 'sdk-job-lifecycle', 'adaptive-risk', 'governed-escalation', 'publicartificats','venues', 'assets', 'operations', 'jobs', 'job', 'learning', 'workspace', 'myvenues', 'myassets', 'signup', 'privacypolicy'];
     return !knownRoutes.includes(segment) && !segment.startsWith('[') && !segment.endsWith(']');
   };
 
   // Check if a segment represents an venue (not a known route)
   const isVenueSegment = (segment: string, prevSegment: string): boolean => {
-    const knownRoutes = ['demo', 'demos', 'sdk-job-lifecycle', 'adaptive-risk', 'governed-escalation', 'publicartificats','venues', 'assets', 'operations', 'jobs', 'learning', 'workspace', 'myvenues', 'myassets', 'signup', 'privacypolicy'];
+    const knownRoutes = ['demo', 'demos', 'sdk-job-lifecycle', 'adaptive-risk', 'governed-escalation', 'publicartificats','venues', 'assets', 'operations', 'jobs', 'job', 'learning', 'workspace', 'myvenues', 'myassets', 'signup', 'privacypolicy'];
     const isPrevSegmentVenues = prevSegment == "venues" ? true : false;
     return !knownRoutes.includes(segment) && !segment.startsWith('[') && !segment.endsWith(']') && isPrevSegmentVenues;
   };
@@ -113,9 +138,15 @@ export function SmartBreadcrumb({
       // breadcrumb read differently than the nav the user just clicked.
       'assets': 'Public Artifacts',
       'publicartifacts': 'Public Artifacts',
+      'publicartifact': 'Public Artifacts',
       'privateartifacts': 'Private Artifacts',
       'operations': 'Operations',
+      'operation': 'Operations',
       'jobs': 'Jobs',
+      // Matches PublicArtifactViewer/PublicOperationViewer: the venue-less
+      // job detail route uses a singular path segment ("job") for the same
+      // concept as the "jobs" list route.
+      'job': 'Jobs',
       'learning': 'Resources',
       'workspace': 'Workspace',
       'myvenues': 'My Venues',

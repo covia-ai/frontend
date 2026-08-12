@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useResolvedVenue } from "@/hooks/use-resolved-venue";
 import { useAssetDetails } from "@/hooks/use-asset-details";
 import { MetadataViewer } from "./MetadataViewer";
@@ -11,11 +12,21 @@ import { TopBar } from "./admin-panel/TopBar";
 interface AssetViewerProps {
   assetId: string;
   venueId: string;
+  // Fires once when the asset turns out not to exist on the resolved venue —
+  // e.g. PublicArtifactViewer redirects back to /publicartifacts, since a
+  // venue-less asset page follows whichever venue is globally selected and
+  // has no "correct" venue to fall back to.
+  onNotFound?: () => void;
 }
 
 export function AssetViewer(props: AssetViewerProps) {
   const venue = useResolvedVenue(props.venueId);
   const { asset, loading, error, notFound } = useAssetDetails(venue, props.assetId);
+
+  useEffect(() => {
+    if (notFound) props.onNotFound?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notFound]);
 
   return (
     <ContentLayout>
