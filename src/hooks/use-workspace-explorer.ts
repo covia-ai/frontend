@@ -53,7 +53,7 @@ export function normalizeWorkspacePath(path?: string): string {
   return segments.length > 0 ? segments.join("/") : "/";
 }
 
-// Root namespace keys (see covia/venue Namespace.java) are venue-managed —
+// Root namespace keys (see workspace-namespaces.ts) are venue-managed —
 // jobs, agents, secrets, assets, operations, inbox, and account metadata are
 // all written through their own proper lifecycles, not this raw explorer.
 // Only "w" (the free-form user workspace) is safe to edit/delete here.

@@ -58,9 +58,9 @@ describe("useWorkspaceExplorer", () => {
 
     await waitFor(() => expect(result.current.listingLoading).toBe(false));
     // Root always shows the fixed namespace set first (see
-    // withFixedRootNamespaces) — "j" (Jobs) leads regardless of what the
-    // backend's own listing reports.
-    expect(result.current.selectedPath).toBe("j");
+    // withFixedRootNamespaces) — the venue's virtual public namespace leads
+    // regardless of what the caller's materialised root listing reports.
+    expect(result.current.selectedPath).toBe("v");
   });
 
   it("auto-selects the first entry after navigating into a directory", async () => {

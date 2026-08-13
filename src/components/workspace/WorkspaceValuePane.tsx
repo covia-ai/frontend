@@ -28,6 +28,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  isWorkspaceNamespaceRoot,
+  workspaceNamespaceForPath,
+} from "@/lib/workspace-namespaces";
 
 const ThemedJsonEditor = dynamic(
   () =>
@@ -88,7 +92,11 @@ export function WorkspaceValuePane({
     );
   }
 
-  if (!selectedValue.exists) {
+  const namespace = workspaceNamespaceForPath(selectedPath);
+  const emptyNamespace =
+    !selectedValue.exists && isWorkspaceNamespaceRoot(selectedPath);
+
+  if (!selectedValue.exists && !emptyNamespace) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
         <FileText size={32} />
@@ -106,9 +114,6 @@ export function WorkspaceValuePane({
       <div className="flex flex-wrap items-center gap-2 border-b border-border p-3">
         <Badge variant="outline" className="max-w-xs truncate font-mono text-xs">
           {selectedPath}
-        </Badge>
-        <Badge variant="secondary" className="text-xs">
-          {selectedValue.type}
         </Badge>
 
         <div className="ml-auto flex items-center gap-1">
@@ -169,10 +174,24 @@ export function WorkspaceValuePane({
             </span>
           )}
         </div>
+        {namespace && (
+          <p
+            data-testid="workspace-namespace-description"
+            className="basis-full text-sm text-muted-foreground"
+          >
+            <span className="font-medium text-foreground">{namespace.label}</span>
+            {" — "}{namespace.description}
+          </p>
+        )}
       </div>
 
       <div className="flex-1 overflow-auto p-4">
-        {isObject ? (
+        {emptyNamespace ? (
+          <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
+            <Database size={32} />
+            <p className="mt-2 text-sm">This namespace is empty</p>
+          </div>
+        ) : isObject ? (
           <ThemedJsonEditor
             data={editedData as object}
             editable={canMutate}
