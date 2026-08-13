@@ -11,7 +11,7 @@ jest.mock('sonner', () => ({
 
 import { jobFailure, notifyError, notifyInfo, notifySuccess, notifyWarning } from '@/lib/notify';
 import { useNotificationLog, MAX_LOG_ENTRIES } from '@/hooks/use-notification-log';
-import { JobFailedError, type JobMetadata } from '@covia/covia-sdk';
+import { JobFailedError, RunStatus, type JobMetadata } from '@covia/covia-sdk';
 import { toast } from 'sonner';
 
 const mockSonner = toast as unknown as {
@@ -24,7 +24,7 @@ const mockSonner = toast as unknown as {
 function jobFailedError(overrides: Partial<JobMetadata> = {}): JobFailedError {
   return new JobFailedError({
     id: '0x019fd5dae9aa0000ea26d3ef7c4509f6',
-    status: 'FAILED',
+    status: RunStatus.FAILED,
     error: "Cannot resume agent 'x': status is SLEEPING; agent:resume requires SUSPENDED",
     ...overrides,
   });

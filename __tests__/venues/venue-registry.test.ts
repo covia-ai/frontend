@@ -52,7 +52,7 @@ describe("venue registry", () => {
   });
 
   it("deduplicates concurrent connects and adopts their result", async () => {
-    let resolveConnect!: (venue: unknown) => void;
+    let resolveConnect!: (venue: any) => void;
     mockConnect.mockReturnValue(new Promise((resolve) => {
       resolveConnect = resolve;
     }));
