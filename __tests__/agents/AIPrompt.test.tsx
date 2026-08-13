@@ -159,6 +159,22 @@ describe('AIPrompt — default agent reuse vs creation', () => {
     expect(venue.secrets.list).not.toHaveBeenCalled();
   });
 
+  it('uses a fixed assistant without showing the agent picker and stays on the host surface', async () => {
+    const venue = makeVenue({ existingAgents: ['assistant'] });
+    mockUseAuthenticatedVenue.mockReturnValue(venue);
+    const onChatStarted = jest.fn();
+    const user = userEvent.setup();
+
+    render(<AIPrompt fixedAgentId="assistant" onChatStarted={onChatStarted} />);
+
+    expect(screen.queryByTestId('agent-picker')).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText('prompt'), 'Hello assistant');
+    await user.click(screen.getByTestId('chat-button'));
+
+    await waitFor(() => expect(onChatStarted).toHaveBeenCalledWith('assistant'));
+    expect(venue.agents.chat).toHaveBeenCalledWith('assistant', 'Hello assistant');
+  });
+
   it('resumes a SUSPENDED assistant before sending the message', async () => {
     const venue = makeVenue({ existingAgents: ['assistant'], agentStatus: 'SUSPENDED' });
     mockUseAuthenticatedVenue.mockReturnValue(venue);

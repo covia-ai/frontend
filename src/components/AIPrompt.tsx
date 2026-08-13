@@ -48,7 +48,12 @@ function makeWorkspaceAgentId(): string {
   return `workspace-agent-${Date.now().toString(36)}`;
 }
 
-export const AIPrompt = () => {
+type AIPromptProps = {
+  fixedAgentId?: string;
+  onChatStarted?: (agentId: string) => void;
+};
+
+export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) => {
   const [prompt, setPrompt] = useState('')
   const [promptFocused, setPromptFocused] = useState(false)
   const [checking, setChecking] = useState(false)
@@ -60,8 +65,8 @@ export const AIPrompt = () => {
   const [detectedKeys, setDetectedKeys] = useState<string[]>([])
   const [selectedSecretName, setSelectedSecretName] = useState('')
   const [agentOptions, setAgentOptions] = useState<{ agentId: string; status?: string }[]>([])
-  const [selectedAgentId, setSelectedAgentId] = useState<string>(DEFAULT_AGENT_ID)
-  const [pendingAgentId, setPendingAgentId] = useState<string>(DEFAULT_AGENT_ID)
+  const [selectedAgentId, setSelectedAgentId] = useState<string>(fixedAgentId ?? DEFAULT_AGENT_ID)
+  const [pendingAgentId, setPendingAgentId] = useState<string>(fixedAgentId ?? DEFAULT_AGENT_ID)
   const venue = useAuthenticatedVenue();
   const router = useRouter();
   const isAuthenticated = useIsAuthenticated();
@@ -104,6 +109,7 @@ export const AIPrompt = () => {
   // actual resume/create/send decision, this one only feeds the dropdown, so
   // it being briefly stale (until the next refresh) never causes a bad send.
   async function refreshAgentOptions() {
+    if (fixedAgentId) return;
     if (!venue) { setAgentOptions([]); return; }
     try {
       const { agents } = await venue.agents.list();
@@ -116,7 +122,7 @@ export const AIPrompt = () => {
   useEffect(() => {
     refreshAgentOptions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [venue]);
+  }, [venue, fixedAgentId]);
 
   const { defaultAgentLabel, otherAgents } = useMemo(() => {
     const hasDefault = agentOptions.some((a) => a.agentId === DEFAULT_AGENT_ID);
@@ -141,7 +147,7 @@ export const AIPrompt = () => {
   // the work deserves a durable, tracked job can spawn one itself (the
   // manager-template pattern). chat() blocks until the agent replies, so the
   // promise is deliberately left un-awaited — we publish the message as a
-  // pending chat first so the explorer we navigate to can echo it straight
+  // pending chat first so the chat surface can echo it straight
   // away, then poll up the recorded turn and the eventual reply. Failures and
   // empty replies surface via toast, which is global (sonner) and so outlives
   // this component — as does this promise chain, so clearing the pending chat
@@ -164,7 +170,8 @@ export const AIPrompt = () => {
       })
       .catch(() => undefined)
       .finally(() => clearPendingChat(chat));
-    router.push(`/agents/explorer?agentId=${encodeURIComponent(agentId)}`);
+    if (onChatStarted) onChatStarted(agentId);
+    else router.push(`/agents/chat?agentId=${encodeURIComponent(agentId)}`);
   }
 
   async function proceedWithKey(secretName: string, agentId: string) {
@@ -326,10 +333,13 @@ export const AIPrompt = () => {
   const busy = checking || creating || savingKey;
 
   return (
-    <div data-testid="chat-container" className="flex flex-col items-center justify-center py-10 px-10 ">
-        <PageHeading text="Do anything on" highlight="the Grid" />
+    <div data-testid="chat-container" className="flex min-h-[calc(100vh-9rem)] flex-col items-center justify-center px-4 py-10 sm:px-10">
+        <PageHeading
+          text={fixedAgentId ? "How can I" : "Do anything on"}
+          highlight={fixedAgentId ? "help?" : "the Grid"}
+        />
 
-        <Card className="w-full max-w-4xl mt-6 gap-1 p-3">
+        <Card className="mt-6 w-full max-w-3xl gap-1 rounded-3xl p-3 shadow-sm">
           <Textarea
             placeholder={promptFocused ? '' : animatedPlaceholder}
             className={cn(
@@ -351,7 +361,7 @@ export const AIPrompt = () => {
           />
 
           <div className="flex items-center justify-end gap-1">
-            <DropdownMenu>
+            {!fixedAgentId && <DropdownMenu>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
@@ -381,7 +391,7 @@ export const AIPrompt = () => {
                   <DropdownMenuRadioItem value={NEW_AGENT_OPTION}>+ New agent</DropdownMenuRadioItem>
                 </DropdownMenuRadioGroup>
               </DropdownMenuContent>
-            </DropdownMenu>
+            </DropdownMenu>}
 
             <Tooltip>
               <TooltipTrigger asChild>
@@ -408,6 +418,11 @@ export const AIPrompt = () => {
         {creating && (
           <p className="text-xs text-muted-foreground animate-pulse mt-1">
             Creating agent…
+          </p>
+        )}
+        {fixedAgentId && !creating && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Your assistant will be created from the venue&apos;s skilled template when you send your first message.
           </p>
         )}
 
