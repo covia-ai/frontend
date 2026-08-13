@@ -1,14 +1,18 @@
 import { act, renderHook } from "@testing-library/react";
 
-const push = jest.fn();
-const notifyError = jest.fn();
-const notifyWarning = jest.fn();
-const jobFailure = jest.fn((error: unknown) => ({ reason: error, jobHref: "/job/failed" }));
-
-jest.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
-jest.mock("@/lib/notify", () => ({ notifyError, notifyWarning, jobFailure }));
+jest.mock("next/navigation", () => ({ useRouter: jest.fn() }));
+jest.mock("@/lib/notify", () => ({
+  notifyError: jest.fn(),
+  notifyWarning: jest.fn(),
+  jobFailure: jest.fn((error: unknown) => ({ reason: error, jobHref: "/job/failed" })),
+}));
 
 import { useJobExecution } from "@/hooks/use-job-execution";
+import { useRouter } from "next/navigation";
+import { jobFailure, notifyError, notifyWarning } from "@/lib/notify";
+
+const push = jest.fn();
+const mockUseRouter = jest.mocked(useRouter);
 
 const venue = {
   venueId: "did:web:venue.example",
@@ -16,7 +20,10 @@ const venue = {
 } as any;
 
 describe("useJobExecution", () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUseRouter.mockReturnValue({ push } as unknown as ReturnType<typeof useRouter>);
+  });
 
   it("navigates every successful job action through the scoped job route", async () => {
     const { result } = renderHook(() => useJobExecution(venue));

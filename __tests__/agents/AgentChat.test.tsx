@@ -69,7 +69,7 @@ describe("AgentChat", () => {
     expect(mockUseAgentExplorer).toHaveBeenCalledWith("writer");
     expect(screen.getByTestId("agent-transcript")).toBeInTheDocument();
     expect(screen.getByText("Draft a launch post")).toBeInTheDocument();
-    expect(screen.getByText("Here is a concise first draft.")).toHaveClass(
+    expect(screen.getByText("Here is a concise first draft.").parentElement?.parentElement).toHaveClass(
       "text-[15px]",
       "leading-6",
     );

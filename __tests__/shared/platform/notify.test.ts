@@ -1,16 +1,25 @@
 import '@testing-library/jest-dom';
 
-const mockSonner = {
-  success: jest.fn(),
-  error: jest.fn(),
-  warning: jest.fn(),
-  info: jest.fn(),
-};
-jest.mock('sonner', () => ({ toast: mockSonner }));
+jest.mock('sonner', () => ({
+  toast: {
+    success: jest.fn(),
+    error: jest.fn(),
+    warning: jest.fn(),
+    info: jest.fn(),
+  },
+}));
 
 import { jobFailure, notifyError, notifyInfo, notifySuccess, notifyWarning } from '@/lib/notify';
 import { useNotificationLog, MAX_LOG_ENTRIES } from '@/hooks/use-notification-log';
 import { JobFailedError, type JobMetadata } from '@covia/covia-sdk';
+import { toast } from 'sonner';
+
+const mockSonner = toast as unknown as {
+  success: jest.Mock;
+  error: jest.Mock;
+  warning: jest.Mock;
+  info: jest.Mock;
+};
 
 function jobFailedError(overrides: Partial<JobMetadata> = {}): JobFailedError {
   return new JobFailedError({

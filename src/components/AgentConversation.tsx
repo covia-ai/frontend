@@ -2,6 +2,7 @@ import type { RefObject } from "react";
 import { Bot, Loader2, MessageSquareText } from "lucide-react";
 
 import { AgentToolTurnGroup } from "@/components/AgentToolTurn";
+import { MarkdownMessage } from "@/components/MarkdownMessage";
 import type { Session } from "@/config/types";
 import type { PendingChat } from "@/hooks/use-pending-chats";
 import {
@@ -108,9 +109,9 @@ export function AgentConversation({
                 </div>
                 <div
                   title={title}
-                  className="min-w-0 flex-1 whitespace-pre-wrap break-words text-[15px] leading-6"
+                  className="min-w-0 flex-1 break-words text-[15px] leading-6"
                 >
-                  {text}
+                  <MarkdownMessage>{text}</MarkdownMessage>
                 </div>
               </div>
             );

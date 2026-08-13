@@ -1,17 +1,12 @@
-const mockConnect = jest.fn();
-const mockVenueConstructor = jest.fn();
-
-jest.mock("@covia/covia-sdk", () => ({
-  Venue: class {
-    static connect = mockConnect;
-    constructor(options: unknown) {
-      mockVenueConstructor(options);
-      return { options };
-    }
-  },
-  BearerAuth: class {},
-  Ed25519Auth: { fromHex: jest.fn(() => ({})) },
-}));
+jest.mock("@covia/covia-sdk", () => {
+  const Venue = jest.fn((options: unknown) => ({ options }));
+  Object.assign(Venue, { connect: jest.fn() });
+  return {
+    Venue,
+    BearerAuth: class {},
+    Ed25519Auth: { fromHex: jest.fn(() => ({})) },
+  };
+});
 
 import {
   adoptVenueInstance,
@@ -20,6 +15,10 @@ import {
   getVenueStatus,
   getVenueFor,
 } from "@/lib/venue-registry";
+import { Venue } from "@covia/covia-sdk";
+
+const mockConnect = jest.mocked(Venue.connect);
+const mockVenueConstructor = Venue as unknown as jest.Mock;
 
 const descriptor = {
   venueId: "did:web:venue.example",

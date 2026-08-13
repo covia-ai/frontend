@@ -1,15 +1,20 @@
-const notifyError = jest.fn();
-const notifyWarning = jest.fn();
-const jobFailure = jest.fn((error: unknown) => ({ reason: error, jobHref: "/jobs/failed" }));
-const sendAgentMessage = jest.fn();
-const sendAgentMessageFailed = jest.fn();
-
-jest.mock("@/lib/notify", () => ({ notifyError, notifyWarning, jobFailure }));
+jest.mock("@/lib/notify", () => ({
+  notifyError: jest.fn(),
+  notifyWarning: jest.fn(),
+  jobFailure: jest.fn((error: unknown) => ({ reason: error, jobHref: "/jobs/failed" })),
+}));
 jest.mock("@/lib/utils", () => ({
-  gtmEvent: { sendAgentMessage, sendAgentMessageFailed },
+  gtmEvent: {
+    sendAgentMessage: jest.fn(),
+    sendAgentMessageFailed: jest.fn(),
+  },
 }));
 
 import { dispatchAgentMessage } from "@/lib/agent-chat";
+import { jobFailure, notifyError, notifyWarning } from "@/lib/notify";
+import { gtmEvent } from "@/lib/utils";
+
+const sendAgentMessage = jest.mocked(gtmEvent.sendAgentMessage);
 
 const common = {
   agentId: "assistant",

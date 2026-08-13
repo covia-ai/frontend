@@ -1,16 +1,13 @@
+// Jest loads this configuration as CommonJS.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const nextJest = require("next/jest");
+
+const createJestConfig = nextJest({ dir: "./" });
+
 /** @type {import("jest").Config} */
 const config = {
-  preset: "ts-jest",
   testEnvironment: "jsdom",
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
-  transform: {
-    "^.+\\.(ts|tsx)$": [
-      "ts-jest",
-      {
-        tsconfig: "tsconfig.jest.json",
-      },
-    ],
-  },
   moduleNameMapper: {
     "\\.(css|less|scss|sass)$": "identity-obj-proxy",
     "^@/(.*)$": "<rootDir>/src/$1",
@@ -26,4 +23,16 @@ const config = {
   coveragePathIgnorePatterns: ["/node_modules/", "/.next/"],
 };
 
-module.exports = config;
+const generatedConfig = createJestConfig(config);
+
+module.exports = async (...args) => {
+  const resolvedConfig = await generatedConfig(...args);
+  // The unified/remark ecosystem and Shiki are ESM-only. Next's SWC
+  // transformer can compile them, but next/jest normally ignores every
+  // node_modules package except a short transpilePackages allowlist. The
+  // Markdown dependency graph is deliberately granular, so transform the
+  // modules actually loaded by a test rather than maintaining a fragile list
+  // of dozens of transitive packages here.
+  resolvedConfig.transformIgnorePatterns = ["^.+\\.module\\.(css|sass|scss)$"];
+  return resolvedConfig;
+};

@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  transpilePackages: ["react-markdown", "remark-gfm", "rehype-sanitize"],
   images: {
     remotePatterns: [
       {
