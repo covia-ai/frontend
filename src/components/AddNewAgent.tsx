@@ -15,21 +15,20 @@ import { Label } from "./ui/label";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
-import { Textarea } from "./ui/textarea";
 import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
 import { AlertTriangle, BookmarkPlus } from "lucide-react";
 import Link from "next/link";
-import { cn, gtmEvent, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
+import { gtmEvent, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
+import {
+  AgentRuntimeFields,
+  AgentSystemPromptField,
+  isAgentProviderReady,
+  modelSelectionFromId,
+  resolvedModelId,
+} from "@/components/agent-config/AgentConfigEditor";
 import {
   AGENT_TEMPLATES_CHANGED_EVENT,
   asSdkAgentConfig,
@@ -56,9 +55,6 @@ interface AddNewAgentProps {
   /** Resolved inline fields for describing configs that contain references. */
   initialConfigPreview?: AgentConfigMap;
 }
-
-const CUSTOM_MODEL_OPTION = "__custom__";
-const DEFAULT_MODEL_OPTION = "__default__";
 
 const slugify = (name: string) =>
   name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
@@ -114,9 +110,9 @@ export function AddNewAgent({
     setAgentIdEdited(false);
     setSystemPrompt(initialSystemPrompt);
     setLlmProvider(initialProvider);
-    const knownModel = LLM_PROVIDERS[initialProvider]?.models?.includes(initialModel);
-    setModel(initialModel ? (knownModel ? initialModel : CUSTOM_MODEL_OPTION) : "");
-    setCustomModel(initialModel && !knownModel ? initialModel : "");
+    const modelSelection = modelSelectionFromId(initialProvider, initialModel);
+    setModel(modelSelection.model);
+    setCustomModel(modelSelection.customModel);
     setInitialCommand("");
     setApiKeyInput("");
     if (!venue) return;
@@ -152,8 +148,7 @@ export function AddNewAgent({
   ]);
 
   // The model actually sent in the agent config; "" means omit (venue default).
-  const resolvedModel =
-    model === CUSTOM_MODEL_OPTION ? customModel.trim() : model === DEFAULT_MODEL_OPTION ? "" : model;
+  const resolvedModel = resolvedModelId(model, customModel);
 
   const handleProviderChange = (providerId: string) => {
     setLlmProvider(providerId);
@@ -162,12 +157,8 @@ export function AddNewAgent({
     setCustomModel("");
   };
 
-  const isProviderReady = (providerId: string) => {
-    const provider = LLM_PROVIDERS[providerId];
-    if (!provider) return false;
-    if (!provider.requiresKey) return true;
-    return availableKeys.includes(provider.secretKey);
-  };
+  const isProviderReady = (providerId: string) =>
+    isAgentProviderReady(providerId, availableKeys);
 
   const buildAgentConfig = (): AgentConfigInput => {
     const provider = LLM_PROVIDERS[llmProvider];
@@ -337,22 +328,10 @@ export function AddNewAgent({
               )}
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col gap-2">
-              <Label htmlFor="system-prompt">System prompt</Label>
-              <Textarea
-                id="system-prompt"
-                placeholder="Describe the agent's role, behaviour, and boundaries."
-                value={systemPrompt}
-                onChange={(e) => setSystemPrompt(e.target.value)}
-                className={cn(
-                  "h-72 min-h-72 resize-none overflow-y-auto text-sm",
-                  SUGGESTION_PLACEHOLDER_CLASS,
-                )}
-              />
-              <p className="text-sm text-muted-foreground">
-                The instructions the agent follows in every conversation.
-              </p>
-            </div>
+            <AgentSystemPromptField
+              value={systemPrompt}
+              onChange={setSystemPrompt}
+            />
           </section>
 
           <section
@@ -374,69 +353,17 @@ export function AddNewAgent({
               </p>
             )}
 
-            <div className="space-y-2">
-              <Label>Provider</Label>
-              <Select value={llmProvider} onValueChange={handleProviderChange}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(LLM_PROVIDERS).map(([id, provider]) => (
-                    <SelectItem key={id} value={id}>{provider.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {!isProviderReady(llmProvider) && LLM_PROVIDERS[llmProvider]?.requiresKey && (
-                <div className="space-y-2">
-                  <p className="flex items-center gap-1 text-sm text-amber-500">
-                    <AlertTriangle size={14} />
-                    No {LLM_PROVIDERS[llmProvider]?.label} key. Paste one below or{" "}
-                    <Link href="/secrets" className="underline">add it in Secrets</Link>.
-                  </p>
-                  <Input
-                    type="password"
-                    data-testid="inline-api-key"
-                    className={SUGGESTION_PLACEHOLDER_CLASS}
-                    placeholder={`${LLM_PROVIDERS[llmProvider]?.secretKey}`}
-                    value={apiKeyInput}
-                    onChange={(e) => setApiKeyInput(e.target.value)}
-                    autoComplete="new-password"
-                    data-1p-ignore
-                    data-lpignore="true"
-                    spellCheck={false}
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label>Model</Label>
-              <Select
-                value={model || DEFAULT_MODEL_OPTION}
-                onValueChange={(value) => setModel(value === DEFAULT_MODEL_OPTION ? "" : value)}
-              >
-                <SelectTrigger data-testid="model-select"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={DEFAULT_MODEL_OPTION}>Venue default</SelectItem>
-                  {(LLM_PROVIDERS[llmProvider]?.models ?? []).map((modelId) => (
-                    <SelectItem key={modelId} value={modelId}>{modelId}</SelectItem>
-                  ))}
-                  <SelectItem value={CUSTOM_MODEL_OPTION}>Custom…</SelectItem>
-                </SelectContent>
-              </Select>
-              {model === CUSTOM_MODEL_OPTION && (
-                <Input
-                  data-testid="model-custom-input"
-                  className={SUGGESTION_PLACEHOLDER_CLASS}
-                  placeholder="e.g. claude-opus-4-8"
-                  value={customModel}
-                  onChange={(e) => setCustomModel(e.target.value)}
-                />
-              )}
-              <p className="text-sm text-muted-foreground">
-                Leave this on Venue default unless you need a specific model.
-              </p>
-            </div>
+            <AgentRuntimeFields
+              providerId={llmProvider}
+              onProviderChange={handleProviderChange}
+              model={model}
+              onModelChange={setModel}
+              customModel={customModel}
+              onCustomModelChange={setCustomModel}
+              availableKeys={availableKeys}
+              apiKey={apiKeyInput}
+              onApiKeyChange={setApiKeyInput}
+            />
 
             <div className="space-y-2">
               <Label htmlFor="initial-command">First task <span className="font-normal text-muted-foreground">(optional)</span></Label>
