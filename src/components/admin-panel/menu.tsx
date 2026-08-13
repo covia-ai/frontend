@@ -6,13 +6,12 @@ import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 
 import { cn } from "@/lib/utils";
-import { getMenuList } from "@/lib/menu-list";
+import { MENU_LIST } from "@/lib/menu-list";
 import { TONE_STYLES } from "@/lib/status";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { useHitlOpenCount } from "@/hooks/use-hitl";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CollapseMenuButton } from "@/components/admin-panel/collapse-menu-button";
 import {
   Tooltip,
   TooltipTrigger,
@@ -24,46 +23,34 @@ interface MenuProps {
   isOpen: boolean | undefined;
 }
 
-// All of these require a signed-in user under the hood (Workspace's data is
-// per-user, Secrets are per-user credentials, and the HITL inbox is the
-// caller's own h/ namespace) — hide them from the sidebar entirely rather than
-// showing a sign-in wall after navigating in.
-const AUTH_ONLY_LABELS = new Set(["Workspace", "Secrets", "Inbox"]);
-
-// Only this entry carries a live count, so the badge is wired by label rather
-// than threading a value through the static menu definition.
-const HITL_LABEL = "Inbox";
-
 export function Menu({ isOpen }: MenuProps) {
   const pathname = usePathname();
   const isAuthenticated = useIsAuthenticated();
   const hitlOpenCount = useHitlOpenCount();
-  const rawMenuList = getMenuList();
   const menuList = useMemo(() => {
     const list = isAuthenticated
-      ? rawMenuList
-      : rawMenuList.map((group) => ({
+      ? MENU_LIST
+      : MENU_LIST.map((group) => ({
           ...group,
-          menus: group.menus.filter((m) => !AUTH_ONLY_LABELS.has(m.label)),
+          menus: group.menus.filter((menu) => !menu.requiresAuth),
         }));
-    // A group with no menus left (e.g. "Manage" is just Secrets, hidden
-    // entirely when signed out) has nothing to head — drop the group
-    // rather than rendering a bare label over empty space.
+    // Drop a group when all its entries require authentication rather than
+    // rendering a bare heading above empty space.
     return list.filter((group) => group.menus.length > 0);
-  }, [rawMenuList, isAuthenticated]);
+  }, [isAuthenticated]);
 
   return (
     <ScrollArea className="[&>div>div[style]]:!block">
-      <nav className="mt-3 h-full w-full">
-        <ul className="flex flex-col min-h-[calc(100vh-48px-36px-16px-32px)] lg:min-h-[calc(100vh-32px-40px-32px)] items-start space-y-0.5 px-2">
-          {menuList.map(({ groupLabel, menus }, index) => (
-            <li className={cn("w-full", groupLabel ? "pt-2" : "")} key={index}>
-              {(isOpen && groupLabel) || isOpen === undefined ? (
-                <p className="px-4 pb-1 max-w-[248px] truncate text-xs font-semibold uppercase tracking-wide text-sidebar-foreground/60">
-                  {groupLabel}
-                </p>
-              ) : !isOpen && isOpen !== undefined && groupLabel ? (
-                <TooltipProvider>
+      <TooltipProvider disableHoverableContent>
+        <nav className="mt-3 h-full w-full">
+          <ul className="flex flex-col min-h-[calc(100vh-48px-36px-16px-32px)] lg:min-h-[calc(100vh-32px-40px-32px)] items-start space-y-0.5 px-2">
+            {menuList.map(({ groupLabel, menus }) => (
+              <li className={cn("w-full", groupLabel ? "pt-2" : "")} key={groupLabel || "home"}>
+                {(isOpen && groupLabel) || isOpen === undefined ? (
+                  <p className="px-4 pb-1 max-w-[248px] truncate text-xs font-semibold uppercase tracking-wide text-sidebar-foreground/60">
+                    {groupLabel}
+                  </p>
+                ) : !isOpen && isOpen !== undefined && groupLabel ? (
                   <Tooltip delayDuration={100}>
                     <TooltipTrigger className="w-full">
                       <div className="w-full flex justify-center items-center">
@@ -74,103 +61,78 @@ export function Menu({ isOpen }: MenuProps) {
                       <p>{groupLabel}</p>
                     </TooltipContent>
                   </Tooltip>
-                </TooltipProvider>
-              ) : (
-                <p className="pb-1"></p>
-              )}
-              {menus.map(
-                ({ href, label, icon: Icon, active, submenus }, index) =>
-                  !submenus || submenus.length === 0 ? (
-                    <div className="w-full" key={index}>
-                      <TooltipProvider disableHoverableContent>
-                        <Tooltip delayDuration={100}>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant={
-                                (active === undefined &&
-                                  (href === "/"
-                                    ? pathname === href
-                                    : pathname.startsWith(href))) ||
-                                active
-                                  ? "secondary"
-                                  : "ghost"
-                              }
-                              className="w-full justify-start h-8 mb-0.5 relative"
-                              asChild
-                            >
-                              <Link href={href}>
-                                <span
-                                  className={cn(isOpen === false ? "" : "mr-4")}
-                                >
-                                  <Icon size={18} />
-                                </span>
-                                <p
-                                  className={cn(
-                                    "max-w-[200px] truncate  ",
-                                    isOpen === false
-                                      ? "-translate-x-96 opacity-0"
-                                      : "translate-x-0 opacity-100"
-                                  )}
-                                >
-                                  {label}
-                                </p>
-                                {/* Collapsed, the label is translated off-screen and a
-                                    count would have nowhere to sit — so the pending
-                                    state degrades to a dot on the icon rather than
-                                    disappearing entirely. */}
-                                {label === HITL_LABEL && hitlOpenCount > 0 && (
-                                  isOpen === false ? (
-                                    <span
-                                      data-testid="hitl-nav-dot"
-                                      className={cn(
-                                        "absolute top-1.5 right-1.5 h-2 w-2 rounded-full",
-                                        TONE_STYLES.attention.dot,
-                                      )}
-                                    />
-                                  ) : (
-                                    <span
-                                      data-testid="hitl-nav-badge"
-                                      className={cn(
-                                        "ml-auto min-w-5 h-5 px-1.5 flex items-center justify-center rounded-full text-xs font-semibold",
-                                        TONE_STYLES.attention.pill,
-                                      )}
-                                    >
-                                      {hitlOpenCount}
-                                    </span>
-                                  )
+                ) : (
+                  <p className="pb-1" />
+                )}
+                {menus.map(({ href, label, icon: Icon, badge, match }) => {
+                  const active = match === "exact"
+                    ? pathname === href
+                    : pathname === href || pathname.startsWith(`${href}/`);
+                  return (
+                    <div className="w-full" key={href}>
+                      <Tooltip delayDuration={100}>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant={active ? "secondary" : "ghost"}
+                            className="w-full justify-start h-8 mb-0.5 relative"
+                            asChild
+                          >
+                            <Link href={href}>
+                              <span className={cn(isOpen === false ? "" : "mr-4")}>
+                                <Icon size={18} />
+                              </span>
+                              <p
+                                className={cn(
+                                  "max-w-[200px] truncate",
+                                  isOpen === false
+                                    ? "-translate-x-96 opacity-0"
+                                    : "translate-x-0 opacity-100"
                                 )}
-                              </Link>
-                            </Button>
-                          </TooltipTrigger>
-                          {isOpen === false && (
-                            <TooltipContent side="right">
-                              {label}
-                            </TooltipContent>
-                          )}
-                        </Tooltip>
-                      </TooltipProvider>
+                              >
+                                {label}
+                              </p>
+                              {/* Collapsed, the label is translated off-screen and a
+                                  count would have nowhere to sit — so the pending
+                                  state degrades to a dot on the icon rather than
+                                  disappearing entirely. */}
+                              {badge === "inbox" && hitlOpenCount > 0 && (
+                                isOpen === false ? (
+                                  <span
+                                    data-testid="hitl-nav-dot"
+                                    className={cn(
+                                      "absolute top-1.5 right-1.5 h-2 w-2 rounded-full",
+                                      TONE_STYLES.attention.dot,
+                                    )}
+                                  />
+                                ) : (
+                                  <span
+                                    data-testid="hitl-nav-badge"
+                                    className={cn(
+                                      "ml-auto min-w-5 h-5 px-1.5 flex items-center justify-center rounded-full text-xs font-semibold",
+                                      TONE_STYLES.attention.pill,
+                                    )}
+                                  >
+                                    {hitlOpenCount}
+                                  </span>
+                                )
+                              )}
+                            </Link>
+                          </Button>
+                        </TooltipTrigger>
+                        {isOpen === false && (
+                          <TooltipContent side="right">
+                            {label}
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
                     </div>
-                  ) : (
-                    <div className="w-full" key={index}>
-                      <CollapseMenuButton
-                        icon={Icon}
-                        label={label}
-                        active={
-                          active === undefined
-                            ? pathname.startsWith(href)
-                            : active
-                        }
-                        submenus={submenus}
-                        isOpen={isOpen}
-                      />
-                    </div>
-                  )
-              )}
-            </li>
-          ))}
-  
-        </ul>
-      </nav>
+                  );
+                })}
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </TooltipProvider>
     </ScrollArea>
   );
 }

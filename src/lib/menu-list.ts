@@ -1,116 +1,67 @@
-import { LocationEdit, Database, PlayCircle, LucideIcon, Home, FolderOpen, User, BookKey, LibraryBig, BotIcon, KeyRound, Inbox, FlaskConical }from "lucide-react";
+import {
+  Database,
+  FlaskConical,
+  FolderOpen,
+  Home,
+  Inbox,
+  KeyRound,
+  LibraryBig,
+  List,
+  MapPinned,
+  MessageSquareText,
+  Plus,
+  ScrollText,
+  type LucideIcon,
+} from "lucide-react";
 
-type Submenu = {
+export type MenuItem = {
   href: string;
   label: string;
-  active?: boolean;
   icon: LucideIcon;
+  requiresAuth?: boolean;
+  badge?: "inbox";
+  match?: "exact" | "prefix";
 };
 
-type Menu = {
-  href: string;
-  label: string;
-  active?: boolean;
-  icon: LucideIcon;
-  submenus?: Submenu[];
-};
-
-type Group = {
+export type MenuGroup = {
   groupLabel: string;
-  menus: Menu[];
+  menus: MenuItem[];
 };
 
-export function getMenuList(): Group[] {
-  return [
-      {
-        groupLabel: "",
-        menus: [
-          {
-            href: "/",
-            label: "Home",
-            icon: Home
-          },
-        ]
-      },
-      {
-        groupLabel: "Build",
-        menus: [
-          {
-            href: "/assets",
-            label: "Assets",
-            icon: Database,
-            submenus: [
-              {
-                href: "/publicartifacts",
-                label: "Public Artifacts",
-                icon: BookKey
-              },
-              {
-                href: "/operations",
-                label: "Operations",
-                icon: PlayCircle
-              },
-
-            ]
-
-          },
-          {
-            href: "/agents",
-            label: "Agents",
-            icon: BotIcon,
-          } ,
-        ]
-      },
-      {
-        groupLabel: "Operate",
-        menus: [
-          {
-            href: "/venues",
-            label: "Venues",
-            icon: LocationEdit,
-          },
-           {
-            href: "/jobs",
-            label: "Jobs",
-            icon: User
-          },
-          {
-            href: "/workspace",
-            label: "Workspace",
-            icon: FolderOpen
-          },
-          {
-            href: "/inbox",
-            label: "Inbox",
-            icon: Inbox
-          },
-        ]
-      },
-      {
-        groupLabel: "Manage",
-        menus: [
-          {
-            href: "/secrets",
-            label: "Secrets",
-            icon: KeyRound
-          },
-        ]
-      },
-      {
-        groupLabel: "Learn",
-        menus: [
-          {
-            href: "/learning",
-            label: "Resources",
-            icon: LibraryBig
-          },
-          {
-            href: "/demos",
-            label: "Demos",
-            icon: FlaskConical
-          },
-        ]
-      },
-
-  ];
-}
+export const MENU_LIST: MenuGroup[] = [
+  {
+    groupLabel: "",
+    menus: [{ href: "/", label: "Home", icon: Home, match: "exact" }],
+  },
+  {
+    groupLabel: "Agents",
+    menus: [
+      { href: "/agents/create", label: "Create", icon: Plus },
+      { href: "/agents/view", label: "View", icon: List },
+      { href: "/agents/explorer", label: "Chat", icon: MessageSquareText },
+    ],
+  },
+  {
+    groupLabel: "Grid",
+    menus: [
+      { href: "/publicartifacts", label: "Assets", icon: Database },
+      { href: "/jobs", label: "Jobs", icon: ScrollText },
+      { href: "/inbox", label: "Inbox", icon: Inbox, requiresAuth: true, badge: "inbox" },
+    ],
+  },
+  {
+    groupLabel: "Manage",
+    menus: [
+      { href: "/secrets", label: "Secrets", icon: KeyRound, requiresAuth: true },
+      { href: "/venues", label: "Venues", icon: MapPinned },
+      { href: "/workspace", label: "Workspace", icon: FolderOpen, requiresAuth: true },
+    ],
+  },
+  {
+    groupLabel: "Learn",
+    menus: [
+      { href: "/learning", label: "Resources", icon: LibraryBig },
+      { href: "/demos", label: "Demos", icon: FlaskConical },
+    ],
+  },
+];

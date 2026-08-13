@@ -18,20 +18,31 @@ import { Menu } from '@/components/admin-panel/menu';
 describe('Menu — group headers', () => {
   afterEach(() => { mockAuthenticated = true; });
 
-  // "Manage" only ever holds Secrets, which is auth-only — signed out, the
-  // group has nothing left in it.
-  it('shows the Manage group header when signed in', () => {
+  it('renders the requested navigation groups and entries when signed in', () => {
     render(<Menu isOpen={true} />);
+    expect(screen.getByText('Agents')).toBeInTheDocument();
+    expect(screen.getByText('Grid')).toBeInTheDocument();
     expect(screen.getByText('Manage')).toBeInTheDocument();
+    expect(screen.getByText('Learn')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /create/i })).toHaveAttribute('href', '/agents/create');
+    expect(screen.getByRole('link', { name: /view/i })).toHaveAttribute('href', '/agents/view');
+    expect(screen.getByRole('link', { name: /chat/i })).toHaveAttribute('href', '/agents/explorer');
+    expect(screen.getByRole('link', { name: /assets/i })).toHaveAttribute('href', '/publicartifacts');
     expect(screen.getByText('Secrets')).toBeInTheDocument();
   });
 
-  it('hides the Manage group header entirely when signed out, instead of a bare label', () => {
+  it('hides authenticated entries while retaining non-empty groups', () => {
     mockAuthenticated = false;
     render(<Menu isOpen={true} />);
-    expect(screen.queryByText('Manage')).not.toBeInTheDocument();
+    expect(screen.getByText('Create')).toBeInTheDocument();
+    expect(screen.getByText('View')).toBeInTheDocument();
+    expect(screen.getByText('Chat')).toBeInTheDocument();
     expect(screen.queryByText('Secrets')).not.toBeInTheDocument();
-    // Groups with at least one surviving item still render normally.
-    expect(screen.getByText('Build')).toBeInTheDocument();
+    expect(screen.queryByText('Inbox')).not.toBeInTheDocument();
+    expect(screen.queryByText('Workspace')).not.toBeInTheDocument();
+    expect(screen.getByText('Agents')).toBeInTheDocument();
+    expect(screen.getByText('Grid')).toBeInTheDocument();
+    expect(screen.getByText('Manage')).toBeInTheDocument();
+    expect(screen.getByText('Venues')).toBeInTheDocument();
   });
 });

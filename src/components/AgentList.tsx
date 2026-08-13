@@ -22,7 +22,7 @@ import { DEFAULT_AGENT_ID } from "@/config/agents";
 import { reportVenueAuthHealth, useVenueAccessState } from "@/hooks/use-venue-auth-health";
 import { errorMessage, errorStatus, isAuthenticationRejectedError } from "@/lib/errors";
 
-export function AgentList() {
+export function AgentList({ mode = "view" }: { mode?: "create" | "view" }) {
   const router = useRouter();
   const [agentData, setAgentData] = useState<AgentListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,6 +174,16 @@ export function AgentList() {
       </div>
    );
 
+   const agentListSection = (
+     <>
+       {createOrChooseSection}
+       {loadingSpinner}
+       {hasAgents ? agentGrid : emptyState}
+     </>
+   );
+
+   const showAgentListFirst = mode === "view" && hasAgents;
+
    if (access.state === "checking") {
      return (
        <ContentLayout>
@@ -214,11 +224,9 @@ export function AgentList() {
 
    return (<ContentLayout>
      <TopBar/>
-     {hasAgents ? (
+     {showAgentListFirst ? (
        <>
-         {createOrChooseSection}
-         {loadingSpinner}
-         {agentGrid}
+         {agentListSection}
          {orSeparator}
          {agentTemplates}
        </>
@@ -226,9 +234,7 @@ export function AgentList() {
        <>
          {agentTemplates}
          {orSeparator}
-         {createOrChooseSection}
-         {loadingSpinner}
-         {emptyState}
+         {agentListSection}
        </>
      )}
      </ContentLayout>
