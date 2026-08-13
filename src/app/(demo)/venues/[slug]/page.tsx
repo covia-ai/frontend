@@ -11,7 +11,8 @@ import { use, useEffect, useState } from "react";
 import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
 import { CopyField } from "@/components/CopyField";
 import { TopBar } from "@/components/admin-panel/TopBar";
-import { useResolvedVenue } from "@/hooks/use-resolved-venue";
+import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
+import { VenueResolutionState } from "@/components/VenueResolutionState";
 import { getVenueStatus } from "@/lib/venue-registry";
 
 interface VenuePageProps {
@@ -24,7 +25,7 @@ export default function VenuePage({ params }: VenuePageProps) {
   const router = useRouter();
   const { slug } = use(params);
   const routeVenueId = decodeURIComponent(slug);
-  const venue = useResolvedVenue(routeVenueId);
+  const { venue, status, error } = useResolvedVenueContext(routeVenueId);
   const selectedVenueId = useVenues((state) => state.selectedVenueId);
   const selectVenue = useVenues((state) => state.selectVenue);
   const [ venueDID, setVenueDID] = useState("");
@@ -38,7 +39,7 @@ export default function VenuePage({ params }: VenuePageProps) {
   const [ mcpTools, setMcpTools] = useState<{name:string}[]>([])
   const [ showClaudeSnippet, setShowClaudeSnippet] = useState(false)
   useEffect(() => {
-       if (!venue) return;
+       if (!venue || status !== "ready") return;
        const fetchMCP = async () => {
           try {
             const response = await fetch(`${venue.baseUrl}/.well-known/mcp`);
@@ -86,16 +87,20 @@ export default function VenuePage({ params }: VenuePageProps) {
       fetchStats();
       fetchMcpTools();
       fetchAdapters();
-  }, [venue]);
+  }, [venue, status]);
 
   const isCurrentVenue = selectedVenueId === venue?.venueId;
-  if (!venue) {
+  if (status !== "ready" || !venue) {
     return (
       <ContentLayout>
         <TopBar venueId={routeVenueId} assetOrJobName={routeVenueId}/>
-        <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Venue not found</p>
-        </div>
+        {status === "connecting" || status === "unreachable" || status === "auth-required" ? (
+          <VenueResolutionState status={status} error={error} icon={Building2} subject="this venue" venueId={routeVenueId} />
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <p className="text-muted-foreground">Venue not found</p>
+          </div>
+        )}
       </ContentLayout>
     );
   }

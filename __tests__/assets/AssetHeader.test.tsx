@@ -45,6 +45,16 @@ describe('AssetHeader Component', () => {
     expect(screen.getByTestId('asset-kind-badge')).toHaveTextContent('Reference');
   });
 
+  test('badges a skill asset distinctly from a plain content artifact', () => {
+    const mockAsset = new DataAsset(HASH, makeVenue(), {
+      name: 'models',
+      content: { contentType: 'text/markdown', inline: '## Models' },
+      skill: { tools: ['v/ops/langchain/models'] },
+    });
+    render(<AssetHeader asset={mockAsset} />);
+    expect(screen.getByTestId('asset-kind-badge')).toHaveTextContent('Skill');
+  });
+
   test('renders name and description', () => {
     const mockAsset = new DataAsset(HASH, makeVenue(), delayMetadata);
     render(<AssetHeader asset={mockAsset} />);

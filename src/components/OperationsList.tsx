@@ -60,7 +60,7 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
   // Fetches the full catalog once per venue — search text only filters
   // client-side (see filteredAssets) so typing never triggers a refetch.
   useEffect(() => {
-     if (!venue) {
+     if (!venue || venueStatus !== "ready") {
        resetOperationsQuery();
        return invalidateOperationsQuery;
      }
@@ -80,6 +80,7 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
      return invalidateOperationsQuery;
   }, [
     venue,
+    venueStatus,
     isAuthenticated,
     runOperationsQuery,
     resetOperationsQuery,
@@ -136,6 +137,7 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
           error={resolvedVenue.error}
           icon={PlayCircle}
           subject="Operations"
+          venueId={venueId}
         />
       </ContentLayout>
      )

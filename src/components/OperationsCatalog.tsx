@@ -3,8 +3,11 @@
 import { useEffect, useState, useMemo } from "react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useIsAuthenticated } from "@/hooks/use-auth";
+import { useVenueAccess } from "@/hooks/use-venue-access";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
+import { ChromeSignInButton } from "@/components/admin-panel/signin-button";
+import { Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -61,6 +64,10 @@ function defaultsFromSchema(schema: any): string {
 export function OperationsCatalog() {
   const venue = useAuthenticatedVenue();
   const isAuthenticated = useIsAuthenticated();
+  const access = useVenueAccess(venue?.baseUrl, venue?.venueId);
+  const canRead = access.state === "connected" || access.state === "public";
+  const needsAuth =
+    access.state === "signed-out" || access.state === "auth-rejected" || access.state === "auth-unverified";
   // Bumped by the refresh control so ops registered after page load show up
   // without a reload — the catalog is otherwise fetched once per venue.
   const [refreshTick, setRefreshTick] = useState(0);
@@ -74,13 +81,17 @@ export function OperationsCatalog() {
   const { execute: executeJob, running } = useJobExecution(venue);
 
   useEffect(() => {
-    if (!venue) return;
+    if (!venue || !canRead) {
+      setOps([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     listCatalogOperations(venue, { includeUserOps: isAuthenticated })
       .then((list) => setOps(list))
       .catch((err) => notifyError("Unable to load operation catalog", err, venue.baseUrl))
       .finally(() => setLoading(false));
-  }, [venue, isAuthenticated, refreshTick]);
+  }, [venue, canRead, isAuthenticated, refreshTick]);
 
   const adapters = useMemo(
     () => Array.from(new Set(ops.map((op) => adapterOf(op.path)))).sort(),
@@ -134,6 +145,27 @@ export function OperationsCatalog() {
         return op.invoke(input);
       },
     });
+  }
+
+  if (venue && needsAuth) {
+    return (
+      <ContentLayout>
+        <TopBar />
+        <div
+          className="mx-auto mt-8 flex w-full max-w-2xl flex-col items-center gap-3 rounded-lg border border-border bg-muted/30 p-8 text-center"
+          data-testid="operations-catalog-auth-required"
+        >
+          <Lock size={40} className="text-primary" />
+          <div>
+            <h2 className="text-lg font-semibold">Sign in to view operations</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              This venue doesn&apos;t allow anonymous reads. Sign in with an account this venue admits to see its operation catalog.
+            </p>
+          </div>
+          <ChromeSignInButton venueId={venue.venueId} />
+        </div>
+      </ContentLayout>
+    );
   }
 
   return (

@@ -68,7 +68,7 @@ export function AssetList({ venueId }: AssetListProps = {}) {
   // so the grid fills incrementally instead of blocking on the slowest of
   // N individual GETs.
   const fetchAssets = useCallback(() => {
-    if (!venue) {
+    if (!venue || venueStatus !== "ready") {
       resetAssetQuery();
       return Promise.resolve();
     }
@@ -90,7 +90,7 @@ export function AssetList({ venueId }: AssetListProps = {}) {
       },
       { clear: true },
     );
-  }, [venue, resetAssetQuery, runAssetQuery]);
+  }, [venue, venueStatus, resetAssetQuery, runAssetQuery]);
 
   useEffect(() => {
     void fetchAssets();
@@ -139,6 +139,7 @@ export function AssetList({ venueId }: AssetListProps = {}) {
           error={resolvedVenue.error}
           icon={FileKey}
           subject="Assets"
+          venueId={venueId}
         />
       </ContentLayout>
      )

@@ -117,7 +117,7 @@ export function JobList({ venueId }: JobListProps = {}) {
   // authoritative for that specific read — if it disagrees with the count used
   // to pick the window, recompute against it and slice once more.
   const fetchPage = useCallback(async (page: number) => {
-    if (!venue) {
+    if (!venue || venueStatus !== "ready") {
       resetPageQuery();
       return;
     }
@@ -147,13 +147,13 @@ export function JobList({ venueId }: JobListProps = {}) {
       },
       { clear: true },
     );
-  }, [venue, resetPageQuery, runPageQuery]);
+  }, [venue, venueStatus, resetPageQuery, runPageQuery]);
 
   // Filter mode: one slice of the newest FILTER_WINDOW records, filtered and
   // paged client-side. Filters only ever see this recent window — same
   // semantics as before, when the window was 100 individual per-job GETs.
   const fetchWindow = useCallback(async () => {
-    if (!venue) {
+    if (!venue || venueStatus !== "ready") {
       resetRecentQuery();
       return;
     }
@@ -177,7 +177,7 @@ export function JobList({ venueId }: JobListProps = {}) {
       },
       { clear: true },
     );
-  }, [venue, resetRecentQuery, runRecentQuery]);
+  }, [venue, venueStatus, resetRecentQuery, runRecentQuery]);
 
   // Debounce free-text search so typing doesn't fire a fresh window fetch
   // on every keystroke.
@@ -284,6 +284,7 @@ export function JobList({ venueId }: JobListProps = {}) {
           error={resolvedVenue.error}
           icon={Activity}
           subject="Jobs"
+          venueId={venueId}
         />
       </ContentLayout>
   )
