@@ -218,10 +218,13 @@ export const MetadataViewer = ({ asset, venue, isAuthenticated = false }: Metada
   const hasAgentTemplateFields =
     isAgentTemplate && (hasModel || templateTools.length > 0 || templateSkills.length > 0);
 
-  // A "Download" link only makes sense for a genuine artifact — a bare
-  // reference asset (no `content`, no `operation`) has nothing at that URL to
-  // fetch (covia-ai/frontend#209 follow-up).
-  const hasBlobContent = kind === "artifact" && inlineContent === null;
+  // A "Download" link only makes sense when the asset actually has a content
+  // descriptor with nothing inline to show instead — a bare reference asset
+  // (no `content`, no `operation`) has nothing at that URL to fetch
+  // (covia-ai/frontend#209 follow-up). Keyed on the raw field rather than
+  // `kind === "artifact"` so a blob-backed skill (kind "skill", content not
+  // inline) still gets a Download button.
+  const hasBlobContent = asset.metadata?.content !== undefined && inlineContent === null;
   const contentURL = hasBlobContent ? asset.getContentURL() : null;
 
   const [downloading, setDownloading] = useState(false);
@@ -266,10 +269,16 @@ export const MetadataViewer = ({ asset, venue, isAuthenticated = false }: Metada
   // that merely names a transition op (e.g. "goaltree") isn't one.
   const defaultValue = hasOperationFields ? undefined : "metadata";
 
+  // Skill tools, inline content and system prompt are what the asset *is*,
+  // same standing as the operation/agent-template fields below — they live
+  // in the left (content) column, not the right (actions) column, so the
+  // two-column split is consistent across every asset kind instead of only
+  // appearing for assets that happen to carry provenance metadata.
+  const hasContentItems = skillTools.length > 0 || inlineContent != null || hasSystemPrompt;
   const genericFields = renderMetadataFields(asset, METADATA_FIELDS);
   const hasKindFields = hasOperationFields || hasAgentTemplateFields;
-  const hasLeftContent = hasKindFields || genericFields !== null;
-  
+  const hasLeftContent = hasKindFields || hasContentItems || genericFields !== null;
+
   return (
      <Accordion
       type="single"
@@ -282,8 +291,12 @@ export const MetadataViewer = ({ asset, venue, isAuthenticated = false }: Metada
          <AccordionContent>
               <div className="text-sm p-2 items-center justify-between min-w-lg w-full">
                 <div className="flex flex-col md:flex-row lg:flex-row">
-                  {hasLeftContent && (
                     <div className="flex flex-col flex-3 md:border-r-2 lg:border-r-2 border-border px-2 " data-testid="asset-fields">
+                      {kind === "reference" && !hasLeftContent && (
+                        <div className="my-2 text-muted-foreground" data-testid="reference-empty-note">
+                          This asset has no content or schema of its own — it&apos;s a bare reference.
+                        </div>
+                      )}
                       {hasOperationFields && (
                         <div className="flex flex-col space-y-3 mb-3" data-testid="operation-fields">
                           {hasAdapter && (
@@ -370,74 +383,69 @@ export const MetadataViewer = ({ asset, venue, isAuthenticated = false }: Metada
                           )}
                         </div>
                       )}
+                      {skillTools.length > 0 && (
+                        <div className="my-2" data-testid="skill-tools">
+                          <div className="flex flex-row items-center space-x-2">
+                            <Wrench size={18} />
+                            <span className="text-md">Skill tools:</span>
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {skillTools.map((tool) => (
+                              <Badge key={tool} variant="outline" className="font-mono text-[10px] text-muted-foreground">
+                                {tool}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {inlineContent != null && (
+                        <div className="my-2" data-testid="inline-content">
+                          <div className="flex flex-row items-center justify-between space-x-2">
+                            <div className="flex flex-row items-center space-x-2">
+                              <FileText size={18} />
+                              <span className="text-md">Content{contentType ? ` (${contentType})` : ""}:</span>
+                            </div>
+                            <button
+                              type="button"
+                              aria-label="Copy content"
+                              data-testid="copy-inline-content"
+                              onClick={() => copyDataToClipBoard(inlineContent, "Content copied to clipboard")}
+                              className="text-muted-foreground hover:text-foreground"
+                            >
+                              <Copy size={14} />
+                            </button>
+                          </div>
+                          {/* Fixed dark code-panel background (matches XmlViewer/
+                              JsonViewer's preview) rather than the theme's bg-muted,
+                              so this reads as a code/text panel in both themes. */}
+                          <pre className="mt-1 max-h-96 overflow-auto rounded bg-[hsl(220,13%,18%)] text-gray-100 p-3 text-xs whitespace-pre-wrap break-words font-mono">
+                            {inlineContent}
+                          </pre>
+                        </div>
+                      )}
+                      {hasSystemPrompt && (
+                        <div className="my-2" data-testid="system-prompt">
+                          <div className="flex flex-row items-center space-x-2">
+                            <MessageSquareText size={18} />
+                            <span className="text-md">System prompt:</span>
+                          </div>
+                          <pre className="mt-1 max-h-96 overflow-auto rounded bg-muted p-3 text-xs whitespace-pre-wrap break-words font-mono">
+                            {agentTemplate?.systemPrompt}
+                          </pre>
+                        </div>
+                      )}
                       {genericFields && (
-                        // Kind-specific fields (adapter/schema, model/tools) are why
-                        // you're looking at this asset; creator/license/keywords are
-                        // provenance. De-emphasize the latter only when both are
-                        // present, so the hierarchy matches what's actually load-bearing.
-                        <div className={hasKindFields ? "pt-3 mt-1 border-t border-border/60 opacity-70" : undefined}>
+                        // Kind-specific fields and content items are why you're
+                        // looking at this asset; creator/license/keywords are
+                        // provenance. De-emphasize the latter only when something
+                        // load-bearing is also shown, so the hierarchy matches
+                        // what's actually load-bearing.
+                        <div className={hasKindFields || hasContentItems ? "pt-3 mt-1 border-t border-border/60 opacity-70" : undefined}>
                           {genericFields}
                         </div>
                       )}
                     </div>
-                  )}
                   <div className="flex flex-col flex-2 px-2 ">
-                    {kind === "reference" && !hasLeftContent && (
-                      <div className="my-2 text-muted-foreground" data-testid="reference-empty-note">
-                        This asset has no content or schema of its own — it&apos;s a bare reference.
-                      </div>
-                    )}
-                    {skillTools.length > 0 && (
-                      <div className="my-2" data-testid="skill-tools">
-                        <div className="flex flex-row items-center space-x-2">
-                          <Wrench size={18} />
-                          <span className="text-md">Skill tools:</span>
-                        </div>
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {skillTools.map((tool) => (
-                            <Badge key={tool} variant="outline" className="font-mono text-[10px] text-muted-foreground">
-                              {tool}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {inlineContent != null && (
-                      <div className="my-2" data-testid="inline-content">
-                        <div className="flex flex-row items-center justify-between space-x-2">
-                          <div className="flex flex-row items-center space-x-2">
-                            <FileText size={18} />
-                            <span className="text-md">Content{contentType ? ` (${contentType})` : ""}:</span>
-                          </div>
-                          <button
-                            type="button"
-                            aria-label="Copy content"
-                            data-testid="copy-inline-content"
-                            onClick={() => copyDataToClipBoard(inlineContent, "Content copied to clipboard")}
-                            className="text-muted-foreground hover:text-foreground"
-                          >
-                            <Copy size={14} />
-                          </button>
-                        </div>
-                        {/* Fixed dark code-panel background (matches XmlViewer/
-                            JsonViewer's preview) rather than the theme's bg-muted,
-                            so this reads as a code/text panel in both themes. */}
-                        <pre className="mt-1 max-h-96 overflow-auto rounded bg-[hsl(220,13%,18%)] text-gray-100 p-3 text-xs whitespace-pre-wrap break-words font-mono">
-                          {inlineContent}
-                        </pre>
-                      </div>
-                    )}
-                    {hasSystemPrompt && (
-                      <div className="my-2" data-testid="system-prompt">
-                        <div className="flex flex-row items-center space-x-2">
-                          <MessageSquareText size={18} />
-                          <span className="text-md">System prompt:</span>
-                        </div>
-                        <pre className="mt-1 max-h-96 overflow-auto rounded bg-muted p-3 text-xs whitespace-pre-wrap break-words font-mono">
-                          {agentTemplate?.systemPrompt}
-                        </pre>
-                      </div>
-                    )}
                     {contentURL && (
                       <div className="flex flex-row flex-wrap items-center gap-2 my-2">
                         <Button

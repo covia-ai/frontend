@@ -26,6 +26,17 @@ describe('getAssetKind', () => {
     expect(getAssetKind({ content: { sha256: 'abc' } })).toBe('artifact');
   });
 
+  test('skill.tools marks a skill, even though it also carries content', () => {
+    expect(getAssetKind({
+      content: { inline: '## Models' },
+      skill: { tools: ['v/ops/langchain/models'] },
+    })).toBe('skill');
+  });
+
+  test('an empty skill.tools list does not count as a skill', () => {
+    expect(getAssetKind({ content: { inline: 'body' }, skill: { tools: [] } })).toBe('artifact');
+  });
+
   test('nothing but name/description is a reference', () => {
     expect(getAssetKind({ name: 'x', description: 'y' })).toBe('reference');
     expect(getAssetKind({})).toBe('reference');

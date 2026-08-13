@@ -182,9 +182,11 @@ describe('MetadataViewer skill / inline content', () => {
     expect(screen.queryByText('Download')).not.toBeInTheDocument();
   });
 
-  test('collapses the left column instead of an empty bordered box when no fields apply', () => {
+  test('keeps the two-column layout, placing skill tools and content on the left', () => {
     render(<MetadataViewer asset={asset(SKILL)} />);
-    expect(screen.queryByTestId('asset-fields')).not.toBeInTheDocument();
+    expect(screen.getByTestId('asset-fields')).toBeInTheDocument();
+    expect(screen.getByTestId('skill-tools')).toBeInTheDocument();
+    expect(screen.getByTestId('inline-content')).toBeInTheDocument();
   });
 
   test('a truly bare reference asset gets an explicit empty-state note, not blank space', () => {
@@ -197,7 +199,7 @@ describe('MetadataViewer skill / inline content', () => {
     expect(screen.queryByTestId('reference-empty-note')).not.toBeInTheDocument();
   });
 
-  test('no empty-state note for a non-reference kind (e.g. a skill/artifact) even with nothing on the left', () => {
+  test('no empty-state note for a non-reference kind (e.g. a skill/artifact)', () => {
     render(<MetadataViewer asset={asset(SKILL)} />);
     expect(screen.queryByTestId('reference-empty-note')).not.toBeInTheDocument();
   });
