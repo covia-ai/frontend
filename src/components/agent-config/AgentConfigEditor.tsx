@@ -14,40 +14,23 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
+import {
+  CUSTOM_MODEL_OPTION,
+  CUSTOM_PROVIDER_OPTION,
+  DEFAULT_PROVIDER_OPTION,
+  DEFAULT_MODEL_OPTION,
+  isAgentProviderReady,
+} from "@/lib/agent-config";
 
-export const CUSTOM_MODEL_OPTION = "__custom__";
-export const DEFAULT_MODEL_OPTION = "__default__";
-
-export type ModelSelection = {
-  model: string;
-  customModel: string;
-};
-
-export function modelSelectionFromId(
-  providerId: string,
-  modelId: string,
-): ModelSelection {
-  if (!modelId) return { model: "", customModel: "" };
-  const knownModel = LLM_PROVIDERS[providerId]?.models?.includes(modelId);
-  return knownModel
-    ? { model: modelId, customModel: "" }
-    : { model: CUSTOM_MODEL_OPTION, customModel: modelId };
-}
-
-export function resolvedModelId(model: string, customModel: string): string {
-  if (model === CUSTOM_MODEL_OPTION) return customModel.trim();
-  if (model === DEFAULT_MODEL_OPTION) return "";
-  return model;
-}
-
-export function isAgentProviderReady(
-  providerId: string,
-  availableKeys: string[],
-): boolean {
-  const provider = LLM_PROVIDERS[providerId];
-  if (!provider) return false;
-  return !provider.requiresKey || availableKeys.includes(provider.secretKey);
-}
+export {
+  CUSTOM_MODEL_OPTION,
+  CUSTOM_PROVIDER_OPTION,
+  DEFAULT_PROVIDER_OPTION,
+  DEFAULT_MODEL_OPTION,
+  isAgentProviderReady,
+  modelSelectionFromId,
+  resolvedModelId,
+} from "@/lib/agent-config";
 
 type AgentSystemPromptFieldProps = {
   value: string;
@@ -82,6 +65,46 @@ export function AgentSystemPromptField({
   );
 }
 
+type AgentJsonConfigFieldProps = {
+  id: string;
+  label: string;
+  description: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  className?: string;
+};
+
+export function AgentJsonConfigField({
+  id,
+  label,
+  description,
+  value,
+  onChange,
+  placeholder,
+  className,
+}: AgentJsonConfigFieldProps) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Textarea
+        id={id}
+        data-testid={id}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        spellCheck={false}
+        className={cn(
+          "min-h-32 resize-y font-mono text-sm",
+          SUGGESTION_PLACEHOLDER_CLASS,
+          className,
+        )}
+      />
+      <p className="text-sm text-muted-foreground">{description}</p>
+    </div>
+  );
+}
+
 type AgentRuntimeFieldsProps = {
   providerId: string;
   onProviderChange: (providerId: string) => void;
@@ -92,6 +115,9 @@ type AgentRuntimeFieldsProps = {
   availableKeys: string[];
   apiKey?: string;
   onApiKeyChange?: (apiKey: string) => void;
+  customProviderOperation?: string;
+  onCustomProviderOperationChange?: (operation: string) => void;
+  allowVenueDefaultProvider?: boolean;
 };
 
 export function AgentRuntimeFields({
@@ -104,6 +130,9 @@ export function AgentRuntimeFields({
   availableKeys,
   apiKey = "",
   onApiKeyChange,
+  customProviderOperation = "",
+  onCustomProviderOperationChange,
+  allowVenueDefaultProvider = false,
 }: AgentRuntimeFieldsProps) {
   const provider = LLM_PROVIDERS[providerId];
   const providerReady = isAgentProviderReady(providerId, availableKeys);
@@ -117,11 +146,27 @@ export function AgentRuntimeFields({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            {allowVenueDefaultProvider && (
+              <SelectItem value={DEFAULT_PROVIDER_OPTION}>Venue default</SelectItem>
+            )}
             {Object.entries(LLM_PROVIDERS).map(([id, option]) => (
               <SelectItem key={id} value={id}>{option.label}</SelectItem>
             ))}
+            {onCustomProviderOperationChange && (
+              <SelectItem value={CUSTOM_PROVIDER_OPTION}>Custom operation…</SelectItem>
+            )}
           </SelectContent>
         </Select>
+        {providerId === CUSTOM_PROVIDER_OPTION && onCustomProviderOperationChange && (
+          <Input
+            data-testid="custom-provider-operation"
+            className={SUGGESTION_PLACEHOLDER_CLASS}
+            placeholder="e.g. v/ops/my-provider/chat"
+            value={customProviderOperation}
+            onChange={(event) => onCustomProviderOperationChange(event.target.value)}
+            spellCheck={false}
+          />
+        )}
         {!providerReady && provider?.requiresKey && (
           <div className="space-y-2">
             <p className="flex items-center gap-1 text-sm text-amber-500">

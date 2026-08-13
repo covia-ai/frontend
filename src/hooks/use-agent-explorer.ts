@@ -355,6 +355,67 @@ export function useAgentExplorer(initialAgentId?: string) {
       });
   };
 
+  const updateAgentConfig = useCallback(
+    async (config: Record<string, unknown>): Promise<boolean> => {
+      if (!agentHandle || !selectedAgentId || !selectedAgentDetail) return false;
+      const agentId = selectedAgentId;
+      const wasRunning = selectedAgentDetail.status === AgentStatus.RUNNING;
+      let suspendedForUpdate = false;
+
+      try {
+        if (wasRunning) {
+          await agentHandle.suspend();
+          suspendedForUpdate = true;
+        }
+        await agentHandle.update({ config });
+      } catch (error) {
+        if (suspendedForUpdate) {
+          try {
+            await agentHandle.resume();
+          } catch (resumeError) {
+            notifyError(
+              "Unable to restore agent after settings update",
+              resumeError,
+              venue?.baseUrl,
+            );
+          }
+        }
+        const { reason, jobHref } = jobFailure(error, venue?.venueId);
+        notifyError("Unable to update agent settings", reason, venue?.baseUrl, jobHref);
+        void refreshAgentDetail(agentId);
+        void refreshAgentList();
+        return false;
+      }
+
+      if (wasRunning) {
+        try {
+          await agentHandle.resume();
+        } catch (error) {
+          notifyError(
+            "Agent settings saved, but unable to resume agent",
+            error,
+            venue?.baseUrl,
+          );
+        }
+      }
+
+      notifySuccess("Agent settings saved");
+      await Promise.all([
+        refreshAgentDetail(agentId),
+        refreshAgentList(),
+      ]);
+      return true;
+    },
+    [
+      agentHandle,
+      selectedAgentDetail,
+      selectedAgentId,
+      venue,
+      refreshAgentDetail,
+      refreshAgentList,
+    ],
+  );
+
   const renameSession = (agentId: string, sessionId: string, title: string) => {
     if (!venue) return;
     venue.agents
@@ -456,6 +517,7 @@ export function useAgentExplorer(initialAgentId?: string) {
     suspend,
     resume,
     deleteAgent,
+    updateAgentConfig,
     renameSession,
     startNewChat,
     selectSession,

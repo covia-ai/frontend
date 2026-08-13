@@ -25,6 +25,7 @@ import { gtmEvent, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
 import {
   AgentRuntimeFields,
   AgentSystemPromptField,
+  CUSTOM_PROVIDER_OPTION,
   isAgentProviderReady,
   modelSelectionFromId,
   resolvedModelId,
@@ -78,6 +79,7 @@ export function AddNewAgent({
   const [agentId, setAgentId] = useState("");
   const [agentIdEdited, setAgentIdEdited] = useState(false);
   const [llmProvider, setLlmProvider] = useState(initialProvider);
+  const [customProviderOperation, setCustomProviderOperation] = useState("");
   // "" = venue default (model omitted from config); CUSTOM_MODEL_OPTION shows
   // a free-text input for ids not in the curated list.
   const [model, setModel] = useState("");
@@ -110,6 +112,7 @@ export function AddNewAgent({
     setAgentIdEdited(false);
     setSystemPrompt(initialSystemPrompt);
     setLlmProvider(initialProvider);
+    setCustomProviderOperation("");
     const modelSelection = modelSelectionFromId(initialProvider, initialModel);
     setModel(modelSelection.model);
     setCustomModel(modelSelection.customModel);
@@ -152,6 +155,7 @@ export function AddNewAgent({
 
   const handleProviderChange = (providerId: string) => {
     setLlmProvider(providerId);
+    if (providerId !== CUSTOM_PROVIDER_OPTION) setCustomProviderOperation("");
     // Model ids are provider-specific — a Claude id is meaningless on OpenAI.
     setModel("");
     setCustomModel("");
@@ -168,7 +172,10 @@ export function AddNewAgent({
     );
     const overrides: AgentConfigMap = {
       ...(initialConfig === undefined ? { operation: "v/ops/llmagent/chat" } : {}),
-      llmOperation: provider.operation,
+      llmOperation:
+        llmProvider === CUSTOM_PROVIDER_OPTION
+          ? customProviderOperation.trim()
+          : provider.operation,
       ...(resolvedModel && { model: resolvedModel }),
       ...(systemPrompt.trim() && { systemPrompt: systemPrompt.trim() }),
     };
@@ -182,6 +189,10 @@ export function AddNewAgent({
     }
     if (!agentName.trim()) {
       notifyWarning("Please enter an agent name");
+      return;
+    }
+    if (llmProvider === CUSTOM_PROVIDER_OPTION && !customProviderOperation.trim()) {
+      notifyWarning("Enter the custom provider operation path");
       return;
     }
     const provider = LLM_PROVIDERS[llmProvider];
@@ -220,6 +231,7 @@ export function AddNewAgent({
       setAgentId("");
       setAgentIdEdited(false);
       setSystemPrompt("");
+      setCustomProviderOperation("");
       setInitialCommand("");
       setOpen(false);
       router.push(`/agents/chat?agentId=${encodeURIComponent(result.agentId)}`);
@@ -233,7 +245,10 @@ export function AddNewAgent({
   };
 
   const handleSaveTemplate = async () => {
-    if (!venue || !agentName.trim() || !resolvedAgentId || isReservedAgentId) return;
+    if (
+      !venue || !agentName.trim() || !resolvedAgentId || isReservedAgentId ||
+      (llmProvider === CUSTOM_PROVIDER_OPTION && !customProviderOperation.trim())
+    ) return;
     const path = `w/templates/${resolvedAgentId}`;
     setSavingTemplate(true);
     try {
@@ -363,6 +378,8 @@ export function AddNewAgent({
               availableKeys={availableKeys}
               apiKey={apiKeyInput}
               onApiKeyChange={setApiKeyInput}
+              customProviderOperation={customProviderOperation}
+              onCustomProviderOperationChange={setCustomProviderOperation}
             />
 
             <div className="space-y-2">
@@ -394,7 +411,11 @@ export function AddNewAgent({
             variant="outline"
             data-testid="save-agent-template"
             onClick={handleSaveTemplate}
-            disabled={savingTemplate || creating || !venue || !agentName.trim() || isReservedAgentId}
+            disabled={
+              savingTemplate || creating || !venue || !agentName.trim() ||
+              isReservedAgentId ||
+              (llmProvider === CUSTOM_PROVIDER_OPTION && !customProviderOperation.trim())
+            }
             className="gap-2"
           >
             <BookmarkPlus size={16} />
@@ -405,7 +426,11 @@ export function AddNewAgent({
             type="button"
             data-testid="create-agent"
             onClick={handleNewAgent}
-            disabled={creating || savingTemplate || !venue || !agentName.trim() || !isProviderReady(llmProvider) || isReservedAgentId}
+            disabled={
+              creating || savingTemplate || !venue || !agentName.trim() ||
+              !isProviderReady(llmProvider) || isReservedAgentId ||
+              (llmProvider === CUSTOM_PROVIDER_OPTION && !customProviderOperation.trim())
+            }
           >
             {creating ? "Creating…" : submitLabel}
           </Button>

@@ -9,6 +9,7 @@ jest.mock('@/components/admin-panel/TopBar', () => ({
 
 const mockVenue: any = {
   venueId: 'venue-1',
+  baseUrl: 'https://venue.example',
   agents: {
     list: jest.fn(),
     info: jest.fn(),
@@ -17,6 +18,9 @@ const mockVenue: any = {
   workspace: {
     read: jest.fn(),
     slice: jest.fn(),
+  },
+  secrets: {
+    list: jest.fn().mockResolvedValue(['ANTHROPIC_API_KEY']),
   },
 };
 jest.mock('@/hooks/use-authenticated-venue', () => ({
@@ -231,6 +235,83 @@ describe('AgentExplorer with lean GET agent entries', () => {
     expect(
       screen.queryByRole('heading', { name: 'agent-1' }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('AgentExplorer settings', () => {
+  it('opens an editable settings view and saves a minimal config patch', async () => {
+    const agent = {
+      agentId: 'agent-1',
+      status: 'SLEEPING',
+      tasks: 0,
+      config: {
+        operation: 'v/ops/llmagent/chat',
+        llmOperation: 'v/ops/langchain/anthropic',
+        systemPrompt: 'Old instructions',
+        tools: ['v/ops/covia/read'],
+      },
+    };
+    const handle = {
+      chatSession: (sid?: string) => ({ sessionId: sid }),
+      update: jest.fn().mockResolvedValue({}),
+      suspend: jest.fn().mockResolvedValue({}),
+      resume: jest.fn().mockResolvedValue({}),
+    };
+    mockVenue.agents.list.mockResolvedValue({ agents: [agent] });
+    mockVenue.agents.info.mockResolvedValue(agent);
+    mockVenue.workspace.read.mockResolvedValue({ value: [] });
+    mockVenue.workspace.slice.mockResolvedValue({ values: [] });
+    mockVenue.agent.mockReturnValue(handle);
+    await renderExplorer();
+
+    fireEvent.click(await screen.findByTestId('agent-settings-button'));
+    expect(screen.getByTestId('agent-settings')).toBeInTheDocument();
+    const prompt = screen.getByTestId('agent-system-prompt');
+    expect(prompt).toHaveValue('Old instructions');
+    fireEvent.change(prompt, { target: { value: 'New instructions' } });
+    fireEvent.click(screen.getByTestId('save-agent-settings'));
+
+    await waitFor(() => expect(handle.update).toHaveBeenCalledWith({
+      config: { systemPrompt: 'New instructions' },
+    }));
+    expect(handle.suspend).not.toHaveBeenCalled();
+    expect(handle.resume).not.toHaveBeenCalled();
+  });
+
+  it('suspends and resumes a running agent around its config update', async () => {
+    const calls: string[] = [];
+    const agent = {
+      agentId: 'agent-1',
+      status: 'RUNNING',
+      tasks: 0,
+      config: {
+        llmOperation: 'v/ops/langchain/anthropic',
+        systemPrompt: 'Old instructions',
+      },
+    };
+    const handle = {
+      chatSession: (sid?: string) => ({ sessionId: sid }),
+      suspend: jest.fn(async () => { calls.push('suspend'); }),
+      update: jest.fn(async () => { calls.push('update'); }),
+      resume: jest.fn(async () => { calls.push('resume'); }),
+    };
+    mockVenue.agents.list.mockResolvedValue({ agents: [agent] });
+    mockVenue.agents.info.mockResolvedValue(agent);
+    mockVenue.workspace.read.mockResolvedValue({ value: [] });
+    mockVenue.workspace.slice.mockResolvedValue({ values: [] });
+    mockVenue.agent.mockReturnValue(handle);
+    await renderExplorer();
+
+    fireEvent.click(await screen.findByTestId('agent-settings-button'));
+    fireEvent.change(screen.getByTestId('agent-system-prompt'), {
+      target: { value: 'Updated while running' },
+    });
+    expect(screen.getByTestId('save-agent-settings')).toHaveTextContent(
+      'Suspend, save & resume',
+    );
+    fireEvent.click(screen.getByTestId('save-agent-settings'));
+
+    await waitFor(() => expect(calls).toEqual(['suspend', 'update', 'resume']));
   });
 });
 

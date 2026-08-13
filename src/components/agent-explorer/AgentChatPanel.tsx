@@ -30,15 +30,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Select,
@@ -49,7 +41,7 @@ import {
 } from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AgentConversation } from "@/components/AgentConversation";
-import { ConfigFields } from "@/components/agent-explorer/ConfigFields";
+import { AgentSettings } from "@/components/agent-config/AgentSettings";
 import { AgentTimelineView } from "@/components/agent-explorer/AgentTimelineView";
 import type { AgentExplorerController } from "@/hooks/use-agent-explorer";
 import type { Session } from "@/config/types";
@@ -80,6 +72,7 @@ export function AgentChatPanel({
     suspend,
     resume,
     deleteAgent,
+    updateAgentConfig,
     renameSession,
     startNewChat,
     selectSession,
@@ -89,13 +82,12 @@ export function AgentChatPanel({
 
   const [renaming, setRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
-  const [showTimeline, setShowTimeline] = useState(false);
+  const [view, setView] = useState<"chat" | "timeline" | "settings">("chat");
 
   useEffect(() => {
-    // Switching agents while viewing a timeline must not leave the next
-    // agent's chat area stuck showing timeline (or a stale one, before its
-    // own detail has even loaded).
-    setShowTimeline(false);
+    // Timeline/settings are scoped to the selected agent. A switch must not
+    // leave the next agent showing the previous agent's secondary view.
+    setView("chat");
   }, [selectedAgentId]);
 
   // Venue-persisted title (if set) beats the auto-derived first-message
@@ -180,50 +172,23 @@ export function AgentChatPanel({
                 {selectedAgentDetail.tasks === 1 ? "" : "s"}
               </Badge>
             )}
-            {(selectedAgentDetail.config || selectedAgentDetail.stateConfig) && (
-              <Dialog>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DialogTrigger asChild>
-                      <button
-                        data-testid="agent-config-info"
-                        aria-label="Agent configuration"
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        <Settings size={16} />
-                      </button>
-                    </DialogTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>Config</TooltipContent>
-                </Tooltip>
-                <DialogContent className="w-[75vw] max-w-[75vw] sm:max-w-[75vw] h-[75vh] max-h-[75vh] bg-card text-card-foreground overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {selectedAgentDetail.agentId} — Configuration
-                    </DialogTitle>
-                  </DialogHeader>
-                  <Separator />
-                  <div className="space-y-5 text-xs">
-                    {selectedAgentDetail.config && (
-                      <div>
-                        <div className="font-semibold mb-2 text-foreground text-sm">
-                          Config
-                        </div>
-                        <ConfigFields data={selectedAgentDetail.config} />
-                      </div>
-                    )}
-                    {selectedAgentDetail.stateConfig && (
-                      <div>
-                        <div className="font-semibold mb-2 text-foreground text-sm">
-                          State Config (resolved)
-                        </div>
-                        <ConfigFields data={selectedAgentDetail.stateConfig} />
-                      </div>
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
-            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  data-testid="agent-settings-button"
+                  aria-label="Agent settings"
+                  aria-pressed={view === "settings"}
+                  className={cn(
+                    "hover:text-foreground",
+                    view === "settings" ? "text-primary" : "text-muted-foreground",
+                  )}
+                  onClick={() => setView(view === "settings" ? "chat" : "settings")}
+                >
+                  <Settings size={16} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Agent settings</TooltipContent>
+            </Tooltip>
             {(selectedAgentDetail.timeline?.length ?? 0) > 0 && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -231,7 +196,7 @@ export function AgentChatPanel({
                     data-testid="agent-timeline-info"
                     aria-label="Agent timeline"
                     className="text-muted-foreground hover:text-foreground"
-                    onClick={() => setShowTimeline(true)}
+                    onClick={() => setView("timeline")}
                   >
                     <History size={16} />
                   </button>
@@ -281,10 +246,17 @@ export function AgentChatPanel({
             </div>
           </div>
 
-          {showTimeline ? (
+          {view === "settings" ? (
+            <AgentSettings
+              key={selectedAgentDetail.agentId}
+              agent={selectedAgentDetail}
+              onBack={() => setView("chat")}
+              onSave={updateAgentConfig}
+            />
+          ) : view === "timeline" ? (
             <AgentTimelineView
               agentId={selectedAgentDetail.agentId}
-              onBack={() => setShowTimeline(false)}
+              onBack={() => setView("chat")}
             />
           ) : (
             <>

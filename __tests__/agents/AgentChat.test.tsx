@@ -51,6 +51,7 @@ function controller(overrides: Record<string, unknown> = {}) {
     suspend: jest.fn(),
     resume: jest.fn(),
     deleteAgent: jest.fn(),
+    updateAgentConfig: jest.fn().mockResolvedValue(true),
     renameSession: jest.fn(),
     startNewChat: jest.fn(),
     selectSession: jest.fn(),
