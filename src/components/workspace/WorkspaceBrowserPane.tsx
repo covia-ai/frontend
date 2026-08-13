@@ -8,7 +8,6 @@ import {
   FolderOpen,
   Loader2,
   Plus,
-  RefreshCw,
 } from "lucide-react";
 import {
   isContainerWorkspaceValue,
@@ -242,7 +241,6 @@ type WorkspaceBrowserPaneProps = {
   pendingEntryPath: string | null;
   onNavigate: (path: string) => void;
   onSelect: (path: string) => void;
-  onRefresh: () => void;
   onCreate: (key: string, value: string) => Promise<boolean>;
   onSaveEntry: (path: string, value: unknown) => Promise<boolean>;
 };
@@ -259,7 +257,6 @@ export function WorkspaceBrowserPane({
   pendingEntryPath,
   onNavigate,
   onSelect,
-  onRefresh,
   onCreate,
   onSaveEntry,
 }: WorkspaceBrowserPaneProps) {
@@ -312,18 +309,6 @@ export function WorkspaceBrowserPane({
             </span>
           );
         })}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={onRefresh}
-              className="ml-auto text-muted-foreground hover:text-foreground"
-              aria-label="Refresh workspace"
-            >
-              <RefreshCw size={12} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>Refresh workspace</TooltipContent>
-        </Tooltip>
       </div>
 
       {loading && (
@@ -352,9 +337,8 @@ export function WorkspaceBrowserPane({
           const isSelected = selectedPath === fullPath;
           const label = currentPath === "/" ? labelForSegment(entry.key, 0) : entry.key;
 
-          // Only entries listed inside "w" carry a fetched value (see
-          // loadListing) — everywhere else this is undefined and the row
-          // falls back to the original label + drill-in behavior below.
+          // An entry inside "w" gains a value only after the user selects it;
+          // until then every row stays a cheap, keys-only listing.
           if (entry.valueType !== undefined) {
             return (
               <WorkspaceEntryTree
@@ -382,7 +366,9 @@ export function WorkspaceBrowserPane({
                   ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
                   : "text-foreground hover:bg-accent"
               }`}
-              onClick={() => onSelect(fullPath)}
+              onClick={() =>
+                currentPath === "/" ? onNavigate(fullPath) : onSelect(fullPath)
+              }
             >
               <Folder size={14} className="shrink-0 text-muted-foreground" />
               <span className="flex-1 truncate">{label}</span>

@@ -44,7 +44,6 @@ export function WorkspaceExplorer() {
           pendingEntryPath={explorer.pendingEntryPath}
           onNavigate={explorer.navigateTo}
           onSelect={explorer.selectPath}
-          onRefresh={explorer.refreshListing}
           onCreate={explorer.create}
           onSaveEntry={explorer.saveEntryValue}
         />
@@ -63,6 +62,13 @@ export function WorkspaceExplorer() {
         <WorkspaceValuePane
           key={explorer.selectedPath ?? "empty"}
           selectedPath={explorer.selectedPath}
+          currentPath={explorer.currentPath}
+          namespaceEmpty={
+            explorer.currentPath !== "/" &&
+            !explorer.listingLoading &&
+            !explorer.listingError &&
+            explorer.entries.length === 0
+          }
           selectedValue={explorer.selectedValue}
           loading={explorer.valueLoading}
           error={explorer.valueError}
@@ -72,6 +78,7 @@ export function WorkspaceExplorer() {
           onEditedDataChange={explorer.setEditedData}
           onSave={explorer.save}
           onDelete={explorer.remove}
+          onRefreshNamespace={explorer.refreshNamespace}
         />
       </div>
     </div>

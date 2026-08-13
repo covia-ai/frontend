@@ -10,11 +10,9 @@ import { ROOT_NAMESPACES } from "@/lib/workspace-namespaces";
 
 export type WorkspaceEntry = {
   key: string;
-  // Populated only for entries listed inside the mutable "w" subtree (see
-  // loadListing) — cheap listings elsewhere (jobs, agents, ...) skip the
-  // per-entry read entirely, since those directories can hold thousands of
-  // venue-managed records the browser pane never needs individual values
-  // for. `valueType` (rather than `value`) is the "was this fetched" flag,
+  // Populated lazily after an entry inside the mutable "w" subtree is selected.
+  // Listings never read every child value. `valueType` (rather than `value`)
+  // is the "was this fetched" flag,
   // since a fetched value can itself legitimately be `undefined`-shaped
   // JSON (null).
   value?: unknown;
@@ -47,6 +45,8 @@ const EMPTY_VALUE: WorkspaceValue = {
   value: null,
   type: "",
 };
+
+const DEFAULT_WORKSPACE_PATH = "w";
 
 export function normalizeWorkspacePath(path?: string): string {
   const segments = path?.split("/").filter(Boolean) ?? [];
@@ -180,7 +180,7 @@ export function useWorkspaceExplorer() {
     run: runValue,
     reset: resetValue,
   } = useLatestQuery<WorkspaceValue>(EMPTY_VALUE);
-  const [currentPath, setCurrentPath] = useState("/");
+  const [currentPath, setCurrentPath] = useState(DEFAULT_WORKSPACE_PATH);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [editedData, setEditedData] = useState<unknown>(null);
   const [pendingMutation, setPendingMutation] =
@@ -189,6 +189,11 @@ export function useWorkspaceExplorer() {
   // WorkspaceBrowserPane shouldn't disable the (unrelated) Save/Delete
   // controls in WorkspaceValuePane for whatever's currently selected.
   const [pendingEntryPath, setPendingEntryPath] = useState<string | null>(null);
+  // The SDK deliberately does not cache mutable lattice paths. Keep a small,
+  // page-lifetime navigation cache here so backtracking through the explorer
+  // is instant; the namespace refresh action invalidates the relevant subtree.
+  const listingCache = useRef(new Map<string, WorkspaceEntry[]>());
+  const valueCache = useRef(new Map<string, WorkspaceValue>());
 
   const venueRef = useRef<Venue | null>(venue);
   const currentPathRef = useRef(currentPath);
@@ -213,15 +218,20 @@ export function useWorkspaceExplorer() {
     resetValue();
   }, [invalidateMutation, resetValue]);
 
-  // Returns the entries it listed so callers can auto-select the first one
-  // without waiting a tick for `entries` state to catch up.
   const loadListing = useCallback(
-    async (path: string): Promise<WorkspaceEntry[]> => {
+    async (path: string, force = false): Promise<WorkspaceEntry[]> => {
       if (!venue) {
         resetListing();
         return [];
       }
       const normalizedPath = normalizeWorkspacePath(path);
+      if (!force) {
+        const cached = listingCache.current.get(normalizedPath);
+        if (cached) {
+          resetListing(cached);
+          return cached;
+        }
+      }
       let listed: WorkspaceEntry[] = [];
       await runListing(
         async () => {
@@ -231,28 +241,8 @@ export function useWorkspaceExplorer() {
             normalizedPath === "/"
               ? withFixedRootNamespaces(keys)
               : keys.map((key) => ({ key }));
-
-          // Inline-editable rows need each entry's value up front — only
-          // worth the extra per-entry reads inside "w", where directories
-          // are small, user-authored key sets rather than the venue's own
-          // large managed collections.
-          if (isMutableWorkspacePath(normalizedPath) && listed.length > 0) {
-            listed = await Promise.all(
-              listed.map(async (entry) => {
-                try {
-                  const { value, type, truncated } = workspaceValue(
-                    await venue.workspace.read(
-                      joinWorkspacePath(normalizedPath, entry.key),
-                    ),
-                  );
-                  return { ...entry, value, valueType: type, truncated };
-                } catch {
-                  // One bad entry shouldn't blank the whole listing — it
-                  // just falls back to drill-in-only, like an unfetched row.
-                  return entry;
-                }
-              }),
-            );
+          if (venueRef.current === venue) {
+            listingCache.current.set(normalizedPath, listed);
           }
           return listed;
         },
@@ -264,17 +254,55 @@ export function useWorkspaceExplorer() {
   );
 
   const loadValue = useCallback(
-    async (path: string) => {
+    async (path: string, force = false) => {
       if (!venue) {
         resetValue();
         return;
       }
+      if (!force) {
+        const cached = valueCache.current.get(path);
+        if (cached) {
+          resetValue(cached);
+          if (
+            cached.exists && !cached.truncated &&
+            isMutableWorkspacePath(currentPathRef.current)
+          ) {
+            const patched = patchEntryValue(
+              entriesRef.current,
+              currentPathRef.current,
+              path,
+              cached.value,
+            );
+            resetListing(patched);
+            listingCache.current.set(currentPathRef.current, patched);
+          }
+          return;
+        }
+      }
       await runValue(
-        async () => workspaceValue(await venue.workspace.read(path)),
+        async () => {
+          const value = workspaceValue(await venue.workspace.read(path));
+          if (venueRef.current !== venue) return value;
+          valueCache.current.set(path, value);
+          if (
+            selectedPathRef.current === path && value.exists &&
+            !value.truncated && isMutableWorkspacePath(currentPathRef.current)
+          ) {
+            const patched = patchEntryValue(
+              entriesRef.current,
+              currentPathRef.current,
+              path,
+              value.value,
+            );
+            resetListing(patched);
+            listingCache.current.set(currentPathRef.current, patched);
+          }
+          return value;
+        },
         { clear: true },
       );
     },
-    [resetValue, runValue, venue],
+    [resetListing, resetValue, runValue, venue],
   );
 
   const selectPath = useCallback(
@@ -288,30 +316,19 @@ export function useWorkspaceExplorer() {
     [invalidateMutation, loadValue],
   );
 
-  // After listing a directory, auto-select its first entry so browsing into
-  // a folder immediately shows data instead of requiring a second click.
-  // Guarded on currentPathRef so a stale listing can't select into a
-  // directory the user has since navigated away from.
-  const selectFirstEntry = useCallback(
-    (path: string, listedEntries: WorkspaceEntry[]) => {
-      if (currentPathRef.current !== path) return;
-      const first = listedEntries[0];
-      if (first) selectPath(joinWorkspacePath(path, first.key));
-    },
-    [selectPath],
-  );
-
   useEffect(() => {
     mutationGeneration.current += 1;
     setPendingMutation(null);
-    currentPathRef.current = "/";
-    setCurrentPath("/");
+    currentPathRef.current = DEFAULT_WORKSPACE_PATH;
+    setCurrentPath(DEFAULT_WORKSPACE_PATH);
     selectedPathRef.current = null;
     setSelectedPath(null);
     setEditedData(null);
+    listingCache.current.clear();
+    valueCache.current.clear();
     resetValue();
-    void loadListing("/").then((listed) => selectFirstEntry("/", listed));
-  }, [loadListing, resetValue, selectFirstEntry]);
+    void loadListing(DEFAULT_WORKSPACE_PATH);
+  }, [loadListing, resetValue]);
 
   useEffect(() => {
     if (listingError) notifyError("Unable to list workspace", listingError);
@@ -333,16 +350,28 @@ export function useWorkspaceExplorer() {
       currentPathRef.current = normalizedPath;
       setCurrentPath(normalizedPath);
       clearSelection();
-      void loadListing(normalizedPath).then((listed) =>
-        selectFirstEntry(normalizedPath, listed),
-      );
+      void loadListing(normalizedPath);
     },
-    [clearSelection, loadListing, selectFirstEntry],
+    [clearSelection, loadListing],
   );
 
-  const refreshListing = useCallback(() => {
-    void loadListing(currentPathRef.current);
-  }, [loadListing]);
+  const refreshNamespace = useCallback(() => {
+    const path = selectedPathRef.current ?? currentPathRef.current;
+    const [root] = normalizeWorkspacePath(path).split("/").filter(Boolean);
+    if (!root) return;
+    const inNamespace = (candidate: string) =>
+      candidate === root || candidate.startsWith(`${root}/`);
+    for (const key of listingCache.current.keys()) {
+      if (inNamespace(key)) listingCache.current.delete(key);
+    }
+    for (const key of valueCache.current.keys()) {
+      if (inNamespace(key)) valueCache.current.delete(key);
+    }
+    void loadListing(currentPathRef.current, true);
+    if (selectedPathRef.current) {
+      void loadValue(selectedPathRef.current, true);
+    }
+  }, [loadListing, loadValue]);
 
   const mutationIsCurrent = useCallback(
     (
@@ -371,6 +400,7 @@ export function useWorkspaceExplorer() {
       setPendingMutation("save");
       try {
         await venue.workspace.write(path, value);
+        valueCache.current.delete(path);
         notifySuccess("Saved successfully");
         if (mutationIsCurrent(generation, venue, path)) {
           void loadValue(path);
@@ -378,9 +408,14 @@ export function useWorkspaceExplorer() {
           // visible) from going stale relative to the pane just saved — a
           // local patch, not a re-list, so the list never flashes through
           // empty/loading for what should be a no-visible-disruption save.
-          resetListing(
-            patchEntryValue(entriesRef.current, currentPathRef.current, path, value),
+          const patched = patchEntryValue(
+            entriesRef.current,
+            currentPathRef.current,
+            path,
+            value,
           );
+          resetListing(patched);
+          listingCache.current.set(currentPathRef.current, patched);
         }
         return true;
       } catch (err) {
@@ -407,9 +442,12 @@ export function useWorkspaceExplorer() {
       setPendingEntryPath(path);
       try {
         await venue.workspace.write(path, value);
+        valueCache.current.delete(path);
         notifySuccess("Saved successfully");
         if (currentPathRef.current === directory) {
-          resetListing(patchEntryValue(entriesRef.current, directory, path, value));
+          const patched = patchEntryValue(entriesRef.current, directory, path, value);
+          resetListing(patched);
+          listingCache.current.set(directory, patched);
         }
         if (path === selectedPathRef.current) void loadValue(path);
         return true;
@@ -434,9 +472,10 @@ export function useWorkspaceExplorer() {
       setPendingMutation("create");
       try {
         await venue.workspace.write(path, parseWorkspaceInput(rawValue));
+        listingCache.current.delete(directory);
         notifySuccess("Created successfully");
         if (mutationIsCurrent(generation, venue, undefined, directory)) {
-          void loadListing(directory);
+          void loadListing(directory, true);
         }
         return true;
       } catch (err) {
@@ -461,10 +500,12 @@ export function useWorkspaceExplorer() {
     setPendingMutation("delete");
     try {
       await venue.workspace.delete(path);
+      valueCache.current.delete(path);
+      listingCache.current.delete(directory);
       notifySuccess("Deleted successfully");
       if (mutationIsCurrent(generation, venue, path, directory)) {
         clearSelection();
-        void loadListing(directory);
+        void loadListing(directory, true);
       }
       return true;
     } catch (err) {
@@ -508,7 +549,7 @@ export function useWorkspaceExplorer() {
     setEditedData,
     navigateTo,
     selectPath,
-    refreshListing,
+    refreshNamespace,
     save,
     saveEntryValue,
     create,

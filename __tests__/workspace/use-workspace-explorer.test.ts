@@ -53,17 +53,18 @@ describe("useWorkspaceExplorer", () => {
     mockVenue = createVenue();
   });
 
-  it("auto-selects the first entry on initial load, without an extra click", async () => {
+  it("starts in Workspace without reading any child value", async () => {
     const { result } = renderHook(() => useWorkspaceExplorer());
 
     await waitFor(() => expect(result.current.listingLoading).toBe(false));
-    // Root always shows the fixed namespace set first (see
-    // withFixedRootNamespaces) — the venue's virtual public namespace leads
-    // regardless of what the caller's materialised root listing reports.
-    expect(result.current.selectedPath).toBe("v");
+    expect(result.current.currentPath).toBe("w");
+    expect(result.current.selectedPath).toBeNull();
+    expect(mockVenue.workspace.list).toHaveBeenCalledTimes(1);
+    expect(mockVenue.workspace.list).toHaveBeenCalledWith("w");
+    expect(mockVenue.workspace.read).not.toHaveBeenCalled();
   });
 
-  it("auto-selects the first entry after navigating into a directory", async () => {
+  it("loads only the child the user explicitly selects", async () => {
     mockVenue.workspace.list.mockImplementation((path: string) => {
       if (path === "w") {
         return Promise.resolve({ exists: true, type: "map", keys: ["alpha", "beta"] });
@@ -74,10 +75,41 @@ describe("useWorkspaceExplorer", () => {
     const { result } = renderHook(() => useWorkspaceExplorer());
     await waitFor(() => expect(result.current.listingLoading).toBe(false));
 
-    act(() => result.current.navigateTo("w"));
-    await waitFor(() => expect(result.current.selectedPath).toBe("w/alpha"));
+    expect(mockVenue.workspace.read).not.toHaveBeenCalled();
+    act(() => result.current.selectPath("w/alpha"));
+    await waitFor(() => expect(result.current.selectedValue.value).toBe("v"));
 
     expect(mockVenue.workspace.read).toHaveBeenCalledWith("w/alpha");
+    expect(mockVenue.workspace.read).toHaveBeenCalledTimes(1);
+  });
+
+  it("reuses listings while navigating until the namespace is refreshed", async () => {
+    mockVenue.workspace.list.mockResolvedValue({
+      exists: true,
+      type: "map",
+      keys: ["entry"],
+    });
+    mockVenue.workspace.read.mockResolvedValue({ exists: true, value: "first" });
+    const { result } = renderHook(() => useWorkspaceExplorer());
+    await waitFor(() => expect(result.current.listingLoading).toBe(false));
+
+    act(() => result.current.selectPath("w/entry"));
+    await waitFor(() => expect(result.current.selectedValue.value).toBe("first"));
+    act(() => result.current.navigateTo("v"));
+    await waitFor(() => expect(result.current.currentPath).toBe("v"));
+    act(() => result.current.navigateTo("w"));
+    await waitFor(() => expect(result.current.currentPath).toBe("w"));
+
+    expect(mockVenue.workspace.list.mock.calls.filter(([path]: [string]) => path === "w")).toHaveLength(1);
+
+    act(() => result.current.selectPath("w/entry"));
+    await waitFor(() => expect(result.current.selectedValue.value).toBe("first"));
+    mockVenue.workspace.read.mockResolvedValue({ exists: true, value: "fresh" });
+    act(() => result.current.refreshNamespace());
+    await waitFor(() => expect(result.current.selectedValue.value).toBe("fresh"));
+
+    expect(mockVenue.workspace.list.mock.calls.filter(([path]: [string]) => path === "w")).toHaveLength(2);
+    expect(mockVenue.workspace.read).toHaveBeenCalledTimes(2);
   });
 
   it("does not auto-select into an empty directory", async () => {
@@ -114,8 +146,7 @@ describe("useWorkspaceExplorer", () => {
     });
     const { result } = renderHook(() => useWorkspaceExplorer());
 
-    // Root's fixed namespace entries aren't what this test is about — just
-    // wait for the initial load to settle before exercising the race.
+    // Wait for the default Workspace listing before exercising the race.
     await waitFor(() => expect(result.current.listingLoading).toBe(false));
     act(() => result.current.navigateTo("old"));
     act(() => result.current.navigateTo("new"));
@@ -180,6 +211,8 @@ describe("useWorkspaceExplorer", () => {
     const { result } = renderHook(() => useWorkspaceExplorer());
     await waitFor(() => expect(result.current.listingLoading).toBe(false));
 
+    act(() => result.current.navigateTo("j"));
+    await waitFor(() => expect(result.current.currentPath).toBe("j"));
     act(() => result.current.selectPath("j/some-job-id"));
     await waitFor(() => expect(result.current.valueLoading).toBe(false));
 
@@ -270,7 +303,6 @@ describe("useWorkspaceExplorer", () => {
 
     expect(mockVenue.workspace.write).toHaveBeenCalledWith("w/key", "value");
     expect(mockVenue.workspace.list.mock.calls.map(([path]: [string]) => path)).toEqual([
-      "/",
       "w",
       "w/other",
     ]);

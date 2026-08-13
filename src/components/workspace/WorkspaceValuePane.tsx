@@ -6,6 +6,7 @@ import {
   FileText,
   Loader2,
   Lock,
+  RefreshCw,
   Trash2,
 } from "lucide-react";
 import {
@@ -42,7 +43,9 @@ const ThemedJsonEditor = dynamic(
 );
 
 type WorkspaceValuePaneProps = {
+  currentPath: string;
   selectedPath: string | null;
+  namespaceEmpty: boolean;
   selectedValue: WorkspaceValue;
   loading: boolean;
   error: string | null;
@@ -52,10 +55,13 @@ type WorkspaceValuePaneProps = {
   onEditedDataChange: (value: unknown) => void;
   onSave: (value?: unknown) => Promise<boolean>;
   onDelete: () => Promise<boolean>;
+  onRefreshNamespace: () => void;
 };
 
 export function WorkspaceValuePane({
+  currentPath,
   selectedPath,
+  namespaceEmpty,
   selectedValue,
   loading,
   error,
@@ -65,6 +71,7 @@ export function WorkspaceValuePane({
   onEditedDataChange,
   onSave,
   onDelete,
+  onRefreshNamespace,
 }: WorkspaceValuePaneProps) {
   if (loading) {
     return (
@@ -74,7 +81,9 @@ export function WorkspaceValuePane({
     );
   }
 
-  if (!selectedPath) {
+  const displayPath = selectedPath ?? (currentPath === "/" ? null : currentPath);
+
+  if (!displayPath) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
         <Database size={32} />
@@ -92,11 +101,15 @@ export function WorkspaceValuePane({
     );
   }
 
-  const namespace = workspaceNamespaceForPath(selectedPath);
+  const namespace = workspaceNamespaceForPath(displayPath);
+  const directoryLanding = !selectedPath;
+  const namespaceLanding = directoryLanding && isWorkspaceNamespaceRoot(currentPath);
   const emptyNamespace =
-    !selectedValue.exists && isWorkspaceNamespaceRoot(selectedPath);
+    namespaceLanding
+      ? namespaceEmpty
+      : !selectedValue.exists && isWorkspaceNamespaceRoot(displayPath);
 
-  if (!selectedValue.exists && !emptyNamespace) {
+  if (selectedPath && !selectedValue.exists && !emptyNamespace) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
         <FileText size={32} />
@@ -107,17 +120,18 @@ export function WorkspaceValuePane({
 
   const readData = selectedValue.value;
   const isObject = typeof readData === "object" && readData !== null;
-  const canMutate = isAuthenticated && isWritableWorkspaceEntry(selectedPath);
+  const canMutate =
+    !!selectedPath && isAuthenticated && isWritableWorkspaceEntry(selectedPath);
 
   return (
     <>
       <div className="flex flex-wrap items-center gap-2 border-b border-border p-3">
         <Badge variant="outline" className="max-w-xs truncate font-mono text-xs">
-          {selectedPath}
+          {displayPath}
         </Badge>
 
         <div className="ml-auto flex items-center gap-1">
-          {canMutate ? (
+          {selectedPath && canMutate ? (
             <>
               <AlertDialog>
                 <Tooltip>
@@ -138,7 +152,7 @@ export function WorkspaceValuePane({
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>
-                      Delete &quot;{selectedPath}&quot;?
+                      Delete &quot;{displayPath}&quot;?
                     </AlertDialogTitle>
                     <AlertDialogDescription>
                       {isObject
@@ -158,20 +172,35 @@ export function WorkspaceValuePane({
                 </AlertDialogContent>
               </AlertDialog>
             </>
-          ) : (
+          ) : selectedPath ? (
             <span
               className="flex items-center gap-1 text-xs text-muted-foreground"
               title={
                 !isAuthenticated
                   ? "Read-only — sign in to modify workspace data"
-                  : selectedPath === "w"
+                  : displayPath === "w"
                     ? "Read-only — select a key inside Workspace to edit it"
                     : "Read-only — only paths under \"w\" (Workspace) can be edited"
               }
             >
               <Lock size={14} aria-label="Read-only" />
-              {selectedPath === "w" && "Choose a key to edit"}
+              {displayPath === "w" && "Choose a key to edit"}
             </span>
+          ) : null}
+          {namespace && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Resync ${namespace.label}`}
+                  onClick={onRefreshNamespace}
+                >
+                  <RefreshCw size={14} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Resync {namespace.label}</TooltipContent>
+            </Tooltip>
           )}
         </div>
         {namespace && (
@@ -186,16 +215,28 @@ export function WorkspaceValuePane({
       </div>
 
       <div className="flex-1 overflow-auto p-4">
-        {emptyNamespace ? (
+        {directoryLanding && namespaceEmpty ? (
+          <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
+            <Database size={32} />
+            <p className="mt-2 text-sm">
+              This {namespaceLanding ? "namespace" : "directory"} is empty
+            </p>
+          </div>
+        ) : emptyNamespace ? (
           <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
             <Database size={32} />
             <p className="mt-2 text-sm">This namespace is empty</p>
+          </div>
+        ) : directoryLanding ? (
+          <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
+            <Database size={32} />
+            <p className="mt-2 text-sm">Select a key to view its data</p>
           </div>
         ) : isObject ? (
           <ThemedJsonEditor
             data={editedData as object}
             editable={canMutate}
-            rootName={selectedPath.split("/").pop() || "data"}
+            rootName={displayPath.split("/").pop() || "data"}
             collapse={2}
             onChange={(value) => {
               onEditedDataChange(value);
