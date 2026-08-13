@@ -29,22 +29,19 @@ import { DEFAULT_AGENT_ID } from "@/config/agents";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { gtmEvent } from "@/lib/utils";
-
-// The capability half of a venue agent template (COG-18 skills + tool palette)
-// that the dialog carries into the created agent unchanged — name, prompt,
-// provider and model are edited in the form, these ride along.
-export interface AgentTemplateConfig {
-  operation?: string;
-  skills?: string[];
-  tools?: string[];
-  defaultTools?: boolean;
-}
+import type { AgentTemplateConfig } from "@/lib/agent-config";
 
 interface AddNewAgentProps {
-  trigger?: React.ReactNode;
+  trigger?: React.ReactNode | null;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  dialogTitle?: string;
+  submitLabel?: string;
   initialAgentName?: string;
   initialSystemPrompt?: string;
   initialProvider?: string;
+  initialModel?: string;
+  preferAvailableProvider?: boolean;
   /** Skills/tools/operation from a venue template, applied to the created agent. */
   initialConfig?: AgentTemplateConfig;
 }
@@ -57,9 +54,15 @@ const slugify = (name: string) =>
 
 export function AddNewAgent({
   trigger,
+  open: controlledOpen,
+  onOpenChange,
+  dialogTitle = "Create a new agent",
+  submitLabel = "Create",
   initialAgentName = "",
   initialSystemPrompt = "",
   initialProvider = "anthropic",
+  initialModel = "",
+  preferAvailableProvider = true,
   initialConfig,
 }: AddNewAgentProps = {}) {
   const router = useRouter();
@@ -74,7 +77,7 @@ export function AddNewAgent({
   const [systemPrompt, setSystemPrompt] = useState(initialSystemPrompt);
   const [initialCommand, setInitialCommand] = useState("");
   const [creating, setCreating] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [availableKeys, setAvailableKeys] = useState<string[]>([]);
   // A key pasted inline when the chosen provider has none — stored on create
   // so you don't have to leave the dialog to add it in Secrets first.
@@ -82,6 +85,11 @@ export function AddNewAgent({
 
 
   const venue = useAuthenticatedVenue();
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (nextOpen: boolean) => {
+    if (controlledOpen === undefined) setInternalOpen(nextOpen);
+    onOpenChange?.(nextOpen);
+  };
 
   const resolvedAgentId = agentId.trim() || slugify(agentName);
   const isReservedAgentId = resolvedAgentId === DEFAULT_AGENT_ID;
@@ -93,8 +101,9 @@ export function AddNewAgent({
     setAgentIdEdited(false);
     setSystemPrompt(initialSystemPrompt);
     setLlmProvider(initialProvider);
-    setModel("");
-    setCustomModel("");
+    const knownModel = LLM_PROVIDERS[initialProvider]?.models?.includes(initialModel);
+    setModel(initialModel ? (knownModel ? initialModel : CUSTOM_MODEL_OPTION) : "");
+    setCustomModel(initialModel && !knownModel ? initialModel : "");
     setInitialCommand("");
     setApiKeyInput("");
     if (!venue) return;
@@ -109,13 +118,21 @@ export function AddNewAgent({
           const p = LLM_PROVIDERS[id];
           return !!p && (!p.requiresKey || secrets.includes(p.secretKey));
         };
-        if (!ready(initialProvider)) {
+        if (preferAvailableProvider && !ready(initialProvider)) {
           const pick = Object.keys(LLM_PROVIDERS).find(ready);
           if (pick) setLlmProvider(pick);
         }
       })
       .catch(() => setAvailableKeys([]));
-  }, [open, venue, initialAgentName, initialSystemPrompt, initialProvider]);
+  }, [
+    open,
+    venue,
+    initialAgentName,
+    initialSystemPrompt,
+    initialProvider,
+    initialModel,
+    preferAvailableProvider,
+  ]);
 
   // The model actually sent in the agent config; "" means omit (venue default).
   const resolvedModel =
@@ -165,6 +182,7 @@ export function AddNewAgent({
       const result = await venue.agents.create({
         agentId: resolvedAgentId,
         config: {
+          ...initialConfig,
           // Template capabilities (skills, tools, defaultTools) ride along; the
           // form's provider/model/prompt below always win over the template's.
           ...(initialConfig?.skills?.length ? { skills: initialConfig.skills } : {}),
@@ -206,17 +224,19 @@ export function AddNewAgent({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button data-testid="create-agent-trigger" className="shrink-0 gap-2">
-            <PlusCircledIcon />
-            Create Agent
-          </Button>
-        )}
-      </DialogTrigger>
+      {trigger !== null && (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button data-testid="create-agent-trigger" className="shrink-0 gap-2">
+              <PlusCircledIcon />
+              Create Agent
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="flex flex-col bg-card text-card-foreground max-h-[85vh] overflow-y-auto">
         <DialogTitle className="space-y-2">
-          <Label className="text-md">Create a new agent</Label>
+          <Label className="text-md">{dialogTitle}</Label>
           <Separator />
         </DialogTitle>
         <DialogDescription className="sr-only">
@@ -391,7 +411,7 @@ export function AddNewAgent({
           disabled={creating || !venue || !agentName.trim() || !isProviderReady(llmProvider) || isReservedAgentId}
           className="btn-sm mt-2"
         >
-          {creating ? "Creating..." : "Create"}
+          {creating ? "Creating..." : submitLabel}
         </Button>
       </DialogContent>
     </Dialog>

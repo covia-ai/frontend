@@ -1,6 +1,5 @@
-import { AgentList } from "@/components/AgentList";
-
+import { redirect } from "next/navigation";
 
 export default function AgentsPage() {
-  return <AgentList mode="view" />;
+  redirect("/agents/view");
 }

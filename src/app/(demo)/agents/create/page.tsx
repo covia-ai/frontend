@@ -1,5 +1,5 @@
-import { AgentList } from "@/components/AgentList";
+import { AgentCreate } from "@/components/AgentCreate";
 
 export default function CreateAgentPage() {
-  return <AgentList mode="create" />;
+  return <AgentCreate />;
 }

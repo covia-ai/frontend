@@ -140,6 +140,40 @@ describe('AddNewAgent', () => {
     expect(config.model).toBe('claude-opus-4-8');
   });
 
+  it('preserves cloned creation settings while allowing identity fields to change', async () => {
+    const user = userEvent.setup();
+    render(
+      <AddNewAgent
+        initialAgentName="writer copy"
+        initialSystemPrompt="You are a careful writer."
+        initialProvider="anthropic"
+        initialModel="claude-opus-4-8"
+        preferAvailableProvider={false}
+        initialConfig={{
+          operation: "v/ops/llmagent/chat",
+          skills: ["w/skills"],
+          customSetting: "preserve-me",
+        }}
+      />,
+    );
+    await user.click(screen.getByTestId('create-agent-trigger'));
+
+    expect(screen.getByPlaceholderText('e.g., Customer Support Agent')).toHaveValue('writer copy');
+    expect(screen.getByTestId('model-select')).toHaveTextContent('claude-opus-4-8');
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    expect(mockVenue.agents.create.mock.calls[0][0].config).toMatchObject({
+      operation: 'v/ops/llmagent/chat',
+      llmOperation: 'v/ops/langchain/anthropic',
+      model: 'claude-opus-4-8',
+      systemPrompt: 'You are a careful writer.',
+      skills: ['w/skills'],
+      customSetting: 'preserve-me',
+    });
+    expect(mockVenue.agents.create.mock.calls[0][0].config).not.toHaveProperty('state');
+  });
+
   it('passes a custom-typed model into the agent config', async () => {
     const user = await renderAndOpenDialog();
     await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');

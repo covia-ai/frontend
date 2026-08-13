@@ -9,8 +9,8 @@ import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { AddNewAgent } from "./AddNewAgent";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { useAgentTemplates, type AgentTemplate } from "@/hooks/use-agent-templates";
-import { LLM_PROVIDERS } from "@/config/llm-providers";
 import { PageHeading } from "./PageHeading";
+import { providerForOperation } from "@/lib/agent-config";
 
 // A recognisable face per template. Falls back to a generic bot for any the
 // venue adds later that we don't have an icon for.
@@ -25,20 +25,16 @@ const ICONS: Record<string, LucideIcon> = {
   goaltree: GitFork,
 };
 
-// Map the template's default provider op back to a provider id for the create
-// dialog. The user overrides it there anyway; this just seeds a sensible pick.
-function providerForOperation(llmOperation?: string): string {
-  const match = Object.entries(LLM_PROVIDERS).find(([, p]) => p.operation === llmOperation);
-  return match?.[0] ?? "anthropic";
-}
-
 export function AgentTemplates() {
   const isAuthenticated = useIsAuthenticated();
   const { templates, loading } = useAgentTemplates();
 
   return (
     <div className="flex flex-col items-center justify-center w-full px-10 py-10">
-      <PageHeading className="mb-8" text="Choose a Template to start your" highlight="agent" />
+      <PageHeading className="mb-3" text="Start with a" highlight="template" />
+      <p className="mb-8 max-w-2xl text-center text-sm text-muted-foreground">
+        Templates provide a tested starting configuration that you can adjust before creating the agent.
+      </p>
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
