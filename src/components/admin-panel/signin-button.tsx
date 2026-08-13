@@ -3,7 +3,8 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { LogInIcon, Globe, Lock, CircleUserRound } from "lucide-react";
+import { LogInIcon, Globe, Lock, CircleUserRound, Key } from "lucide-react";
+import { FaGithub, FaGoogle, FaMicrosoft } from "react-icons/fa";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger }from "@/components/ui/dropdown-menu";
 import { DeviceKeyDialog } from "@/components/DeviceKeyDialog";
@@ -13,6 +14,8 @@ import { useAuthStore } from "@/hooks/use-auth";
 import { useVenues } from "@/hooks/use-venues";
 import { useVenueAccess } from "@/hooks/use-venue-access";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useOAuthSignInOptions } from "@/hooks/use-oauth-sign-in";
+import { OAUTH_PROVIDER_LABELS } from "@/lib/oauth";
 
 type ChromeSignInButtonProps = {
   index?: string | number;
@@ -31,6 +34,7 @@ export function ChromeSignInButton(props: ChromeSignInButtonProps) {
     activeVenueId ? state.venues.find((v) => v.venueId === activeVenueId)?.baseUrl : undefined,
   );
   const access = useVenueAccess(activeBaseUrl, activeVenueId ?? undefined);
+  const oauthOptions = useOAuthSignInOptions(activeVenueId ?? undefined);
 
   const {
     dialogOpen, setDialogOpen, openDialog, step, setStep, deviceKey, deviceKeyDid,
@@ -61,21 +65,46 @@ export function ChromeSignInButton(props: ChromeSignInButtonProps) {
             {accessBadge.label}
           </Badge>
         )}
-        <Button
-          onClick={openDialog}
-          variant="default"
-          className="justify-center h-8 my-5 text-sm hover:bg-primary-vlight hover:text-foreground"
-        >
-          <LogInIcon />
-          <p
-            className={cn(
-              "whitespace-nowrap hidden md:block lg:block",
-              props.isOpen === false ? "opacity-0 hidden" : "opacity-100"
-            )}
-          >
-            Sign In
-          </p>
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="default"
+              className="justify-center h-8 my-5 text-sm hover:bg-primary-vlight hover:text-foreground"
+            >
+              <LogInIcon />
+              <span
+                className={cn(
+                  "whitespace-nowrap hidden md:block lg:block",
+                  props.isOpen === false ? "opacity-0 hidden" : "opacity-100"
+                )}
+              >
+                Sign In
+              </span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            {oauthOptions.map(({ provider, href }) => {
+              const ProviderIcon = provider === "google"
+                ? FaGoogle
+                : provider === "microsoft"
+                  ? FaMicrosoft
+                  : FaGithub;
+              return (
+                <DropdownMenuItem key={provider} asChild>
+                  <a href={href}>
+                    <ProviderIcon />
+                    Continue with {OAUTH_PROVIDER_LABELS[provider]}
+                  </a>
+                </DropdownMenuItem>
+              );
+            })}
+            {oauthOptions.length > 0 && <DropdownMenuSeparator />}
+            <DropdownMenuItem onSelect={openDialog}>
+              <Key />
+              Continue with a device key
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <DeviceKeyDialog
           open={dialogOpen}

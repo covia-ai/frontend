@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/hooks/use-auth";
 import { useVenues } from "@/hooks/use-venues";
 import { gtmEvent } from "@/lib/utils";
+import { safeReturnTo } from "@/lib/oauth";
 
 function AuthCallbackInner() {
   const searchParams = useSearchParams();
@@ -16,11 +17,12 @@ function AuthCallbackInner() {
     const token = searchParams.get("token");
     const did = searchParams.get("did");
     const venueId = searchParams.get("venueId") || selectedVenueId;
+    const returnTo = safeReturnTo(searchParams.get("returnTo"));
 
     if (token && did && venueId) {
       loginWithToken(venueId, token, did);
       gtmEvent.signUp('oauth');
-      router.replace("/operations");
+      router.replace(returnTo);
     } else {
       router.replace("/signUp");
     }

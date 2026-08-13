@@ -17,12 +17,12 @@ export default function SignUp() {
 
               </h3>
               <p className="text-xl text-muted-foreground text-center mt-8 mb-8">
-                Welcome back to Covia app! Log in with Google or Github, or continue with a device key.
+                Sign in to the selected Covia venue with an available provider or a device key.
               </p>
 
               <SignupSignInButton/>
               <div className="flex items-center justify-center space-x-2 space-y-2 text-xs text-muted-foreground">
-                By Signing up you are agreeing to Covia terms and conditions
+                By signing in, you agree to the Covia terms and conditions.
               </div>
 
         </div>

@@ -4,6 +4,7 @@ import { Key } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DeviceKeyDialog } from "@/components/DeviceKeyDialog";
 import { useDeviceKeySignIn } from "@/hooks/use-device-key-signin";
+import { OAuthSignInButtons } from "@/components/OAuthSignInButtons";
 
 export const SignupSignInButton = () => {
   const {
@@ -17,6 +18,7 @@ export const SignupSignInButton = () => {
   return (
     <>
       <div className="flex flex-col items-center justify-center dark:bg-background">
+        <OAuthSignInButtons />
         <Button
           aria-label="signin"
           role="button"
@@ -24,7 +26,7 @@ export const SignupSignInButton = () => {
           className="my-2 w-64"
           onClick={openDialog}
         >
-          <Key className="mr-1 h-4 w-4" />Sign In
+          <Key className="mr-1 h-4 w-4" />Continue with a device key
         </Button>
       </div>
 
