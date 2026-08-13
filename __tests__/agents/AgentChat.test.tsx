@@ -67,8 +67,12 @@ describe("AgentChat", () => {
     render(<AgentChat initialAgentId="writer" />);
 
     expect(mockUseAgentExplorer).toHaveBeenCalledWith("writer");
+    expect(screen.getByTestId("agent-transcript")).toBeInTheDocument();
     expect(screen.getByText("Draft a launch post")).toBeInTheDocument();
-    expect(screen.getByText("Here is a concise first draft.")).toBeInTheDocument();
+    expect(screen.getByText("Here is a concise first draft.")).toHaveClass(
+      "text-[15px]",
+      "leading-6",
+    );
 
     fireEvent.keyDown(screen.getByTestId("clean-composer-input"), {
       key: "Enter",

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AgentStatus } from "@covia/covia-sdk";
 import { Bot, Loader2, MessageSquarePlus, RotateCcw, Send } from "lucide-react";
 
-import { AgentChatTranscript } from "@/components/agent-chat/AgentChatTranscript";
+import { AgentConversation } from "@/components/AgentConversation";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -162,8 +162,9 @@ export function AgentChat({ initialAgentId, fixedAgent = false }: AgentChatProps
         </div>
       )}
 
-      <AgentChatTranscript
+      <AgentConversation
         agentId={selectedAgentId}
+        selectedSessionId={selectedSessionId}
         session={currentSession}
         pendingChat={pendingChat}
         echoAlreadyRecorded={echoAlreadyRecorded}
@@ -187,7 +188,7 @@ export function AgentChat({ initialAgentId, fixedAgent = false }: AgentChatProps
             disabled={sending || !canSend}
             rows={1}
             className={cn(
-              "max-h-40 min-h-10 resize-none border-0 bg-transparent px-0 py-2 shadow-none focus-visible:ring-0 dark:bg-transparent disabled:opacity-100",
+              "max-h-40 min-h-10 resize-none border-0 bg-transparent px-0 py-2 text-[15px] leading-6 shadow-none focus-visible:ring-0 dark:bg-transparent disabled:opacity-100 md:text-[15px]",
               SUGGESTION_PLACEHOLDER_CLASS,
             )}
           />

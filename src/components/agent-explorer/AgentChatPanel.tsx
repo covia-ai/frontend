@@ -48,7 +48,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
-import { AgentTranscript } from "@/components/agent-explorer/AgentTranscript";
+import { AgentConversation } from "@/components/AgentConversation";
 import { ConfigFields } from "@/components/agent-explorer/ConfigFields";
 import { AgentTimelineView } from "@/components/agent-explorer/AgentTimelineView";
 import type { AgentExplorerController } from "@/hooks/use-agent-explorer";
@@ -397,9 +397,8 @@ export function AgentChatPanel({
             )}
           </div>
 
-          <AgentTranscript
-            agent={selectedAgentDetail}
-            selectedAgentId={selectedAgentId}
+          <AgentConversation
+            agentId={selectedAgentDetail.agentId}
             selectedSessionId={selectedSessionId}
             session={currentSession}
             pendingChat={pendingChat}
