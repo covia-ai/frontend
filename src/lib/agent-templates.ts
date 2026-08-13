@@ -2,6 +2,8 @@ export type AgentConfigMap = Record<string, unknown>;
 export type AgentConfigLayer = string | AgentConfigMap;
 export type AgentConfigInput = AgentConfigLayer | AgentConfigLayer[];
 
+export const AGENT_TEMPLATES_CHANGED_EVENT = "covia:agent-templates-changed";
+
 export interface AgentTemplate {
   /** Directory key under v/agents/templates; this is the catalog identity. */
   key: string;

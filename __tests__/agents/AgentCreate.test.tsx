@@ -115,7 +115,7 @@ describe("AgentCreate", () => {
       "writer copy",
     );
     expect(
-      screen.getByPlaceholderText("e.g., You are a helpful customer support agent that..."),
+      screen.getByPlaceholderText("Describe the agent's role, behaviour, and boundaries."),
     ).toHaveValue("You are a careful writer.");
   });
 });

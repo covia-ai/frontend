@@ -53,11 +53,35 @@ describe('useAgentTemplates', () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(read).toHaveBeenCalledWith('v/agents/templates');
+    expect(read).toHaveBeenCalledWith('w/templates');
     expect(result.current.templates.map((t) => t.key)).toContain('skilled');
     expect(result.current.templates.find((t) => t.key === 'skilled')?.skills).toEqual(['w/skills', 'v/skills']);
     expect(result.current.templates.find((t) => t.key === 'skilled')?.systemPrompt).toBe('Use skills when needed.');
     expect(result.current.templates.find((t) => t.key === 'skilled')?.config).toMatchObject({
       caps: [{ with: 'w/', can: 'crud/read' }],
+    });
+  });
+
+  it('includes workspace templates and lets them override matching venue IDs', async () => {
+    read.mockImplementation((path: string) => Promise.resolve({
+      value: path === 'v/agents/templates'
+        ? { reader: { name: 'Venue reader', skills: ['v/skills'] } }
+        : {
+            reader: { name: 'My reader', skills: ['w/skills'] },
+            personal: { name: 'Personal', systemPrompt: 'Be concise.' },
+          },
+    }));
+
+    const { result } = renderHook(() => useAgentTemplates());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.templates.find((template) => template.key === 'reader')).toMatchObject({
+      name: 'My reader',
+      skills: ['w/skills'],
+    });
+    expect(result.current.templates.find((template) => template.key === 'personal')).toMatchObject({
+      name: 'Personal',
+      systemPrompt: 'Be concise.',
     });
   });
 

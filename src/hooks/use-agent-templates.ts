@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import {
+  AGENT_TEMPLATES_CHANGED_EVENT,
   normalizeAgentTemplate,
   type AgentTemplate,
 } from "@/lib/agent-templates";
@@ -33,24 +34,37 @@ export function useAgentTemplates() {
       return;
     }
     let ignore = false;
-    setLoading(true);
-    venue.workspace
-      .read("v/agents/templates")
-      .then((res) => {
+    const loadTemplates = () => {
+      setLoading(true);
+      void Promise.all([
+        venue.workspace.read("v/agents/templates"),
+        venue.workspace.read("w/templates").catch(() => ({ value: null })),
+      ])
+      .then(([venueResult, workspaceResult]) => {
         if (ignore) return;
-        const tree = (res as { value?: Record<string, unknown> })?.value;
-        const list =
-          tree && typeof tree === "object"
-            ? Object.entries(tree)
+        const venueTree = (venueResult as { value?: Record<string, unknown> })?.value;
+        const workspaceTree = (workspaceResult as { value?: Record<string, unknown> })?.value;
+        // User workspace templates take precedence over venue templates with
+        // the same ID, making a local customisation the version the user sees.
+        const tree = {
+          ...(venueTree && typeof venueTree === "object" ? venueTree : {}),
+          ...(workspaceTree && typeof workspaceTree === "object" ? workspaceTree : {}),
+        };
+        const list = Object.entries(tree)
                 .map(([key, value]) => normalizeAgentTemplate(key, value))
                 .filter((template): template is AgentTemplate => template !== null)
-                .sort((a, b) => orderRank(a.key) - orderRank(b.key) || a.key.localeCompare(b.key))
-            : [];
+                .sort((a, b) => orderRank(a.key) - orderRank(b.key) || a.key.localeCompare(b.key));
         setTemplates(list);
       })
       .catch(() => { if (!ignore) setTemplates([]); })
       .finally(() => { if (!ignore) setLoading(false); });
-    return () => { ignore = true; };
+    };
+    loadTemplates();
+    window.addEventListener(AGENT_TEMPLATES_CHANGED_EVENT, loadTemplates);
+    return () => {
+      ignore = true;
+      window.removeEventListener(AGENT_TEMPLATES_CHANGED_EVENT, loadTemplates);
+    };
   }, [venue]);
 
   return { templates, loading };

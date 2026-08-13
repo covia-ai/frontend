@@ -4,6 +4,8 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
@@ -21,15 +23,15 @@ import {
   SelectValue,
 } from "./ui/select";
 import { Textarea } from "./ui/textarea";
-import { Separator } from "./ui/separator";
-import { jobFailure, notifyError, notifyWarning } from "@/lib/notify";
+import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, BookmarkPlus } from "lucide-react";
 import Link from "next/link";
 import { cn, gtmEvent, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
 import {
+  AGENT_TEMPLATES_CHANGED_EVENT,
   asSdkAgentConfig,
   inlineAgentConfigPreview,
   type AgentConfigInput,
@@ -87,6 +89,7 @@ export function AddNewAgent({
   const [systemPrompt, setSystemPrompt] = useState(initialSystemPrompt);
   const [initialCommand, setInitialCommand] = useState("");
   const [creating, setCreating] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
   const [internalOpen, setInternalOpen] = useState(false);
   const [availableKeys, setAvailableKeys] = useState<string[]>([]);
   // A key pasted inline when the chosen provider has none — stored on create
@@ -166,6 +169,21 @@ export function AddNewAgent({
     return availableKeys.includes(provider.secretKey);
   };
 
+  const buildAgentConfig = (): AgentConfigInput => {
+    const provider = LLM_PROVIDERS[llmProvider];
+    const baseConfig = withoutAgentConfigFields(
+      initialConfig,
+      ["llmOperation", "model", "systemPrompt"],
+    );
+    const overrides: AgentConfigMap = {
+      ...(initialConfig === undefined ? { operation: "v/ops/llmagent/chat" } : {}),
+      llmOperation: provider.operation,
+      ...(resolvedModel && { model: resolvedModel }),
+      ...(systemPrompt.trim() && { systemPrompt: systemPrompt.trim() }),
+    };
+    return withAgentConfigOverrides(baseConfig, overrides);
+  };
+
   const handleNewAgent = async () => {
     if (!venue) {
       notifyWarning("Please connect to a venue first");
@@ -193,22 +211,9 @@ export function AddNewAgent({
       if (needsKey && apiKeyInput.trim()) {
         await venue.secrets.set(provider.secretKey, apiKeyInput.trim());
       }
-      // Provider/model/prompt are editable form fields. Remove their inline
-      // seed values before writing the final choices, while leaving string
-      // references and ordered layer semantics intact for venue resolution.
-      const baseConfig = withoutAgentConfigFields(
-        initialConfig,
-        ["llmOperation", "model", "systemPrompt"],
-      );
-      const overrides: AgentConfigMap = {
-        ...(initialConfig === undefined ? { operation: "v/ops/llmagent/chat" } : {}),
-        llmOperation: provider.operation,
-        ...(resolvedModel && { model: resolvedModel }),
-        ...(systemPrompt.trim() && { systemPrompt: systemPrompt.trim() }),
-      };
       const result = await venue.agents.create({
         agentId: resolvedAgentId,
-        config: asSdkAgentConfig(withAgentConfigOverrides(baseConfig, overrides)),
+        config: asSdkAgentConfig(buildAgentConfig()),
       });
 
       if (initialCommand.trim()) {
@@ -236,6 +241,29 @@ export function AddNewAgent({
     }
   };
 
+  const handleSaveTemplate = async () => {
+    if (!venue || !agentName.trim() || !resolvedAgentId || isReservedAgentId) return;
+    const path = `w/templates/${resolvedAgentId}`;
+    setSavingTemplate(true);
+    try {
+      const existing = await venue.workspace.read(path);
+      if (existing?.exists) {
+        notifyWarning("A template with this ID already exists", { description: path });
+        return;
+      }
+      await venue.workspace.write(path, {
+        name: agentName.trim(),
+        agent: { config: buildAgentConfig() },
+      });
+      window.dispatchEvent(new Event(AGENT_TEMPLATES_CHANGED_EVENT));
+      notifySuccess("Template saved", { description: path });
+    } catch (error) {
+      notifyError("Unable to save agent template", error, venue.baseUrl);
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
   const configPreview = initialConfigPreview ?? (
     initialConfig === undefined ? {} : inlineAgentConfigPreview(initialConfig)
   );
@@ -257,190 +285,204 @@ export function AddNewAgent({
           )}
         </DialogTrigger>
       )}
-      <DialogContent className="flex flex-col bg-card text-card-foreground max-h-[85vh] overflow-y-auto">
-        <DialogTitle className="space-y-2">
-          <Label className="text-md">{dialogTitle}</Label>
-          <Separator />
-        </DialogTitle>
-        <DialogDescription className="sr-only">
-          Configure the identity, model, and initial prompt for a new venue agent.
-        </DialogDescription>
+      <DialogContent className="max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden bg-card p-0 text-card-foreground sm:max-w-5xl">
+        <DialogHeader className="border-b px-6 py-4">
+          <DialogTitle className="text-lg">{dialogTitle}</DialogTitle>
+          <DialogDescription>
+            Define the agent, then create it now or save the configuration as a template.
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="flex flex-col items-start justify-center space-y-6">
-          {/* What a template contributes beyond the editable fields below. */}
-          {initialConfig && hasTemplateCapabilities && (
-            <p data-testid="template-capabilities" className="w-full text-xs text-muted-foreground border rounded-md p-2">
-              This template adds{previewSkills.length ? ` a skills index (${previewSkills.join(", ")})` : ""}
-              {previewTools.length ? `${previewSkills.length ? "," : ""} ${previewTools.length} tool${previewTools.length === 1 ? "" : "s"}` : ""}
-              {configPreview.defaultTools ? `${previewSkills.length || previewTools.length ? ", and" : ""} the platform default tools` : ""}. Set the name, provider and prompt below.
-            </p>
-          )}
-          {/* Agent Name */}
-          <div className="space-y-2 w-full">
-            <Label htmlFor="agent-name" className="w-32 text-sm">
-              Agent Name:
-            </Label>
-            <Input
-              data-testid="agent-name"
-              className={SUGGESTION_PLACEHOLDER_CLASS}
-              placeholder="e.g., Customer Support Agent"
-              value={agentName}
-              onChange={(e) => {
-                setAgentName(e.target.value);
-                if (!agentIdEdited) setAgentId(slugify(e.target.value));
-              }}
-            />
-          </div>
-
-          {/* Agent ID */}
-          <div className="space-y-2 w-full">
-            <Label htmlFor="agent-id" className="w-32 text-sm">
-              Agent ID:
-            </Label>
-            <Input
-              id="agent-id"
-              className={SUGGESTION_PLACEHOLDER_CLASS}
-              placeholder="e.g., customer-support-agent"
-              value={agentId}
-              onChange={(e) => {
-                setAgentId(e.target.value);
-                setAgentIdEdited(true);
-              }}
-            />
-            {isReservedAgentId ? (
-              <p className="text-xs text-amber-500 flex items-center gap-1">
-                <AlertTriangle size={12} />
-                &quot;{DEFAULT_AGENT_ID}&quot; is reserved for the workspace prompt bar — pick another id.
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Unique identifier — auto-suggested from name. Edit to override.
-              </p>
-            )}
-          </div>
-
-          {/* LLM Provider */}
-          <div className="space-y-2 w-full">
-            <Label>LLM Provider:</Label>
-            <Select value={llmProvider} onValueChange={handleProviderChange}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(LLM_PROVIDERS).map(([id, provider]) => (
-                  <SelectItem key={id} value={id}>
-                    {provider.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {!isProviderReady(llmProvider) && LLM_PROVIDERS[llmProvider]?.requiresKey && (
-              <div className="space-y-1">
-                <p className="text-xs text-amber-500 flex items-center gap-1">
-                  <AlertTriangle size={12} />
-                  No {LLM_PROVIDERS[llmProvider]?.label} key yet — paste one to store it, or{" "}
-                  <Link href="/secrets" className="underline">add it in Secrets</Link>.
-                </p>
-                <Input
-                  type="password"
-                  data-testid="inline-api-key"
-                  className={SUGGESTION_PLACEHOLDER_CLASS}
-                  placeholder={`${LLM_PROVIDERS[llmProvider]?.secretKey}`}
-                  value={apiKeyInput}
-                  onChange={(e) => setApiKeyInput(e.target.value)}
-                  autoComplete="new-password"
-                  data-1p-ignore
-                  data-lpignore="true"
-                  spellCheck={false}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Model */}
-          <div className="space-y-2 w-full">
-            <Label>Model:</Label>
-            <Select
-              value={model || DEFAULT_MODEL_OPTION}
-              onValueChange={(v) => setModel(v === DEFAULT_MODEL_OPTION ? "" : v)}
-            >
-              <SelectTrigger data-testid="model-select">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={DEFAULT_MODEL_OPTION}>Venue default</SelectItem>
-                {(LLM_PROVIDERS[llmProvider]?.models ?? []).map((m) => (
-                  <SelectItem key={m} value={m}>{m}</SelectItem>
-                ))}
-                <SelectItem value={CUSTOM_MODEL_OPTION}>Custom…</SelectItem>
-              </SelectContent>
-            </Select>
-            {model === CUSTOM_MODEL_OPTION && (
+        <div className="grid min-h-0 overflow-y-auto lg:grid-cols-2">
+          <section
+            data-testid="agent-identity-column"
+            className="flex flex-col gap-5 p-6 lg:border-r"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="agent-name">Name</Label>
               <Input
-                data-testid="model-custom-input"
+                data-testid="agent-name"
+                id="agent-name"
                 className={SUGGESTION_PLACEHOLDER_CLASS}
-                placeholder="e.g. claude-opus-4-8"
-                value={customModel}
-                onChange={(e) => setCustomModel(e.target.value)}
+                placeholder="e.g., Customer Support Agent"
+                value={agentName}
+                onChange={(e) => {
+                  setAgentName(e.target.value);
+                  if (!agentIdEdited) setAgentId(slugify(e.target.value));
+                }}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="agent-id">Agent ID</Label>
+              <Input
+                id="agent-id"
+                className={SUGGESTION_PLACEHOLDER_CLASS}
+                placeholder="e.g., customer-support-agent"
+                value={agentId}
+                onChange={(e) => {
+                  setAgentId(e.target.value);
+                  setAgentIdEdited(true);
+                }}
+              />
+              {isReservedAgentId ? (
+                <p className="flex items-center gap-1 text-sm text-amber-500">
+                  <AlertTriangle size={14} />
+                  &quot;{DEFAULT_AGENT_ID}&quot; is reserved. Choose another ID.
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Generated from the name. You can change it.
+                </p>
+              )}
+            </div>
+
+            <div className="flex min-h-0 flex-1 flex-col gap-2">
+              <Label htmlFor="system-prompt">System prompt</Label>
+              <Textarea
+                id="system-prompt"
+                placeholder="Describe the agent's role, behaviour, and boundaries."
+                value={systemPrompt}
+                onChange={(e) => setSystemPrompt(e.target.value)}
+                className={cn(
+                  "h-72 min-h-72 resize-none overflow-y-auto text-sm",
+                  SUGGESTION_PLACEHOLDER_CLASS,
+                )}
+              />
+              <p className="text-sm text-muted-foreground">
+                The instructions the agent follows in every conversation.
+              </p>
+            </div>
+          </section>
+
+          <section
+            data-testid="agent-settings-column"
+            className="flex flex-col gap-5 border-t p-6 lg:border-t-0"
+          >
+            <div>
+              <h3 className="font-semibold">Settings</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Choose the runtime settings for this agent.
+              </p>
+            </div>
+
+            {initialConfig && hasTemplateCapabilities && (
+              <p data-testid="template-capabilities" className="rounded-md border p-3 text-sm text-muted-foreground">
+                Includes{previewSkills.length ? ` a skills index (${previewSkills.join(", ")})` : ""}
+                {previewTools.length ? `${previewSkills.length ? "," : ""} ${previewTools.length} tool${previewTools.length === 1 ? "" : "s"}` : ""}
+                {configPreview.defaultTools ? `${previewSkills.length || previewTools.length ? ", and" : ""} the platform default tools` : ""}.
+              </p>
             )}
-            <p className="text-xs text-muted-foreground">
-              Venue default uses the provider&apos;s configured model.
-            </p>
-          </div>
 
-          {/* System Prompt */}
-          <div className="space-y-2 w-full">
-            <Label htmlFor="system-prompt">System Prompt:</Label>
-            <Textarea
-              id="system-prompt"
-              placeholder="e.g., You are a helpful customer support agent that..."
-              value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
-              className={cn("w-full text-sm", SUGGESTION_PLACEHOLDER_CLASS)}
-              rows={3}
-            />
-            <p className="text-xs text-muted-foreground">
-              Instructions that define the agent&apos;s behavior and persona.
-            </p>
-          </div>
+            <div className="space-y-2">
+              <Label>Provider</Label>
+              <Select value={llmProvider} onValueChange={handleProviderChange}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(LLM_PROVIDERS).map(([id, provider]) => (
+                    <SelectItem key={id} value={id}>{provider.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!isProviderReady(llmProvider) && LLM_PROVIDERS[llmProvider]?.requiresKey && (
+                <div className="space-y-2">
+                  <p className="flex items-center gap-1 text-sm text-amber-500">
+                    <AlertTriangle size={14} />
+                    No {LLM_PROVIDERS[llmProvider]?.label} key. Paste one below or{" "}
+                    <Link href="/secrets" className="underline">add it in Secrets</Link>.
+                  </p>
+                  <Input
+                    type="password"
+                    data-testid="inline-api-key"
+                    className={SUGGESTION_PLACEHOLDER_CLASS}
+                    placeholder={`${LLM_PROVIDERS[llmProvider]?.secretKey}`}
+                    value={apiKeyInput}
+                    onChange={(e) => setApiKeyInput(e.target.value)}
+                    autoComplete="new-password"
+                    data-1p-ignore
+                    data-lpignore="true"
+                    spellCheck={false}
+                  />
+                </div>
+              )}
+            </div>
 
-          {/* Initial Command */}
-          <div className="space-y-2 w-full">
-            <Label htmlFor="initial-command">Initial Command:</Label>
-            <Input
-              id="initial-command"
-              className={SUGGESTION_PLACEHOLDER_CLASS}
-              placeholder="e.g., Greet the user and ask how you can help"
-              value={initialCommand}
-              onChange={(e) => setInitialCommand(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              First task to send to the agent after creation.
-            </p>
-          </div>
+            <div className="space-y-2">
+              <Label>Model</Label>
+              <Select
+                value={model || DEFAULT_MODEL_OPTION}
+                onValueChange={(value) => setModel(value === DEFAULT_MODEL_OPTION ? "" : value)}
+              >
+                <SelectTrigger data-testid="model-select"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={DEFAULT_MODEL_OPTION}>Venue default</SelectItem>
+                  {(LLM_PROVIDERS[llmProvider]?.models ?? []).map((modelId) => (
+                    <SelectItem key={modelId} value={modelId}>{modelId}</SelectItem>
+                  ))}
+                  <SelectItem value={CUSTOM_MODEL_OPTION}>Custom…</SelectItem>
+                </SelectContent>
+              </Select>
+              {model === CUSTOM_MODEL_OPTION && (
+                <Input
+                  data-testid="model-custom-input"
+                  className={SUGGESTION_PLACEHOLDER_CLASS}
+                  placeholder="e.g. claude-opus-4-8"
+                  value={customModel}
+                  onChange={(e) => setCustomModel(e.target.value)}
+                />
+              )}
+              <p className="text-sm text-muted-foreground">
+                Leave this on Venue default unless you need a specific model.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="initial-command">First task <span className="font-normal text-muted-foreground">(optional)</span></Label>
+              <Input
+                id="initial-command"
+                className={SUGGESTION_PLACEHOLDER_CLASS}
+                placeholder="e.g., Greet the user and ask how you can help"
+                value={initialCommand}
+                onChange={(e) => setInitialCommand(e.target.value)}
+              />
+              <p className="text-sm text-muted-foreground">
+                Sent after creation. This is not saved in a template.
+              </p>
+            </div>
+
+            {!venue && (
+              <p className="flex items-center gap-1 text-sm text-amber-500">
+                <AlertTriangle size={14} /> No venue connected.{" "}
+                <Link href="/venues" className="underline">Connect one in Venues</Link>.
+              </p>
+            )}
+          </section>
         </div>
 
-        {!venue && (
-          <p className="text-xs text-amber-500 flex items-center gap-1">
-            <AlertTriangle size={12} />
-            No venue connected.{" "}
-            <Link href="/venues" className="underline">
-              Connect one in Venues
-            </Link>
-          </p>
-        )}
-
-        <Button
-          aria-label="create agent"
-          role="button"
-          data-testid="create-agent"
-          onClick={handleNewAgent}
-          disabled={creating || !venue || !agentName.trim() || !isProviderReady(llmProvider) || isReservedAgentId}
-          className="btn-sm mt-2"
-        >
-          {creating ? "Creating..." : submitLabel}
-        </Button>
+        <DialogFooter data-testid="agent-actions" className="border-t px-6 py-4">
+          <Button
+            type="button"
+            variant="outline"
+            data-testid="save-agent-template"
+            onClick={handleSaveTemplate}
+            disabled={savingTemplate || creating || !venue || !agentName.trim() || isReservedAgentId}
+            className="gap-2"
+          >
+            <BookmarkPlus size={16} />
+            {savingTemplate ? "Saving…" : "Save template"}
+          </Button>
+          <Button
+            aria-label="create agent"
+            type="button"
+            data-testid="create-agent"
+            onClick={handleNewAgent}
+            disabled={creating || savingTemplate || !venue || !agentName.trim() || !isProviderReady(llmProvider) || isReservedAgentId}
+          >
+            {creating ? "Creating…" : submitLabel}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

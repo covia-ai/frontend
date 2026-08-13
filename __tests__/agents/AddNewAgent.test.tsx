@@ -19,6 +19,8 @@ jest.mock('next/navigation', () => ({
 // `mock` prefix so it's also usable inside test bodies (Jest's hoisting
 // allowlist only exempts identifiers starting with "mock").
 const mockVenue = {
+  venueId: 'venue-1',
+  baseUrl: 'https://venue.example',
   agents: {
     create: jest.fn().mockResolvedValue({ agentId: 'test-agent', status: 'active' }),
     request: jest.fn().mockResolvedValue({}),
@@ -28,12 +30,17 @@ const mockVenue = {
     // ready and the Create button isn't disabled by the key-readiness gate.
     list: jest.fn().mockResolvedValue(['ANTHROPIC_API_KEY']),
   },
+  workspace: {
+    read: jest.fn().mockResolvedValue({ exists: false }),
+    write: jest.fn().mockResolvedValue({}),
+  },
 };
 jest.mock('@/hooks/use-authenticated-venue', () => ({
   useAuthenticatedVenue: () => mockVenue,
 }));
 
 import { AddNewAgent } from '@/components/AddNewAgent';
+import { notifySuccess, notifyWarning } from '@/lib/notify';
 
 async function renderAndOpenDialog() {
   const user = userEvent.setup();
@@ -46,6 +53,8 @@ async function renderAndOpenDialog() {
 describe('AddNewAgent', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockVenue.workspace.read.mockResolvedValue({ exists: false });
+    mockVenue.workspace.write.mockResolvedValue({});
   });
 
   it('renders the trigger button', () => {
@@ -58,10 +67,12 @@ describe('AddNewAgent', () => {
     await renderAndOpenDialog();
 
     expect(screen.getAllByText(/Create a new agent/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('Agent Name:')).toBeInTheDocument();
-    expect(screen.getByText('LLM Provider:')).toBeInTheDocument();
-    expect(screen.getByText('System Prompt:')).toBeInTheDocument();
-    expect(screen.getByText('Initial Command:')).toBeInTheDocument();
+    expect(screen.getByText('Name')).toBeInTheDocument();
+    expect(screen.getByText('Provider')).toBeInTheDocument();
+    expect(screen.getByText('System prompt')).toBeInTheDocument();
+    expect(screen.getByText(/First task/)).toBeInTheDocument();
+    expect(screen.getByTestId('agent-identity-column')).toBeInTheDocument();
+    expect(screen.getByTestId('agent-settings-column')).toBeInTheDocument();
   });
 
   it('updates agent name when user types', async () => {
@@ -87,10 +98,11 @@ describe('AddNewAgent', () => {
   it('shows system prompt textarea', async () => {
     await renderAndOpenDialog();
     const textarea = screen.getByPlaceholderText(
-      'e.g., You are a helpful customer support agent that...'
+      "Describe the agent's role, behaviour, and boundaries."
     );
     expect(textarea).toBeInTheDocument();
     expect(textarea).toHaveClass('placeholder:text-muted-foreground/60');
+    expect(textarea).toHaveClass('h-72', 'overflow-y-auto');
   });
 
   it('shows initial command input', async () => {
@@ -250,10 +262,53 @@ describe('AddNewAgent', () => {
   it('displays all form labels correctly', async () => {
     await renderAndOpenDialog();
 
-    expect(screen.getByText('Agent Name:')).toBeInTheDocument();
-    expect(screen.getByText('LLM Provider:')).toBeInTheDocument();
-    expect(screen.getByText('System Prompt:')).toBeInTheDocument();
-    expect(screen.getByText('Initial Command:')).toBeInTheDocument();
+    expect(screen.getByText('Name')).toBeInTheDocument();
+    expect(screen.getByText('Provider')).toBeInTheDocument();
+    expect(screen.getByText('System prompt')).toBeInTheDocument();
+    expect(screen.getByText(/First task/)).toBeInTheDocument();
+  });
+
+  it('saves a canonical workspace template without creating an agent', async () => {
+    const user = await renderAndOpenDialog();
+    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'Support Agent');
+    await user.type(
+      screen.getByPlaceholderText("Describe the agent's role, behaviour, and boundaries."),
+      'Help customers clearly.',
+    );
+    await user.click(screen.getByTestId('save-agent-template'));
+
+    await waitFor(() => {
+      expect(mockVenue.workspace.write).toHaveBeenCalledWith(
+        'w/templates/support-agent',
+        {
+          name: 'Support Agent',
+          agent: {
+            config: {
+              operation: 'v/ops/llmagent/chat',
+              llmOperation: 'v/ops/langchain/anthropic',
+              systemPrompt: 'Help customers clearly.',
+            },
+          },
+        },
+      );
+    });
+    expect(mockVenue.agents.create).not.toHaveBeenCalled();
+    expect(notifySuccess).toHaveBeenCalledWith('Template saved', {
+      description: 'w/templates/support-agent',
+    });
+  });
+
+  it('does not overwrite an existing workspace template', async () => {
+    mockVenue.workspace.read.mockResolvedValue({ exists: true });
+    const user = await renderAndOpenDialog();
+    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'Existing');
+    await user.click(screen.getByTestId('save-agent-template'));
+
+    await waitFor(() => expect(notifyWarning).toHaveBeenCalledWith(
+      'A template with this ID already exists',
+      { description: 'w/templates/existing' },
+    ));
+    expect(mockVenue.workspace.write).not.toHaveBeenCalled();
   });
 
   it('blocks "assistant" as a reserved id — warns and disables Create', async () => {
@@ -262,7 +317,7 @@ describe('AddNewAgent', () => {
     const input = screen.getByPlaceholderText('e.g., Customer Support Agent');
     await user.type(input, 'Assistant');
 
-    expect(screen.getByText(/is reserved for the workspace prompt bar/i)).toBeInTheDocument();
+    expect(screen.getByText(/is reserved/i)).toBeInTheDocument();
     const createButton = screen.getByTestId('create-agent');
     expect(createButton).toBeDisabled();
 
@@ -283,7 +338,7 @@ describe('AddNewAgent', () => {
     await user.clear(idInput);
     await user.type(idInput, 'my-assistant');
 
-    expect(screen.queryByText(/is reserved for the workspace prompt bar/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/is reserved/i)).not.toBeInTheDocument();
     expect(screen.getByTestId('create-agent')).not.toBeDisabled();
   });
 });
