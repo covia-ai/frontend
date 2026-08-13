@@ -19,6 +19,7 @@ describe("agent session normalization", () => {
         value: {
           meta: { created: 200, turns: 2, parties: ["user", "agent"] },
           pending: ["work"],
+          wakeTime: 1750000000000,
           frames: [
             { conversation: [{ role: "user", content: "hello" }] },
             { conversation: [{ role: "assistant", content: "hi" }] },
@@ -35,6 +36,7 @@ describe("agent session normalization", () => {
       turns: 2,
       parties: ["user", "agent"],
       pending: ["work"],
+      wakeTime: 1750000000000,
       conversation: [
         { role: "user", content: "hello" },
         { role: "assistant", content: "hi" },

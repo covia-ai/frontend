@@ -34,6 +34,7 @@ export interface Session {
    parties?: string[];
    turns?: number;
    pending?: any[];
+   wakeTime?: number;
    conversation: SessionMessage[];
    /** Free-form human-facing title, venue-persisted (AGENT_SESSIONS.md §4.3). */
    title?: string;

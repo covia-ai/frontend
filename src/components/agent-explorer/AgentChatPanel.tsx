@@ -5,6 +5,7 @@ import {
   Bot,
   Check,
   History,
+  BellRing,
   Loader2,
   MessageSquare,
   Pause,
@@ -43,6 +44,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { AgentConversation } from "@/components/AgentConversation";
 import { AgentSettings } from "@/components/agent-config/AgentSettings";
 import { AgentTimelineView } from "@/components/agent-explorer/AgentTimelineView";
+import { AgentRuntimeSummary } from "@/components/agent-explorer/AgentRuntimeSummary";
 import type { AgentExplorerController } from "@/hooks/use-agent-explorer";
 import type { Session } from "@/config/types";
 import { defaultSessionTitle, formatSessionLabel } from "@/lib/agent-sessions";
@@ -71,6 +73,8 @@ export function AgentChatPanel({
     echoAlreadyRecorded,
     suspend,
     resume,
+    triggerAgent,
+    triggering,
     deleteAgent,
     updateAgentConfig,
     renameSession,
@@ -205,6 +209,40 @@ export function AgentChatPanel({
               </Tooltip>
             )}
             <div className="ml-auto flex flex-row gap-2">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={
+                      triggering ||
+                      selectedAgentDetail.status === AgentStatus.SUSPENDED ||
+                      selectedAgentDetail.status === AgentStatus.TERMINATED
+                    }
+                  >
+                    {triggering ? (
+                      <Loader2 size={14} className="mr-1 animate-spin" />
+                    ) : (
+                      <BellRing size={14} className="mr-1" />
+                    )}
+                    Trigger now
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      Trigger &quot;{selectedAgentDetail.agentId}&quot; now?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This starts an agent run cycle. It may use configured tools and model credits.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={triggerAgent}>Trigger agent</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               {(selectedAgentDetail.status === AgentStatus.RUNNING ||
                 selectedAgentDetail.status === AgentStatus.SLEEPING) && (
                 <Button variant="outline" size="sm" onClick={suspend}>
@@ -245,6 +283,8 @@ export function AgentChatPanel({
               </AlertDialog>
             </div>
           </div>
+
+          <AgentRuntimeSummary sessions={sessions} />
 
           {view === "settings" ? (
             <AgentSettings

@@ -315,6 +315,60 @@ describe('AgentExplorer settings', () => {
   });
 });
 
+describe('AgentExplorer runtime controls', () => {
+  it('shows queued session messages and confirms a manual trigger', async () => {
+    const agent = { agentId: 'agent-1', status: 'SLEEPING', tasks: 0 };
+    const handle = {
+      chatSession: (sid?: string) => ({ sessionId: sid }),
+      trigger: jest.fn().mockResolvedValue({ agentId: 'agent-1', status: 'SLEEPING' }),
+    };
+    mockVenue.agents.list.mockResolvedValue({ agents: [agent] });
+    mockVenue.agents.info.mockResolvedValue(agent);
+    mockVenue.workspace.read.mockResolvedValue({ value: [] });
+    mockVenue.workspace.slice.mockResolvedValue({
+      values: [{
+        key: 'sess-1',
+        value: {
+          wakeTime: 1750000000000,
+          pending: [{ message: { content: 'Waiting for review' } }],
+          meta: { created: 1000, turns: 0 },
+          frames: [{ conversation: [] }],
+        },
+      }],
+    });
+    mockVenue.agent.mockReturnValue(handle);
+    await renderExplorer();
+
+    const pending = await screen.findByRole('button', { name: /1 pending message/i });
+    fireEvent.click(pending);
+    expect(screen.getByText('Waiting for review')).toBeInTheDocument();
+    expect(screen.getByText(/Next wake:/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Trigger now' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Trigger agent' }));
+    await waitFor(() => expect(handle.trigger).toHaveBeenCalledTimes(1));
+  });
+
+  it('disables manual triggering for suspended agents', async () => {
+    const agent = { agentId: 'agent-1', status: 'SUSPENDED', tasks: 0 };
+    mockVenue.agents.list.mockResolvedValue({ agents: [agent] });
+    mockVenue.agents.info.mockResolvedValue(agent);
+    mockVenue.workspace.read.mockResolvedValue({ value: [] });
+    mockVenue.workspace.slice.mockResolvedValue({ values: [] });
+    mockVenue.agent.mockReturnValue({ chatSession: () => null, trigger: jest.fn() });
+    await renderExplorer();
+
+    expect(await screen.findByRole('button', { name: 'Trigger now' })).toBeDisabled();
+    expect(screen.getAllByText('SUSPENDED')).not.toHaveLength(0);
+    for (const badge of screen.getAllByText('SUSPENDED')) {
+      expect(badge).toHaveAttribute(
+        'title',
+        expect.stringContaining('processing is paused'),
+      );
+    }
+  });
+});
+
 // One session entry as workspace.slice returns it.
 function sessionEntry(key: string, created: number, conversation: any[]) {
   return {

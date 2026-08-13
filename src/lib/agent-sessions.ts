@@ -9,6 +9,7 @@ export function sessionEntriesToSessions(entries: unknown): Session[] {
       const record = entry as {
         key?: unknown;
         value?: {
+          wakeTime?: number;
           meta?: {
             created?: number;
             parties?: Session["parties"];
@@ -33,6 +34,7 @@ export function sessionEntriesToSessions(entries: unknown): Session[] {
         turns: meta.turns,
         title: meta.title,
         pending: Array.isArray(value.pending) ? value.pending : [],
+        wakeTime: typeof value.wakeTime === "number" ? value.wakeTime : undefined,
         conversation,
       };
     })

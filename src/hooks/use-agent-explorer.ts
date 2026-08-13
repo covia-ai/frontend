@@ -45,6 +45,7 @@ export function useAgentExplorer(initialAgentId?: string) {
   const [newChatRequested, setNewChatRequested] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [messageText, setMessageText] = useState("");
+  const [triggering, setTriggering] = useState(false);
   const listRequest = useRef(0);
   const detailRequest = useRef(0);
   const sessionRequest = useRef(0);
@@ -355,6 +356,27 @@ export function useAgentExplorer(initialAgentId?: string) {
       });
   };
 
+  const triggerAgent = () => {
+    if (!agentHandle || !selectedAgentId || triggering) return;
+    const agentId = selectedAgentId;
+    setTriggering(true);
+    agentHandle
+      .trigger()
+      .then(() => {
+        notifySuccess("Agent triggered");
+        void refreshAgentDetail(agentId);
+        void refreshAgentList();
+        void refreshSessions(agentId);
+      })
+      .catch((error: unknown) => {
+        const { reason, jobHref } = jobFailure(error, venue?.venueId);
+        notifyError("Unable to trigger agent", reason, venue?.baseUrl, jobHref);
+      })
+      .finally(() => {
+        if (selectedAgentIdRef.current === agentId) setTriggering(false);
+      });
+  };
+
   const updateAgentConfig = useCallback(
     async (config: Record<string, unknown>): Promise<boolean> => {
       if (!agentHandle || !selectedAgentId || !selectedAgentDetail) return false;
@@ -516,6 +538,8 @@ export function useAgentExplorer(initialAgentId?: string) {
     echoAlreadyRecorded,
     suspend,
     resume,
+    triggerAgent,
+    triggering,
     deleteAgent,
     updateAgentConfig,
     renameSession,

@@ -50,6 +50,8 @@ function controller(overrides: Record<string, unknown> = {}) {
     echoAlreadyRecorded: false,
     suspend: jest.fn(),
     resume: jest.fn(),
+    triggerAgent: jest.fn(),
+    triggering: false,
     deleteAgent: jest.fn(),
     updateAgentConfig: jest.fn().mockResolvedValue(true),
     renameSession: jest.fn(),
