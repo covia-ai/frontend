@@ -14,6 +14,7 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useAuthStore, useCurrentAuth } from "@/hooks/use-auth";
+import { useVenueHealth } from "@/hooks/use-venue-health";
 import { notifyError } from "@/lib/notify";
 import { normalizeAgentEntries } from "@/lib/agent-list";
 import { PageHeading } from "./PageHeading";
@@ -21,6 +22,7 @@ import { StatusBadge } from "./StatusBadge";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
 import { reportVenueAuthHealth, useVenueAccessState } from "@/hooks/use-venue-auth-health";
 import { errorMessage, errorStatus, isAuthenticationRejectedError } from "@/lib/errors";
+import { ChromeSignInButton } from "./admin-panel/signin-button";
 
 export function AgentList() {
   const router = useRouter();
@@ -31,7 +33,11 @@ export function AgentList() {
   const auth = useCurrentAuth();
   const logout = useAuthStore((state) => state.logout);
   const access = useVenueAccessState(venue?.venueId);
-  const canUseAgents = access.state === "accepted" || access.state === "unverified";
+  const health = useVenueHealth((x) => (venue?.baseUrl ? x.byUrl[venue.baseUrl] : undefined));
+  const isPublicVenue = health?.state === "connected" && health.publicAccess === true;
+  const canUseAgents =
+    access.state === "accepted" || access.state === "unverified" ||
+    (access.state === "signed-out" && isPublicVenue);
 
   const fetchAgents = () => {
     if (!venue || !canUseAgents) {
@@ -181,6 +187,24 @@ export function AgentList() {
          <div className="flex min-h-80 items-center justify-center gap-2 text-muted-foreground" role="status">
            <Loader2 className="animate-spin text-primary" size={24} />
            Checking venue account…
+         </div>
+       </ContentLayout>
+     );
+   }
+
+   if (access.state === "signed-out" && !canUseAgents) {
+     return (
+       <ContentLayout>
+         <TopBar />
+         <div className="mx-auto mt-16 flex max-w-2xl flex-col items-center gap-4 rounded-lg border border-border bg-muted/30 p-8 text-center" data-testid="agent-auth-required">
+           <Lock className="text-primary" size={40} />
+           <div>
+             <h2 className="text-lg font-semibold">Sign in to view agents</h2>
+             <p className="mt-2 text-sm text-muted-foreground">
+               This venue doesn&apos;t allow anonymous reads. Sign in with an account this venue admits to see its agents.
+             </p>
+           </div>
+           <ChromeSignInButton venueId={venue?.venueId} />
          </div>
        </ContentLayout>
      );
