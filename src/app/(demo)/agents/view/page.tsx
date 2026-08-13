@@ -1,5 +1,16 @@
-import { AgentList } from "@/components/AgentList";
+import { ContentLayout } from "@/components/admin-panel/content-layout";
+import AgentExplorer from "@/components/AgentExplorer";
 
-export default function ViewAgentsPage() {
-  return <AgentList mode="view" />;
+export default async function ViewAgentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ agentId?: string }>;
+}) {
+  const { agentId } = await searchParams;
+
+  return (
+    <ContentLayout>
+      <AgentExplorer agentId={agentId} />
+    </ContentLayout>
+  );
 }
