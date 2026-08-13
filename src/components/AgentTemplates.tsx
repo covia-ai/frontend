@@ -3,13 +3,10 @@
 import {
   Bot, BookOpen, Boxes, GitFork, Hammer, LucideIcon, Minus, Network, Search, Sparkles, Lock,
 } from "lucide-react";
-import { Button } from "./ui/button";
-import { Card } from "./ui/card";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { AddNewAgent } from "./AddNewAgent";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { useAgentTemplates, type AgentTemplate } from "@/hooks/use-agent-templates";
-import { PageHeading } from "./PageHeading";
 import { providerForOperation } from "@/lib/agent-config";
 
 // A recognisable face per template. Falls back to a generic bot for any the
@@ -30,68 +27,64 @@ export function AgentTemplates() {
   const { templates, loading } = useAgentTemplates();
 
   return (
-    <div className="flex flex-col items-center justify-center w-full px-10 py-10">
-      <PageHeading className="mb-3" text="Start with a" highlight="template" />
-      <p className="mb-8 max-w-2xl text-center text-sm text-muted-foreground">
-        Templates provide a tested starting configuration that you can adjust before creating the agent.
+    <section className="w-full px-4 py-6 sm:px-10">
+      <h2 className="text-lg font-semibold">Start from a template</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Choose a ready-made configuration, then adjust it as needed.
       </p>
 
       {loading ? (
-        <div className="flex items-center justify-center py-16">
+        <div className="flex items-center justify-center py-10">
           <Spinner variant="ellipsis" className="text-primary" size={48} />
         </div>
       ) : templates.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-16">
-          This venue doesn&apos;t publish any agent templates.
+        <p className="py-10 text-sm text-muted-foreground">
+          No templates are available from this venue.
         </p>
       ) : (
-        <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="mt-4 grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {templates.map((template) => {
             const Icon = ICONS[template.key] ?? Bot;
-            return (
-              <Card
-                key={template.key}
-                className="bg-card border border-muted hover:border-accent flex flex-col items-center justify-between p-6 gap-4 rounded-lg transition-colors"
+            const title = templateTitle(template);
+            const card = (
+              <button
+                type="button"
+                disabled={!isAuthenticated}
+                aria-label={isAuthenticated ? `Use ${title} template` : `${title} template — sign in to use`}
+                className="group flex min-h-28 w-full cursor-pointer flex-col gap-3 rounded-lg border border-muted bg-card p-4 text-left shadow-sm transition-colors enabled:hover:border-primary/60 enabled:hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <div className="text-primary mt-2"><Icon size={32} /></div>
-                <div className="text-center">
-                  <div className="text-sm font-medium text-foreground capitalize">
-                    {templateTitle(template)}
-                  </div>
-                  {/* Clamp so cards stay even — venue descriptions run 150–250 chars. */}
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-4" title={template.description}>
-                    {template.description}
-                  </p>
-                </div>
-                {isAuthenticated ? (
-                  <AddNewAgent
-                    trigger={
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full mt-2 border-primary text-primary hover:bg-primary/20 hover:text-primary"
-                      >
-                        Use Template
-                      </Button>
-                    }
-                    initialAgentName={template.key}
-                    initialSystemPrompt={template.systemPrompt ?? ""}
-                    initialProvider={providerForOperation(template.llmOperation)}
-                    initialModel={template.model ?? ""}
-                    initialConfig={template.config}
-                    initialConfigPreview={template.preview}
-                  />
-                ) : (
-                  <Button variant="outline" size="sm" disabled className="w-full mt-2 gap-2 text-muted-foreground">
-                    <Lock size={12} /> Sign in to use
-                  </Button>
-                )}
-              </Card>
+                <span className="flex w-full items-center gap-3">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Icon size={20} />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-base font-medium capitalize text-foreground">
+                    {title}
+                  </span>
+                  {!isAuthenticated && <Lock size={15} className="shrink-0 text-muted-foreground" />}
+                </span>
+                <span className="line-clamp-2 text-sm leading-5 text-muted-foreground" title={template.description}>
+                  {template.description}
+                </span>
+              </button>
+            );
+
+            if (!isAuthenticated) return <span key={template.key}>{card}</span>;
+            return (
+              <AddNewAgent
+                key={template.key}
+                trigger={card}
+                initialAgentName={template.key}
+                initialSystemPrompt={template.systemPrompt ?? ""}
+                initialProvider={providerForOperation(template.llmOperation)}
+                initialModel={template.model ?? ""}
+                initialConfig={template.config}
+                initialConfigPreview={template.preview}
+              />
             );
           })}
         </div>
       )}
-    </div>
+    </section>
   );
 }
 

@@ -90,6 +90,7 @@ describe('AddNewAgent', () => {
       'e.g., You are a helpful customer support agent that...'
     );
     expect(textarea).toBeInTheDocument();
+    expect(textarea).toHaveClass('placeholder:text-muted-foreground/60');
   });
 
   it('shows initial command input', async () => {
@@ -98,6 +99,7 @@ describe('AddNewAgent', () => {
       'e.g., Greet the user and ask how you can help'
     );
     expect(input).toBeInTheDocument();
+    expect(input).toHaveClass('placeholder:text-muted-foreground/60');
   });
 
   // covia-ai/frontend follow-up: creation used to just call onCreated (a

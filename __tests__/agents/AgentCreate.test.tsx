@@ -95,6 +95,8 @@ describe("AgentCreate", () => {
     expect(screen.getByText("Create a custom agent")).toBeInTheDocument();
     expect(screen.getByText("Clone an existing agent")).toBeInTheDocument();
     expect(screen.queryByText(/choose an existing/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Start from a venue template/i)).not.toBeInTheDocument();
+    expect(screen.getByText("Other options")).toBeInTheDocument();
     await waitFor(() => expect(mockList).toHaveBeenCalledWith());
     expect(mockInfo).not.toHaveBeenCalled();
   });

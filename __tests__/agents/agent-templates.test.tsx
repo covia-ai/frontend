@@ -1,12 +1,22 @@
 import '@testing-library/jest-dom';
-import { renderHook, waitFor } from '@testing-library/react';
+import { render, renderHook, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 const read = jest.fn();
+const mockVenue = {
+  workspace: { read },
+  secrets: { list: jest.fn().mockResolvedValue(['ANTHROPIC_API_KEY']) },
+  agents: { create: jest.fn() },
+};
 jest.mock('@/hooks/use-authenticated-venue', () => ({
-  useAuthenticatedVenue: () => ({ workspace: { read } }),
+  useAuthenticatedVenue: () => mockVenue,
+}));
+jest.mock('@/hooks/use-auth', () => ({
+  useIsAuthenticated: () => true,
 }));
 
 import { useAgentTemplates } from '@/hooks/use-agent-templates';
+import { AgentTemplates } from '@/components/AgentTemplates';
 
 // The venue tree at v/agents/templates: keys → configs, arbitrary order.
 const TREE = {
@@ -75,6 +85,20 @@ describe('useAgentTemplates', () => {
     const keys = result.current.templates.map((t) => t.key);
     expect(keys.indexOf('full')).toBeLessThan(keys.indexOf('reader'));
     expect(keys.indexOf('reader')).toBeLessThan(keys.indexOf('goaltree'));
+  });
+
+  it('uses each compact, readable template card as the create action', async () => {
+    read.mockResolvedValue({ value: { skilled: TREE.skilled } });
+    const user = userEvent.setup();
+    render(<AgentTemplates />);
+
+    const card = await screen.findByRole('button', { name: 'Use Skilled template' });
+    expect(card).toHaveClass('min-h-28');
+    expect(card.querySelector('.text-base')).toHaveTextContent('Skilled');
+    expect(screen.queryByText('Use Template')).not.toBeInTheDocument();
+
+    await user.click(card);
+    expect(await screen.findByText('Create a new agent')).toBeInTheDocument();
   });
 
   it('is empty (not thrown) when the venue publishes none', async () => {

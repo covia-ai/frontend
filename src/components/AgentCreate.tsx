@@ -16,7 +16,6 @@ import {
 import { AddNewAgent } from "@/components/AddNewAgent";
 import { AgentTemplates } from "@/components/AgentTemplates";
 import { PageHeading } from "@/components/PageHeading";
-import { SeparatorWithText } from "@/components/SeparatorWithText";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { Button } from "@/components/ui/button";
@@ -169,90 +168,88 @@ export function AgentCreate() {
     <ContentLayout>
       <TopBar />
       <div className="mx-auto w-full max-w-6xl pb-14">
-        <div className="px-4 pt-8 text-center sm:px-10">
+        <div className="px-4 pt-6 text-center sm:px-10">
           <PageHeading text="Create an" highlight="agent" />
-          <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Start from a venue template, configure a custom agent, or copy the creation settings from one you already use.
-          </p>
         </div>
 
         <AgentTemplates />
 
-        <SeparatorWithText text="or" />
+        <section className="px-4 pb-8 pt-2 sm:px-10">
+          <h2 className="mb-4 text-lg font-semibold">Other options</h2>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card className="flex flex-col gap-4 p-6">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Plus size={20} />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold">Create a custom agent</h2>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  Set the model, instructions, and first task.
+                </p>
+              </div>
+              <div className="mt-auto pt-2">
+                {isAuthenticated ? (
+                  <AddNewAgent
+                    trigger={<Button data-testid="custom-agent-trigger">Create custom agent</Button>}
+                  />
+                ) : (
+                  <Button disabled className="gap-2">
+                    <Lock size={14} /> Sign in to create
+                  </Button>
+                )}
+              </div>
+            </Card>
 
-        <div className="grid gap-5 px-4 py-10 sm:px-10 lg:grid-cols-2">
-          <Card className="flex flex-col gap-4 p-6">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Plus size={20} />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold">Create a custom agent</h2>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                Choose the provider, model, instructions, tools, and initial task yourself.
-              </p>
-            </div>
-            <div className="mt-auto pt-2">
+            <Card className="flex flex-col gap-4 p-6">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <CopyPlus size={20} />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold">Clone an existing agent</h2>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  Copy an agent&apos;s configuration. History and runtime state are not copied.
+                </p>
+              </div>
+
               {isAuthenticated ? (
-                <AddNewAgent
-                  trigger={<Button data-testid="custom-agent-trigger">Create custom agent</Button>}
-                />
+                <div className="mt-auto flex flex-col gap-3 pt-2 sm:flex-row">
+                  <Select value={sourceAgentId} onValueChange={setSourceAgentId}>
+                    <SelectTrigger data-testid="clone-agent-select" className="min-w-0 flex-1">
+                      <SelectValue placeholder={agentsLoading ? "Loading agents…" : "Choose an agent"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {agents.map((agent) => (
+                        <SelectItem key={agent.agentId} value={agent.agentId}>
+                          {agent.agentId}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    data-testid="clone-agent-trigger"
+                    variant="outline"
+                    className="gap-2"
+                    disabled={!sourceAgentId || cloneLoading || agentsLoading}
+                    onClick={prepareClone}
+                  >
+                    {cloneLoading ? <Loader2 size={14} className="animate-spin" /> : <CopyPlus size={14} />}
+                    Clone
+                  </Button>
+                </div>
               ) : (
-                <Button disabled className="gap-2">
-                  <Lock size={14} /> Sign in to create
+                <Button disabled className="mt-auto w-fit gap-2">
+                  <Lock size={14} /> Sign in to clone
                 </Button>
               )}
-            </div>
-          </Card>
 
-          <Card className="flex flex-col gap-4 p-6">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <CopyPlus size={20} />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold">Clone an existing agent</h2>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                Copy its configuration into a new agent. Sessions, tasks, status, and runtime state are not copied.
-              </p>
-            </div>
-
-            {isAuthenticated ? (
-              <div className="mt-auto flex flex-col gap-3 pt-2 sm:flex-row">
-                <Select value={sourceAgentId} onValueChange={setSourceAgentId}>
-                  <SelectTrigger data-testid="clone-agent-select" className="min-w-0 flex-1">
-                    <SelectValue placeholder={agentsLoading ? "Loading agents…" : "Choose an agent"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {agents.map((agent) => (
-                      <SelectItem key={agent.agentId} value={agent.agentId}>
-                        {agent.agentId}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  data-testid="clone-agent-trigger"
-                  variant="outline"
-                  className="gap-2"
-                  disabled={!sourceAgentId || cloneLoading || agentsLoading}
-                  onClick={prepareClone}
-                >
-                  {cloneLoading ? <Loader2 size={14} className="animate-spin" /> : <CopyPlus size={14} />}
-                  Clone
-                </Button>
-              </div>
-            ) : (
-              <Button disabled className="mt-auto w-fit gap-2">
-                <Lock size={14} /> Sign in to clone
-              </Button>
-            )}
-
-            {!agentsLoading && isAuthenticated && agents.length === 0 && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Bot size={15} /> No existing agents to clone.
-              </div>
-            )}
-          </Card>
-        </div>
+              {!agentsLoading && isAuthenticated && agents.length === 0 && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Bot size={15} /> No existing agents to clone.
+                </div>
+              )}
+            </Card>
+          </div>
+        </section>
       </div>
 
       {cloneSeed && (

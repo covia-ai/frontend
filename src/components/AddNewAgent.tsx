@@ -28,7 +28,7 @@ import { LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
-import { gtmEvent } from "@/lib/utils";
+import { cn, gtmEvent, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
 import {
   asSdkAgentConfig,
   inlineAgentConfigPreview,
@@ -282,6 +282,7 @@ export function AddNewAgent({
             </Label>
             <Input
               data-testid="agent-name"
+              className={SUGGESTION_PLACEHOLDER_CLASS}
               placeholder="e.g., Customer Support Agent"
               value={agentName}
               onChange={(e) => {
@@ -298,6 +299,7 @@ export function AddNewAgent({
             </Label>
             <Input
               id="agent-id"
+              className={SUGGESTION_PLACEHOLDER_CLASS}
               placeholder="e.g., customer-support-agent"
               value={agentId}
               onChange={(e) => {
@@ -342,6 +344,7 @@ export function AddNewAgent({
                 <Input
                   type="password"
                   data-testid="inline-api-key"
+                  className={SUGGESTION_PLACEHOLDER_CLASS}
                   placeholder={`${LLM_PROVIDERS[llmProvider]?.secretKey}`}
                   value={apiKeyInput}
                   onChange={(e) => setApiKeyInput(e.target.value)}
@@ -375,6 +378,7 @@ export function AddNewAgent({
             {model === CUSTOM_MODEL_OPTION && (
               <Input
                 data-testid="model-custom-input"
+                className={SUGGESTION_PLACEHOLDER_CLASS}
                 placeholder="e.g. claude-opus-4-8"
                 value={customModel}
                 onChange={(e) => setCustomModel(e.target.value)}
@@ -393,7 +397,7 @@ export function AddNewAgent({
               placeholder="e.g., You are a helpful customer support agent that..."
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
-              className="text-sm w-full"
+              className={cn("w-full text-sm", SUGGESTION_PLACEHOLDER_CLASS)}
               rows={3}
             />
             <p className="text-xs text-muted-foreground">
@@ -406,6 +410,7 @@ export function AddNewAgent({
             <Label htmlFor="initial-command">Initial Command:</Label>
             <Input
               id="initial-command"
+              className={SUGGESTION_PLACEHOLDER_CLASS}
               placeholder="e.g., Greet the user and ask how you can help"
               value={initialCommand}
               onChange={(e) => setInitialCommand(e.target.value)}
