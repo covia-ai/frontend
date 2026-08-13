@@ -1,9 +1,11 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 jest.mock('json-edit-react', () => ({
-  JsonEditor: () => null,
+  JsonEditor: ({ data }: { data: unknown }) => (
+    <pre data-testid="workspace-json-content">{JSON.stringify(data)}</pre>
+  ),
   githubDarkTheme: {},
   githubLightTheme: {},
 }));
@@ -34,15 +36,15 @@ describe('WorkspaceExplorer job-free reads', () => {
     jest.clearAllMocks();
   });
 
-  it('starts with a keys-only Workspace listing, then requests root as "/"', async () => {
+  it('keeps namespaces visible beside a keys-only Workspace listing', async () => {
     render(<WorkspaceExplorer />);
 
     await waitFor(() => expect(mockVenue.workspace.list).toHaveBeenCalledWith('w'));
     expect(mockVenue.workspace.read).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Workspace root' }));
-    await waitFor(() => expect(mockVenue.workspace.list).toHaveBeenCalledWith('/'));
-    expect(mockVenue.workspace.list).toHaveBeenCalledWith('/');
+    expect(screen.getByTestId('workspace-namespace-pane')).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Workspace namespaces' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Workspace w$/ })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByTestId('workspace-content-pane')).toBeInTheDocument();
     for (const call of mockVenue.workspace.list.mock.calls) {
       expect(call[0]).toBeTruthy();
     }
@@ -53,8 +55,7 @@ describe('WorkspaceExplorer job-free reads', () => {
     render(<WorkspaceExplorer />);
 
     await waitFor(() => expect(mockVenue.workspace.list).toHaveBeenCalledWith('w'));
-    fireEvent.click(screen.getByRole('button', { name: 'Workspace root' }));
-    const venuePublic = await screen.findByText('Venue Public');
+    const venuePublic = screen.getByRole('button', { name: /^Venue Public v$/ });
     fireEvent.click(venuePublic);
     await waitFor(() => expect(mockVenue.workspace.list).toHaveBeenCalledWith('v'));
 
@@ -66,5 +67,29 @@ describe('WorkspaceExplorer job-free reads', () => {
     expect(screen.queryByText('object')).not.toBeInTheDocument();
     expect(mockVenue.workspace.read).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Resync Venue Public' })).toBeInTheDocument();
+    expect(screen.getByTestId('workspace-namespace-pane')).toBeInTheDocument();
+  });
+
+  it('keeps keys in the middle and renders selected content only in the inspector', async () => {
+    mockVenue.workspace.list.mockImplementation((path: string) => Promise.resolve({
+      exists: true,
+      keys: path === 'w' ? ['document'] : [],
+    }));
+    mockVenue.workspace.read.mockResolvedValue({
+      exists: true,
+      value: { title: 'A document', body: 'Inspector content' },
+      type: 'object',
+    });
+    render(<WorkspaceExplorer />);
+
+    fireEvent.click(await screen.findByText('document'));
+    await waitFor(() => expect(mockVenue.workspace.read).toHaveBeenCalledWith('w/document'));
+
+    const contentPane = screen.getByTestId('workspace-content-pane');
+    expect(await within(contentPane).findByText('w/document')).toBeInTheDocument();
+    expect(within(contentPane).getByTestId('workspace-json-content')).toHaveTextContent(
+      'Inspector content',
+    );
+    expect(within(screen.getByTestId('workspace-namespace-pane')).queryByText('document')).not.toBeInTheDocument();
   });
 });

@@ -6,7 +6,6 @@ import {
   FileText,
   Loader2,
   Lock,
-  RefreshCw,
   Trash2,
 } from "lucide-react";
 import {
@@ -55,7 +54,6 @@ type WorkspaceValuePaneProps = {
   onEditedDataChange: (value: unknown) => void;
   onSave: (value?: unknown) => Promise<boolean>;
   onDelete: () => Promise<boolean>;
-  onRefreshNamespace: () => void;
 };
 
 export function WorkspaceValuePane({
@@ -71,7 +69,6 @@ export function WorkspaceValuePane({
   onEditedDataChange,
   onSave,
   onDelete,
-  onRefreshNamespace,
 }: WorkspaceValuePaneProps) {
   if (loading) {
     return (
@@ -187,21 +184,6 @@ export function WorkspaceValuePane({
               {displayPath === "w" && "Choose a key to edit"}
             </span>
           ) : null}
-          {namespace && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={`Resync ${namespace.label}`}
-                  onClick={onRefreshNamespace}
-                >
-                  <RefreshCw size={14} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Resync {namespace.label}</TooltipContent>
-            </Tooltip>
-          )}
         </div>
         {namespace && (
           <p

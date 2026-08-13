@@ -1,18 +1,15 @@
 "use client";
 
-import { Database, GripVertical } from "lucide-react";
-import { usePaneResize } from "@/hooks/use-pane-resize";
+import { Database } from "lucide-react";
 import { useWorkspaceExplorer } from "@/hooks/use-workspace-explorer";
 import { WorkspaceBrowserPane } from "@/components/workspace/WorkspaceBrowserPane";
+import { WorkspaceNamespacePane } from "@/components/workspace/WorkspaceNamespacePane";
 import { WorkspaceValuePane } from "@/components/workspace/WorkspaceValuePane";
+import { workspaceNamespaceForPath } from "@/lib/workspace-namespaces";
 
 export function WorkspaceExplorer() {
   const explorer = useWorkspaceExplorer();
-  const {
-    width: leftWidth,
-    containerRef,
-    startResizing,
-  } = usePaneResize(300);
+  const activeNamespace = workspaceNamespaceForPath(explorer.currentPath)?.key ?? null;
 
   if (!explorer.venue) {
     return (
@@ -25,13 +22,18 @@ export function WorkspaceExplorer() {
 
   return (
     <div
-      ref={containerRef}
-      className="mt-4 flex h-[500px] w-full overflow-hidden rounded-lg border border-border shadow-sm"
+      className="mt-4 grid h-[600px] w-full grid-cols-[10.5rem_17rem_minmax(0,1fr)] overflow-hidden rounded-lg border border-border shadow-sm"
     >
-      <div
-        style={{ width: `${leftWidth}px` }}
-        className="shrink-0 border-r border-border"
-      >
+      <div className="min-w-0 border-r border-border">
+        <WorkspaceNamespacePane
+          activeNamespace={activeNamespace}
+          refreshing={explorer.namespaceRefreshing}
+          onSelect={explorer.navigateTo}
+          onResync={explorer.refreshNamespace}
+        />
+      </div>
+
+      <div className="min-w-0 border-r border-border">
         <WorkspaceBrowserPane
           entries={explorer.entries}
           loading={explorer.listingLoading}
@@ -41,24 +43,12 @@ export function WorkspaceExplorer() {
           selectedPath={explorer.selectedPath}
           isAuthenticated={explorer.isAuthenticated}
           pendingMutation={explorer.pendingMutation}
-          pendingEntryPath={explorer.pendingEntryPath}
           onNavigate={explorer.navigateTo}
           onSelect={explorer.selectPath}
           onCreate={explorer.create}
-          onSaveEntry={explorer.saveEntryValue}
         />
       </div>
-
-      <div
-        onMouseDown={startResizing}
-        className="group relative z-10 flex w-1.5 cursor-col-resize items-center justify-center bg-transparent transition-colors hover:w-1.5 hover:bg-blue-400"
-      >
-        <div className="absolute hidden rounded-full bg-blue-500 p-0.5 group-hover:block">
-          <GripVertical size={10} className="text-white" />
-        </div>
-      </div>
-
-      <div className="flex flex-1 flex-col overflow-y-auto">
+      <div data-testid="workspace-content-pane" className="flex min-w-0 flex-col overflow-y-auto">
         <WorkspaceValuePane
           key={explorer.selectedPath ?? "empty"}
           selectedPath={explorer.selectedPath}
@@ -78,7 +68,6 @@ export function WorkspaceExplorer() {
           onEditedDataChange={explorer.setEditedData}
           onSave={explorer.save}
           onDelete={explorer.remove}
-          onRefreshNamespace={explorer.refreshNamespace}
         />
       </div>
     </div>

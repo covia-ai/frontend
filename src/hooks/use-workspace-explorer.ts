@@ -10,26 +10,7 @@ import { ROOT_NAMESPACES } from "@/lib/workspace-namespaces";
 
 export type WorkspaceEntry = {
   key: string;
-  // Populated lazily after an entry inside the mutable "w" subtree is selected.
-  // Listings never read every child value. `valueType` (rather than `value`)
-  // is the "was this fetched" flag,
-  // since a fetched value can itself legitimately be `undefined`-shaped
-  // JSON (null).
-  value?: unknown;
-  valueType?: string;
-  // A read that came back truncated can't be trusted as the complete nested
-  // structure — WorkspaceBrowserPane falls back to server-side navigation
-  // for these instead of rendering (and mis-editing) a partial local tree.
-  truncated?: boolean;
 };
-
-// Objects and arrays need the tree editor (WorkspaceValuePane) — a flat
-// browser row can't sanely inline-edit nested structure, so these stay
-// drill-in only. Scalars (string/number/boolean/null) are what the inline
-// row in WorkspaceBrowserPane can edit directly.
-export function isContainerWorkspaceValue(value: unknown): boolean {
-  return typeof value === "object" && value !== null;
-}
 
 export type WorkspaceValue = {
   exists: boolean;
@@ -101,50 +82,6 @@ function withFixedRootNamespaces(keys: string[]): WorkspaceEntry[] {
   ];
 }
 
-// Immutable set of `path` (relative to the object root) within `target`,
-// building any missing intermediate objects along the way.
-function setDeep(target: unknown, path: string[], value: unknown): unknown {
-  if (path.length === 0) return value;
-  const [key, ...rest] = path;
-  const base =
-    typeof target === "object" && target !== null
-      ? (target as Record<string, unknown>)
-      : {};
-  return { ...base, [key]: setDeep(base[key], rest, value) };
-}
-
-// Reflects a just-written value into the cached listing in place, rather
-// than re-fetching the directory — a re-list flashes WorkspaceBrowserPane's
-// entries through empty/loading (useLatestQuery hides `data` while
-// `loading` is true), which remounts every row for what should be a
-// no-visible-disruption single-field save. `path` and `directory` are both
-// workspace paths (e.g. "w/weatherblog/location" under directory "w").
-function patchEntryValue(
-  entries: WorkspaceEntry[],
-  directory: string,
-  path: string,
-  value: unknown,
-): WorkspaceEntry[] {
-  const dirSegments = normalizeWorkspacePath(directory).split("/").filter(Boolean);
-  const pathSegments = normalizeWorkspacePath(path).split("/").filter(Boolean);
-  if (dirSegments.some((segment, i) => pathSegments[i] !== segment)) return entries;
-  const [topKey, ...rest] = pathSegments.slice(dirSegments.length);
-  if (!topKey) return entries;
-
-  return entries.map((entry) => {
-    if (entry.key !== topKey) return entry;
-    if (rest.length === 0) {
-      const inferredType = Array.isArray(value)
-        ? "array"
-        : value === null
-          ? "null"
-          : typeof value;
-      return { ...entry, value, valueType: entry.valueType ?? inferredType };
-    }
-    return { ...entry, value: setDeep(entry.value, rest, value) };
-  });
-}
-
 function workspaceValue(result: WorkspaceReadResult): WorkspaceValue {
   const value = result.value;
   const inferredType = Array.isArray(value)
@@ -185,10 +122,7 @@ export function useWorkspaceExplorer() {
   const [editedData, setEditedData] = useState<unknown>(null);
   const [pendingMutation, setPendingMutation] =
     useState<WorkspaceMutation>(null);
-  // Tracked separately from `pendingMutation` — an inline row edit in
-  // WorkspaceBrowserPane shouldn't disable the (unrelated) Save/Delete
-  // controls in WorkspaceValuePane for whatever's currently selected.
-  const [pendingEntryPath, setPendingEntryPath] = useState<string | null>(null);
+  const [namespaceRefreshing, setNamespaceRefreshing] = useState(false);
   // The SDK deliberately does not cache mutable lattice paths. Keep a small,
   // page-lifetime navigation cache here so backtracking through the explorer
   // is instant; the namespace refresh action invalidates the relevant subtree.
@@ -198,12 +132,11 @@ export function useWorkspaceExplorer() {
   const venueRef = useRef<Venue | null>(venue);
   const currentPathRef = useRef(currentPath);
   const selectedPathRef = useRef(selectedPath);
-  const entriesRef = useRef(entries);
   const mutationGeneration = useRef(0);
+  const refreshGeneration = useRef(0);
   venueRef.current = venue;
   currentPathRef.current = currentPath;
   selectedPathRef.current = selectedPath;
-  entriesRef.current = entries;
 
   const invalidateMutation = useCallback(() => {
     ++mutationGeneration.current;
@@ -263,19 +196,6 @@ export function useWorkspaceExplorer() {
         const cached = valueCache.current.get(path);
         if (cached) {
           resetValue(cached);
-          if (
-            cached.exists && !cached.truncated &&
-            isMutableWorkspacePath(currentPathRef.current)
-          ) {
-            const patched = patchEntryValue(
-              entriesRef.current,
-              currentPathRef.current,
-              path,
-              cached.value,
-            );
-            resetListing(patched);
-            listingCache.current.set(currentPathRef.current, patched);
-          }
           return;
         }
       }
@@ -284,25 +204,12 @@ export function useWorkspaceExplorer() {
           const value = workspaceValue(await venue.workspace.read(path));
           if (venueRef.current !== venue) return value;
           valueCache.current.set(path, value);
-          if (
-            selectedPathRef.current === path && value.exists &&
-            !value.truncated && isMutableWorkspacePath(currentPathRef.current)
-          ) {
-            const patched = patchEntryValue(
-              entriesRef.current,
-              currentPathRef.current,
-              path,
-              value.value,
-            );
-            resetListing(patched);
-            listingCache.current.set(currentPathRef.current, patched);
-          }
           return value;
         },
         { clear: true },
       );
     },
-    [resetListing, resetValue, runValue, venue],
+    [resetValue, runValue, venue],
   );
 
   const selectPath = useCallback(
@@ -318,7 +225,9 @@ export function useWorkspaceExplorer() {
 
   useEffect(() => {
     mutationGeneration.current += 1;
+    refreshGeneration.current += 1;
     setPendingMutation(null);
+    setNamespaceRefreshing(false);
     currentPathRef.current = DEFAULT_WORKSPACE_PATH;
     setCurrentPath(DEFAULT_WORKSPACE_PATH);
     selectedPathRef.current = null;
@@ -346,6 +255,8 @@ export function useWorkspaceExplorer() {
 
   const navigateTo = useCallback(
     (path: string) => {
+      ++refreshGeneration.current;
+      setNamespaceRefreshing(false);
       const normalizedPath = normalizeWorkspacePath(path);
       currentPathRef.current = normalizedPath;
       setCurrentPath(normalizedPath);
@@ -367,10 +278,19 @@ export function useWorkspaceExplorer() {
     for (const key of valueCache.current.keys()) {
       if (inNamespace(key)) valueCache.current.delete(key);
     }
-    void loadListing(currentPathRef.current, true);
+    const generation = ++refreshGeneration.current;
+    setNamespaceRefreshing(true);
+    const requests: Promise<unknown>[] = [
+      loadListing(currentPathRef.current, true),
+    ];
     if (selectedPathRef.current) {
-      void loadValue(selectedPathRef.current, true);
+      requests.push(loadValue(selectedPathRef.current, true));
     }
+    void Promise.all(requests).finally(() => {
+      if (generation === refreshGeneration.current) {
+        setNamespaceRefreshing(false);
+      }
+    });
   }, [loadListing, loadValue]);
 
   const mutationIsCurrent = useCallback(
@@ -404,18 +324,6 @@ export function useWorkspaceExplorer() {
         notifySuccess("Saved successfully");
         if (mutationIsCurrent(generation, venue, path)) {
           void loadValue(path);
-          // Keeps WorkspaceBrowserPane's inline row for this same entry (if
-          // visible) from going stale relative to the pane just saved — a
-          // local patch, not a re-list, so the list never flashes through
-          // empty/loading for what should be a no-visible-disruption save.
-          const patched = patchEntryValue(
-            entriesRef.current,
-            currentPathRef.current,
-            path,
-            value,
-          );
-          resetListing(patched);
-          listingCache.current.set(currentPathRef.current, patched);
         }
         return true;
       } catch (err) {
@@ -428,38 +336,7 @@ export function useWorkspaceExplorer() {
         }
       }
     },
-    [editedData, isAuthenticated, loadValue, mutationIsCurrent, resetListing, selectedPath, venue],
-  );
-
-  // Inline edit from WorkspaceBrowserPane — same write path as `save`, but
-  // targets an explicit `path` instead of `selectedPath`/`editedData`, since
-  // the edited row may not be the one currently selected in the value pane.
-  const saveEntryValue = useCallback(
-    async (path: string, value: unknown): Promise<boolean> => {
-      if (!venue || !isAuthenticated) return false;
-      if (!isWritableWorkspaceEntry(path)) return false;
-      const directory = currentPathRef.current;
-      setPendingEntryPath(path);
-      try {
-        await venue.workspace.write(path, value);
-        valueCache.current.delete(path);
-        notifySuccess("Saved successfully");
-        if (currentPathRef.current === directory) {
-          const patched = patchEntryValue(entriesRef.current, directory, path, value);
-          resetListing(patched);
-          listingCache.current.set(directory, patched);
-        }
-        if (path === selectedPathRef.current) void loadValue(path);
-        return true;
-      } catch (err) {
-        const { reason, jobHref } = jobFailure(err, venue.venueId);
-        notifyError("Unable to save", reason, venue.baseUrl, jobHref);
-        return false;
-      } finally {
-        setPendingEntryPath((current) => (current === path ? null : current));
-      }
-    },
-    [isAuthenticated, loadValue, resetListing, venue],
+    [editedData, isAuthenticated, loadValue, mutationIsCurrent, selectedPath, venue],
   );
 
   const create = useCallback(
@@ -545,13 +422,12 @@ export function useWorkspaceExplorer() {
     valueError,
     editedData,
     pendingMutation,
-    pendingEntryPath,
+    namespaceRefreshing,
     setEditedData,
     navigateTo,
     selectPath,
     refreshNamespace,
     save,
-    saveEntryValue,
     create,
     remove,
   };
