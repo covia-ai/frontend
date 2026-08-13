@@ -44,14 +44,14 @@ describe('requester attribution', () => {
     withRequests([req({ agent: 'guarded-writer', from: 'did:key:zOWNER' })]);
     render(<HitlInbox />);
     expect(screen.getByTestId('hitl-view-agent'))
-      .toHaveAttribute('href', '/agents/explorer?agentId=guarded-writer');
+      .toHaveAttribute('href', '/agents/view?agentId=guarded-writer');
   });
 
   it('encodes an agent id that is not URL-safe', () => {
     withRequests([req({ agent: 'team/writer bot' })]);
     render(<HitlInbox />);
     expect(screen.getByTestId('hitl-view-agent'))
-      .toHaveAttribute('href', '/agents/explorer?agentId=team%2Fwriter%20bot');
+      .toHaveAttribute('href', '/agents/view?agentId=team%2Fwriter%20bot');
   });
 
   it('shows no agent link for a person-raised request', () => {

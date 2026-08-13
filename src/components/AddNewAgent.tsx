@@ -194,7 +194,7 @@ export function AddNewAgent({
       setSystemPrompt("");
       setInitialCommand("");
       setOpen(false);
-      router.push(`/agents/explorer?agentId=${encodeURIComponent(result.agentId)}`);
+      router.push(`/agents/chat?agentId=${encodeURIComponent(result.agentId)}`);
     } catch (err) {
       gtmEvent.createAgentFailed(resolvedAgentId, err instanceof Error ? err.message : undefined);
       const { reason, jobHref } = jobFailure(err, venue.venueId);

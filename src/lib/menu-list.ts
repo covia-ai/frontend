@@ -39,7 +39,7 @@ export const MENU_LIST: MenuGroup[] = [
     menus: [
       { href: "/agents/create", label: "Create", icon: Plus },
       { href: "/agents/view", label: "View", icon: List },
-      { href: "/agents/explorer", label: "Chat", icon: MessageSquareText },
+      { href: "/agents/chat", label: "Chat", icon: MessageSquareText },
     ],
   },
   {

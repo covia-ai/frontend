@@ -103,7 +103,7 @@ describe('AddNewAgent', () => {
   // covia-ai/frontend follow-up: creation used to just call onCreated (a
   // list-refetch callback), leaving the user on whichever page they created
   // the agent from — now it should take them straight to the new agent.
-  it("navigates to the new agent's explorer page instead of just refetching the list", async () => {
+  it("navigates to the new agent's chat instead of just refetching the list", async () => {
     const user = await renderAndOpenDialog();
 
     const input = screen.getByPlaceholderText('e.g., Customer Support Agent');
@@ -113,7 +113,7 @@ describe('AddNewAgent', () => {
     await user.click(createButton);
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/agents/explorer?agentId=test-agent');
+      expect(pushMock).toHaveBeenCalledWith('/agents/chat?agentId=test-agent');
     });
   });
 

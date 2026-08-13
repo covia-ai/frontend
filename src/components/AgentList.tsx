@@ -64,7 +64,7 @@ export function AgentList({ mode = "view" }: { mode?: "create" | "view" }) {
   }, [venue, canUseAgents]);
 
   const handleCardClick = (agentId: string) => {
-    const encodedUrl = "/agents/explorer?agentId=" + agentId;
+    const encodedUrl = "/agents/view?agentId=" + agentId;
     router.push(encodedUrl);
   };
 
@@ -95,7 +95,7 @@ export function AgentList({ mode = "view" }: { mode?: "create" | "view" }) {
                  variant="outline"
                  className="shrink-0 gap-2"
                  data-testid="explorer-trigger"
-                 onClick={() => router.push('/agents/explorer')}
+                 onClick={() => router.push('/agents/view')}
                >
                  <SquareChevronRight size={14} />
                  Explore
