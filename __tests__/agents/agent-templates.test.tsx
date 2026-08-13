@@ -123,6 +123,8 @@ describe('useAgentTemplates', () => {
 
     await user.click(card);
     expect(await screen.findByText('Create a new agent')).toBeInTheDocument();
+    expect(screen.getByTestId('agent-name')).toHaveValue('Skilled');
+    expect(screen.getByPlaceholderText('e.g., customer-support-agent')).toHaveValue('skilled');
   });
 
   it('is empty (not thrown) when the venue publishes none', async () => {

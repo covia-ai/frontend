@@ -73,7 +73,7 @@ export function AgentTemplates() {
               <AddNewAgent
                 key={template.key}
                 trigger={card}
-                initialAgentName={template.key}
+                initialAgentName={title}
                 initialSystemPrompt={template.systemPrompt ?? ""}
                 initialProvider={providerForOperation(template.llmOperation)}
                 initialModel={template.model ?? ""}
