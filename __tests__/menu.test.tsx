@@ -28,6 +28,7 @@ describe('Menu — group headers', () => {
     expect(screen.getByRole('link', { name: /view/i })).toHaveAttribute('href', '/agents/view');
     expect(screen.getByRole('link', { name: /chat/i })).toHaveAttribute('href', '/agents/explorer');
     expect(screen.getByRole('link', { name: /assets/i })).toHaveAttribute('href', '/publicartifacts');
+    expect(screen.getByRole('link', { name: /operations/i })).toHaveAttribute('href', '/operations');
     expect(screen.getByText('Secrets')).toBeInTheDocument();
   });
 

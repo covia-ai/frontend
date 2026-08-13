@@ -9,6 +9,7 @@ import {
   List,
   MapPinned,
   MessageSquareText,
+  PlayCircle,
   Plus,
   ScrollText,
   type LucideIcon,
@@ -45,6 +46,7 @@ export const MENU_LIST: MenuGroup[] = [
     groupLabel: "Grid",
     menus: [
       { href: "/publicartifacts", label: "Assets", icon: Database },
+      { href: "/operations", label: "Operations", icon: PlayCircle },
       { href: "/jobs", label: "Jobs", icon: ScrollText },
       { href: "/inbox", label: "Inbox", icon: Inbox, requiresAuth: true, badge: "inbox" },
     ],
