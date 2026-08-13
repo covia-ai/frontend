@@ -9,6 +9,7 @@ import {
   List,
   MapPinned,
   MessageSquareText,
+  BookOpenCheck,
   PlayCircle,
   Plus,
   ScrollText,
@@ -40,6 +41,7 @@ export const MENU_LIST: MenuGroup[] = [
       { href: "/agents/create", label: "Create", icon: Plus },
       { href: "/agents/view", label: "View", icon: List },
       { href: "/agents/chat", label: "Chat", icon: MessageSquareText },
+      { href: "/agents/skills", label: "Skills", icon: BookOpenCheck },
     ],
   },
   {
