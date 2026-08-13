@@ -82,11 +82,11 @@ export function OperationViewer({
     });
   };
 
-  const requestRun = (requiredKeys: string[]) => {
+  const requestRun = () => {
     if (!confirmationRequired) {
       const validationError = validateOperationInput(
         inputController.input,
-        requiredKeys,
+        schema,
       );
       if (validationError) {
         setInvocationError(validationError);

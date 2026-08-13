@@ -59,7 +59,7 @@ type OperationInputFormProps = {
   loading: boolean;
   confirmationRequired: boolean;
   isAuthenticated: boolean;
-  onRun: (requiredKeys: string[]) => void;
+  onRun: () => void;
 };
 
 // Bottom-of-card link to the raw input/output schema — kept next to the
@@ -267,9 +267,10 @@ export function OperationInputForm({
           <InputEditor
             fieldKey={TOP_LEVEL_INPUT_KEY}
             schema={{
-              type: "any",
-              description: "Provide input for the operation",
-              default: "",
+              ...schema,
+              type: schema?.type ?? "any",
+              description: schema?.description ?? "Provide input for the operation",
+              default: schema?.default ?? "",
             }}
             controller={controller}
           />
@@ -283,7 +284,7 @@ export function OperationInputForm({
             loading={loading}
             confirmationRequired={confirmationRequired}
             isAuthenticated={isAuthenticated}
-            onRun={() => onRun([])}
+            onRun={onRun}
             onReset={controller.reset}
           />
         </div>
@@ -326,7 +327,7 @@ export function OperationInputForm({
             loading={loading}
             confirmationRequired={confirmationRequired}
             isAuthenticated={isAuthenticated}
-            onRun={() => onRun(requiredKeys)}
+            onRun={onRun}
             onReset={controller.reset}
           />
         </div>

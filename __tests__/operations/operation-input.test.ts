@@ -46,17 +46,26 @@ describe("operation input conversion", () => {
 });
 
 describe("operation input validation", () => {
-  it("rejects empty input and names missing required fields", () => {
-    expect(validateOperationInput({}, [])).toMatch(/No inputs provided/);
-    expect(validateOperationInput({ optional: true }, ["required"])).toContain(
+  it("accepts an empty object when the schema has no required fields", () => {
+    expect(validateOperationInput({}, { type: "object" })).toBeNull();
+    expect(validateOperationInput({}, {})).toBeNull();
+    expect(validateOperationInput({}, {
+      type: "object",
+      properties: { optional: { type: "string" } },
+    })).toBeNull();
+  });
+
+  it("rejects missing scalar input and names missing required fields", () => {
+    expect(validateOperationInput("", { type: "string" })).toMatch(/No inputs provided/);
+    expect(validateOperationInput({ optional: true }, { required: ["required"] })).toContain(
       '"required"',
     );
   });
 
   it("accepts complete objects and scalar values", () => {
     expect(
-      validateOperationInput({ required: 0 }, ["required"]),
+      validateOperationInput({ required: 0 }, { required: ["required"] }),
     ).toBeNull();
-    expect(validateOperationInput(0, [])).toBeNull();
+    expect(validateOperationInput(0, {})).toBeNull();
   });
 });
