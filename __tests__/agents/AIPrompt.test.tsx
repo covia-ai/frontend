@@ -55,14 +55,18 @@ beforeEach(() => {
 // note it carries its own `model`, which proceedWithKey must never forward
 // (a model pinned for one provider is meaningless once llmOperation is
 // swapped for whichever key was actually detected).
-const SKILLED_TEMPLATE = {
-  name: 'Skilled Agent Template',
+const SKILLED_CONFIG = {
   systemPrompt: 'You are a general-purpose agent on the Covia platform.',
   tools: ['v/ops/covia/read', 'v/ops/covia/list'],
   skills: ['w/skills', 'v/skills'],
   llmOperation: 'v/ops/langchain/openai',
   model: 'gpt-5.4-mini',
   defaultTools: false,
+};
+const SKILLED_TEMPLATE = {
+  name: 'Skilled Agent Template',
+  description: 'Recommended default.',
+  agent: { config: SKILLED_CONFIG },
 };
 
 function makeVenue(overrides: {
@@ -267,15 +271,14 @@ describe('AIPrompt — default agent reuse vs creation', () => {
       expect(venue.agents.create).toHaveBeenCalledWith({
         agentId: 'assistant',
         config: {
-          skills: SKILLED_TEMPLATE.skills,
-          tools: SKILLED_TEMPLATE.tools,
-          defaultTools: SKILLED_TEMPLATE.defaultTools,
+          skills: SKILLED_CONFIG.skills,
+          tools: SKILLED_CONFIG.tools,
+          defaultTools: SKILLED_CONFIG.defaultTools,
           // The detected key's provider wins over the template's own
           // llmOperation, and the template's model is dropped entirely —
           // it was pinned for a different provider.
-          operation: 'v/ops/llmagent/chat',
           llmOperation: 'v/ops/langchain/anthropic',
-          systemPrompt: SKILLED_TEMPLATE.systemPrompt,
+          systemPrompt: SKILLED_CONFIG.systemPrompt,
         },
       });
     });

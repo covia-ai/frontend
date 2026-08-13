@@ -77,7 +77,9 @@ export function AgentTemplates() {
                     initialAgentName={template.key}
                     initialSystemPrompt={template.systemPrompt ?? ""}
                     initialProvider={providerForOperation(template.llmOperation)}
-                    initialConfig={configOf(template)}
+                    initialModel={template.model ?? ""}
+                    initialConfig={template.config}
+                    initialConfigPreview={template.preview}
                   />
                 ) : (
                   <Button variant="outline" size="sm" disabled className="w-full mt-2 gap-2 text-muted-foreground">
@@ -97,14 +99,4 @@ export function AgentTemplates() {
 // " Agent Template" suffix is noise on every card, so drop it: "Skilled".
 function templateTitle(t: AgentTemplate): string {
   return (t.name ?? t.key).replace(/\s*Agent Template$/i, "").trim() || t.key;
-}
-
-// The capability fields the create dialog carries through unchanged.
-function configOf(t: AgentTemplate) {
-  return {
-    ...(t.operation ? { operation: t.operation } : {}),
-    ...(t.skills?.length ? { skills: t.skills } : {}),
-    ...(t.tools?.length ? { tools: t.tools } : {}),
-    ...(t.defaultTools != null ? { defaultTools: t.defaultTools } : {}),
-  };
 }

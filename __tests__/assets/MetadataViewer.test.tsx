@@ -339,7 +339,11 @@ describe('MetadataViewer agent template fields', () => {
   };
 
   test('shows model, tools, skills and system prompt instead of an empty panel', () => {
-    render(<MetadataViewer asset={asset(SKILLED_TEMPLATE)} />);
+    render(<MetadataViewer asset={asset({
+      name: SKILLED_TEMPLATE.name,
+      description: SKILLED_TEMPLATE.description,
+      agent: { config: SKILLED_TEMPLATE },
+    })} />);
     expect(screen.getByTestId('asset-fields')).toBeInTheDocument();
     expect(screen.getByTestId('agent-template-fields')).toHaveTextContent('gpt-5.4-mini');
     expect(screen.getByTestId('agent-template-tools')).toHaveTextContent('v/ops/covia/read');

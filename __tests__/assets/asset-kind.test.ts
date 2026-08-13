@@ -21,6 +21,17 @@ describe('getAssetKind', () => {
     expect(getAssetKind({ skills: [] })).toBe('agent-template');
   });
 
+  test('a canonical agent config facet marks an agent template', () => {
+    expect(getAssetKind({
+      name: 'Reader',
+      agent: { config: { tools: ['v/ops/covia/read'] } },
+    })).toBe('agent-template');
+    expect(getAssetKind({
+      name: 'Layered',
+      agent: { config: ['v/agents/templates/reader', { model: 'custom' }] },
+    })).toBe('agent-template');
+  });
+
   test('a content descriptor with no operation/agent-template fields is an artifact', () => {
     expect(getAssetKind({ content: { inline: 'body' } })).toBe('artifact');
     expect(getAssetKind({ content: { sha256: 'abc' } })).toBe('artifact');

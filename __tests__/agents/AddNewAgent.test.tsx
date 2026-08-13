@@ -174,6 +174,39 @@ describe('AddNewAgent', () => {
     expect(mockVenue.agents.create.mock.calls[0][0].config).not.toHaveProperty('state');
   });
 
+  it('preserves ordered template layers and appends editable overrides last', async () => {
+    const user = userEvent.setup();
+    render(
+      <AddNewAgent
+        initialAgentName="layered agent"
+        initialSystemPrompt="Final instructions"
+        initialConfig={[
+          'v/agents/templates/reader',
+          {
+            systemPrompt: 'Base instructions',
+            caps: [{ with: 'w/results/', can: 'crud/write' }],
+            responseFormat: { name: 'Result', schema: { type: 'object' } },
+          },
+        ]}
+      />,
+    );
+    await user.click(screen.getByTestId('create-agent-trigger'));
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    expect(mockVenue.agents.create.mock.calls[0][0].config).toEqual([
+      'v/agents/templates/reader',
+      {
+        caps: [{ with: 'w/results/', can: 'crud/write' }],
+        responseFormat: { name: 'Result', schema: { type: 'object' } },
+      },
+      {
+        llmOperation: 'v/ops/langchain/anthropic',
+        systemPrompt: 'Final instructions',
+      },
+    ]);
+  });
+
   it('passes a custom-typed model into the agent config', async () => {
     const user = await renderAndOpenDialog();
     await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');

@@ -29,8 +29,13 @@ import { useTypewriterPlaceholder } from "@/hooks/use-typewriter-placeholder";
 import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { KNOWN_LLM_KEYS, LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
-import type { AgentTemplate } from "@/hooks/use-agent-templates";
 import { normalizeAgentEntries } from "@/lib/agent-list";
+import {
+  asSdkAgentConfig,
+  normalizeAgentTemplate,
+  withAgentConfigOverrides,
+  withoutAgentConfigFields,
+} from "@/lib/agent-templates";
 import { AgentStatus } from "@covia/covia-sdk";
 import { useRouter } from "next/navigation";
 import { PageHeading } from "./PageHeading";
@@ -200,7 +205,10 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) =>
       if (!templateRead?.exists || !templateRead.value) {
         throw new Error("Skilled agent template not found on this venue");
       }
-      const template = templateRead.value as Omit<AgentTemplate, "key">;
+      const template = normalizeAgentTemplate("skilled", templateRead.value);
+      if (!template) {
+        throw new Error("Skilled agent template has an invalid format");
+      }
 
       // The venue no longer accepts agents.create's overwrite flag — a
       // TERMINATED slot (the only occupied state this path ever runs
@@ -216,14 +224,15 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) =>
 
       await venue.agents.create({
         agentId,
-        config: {
-          ...(template.skills?.length ? { skills: template.skills } : {}),
-          ...(template.tools?.length ? { tools: template.tools } : {}),
-          ...(template.defaultTools != null ? { defaultTools: template.defaultTools } : {}),
-          operation: template.operation ?? "v/ops/llmagent/chat",
-          llmOperation: provider.operation,
-          ...(template.systemPrompt && { systemPrompt: template.systemPrompt }),
-        },
+        config: asSdkAgentConfig(
+          withAgentConfigOverrides(
+            // This flow chooses a provider from the user's available secret.
+            // Drop any inline model tied to the template's former provider, but
+            // preserve every other field and all ordered/reference layers.
+            withoutAgentConfigFields(template.config, ["llmOperation", "model"]),
+            { llmOperation: provider.operation },
+          ),
+        ),
       });
     } catch (err: any) {
       setCreating(false);

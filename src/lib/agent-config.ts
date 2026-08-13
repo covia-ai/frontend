@@ -1,12 +1,6 @@
 import { LLM_PROVIDERS } from "@/config/llm-providers";
 import type { AgentDetail } from "@/config/types";
-
-export interface AgentTemplateConfig extends Record<string, unknown> {
-  operation?: string;
-  skills?: string[];
-  tools?: string[];
-  defaultTools?: boolean;
-}
+import type { AgentConfigInput } from "@/lib/agent-templates";
 
 export function providerForOperation(llmOperation?: string): string {
   const match = Object.entries(LLM_PROVIDERS).find(
@@ -20,7 +14,7 @@ export type AgentCreationSeed = {
   initialSystemPrompt: string;
   initialProvider: string;
   initialModel: string;
-  initialConfig: AgentTemplateConfig;
+  initialConfig: AgentConfigInput;
 };
 
 // Clone only the source's creation config. Runtime state, session history,

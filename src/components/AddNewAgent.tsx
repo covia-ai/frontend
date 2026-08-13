@@ -29,7 +29,14 @@ import { DEFAULT_AGENT_ID } from "@/config/agents";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { gtmEvent } from "@/lib/utils";
-import type { AgentTemplateConfig } from "@/lib/agent-config";
+import {
+  asSdkAgentConfig,
+  inlineAgentConfigPreview,
+  type AgentConfigInput,
+  type AgentConfigMap,
+  withAgentConfigOverrides,
+  withoutAgentConfigFields,
+} from "@/lib/agent-templates";
 
 interface AddNewAgentProps {
   trigger?: React.ReactNode | null;
@@ -42,8 +49,10 @@ interface AddNewAgentProps {
   initialProvider?: string;
   initialModel?: string;
   preferAvailableProvider?: boolean;
-  /** Skills/tools/operation from a venue template, applied to the created agent. */
-  initialConfig?: AgentTemplateConfig;
+  /** Exact template/clone config: an inline map, reference, or ordered layers. */
+  initialConfig?: AgentConfigInput;
+  /** Resolved inline fields for describing configs that contain references. */
+  initialConfigPreview?: AgentConfigMap;
 }
 
 const CUSTOM_MODEL_OPTION = "__custom__";
@@ -64,6 +73,7 @@ export function AddNewAgent({
   initialModel = "",
   preferAvailableProvider = true,
   initialConfig,
+  initialConfigPreview,
 }: AddNewAgentProps = {}) {
   const router = useRouter();
   const [agentName, setAgentName] = useState(initialAgentName);
@@ -120,7 +130,11 @@ export function AddNewAgent({
         };
         if (preferAvailableProvider && !ready(initialProvider)) {
           const pick = Object.keys(LLM_PROVIDERS).find(ready);
-          if (pick) setLlmProvider(pick);
+          if (pick) {
+            setLlmProvider(pick);
+            setModel("");
+            setCustomModel("");
+          }
         }
       })
       .catch(() => setAvailableKeys([]));
@@ -179,22 +193,22 @@ export function AddNewAgent({
       if (needsKey && apiKeyInput.trim()) {
         await venue.secrets.set(provider.secretKey, apiKeyInput.trim());
       }
+      // Provider/model/prompt are editable form fields. Remove their inline
+      // seed values before writing the final choices, while leaving string
+      // references and ordered layer semantics intact for venue resolution.
+      const baseConfig = withoutAgentConfigFields(
+        initialConfig,
+        ["llmOperation", "model", "systemPrompt"],
+      );
+      const overrides: AgentConfigMap = {
+        ...(initialConfig === undefined ? { operation: "v/ops/llmagent/chat" } : {}),
+        llmOperation: provider.operation,
+        ...(resolvedModel && { model: resolvedModel }),
+        ...(systemPrompt.trim() && { systemPrompt: systemPrompt.trim() }),
+      };
       const result = await venue.agents.create({
         agentId: resolvedAgentId,
-        config: {
-          ...initialConfig,
-          // Template capabilities (skills, tools, defaultTools) ride along; the
-          // form's provider/model/prompt below always win over the template's.
-          ...(initialConfig?.skills?.length ? { skills: initialConfig.skills } : {}),
-          ...(initialConfig?.tools?.length ? { tools: initialConfig.tools } : {}),
-          ...(initialConfig?.defaultTools != null ? { defaultTools: initialConfig.defaultTools } : {}),
-          operation: initialConfig?.operation ?? "v/ops/llmagent/chat",
-          llmOperation: provider.operation,
-          // The agent loop forwards `model` into the LLM op input
-          // (AbstractLLMAdapter K_MODEL); omitted → provider default.
-          ...(resolvedModel && { model: resolvedModel }),
-          ...(systemPrompt.trim() && { systemPrompt: systemPrompt.trim() }),
-        },
+        config: asSdkAgentConfig(withAgentConfigOverrides(baseConfig, overrides)),
       });
 
       if (initialCommand.trim()) {
@@ -222,6 +236,15 @@ export function AddNewAgent({
     }
   };
 
+  const configPreview = initialConfigPreview ?? (
+    initialConfig === undefined ? {} : inlineAgentConfigPreview(initialConfig)
+  );
+  const previewSkills = Array.isArray(configPreview.skills) ? configPreview.skills : [];
+  const previewTools = Array.isArray(configPreview.tools) ? configPreview.tools : [];
+  const hasTemplateCapabilities = Boolean(
+    previewSkills.length || previewTools.length || configPreview.defaultTools,
+  );
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       {trigger !== null && (
@@ -245,11 +268,11 @@ export function AddNewAgent({
 
         <div className="flex flex-col items-start justify-center space-y-6">
           {/* What a template contributes beyond the editable fields below. */}
-          {initialConfig && Boolean(initialConfig.skills?.length || initialConfig.tools?.length || initialConfig.defaultTools) && (
+          {initialConfig && hasTemplateCapabilities && (
             <p data-testid="template-capabilities" className="w-full text-xs text-muted-foreground border rounded-md p-2">
-              This template adds{initialConfig.skills?.length ? ` a skills index (${initialConfig.skills.join(", ")})` : ""}
-              {initialConfig.tools?.length ? `${initialConfig.skills?.length ? "," : ""} ${initialConfig.tools.length} tool${initialConfig.tools.length === 1 ? "" : "s"}` : ""}
-              {initialConfig.defaultTools ? `${(initialConfig.skills?.length || initialConfig.tools?.length) ? ", and" : ""} read-only workspace access` : ""}. Set the name, provider and prompt below.
+              This template adds{previewSkills.length ? ` a skills index (${previewSkills.join(", ")})` : ""}
+              {previewTools.length ? `${previewSkills.length ? "," : ""} ${previewTools.length} tool${previewTools.length === 1 ? "" : "s"}` : ""}
+              {configPreview.defaultTools ? `${previewSkills.length || previewTools.length ? ", and" : ""} the platform default tools` : ""}. Set the name, provider and prompt below.
             </p>
           )}
           {/* Agent Name */}

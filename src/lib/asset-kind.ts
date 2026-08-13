@@ -1,3 +1,5 @@
+import { isAgentTemplateMetadata } from "@/lib/agent-templates";
+
 export type AssetKind = "operation" | "agent-template" | "artifact" | "reference";
 
 export const ASSET_KIND_LABELS: Record<AssetKind, string> = {
@@ -23,11 +25,9 @@ export function getAssetKind(metadata: any): AssetKind {
       (Array.isArray(operation.steps) && operation.steps.length > 0));
   if (hasOperationSchema) return "operation";
 
-  // An agent template's own `operation` (when present, e.g. "goaltree") is a
-  // bare transition-op address string, not the schema above, so it falls
-  // through to here rather than being mistaken for an invokable operation.
-  const isAgentTemplate = typeof metadata?.llmOperation === "string" || Array.isArray(metadata?.skills);
-  if (isAgentTemplate) return "agent-template";
+  // Canonical templates have an `agent.config` facet; legacy workspace
+  // templates expose their config fields at the top level.
+  if (isAgentTemplateMetadata(metadata)) return "agent-template";
 
   if (metadata?.content !== undefined) return "artifact";
 

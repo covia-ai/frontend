@@ -11,9 +11,27 @@ import { useAgentTemplates } from '@/hooks/use-agent-templates';
 // The venue tree at v/agents/templates: keys → configs, arbitrary order.
 const TREE = {
   reader: { description: 'read', llmOperation: 'v/ops/langchain/openai' },
-  skilled: { description: 'recommended default', skills: ['w/skills', 'v/skills'] },
+  skilled: {
+    name: 'Skilled Agent Template',
+    description: 'recommended default',
+    agent: {
+      config: {
+        systemPrompt: 'Use skills when needed.',
+        skills: ['w/skills', 'v/skills'],
+        caps: [{ with: 'w/', can: 'crud/read' }],
+      },
+    },
+  },
   goaltree: { description: 'planner' },
   full: { description: 'full frontier', tools: ['v/ops/agent/create'] },
+  layered: {
+    name: 'Layered',
+    agent: {
+      config: ['v/agents/templates/reader', { responseFormat: { name: 'Result' } }],
+      state: { seeded: true },
+    },
+  },
+  stateful: { name: 'State only', agent: { state: { ready: true } } },
 };
 
 describe('useAgentTemplates', () => {
@@ -27,6 +45,25 @@ describe('useAgentTemplates', () => {
     expect(read).toHaveBeenCalledWith('v/agents/templates');
     expect(result.current.templates.map((t) => t.key)).toContain('skilled');
     expect(result.current.templates.find((t) => t.key === 'skilled')?.skills).toEqual(['w/skills', 'v/skills']);
+    expect(result.current.templates.find((t) => t.key === 'skilled')?.systemPrompt).toBe('Use skills when needed.');
+    expect(result.current.templates.find((t) => t.key === 'skilled')?.config).toMatchObject({
+      caps: [{ with: 'w/', can: 'crud/read' }],
+    });
+  });
+
+  it('preserves canonical ordered layers and initial state for agent:create', async () => {
+    read.mockResolvedValue({ value: TREE });
+    const { result } = renderHook(() => useAgentTemplates());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.templates.find((t) => t.key === 'layered')?.config).toEqual([
+      'v/agents/templates/reader',
+      { responseFormat: { name: 'Result' } },
+      { state: { seeded: true } },
+    ]);
+    expect(result.current.templates.find((t) => t.key === 'stateful')?.config).toEqual({
+      state: { ready: true },
+    });
   });
 
   it('orders skilled first (recommended default), then the rest', async () => {

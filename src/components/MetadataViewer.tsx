@@ -12,6 +12,7 @@ import { LucideIcon } from "lucide-react";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { cn, copyDataToClipBoard, formatDateTime, formatLabel } from "@/lib/utils";
 import { getAssetKind } from "@/lib/asset-kind";
+import { agentConfigPreviewFromMetadata } from "@/lib/agent-templates";
 import { JSON_EDITOR_DIALOG_CLASS, JSON_EDITOR_MAX_WIDTH } from "@/lib/dialog-sizes";
 import { notifyError } from "@/lib/notify";
 import { CopyAssetDialog } from "./CopyAssetDialog";
@@ -209,7 +210,7 @@ export const MetadataViewer = ({ asset, venue, isAuthenticated = false }: Metada
   const hasSteps = Array.isArray(operation?.steps) && operation.steps.length > 0;
   const hasOperationFields = isOperation && (hasAdapter || hasOperationInput || hasOperationOutput || hasSteps);
 
-  const agentTemplate = asset.metadata as AgentTemplateSchema | undefined;
+  const agentTemplate = agentConfigPreviewFromMetadata(asset.metadata) as AgentTemplateSchema;
   const isAgentTemplate = kind === "agent-template";
   const hasModel = typeof agentTemplate?.llmOperation === "string" || typeof agentTemplate?.model === "string";
   const templateTools = Array.isArray(agentTemplate?.tools) ? agentTemplate.tools : [];

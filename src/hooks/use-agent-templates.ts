@@ -2,24 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import {
+  normalizeAgentTemplate,
+  type AgentTemplate,
+} from "@/lib/agent-templates";
 
-// An agent template as published by the venue at v/agents/templates/<key>.
-// Everything past name/description is agent config the create op understands.
-export interface AgentTemplate {
-  /** The directory key — canonical identity (COG-18: the key wins over an inner name). */
-  key: string;
-  name?: string;
-  description?: string;
-  systemPrompt?: string;
-  /** Provider op the template defaults to (e.g. v/ops/langchain/openai). */
-  llmOperation?: string;
-  model?: string;
-  /** Transition op, when the template specifies one (e.g. goaltree). */
-  operation?: string;
-  skills?: string[];
-  tools?: string[];
-  defaultTools?: boolean;
-}
+export type { AgentTemplate } from "@/lib/agent-templates";
 
 // Skilled is the recommended default (per its own description), so it leads;
 // the rest keep a sensible teaching order, unknowns last.
@@ -50,13 +38,12 @@ export function useAgentTemplates() {
       .read("v/agents/templates")
       .then((res) => {
         if (ignore) return;
-        const tree = (res as { value?: Record<string, Omit<AgentTemplate, "key">> })?.value;
+        const tree = (res as { value?: Record<string, unknown> })?.value;
         const list =
           tree && typeof tree === "object"
             ? Object.entries(tree)
-                .filter(([, cfg]) => cfg && typeof cfg === "object")
-                // Directory key is canonical identity (COG-18) — it wins over any inner name.
-                .map(([key, cfg]) => ({ ...cfg, key }))
+                .map(([key, value]) => normalizeAgentTemplate(key, value))
+                .filter((template): template is AgentTemplate => template !== null)
                 .sort((a, b) => orderRank(a.key) - orderRank(b.key) || a.key.localeCompare(b.key))
             : [];
         setTemplates(list);
