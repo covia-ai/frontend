@@ -25,7 +25,6 @@ import { EllipsisVertical, Loader2 } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { usePendingChats } from "@/hooks/use-pending-chats";
-import { useTypewriterPlaceholder } from "@/hooks/use-typewriter-placeholder";
 import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { KNOWN_LLM_KEYS, LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
@@ -61,7 +60,6 @@ type AIPromptProps = {
 
 export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) => {
   const [prompt, setPrompt] = useState('')
-  const [promptFocused, setPromptFocused] = useState(false)
   const [checking, setChecking] = useState(false)
   const [creating, setCreating] = useState(false)
   const [showKeyDialog, setShowKeyDialog] = useState(false)
@@ -90,25 +88,6 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) =>
     handleCopy: handleSignInCopy, handleContinue: handleSignInContinue,
     handleUseStoredKey: handleSignInUseStoredKey, handleUseDifferentKey: handleSignInUseDifferentKey,
   } = useDeviceKeySignIn();
-
-  const promptSamples = [
-    'Automate an AP invoice pipeline',
-    'Orchestrate a cross-venue workflow',
-    'Publish an operation to REST, MCP, and A2A',
-  ]
-
-  const typingPromptSamples = [
-    'Automate an AP invoice pipeline with agents',
-    'Orchestrate a workflow across three venues',
-    'Publish an operation to REST, MCP, and A2A',
-    'Build an agent that scans and enriches vendor records',
-    'Chat with a Gemini-powered agent about my data',
-    'Set up a sovereign file store with DLFS',
-    'Issue a UCAN to share access with a partner venue',
-    'Infer a JSON schema from sample data',
-  ]
-
-  const animatedPlaceholder = useTypewriterPlaceholder(typingPromptSamples, prompt.length === 0 && !promptFocused);
 
   // Populates the picker's option list. Best-effort and separate from the
   // fresh venue.agents.list() call in handleMagicWand — that one drives the
@@ -356,7 +335,7 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) =>
 
         <Card className="mt-6 w-full max-w-3xl gap-1 rounded-3xl p-3 shadow-sm">
           <Textarea
-            placeholder={promptFocused ? '' : animatedPlaceholder}
+            placeholder="What would you like to do?"
             className={cn(
               "min-h-12 resize-none border-none bg-transparent p-0 shadow-none focus-visible:ring-0 dark:bg-transparent",
               SUGGESTION_PLACEHOLDER_CLASS,
@@ -370,8 +349,6 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) =>
                 handleMagicWand();
               }
             }}
-            onFocus={() => setPromptFocused(true)}
-            onBlur={() => setPromptFocused(false)}
             disabled={busy}
           />
 
@@ -433,11 +410,6 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) =>
         {creating && (
           <p className="text-xs text-muted-foreground animate-pulse mt-1">
             Creating agent…
-          </p>
-        )}
-        {fixedAgentId && !creating && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            Your assistant will be created from the venue&apos;s skilled template when you send your first message.
           </p>
         )}
 
@@ -532,23 +504,6 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) =>
           onUseDifferentKey={handleSignInUseDifferentKey}
         />
 
-         <div className="flex flex-row flex-wrap items-center justify-center w-full gap-2 mt-6">
-          {promptSamples.map( (promptText,_index) => (
-
-             prompt == promptText ? (
-
-              <Badge key={promptText} variant="outline" className="bg-primary-light cursor-pointer px-2 py-1 text-xs"
-              onClick={() => setPrompt(promptText)}>
-                {promptText}
-              </Badge>
-             ) : (
-              <Badge key={promptText} variant="outline" className="bg-muted px-2 py-1 text-xs cursor-pointer hover:border-accent"
-              onClick={() => setPrompt(promptText)}>
-                {promptText}
-              </Badge>
-             )
-          ))}
-         </div>
       </div>
   );
 };
