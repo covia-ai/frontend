@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
+import { ScrollText, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -44,6 +44,31 @@ export function SidebarLegalFooter({ isOpen }: SidebarLegalFooterProps) {
         </TooltipTrigger>
         {isOpen === false && (
           <TooltipContent side="right">Privacy Policy</TooltipContent>
+        )}
+      </Tooltip>
+      <Tooltip delayDuration={100}>
+        <TooltipTrigger asChild>
+          <Link
+            href="/terms"
+            className="flex items-center rounded-md px-1 py-1.5 text-xs text-sidebar-foreground/60 transition-colors hover:text-sidebar-foreground"
+          >
+            <span className={cn(isOpen === false ? "" : "mr-2")}>
+              <ScrollText size={16} />
+            </span>
+            <span
+              className={cn(
+                "whitespace-nowrap transition-[transform,opacity] duration-300 ease-in-out",
+                isOpen === false
+                  ? "-translate-x-96 opacity-0"
+                  : "translate-x-0 opacity-100",
+              )}
+            >
+              Terms of Service
+            </span>
+          </Link>
+        </TooltipTrigger>
+        {isOpen === false && (
+          <TooltipContent side="right">Terms of Service</TooltipContent>
         )}
       </Tooltip>
     </div>
