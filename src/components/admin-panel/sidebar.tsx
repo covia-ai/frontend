@@ -1,5 +1,6 @@
 "use client";
 import { Menu } from "@/components/admin-panel/menu";
+import { SidebarLegalFooter } from "@/components/admin-panel/sidebar-legal-footer";
 import { SidebarToggle } from "@/components/admin-panel/sidebar-toggle";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/hooks/use-sidebar";
@@ -59,6 +60,7 @@ export function Sidebar() {
         </Button>
         <Menu isOpen={getOpenState()} />
       </div>
+      <SidebarLegalFooter isOpen={getOpenState()} />
     </aside>
   );
 }

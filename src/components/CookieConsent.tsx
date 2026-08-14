@@ -35,16 +35,21 @@ export const CookieConsentComponent = () => {
         buttonText="Accept All"
         declineButtonText="Decline"
         enableDeclineButton
+        disableButtonStyles
         cookieName="yourAppCookieConsent"
         containerClasses="bg-card text-card-foreground"
-        buttonClasses="bg-primary text-primary-foreground text-sm"
-        declineButtonClasses="bg-muted text-muted-foreground text-sm"
+        buttonClasses="rounded-md px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm"
+        declineButtonClasses="rounded-md px-4 py-2 mr-2 bg-muted text-muted-foreground text-sm"
         expires={365}  // Number of days before the cookie expires
         onAccept={() => pushConsent(true)}
         onDecline={() => pushConsent(false)}
       >
-        This website uses cookies to enhance your experience. By using our website, you consent to the use of cookies. 
-        You can read more in our <a href="/privacypolicy">privacy policy</a>.
+        This website uses cookies to enhance your experience. By using our website, you consent to the use of cookies.
+        You can read more in our{" "}
+        <a href="/privacypolicy" className="text-primary underline underline-offset-2 hover:text-primary/80">
+          privacy policy
+        </a>
+        .
       </CookieConsent>
     </div>
   );
