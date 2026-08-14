@@ -29,6 +29,11 @@ interface AssetListProps {
   venueId?: string;
 }
 
+// Roughly two grid pages of leading ids hydrate before the rest of the
+// catalog, independent of the live grid size so a window resize never
+// re-fetches.
+const PRIORITY_HYDRATE_COUNT = 48;
+
 export function AssetList({ venueId }: AssetListProps = {}) {
   const searchParams = useSearchParams()
   const {
@@ -64,9 +69,9 @@ export function AssetList({ venueId }: AssetListProps = {}) {
   // never land in the fresh list. Fetches the full id list unconditionally —
   // search text only filters client-side (see filteredAssets) so typing
   // never triggers a refetch. Metadata resolves through the content-addressed
-  // cache (immutable, so revisits are near-free) and streams in per batch,
-  // so the grid fills incrementally instead of blocking on the slowest of
-  // N individual GETs.
+  // cache (immutable, so revisits are near-free) and streams in per batch
+  // with the leading ids hydrated first, so the first screen of cards paints
+  // in a batch or two while the rest of a large catalog fills in behind.
   const fetchAssets = useCallback(() => {
     if (!venue || venueStatus !== "ready") {
       resetAssetQuery();
@@ -85,6 +90,7 @@ export function AssetList({ venueId }: AssetListProps = {}) {
           venue,
           assetList.items,
           (progress) => publish(toDataAssets(progress), { loading: false }),
+          PRIORITY_HYDRATE_COUNT,
         );
         return toDataAssets(entries);
       },

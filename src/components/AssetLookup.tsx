@@ -49,7 +49,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}: {sendAssetIdBackToForm: (id
         loadAssetEntries(selectedVenue, assetList.items, (entries) => {
           if (ignore) return;
           setAssetsMetadata(entries);
-        })
+        }, 48)
       ).catch(() => {});
       return () => { ignore = true; };
   },[open, selectedVenue]);
