@@ -15,12 +15,20 @@ jest.mock('@covia/covia-sdk', () => {
         public metadata: unknown,
       ) {}
     },
+    UnsupportedVenueFeatureError: class UnsupportedVenueFeatureError extends Error {
+      constructor(public readonly feature: string) {
+        super(`The connected venue cannot serve ${feature} without creating a job.`);
+        this.name = 'UnsupportedVenueFeatureError';
+      }
+    },
   };
 });
 
 import * as sdk from '@covia/covia-sdk';
+import { UnsupportedVenueFeatureError } from '@covia/covia-sdk';
 import {
   HITL_RESPOND_ADDRESS,
+  countOpenHitlRequests,
   listHitlRequests,
   missingRequiredAnswers,
   respondToHitl,
@@ -29,19 +37,33 @@ import {
 
 const runMock = (sdk as unknown as { __run: jest.Mock }).__run;
 
-// A venue whose `h/` inbox resolves a fixed {id → record} map. `list` returns
-// keys the way GET /api/v1/values/list does; `read` serves one record.
-const venueWithInbox = (records: Record<string, unknown>, listImpl?: jest.Mock) => {
-  const list = listImpl ??
-    jest.fn().mockResolvedValue({ keys: Object.keys(records), count: Object.keys(records).length });
-  const read = jest.fn((path: string) => {
-    const id = path.startsWith('h/') ? path.slice(2) : path;
-    return Promise.resolve(
-      id in records ? { exists: true, value: records[id] } : { exists: false },
-    );
+// A venue whose `h/` inbox resolves a fixed {id → record} map in ONE values
+// read; `slice` pages {key, value} pairs for the over-cap fallback and
+// `aggregate` serves the status group counts.
+const venueWithInbox = (records: Record<string, unknown>, readImpl?: jest.Mock) => {
+  const read = readImpl ??
+    jest.fn((path: string) =>
+      Promise.resolve(
+        path === 'h'
+          ? { exists: true, type: 'Index', value: records }
+          : { exists: false },
+      ));
+  const list = jest.fn().mockResolvedValue({ keys: Object.keys(records), count: Object.keys(records).length });
+  const slice = jest.fn((_path: string, offset: number, limit: number) => {
+    const entries = Object.entries(records).slice(offset, offset + limit);
+    return Promise.resolve({
+      exists: true,
+      count: Object.keys(records).length,
+      offset,
+      values: entries.map(([key, value]) => ({ key, value })),
+    });
   });
+  const aggregate = jest.fn();
   const run = jest.fn();
-  return { venue: { workspace: { list, read }, operations: { run } } as any, list, read, run };
+  return {
+    venue: { workspace: { list, read, slice, aggregate }, operations: { run } } as any,
+    list, read, slice, aggregate, run,
+  };
 };
 
 const request = (id: string, over: Record<string, unknown> = {}) => ({
@@ -51,8 +73,8 @@ const request = (id: string, over: Record<string, unknown> = {}) => ({
 beforeEach(() => runMock.mockClear());
 
 describe('listHitlRequests', () => {
-  it('reads the h/ inbox job-free and returns newest first', async () => {
-    const { venue, list, read, run } = venueWithInbox({
+  it('reads the whole h/ inbox in one job-free values read, newest first', async () => {
+    const { venue, read, run } = venueWithInbox({
       old: request('old', { created: 1000 }),
       recent: request('recent', { created: 5000 }),
     });
@@ -60,21 +82,20 @@ describe('listHitlRequests', () => {
     const out = await listHitlRequests(venue);
 
     expect(out.map((r) => r.id)).toEqual(['recent', 'old']);
-    // Job-free: the key listing and each record went over workspace values
-    // reads, never the hitl/list operation (which would persist a Job).
-    expect(list).toHaveBeenCalledWith('h');
-    expect(read).toHaveBeenCalledWith('h/old');
-    expect(read).toHaveBeenCalledWith('h/recent');
+    // ONE read for the entire inbox — no per-record fan-out, and never the
+    // hitl/list operation (which would persist a Job).
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(read).toHaveBeenCalledWith('h');
     expect(run).not.toHaveBeenCalled();
   });
 
   it('returns [] when the inbox has never been created', async () => {
     // An inbox with no requests yet resolves to Nil rather than throwing.
     const nil = jest.fn().mockResolvedValue({ type: 'Nil', exists: false });
-    const { venue, read } = venueWithInbox({}, nil);
+    const { venue, slice } = venueWithInbox({}, nil);
 
     await expect(listHitlRequests(venue)).resolves.toEqual([]);
-    expect(read).not.toHaveBeenCalled();
+    expect(slice).not.toHaveBeenCalled();
   });
 
   it('propagates a failed read instead of reporting an empty inbox', async () => {
@@ -87,14 +108,69 @@ describe('listHitlRequests', () => {
     await expect(listHitlRequests(venue)).rejects.toThrow('HTTP 403');
   });
 
-  it('drops keys whose record cannot be read', async () => {
-    const { venue } = venueWithInbox({ good: request('good') });
-    // `missing` is listed but has no record behind it.
-    venue.workspace.list = jest.fn().mockResolvedValue({ keys: ['good', 'missing'], count: 2 });
+  it('drops entries that are not valid request records', async () => {
+    const { venue } = venueWithInbox({
+      good: request('good'),
+      broken: null,
+      stray: 'not-a-record',
+    });
 
     const out = await listHitlRequests(venue);
 
     expect(out.map((r) => r.id)).toEqual(['good']);
+  });
+
+  it('pages an over-cap inbox through slice instead of failing', async () => {
+    const records = {
+      a: request('a', { created: 3 }),
+      b: request('b', { created: 2 }),
+      c: request('c', { created: 1 }),
+    };
+    const truncated = jest.fn((path: string) =>
+      Promise.resolve(
+        path === 'h'
+          ? { exists: true, truncated: true, type: 'Index', valueBytes: 2_000_000 }
+          : { exists: false },
+      ));
+    const { venue, slice } = venueWithInbox(records, truncated);
+
+    const out = await listHitlRequests(venue);
+
+    expect(out.map((r) => r.id)).toEqual(['a', 'b', 'c']);
+    expect(slice).toHaveBeenCalled();
+  });
+});
+
+describe('countOpenHitlRequests', () => {
+  it('asks the venue to group by status — one call, no record download', async () => {
+    const { venue, aggregate, read } = venueWithInbox({});
+    aggregate.mockResolvedValue({
+      exists: true,
+      count: 7,
+      groups: { open: { count: 2 }, answered: { count: 4 }, rejected: { count: 1 } },
+    });
+
+    await expect(countOpenHitlRequests(venue)).resolves.toBe(2);
+    expect(aggregate).toHaveBeenCalledWith('h', { groupBy: 'status' });
+    expect(read).not.toHaveBeenCalled();
+  });
+
+  it('treats a missing inbox or absent open group as zero', async () => {
+    const { venue, aggregate } = venueWithInbox({});
+    aggregate.mockResolvedValueOnce({ exists: false });
+    await expect(countOpenHitlRequests(venue)).resolves.toBe(0);
+    aggregate.mockResolvedValueOnce({ exists: true, count: 3, groups: { answered: { count: 3 } } });
+    await expect(countOpenHitlRequests(venue)).resolves.toBe(0);
+  });
+
+  it('falls back to the full listing on venues without aggregate', async () => {
+    const { venue, aggregate } = venueWithInbox({
+      a: request('a', { status: 'open' }),
+      b: request('b', { status: 'answered' }),
+    });
+    aggregate.mockRejectedValue(new UnsupportedVenueFeatureError('workspace aggregate reads'));
+
+    await expect(countOpenHitlRequests(venue)).resolves.toBe(1);
   });
 });
 
