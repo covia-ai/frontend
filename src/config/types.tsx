@@ -26,6 +26,9 @@ export interface SessionMessage {
    content: any;
    ts?: number;
    source?: string;
+   /** The job that delivered this turn (chat/request intake), when the venue
+    *  recorded it — links the conversation back to the calling job. */
+   jobId?: string;
 }
 
 export interface Session {

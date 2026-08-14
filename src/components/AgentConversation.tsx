@@ -1,13 +1,22 @@
 import type { RefObject } from "react";
-import { Bot, Loader2, MessageSquareText } from "lucide-react";
+import Link from "next/link";
+import { Bot, Copy, ExternalLink, Loader2, MessageSquareText } from "lucide-react";
 
 import { AgentToolTurnGroup } from "@/components/AgentToolTurn";
 import { MarkdownMessage } from "@/components/MarkdownMessage";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { notifyError, notifySuccess } from "@/lib/notify";
 import type { Session } from "@/config/types";
 import type { PendingChat } from "@/hooks/use-pending-chats";
 import {
   describeToolTurn,
   groupTranscript,
+  messageContentSections,
   messageContentToString,
 } from "@/lib/agent-turns";
 
@@ -75,6 +84,10 @@ export function AgentConversation({
 
             const { message, index } = item;
             const isUser = message.role === "user";
+            // A structured delegation envelope ({task, expected_output}, …)
+            // renders as labelled sections instead of raw JSON; the sections
+            // carry their own labels, so the generic "Task" chip stands down.
+            const sections = isUser ? messageContentSections(message.content) : null;
             const text = messageContentToString(message.content);
             const time = message.ts
               ? new Date(message.ts).toLocaleTimeString()
@@ -85,22 +98,69 @@ export function AgentConversation({
                 : `Reply from ${agentId} at ${time}`
               : undefined;
 
+            // The copyable form mirrors what the bubble displays: labelled
+            // sections for delegation envelopes, plain text otherwise.
+            const copyText = sections
+              ? sections.map((s) => `${s.label}:\n${s.text}`).join("\n\n")
+              : text;
+            const jobId = typeof message.jobId === "string" && message.jobId
+              ? (message.jobId.startsWith("0x") ? message.jobId : `0x${message.jobId}`)
+              : null;
+
             return isUser ? (
               <div className="mb-6 flex justify-end" key={index}>
-                <div
-                  title={title}
-                  className="max-w-[85%] rounded-3xl rounded-br-md bg-muted px-4 py-2.5 text-[15px] leading-6 whitespace-pre-wrap break-words"
-                >
-                  {message.source === "request" && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     <div
-                      data-testid="turn-source-label"
-                      className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                      title={title}
+                      data-testid="user-turn-bubble"
+                      className="max-w-[85%] cursor-pointer rounded-3xl rounded-br-md bg-muted px-4 py-2.5 text-[15px] leading-6 whitespace-pre-wrap break-words"
                     >
-                      Task
+                      {message.source === "request" && !sections && (
+                        <div
+                          data-testid="turn-source-label"
+                          className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                        >
+                          Task
+                        </div>
+                      )}
+                      {sections ? (
+                        <div className="space-y-2" data-testid="turn-sections">
+                          {sections.map((section) => (
+                            <div key={section.label}>
+                              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                {section.label}
+                              </div>
+                              {section.text}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        text
+                      )}
                     </div>
-                  )}
-                  {text}
-                </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      data-testid="turn-copy"
+                      onClick={() => {
+                        navigator.clipboard.writeText(copyText).then(
+                          () => notifySuccess("Message copied"),
+                          (err: unknown) => notifyError("Unable to copy message", err),
+                        );
+                      }}
+                    >
+                      <Copy size={13} className="mr-1" /> Copy message
+                    </DropdownMenuItem>
+                    {jobId && (
+                      <DropdownMenuItem asChild data-testid="turn-job-link">
+                        <Link href={`/job/${encodeURIComponent(jobId)}`}>
+                          <ExternalLink size={13} className="mr-1" /> Go to calling job
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             ) : (
               <div className="mb-8 flex gap-3" key={index}>

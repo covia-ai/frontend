@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { usePendingChats } from '@/hooks/use-pending-chats';
 
@@ -602,13 +603,62 @@ describe('AgentExplorer transcript rendering', () => {
     expect(screen.getByText('Here is the grid overview')).toBeInTheDocument();
   });
 
-  it('renders multi-field content as full JSON so no field is silently dropped', async () => {
+  it('renders a flat all-string envelope as labelled sections, every field visible', async () => {
     await setupWithSession([
-      { role: 'user', source: 'chat', content: { text: 'just this', extra: 'must-stay-visible' }, ts: 1 },
+      {
+        role: 'user',
+        source: 'request',
+        content: { task: 'just this', expected_output: 'must-stay-visible' },
+        ts: 1,
+      },
     ]);
 
-    // The old probe-based unwrap would have shown only "just this" and
-    // hidden `extra` from the transcript entirely.
+    // Delegation envelopes are improvised, not a fixed schema — every field
+    // renders under its own label, so nothing is silently dropped and no raw
+    // JSON lands in the transcript. The generic source chip stands down in
+    // favour of the sections' own labels.
+    const sections = await screen.findByTestId('turn-sections');
+    expect(within(sections).getByText('just this')).toBeInTheDocument();
+    expect(within(sections).getByText('must-stay-visible')).toBeInTheDocument();
+    expect(within(sections).getByText('Task')).toBeInTheDocument();
+    expect(within(sections).getByText('Expected output')).toBeInTheDocument();
+    expect(screen.queryByTestId('turn-source-label')).not.toBeInTheDocument();
+  });
+
+  it('offers Copy and Go-to-calling-job in the bubble click menu', async () => {
+    const user = userEvent.setup();
+    await setupWithSession([
+      // The venue records jobId without the 0x prefix; the link restores it.
+      { role: 'user', source: 'chat', content: 'create workers', ts: 1, jobId: '019ffef67fdc00006a41dc5777d5c63e' },
+      { role: 'assistant', source: 'transition', content: 'done', ts: 2 },
+    ]);
+
+    await user.click(await screen.findByTestId('user-turn-bubble'));
+    const link = await screen.findByTestId('turn-job-link');
+    expect(link).toHaveAttribute('href', '/job/0x019ffef67fdc00006a41dc5777d5c63e');
+
+    await user.click(screen.getByTestId('turn-copy'));
+    expect(await navigator.clipboard.readText()).toBe('create workers');
+  });
+
+  it('omits the job item from the menu when the frame has no jobId', async () => {
+    const user = userEvent.setup();
+    await setupWithSession([
+      { role: 'user', source: 'chat', content: 'plain turn', ts: 1 },
+    ]);
+
+    await user.click(await screen.findByTestId('user-turn-bubble'));
+    await screen.findByTestId('turn-copy');
+    expect(screen.queryByTestId('turn-job-link')).not.toBeInTheDocument();
+  });
+
+  it('renders nested multi-field content as full JSON so no field is silently dropped', async () => {
+    await setupWithSession([
+      { role: 'user', source: 'chat', content: { text: 'just this', extra: { deep: 'must-stay-visible' } }, ts: 1 },
+    ]);
+
+    // A nested value cannot be sectioned without misrepresenting it — the
+    // transcript falls back to complete JSON.
     expect(await screen.findByText(/must-stay-visible/)).toBeInTheDocument();
     expect(screen.queryByText('just this')).not.toBeInTheDocument();
   });

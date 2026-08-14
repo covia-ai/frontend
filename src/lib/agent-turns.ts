@@ -34,6 +34,46 @@ export function messageContentToString(c: unknown): string {
   return JSON.stringify(c, null, 2);
 }
 
+export type ContentSection = { label: string; text: string };
+
+// Delegation envelopes are not a fixed schema — a delegating agent improvises
+// fields (e.g. {task, expected_output}, borrowed from CrewAI-style conventions)
+// — so instead of blessing one shape, ANY flat object whose values are all
+// non-empty strings renders as labelled sections: every field shown, nothing
+// silently dropped, and no raw JSON in a chat transcript. Single-string
+// envelopes keep unwrapping to bare text (messageContentToString); anything
+// nested still falls back to JSON, which honestly represents the payload.
+// The venue-standard envelope fields lead regardless of stored key order —
+// a delegation reads task-first; improvised extras (expected_output, …)
+// follow in their original order.
+const PRIMARY_SECTION_KEYS = ["task", "message"];
+
+export function messageContentSections(c: unknown): ContentSection[] | null {
+  if (c == null || typeof c !== "object" || Array.isArray(c)) return null;
+  const entries = Object.entries(c as Record<string, unknown>);
+  if (entries.length < 2) return null;
+  if (!entries.every(([, value]) => typeof value === "string" && value.trim() !== "")) {
+    return null;
+  }
+  const rank = (key: string) => {
+    const index = PRIMARY_SECTION_KEYS.indexOf(key);
+    return index === -1 ? PRIMARY_SECTION_KEYS.length : index;
+  };
+  return entries
+    .map(([key, value], position) => ({ key, value: value as string, position }))
+    .sort((a, b) => rank(a.key) - rank(b.key) || a.position - b.position)
+    .map(({ key, value }) => ({ label: sectionLabel(key), text: value }));
+}
+
+// "expected_output" → "Expected output", "maxTokens" → "Max tokens".
+function sectionLabel(key: string): string {
+  const words = key
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .trim();
+  return words ? words.charAt(0).toUpperCase() + words.slice(1).toLowerCase() : key;
+}
+
 // A run of consecutive tool/system turns, as they land in `conversation` —
 // e.g. skill_load then two covia_list calls back to back. Grouped so the
 // transcript can show the first and collapse the rest behind a toggle

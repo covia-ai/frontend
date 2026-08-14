@@ -1,4 +1,43 @@
-import { describeToolTurn, groupTranscript, messageContentToString } from '@/lib/agent-turns';
+import {
+  describeToolTurn,
+  groupTranscript,
+  messageContentSections,
+  messageContentToString,
+} from '@/lib/agent-turns';
+
+describe('messageContentSections', () => {
+  it('renders a flat all-string envelope as labelled sections, task first, nothing dropped', () => {
+    // Stored key order puts expected_output first — the task still leads.
+    expect(
+      messageContentSections({
+        expected_output: 'A per-poem critique with /10 scores',
+        task: 'Review the poems',
+      }),
+    ).toEqual([
+      { label: 'Task', text: 'Review the poems' },
+      { label: 'Expected output', text: 'A per-poem critique with /10 scores' },
+    ]);
+  });
+
+  it('declines strings, single-key envelopes, and anything nested or non-string', () => {
+    expect(messageContentSections('plain')).toBeNull();
+    expect(messageContentSections({ task: 'solo' })).toBeNull(); // unwraps elsewhere
+    expect(messageContentSections({ task: 'x', config: { a: 1 } })).toBeNull();
+    expect(messageContentSections({ task: 'x', count: 3 })).toBeNull();
+    expect(messageContentSections({ task: 'x', note: '  ' })).toBeNull();
+    expect(messageContentSections(['a', 'b'])).toBeNull();
+    expect(messageContentSections(null)).toBeNull();
+  });
+
+  it('humanises snake_case and camelCase keys', () => {
+    expect(
+      messageContentSections({ maxTokens: 'many', out_dir: 'w/results' }),
+    ).toEqual([
+      { label: 'Max tokens', text: 'many' },
+      { label: 'Out dir', text: 'w/results' },
+    ]);
+  });
+});
 
 describe('messageContentToString', () => {
   it('passes a string through', () => {
