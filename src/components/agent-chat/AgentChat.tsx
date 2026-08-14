@@ -176,7 +176,13 @@ export function AgentChat({ initialAgentId, fixedAgent = false }: AgentChatProps
           <Textarea
             data-testid="clean-composer-input"
             aria-label={`Message ${selectedAgentId}`}
-            placeholder={canSend ? `Message ${selectedAgentId}…` : "This agent cannot receive messages"}
+            placeholder={
+              sending
+                ? "Waiting for the agent's reply…"
+                : canSend
+                  ? `Message ${selectedAgentId}…`
+                  : "This agent cannot receive messages"
+            }
             value={messageText}
             onChange={(event) => setMessageText(event.target.value)}
             onKeyDown={(event) => {

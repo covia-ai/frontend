@@ -169,6 +169,7 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) =>
       venueId: venue.venueId,
       venueBaseUrl: venue.baseUrl,
       send: (message) => venue.agents.chat(agentId, message),
+      agentStatus: () => venue.agents.info(agentId).then((info) => info.status),
     })
       .then((result) => {
         if (result?.sessionId) attachSessionId(chat, result.sessionId);

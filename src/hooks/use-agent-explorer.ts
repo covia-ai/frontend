@@ -477,6 +477,9 @@ export function useAgentExplorer(initialAgentId?: string) {
       venueId: venue?.venueId ?? "",
       venueBaseUrl: venue?.baseUrl,
       send: (message) => session.send(message),
+      agentStatus: venue
+        ? () => venue.agents.info(agentId).then((info) => info.status)
+        : undefined,
     })
       .then(async (result) => {
         const stillSelected =

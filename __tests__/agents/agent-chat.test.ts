@@ -49,25 +49,81 @@ describe("dispatchAgentMessage", () => {
     });
   });
 
-  it("times out and logs the failure with venue context", async () => {
+  it("warns on a slow reply but never abandons the send", async () => {
+    // The venue already has the message; a slow agent (waking, mid-task) must
+    // not be misreported as failed — the reply is still delivered when ready.
+    jest.useFakeTimers();
+    let resolveSend!: (result: { response: string }) => void;
+    const pending = dispatchAgentMessage({
+      ...common,
+      text: "hi",
+      slowAfterMs: 10,
+      send: () => new Promise((resolve) => { resolveSend = resolve; }),
+    });
+
+    await jest.advanceTimersByTimeAsync(10);
+    expect(notifyWarning).toHaveBeenCalledWith(
+      "The agent is taking a while to reply",
+      expect.objectContaining({ description: expect.stringContaining("session") }),
+    );
+    expect(notifyError).not.toHaveBeenCalled();
+
+    resolveSend({ response: "eventually" });
+    await expect(pending).resolves.toMatchObject({ response: "eventually" });
+    expect(sendAgentMessage).toHaveBeenCalledWith("assistant");
+    jest.useRealTimers();
+  });
+
+  it("reports actual suspension when the status probe confirms it", async () => {
     jest.useFakeTimers();
     const pending = dispatchAgentMessage({
       ...common,
       text: "hi",
-      timeoutMs: 10,
+      slowAfterMs: 10,
+      agentStatus: async () => "SUSPENDED",
       send: () => new Promise(() => undefined),
     });
-    const rejection = expect(pending).rejects.toThrow("Agent is not responding");
 
     await jest.advanceTimersByTimeAsync(10);
-    await rejection;
-    expect(jobFailure).toHaveBeenCalledWith(expect.any(Error), common.venueId);
+    // Flush the async status probe.
+    await Promise.resolve();
+    expect(notifyWarning).toHaveBeenCalledWith(
+      "Agent is suspended",
+      expect.objectContaining({ description: expect.stringContaining("resume") }),
+    );
+    expect(notifyError).not.toHaveBeenCalled();
+    jest.useRealTimers();
+    void pending;
+  });
+
+  it("translates the venue's in-flight-chat rejection into an actionable message", async () => {
+    const failure = new Error(
+      "Session 0000019ffef1c8cb0000000000000000 already has an in-flight chat",
+    );
+    await expect(
+      dispatchAgentMessage({ ...common, text: "hi", send: () => Promise.reject(failure) }),
+    ).rejects.toBe(failure);
+
     expect(notifyError).toHaveBeenCalledWith(
       "Unable to send message",
-      expect.any(Error),
+      expect.objectContaining({ message: expect.stringContaining("still working") }),
       common.venueBaseUrl,
       "/jobs/failed",
     );
-    jest.useRealTimers();
+  });
+
+  it("surfaces a real send failure with venue context", async () => {
+    const failure = new Error("venue rejected");
+    await expect(
+      dispatchAgentMessage({ ...common, text: "hi", send: () => Promise.reject(failure) }),
+    ).rejects.toThrow("venue rejected");
+
+    expect(jobFailure).toHaveBeenCalledWith(failure, common.venueId);
+    expect(notifyError).toHaveBeenCalledWith(
+      "Unable to send message",
+      failure,
+      common.venueBaseUrl,
+      "/jobs/failed",
+    );
   });
 });

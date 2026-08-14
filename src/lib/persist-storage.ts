@@ -38,3 +38,13 @@ export function browserStorage(): SyncStorage {
     return noopStorage;
   }
 }
+
+// Same probing, for per-tab state that should survive reloads but not tabs.
+export function browserSessionStorage(): SyncStorage {
+  if (typeof window === "undefined") return noopStorage;
+  try {
+    return isUsable(window.sessionStorage) ? window.sessionStorage : noopStorage;
+  } catch {
+    return noopStorage;
+  }
+}

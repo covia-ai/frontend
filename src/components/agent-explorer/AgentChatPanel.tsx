@@ -423,9 +423,11 @@ export function AgentChatPanel({
               <Input
                 data-testid="composer-input"
                 placeholder={
-                  canSend
-                    ? `Message ${selectedAgentDetail.agentId}…`
-                    : `${selectedAgentDetail.status} — cannot send`
+                  sending
+                    ? "Waiting for the agent's reply…"
+                    : canSend
+                      ? `Message ${selectedAgentDetail.agentId}…`
+                      : `${selectedAgentDetail.status} — cannot send`
                 }
                 value={messageText}
                 onChange={(event) => setMessageText(event.target.value)}
