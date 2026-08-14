@@ -3,6 +3,7 @@
 import { useAuthStore, type VenueAuth } from "@/hooks/use-auth";
 import { useVenues } from "@/hooks/use-venues";
 import { DidDisplay } from "@/components/DidDisplay";
+import { IdentityTokenButton } from "@/components/IdentityTokenButton";
 import { abbreviateDid } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -118,6 +119,7 @@ export function AccountsPanel() {
                           Use
                         </Button>
                       )}
+                      <IdentityTokenButton venueId={venueId} account={account} />
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button

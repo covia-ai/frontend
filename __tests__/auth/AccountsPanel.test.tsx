@@ -102,4 +102,33 @@ describe('AccountsPanel', () => {
     expect(screen.queryAllByTestId('account-entry')).toHaveLength(0);
     expect(screen.getByTestId('accounts-empty')).toBeInTheDocument();
   });
+
+  it('copies an identity token: stored bearer for OAuth, minted aud-bound JWT for device keys', async () => {
+    act(() => {
+      useAuthStore.getState().loginWithToken(VENUE_A, 'oauth-token-1', 'did:a1');
+      useAuthStore.getState().loginWithKeypair(VENUE_A, 'f'.repeat(64), 'did:a2');
+    });
+    const user = userEvent.setup();
+    render(<AccountsPanel />);
+    const entries = screen.getAllByTestId('account-entry');
+    const entryFor = (did: string) =>
+      entries.find((entry) => entry.getAttribute('data-did') === did)!;
+
+    // OAuth: one click copies the stored token verbatim.
+    await user.click(within(entryFor('did:a1')).getByTestId('account-token'));
+    expect(await navigator.clipboard.readText()).toBe('oauth-token-1');
+
+    // Device key: pick a lifetime, get a JWT bound to this venue.
+    await user.click(within(entryFor('did:a2')).getByTestId('account-token'));
+    await user.click(await screen.findByTestId('token-lifetime-3600'));
+    const token = await navigator.clipboard.readText();
+    const claims = JSON.parse(
+      Buffer.from(
+        token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'),
+        'base64',
+      ).toString(),
+    );
+    expect(claims.aud).toBe(VENUE_A);
+    expect(claims.exp - claims.iat).toBe(3600);
+  });
 });

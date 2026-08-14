@@ -15,6 +15,7 @@ import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { Ed25519Auth, type DIDDocument } from "@covia/covia-sdk";
 import { PageHeading } from "@/components/PageHeading";
 import { AccountsPanel } from "@/components/AccountsPanel";
+import { IdentityTokenButton } from "@/components/IdentityTokenButton";
 import { KeysPanel } from "@/components/KeysPanel";
 import { NotificationLog } from "@/components/NotificationLog";
 
@@ -145,6 +146,17 @@ export default function ProfilePage() {
                     {auth.type === "keypair" ? "Device Key (Ed25519)" : "Bearer Token (OAuth)"}
                   </p>
                 </div>
+                {venue?.venueId && (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Identity token</p>
+                    <IdentityTokenButton venueId={venue.venueId} account={auth} variant="button" />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      A bearer token proving this identity to the venue&apos;s API — for curl,
+                      CLI tools, or agent configs.
+                      {auth.type === "keypair" && " Minted tokens are usable only at this venue and expire after the chosen duration."}
+                    </p>
+                  </div>
+                )}
                 {publicKeyHex && (
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Public Key</p>

@@ -18,8 +18,11 @@ jest.mock('@/hooks/use-auth', () => ({
   useAuthStore: (selector: (state: unknown) => unknown) =>
     selector({ authMap: {}, accountsMap: {}, deviceKeys: [] }),
 }));
+// Null by default (sections needing a venue stay hidden); individual tests
+// install a venue and must reset it.
+let mockVenue: { venueId: string; metadata?: { name?: string }; didDocument: () => Promise<unknown> } | null = null;
 jest.mock('@/hooks/use-authenticated-venue', () => ({
-  useAuthenticatedVenue: () => null,
+  useAuthenticatedVenue: () => mockVenue,
 }));
 jest.mock('@/components/AccountsPanel', () => ({
   AccountsPanel: () => <div data-testid="accounts-panel-stub" />,
@@ -58,5 +61,33 @@ describe('ProfilePage private key', () => {
 
     expect(writeText).toHaveBeenCalledWith(PRIV_HEX);
     expect(container.textContent).not.toContain(PRIV_HEX);
+  });
+
+  it('offers an identity token on the Identity tab when a venue is selected', async () => {
+    mockVenue = {
+      venueId: 'did:key:z6MkVenueForToken',
+      metadata: { name: 'Venue' },
+      didDocument: () => Promise.resolve({}),
+    };
+    try {
+      const user = userEvent.setup();
+      const writeText = jest.spyOn(navigator.clipboard, 'writeText');
+      render(<ProfilePage />);
+
+      await user.click(screen.getByTestId('account-token'));
+      await user.click(await screen.findByTestId('token-lifetime-3600'));
+
+      const token = writeText.mock.calls.at(-1)![0] as string;
+      const claims = JSON.parse(
+        Buffer.from(
+          token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'),
+          'base64',
+        ).toString(),
+      );
+      expect(claims.aud).toBe('did:key:z6MkVenueForToken');
+      expect(claims.exp - claims.iat).toBe(3600);
+    } finally {
+      mockVenue = null;
+    }
   });
 });
