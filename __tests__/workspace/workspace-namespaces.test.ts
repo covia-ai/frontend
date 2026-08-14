@@ -8,7 +8,7 @@ describe("workspace namespaces", () => {
   it("includes the venue's virtual public namespace", () => {
     expect(ROOT_NAMESPACES[0]).toMatchObject({
       key: "v",
-      label: "Venue Public",
+      label: "Venue",
     });
   });
 

@@ -27,9 +27,7 @@ export function WorkspaceExplorer() {
       <div className="min-w-0 border-r border-border">
         <WorkspaceNamespacePane
           activeNamespace={activeNamespace}
-          refreshing={explorer.namespaceRefreshing}
           onSelect={explorer.navigateTo}
-          onResync={explorer.refreshNamespace}
         />
       </div>
 
@@ -43,9 +41,11 @@ export function WorkspaceExplorer() {
           selectedPath={explorer.selectedPath}
           isAuthenticated={explorer.isAuthenticated}
           pendingMutation={explorer.pendingMutation}
+          refreshing={explorer.namespaceRefreshing}
           onNavigate={explorer.navigateTo}
           onSelect={explorer.selectPath}
           onCreate={explorer.create}
+          onResync={explorer.refreshNamespace}
         />
       </div>
       <div data-testid="workspace-content-pane" className="flex min-w-0 flex-col overflow-y-auto">

@@ -1,22 +1,16 @@
 "use client";
 
-import { FolderRoot, Loader2, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { FolderRoot } from "lucide-react";
 import { ROOT_NAMESPACES } from "@/lib/workspace-namespaces";
 
 type WorkspaceNamespacePaneProps = {
   activeNamespace: string | null;
-  refreshing: boolean;
   onSelect: (namespace: string) => void;
-  onResync: () => void;
 };
 
 export function WorkspaceNamespacePane({
   activeNamespace,
-  refreshing,
   onSelect,
-  onResync,
 }: WorkspaceNamespacePaneProps) {
   return (
     <aside data-testid="workspace-namespace-pane" className="flex h-full flex-col bg-muted/20">
@@ -52,27 +46,6 @@ export function WorkspaceNamespacePane({
                   {namespace.key}
                 </span>
               </button>
-              {active && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="mr-1 size-7 shrink-0"
-                      aria-label={`Resync ${namespace.label}`}
-                      onClick={onResync}
-                      disabled={refreshing}
-                    >
-                      {refreshing ? (
-                        <Loader2 size={13} className="animate-spin" />
-                      ) : (
-                        <RefreshCw size={13} />
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Resync {namespace.label}</TooltipContent>
-                </Tooltip>
-              )}
             </div>
           );
         })}

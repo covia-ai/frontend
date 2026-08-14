@@ -7,6 +7,7 @@ import {
   FolderOpen,
   Loader2,
   Plus,
+  RefreshCw,
 } from "lucide-react";
 import {
   isMutableWorkspacePath,
@@ -34,9 +35,11 @@ type WorkspaceBrowserPaneProps = {
   selectedPath: string | null;
   isAuthenticated: boolean;
   pendingMutation: WorkspaceMutation;
+  refreshing: boolean;
   onNavigate: (path: string) => void;
   onSelect: (path: string) => void;
   onCreate: (key: string, value: string) => Promise<boolean>;
+  onResync: () => void;
 };
 
 export function WorkspaceBrowserPane({
@@ -48,9 +51,11 @@ export function WorkspaceBrowserPane({
   selectedPath,
   isAuthenticated,
   pendingMutation,
+  refreshing,
   onNavigate,
   onSelect,
   onCreate,
+  onResync,
 }: WorkspaceBrowserPaneProps) {
   const [showCreate, setShowCreate] = useState(false);
   const [key, setKey] = useState("");
@@ -92,6 +97,25 @@ export function WorkspaceBrowserPane({
             </span>
           );
         })}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="ml-auto size-6 shrink-0"
+              aria-label="Resync listing"
+              onClick={onResync}
+              disabled={refreshing}
+            >
+              {refreshing ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <RefreshCw size={13} />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Resync this listing</TooltipContent>
+        </Tooltip>
       </div>
 
       {loading && (

@@ -5,7 +5,7 @@
 export const ROOT_NAMESPACES = [
   {
     key: "v",
-    label: "Venue Public",
+    label: "Venue",
     description: "Operations, agent templates, skills, tests, and public information supplied by this venue.",
   },
   {

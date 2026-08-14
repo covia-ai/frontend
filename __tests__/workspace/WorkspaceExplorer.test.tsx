@@ -55,7 +55,7 @@ describe('WorkspaceExplorer job-free reads', () => {
     render(<WorkspaceExplorer />);
 
     await waitFor(() => expect(mockVenue.workspace.list).toHaveBeenCalledWith('w'));
-    const venuePublic = screen.getByRole('button', { name: /^Venue Public v$/ });
+    const venuePublic = screen.getByRole('button', { name: /^Venue v$/ });
     fireEvent.click(venuePublic);
     await waitFor(() => expect(mockVenue.workspace.list).toHaveBeenCalledWith('v'));
 
@@ -66,7 +66,7 @@ describe('WorkspaceExplorer job-free reads', () => {
     expect(screen.queryByText('Path does not exist')).not.toBeInTheDocument();
     expect(screen.queryByText('object')).not.toBeInTheDocument();
     expect(mockVenue.workspace.read).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Resync Venue Public' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Resync listing' })).toBeInTheDocument();
     expect(screen.getByTestId('workspace-namespace-pane')).toBeInTheDocument();
   });
 
