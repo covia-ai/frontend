@@ -44,6 +44,7 @@ import { useIsAuthenticated } from "@/hooks/use-auth";
 import { useDeviceKeySignIn } from "@/hooks/use-device-key-signin";
 import { DeviceKeyDialog } from "@/components/DeviceKeyDialog";
 import { dispatchAgentMessage } from "@/lib/agent-chat";
+import { revalidateVenueOnFailure } from "@/hooks/use-authenticated-venue";
 
 // Sentinel picker value — never a real agentId — meaning "create a fresh,
 // distinctly-named agent" rather than targeting an existing one.
@@ -312,6 +313,10 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) =>
       await routeThroughKeyDetection(selectedAgentId);
     } catch (err) {
       notifyError("Unable to prepare agent", err, venue.baseUrl);
+      // Venue-level failures (unreachable, stale identity after a venue
+      // restart, rejected auth) surface here first — recheck so the app
+      // converges on the real venue state instead of repeating this error.
+      revalidateVenueOnFailure(venue, null, err);
     } finally {
       setChecking(false);
     }

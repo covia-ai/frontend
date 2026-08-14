@@ -87,9 +87,11 @@ export function notifyError(
       : ((err as { message?: string })?.message ?? String(err));
   const isNetworkFailure =
     message !== undefined && /failed to fetch|load failed|networkerror/i.test(message);
+  // A network-level failure is a connectivity problem, not a feature
+  // problem — lead with that plainly instead of the raw fetch error.
   const detail =
     isNetworkFailure && target
-      ? `${message} — could not reach ${target}. Is the venue running and reachable from this browser?`
+      ? `Can't connect to ${target}. Is the venue running and reachable from this browser?`
       : message;
   recordNotification("error", title, detail);
   const preview =

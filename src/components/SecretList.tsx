@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { revalidateVenueOnFailure, useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -59,6 +59,11 @@ export function SecretList() {
       })
       .catch((err: any) => {
         notifyError("Unable to load secrets", err, venue.baseUrl);
+        // A connectivity or auth failure here is a venue problem, not a
+        // secrets problem — force a status recheck so health indicators and
+        // resolution-gated pages converge on the real state (unreachable,
+        // auth-required, or a restarted venue identity).
+        revalidateVenueOnFailure(venue, null, err);
         setSecrets([]);
       })
       .finally(() => {

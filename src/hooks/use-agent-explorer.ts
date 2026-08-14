@@ -14,7 +14,7 @@ import {
   type ChatSession,
 } from "@covia/covia-sdk";
 import type { AgentDetail, AgentListItem, Session } from "@/config/types";
-import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { revalidateVenueOnFailure, useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import {
   findPendingChat,
   usePendingChats,
@@ -498,7 +498,8 @@ export function useAgentExplorer(initialAgentId?: string) {
           void refreshAgentList();
         }
       })
-      .catch(() => {
+      .catch((error: unknown) => {
+        revalidateVenueOnFailure(venue, null, error);
         if (
           venueRef.current === venue &&
           selectedAgentIdRef.current === agentId

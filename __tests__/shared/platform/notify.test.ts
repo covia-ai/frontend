@@ -36,13 +36,14 @@ describe('notify helpers', () => {
     useNotificationLog.getState().clear();
   });
 
-  it('names the unreachable target on bare network failures', () => {
+  it('says "Can\'t connect" plainly, naming the target, on bare network failures', () => {
     notifyError('Unable to store secret', new TypeError('Failed to fetch'), 'http://localhost:8080');
 
     const [, opts] = mockSonner.error.mock.calls[0];
-    // The target URL must be in the detail — "Failed to fetch" alone is useless.
-    expect(opts.description).toContain('http://localhost:8080');
-    expect(opts.description).toContain('Failed to fetch');
+    // A connectivity problem leads with connectivity — the raw fetch error
+    // ("Failed to fetch") is noise; the target URL is the useful part.
+    expect(opts.description).toContain("Can't connect to http://localhost:8080");
+    expect(opts.description).not.toContain('Failed to fetch');
   });
 
   it('passes server error messages through unchanged', () => {

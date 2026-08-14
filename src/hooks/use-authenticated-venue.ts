@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { Venue } from "@covia/covia-sdk";
+import { Venue, VenueIdentityChangedError } from "@covia/covia-sdk";
 import { useAuthStore, type VenueAuth } from "@/hooks/use-auth";
 import { useVenues } from "@/hooks/use-venues";
 import { reportVenueHealth } from "@/hooks/use-venue-health";
@@ -9,10 +9,12 @@ import { reportVenueAuthHealth } from "@/hooks/use-venue-auth-health";
 import { errorMessage, errorStatus, isAuthenticationRejectedError } from "@/lib/errors";
 import { verifyVenueAccount } from "@/lib/venue-auth-probe";
 import {
+  connectVenue,
   evictVenueInstances,
   getVenueStatus,
   getVenueFor,
 } from "@/lib/venue-registry";
+import { applyVenueReplacement } from "@/lib/venue-replacement";
 
 export { evictVenueInstances, getVenueFor };
 
@@ -77,6 +79,35 @@ function validateVenue(
           });
       })
       .catch((error: unknown) => {
+        // The address answers but reports a different DID — the venue
+        // restarted with a fresh identity (common for a local dev venue).
+        // Recover by adopting the new identity: reconnect by address, swap
+        // the stored entry, retire the dead one. Until this runs, every
+        // authenticated call fails with "Token audience not accepted",
+        // because tokens stay bound to the dead DID.
+        if (error instanceof VenueIdentityChangedError) {
+          void connectVenue(venue.baseUrl)
+            .then((fresh) => {
+              applyVenueReplacement({
+                oldId: error.oldDid,
+                newId: fresh.venueId,
+                baseUrl: fresh.baseUrl,
+                name: fresh.metadata?.name,
+              });
+              reportVenueHealth(fresh.baseUrl, {
+                state: "connected",
+                version: fresh.lastKnownStatus?.version,
+                publicAccess: fresh.lastKnownStatus !== undefined,
+              });
+            })
+            .catch(() => {
+              reportVenueHealth(venue.baseUrl, {
+                state: "unreachable",
+                detail: error.message,
+              });
+            });
+          return;
+        }
         if (isAuthenticationRejectedError(error)) {
           reportVenueHealth(venue.baseUrl, {
             state: "connected",

@@ -1,15 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { notifyWarning } from "@/lib/notify";
 import {
   connectDefaultVenues,
   reconcileVenues,
   useVenues,
   useVenuesHydrated,
 } from "@/hooks/use-venues";
-import { useAuthStore } from "@/hooks/use-auth";
-import { evictVenueInstances } from "@/hooks/use-authenticated-venue";
+import { retireVenueIdentity } from "@/lib/venue-replacement";
 
 export function VenueRuntimeProvider({
   children,
@@ -46,17 +44,7 @@ export function VenueRuntimeProvider({
         });
 
         for (const replacement of replacements) {
-          evictVenueInstances(replacement.oldId);
-          // Credentials for the dead identity can never be valid again — drop
-          // them so they don't linger as orphans on the profile's Logins tab.
-          useAuthStore.getState().purgeVenueAuth(replacement.oldId);
-          notifyWarning(`Venue at ${replacement.baseUrl} has a new identity`, {
-            description:
-              `${replacement.name ?? "The venue"} restarted with a fresh DID. ` +
-              "Sign-ins, agents and secrets from its previous run no longer apply.",
-            duration: 15000,
-            closeButton: true,
-          });
+          retireVenueIdentity(replacement);
         }
       }
 
