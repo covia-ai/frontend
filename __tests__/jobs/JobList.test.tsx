@@ -76,6 +76,10 @@ describe('JobList windowed fetching', () => {
 
     expect(mockVenue.jobs.list).not.toHaveBeenCalled();
     expect(mockVenue.jobs.get).not.toHaveBeenCalled();
+    // The heavy FILTER_WINDOW read is deferred until filters are used —
+    // a plain page load fetches exactly one count probe and one page slice.
+    expect(mockVenue.workspace.slice).not.toHaveBeenCalledWith('j', TOTAL - 100, 100);
+    expect(mockVenue.workspace.list).toHaveBeenCalledTimes(1);
   });
 
   it('search fetches one filter window instead of per-job GETs', async () => {
@@ -94,13 +98,16 @@ describe('JobList windowed fetching', () => {
       expect(mockVenue.workspace.slice).toHaveBeenCalledWith('j', TOTAL - 100, 100);
     });
     expect(mockVenue.jobs.get).not.toHaveBeenCalled();
+    // The window fetch reuses the count learned by the initial page slice —
+    // no second list() probe.
+    expect(mockVenue.workspace.list).toHaveBeenCalledTimes(1);
   });
 
   it('recovers from a stale count between list() and slice() (#193)', async () => {
-    // Every list() reads count=990, but the index has already grown to
+    // The list() probe reads count=990, but the index has already grown to
     // TOTAL (998) by the time slice() runs — the stale-count race behind
-    // #193. fetchPage and fetchWindow both fire on mount, so this must hold
-    // for either caller, not just a fixed call order.
+    // #193. The same correction covers a stale cached count reused on
+    // pagination/refresh.
     const guessCount = 990;
     mockVenue.workspace.list.mockResolvedValue({ exists: true, count: guessCount, keys: [] });
     mockVenue.workspace.slice.mockImplementation((_p: string, offset: number, limit: number) =>

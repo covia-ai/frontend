@@ -4,10 +4,7 @@ import { useMemo } from "react";
 import { Venue } from "@covia/covia-sdk";
 import { useVenueForRoute } from "@/hooks/use-venue-for-route";
 import { useAuthStore, type VenueAuth } from "@/hooks/use-auth";
-import {
-  getVenueFor,
-  useValidateVenue,
-} from "@/hooks/use-authenticated-venue";
+import { getVenueFor } from "@/hooks/use-authenticated-venue";
 import { useVenueAccess } from "@/hooks/use-venue-access";
 import type { VenueDescriptor } from "@/hooks/use-venues";
 
@@ -18,12 +15,12 @@ import type { VenueDescriptor } from "@/hooks/use-venues";
 // pieces every venue-scoped detail page needs, previously hand-rolled with
 // slight variations in AssetViewer/ExecutionViewer/OperationViewer/McpToolsList.
 //
-// "ready" means more than "the venue address resolved" — it means read
-// access is actually confirmed (the venue is public, or the stored account
-// was accepted). A private venue with no/rejected credentials resolves its
-// identity fine (via the did.json fallback, see Venue.connect) but reports
-// "auth-required" instead of "ready", so callers gate fetches on this status
-// rather than firing a doomed, 401-bound request against a private venue.
+// Resolution is optimistic: a venue whose address and DID are already known
+// reports "ready" immediately and pages fire their reads without waiting for
+// any status round trip — normal pages do not validate venues at all. Only a
+// DEFINITIVE negative verdict (unreachable, auth rejected/required) blocks;
+// those verdicts come from the venue picker's health indicators or from
+// revalidateVenueOnFailure when a page read actually fails.
 export type ResolvedVenueContext = {
   descriptor: VenueDescriptor | null;
   venue: Venue | undefined;
@@ -46,19 +43,17 @@ export function useResolvedVenueContext(
     if (!venueDescriptor) return undefined;
     return getVenueFor(venueDescriptor, authData);
   }, [venueDescriptor, authData]);
-  useValidateVenue(venue, authData);
 
   const access = useVenueAccess(venue?.baseUrl, venueDescriptor?.venueId);
   const status: ResolvedVenueContext["status"] =
     resolution.status !== "ready" ? resolution.status
-    : access.state === "connected" || access.state === "public" ? "ready"
     : access.state === "unreachable" ? "unreachable"
-    : access.state === "signed-out" || access.state === "auth-rejected" || access.state === "auth-unverified" ? "auth-required"
-    // "connecting" / "auth-checking" / "unknown": access isn't confirmed yet,
-    // but no definitive verdict either — keep showing the connecting state
-    // rather than flashing a sign-in prompt that may resolve to "ready" a
-    // moment later.
-    : "connecting";
+    : access.state === "signed-out" || access.state === "auth-rejected" ? "auth-required"
+    // No definitive negative verdict — treat the venue as usable and let
+    // pages read immediately. A failed read triggers a status refresh
+    // (revalidateVenueOnFailure), which flips this to unreachable /
+    // auth-required only once a real failure confirms it.
+    : "ready";
 
   return {
     descriptor: venueDescriptor,

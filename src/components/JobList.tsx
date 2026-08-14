@@ -17,6 +17,7 @@ import { TopBar } from "./admin-panel/TopBar";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { useLatestQuery } from "@/hooks/use-latest-query";
+import { revalidateVenueOnFailure } from "@/hooks/use-authenticated-venue";
 import { usePageNumber } from "@/hooks/use-pagination";
 import { VenueResolutionState } from "@/components/VenueResolutionState";
 import {
@@ -74,10 +75,19 @@ export function JobList({ venueId }: JobListProps = {}) {
     reset: resetRecentQuery,
   } = useLatestQuery(EMPTY_JOB_QUERY);
   const resolvedVenue = useResolvedVenueContext(venueId);
-  const { descriptor: venueObj, venue, isAuthenticated } = resolvedVenue;
+  const { descriptor: venueObj, venue, auth, isAuthenticated } = resolvedVenue;
   const venueStatus = resolvedVenue.status ?? (venue ? "ready" : "absent");
   const router = useRouter();
   const prevVenueId = useRef<string | undefined>(undefined);
+  const venueKey = venueObj?.venueId ?? "";
+  // Last authoritative job count per venue: slice responses carry the live
+  // count, so pagination and refresh can skip the list() count probe — the
+  // window self-corrects (sliceJobWindow) if the index moved meanwhile.
+  const countRef = useRef<{ venueId: string; count: number } | null>(null);
+  // Read through a ref so the fetch callbacks don't depend on the auth
+  // object's identity — it's only consulted when a fetch fails.
+  const authRef = useRef(auth);
+  authRef.current = auth;
 
   const isInRange = useCallback((date: string, ranges: string[]) => {
     if (ranges.length === 0) return true;
@@ -123,31 +133,38 @@ export function JobList({ venueId }: JobListProps = {}) {
     }
     await runPageQuery(
       async () => {
-        const { count: guessCount = 0 } =
-          await venue.workspace.list("j", 1);
-        const windowFor = (count: number) => {
-          const end = Math.max(
-            0,
-            count - (page - 1) * ITEMS_PER_PAGE,
-          );
-          return {
-            start: Math.max(0, end - ITEMS_PER_PAGE),
-            end,
+        try {
+          const cached = countRef.current;
+          const guessCount = cached?.venueId === venueKey
+            ? cached.count
+            : (await venue.workspace.list("j", 1)).count ?? 0;
+          const windowFor = (count: number) => {
+            const end = Math.max(
+              0,
+              count - (page - 1) * ITEMS_PER_PAGE,
+            );
+            return {
+              start: Math.max(0, end - ITEMS_PER_PAGE),
+              end,
+            };
           };
-        };
-        const { count, values } = await sliceJobWindow(
-          venue,
-          windowFor,
-          guessCount,
-        );
-        return {
-          totalCount: count,
-          records: jobRecordsFromSlice(values),
-        };
+          const { count, values } = await sliceJobWindow(
+            venue,
+            windowFor,
+            guessCount,
+          );
+          countRef.current = { venueId: venueKey, count };
+          return {
+            totalCount: count,
+            records: jobRecordsFromSlice(values),
+          };
+        } catch (error) {
+          revalidateVenueOnFailure(venue, authRef.current, error);
+          throw error;
+        }
       },
-      { clear: true },
     );
-  }, [venue, venueStatus, resetPageQuery, runPageQuery]);
+  }, [venue, venueKey, venueStatus, resetPageQuery, runPageQuery]);
 
   // Filter mode: one slice of the newest FILTER_WINDOW records, filtered and
   // paged client-side. Filters only ever see this recent window — same
@@ -159,25 +176,32 @@ export function JobList({ venueId }: JobListProps = {}) {
     }
     await runRecentQuery(
       async () => {
-        const { count: guessCount = 0 } =
-          await venue.workspace.list("j", 1);
-        const windowFor = (count: number) => ({
-          start: Math.max(0, count - FILTER_WINDOW),
-          end: count,
-        });
-        const { count, values } = await sliceJobWindow(
-          venue,
-          windowFor,
-          guessCount,
-        );
-        return {
-          totalCount: count,
-          records: jobRecordsFromSlice(values),
-        };
+        try {
+          const cached = countRef.current;
+          const guessCount = cached?.venueId === venueKey
+            ? cached.count
+            : (await venue.workspace.list("j", 1)).count ?? 0;
+          const windowFor = (count: number) => ({
+            start: Math.max(0, count - FILTER_WINDOW),
+            end: count,
+          });
+          const { count, values } = await sliceJobWindow(
+            venue,
+            windowFor,
+            guessCount,
+          );
+          countRef.current = { venueId: venueKey, count };
+          return {
+            totalCount: count,
+            records: jobRecordsFromSlice(values),
+          };
+        } catch (error) {
+          revalidateVenueOnFailure(venue, authRef.current, error);
+          throw error;
+        }
       },
-      { clear: true },
     );
-  }, [venue, venueStatus, resetRecentQuery, runRecentQuery]);
+  }, [venue, venueKey, venueStatus, resetRecentQuery, runRecentQuery]);
 
   // Debounce free-text search so typing doesn't fire a fresh window fetch
   // on every keystroke.
@@ -242,20 +266,9 @@ export function JobList({ venueId }: JobListProps = {}) {
   const loading = hasFilters ? recentLoading : pageLoading;
   const loadError = hasFilters ? recentError : pageError ?? recentError;
 
-  // Default mode: one windowed slice per page.
-  useEffect(() => {
-    if (!hasFilters) fetchPage(currentPage);
-  }, [fetchPage, currentPage, hasFilters, refreshTick]);
-
-  // Also kept fresh outside filter mode — it's the totalCount fallback for
-  // the header count, and stays warm so switching into filter mode doesn't
-  // start from an empty window.
-  useEffect(() => {
-    fetchWindow();
-  }, [fetchWindow, refreshTick]);
-
-  // On venue change, reset view state (the fetch effects re-run via fetchPage/
-  // fetchWindow identity).
+  // On venue change, reset view state and cached data BEFORE the fetch
+  // effects below run (effect order matters: fetches keep stale data visible
+  // during refresh, which must not leak across venues).
   useEffect(() => {
     if (!venueObj) return;
     if (prevVenueId.current !== venueObj.venueId) {
@@ -263,9 +276,24 @@ export function JobList({ venueId }: JobListProps = {}) {
       setDateFilter([]);
       setSearchQuery("");
       setDebouncedQuery("");
+      countRef.current = null;
+      resetPageQuery();
+      resetRecentQuery();
       prevVenueId.current = venueObj.venueId;
     }
-  }, [venueObj]);
+  }, [venueObj, resetPageQuery, resetRecentQuery]);
+
+  // Default mode: one windowed slice per page.
+  useEffect(() => {
+    if (!hasFilters) fetchPage(currentPage);
+  }, [fetchPage, currentPage, hasFilters, refreshTick]);
+
+  // Filter mode only: the 100-record window is a heavy read (full job
+  // records, several hundred KB on busy venues), so it is fetched when
+  // filters are first used — never on plain page loads or poll ticks.
+  useEffect(() => {
+    if (hasFilters) fetchWindow();
+  }, [fetchWindow, hasFilters, refreshTick]);
 
   // Poll every 5 s when there are active jobs on the current page.
   useEffect(() => {
@@ -303,7 +331,11 @@ export function JobList({ venueId }: JobListProps = {}) {
   return (
     <ContentLayout >
       <TopBar venueId={venueId} venueName={venueObj?.metadata.name}/>
-      <div className="flex flex-col items-center justify-center  mt-2 bg-background">
+      {/* Full-height column so the stat tiles pin to the viewport bottom via
+          mt-auto: they hold position across pagination/refresh (short pages
+          and the loading state leave slack instead of pulling them up) and
+          scroll off naturally when the table outgrows the viewport. */}
+      <div className="flex min-h-[calc(100vh-6rem)] flex-col items-center mt-2 bg-background">
         <ListToolbar
           className="mt-4"
           actions={
@@ -324,18 +356,20 @@ export function JobList({ venueId }: JobListProps = {}) {
             </>
           }
           pagination={
-            !loading && (
-              <PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={loading}></PaginationHeader>
-            )
+            <PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={loading}></PaginationHeader>
           }
         />
         {loadError && <ErrorDisplay error={loadError} className="mb-4 w-full" />}
-        {loading && (
-          <div className="flex items-center justify-center py-10 w-full">
+        {/* The table box and pagination stay mounted while loading, and
+            refreshes keep the previous rows visible (stale-while-refresh) —
+            the spinner only appears when there is nothing to show yet — so
+            pagination and the poll never collapse or shift the layout. */}
+        <div className="w-full min-h-[45vh] border border-border rounded-lg shadow-md overflow-hidden">
+        {loading && pageRecords.length === 0 ? (
+          <div className="flex items-center justify-center min-h-[45vh] w-full">
             <Spinner variant="ellipsis" className="text-primary" size={40} />
           </div>
-        )}
-        {!loading && <div className="w-full min-h-[45vh] border border-border rounded-lg shadow-md overflow-hidden">
+        ) : (
         <Table>
           <TableHeader >
             <TableRow className="bg-secondary hover:bg-secondary rounded-full text-secondary-foreground ">
@@ -399,12 +433,11 @@ export function JobList({ venueId }: JobListProps = {}) {
               })}
           </TableBody>
         </Table>
-        </div>}
-        {!loading && (
-          <PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={loading}></PaginationHeader>
         )}
+        </div>
+        <PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={loading}></PaginationHeader>
 
-        <div className="grid grid-cols-3 gap-4 w-full mt-4">
+        <div className="grid grid-cols-3 gap-4 w-full mt-auto pt-4">
           <StatTile
             icon={Layers}
             label="Total Jobs"

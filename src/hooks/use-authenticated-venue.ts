@@ -34,22 +34,19 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string)
   });
 }
 
-const validatedVenues = new WeakSet<Venue>();
-export function useValidateVenue(
-  venue: Venue | null | undefined,
-  authData: VenueAuth | null = null,
+function validateVenue(
+  venue: Venue,
+  authData: VenueAuth | null,
+  maxAgeMs?: number,
 ): void {
-  useEffect(() => {
-    if (!venue || validatedVenues.has(venue)) return;
-    validatedVenues.add(venue);
-    if (authData) reportVenueAuthHealth(venue.venueId, authData, { state: "checking" });
+  if (authData) reportVenueAuthHealth(venue.venueId, authData, { state: "checking" });
 
     // This validation belongs to the cached (venue, account) instance, not to
     // the first indicator component that happened to request it. Let it finish
     // after that component unmounts; otherwise React Strict Mode's deliberate
     // effect cleanup would discard the result while the WeakSet prevents the
     // remount from retrying it.
-    void getVenueStatus(venue)
+    void getVenueStatus(venue, maxAgeMs)
       .then((status) => {
         reportVenueHealth(venue.baseUrl, {
           state: "connected",
@@ -99,7 +96,43 @@ export function useValidateVenue(
           detail: error instanceof Error ? error.message : String(error),
         });
       });
+}
+
+const validatedVenues = new WeakSet<Venue>();
+export function useValidateVenue(
+  venue: Venue | null | undefined,
+  authData: VenueAuth | null = null,
+): void {
+  useEffect(() => {
+    if (!venue || validatedVenues.has(venue)) return;
+    validatedVenues.add(venue);
+    validateVenue(venue, authData);
   }, [venue, authData]);
+}
+
+// Normal pages do not validate venues up front — reads fire optimistically
+// (see useResolvedVenueContext). When a read DOES fail in a way that smells
+// like a venue problem rather than a data problem, this forces a fresh
+// status check so the health/auth stores converge on a definitive verdict
+// (unreachable / auth-rejected) and the page can switch to the right state.
+const lastFailureRevalidation = new WeakMap<Venue, number>();
+const FAILURE_REVALIDATION_MIN_INTERVAL_MS = 10_000;
+
+export function revalidateVenueOnFailure(
+  venue: Venue | null | undefined,
+  authData: VenueAuth | null,
+  error: unknown,
+): void {
+  if (!venue) return;
+  const status = errorStatus(error);
+  // 4xx data errors (missing path, bad request) say nothing about the venue.
+  const suspicious =
+    status === undefined || status === 401 || status === 403 || status >= 500;
+  if (!suspicious) return;
+  const last = lastFailureRevalidation.get(venue) ?? 0;
+  if (Date.now() - last < FAILURE_REVALIDATION_MIN_INTERVAL_MS) return;
+  lastFailureRevalidation.set(venue, Date.now());
+  validateVenue(venue, authData, 0);
 }
 
 // Venue selectors and venue cards render every configured venue, including

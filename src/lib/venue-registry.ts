@@ -94,7 +94,7 @@ export function getVenueStatus(
   if (cached && Date.now() - cached.checkedAt <= maxAgeMs) {
     return Promise.resolve(cached.status);
   }
-  if (!cached && venue.lastKnownStatus) {
+  if (!cached && venue.lastKnownStatus && maxAgeMs > 0) {
     statusCache.set(venue, {
       status: venue.lastKnownStatus,
       checkedAt: Date.now(),
