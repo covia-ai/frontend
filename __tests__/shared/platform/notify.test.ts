@@ -81,14 +81,29 @@ describe('notify helpers', () => {
     expect(mockSonner.info).toHaveBeenCalledWith('FYI', { closeButton: true });
   });
 
-  it('records every notification to the session log, newest first', () => {
+  it('records every notification to the persistent log, newest first', () => {
     notifySuccess('Saved', { description: 'w/notes' });
     notifyError('Unable to save', new Error('disk full'));
 
     const { entries } = useNotificationLog.getState();
     expect(entries).toHaveLength(2);
-    expect(entries[0]).toMatchObject({ kind: 'error', title: 'Unable to save', description: 'disk full' });
-    expect(entries[1]).toMatchObject({ kind: 'success', title: 'Saved', description: 'w/notes' });
+    expect(entries[0]).toMatchObject({ kind: 'error', title: 'Unable to save', description: 'disk full', read: false });
+    expect(entries[1]).toMatchObject({ kind: 'success', title: 'Saved', description: 'w/notes', read: false });
+  });
+
+  it('derives venueId from a jobHref-bearing error, for the bell panel\'s venue grouping (#241)', () => {
+    notifyError('Unable to send message', new Error('boom'), undefined, '/venues/did%3Akey%3Av1/jobs/abc123');
+
+    const { entries } = useNotificationLog.getState();
+    expect(entries[0]).toMatchObject({
+      receiptHref: '/venues/did%3Akey%3Av1/jobs/abc123',
+      venueId: 'did:key:v1',
+    });
+  });
+
+  it('leaves venueId undefined for notifications without a receipt', () => {
+    notifySuccess('Saved');
+    expect(useNotificationLog.getState().entries[0].venueId).toBeUndefined();
   });
 
   it('caps the log so a long session cannot grow it unbounded', () => {

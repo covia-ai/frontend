@@ -6,6 +6,10 @@ jest.mock("@/lib/notify", () => ({
   notifyWarning: jest.fn(),
   jobFailure: jest.fn((error: unknown) => ({ reason: error, jobHref: "/job/failed" })),
 }));
+const mockWatch = jest.fn();
+jest.mock("@/hooks/use-watched-jobs", () => ({
+  useWatchedJobs: { getState: () => ({ watch: mockWatch }) },
+}));
 
 import { useJobExecution } from "@/hooks/use-job-execution";
 import { useRouter } from "next/navigation";
@@ -39,6 +43,19 @@ describe("useJobExecution", () => {
       `/venues/${encodeURIComponent(venue.venueId)}/jobs/job-1`,
     );
     expect(result.current.running).toBe(false);
+  });
+
+  it("registers the new job for ambient completion tracking (#241)", async () => {
+    const { result } = renderHook(() => useJobExecution(venue));
+
+    await act(async () => {
+      await result.current.execute({
+        action: async () => ({ id: "job-1" }),
+        failureTitle: "Unable to run operation",
+      });
+    });
+
+    expect(mockWatch).toHaveBeenCalledWith(venue.venueId, "job-1");
   });
 
   it("uses one missing-job path and exposes the message inline", async () => {

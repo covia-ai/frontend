@@ -4,6 +4,7 @@ import { Sidebar } from "@/components/admin-panel/sidebar";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { useStore } from "@/hooks/use-store";
 import { useHitlOpenCountPoll } from "@/hooks/use-hitl";
+import { useWatchedJobsPoll } from "@/hooks/use-watched-jobs";
 import { cn } from "@/lib/utils";
 
 export default function AdminPanelLayout({
@@ -12,9 +13,10 @@ export default function AdminPanelLayout({
   children: React.ReactNode;
 }) {
   const sidebar = useStore(useSidebar, (x) => x);
-  // Single owner of the HITL poll for the whole app — must run before the
-  // early return below so the hook order stays stable.
+  // Single owner of each background poll for the whole app — must run
+  // before the early return below so the hook order stays stable.
   useHitlOpenCountPoll();
+  useWatchedJobsPoll();
   if (!sidebar) return null;
   const { getOpenState, settings } = sidebar;
   return (

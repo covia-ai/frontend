@@ -5,6 +5,7 @@ import { SheetMenu } from "@/components/admin-panel/sheet-menu";
 import { ChromeSignInButton } from "./signin-button";
 import { VenueSelector } from "@/components/VenueSelector";
 import { HitlIndicator } from "@/components/HitlIndicator";
+import { NotificationBell } from "@/components/NotificationBell";
 import { DarkLightToggle } from "../DarkLightToggle";
 import { SmartBreadcrumb } from "../smartbreadcrumb2";
 import { Separator } from "../ui/separator";
@@ -63,6 +64,7 @@ export function TopBar(props: TopBarProps) {
                 </Tooltip>
               )}
               <HitlIndicator />
+              <NotificationBell />
               <DarkLightToggle/>
               <VenueSelector venueId={props.venueId} />
               <ChromeSignInButton venueId={props.venueId}/>
