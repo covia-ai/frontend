@@ -53,7 +53,7 @@ export function Menu({ isOpen }: MenuProps) {
             {menuList.map(({ groupLabel, menus }) => (
               <li className={cn("w-full", groupLabel ? "pt-2" : "")} key={groupLabel || "home"}>
                 {(isOpen && groupLabel) || isOpen === undefined ? (
-                  <p className="px-4 pb-1 max-w-[248px] truncate text-xs font-semibold uppercase tracking-wide text-sidebar-foreground/60">
+                  <p className="px-4 pb-1 max-w-[248px] truncate text-[10px] font-medium uppercase tracking-wide text-sidebar-foreground/45">
                     {groupLabel}
                   </p>
                 ) : !isOpen && isOpen !== undefined && groupLabel ? (
@@ -80,7 +80,7 @@ export function Menu({ isOpen }: MenuProps) {
                         <TooltipTrigger asChild>
                           <Button
                             variant={active ? "secondary" : "ghost"}
-                            className="w-full justify-start h-8 mb-px relative"
+                            className="w-full justify-start h-8 mb-0 relative"
                             asChild
                           >
                             <Link href={href}>
