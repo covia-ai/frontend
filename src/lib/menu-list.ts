@@ -47,7 +47,7 @@ export const MENU_LIST: MenuGroup[] = [
   {
     groupLabel: "Grid",
     menus: [
-      { href: "/publicartifacts", label: "Assets", icon: Database },
+      { href: "/publicartifacts", label: "Public Artifacts", icon: Database },
       { href: "/operations", label: "Operations", icon: PlayCircle },
       { href: "/jobs", label: "Jobs", icon: ScrollText },
       { href: "/inbox", label: "Inbox", icon: Inbox, requiresAuth: true, badge: "inbox" },
