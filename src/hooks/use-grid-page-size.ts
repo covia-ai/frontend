@@ -33,10 +33,14 @@ export function computeGridRows({
   return Math.max(minRows, rows);
 }
 
-// Roughly what sits below the grid: the bottom pagination row and the page's
-// bottom padding. Slightly under-reserving is the safer error — it costs a
-// little scroll, where over-reserving leaves a visibly empty strip.
-const BELOW_GRID_PX = 96;
+// Small margin for whatever isn't captured by measuring the grid's own next
+// sibling below it (see `measure()`) — spacing between them, the page's
+// bottom padding. Deliberately small: the real height of what's below the
+// grid is measured directly now, so this only needs to cover slack, not
+// guess at the whole amount (a flat 96px guess used to either waste up to a
+// full row's worth of visible space when the real content below was
+// shorter, or clip a row when it was taller).
+const PAGE_BOTTOM_BUFFER_PX = 24;
 
 /**
  * A page size that fills the window: the columns the grid is actually
@@ -72,7 +76,13 @@ export function useGridPageSize({
     // viewport-relative rect directly would grow the page size as you scroll,
     // which feeds back into the layout.
     const documentTop = node.getBoundingClientRect().top + window.scrollY;
-    const availableHeight = window.innerHeight - documentTop - BELOW_GRID_PX;
+    // What actually sits below the grid (typically PaginationHeader) —
+    // measured directly rather than guessed, so a slim or absent pagination
+    // row lets the grid claim that space instead of leaving it empty.
+    const nextSibling = node.nextElementSibling as HTMLElement | null;
+    const belowGridHeight =
+      (nextSibling?.getBoundingClientRect().height ?? 0) + PAGE_BOTTOM_BUFFER_PX;
+    const availableHeight = window.innerHeight - documentTop - belowGridHeight;
 
     const rows = computeGridRows({ availableHeight, cardHeight, rowGap, minRows });
     const next = Math.max(1, Math.min(maxItems, columns * rows));
