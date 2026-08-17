@@ -40,10 +40,16 @@ export function Menu({ isOpen }: MenuProps) {
   }, [isAuthenticated]);
 
   return (
-    <ScrollArea className="[&>div>div[style]]:!block">
+    <ScrollArea className="flex-1 min-h-0 [&>div>div[style]]:!block">
       <TooltipProvider disableHoverableContent>
         <nav className="mt-3 h-full w-full">
-          <ul className="flex flex-col min-h-[calc(100vh-48px-36px-16px-32px)] lg:min-h-[calc(100vh-32px-40px-32px)] items-start space-y-0.5 px-2">
+          {/* min-h-full (not a hardcoded 100vh-Npx guess) — nav is h-full of
+              ScrollArea's viewport, which is now genuinely bounded by the
+              flex-1 min-h-0 above, so this fills exactly the real space
+              left after the sidebar's header and footer, however tall they
+              actually are, instead of a pixel count that drifts out of sync
+              with them. Only real content taller than that scrolls. */}
+          <ul className="flex flex-col min-h-full items-start space-y-0.5 px-2">
             {menuList.map(({ groupLabel, menus }) => (
               <li className={cn("w-full", groupLabel ? "pt-2" : "")} key={groupLabel || "home"}>
                 {(isOpen && groupLabel) || isOpen === undefined ? (
@@ -74,7 +80,7 @@ export function Menu({ isOpen }: MenuProps) {
                         <TooltipTrigger asChild>
                           <Button
                             variant={active ? "secondary" : "ghost"}
-                            className="w-full justify-start h-8 mb-0.5 relative"
+                            className="w-full justify-start h-8 mb-px relative"
                             asChild
                           >
                             <Link href={href}>

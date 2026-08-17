@@ -27,17 +27,18 @@ export function Sidebar() {
       <div
         onMouseEnter={() => setIsHover(true)}
         onMouseLeave={() => setIsHover(false)}
-        // flex-1 min-h-0 makes this the sidebar's scrollable middle region,
-        // between the header above and SidebarLegalFooter below — a normal
-        // flex sibling now (not an absolute overlay), so it can never
-        // overlap this content; it just claims its own real space and this
-        // area scrolls sooner instead.
-        className="relative flex-1 min-h-0 flex flex-col px-3 py-3 overflow-y-auto shadow-md "
+        // flex-1 min-h-0 makes this the sidebar's middle region, between the
+        // header below and SidebarLegalFooter below — a normal flex sibling
+        // now (not an absolute overlay), so it can never overlap this
+        // content. No overflow-y-auto here: Menu's own ScrollArea does the
+        // scrolling (see menu.tsx) now that it actually gets a bounded
+        // height to scroll within, instead of silently never activating.
+        className="relative flex-1 min-h-0 flex flex-col px-3 py-3 shadow-md "
       >
         <Button
           aria-label="sidebar" role="button"
           className={cn(
-            "transition-transform ease-in-out duration-300 mb-1 ",
+            "shrink-0 transition-transform ease-in-out duration-300 mb-1 ",
             !getOpenState() ? "translate-x-1" : "translate-x-0"
           )}
           variant="link"
