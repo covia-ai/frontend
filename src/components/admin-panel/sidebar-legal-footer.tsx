@@ -48,9 +48,7 @@ export function SidebarLegalFooter({ isOpen }: SidebarLegalFooterProps) {
             </span>
           </Link>
         </TooltipTrigger>
-        {isOpen === false && (
-          <TooltipContent side="right">Privacy Policy</TooltipContent>
-        )}
+        <TooltipContent side={isOpen === false ? "right" : "top"}>Privacy Policy</TooltipContent>
       </Tooltip>
       <span
         aria-hidden
@@ -79,9 +77,7 @@ export function SidebarLegalFooter({ isOpen }: SidebarLegalFooterProps) {
             </span>
           </Link>
         </TooltipTrigger>
-        {isOpen === false && (
-          <TooltipContent side="right">Terms of Service</TooltipContent>
-        )}
+        <TooltipContent side={isOpen === false ? "right" : "top"}>Terms of Service</TooltipContent>
       </Tooltip>
     </div>
   );
