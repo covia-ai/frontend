@@ -18,7 +18,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "fixed top-0 left-0 z-20 text-sidebar-foreground text-md bg-linear-to-b from-sidebar from-60% via-primary-light via-75% to-secondary-light to-90% shadow-lg h-screen -translate-x-full lg:translate-x-0 transition-[width] ease-in-out duration-300",
+        "fixed top-0 left-0 z-20 flex flex-col text-sidebar-foreground text-md bg-linear-to-b from-sidebar from-60% via-primary-light via-75% to-secondary-light to-90% shadow-lg h-screen -translate-x-full lg:translate-x-0 transition-[width] ease-in-out duration-300",
         !getOpenState() ? "w-[90px]" : "w-56  ",
         settings.disabled && "hidden"
       )}
@@ -27,12 +27,18 @@ export function Sidebar() {
       <div
         onMouseEnter={() => setIsHover(true)}
         onMouseLeave={() => setIsHover(false)}
-        className="relative h-full flex flex-col px-3 py-3 overflow-y-auto shadow-md "
+        // flex-1 min-h-0 makes this the sidebar's middle region, between the
+        // header below and SidebarLegalFooter below — a normal flex sibling
+        // now (not an absolute overlay), so it can never overlap this
+        // content. No overflow-y-auto here: Menu's own ScrollArea does the
+        // scrolling (see menu.tsx) now that it actually gets a bounded
+        // height to scroll within, instead of silently never activating.
+        className="relative flex-1 min-h-0 flex flex-col px-3 py-3 shadow-md "
       >
         <Button
           aria-label="sidebar" role="button"
           className={cn(
-            "transition-transform ease-in-out duration-300 mb-1 ",
+            "shrink-0 transition-transform ease-in-out duration-300 mb-1 ",
             !getOpenState() ? "translate-x-1" : "translate-x-0"
           )}
           variant="link"

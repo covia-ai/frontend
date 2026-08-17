@@ -40,14 +40,20 @@ export function Menu({ isOpen }: MenuProps) {
   }, [isAuthenticated]);
 
   return (
-    <ScrollArea className="[&>div>div[style]]:!block">
+    <ScrollArea className="flex-1 min-h-0 [&>div>div[style]]:!block">
       <TooltipProvider disableHoverableContent>
         <nav className="mt-3 h-full w-full">
-          <ul className="flex flex-col min-h-[calc(100vh-48px-36px-16px-32px)] lg:min-h-[calc(100vh-32px-40px-32px)] items-start space-y-0.5 px-2">
+          {/* min-h-full (not a hardcoded 100vh-Npx guess) — nav is h-full of
+              ScrollArea's viewport, which is now genuinely bounded by the
+              flex-1 min-h-0 above, so this fills exactly the real space
+              left after the sidebar's header and footer, however tall they
+              actually are, instead of a pixel count that drifts out of sync
+              with them. Only real content taller than that scrolls. */}
+          <ul className="flex flex-col min-h-full items-start space-y-0.5 px-2">
             {menuList.map(({ groupLabel, menus }) => (
               <li className={cn("w-full", groupLabel ? "pt-2" : "")} key={groupLabel || "home"}>
                 {(isOpen && groupLabel) || isOpen === undefined ? (
-                  <p className="px-4 pb-1 max-w-[248px] truncate text-xs font-semibold uppercase tracking-wide text-sidebar-foreground/60">
+                  <p className="px-4 pb-1 max-w-[248px] truncate text-[10px] font-medium uppercase tracking-wide text-sidebar-foreground/45">
                     {groupLabel}
                   </p>
                 ) : !isOpen && isOpen !== undefined && groupLabel ? (
@@ -74,16 +80,16 @@ export function Menu({ isOpen }: MenuProps) {
                         <TooltipTrigger asChild>
                           <Button
                             variant={active ? "secondary" : "ghost"}
-                            className="w-full justify-start h-8 mb-0.5 relative"
+                            className="w-full justify-start h-8 mb-0 relative"
                             asChild
                           >
                             <Link href={href}>
-                              <span className={cn(isOpen === false ? "" : "mr-4")}>
+                              <span className={cn(isOpen === false ? "" : "mr-2")}>
                                 <Icon size={18} />
                               </span>
                               <p
                                 className={cn(
-                                  "max-w-[200px] truncate",
+                                  "max-w-[200px] truncate text-sm",
                                   isOpen === false
                                     ? "-translate-x-96 opacity-0"
                                     : "translate-x-0 opacity-100"
