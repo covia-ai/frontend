@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Venue } from "@covia/covia-sdk";
 import { errorMessage } from "@/lib/errors";
 import { jobFailure, notifyError, notifyWarning } from "@/lib/notify";
+import { useWatchedJobs } from "@/hooks/use-watched-jobs";
 
 type JobResult = { id?: string } | null | undefined;
 
@@ -38,6 +39,9 @@ export function useJobExecution(venue?: Venue | null) {
         return null;
       }
       onSuccess?.(result.id);
+      // #241: ambient completion notification even if the user navigates
+      // away before this job finishes — see use-watched-jobs.ts.
+      useWatchedJobs.getState().watch(venue.venueId, result.id);
       router.push(`/venues/${encodeURIComponent(venue.venueId)}/jobs/${result.id}`);
       return result.id;
     } catch (error: unknown) {
