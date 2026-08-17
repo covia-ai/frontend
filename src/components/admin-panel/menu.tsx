@@ -78,7 +78,7 @@ export function Menu({ isOpen }: MenuProps) {
                             asChild
                           >
                             <Link href={href}>
-                              <span className={cn(isOpen === false ? "" : "mr-4")}>
+                              <span className={cn(isOpen === false ? "" : "mr-2")}>
                                 <Icon size={18} />
                               </span>
                               <p
