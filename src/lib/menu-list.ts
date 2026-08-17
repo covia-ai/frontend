@@ -1,5 +1,6 @@
 import {
   Database,
+  FileStack,
   FlaskConical,
   FolderOpen,
   Home,
@@ -48,6 +49,7 @@ export const MENU_LIST: MenuGroup[] = [
     groupLabel: "Grid",
     menus: [
       { href: "/publicartifacts", label: "Public Artifacts", icon: Database },
+      { href: "/myartifacts", label: "My Artifacts", icon: FileStack, requiresAuth: true },
       { href: "/operations", label: "Operations", icon: PlayCircle },
       { href: "/jobs", label: "Jobs", icon: ScrollText },
       { href: "/inbox", label: "Inbox", icon: Inbox, requiresAuth: true, badge: "inbox" },
