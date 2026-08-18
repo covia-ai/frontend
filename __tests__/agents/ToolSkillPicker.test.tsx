@@ -31,20 +31,16 @@ const mockVenue: any = {
           },
         });
       }
-      if (path === "v/skills") {
-        return Promise.resolve({
-          exists: true,
-          value: {
-            summarizer: {
-              name: "Summarizer",
-              description: "Summarize text",
-              content: { inline: "Do the thing" },
-            },
-          },
-        });
-      }
       return Promise.resolve({ exists: false, value: null });
     }),
+  },
+  skills: {
+    list: jest.fn((path: string) => Promise.resolve(path === "v/skills"
+      ? [{
+          id: "v/skills/summarizer",
+          metadata: { name: "Summarizer", description: "Summarize text", content: { inline: "Do the thing" } },
+        }]
+      : [])),
   },
 };
 
@@ -142,6 +138,7 @@ describe("ToolSkillPicker", () => {
     expect(screen.getByTestId("chrome-sign-in-button")).toBeInTheDocument();
     expect(screen.queryByTestId("tool-picker-row")).not.toBeInTheDocument();
     expect(mockVenue.workspace.read).not.toHaveBeenCalled();
+    expect(mockVenue.skills.list).not.toHaveBeenCalled();
   });
 
   it("disables checkboxes while a caller-driven save is in flight", async () => {

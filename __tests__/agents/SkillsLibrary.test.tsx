@@ -14,20 +14,18 @@ jest.mock("@/components/MarkdownMessage", () => ({
 const mockVenue: any = {
   venueId: "venue-1",
   baseUrl: "https://venue.example",
-  workspace: {
-    read: jest.fn((path: string) => Promise.resolve(path === "v/skills"
-      ? {
-          exists: true,
-          value: {
-            agents: {
-              name: "Agent skills",
-              description: "Manage agents safely.",
-              content: { inline: "## Agent workflow\nUse explicit tools." },
-              skill: { tools: ["v/ops/agent/list"] },
-            },
+  skills: {
+    list: jest.fn((path: string) => Promise.resolve(path === "v/skills"
+      ? [{
+          id: "v/skills/agents",
+          metadata: {
+            name: "Agent skills",
+            description: "Manage agents safely.",
+            content: { inline: "## Agent workflow\nUse explicit tools." },
+            skill: { tools: ["v/ops/agent/list"] },
           },
-        }
-      : { exists: false, value: null })),
+        }]
+      : [])),
   },
   assets: {
     get: jest.fn(),
@@ -59,8 +57,8 @@ describe("SkillsLibrary", () => {
     expect(await screen.findByRole("heading", { name: "Agent skills" })).toBeInTheDocument();
     expect(screen.getByTestId("safe-markdown")).toHaveTextContent("Agent workflow");
     expect(screen.getByText("No user skills yet", { exact: false })).toBeInTheDocument();
-    expect(mockVenue.workspace.read).toHaveBeenCalledWith("v/skills");
-    expect(mockVenue.workspace.read).toHaveBeenCalledWith("w/skills");
+    expect(mockVenue.skills.list).toHaveBeenCalledWith("v/skills");
+    expect(mockVenue.skills.list).toHaveBeenCalledWith("w/skills");
     expect(mockVenue.operations.run).not.toHaveBeenCalled();
     expect(mockVenue.operations.invoke).not.toHaveBeenCalled();
 

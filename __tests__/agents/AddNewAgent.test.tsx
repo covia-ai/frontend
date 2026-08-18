@@ -14,8 +14,8 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: pushMock }),
 }));
 
-// Path-aware default for workspace.read: the picker's catalog/skills lookups
-// share this venue with the template-existence check, so a blanket
+// Path-aware default for workspace.read: the picker's catalog lookup shares
+// this venue with the template-existence check, so a blanket
 // `mockResolvedValue` would either starve the picker or fake out every
 // template as pre-existing. Individual tests can still override with
 // `.mockResolvedValue`/`.mockImplementation` for their own scope.
@@ -30,15 +30,16 @@ function defaultWorkspaceRead(path: string) {
       },
     });
   }
-  if (path === 'v/skills') {
-    return Promise.resolve({
-      exists: true,
-      value: {
-        summarizer: { name: 'Summarizer', description: 'Summarize text', content: { inline: 'Do it' } },
-      },
-    });
-  }
   return Promise.resolve({ exists: false, value: null });
+}
+
+function defaultSkillsList(path: string) {
+  return Promise.resolve(path === 'v/skills'
+    ? [{
+        id: 'v/skills/summarizer',
+        metadata: { name: 'Summarizer', description: 'Summarize text', content: { inline: 'Do it' } },
+      }]
+    : []);
 }
 
 // Return a stable object reference so the useEffect dep [venue] doesn't
@@ -61,6 +62,9 @@ const mockVenue = {
     read: jest.fn(defaultWorkspaceRead),
     write: jest.fn().mockResolvedValue({}),
   },
+  skills: {
+    list: jest.fn(defaultSkillsList),
+  },
 };
 jest.mock('@/hooks/use-authenticated-venue', () => ({
   useAuthenticatedVenue: () => mockVenue,
@@ -82,6 +86,7 @@ describe('AddNewAgent', () => {
     jest.clearAllMocks();
     mockVenue.workspace.read.mockImplementation(defaultWorkspaceRead);
     mockVenue.workspace.write.mockResolvedValue({});
+    mockVenue.skills.list.mockImplementation(defaultSkillsList);
   });
 
   it('renders the trigger button', () => {

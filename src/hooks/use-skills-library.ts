@@ -1,41 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { Asset, Venue } from "@covia/covia-sdk";
+import type { Venue } from "@covia/covia-sdk";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { readTextStream } from "@/hooks/use-asset-text-content";
 import { notifyError } from "@/lib/notify";
-import {
-  normalizeSkill,
-  skillsFromTree,
-  type SkillSummary,
-} from "@/lib/skills";
+import { skillsFromAssets, type SkillSummary } from "@/lib/skills";
 
-async function hydrateReference(venue: Venue, skill: SkillSummary): Promise<SkillSummary> {
-  if (!skill.reference) return skill;
-  try {
-    const asset = await venue.assets.get(skill.reference);
-    const resolved = normalizeSkill(skill.key, asset.metadata, skill.source, skill.path);
-    return { ...resolved, reference: skill.reference };
-  } catch {
-    return skill;
-  }
-}
-
+// Content is already inline in `skill.body` when the asset carries it that
+// way (covia-sdk#32's list() already fetched full metadata, and inline
+// content rides along with it) — this only fires for the rarer non-inline
+// (CAS/DLFS-backed) case, uniformly resolvable by path since covia#368.
 async function loadSkillBody(venue: Venue, skill: SkillSummary): Promise<SkillSummary> {
   if (skill.body !== null || !skill.hasContent) return skill;
-  const asset: Asset = await venue.assets.get(skill.reference ?? skill.path);
-  const resolved = normalizeSkill(skill.key, asset.metadata, skill.source, skill.path);
-  if (resolved.body !== null || asset.metadata?.content === undefined) {
-    return { ...resolved, reference: skill.reference };
-  }
-  const stream = await venue.assets.getContent(asset.id);
+  const stream = await venue.assets.getContent(skill.path);
   if (!stream) throw new Error("Skill content is unavailable");
-  return {
-    ...resolved,
-    reference: skill.reference,
-    body: await readTextStream(stream),
-  };
+  return { ...skill, body: await readTextStream(stream) };
 }
 
 export function useSkillsLibrary() {
@@ -61,22 +41,21 @@ export function useSkillsLibrary() {
 
     setLoading(true);
     void Promise.all([
-      venue.workspace.read("v/skills"),
-      venue.workspace.read("w/skills").catch(() => ({ exists: false, value: null })),
+      venue.skills.list("v/skills"),
+      venue.skills.list("w/skills").catch(() => []),
     ])
-      .then(async ([venueResult, userResult]) => {
-        const venueSkills = skillsFromTree(venueResult?.value, "venue", "v/skills");
-        const userSkills = skillsFromTree(userResult?.value, "user", "w/skills");
-        const hydrated = await Promise.all(
-          [...venueSkills, ...userSkills].map((skill) => hydrateReference(venue, skill)),
-        );
+      .then(([venueAssets, userAssets]) => {
         if (!active) return;
-        hydrated.sort((left, right) =>
+        const combined = [
+          ...skillsFromAssets(venueAssets, "venue"),
+          ...skillsFromAssets(userAssets, "user"),
+        ];
+        combined.sort((left, right) =>
           (left.source === "venue" ? 0 : 1) - (right.source === "venue" ? 0 : 1) ||
           left.name.localeCompare(right.name),
         );
-        setSkills(hydrated);
-        setSelectedPath(hydrated[0]?.path ?? null);
+        setSkills(combined);
+        setSelectedPath(combined[0]?.path ?? null);
       })
       .catch((cause: unknown) => {
         if (!active) return;

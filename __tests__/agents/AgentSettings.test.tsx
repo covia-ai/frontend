@@ -33,6 +33,9 @@ const mockVenue: any = {
       return Promise.resolve({ exists: false, value: null });
     }),
   },
+  skills: {
+    list: jest.fn().mockResolvedValue([]),
+  },
 };
 jest.mock("@/hooks/use-authenticated-venue", () => ({
   useAuthenticatedVenue: () => mockVenue,
@@ -52,6 +55,7 @@ describe("AgentSettings — tool/skill picker", () => {
     jest.clearAllMocks();
     mockAccess.state = "connected";
     mockVenue.secrets.list.mockResolvedValue([]);
+    mockVenue.skills.list.mockResolvedValue([]);
   });
 
   async function openPickerOnCapabilitiesTab(onSave: jest.Mock, agent: AgentDetail = baseAgent) {

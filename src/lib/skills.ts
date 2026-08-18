@@ -1,3 +1,5 @@
+import type { Skill } from "@covia/covia-sdk";
+
 export type SkillSource = "venue" | "user";
 
 export type SkillSummary = {
@@ -98,16 +100,18 @@ export function normalizeSkill(
   };
 }
 
-export function skillsFromTree(
-  tree: unknown,
-  source: SkillSource,
-  root: string,
-): SkillSummary[] {
-  const entries = record(tree);
-  if (!entries) return [];
-  return Object.entries(entries).map(([key, value]) =>
-    normalizeSkill(key, value, source, `${root}/${key}`),
-  );
+// Maps SDK-resolved Skill assets (venue.skills.list()) into SkillSummary.
+// The "value is a string" branch in normalizeSkill above is defensive dead
+// weight here in practice: SkillManager.get() (which list() calls per key)
+// only ever returns a resolved Asset with object metadata or fails the
+// entry entirely (skipped upstream by SkillManager.list(), covia-sdk#32) —
+// it can never hand back a raw string. Kept anyway as cheap insurance
+// against a future SDK change re-exposing unresolved values.
+export function skillsFromAssets(assets: Skill[], source: SkillSource): SkillSummary[] {
+  return assets.map((asset) => {
+    const key = asset.id.split("/").pop() ?? asset.id;
+    return normalizeSkill(key, asset.metadata, source, asset.id);
+  });
 }
 
 export function agentUsesSkill(config: unknown, skill: SkillSummary): boolean {
