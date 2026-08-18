@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import type { Venue } from "@covia/covia-sdk";
 import { listCatalogOperations, type CatalogOp } from "@/lib/operations-catalog";
-import { skillsFromTree, type SkillSummary } from "@/lib/skills";
+import { skillsFromAssets, type SkillSummary } from "@/lib/skills";
 import { notifyError } from "@/lib/notify";
 
 // Both reads are job-free (v/ops + v/test/ops + w/ops via listCatalogOperations,
-// v/skills + w/skills via workspace.read — see operations-catalog.ts and
+// v/skills + w/skills via venue.skills.list() — see operations-catalog.ts and
 // use-skills-library.ts). `enabled` defers the fetch until the picker is
 // actually opened, so mounting a trigger button doesn't cost a read.
 export function useToolSkillPickerData(
@@ -26,11 +26,11 @@ export function useToolSkillPickerData(
     Promise.all([
       listCatalogOperations(venue, { includeUserOps }),
       Promise.all([
-        venue.workspace.read("v/skills"),
-        venue.workspace.read("w/skills").catch(() => ({ exists: false, value: null })),
-      ]).then(([venueResult, userResult]) => [
-        ...skillsFromTree(venueResult?.value, "venue", "v/skills"),
-        ...skillsFromTree(userResult?.value, "user", "w/skills"),
+        venue.skills.list("v/skills"),
+        venue.skills.list("w/skills").catch(() => []),
+      ]).then(([venueAssets, userAssets]) => [
+        ...skillsFromAssets(venueAssets, "venue"),
+        ...skillsFromAssets(userAssets, "user"),
       ]),
     ])
       .then(([nextOps, nextSkills]) => {
