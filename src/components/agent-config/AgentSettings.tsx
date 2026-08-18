@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AgentStatus } from "@covia/covia-sdk";
-import { AlertTriangle, ArrowLeft, Loader2, RotateCcw, Save } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Loader2, RotateCcw, Save, Wrench } from "lucide-react";
 import type { AgentDetail } from "@/config/types";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import {
@@ -10,18 +10,25 @@ import {
   AgentRuntimeFields,
   AgentSystemPromptField,
 } from "@/components/agent-config/AgentConfigEditor";
+import { ToolSkillPicker } from "@/components/agent-config/ToolSkillPicker";
 import { ConfigFields } from "@/components/agent-explorer/ConfigFields";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { withToolToggled, type CatalogOp } from "@/lib/operations-catalog";
+import { withSkillToggled, type SkillSummary } from "@/lib/skills";
 import {
   agentConfigUpdatePatch,
   configFromAgentSettingsDraft,
   createAgentSettingsDraft,
   type AgentSettingsDraft,
 } from "@/lib/agent-settings";
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
 
 type AgentSettingsProps = {
   agent: AgentDetail;
@@ -37,6 +44,7 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
   );
   const [availableKeys, setAvailableKeys] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [capabilitySaving, setCapabilitySaving] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -69,6 +77,35 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
     : [];
 
   const reset = () => setDraft(createAgentSettingsDraft(initialConfig.current));
+
+  // Picker toggles bypass the draft/JSON save path entirely: each is a narrow
+  // { tools } or { skills } patch computed from the last-saved config, sent
+  // straight through the same onSave (agent:update) round trip, so it can't
+  // race with an unrelated in-progress Advanced-JSON edit. On success both
+  // the saved baseline and the JSON field are refreshed so the two views of
+  // tools/skills never visibly disagree.
+  const attachedTools = stringArray(initialConfig.current.tools);
+  const attachedSkills = stringArray(initialConfig.current.skills);
+
+  const saveCapability = async (key: "tools" | "skills", nextValue: string[]) => {
+    setCapabilitySaving(true);
+    try {
+      const saved = await onSave({ [key]: nextValue });
+      if (saved) {
+        initialConfig.current = { ...initialConfig.current, [key]: nextValue };
+        setField(key === "tools" ? "toolsJson" : "skillsJson", JSON.stringify(nextValue, null, 2));
+      }
+    } finally {
+      setCapabilitySaving(false);
+    }
+  };
+
+  const handleToggleTool = (op: CatalogOp, attached: boolean) => {
+    void saveCapability("tools", withToolToggled(attachedTools, op, attached));
+  };
+  const handleToggleSkill = (skill: SkillSummary, attached: boolean) => {
+    void saveCapability("skills", withSkillToggled(attachedSkills, skill, attached));
+  };
 
   const save = async () => {
     if (!result.config || !dirty) return;
@@ -149,17 +186,39 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
           </TabsContent>
 
           <TabsContent value="capabilities" className="m-0 space-y-6">
-            <div>
-              <h5 className="font-semibold">Tools and authority</h5>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Tool lists control what the model sees. Capabilities control what the agent is actually allowed to do.
-              </p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h5 className="font-semibold">Tools and authority</h5>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Tool lists control what the model sees. Capabilities control what the agent is actually allowed to do.
+                </p>
+              </div>
+              <ToolSkillPicker
+                venue={venue}
+                attachedTools={attachedTools}
+                attachedSkills={attachedSkills}
+                onToggleTool={handleToggleTool}
+                onToggleSkill={handleToggleSkill}
+                disabled={capabilitySaving}
+                trigger={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 gap-2"
+                    data-testid="open-tool-skill-picker"
+                  >
+                    {capabilitySaving ? <Loader2 size={14} className="animate-spin" /> : <Wrench size={14} />}
+                    Browse &amp; attach
+                  </Button>
+                }
+              />
             </div>
             <div className="grid gap-6 lg:grid-cols-2">
               <AgentJsonConfigField
                 id="agent-tools-json"
                 label="Tools"
-                description="Operation paths or tool descriptors offered to the model. Saving replaces the complete array."
+                description="Operation paths or tool descriptors offered to the model. Saving replaces the complete array. Or use Browse & attach above."
                 value={draft.toolsJson}
                 onChange={(value) => setField("toolsJson", value)}
                 placeholder={'[\n  "v/ops/covia/read"\n]'}
@@ -167,7 +226,7 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
               <AgentJsonConfigField
                 id="agent-skills-json"
                 label="Skills"
-                description="Skill indexes available to the agent. Saving replaces the complete array."
+                description="Skill indexes available to the agent. Saving replaces the complete array. Or use Browse & attach above."
                 value={draft.skillsJson}
                 onChange={(value) => setField("skillsJson", value)}
                 placeholder={'[\n  "w/skills"\n]'}
