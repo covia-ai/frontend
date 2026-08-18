@@ -140,3 +140,29 @@ describe('JobList windowed fetching', () => {
     expect(screen.getByText(/Showing 10 of 998/)).toBeInTheDocument();
   });
 });
+
+describe('JobList trend sparklines (#225)', () => {
+  beforeEach(() => {
+    mockVenue.workspace.list.mockClear();
+    mockVenue.workspace.slice.mockClear();
+  });
+
+  it('shows a trend sparkline on Success Rate and Avg Duration, not Total Jobs', async () => {
+    render(<JobList />);
+    await screen.findByText('job-997');
+
+    expect(screen.getByRole('img', { name: 'Success Rate trend' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Avg Duration trend' })).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'Total Jobs trend' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the headline Success Rate number sourced from pageRecords, unaffected by the trend memo', async () => {
+    render(<JobList />);
+    await screen.findByText('job-997');
+
+    // All 10 page records are COMPLETE — the headline reads 100%, same
+    // contract as before the trend sparkline was added.
+    expect(screen.getByText('100%')).toBeInTheDocument();
+    expect(screen.getAllByText('of 10 jobs on this page').length).toBeGreaterThan(0);
+  });
+});
