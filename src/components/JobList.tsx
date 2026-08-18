@@ -23,11 +23,9 @@ import { VenueResolutionState } from "@/components/VenueResolutionState";
 import {
   jobRecordsFromSlice,
   sliceJobWindow,
+  jobTrendFromRecords,
+  TERMINAL_STATUSES,
 } from "@/lib/job-history";
-
-const TERMINAL_STATUSES = new Set([
-  RunStatus.COMPLETE, RunStatus.FAILED, RunStatus.CANCELLED, RunStatus.REJECTED, RunStatus.TIMEOUT,
-]);
 
 const ACTIVE_STATUSES = new Set([RunStatus.PENDING, RunStatus.STARTED, RunStatus.PAUSED]);
 
@@ -263,6 +261,12 @@ export function JobList({ venueId }: JobListProps = {}) {
     return { successRate, avgDurationMs, sampleSize: pageRecords.length };
   }, [pageRecords]);
 
+  // Trend sparklines (covia-ai/frontend#225) — sourced from the same
+  // pageRecords as jobStats above (no new fetch), just re-aggregated
+  // chronologically. Falls back to no sparkline below jobTrendFromRecords'
+  // minimum sample size.
+  const jobTrend = useMemo(() => jobTrendFromRecords(pageRecords), [pageRecords]);
+
   const loading = hasFilters ? recentLoading : pageLoading;
   const loadError = hasFilters ? recentError : pageError ?? recentError;
 
@@ -450,6 +454,10 @@ export function JobList({ venueId }: JobListProps = {}) {
             value={jobStats.successRate != null ? `${Math.round(jobStats.successRate)}%` : "–"}
             caption={jobStats.sampleSize > 0 ? `of ${jobStats.sampleSize} jobs on this page` : undefined}
             iconClassName={TONE_STYLES.success.text}
+            trend={jobTrend ? {
+              data: jobTrend.successRate,
+              formatValue: (v) => `${Math.round(v)}%`,
+            } : undefined}
           />
           <StatTile
             icon={Clock}
@@ -458,6 +466,10 @@ export function JobList({ venueId }: JobListProps = {}) {
               ? getExecutionTime("1970-01-01T00:00:00.000Z", new Date(jobStats.avgDurationMs).toISOString())
               : "–"}
             caption={jobStats.sampleSize > 0 ? `of ${jobStats.sampleSize} jobs on this page` : undefined}
+            trend={jobTrend ? {
+              data: jobTrend.avgDurationMs,
+              formatValue: (v) => getExecutionTime("1970-01-01T00:00:00.000Z", new Date(v).toISOString()),
+            } : undefined}
           />
         </div>
       </div>
