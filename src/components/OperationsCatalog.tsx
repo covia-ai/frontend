@@ -35,17 +35,10 @@ import {
 } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { listCatalogOperations, resolveOperationByAddress, type CatalogOp } from "@/lib/operations-catalog";
+import { adapterOf, listCatalogOperations, resolveOperationByAddress, type CatalogOp } from "@/lib/operations-catalog";
 import { PlayCircle, RefreshCw, Search } from "lucide-react";
 import { notifyError, notifyWarning } from "@/lib/notify";
 import { useJobExecution } from "@/hooks/use-job-execution";
-
-function adapterOf(path: string): string {
-  const parts = path.split("/");
-  if (parts[0] === "v" && parts[1] === "test") return "test";
-  if (parts[0] === "v" && parts[1] === "ops" && parts[2]) return parts[2];
-  return parts[0] ?? "other";
-}
 
 function defaultsFromSchema(schema: any): string {
   const props = schema?.properties;

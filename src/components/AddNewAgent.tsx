@@ -19,7 +19,7 @@ import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/not
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
-import { AlertTriangle, BookmarkPlus } from "lucide-react";
+import { AlertTriangle, BookmarkPlus, Wrench } from "lucide-react";
 import Link from "next/link";
 import { gtmEvent, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
 import {
@@ -30,6 +30,9 @@ import {
   modelSelectionFromId,
   resolvedModelId,
 } from "@/components/agent-config/AgentConfigEditor";
+import { ToolSkillPicker } from "@/components/agent-config/ToolSkillPicker";
+import { withToolToggled, type CatalogOp } from "@/lib/operations-catalog";
+import { withSkillToggled, type SkillSummary } from "@/lib/skills";
 import {
   AGENT_TEMPLATES_CHANGED_EVENT,
   asSdkAgentConfig,
@@ -90,6 +93,12 @@ export function AddNewAgent({
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [internalOpen, setInternalOpen] = useState(false);
   const [availableKeys, setAvailableKeys] = useState<string[]>([]);
+  // Staged tools/skills: there's no agentId to call agent:update against
+  // until creation completes, so the picker only edits this local state and
+  // it rides along in buildAgentConfig()'s overrides at submit time.
+  const [stagedTools, setStagedTools] = useState<string[]>([]);
+  const [stagedSkills, setStagedSkills] = useState<string[]>([]);
+  const [touchedCapabilities, setTouchedCapabilities] = useState(false);
   // A key pasted inline when the chosen provider has none — stored on create
   // so you don't have to leave the dialog to add it in Secrets first.
   const [apiKeyInput, setApiKeyInput] = useState("");
@@ -118,6 +127,12 @@ export function AddNewAgent({
     setCustomModel(modelSelection.customModel);
     setInitialCommand("");
     setApiKeyInput("");
+    const preview = initialConfigPreview ?? (
+      initialConfig === undefined ? {} : inlineAgentConfigPreview(initialConfig)
+    );
+    setStagedTools(Array.isArray(preview.tools) ? preview.tools : []);
+    setStagedSkills(Array.isArray(preview.skills) ? preview.skills : []);
+    setTouchedCapabilities(false);
     if (!venue) return;
     venue.secrets
       .list()
@@ -140,6 +155,11 @@ export function AddNewAgent({
         }
       })
       .catch(() => setAvailableKeys([]));
+    // initialConfig/initialConfigPreview intentionally excluded: they seed
+    // the staged tools/skills only on the open transition, same as every
+    // other field here — adding them would refire this reset (wiping
+    // in-progress edits) whenever a caller passes a fresh inline object.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     open,
     venue,
@@ -178,6 +198,11 @@ export function AddNewAgent({
           : provider.operation,
       ...(resolvedModel && { model: resolvedModel }),
       ...(systemPrompt.trim() && { systemPrompt: systemPrompt.trim() }),
+      // Only override tools/skills once the picker's actually been touched —
+      // an untouched template may carry them on an unresolved reference layer
+      // (inlineAgentConfigPreview can't see those), and forcing [] here would
+      // silently strip them. Once touched, the picker owns the full array.
+      ...(touchedCapabilities && { tools: stagedTools, skills: stagedSkills }),
     };
     return withAgentConfigOverrides(baseConfig, overrides);
   };
@@ -273,11 +298,20 @@ export function AddNewAgent({
   const configPreview = initialConfigPreview ?? (
     initialConfig === undefined ? {} : inlineAgentConfigPreview(initialConfig)
   );
-  const previewSkills = Array.isArray(configPreview.skills) ? configPreview.skills : [];
-  const previewTools = Array.isArray(configPreview.tools) ? configPreview.tools : [];
-  const hasTemplateCapabilities = Boolean(
-    previewSkills.length || previewTools.length || configPreview.defaultTools,
-  );
+  const capabilitiesSummary = [
+    stagedSkills.length ? `a skills index (${stagedSkills.join(", ")})` : "",
+    stagedTools.length ? `${stagedTools.length} tool${stagedTools.length === 1 ? "" : "s"}` : "",
+    configPreview.defaultTools ? "the platform default tools" : "",
+  ].filter(Boolean);
+
+  const handleToggleTool = (op: CatalogOp, attached: boolean) => {
+    setStagedTools((current) => withToolToggled(current, op, attached));
+    setTouchedCapabilities(true);
+  };
+  const handleToggleSkill = (skill: SkillSummary, attached: boolean) => {
+    setStagedSkills((current) => withSkillToggled(current, skill, attached));
+    setTouchedCapabilities(true);
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -360,13 +394,34 @@ export function AddNewAgent({
               </p>
             </div>
 
-            {initialConfig && hasTemplateCapabilities && (
-              <p data-testid="template-capabilities" className="rounded-md border p-3 text-sm text-muted-foreground">
-                Includes{previewSkills.length ? ` a skills index (${previewSkills.join(", ")})` : ""}
-                {previewTools.length ? `${previewSkills.length ? "," : ""} ${previewTools.length} tool${previewTools.length === 1 ? "" : "s"}` : ""}
-                {configPreview.defaultTools ? `${previewSkills.length || previewTools.length ? ", and" : ""} the platform default tools` : ""}.
+            <div data-testid="capabilities-picker" className="space-y-2 rounded-md border p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">Tools &amp; skills</p>
+                <ToolSkillPicker
+                  venue={venue}
+                  attachedTools={stagedTools}
+                  attachedSkills={stagedSkills}
+                  onToggleTool={handleToggleTool}
+                  onToggleSkill={handleToggleSkill}
+                  trigger={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      data-testid="open-tool-skill-picker"
+                    >
+                      <Wrench size={14} /> Browse &amp; attach
+                    </Button>
+                  }
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {capabilitiesSummary.length
+                  ? `Includes ${capabilitiesSummary.join(", ")}.`
+                  : "No tools or skills attached yet."}
               </p>
-            )}
+            </div>
 
             <AgentRuntimeFields
               providerId={llmProvider}

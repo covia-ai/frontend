@@ -4,6 +4,24 @@ import { Operation, Venue } from "@covia/covia-sdk";
 // catalog path (e.g. "v/ops/agent/suspend"), not a content hash.
 export type CatalogOp = { path: string; metadata: any };
 
+// The adapter a catalog path belongs to, for grouping — shared by every
+// consumer of listCatalogOperations (OperationsCatalog, ToolSkillPicker) so
+// the grouping rule can't drift between them.
+export function adapterOf(path: string): string {
+  const parts = path.split("/");
+  if (parts[0] === "v" && parts[1] === "test") return "test";
+  if (parts[0] === "v" && parts[1] === "ops" && parts[2]) return parts[2];
+  return parts[0] ?? "other";
+}
+
+// An agent's `tools` array holds catalog paths verbatim, so toggling is a
+// plain add/remove of `op.path` — no alias resolution needed (contrast
+// withSkillToggled, where a skill has several equivalent identifiers).
+export function withToolToggled(tools: string[], op: CatalogOp, attached: boolean): string[] {
+  const next = tools.filter((value) => value !== op.path);
+  return attached ? [...next, op.path] : next;
+}
+
 // The catalog already contains each operation's complete inline metadata.
 // Keep it on the shared authenticated Venue instance so navigating from the
 // list to a detail page does not immediately read the same value again.

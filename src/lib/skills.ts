@@ -116,3 +116,13 @@ export function agentUsesSkill(config: unknown, skill: SkillSummary): boolean {
   const candidates = new Set([skill.path, skill.reference, skill.name, skill.key].filter(Boolean));
   return values.some((value) => typeof value === "string" && candidates.has(value));
 }
+
+// A skill can be matched in an agent's `skills` array by any of several
+// aliases (path, reference, name, key — see agentUsesSkill), so detaching has
+// to strip all of them, not just the one the picker happens to display;
+// attaching always (re-)adds the canonical `path`.
+export function withSkillToggled(skills: string[], skill: SkillSummary, attached: boolean): string[] {
+  const candidates = new Set([skill.path, skill.reference, skill.name, skill.key].filter(Boolean));
+  const next = skills.filter((value) => !candidates.has(value));
+  return attached ? [...next, skill.path] : next;
+}

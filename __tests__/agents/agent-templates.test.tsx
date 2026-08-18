@@ -13,6 +13,11 @@ jest.mock('@/hooks/use-authenticated-venue', () => ({
 }));
 jest.mock('@/hooks/use-auth', () => ({
   useIsAuthenticated: () => true,
+  // AddNewAgent now renders ToolSkillPicker, which reads venue access via
+  // useAuthStore (through useVenueAccess) — a minimal empty-state stand-in
+  // is enough to satisfy that selector without crashing.
+  useAuthStore: (selector: (state: { authMap: Record<string, unknown>; accountsMap: Record<string, unknown> }) => unknown) =>
+    selector({ authMap: {}, accountsMap: {} }),
 }));
 
 import { useAgentTemplates } from '@/hooks/use-agent-templates';

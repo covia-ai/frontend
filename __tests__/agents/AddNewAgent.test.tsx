@@ -14,6 +14,33 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: pushMock }),
 }));
 
+// Path-aware default for workspace.read: the picker's catalog/skills lookups
+// share this venue with the template-existence check, so a blanket
+// `mockResolvedValue` would either starve the picker or fake out every
+// template as pre-existing. Individual tests can still override with
+// `.mockResolvedValue`/`.mockImplementation` for their own scope.
+function defaultWorkspaceRead(path: string) {
+  if (path === 'v/ops') {
+    return Promise.resolve({
+      exists: true,
+      value: {
+        covia: {
+          read: { name: 'Read', description: 'Read a value', operation: { input: {}, output: {} } },
+        },
+      },
+    });
+  }
+  if (path === 'v/skills') {
+    return Promise.resolve({
+      exists: true,
+      value: {
+        summarizer: { name: 'Summarizer', description: 'Summarize text', content: { inline: 'Do it' } },
+      },
+    });
+  }
+  return Promise.resolve({ exists: false, value: null });
+}
+
 // Return a stable object reference so the useEffect dep [venue] doesn't
 // fire on every render and reset controlled-input state. Declared with the
 // `mock` prefix so it's also usable inside test bodies (Jest's hoisting
@@ -31,7 +58,7 @@ const mockVenue = {
     list: jest.fn().mockResolvedValue(['ANTHROPIC_API_KEY']),
   },
   workspace: {
-    read: jest.fn().mockResolvedValue({ exists: false }),
+    read: jest.fn(defaultWorkspaceRead),
     write: jest.fn().mockResolvedValue({}),
   },
 };
@@ -53,7 +80,7 @@ async function renderAndOpenDialog() {
 describe('AddNewAgent', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockVenue.workspace.read.mockResolvedValue({ exists: false });
+    mockVenue.workspace.read.mockImplementation(defaultWorkspaceRead);
     mockVenue.workspace.write.mockResolvedValue({});
   });
 
@@ -340,5 +367,43 @@ describe('AddNewAgent', () => {
 
     expect(screen.queryByText(/is reserved/i)).not.toBeInTheDocument();
     expect(screen.getByTestId('create-agent')).not.toBeDisabled();
+  });
+
+  it('stages a tool attached via the picker into the created agent config, with no venue read before creation', async () => {
+    const user = await renderAndOpenDialog();
+    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+
+    await user.click(screen.getByTestId('open-tool-skill-picker'));
+    await user.click(screen.getByRole('button', { name: /covia/i }));
+    await user.click(await screen.findByRole('checkbox', { name: 'Attach Read' }));
+    await user.keyboard('{Escape}');
+
+    expect(screen.getByText(/Includes 1 tool/)).toBeInTheDocument();
+
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    const config = mockVenue.agents.create.mock.calls[0][0].config;
+    expect(config.tools).toEqual(['v/ops/covia/read']);
+    // Attaching is purely local state until creation — no agent exists yet
+    // to call agent:update against.
+    expect(mockVenue.agents.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves an untouched template config untouched by the picker', async () => {
+    const user = userEvent.setup();
+    render(
+      <AddNewAgent
+        initialAgentName="cloned agent"
+        initialConfig={{ operation: 'v/ops/llmagent/chat', skills: ['w/skills'] }}
+      />,
+    );
+    await user.click(screen.getByTestId('create-agent-trigger'));
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    expect(mockVenue.agents.create.mock.calls[0][0].config).toMatchObject({
+      skills: ['w/skills'],
+    });
   });
 });
