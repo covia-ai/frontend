@@ -1,0 +1,17 @@
+---
+description: User-facing toasts go through notify helpers, never bare sonner
+globs: src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Notifications
+
+Use `src/lib/notify.ts` for all user-facing notifications — never bare
+`toast()` from sonner.
+
+- Failures: `notifyError(title, err, target?)` — always pass the caught error
+- Other: `notifySuccess` / `notifyWarning` / `notifyInfo`
+- Failure titles: `"Unable to <verb> <object>"`
+
+Every notification is recorded in the session log (`use-notification-log.ts`),
+viewable on the Profile page.
