@@ -49,17 +49,33 @@ export function SmartBreadcrumb({
       { label: 'Home', href: '/' }
     ];
 
-    // /operation/[...path] carries a full catalog address (e.g.
-    // "v/ops/a2a/agent-card") as path segments — those middle segments
-    // aren't pages of their own, so skip straight from "Operations" to the
-    // operation's own name instead of a crumb per namespace segment.
+    // Catalog addresses (e.g. "v/ops/covia/aggregate-lattice-entries") arrive
+    // as path segments under both /operation/[...path] and
+    // /venues/[slug]/operations/[...id]. Middle namespace segments aren't
+    // pages of their own — skip them and jump from "Operations" to the
+    // operation name.
     if (segments[0] === 'operation' && segments.length > 1) {
-      const lastSegment = segments[segments.length - 1];
-      const label = assetOrJobName && isAssetOrJobSegment(lastSegment) ? assetOrJobName : lastSegment;
       return [
         ...breadcrumbs,
         { label: 'Operations', href: '/operations' },
-        { label, href: pathname },
+        { label: operationLabel(segments), href: pathname },
+      ];
+    }
+
+    if (
+      segments[0] === 'venues' &&
+      segments[2] === 'operations' &&
+      segments.length > 3
+    ) {
+      const slug = segments[1];
+      const venueLabel =
+        venueName && isVenueSegment(slug, 'venues') ? venueName : slug;
+      return [
+        ...breadcrumbs,
+        { label: 'Venues', href: '/venues' },
+        { label: venueLabel, href: `/venues/${slug}` },
+        { label: 'Operations', href: `/venues/${slug}/operations` },
+        { label: operationLabel(segments), href: pathname },
       ];
     }
 
@@ -108,6 +124,14 @@ export function SmartBreadcrumb({
     });
 
     return breadcrumbs;
+  };
+
+  const operationLabel = (segments: string[]): string => {
+    const lastSegment = segments[segments.length - 1];
+    if (assetOrJobName && isAssetOrJobSegment(lastSegment)) return assetOrJobName;
+    return lastSegment
+      .replace(/-/g, ' ')
+      .replace(/\b\w/g, (l) => l.toUpperCase());
   };
 
   // Check if a segment represents an asset (not a known route)
