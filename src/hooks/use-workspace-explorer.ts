@@ -98,8 +98,9 @@ function workspaceValue(result: WorkspaceReadResult): WorkspaceValue {
   };
 }
 
-export function useWorkspaceExplorer() {
+export function useWorkspaceExplorer(initialPath?: string) {
   const venue = useAuthenticatedVenue();
+  const startPath = initialPath ? normalizeWorkspacePath(initialPath) : DEFAULT_WORKSPACE_PATH;
   const isAuthenticated = useIsAuthenticated();
   const {
     data: entries,
@@ -117,7 +118,7 @@ export function useWorkspaceExplorer() {
     run: runValue,
     reset: resetValue,
   } = useLatestQuery<WorkspaceValue>(EMPTY_VALUE);
-  const [currentPath, setCurrentPath] = useState(DEFAULT_WORKSPACE_PATH);
+  const [currentPath, setCurrentPath] = useState(startPath);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [editedData, setEditedData] = useState<unknown>(null);
   const [pendingMutation, setPendingMutation] =
@@ -228,15 +229,20 @@ export function useWorkspaceExplorer() {
     refreshGeneration.current += 1;
     setPendingMutation(null);
     setNamespaceRefreshing(false);
-    currentPathRef.current = DEFAULT_WORKSPACE_PATH;
-    setCurrentPath(DEFAULT_WORKSPACE_PATH);
+    currentPathRef.current = startPath;
+    setCurrentPath(startPath);
     selectedPathRef.current = null;
     setSelectedPath(null);
     setEditedData(null);
     listingCache.current.clear();
     valueCache.current.clear();
     resetValue();
-    void loadListing(DEFAULT_WORKSPACE_PATH);
+    void loadListing(startPath);
+    // startPath intentionally excluded: it's derived once from the caller's
+    // initialPath prop (a query param at mount), not a live dependency —
+    // re-including it would re-seed the explorer back to the deep-linked
+    // path every time venue-triggered state elsewhere causes a re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadListing, resetValue]);
 
   useEffect(() => {
