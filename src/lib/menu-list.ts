@@ -1,4 +1,5 @@
 import {
+  BrainCircuit,
   Database,
   FileStack,
   FlaskConical,
@@ -56,8 +57,12 @@ export const MENU_LIST: MenuGroup[] = [
     ],
   },
   {
-    groupLabel: "Manage",
+    // Renamed from "Manage" — scoped to #163 (memory panel needs a nav
+    // home). The rest of #221's Data regrouping (splitting Grid/Agents,
+    // moving Venues out) is a separate, larger pass.
+    groupLabel: "Data",
     menus: [
+      { href: "/context", label: "Context", icon: BrainCircuit, requiresAuth: true },
       { href: "/secrets", label: "Secrets", icon: KeyRound, requiresAuth: true },
       { href: "/venues", label: "Venues", icon: MapPinned },
       { href: "/workspace", label: "Workspace", icon: FolderOpen, requiresAuth: true },

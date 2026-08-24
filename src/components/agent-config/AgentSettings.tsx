@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { withToolToggled, type CatalogOp } from "@/lib/operations-catalog";
 import { withSkillToggled, type SkillSummary } from "@/lib/skills";
+import { isMemoryContextEntry, withMemoryContextToggled } from "@/lib/agent-context";
 import {
   agentConfigUpdatePatch,
   configFromAgentSettingsDraft,
@@ -86,14 +87,23 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
   // tools/skills never visibly disagree.
   const attachedTools = stringArray(initialConfig.current.tools);
   const attachedSkills = stringArray(initialConfig.current.skills);
+  const attachedContext = Array.isArray(initialConfig.current.context)
+    ? initialConfig.current.context
+    : [];
+  const hasMemoryContext = attachedContext.some(isMemoryContextEntry);
 
-  const saveCapability = async (key: "tools" | "skills", nextValue: string[]) => {
+  const saveCapability = async (
+    key: "tools" | "skills" | "context",
+    nextValue: unknown[],
+  ) => {
     setCapabilitySaving(true);
     try {
       const saved = await onSave({ [key]: nextValue });
       if (saved) {
         initialConfig.current = { ...initialConfig.current, [key]: nextValue };
-        setField(key === "tools" ? "toolsJson" : "skillsJson", JSON.stringify(nextValue, null, 2));
+        const jsonField =
+          key === "tools" ? "toolsJson" : key === "skills" ? "skillsJson" : "contextJson";
+        setField(jsonField, JSON.stringify(nextValue, null, 2));
       }
     } finally {
       setCapabilitySaving(false);
@@ -105,6 +115,9 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
   };
   const handleToggleSkill = (skill: SkillSummary, attached: boolean) => {
     void saveCapability("skills", withSkillToggled(attachedSkills, skill, attached));
+  };
+  const handleToggleMemoryContext = (attached: boolean) => {
+    void saveCapability("context", withMemoryContextToggled(attachedContext, attached));
   };
 
   const save = async () => {
@@ -253,6 +266,23 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
                     <Label htmlFor="agent-default-tools">Include platform default tools</Label>
                     <p className="mt-1 text-sm text-muted-foreground">
                       Adds the venue&apos;s standard tool set alongside the explicit list above.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-md border p-4">
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="agent-inject-memory"
+                    checked={hasMemoryContext}
+                    disabled={capabilitySaving}
+                    onCheckedChange={(checked) => handleToggleMemoryContext(checked === true)}
+                  />
+                  <div>
+                    <Label htmlFor="agent-inject-memory">Inject user memory into context</Label>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Renders your saved memory (Context page) into this agent&apos;s
+                      system context every turn.
                     </p>
                   </div>
                 </div>

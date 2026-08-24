@@ -103,3 +103,60 @@ describe("AgentSettings — tool/skill picker", () => {
     );
   });
 });
+
+describe("AgentSettings — inject user memory into context", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAccess.state = "connected";
+    mockVenue.secrets.list.mockResolvedValue([]);
+    mockVenue.skills.list.mockResolvedValue([]);
+  });
+
+  it("reflects an existing memory context entry as checked", async () => {
+    const user = userEvent.setup();
+    const agent: AgentDetail = {
+      ...baseAgent,
+      config: { context: [{ op: "v/ops/memory", input: { command: "recall" }, label: "User Memory" }] },
+    };
+    render(<AgentSettings agent={agent} onBack={jest.fn()} onSave={jest.fn()} />);
+    await user.click(screen.getByRole("tab", { name: "Capabilities" }));
+
+    expect(screen.getByRole("checkbox", { name: /inject user memory into context/i })).toBeChecked();
+  });
+
+  it("checking it sends the well-formed context entry, preserving unrelated entries", async () => {
+    const user = userEvent.setup();
+    const onSave = jest.fn().mockResolvedValue(true);
+    const agent: AgentDetail = {
+      ...baseAgent,
+      config: { context: ["w/notes"] },
+    };
+    render(<AgentSettings agent={agent} onBack={jest.fn()} onSave={onSave} />);
+    await user.click(screen.getByRole("tab", { name: "Capabilities" }));
+
+    await user.click(screen.getByRole("checkbox", { name: /inject user memory into context/i }));
+
+    await waitFor(() =>
+      expect(onSave).toHaveBeenCalledWith({
+        context: ["w/notes", { op: "v/ops/memory", input: { command: "recall" }, label: "User Memory" }],
+      }),
+    );
+  });
+
+  it("unchecking it removes only the memory entry", async () => {
+    const user = userEvent.setup();
+    const onSave = jest.fn().mockResolvedValue(true);
+    const agent: AgentDetail = {
+      ...baseAgent,
+      config: {
+        context: ["w/notes", { op: "v/ops/memory", input: { command: "recall" }, label: "User Memory" }],
+      },
+    };
+    render(<AgentSettings agent={agent} onBack={jest.fn()} onSave={onSave} />);
+    await user.click(screen.getByRole("tab", { name: "Capabilities" }));
+
+    await user.click(screen.getByRole("checkbox", { name: /inject user memory into context/i }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith({ context: ["w/notes"] }));
+  });
+});
