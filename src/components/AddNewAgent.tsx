@@ -10,8 +10,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "./ui/button";
+import { Checkbox } from "./ui/checkbox";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -19,7 +21,7 @@ import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/not
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
-import { AlertTriangle, BookmarkPlus, Wrench } from "lucide-react";
+import { AlertTriangle, BookmarkPlus, Plus, Trash2, Wrench } from "lucide-react";
 import Link from "next/link";
 import { gtmEvent, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
 import {
@@ -33,6 +35,14 @@ import {
 import { ToolSkillPicker } from "@/components/agent-config/ToolSkillPicker";
 import { withToolToggled, type CatalogOp } from "@/lib/operations-catalog";
 import { withSkillToggled, type SkillSummary } from "@/lib/skills";
+import {
+  cleanCaps,
+  emptyCap,
+  isAgentCap,
+  COMMON_ABILITIES,
+  CUSTOM_ABILITY_OPTION,
+  type AgentCap,
+} from "@/lib/agent-caps";
 import {
   AGENT_TEMPLATES_CHANGED_EVENT,
   asSdkAgentConfig,
@@ -99,6 +109,15 @@ export function AddNewAgent({
   const [stagedTools, setStagedTools] = useState<string[]>([]);
   const [stagedSkills, setStagedSkills] = useState<string[]>([]);
   const [touchedCapabilities, setTouchedCapabilities] = useState(false);
+  // Caps default absent (unrestricted). capsEnabled/caps seed from a cloned
+  // template so the editor honestly shows what's already there, but — same
+  // reasoning as touchedCapabilities for tools/skills — only touchedCaps
+  // (set on actual user interaction, not on seeding) decides whether the
+  // built config carries an override; otherwise an untouched clone would
+  // silently duplicate its own inherited caps layer.
+  const [capsEnabled, setCapsEnabled] = useState(false);
+  const [caps, setCaps] = useState<AgentCap[]>([]);
+  const [touchedCaps, setTouchedCaps] = useState(false);
   // A key pasted inline when the chosen provider has none — stored on create
   // so you don't have to leave the dialog to add it in Secrets first.
   const [apiKeyInput, setApiKeyInput] = useState("");
@@ -133,6 +152,10 @@ export function AddNewAgent({
     setStagedTools(Array.isArray(preview.tools) ? preview.tools : []);
     setStagedSkills(Array.isArray(preview.skills) ? preview.skills : []);
     setTouchedCapabilities(false);
+    const previewCaps = Array.isArray(preview.caps) ? preview.caps.filter(isAgentCap) : [];
+    setCaps(previewCaps);
+    setCapsEnabled(Array.isArray(preview.caps));
+    setTouchedCaps(false);
     if (!venue) return;
     venue.secrets
       .list()
@@ -203,6 +226,7 @@ export function AddNewAgent({
       // (inlineAgentConfigPreview can't see those), and forcing [] here would
       // silently strip them. Once touched, the picker owns the full array.
       ...(touchedCapabilities && { tools: stagedTools, skills: stagedSkills }),
+      ...(touchedCaps && { caps: cleanCaps(caps) }),
     };
     return withAgentConfigOverrides(baseConfig, overrides);
   };
@@ -421,6 +445,108 @@ export function AddNewAgent({
                   ? `Includes ${capabilitiesSummary.join(", ")}.`
                   : "No tools or skills attached yet."}
               </p>
+            </div>
+
+            <div data-testid="caps-editor" className="space-y-3 rounded-md border p-3">
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="agent-caps-enabled"
+                  checked={capsEnabled}
+                  onCheckedChange={(checked) => {
+                    const next = checked === true;
+                    setCapsEnabled(next);
+                    setTouchedCaps(true);
+                    if (next && caps.length === 0) setCaps([emptyCap()]);
+                  }}
+                />
+                <div>
+                  <Label htmlFor="agent-caps-enabled">Capabilities (optional)</Label>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Without this, the agent may use any tool it&apos;s given. Enable to
+                    restrict it to specific (resource, ability) pairs.
+                  </p>
+                </div>
+              </div>
+
+              {capsEnabled && (
+                <div className="space-y-2">
+                  {caps.length === 0 && (
+                    <p className="flex items-center gap-1 text-sm text-amber-500">
+                      <AlertTriangle size={14} />
+                      No capabilities added — this denies every tool call.
+                    </p>
+                  )}
+                  {caps.map((cap, index) => {
+                    const isCustom = !COMMON_ABILITIES.some((a) => a.value === cap.can);
+                    const updateCap = (patch: Partial<AgentCap>) => {
+                      const next = [...caps];
+                      next[index] = { ...next[index], ...patch };
+                      setCaps(next);
+                      setTouchedCaps(true);
+                    };
+                    return (
+                      <div key={index} className="flex items-center gap-2">
+                        <Input
+                          data-testid={`cap-with-${index}`}
+                          placeholder="Resource (path or DID), e.g. w/"
+                          value={cap.with}
+                          onChange={(e) => updateCap({ with: e.target.value })}
+                          className="flex-1"
+                        />
+                        <Select
+                          value={isCustom ? CUSTOM_ABILITY_OPTION : cap.can}
+                          onValueChange={(value) =>
+                            updateCap({ can: value === CUSTOM_ABILITY_OPTION ? "" : value })
+                          }
+                        >
+                          <SelectTrigger data-testid={`cap-can-${index}`} className="w-56 shrink-0">
+                            <SelectValue placeholder="Ability" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {COMMON_ABILITIES.map((a) => (
+                              <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
+                            ))}
+                            <SelectItem value={CUSTOM_ABILITY_OPTION}>Custom…</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {isCustom && (
+                          <Input
+                            data-testid={`cap-can-custom-${index}`}
+                            placeholder="e.g. covia/read"
+                            value={cap.can}
+                            onChange={(e) => updateCap({ can: e.target.value })}
+                            className="w-40 shrink-0"
+                          />
+                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`Remove capability ${index + 1}`}
+                          onClick={() => {
+                            setCaps(caps.filter((_, i) => i !== index));
+                            setTouchedCaps(true);
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => {
+                      setCaps([...caps, emptyCap()]);
+                      setTouchedCaps(true);
+                    }}
+                  >
+                    <Plus size={14} /> Add capability
+                  </Button>
+                </div>
+              )}
             </div>
 
             <AgentRuntimeFields
