@@ -155,4 +155,39 @@ describe('AssetList', () => {
     render(<AssetList />);
     expect(await screen.findByPlaceholderText('Type keyword to search…')).toHaveValue('beta');
   });
+
+  // venue.listAssets() is a hash-only CAS scan with no path field. Catalog
+  // content (agent templates, skills) resolved through it would only ever
+  // be addressable as a bare /a/<hash>, misdisplaying it as the caller's own
+  // pinned asset (covia#390) instead of its real venue-catalog identity —
+  // those kinds have their own path-first views, so they're excluded here.
+  it('excludes agent templates and skills — catalog content with no path in this hash-only listing', async () => {
+    mockVenue.listAssets.mockResolvedValue({ items: ['a1', 'a2', 'a3', 'a4'] });
+    mockVenue.getAsset.mockImplementation((id: string) => {
+      if (id === 'a1') return Promise.resolve(makeAsset('a1', 'Alpha Report'));
+      if (id === 'a2') return Promise.resolve(makeAsset('a2', 'Beta Dataset'));
+      if (id === 'a3') {
+        return Promise.resolve({
+          id,
+          venue: mockVenue,
+          metadata: { name: 'Skilled Template', agent: { config: {} } },
+        });
+      }
+      if (id === 'a4') {
+        return Promise.resolve({
+          id,
+          venue: mockVenue,
+          metadata: { name: 'Research Skill', skill: { tools: ['search'] } },
+        });
+      }
+      return Promise.reject(new Error('unknown asset'));
+    });
+
+    render(<AssetList />);
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
+    expect(screen.getByText('Alpha Report')).toBeInTheDocument();
+    expect(screen.getByText('Beta Dataset')).toBeInTheDocument();
+    expect(screen.queryByText('Skilled Template')).not.toBeInTheDocument();
+    expect(screen.queryByText('Research Skill')).not.toBeInTheDocument();
+  });
 });

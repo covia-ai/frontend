@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState, useMemo } from "react";
 
 import { Asset, DataAsset }from "@covia/covia-sdk";
 import { loadAssetEntries } from "@/lib/asset-metadata";
+import { getAssetKind } from "@/lib/asset-kind";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { Spinner } from '@/components/ui/shadcn-io/spinner';
 import { AssetCard } from "./AssetCard";
@@ -82,9 +83,19 @@ export function AssetList({ venueId }: AssetListProps = {}) {
         const assetList = await venue.listAssets();
         const toDataAssets = (entries: Awaited<ReturnType<typeof loadAssetEntries>>) =>
           entries
-            // Everything except operations (which have their own page) is an
-            // artifact here — skills and agent templates included.
-            .filter((e) => e.metadata.name != undefined && e.metadata.operation == undefined)
+            // venue.listAssets() is a hash-only CAS scan (GET /api/v1/assets) —
+            // it has no path field, so anything catalog-owned that ends up
+            // here can only be shown at a bare /a/<hash>, which misdisplays
+            // venue-catalog content as the caller's own pinned asset (covia#390).
+            // Operations, agent templates, and skills are catalog content with
+            // their own path-first views (Operations, Skills), so they're
+            // excluded here rather than given an invented catalog address;
+            // what's left is genuinely CAS-only content, correctly hash-addressed.
+            .filter((e) => {
+              if (e.metadata.name == undefined) return false;
+              const kind = getAssetKind(e.metadata);
+              return kind !== "operation" && kind !== "agent-template" && kind !== "skill";
+            })
             .map((e) => new DataAsset(e.id, venue, e.metadata));
         const entries = await loadAssetEntries(
           venue,
