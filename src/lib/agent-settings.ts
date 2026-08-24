@@ -15,6 +15,7 @@ export type AgentSettingsDraft = {
   toolsJson: string;
   skillsJson: string;
   capsJson: string;
+  contextJson: string;
   defaultTools: boolean;
   advancedJson: string;
 };
@@ -30,6 +31,7 @@ const MANAGED_FIELDS = new Set([
   "tools",
   "skills",
   "caps",
+  "context",
   "defaultTools",
 ]);
 
@@ -72,6 +74,7 @@ export function createAgentSettingsDraft(
     toolsJson: prettyJson(config.tools),
     skillsJson: prettyJson(config.skills),
     capsJson: prettyJson(config.caps),
+    contextJson: prettyJson(config.context),
     defaultTools: config.defaultTools === true,
     advancedJson: prettyJson(advanced) || "{}",
   };
@@ -127,6 +130,7 @@ export function configFromAgentSettingsDraft(
     ["tools", "Tools", draft.toolsJson],
     ["skills", "Skills", draft.skillsJson],
     ["caps", "Capabilities", draft.capsJson],
+    ["context", "Context", draft.contextJson],
   ] as const) {
     if (!text.trim()) continue;
     const parsed = parseJson(label, text, "array");
