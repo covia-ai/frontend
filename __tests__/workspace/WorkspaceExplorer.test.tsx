@@ -92,4 +92,24 @@ describe('WorkspaceExplorer job-free reads', () => {
     );
     expect(within(screen.getByTestId('workspace-namespace-pane')).queryByText('document')).not.toBeInTheDocument();
   });
+
+  it('deep-links to a given initialPath instead of the w default', async () => {
+    render(<WorkspaceExplorer initialPath="v/skills" />);
+
+    await waitFor(() => expect(mockVenue.workspace.list).toHaveBeenCalledWith('v/skills'));
+    expect(mockVenue.workspace.list).not.toHaveBeenCalledWith('w');
+  });
+
+  it('shows the shared-venue read-only banner only while browsing v/, not w/', async () => {
+    render(<WorkspaceExplorer />);
+    await waitFor(() => expect(mockVenue.workspace.list).toHaveBeenCalledWith('w'));
+    expect(screen.queryByTestId('workspace-shared-venue-banner')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Venue v$/ }));
+    await waitFor(() => expect(mockVenue.workspace.list).toHaveBeenCalledWith('v'));
+
+    expect(await screen.findByTestId('workspace-shared-venue-banner')).toHaveTextContent(
+      'Shared with everyone on',
+    );
+  });
 });
