@@ -7,6 +7,8 @@ import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { JobMetadata, RunStatus }from "@covia/covia-sdk";
 import { formatDateTime, getExecutionTime } from "@/lib/utils";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScheduledList } from "@/components/ScheduledList";
 import { PaginationHeader } from "@/components/PaginationHeader";
 import { FiltersSheet } from "@/components/FiltersSheet";
 import { ListToolbar } from "@/components/ListToolbar";
@@ -335,6 +337,15 @@ export function JobList({ venueId }: JobListProps = {}) {
   return (
     <ContentLayout >
       <TopBar venueId={venueId} venueName={venueObj?.metadata.name}/>
+      <Tabs defaultValue="history" className="mt-2">
+        <TabsList data-testid="jobs-tabs">
+          <TabsTrigger value="history" data-testid="jobs-tab-history">History</TabsTrigger>
+          <TabsTrigger value="scheduled" data-testid="jobs-tab-scheduled">Scheduled</TabsTrigger>
+        </TabsList>
+        <TabsContent value="scheduled">
+          <ScheduledList venueId={venueId} />
+        </TabsContent>
+        <TabsContent value="history">
       {/* Full-height column so the stat tiles pin to the viewport bottom via
           mt-auto: they hold position across pagination/refresh (short pages
           and the loading state leave slack instead of pulling them up) and
@@ -473,6 +484,8 @@ export function JobList({ venueId }: JobListProps = {}) {
           />
         </div>
       </div>
+        </TabsContent>
+      </Tabs>
     </ContentLayout>
 );
 }

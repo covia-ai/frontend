@@ -68,6 +68,30 @@ export function formatRelativeTime(date: string): string {
   return new Date(date).toLocaleDateString();
 }
 
+// Countdown form for a future timestamp — "in 2 hr 15 min" style, mirroring
+// getExecutionTime's hr/min/sec cascade but counting down to a target instead
+// of a duration between two points. Pair with the exact fire time in an
+// adjacent cell, same rationale as formatRelativeTime above.
+export function formatCountdown(targetMs: number): string {
+  const diffMs = targetMs - Date.now();
+  if (diffMs <= 0) return "due now";
+  const diffSec = diffMs / 1000;
+  const diffMin = diffMs / 60000;
+  const diffHour = diffMs / 3600000;
+
+  if (diffHour >= 1) {
+    const hours = Math.floor(diffHour);
+    const mins = Math.round((diffHour - hours) * 60);
+    return mins > 0 ? `in ${hours} hr ${mins} min` : `in ${hours} hr`;
+  }
+  if (diffMin >= 1) {
+    const mins = Math.floor(diffMin);
+    const secs = Math.round((diffMin - mins) * 60);
+    return secs > 0 ? `in ${mins} min ${secs} sec` : `in ${mins} min`;
+  }
+  return `in ${Math.round(diffSec)} sec`;
+}
+
 const DATE_TIME_FORMATTER = new Intl.DateTimeFormat(undefined, {
   year: "numeric",
   month: "short",
