@@ -38,6 +38,29 @@ describe("useOperationInput", () => {
     ).toBeNull();
   });
 
+  // covia-ai/frontend#271: switching a field's type after typing a value
+  // must re-coerce the already-stored value into the new type, not just
+  // refresh the displayed text — otherwise the submitted payload silently
+  // disagrees with what the type selector shows.
+  it("re-coerces the stored value when the field's type changes", async () => {
+    const { result } = renderHook(() =>
+      useOperationInput("did:venue:one", "v/ops/example", schema),
+    );
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    act(() => {
+      result.current.setValue("after", "90000");
+      result.current.setRawValue("after", "90000");
+    });
+    expect((result.current.input as Record<string, unknown>).after).toBe("90000");
+
+    act(() => result.current.setType("after", "number"));
+
+    expect((result.current.input as Record<string, unknown>).after).toBe(90000);
+    expect(result.current.rawInput.after).toBe("90000");
+    expect(result.current.typeMap.after).toBe("number");
+  });
+
   it("restores persisted state and clears it on reset", async () => {
     const key = "operation_input_did:venue:one_v/ops/example";
     sessionStorage.setItem(
