@@ -37,7 +37,7 @@ Three structural facts shape everything below:
 
 **What we deliberately do not collect:** private keys; secret values in readable form; the content of prompts you send to LLM providers under your own API keys; anything at all from self-hosted venues.
 
-**The Covia connector for AI assistants (connector.covia.ai).** When you connect Covia to an AI assistant such as Claude through connector.covia.ai, the connector stores only the venue you chose, your DID, and the capability grant you signed (encrypted at rest), for as long as the grant lasts or until you revoke it. It does not receive your private key, your venue secrets, or your conversation with the assistant. Actions the assistant takes run on your venue under that grant and appear in your venue's job records. Revoke at any time by disconnecting in the assistant or letting the grant expire.
+**The Covia connector for AI assistants (connector.covia.ai).** When you connect Covia to an AI assistant such as Claude through connector.covia.ai, the connector stores three things, associated with the assistant's session: the venue you chose, your DID, and the capability grant you signed — the grant encrypted at rest with AES-256-GCM. It does not receive or store your private key (the grant is signed in your browser and only the signed grant is sent), your venue secrets, or your conversation with the assistant; the arguments and results of the tools the assistant calls are not retained beyond ephemeral request logs. Actions the assistant takes are delegated: they run on your venue under the grant you signed, are checked by the venue on every call, and appear in your venue's job records. The connector runs on Cloudflare (see Third-party services); retention of the grant and its tokens is covered under Data retention. You can revoke at any time by disconnecting the connector in the assistant or letting the grant expire — revocation takes effect immediately.
 
 ## How we use information
 
@@ -51,7 +51,7 @@ app.covia.ai uses a consent banner with Google consent mode. Essential storage (
 
 ## Third-party services
 
-Service providers that may process personal data on our behalf: cloud hosting (Google Cloud, Amazon Web Services, Microsoft Azure), Google Workspace (email and internal collaboration), Google Analytics (with consent), Brevo (email communications), Notion (internal documentation), and customer-relationship-management tooling for handling enquiries. OAuth sign-in involves your chosen identity provider. A current sub-processor list is available on request at privacy@covia.ai.
+Service providers that may process personal data on our behalf: cloud hosting (Google Cloud, Amazon Web Services, Microsoft Azure), Cloudflare (hosting and edge delivery of the connector at connector.covia.ai, including its encrypted grant store), Google Workspace (email and internal collaboration), Google Analytics (with consent), Brevo (email communications), Notion (internal documentation), and customer-relationship-management tooling for handling enquiries. OAuth sign-in involves your chosen identity provider. A current sub-processor list is available on request at privacy@covia.ai.
 
 ## International transfers
 
@@ -63,6 +63,7 @@ Covia-operated venues and services are hosted in Singapore, the United States, a
 - **Job records**: retained as your audit trail while your account is active; you may delete your own job records at any time (each deletion is itself an auditable action).
 - **venue-test**: a scratch venue; data may be cleared at any time without notice and should never contain personal data you care about.
 - **Server logs**: 90 days.
+- **Connector grants and tokens**: a capability grant you sign through connector.covia.ai is stored, encrypted, until it expires or you revoke it; issued access tokens expire within one hour and refresh tokens within 30 days, and never outlive the grant; short-lived authorisation requests and codes are held only for minutes. Connector request logs follow the server-log period above.
 - **Backups**: deleted data leaves backups within 35 days.
 
 One architectural note, stated plainly: assets are content-addressed and job records immutable *while they exist*; immutability means tamper-evident history, not undeletable data. Deletion removes the record from the venue's store; what has already been shared to another venue or downloaded by an authorised party is under that party's control, as with any data you share.
