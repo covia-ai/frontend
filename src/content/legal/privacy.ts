@@ -1,4 +1,4 @@
-// Covia Privacy Policy v1.1 (effective 2026-08-27) — adds the connector.covia.ai
+// Covia Privacy Policy v1.1 (effective 2026-08-27): adds the connector.covia.ai
 // paragraph. v1.0 (effective 2026-08-14) approved by Chirdeep Chhabra 2026-08-14;
 // v1.1 pending his approval (this PR). Edit the markdown below to change the page.
 export const PRIVACY_POLICY_MD = `
@@ -37,7 +37,7 @@ Three structural facts shape everything below:
 
 **What we deliberately do not collect:** private keys; secret values in readable form; the content of prompts you send to LLM providers under your own API keys; anything at all from self-hosted venues.
 
-**The Covia connector for AI assistants (connector.covia.ai).** When you connect Covia to an AI assistant such as Claude through connector.covia.ai, the connector stores three things, associated with the assistant's session: the venue you chose, your DID, and the capability grant you signed — the grant encrypted at rest with AES-256-GCM. It does not receive or store your private key (the grant is signed in your browser and only the signed grant is sent), your venue secrets, or your conversation with the assistant; the arguments and results of the tools the assistant calls are not retained beyond ephemeral request logs. Actions the assistant takes are delegated: they run on your venue under the grant you signed, are checked by the venue on every call, and appear in your venue's job records. The connector runs on Cloudflare (see Third-party services); retention of the grant and its tokens is covered under Data retention. You can revoke at any time by disconnecting the connector in the assistant or letting the grant expire — revocation takes effect immediately.
+**The Covia connector for AI assistants (connector.covia.ai).** When you connect Covia to an AI assistant such as Claude or ChatGPT through connector.covia.ai, the connector stores three things, associated with the assistant's session: the venue you chose, your DID, and the capability grant you signed, with the grant encrypted at rest using AES-256-GCM. It does not receive or store your private key (the grant is signed in your browser, and only the signed grant is sent), your venue secrets, or your conversation with the assistant; the arguments and results of the tools the assistant calls are not retained beyond ephemeral request logs. Actions the assistant takes are delegated: they run on your venue under the grant you signed, are checked by the venue on every call, and appear in your venue's job records. The connector runs on Cloudflare (see Third-party services); retention of the grant and its tokens is covered under Data retention. You can revoke at any time by disconnecting the connector in Claude, ChatGPT, or whichever assistant you connected, or by letting the grant expire; revocation takes effect immediately.
 
 ## How we use information
 
