@@ -1,7 +1,8 @@
-// Covia Privacy Policy v1.0 (effective 2026-08-14), approved by Chirdeep
-// Chhabra 2026-08-14. Edit the markdown below to change the published page.
+// Covia Privacy Policy v1.1 (effective 2026-08-27) — adds the connector.covia.ai
+// paragraph. v1.0 (effective 2026-08-14) approved by Chirdeep Chhabra 2026-08-14;
+// v1.1 pending his approval (this PR). Edit the markdown below to change the page.
 export const PRIVACY_POLICY_MD = `
-**Effective date: 14 August 2026** · Version 1.0
+**Effective date: 27 August 2026** · Version 1.1
 
 ## Introduction
 
@@ -35,6 +36,8 @@ Three structural facts shape everything below:
 - **Analytics**: with your consent (Google consent mode), aggregated usage events on app.covia.ai and our websites. Declining non-essential cookies disables this.
 
 **What we deliberately do not collect:** private keys; secret values in readable form; the content of prompts you send to LLM providers under your own API keys; anything at all from self-hosted venues.
+
+**The Covia connector for AI assistants (connector.covia.ai).** When you connect Covia to an AI assistant such as Claude through connector.covia.ai, the connector stores only the venue you chose, your DID, and the capability grant you signed (encrypted at rest), for as long as the grant lasts or until you revoke it. It does not receive your private key, your venue secrets, or your conversation with the assistant. Actions the assistant takes run on your venue under that grant and appear in your venue's job records. Revoke at any time by disconnecting in the assistant or letting the grant expire.
 
 ## How we use information
 
