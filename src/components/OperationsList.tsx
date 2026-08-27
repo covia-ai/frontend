@@ -4,14 +4,13 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Asset, Operation }from "@covia/covia-sdk";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
-import { useVenues } from "@/hooks/use-venues";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "./admin-panel/TopBar";
 import { Spinner } from '@/components/ui/shadcn-io/spinner';
 import { AssetCard } from "./AssetCard";
 import { PaginationHeader } from "./PaginationHeader";
-import { PlayCircle, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { PlayCircle, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { listCatalogOperations } from "@/lib/operations-catalog";
 import { useGridPageSize } from "@/hooks/use-grid-page-size";
 import { useLatestQuery } from "@/hooks/use-latest-query";
@@ -19,8 +18,8 @@ import { useClientPagination } from "@/hooks/use-pagination";
 import { CARD_GRID_CLASS } from "@/lib/grid";
 import { FiltersSheet } from "./FiltersSheet";
 import { ListToolbar } from "./ListToolbar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { VenueResolutionState } from "@/components/VenueResolutionState";
 
 interface OperationsListProps {
   venueId?: string;
@@ -46,15 +45,13 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
   const [searchInput, setSearchInput] = useState(searchParams.get('search') ?? "");
   const pathname = usePathname();
 
-  const { venues } = useVenues();
+  const resolvedVenue = useResolvedVenueContext(venueId);
   const {
     descriptor: venueObj,
     venue,
     isAuthenticated,
-  } = useResolvedVenueContext(venueId);
-  // Bumped by the refresh control so ops registered after page load show up
-  // without a reload — the catalog is otherwise fetched once per venue.
-  const [refreshTick, setRefreshTick] = useState(0);
+  } = resolvedVenue;
+  const venueStatus = resolvedVenue.status ?? (venue ? "ready" : "absent");
 
   const handleSearchChange = (value: string) => {
     setSearchInput(value);
@@ -63,7 +60,7 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
   // Fetches the full catalog once per venue — search text only filters
   // client-side (see filteredAssets) so typing never triggers a refetch.
   useEffect(() => {
-     if (!venue) {
+     if (!venue || venueStatus !== "ready") {
        resetOperationsQuery();
        return invalidateOperationsQuery;
      }
@@ -83,8 +80,8 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
      return invalidateOperationsQuery;
   }, [
     venue,
+    venueStatus,
     isAuthenticated,
-    refreshTick,
     runOperationsQuery,
     resetOperationsQuery,
     invalidateOperationsQuery,
@@ -131,59 +128,43 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
     resetKey: `${searchInput}\u0000${selectedTags.join("\u0000")}`,
   });
 
-  if(venues.length == 0 ) {
+  if (venueStatus !== "ready") {
      return (
       <ContentLayout>
-      <TopBar/>
-      <div className="flex flex-col items-center justify-center">
-        <div className="flex gap-2 items-center w-full mt-4 justify-end">
-          <FiltersSheet
-            title="Filter Operations"
-            description="Search and narrow down operations by tag."
-            search={{ value: searchInput, onChange: handleSearchChange, placeholder: "Type keyword to search…" }}
-            groups={[]}
-          />
-        </div>
-      </div>
-       <div className="flex flex-col items-center justify-center w-full h-100 space-y-2">
-            <PlayCircle size={64} className="text-primary"></PlayCircle>
-            <div className="text-primary text-lg">Get Started with Operations</div>
-            <div className="text-card-foreground text-sm">Connect to a venue to get started and see the available operations</div>
-
-        </div>
+        <TopBar venueId={venueId} venueName={venueObj?.metadata.name} />
+        <VenueResolutionState
+          status={venueStatus}
+          error={resolvedVenue.error}
+          icon={PlayCircle}
+          subject="Operations"
+          venueId={venueId}
+        />
       </ContentLayout>
      )
   }
 
   return (
     <ContentLayout>
-      <TopBar venueName={venueObj?.metadata.name}/>
+      <TopBar venueId={venueId} venueName={venueObj?.metadata.name}/>
       <div className="flex flex-col items-center justify-center">
         <ListToolbar
           className="mt-4"
           actions={
             <>
+              <div className="relative w-full sm:w-64">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Type keyword to search…"
+                  value={searchInput}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
               <FiltersSheet
                 title="Filter Operations"
-                description="Search and narrow down operations by tag."
-                search={{ value: searchInput, onChange: handleSearchChange, placeholder: "Type keyword to search…" }}
+                description="Narrow down operations by tag."
                 groups={tagOptions.length > 0 ? [{ label: "Tags", options: tagOptions, selected: selectedTags, onChange: setSelectedTags }] : []}
               />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    data-testid="refresh-operations"
-                    aria-label="Refresh operations"
-                    disabled={isLoading}
-                    onClick={() => setRefreshTick((t) => t + 1)}
-                  >
-                    <RefreshCw size={16} className={isLoading ? "animate-spin" : undefined} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Refresh operations</TooltipContent>
-              </Tooltip>
             </>
           }
           summary={!isLoading && `Page ${currentPage} : Showing ${pageItems.length} of ${filteredAssets.length}`}
@@ -200,7 +181,7 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
           <div ref={gridRef} className={CARD_GRID_CLASS}>
             {
             pageItems.map((asset) => (
-              <AssetCard key={asset.id} asset={asset} type="operations" compact={true} venue={venue ?? undefined} authenticated={isAuthenticated}/>
+              <AssetCard key={asset.id} asset={asset} type="operations" compact={true} venue={venue ?? undefined} scoped={!!venueId}/>
             ))}
           </div>
         )}

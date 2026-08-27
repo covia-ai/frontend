@@ -4,6 +4,9 @@ export interface AgentDetail {
    tasks?: number;
    timelineLength?: number;
    config?: Record<string, any>;
+   unavailableTools?: unknown[];
+   error?: string;
+   /** Legacy SDK field; canonical editable configuration is `config`. */
    stateConfig?: Record<string, any>;
    state?: Record<string, any>;
    timeline?: any[];
@@ -23,6 +26,9 @@ export interface SessionMessage {
    content: any;
    ts?: number;
    source?: string;
+   /** The job that delivered this turn (chat/request intake), when the venue
+    *  recorded it — links the conversation back to the calling job. */
+   jobId?: string;
 }
 
 export interface Session {
@@ -31,6 +37,7 @@ export interface Session {
    parties?: string[];
    turns?: number;
    pending?: any[];
+   wakeTime?: number;
    conversation: SessionMessage[];
    /** Free-form human-facing title, venue-persisted (AGENT_SESSIONS.md §4.3). */
    title?: string;

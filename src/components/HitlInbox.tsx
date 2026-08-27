@@ -83,7 +83,7 @@ function Requester({ request, selfDid }: { request: HitlRequest; selfDid?: strin
           Agent <span className="font-medium">{request.agent}</span>
         </span>
         <Link
-          href={`/agents/explorer?agentId=${encodeURIComponent(request.agent)}`}
+          href={`/agents/view?agentId=${encodeURIComponent(request.agent)}`}
           data-testid="hitl-view-agent"
           className="text-primary hover:underline whitespace-nowrap shrink-0"
         >

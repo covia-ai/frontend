@@ -69,8 +69,23 @@ export function defaultsFromOperationSchema(
 
 export function validateOperationInput(
   input: unknown,
-  requiredKeys: string[],
+  schema?: OperationInputSchema,
 ): string | null {
+  const requiredKeys = schema?.required ?? [];
+  const isEmptyObject =
+    typeof input === "object" &&
+    input !== null &&
+    !Array.isArray(input) &&
+    Object.keys(input).length === 0;
+  // `{}` is a complete, valid value for an object schema with no required
+  // fields. This includes unconstrained `{}` schemas and objects whose listed
+  // properties are all optional.
+  const acceptsEmptyObject =
+    isEmptyObject &&
+    requiredKeys.length === 0 &&
+    (schema?.type === "object" ||
+      schema?.properties !== undefined ||
+      (schema !== undefined && Object.keys(schema).length === 0));
   const hasInput =
     input !== null &&
     input !== undefined &&
@@ -78,7 +93,7 @@ export function validateOperationInput(
       ? Object.keys(input).length > 0
       : input !== "");
 
-  if (!hasInput) {
+  if (!hasInput && !acceptsEmptyObject) {
     return "No inputs provided for the operation, please verify before running the operation";
   }
 

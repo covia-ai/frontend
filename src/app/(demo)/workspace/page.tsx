@@ -1,14 +1,16 @@
 
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { WorkspaceExplorer } from "@/components/WorkspaceExplorer";
 import { PageHeading } from "@/components/PageHeading";
-import { useIsAuthenticated } from "@/hooks/use-auth";
 
 export default function WorkspacePage() {
-  const isAuthenticated = useIsAuthenticated();
+  // ?path= deep-links here (e.g. from the Context page's tier cards) —
+  // read once at mount, see use-workspace-explorer's startPath handling.
+  const initialPath = useSearchParams().get("path") ?? undefined;
 
   return (
     <ContentLayout>
@@ -16,13 +18,7 @@ export default function WorkspacePage() {
       <div className="py-4">
         <PageHeading className="mb-4" size="sm" align="left" text="Manage your" highlight="Workspace" />
 
-        {isAuthenticated ? (
-          <WorkspaceExplorer/>
-        ) : (
-          <p className="text-sm text-muted-foreground py-8 text-center">
-            Sign in to view your workspace data.
-          </p>
-        )}
+        <WorkspaceExplorer initialPath={initialPath}/>
       </div>
     </ContentLayout>
   );

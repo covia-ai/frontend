@@ -9,11 +9,12 @@ import {
 } from "react";
 import {
   AgentStatus,
+  NotFoundError,
   type Agent,
   type ChatSession,
 } from "@covia/covia-sdk";
 import type { AgentDetail, AgentListItem, Session } from "@/config/types";
-import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { revalidateVenueOnFailure, useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import {
   findPendingChat,
   usePendingChats,
@@ -21,12 +22,12 @@ import {
 import { normalizeAgentEntries } from "@/lib/agent-list";
 import { messageContentToString } from "@/lib/agent-turns";
 import { sessionEntriesToSessions } from "@/lib/agent-sessions";
-import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
+import { jobFailure, notifyError, notifySuccess } from "@/lib/notify";
 import { gtmEvent } from "@/lib/utils";
+import { dispatchAgentMessage } from "@/lib/agent-chat";
 
 const POLL_INTERVAL_MS = 3000;
 const SESSION_LIMIT = 50;
-const SEND_TIMEOUT_MS = 30_000;
 
 export function useAgentExplorer(initialAgentId?: string) {
   const venue = useAuthenticatedVenue();
@@ -44,6 +45,7 @@ export function useAgentExplorer(initialAgentId?: string) {
   const [newChatRequested, setNewChatRequested] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [messageText, setMessageText] = useState("");
+  const [triggering, setTriggering] = useState(false);
   const listRequest = useRef(0);
   const detailRequest = useRef(0);
   const sessionRequest = useRef(0);
@@ -124,7 +126,20 @@ export function useAgentExplorer(initialAgentId?: string) {
           setDetailError(false);
         })
         .catch((error: unknown) => {
-          if (!stillCurrent() || !surfaceErrors) return;
+          if (!stillCurrent()) return;
+          if (error instanceof NotFoundError) {
+            // This agentId doesn't exist on the currently connected venue —
+            // most commonly because the venue was switched while this agent
+            // was open (every agent belongs to one venue's own lattice).
+            // That's not a failure to report; just fall back to the
+            // explorer's list view, which will auto-select whatever the new
+            // venue actually has.
+            setSelectedAgentId(null);
+            setSelectedAgentDetail(null);
+            setAgentHandle(null);
+            return;
+          }
+          if (!surfaceErrors) return;
           const { reason, jobHref } = jobFailure(error, venue?.venueId);
           notifyError("Unable to load agent details", reason, venue?.baseUrl, jobHref);
           setSelectedAgentDetail(null);
@@ -341,6 +356,88 @@ export function useAgentExplorer(initialAgentId?: string) {
       });
   };
 
+  const triggerAgent = () => {
+    if (!agentHandle || !selectedAgentId || triggering) return;
+    const agentId = selectedAgentId;
+    setTriggering(true);
+    agentHandle
+      .trigger()
+      .then(() => {
+        notifySuccess("Agent triggered");
+        void refreshAgentDetail(agentId);
+        void refreshAgentList();
+        void refreshSessions(agentId);
+      })
+      .catch((error: unknown) => {
+        const { reason, jobHref } = jobFailure(error, venue?.venueId);
+        notifyError("Unable to trigger agent", reason, venue?.baseUrl, jobHref);
+      })
+      .finally(() => {
+        if (selectedAgentIdRef.current === agentId) setTriggering(false);
+      });
+  };
+
+  const updateAgentConfig = useCallback(
+    async (config: Record<string, unknown>): Promise<boolean> => {
+      if (!agentHandle || !selectedAgentId || !selectedAgentDetail) return false;
+      const agentId = selectedAgentId;
+      const wasRunning = selectedAgentDetail.status === AgentStatus.RUNNING;
+      let suspendedForUpdate = false;
+
+      try {
+        if (wasRunning) {
+          await agentHandle.suspend();
+          suspendedForUpdate = true;
+        }
+        await agentHandle.update({ config });
+      } catch (error) {
+        if (suspendedForUpdate) {
+          try {
+            await agentHandle.resume();
+          } catch (resumeError) {
+            notifyError(
+              "Unable to restore agent after settings update",
+              resumeError,
+              venue?.baseUrl,
+            );
+          }
+        }
+        const { reason, jobHref } = jobFailure(error, venue?.venueId);
+        notifyError("Unable to update agent settings", reason, venue?.baseUrl, jobHref);
+        void refreshAgentDetail(agentId);
+        void refreshAgentList();
+        return false;
+      }
+
+      if (wasRunning) {
+        try {
+          await agentHandle.resume();
+        } catch (error) {
+          notifyError(
+            "Agent settings saved, but unable to resume agent",
+            error,
+            venue?.baseUrl,
+          );
+        }
+      }
+
+      notifySuccess("Agent settings saved");
+      await Promise.all([
+        refreshAgentDetail(agentId),
+        refreshAgentList(),
+      ]);
+      return true;
+    },
+    [
+      agentHandle,
+      selectedAgentDetail,
+      selectedAgentId,
+      venue,
+      refreshAgentDetail,
+      refreshAgentList,
+    ],
+  );
+
   const renameSession = (agentId: string, sessionId: string, title: string) => {
     if (!venue) return;
     venue.agents
@@ -374,32 +471,17 @@ export function useAgentExplorer(initialAgentId?: string) {
     setMessageText("");
     const chat = startPendingChat({ agentId, sessionId, text });
 
-    let timeoutId: ReturnType<typeof setTimeout>;
-    const timeout = new Promise<never>((_, reject) => {
-      timeoutId = setTimeout(
-        () =>
-          reject(
-            new Error(
-              "Agent is not responding — it may be suspended. Check the status panel.",
-            ),
-          ),
-        SEND_TIMEOUT_MS,
-      );
-    });
-
-    void Promise.race([session.send(text), timeout])
+    void dispatchAgentMessage({
+      agentId,
+      text,
+      venueId: venue?.venueId ?? "",
+      venueBaseUrl: venue?.baseUrl,
+      send: (message) => session.send(message),
+      agentStatus: venue
+        ? () => venue.agents.info(agentId).then((info) => info.status)
+        : undefined,
+    })
       .then(async (result) => {
-        clearTimeout(timeoutId);
-        const response = result?.response;
-        if (
-          response == null ||
-          (typeof response === "string" && response.trim() === "")
-        ) {
-          notifyWarning("The agent sent an empty reply", {
-            description:
-              "It may have hit an error — check the Details panel.",
-          });
-        }
         const stillSelected =
           venueRef.current === venue &&
           selectedAgentIdRef.current === agentId;
@@ -410,7 +492,6 @@ export function useAgentExplorer(initialAgentId?: string) {
         if (sessionId === null && result?.sessionId) {
           attachSessionId(chat, result.sessionId);
         }
-        gtmEvent.sendAgentMessage(agentId);
         if (stillSelected) {
           await refreshSessions(agentId);
           void refreshAgentDetail(agentId);
@@ -418,12 +499,7 @@ export function useAgentExplorer(initialAgentId?: string) {
         }
       })
       .catch((error: unknown) => {
-        clearTimeout(timeoutId);
-        const message =
-          error instanceof Error ? error.message : "see console";
-        gtmEvent.sendAgentMessageFailed(agentId, message);
-        const { reason, jobHref } = jobFailure(error, venue?.venueId);
-        notifyError("Unable to send message", reason, undefined, jobHref);
+        revalidateVenueOnFailure(venue, null, error);
         if (
           venueRef.current === venue &&
           selectedAgentIdRef.current === agentId
@@ -466,7 +542,10 @@ export function useAgentExplorer(initialAgentId?: string) {
     echoAlreadyRecorded,
     suspend,
     resume,
+    triggerAgent,
+    triggering,
     deleteAgent,
+    updateAgentConfig,
     renameSession,
     startNewChat,
     selectSession,

@@ -10,27 +10,56 @@ import {
 import { Button } from "@/components/ui/button";
 import { useVenues } from "@/hooks/use-venues";
 import type { VenueDescriptor } from "@/hooks/use-venues";
+import { venueDisplayName } from "@/lib/venue-display";
 import { VenueHealthDot } from "./VenueHealthDot";
+import { usePathname, useRouter } from "next/navigation";
 
-export function VenueSelector() {
+export function VenueSelector({ venueId }: { venueId?: string }) {
   const venues = useVenues((state) => state.venues);
   const selectedVenueId = useVenues((state) => state.selectedVenueId);
   const selectVenue = useVenues((state) => state.selectVenue);
+  const pathname = usePathname();
+  const router = useRouter();
+  let routeVenueId = venueId;
+  if (routeVenueId) {
+    try {
+      routeVenueId = decodeURIComponent(routeVenueId);
+    } catch {
+      // Leave malformed route values untouched; the venue resolver will
+      // surface the connection error elsewhere.
+    }
+  }
+  const activeVenueId = routeVenueId ?? selectedVenueId;
   const selectedVenue = venues.find(
-    (venue) => venue.venueId === selectedVenueId,
+    (venue) => venue.venueId === activeVenueId,
   );
 
   const handleVenueSelect = (venue: VenueDescriptor) => {
     selectVenue(venue.venueId);
+    if (!venueId) return;
+    const segments = pathname.split("/");
+    const routeVenueIndex = segments.findIndex(
+      (segment, index) => index > 0 && segments[index - 1] === "venues",
+    );
+    if (routeVenueIndex >= 0) {
+      segments[routeVenueIndex] = encodeURIComponent(venue.venueId);
+      router.push(segments.join("/"));
+    }
   };
-  if (!selectedVenue || venues.length === 0) {
+  const selectedVenueLabel = selectedVenue
+    ? venueDisplayName(selectedVenue)
+    : activeVenueId
+      ? "Resolving venue…"
+      : "No venues";
+
+  if (venues.length === 0) {
       
      return (
       <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button aria-label="venue" variant="outline" >
           <Building2 size={14} />
-          No venues
+          {selectedVenueLabel}
         </Button>
       </DropdownMenuTrigger>
     </DropdownMenu>
@@ -41,9 +70,11 @@ export function VenueSelector() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button aria-label="venue" variant="outline" className="hover:bg-primary-vlight hover:text-foreground">
-          <VenueHealthDot baseUrl={selectedVenue.baseUrl} />
+          {selectedVenue && <VenueHealthDot baseUrl={selectedVenue.baseUrl} venueId={selectedVenue.venueId} />}
           <Building2 size={14} />
-          <span className="hidden md:block lg:block">{selectedVenue.metadata.name}</span>
+          <span className="hidden md:block lg:block">
+            {selectedVenueLabel}
+          </span>
           <ChevronDown size={14} />
         </Button>
       </DropdownMenuTrigger>
@@ -55,11 +86,11 @@ export function VenueSelector() {
             className="flex items-center justify-between cursor-pointer hover:bg-primary-vlight hover:text-foreground"
           >
             <div className="flex items-center gap-2">
-              <VenueHealthDot baseUrl={venue.baseUrl} />
+              <VenueHealthDot baseUrl={venue.baseUrl} venueId={venue.venueId} />
               <Building2 size={16} />
-              <span className="truncate">{venue.metadata.name}</span>
+              <span className="truncate">{venueDisplayName(venue)}</span>
             </div>
-            {selectedVenue?.venueId === venue.venueId && (
+            {activeVenueId === venue.venueId && (
               <Check size={16} className="text-primary" />
             )}
           </DropdownMenuItem>

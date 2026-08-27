@@ -1,7 +1,6 @@
 "use client";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogTitle,
   DialogTrigger,
@@ -26,9 +25,11 @@ import { JsonEditor } from "json-edit-react";
 import { Button } from "./ui/button";
 import { Asset, AssetMetadata, Venue } from "@covia/covia-sdk";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
-import { getContentTypeForFile, getLicenseUrl, gtmEvent } from "@/lib/utils";
+import { getContentTypeForFile, gtmEvent } from "@/lib/utils";
 import { notifyError } from "@/lib/notify";
 import { FORM_DIALOG_CLASS, JSON_EDITOR_DIALOG_CLASS, JSON_EDITOR_MAX_WIDTH } from "@/lib/dialog-sizes";
+import { AssetMetadataForm } from "@/components/AssetMetadataForm";
+import { buildAssetMetadata, EMPTY_ASSET_METADATA_FIELDS } from "@/lib/asset-metadata-form";
 
 export const CreateAssetComponent = ({venue: venueProp}: {venue?: Venue}) => {
     const router = useRouter();
@@ -38,25 +39,19 @@ export const CreateAssetComponent = ({venue: venueProp}: {venue?: Venue}) => {
     const [assetJSONData, setAssetJSONData] = useState<any>({});
     const [assetStringData, setAssetStringDate] = useState("");
     const [assetFileData, setAssetFileData] = useState<File | null>(null);
-    const [name, setName] = useState("");
-    const [creator, setCreator] = useState("");
-    const [description, setDescription] = useState("");
-    const [license, setLicense] = useState("")
-    const [language, setLanguage] = useState("")
-    const [keywords, setKeywords] = useState("")
-    const [notes, setNotes] = useState("")
-    const [contentType, setContentType] = useState("")
-    const [encoding, setEncoding] = useState("")
+    const [fields, setFields] = useState({ ...EMPTY_ASSET_METADATA_FIELDS });
     const [hash, setHash] = useState("");
     const [baseData, setBaseData] = useState<AssetMetadata>({});
     const [metadataUpdated, setMetadataUpdated] = useState(false);
     const [open, setOpen] = useState(false)
+    const [creating, setCreating] = useState(false);
     const fallbackVenue = useAuthenticatedVenue();
     const venue = venueProp ?? fallbackVenue;
     
     async function createNewAsset(jsonData: AssetMetadata) {
         if (!venue) return;
 
+        setCreating(true);
         try {
           const asset: Asset = await venue.assets.register(jsonData);
           if (assetType === "string") await asset.putContent(assetStringData);
@@ -74,6 +69,8 @@ export const CreateAssetComponent = ({venue: venueProp}: {venue?: Venue}) => {
             error instanceof Error ? error.message : undefined,
           );
           notifyError("Unable to create asset", error, venue?.baseUrl);
+        } finally {
+          setCreating(false);
         }
     }
   
@@ -91,10 +88,10 @@ export const CreateAssetComponent = ({venue: venueProp}: {venue?: Venue}) => {
       try {
         if (assetType === "string") {
           setHash(await getSHA256Hash(assetStringData));
-          setContentType("text/plain");
+          setFields((current) => ({ ...current, contentType: "text/plain" }));
         } else if (assetType === "json") {
           setHash(await getSHA256Hash(JSON.stringify(assetJSONData)));
-          setContentType("application/json");
+          setFields((current) => ({ ...current, contentType: "application/json" }));
         } else if (assetType === "file") {
           if (!assetFileData) throw new Error("Choose a file before continuing");
           setHash(await getSHA256Hash(await assetFileData.arrayBuffer()));
@@ -108,44 +105,21 @@ export const CreateAssetComponent = ({venue: venueProp}: {venue?: Venue}) => {
     function handleFileChange (event: React.ChangeEvent<HTMLInputElement>) {
      const file = event.target.files?.[0];
      if (!file) return;
-     setName(file.name)
      const [contentType, encoding] = getContentTypeForFile(file.name);
-     setContentType(contentType);
-     setEncoding(encoding)
+     setFields((current) => ({
+       ...current,
+       name: file.name,
+       contentType,
+       encoding,
+     }));
      
      setAssetFileData(file);
     }
     
     function createMetadata(nextStep: number){
 
-      const metadata: AssetMetadata = {};
-        if(name.length > 0)
-            metadata.name = name;
-        if(creator.length > 0)
-          metadata.creator = creator;
-        if(description.length > 0)
-          metadata.description = description;
-        if(license.length >0 ) 
-          metadata.license = {"name": license, "url" : getLicenseUrl(license)};
-      
-        
-        if(keywords.length > 0)
-            metadata.keywords = keywords.split(",");
-        if(notes.length > 0)
-            metadata.additionalInformationnotes = {"notes":[notes]}
-        if(hash && hash.length> 0) {
-          metadata.content = {
-            "sha256" : hash,
-          }
-          if(contentType && contentType.length >0)
-               metadata.content.contentType = contentType
-          if(encoding && encoding.length >0)
-               metadata.content.encoding = encoding
-          if(language && language.length >0)
-               metadata.content.inLanguage = language  
-          }
-        metadata.dateCreated = new Date().toISOString();
-        setStep(nextStep)
+      const metadata = buildAssetMetadata(fields, { sha256: hash });
+        if (nextStep > 0) setStep(nextStep)
         setBaseData(metadata)
         if(nextStep ==0)
             createNewAsset(metadata)
@@ -230,67 +204,14 @@ export const CreateAssetComponent = ({venue: venueProp}: {venue?: Venue}) => {
           {step == 2 &&
             <DialogContent className={FORM_DIALOG_CLASS}>
                   <DialogTitle>Provide Metadata</DialogTitle>
-                  <div>
-                    <Label>Name</Label>
-                    <Input defaultValue={name} onChange={e => setName(e.target.value)} placeholder="Name"></Input>
-                  </div>
-                  <div>
-                    <Label>Description</Label>
-                    <Input  onChange={e => setDescription(e.target.value)} placeholder="Description"></Input>
-                  </div>
-                  <div>
-                    <Label>Creator {creator}</Label>
-                    <Input defaultValue={creator}  onChange={e => setCreator(e.target.value)} placeholder="Creator"></Input>
-                  </div>
-                  <div>
-                    <Label>Notes</Label>
-                    <Input  onChange={e => setNotes(e.target.value)} placeholder="Notes"></Input>
-                  </div>
-                  <div className="flex flex-row space-x-2 items-center justify-between">
-                    <div>
-                      <Label>Content Type</Label>
-                      <Input defaultValue={contentType} onChange={e => setContentType(e.target.value)} ></Input>
-                    </div>
-                      <div>
-                      <Label>Encoding</Label>
-                      <Input defaultValue={encoding} onChange={e => setEncoding(e.target.value)} ></Input>
-                    </div>
-                  </div>
-                  <div>
-                    <Label>Keywords <span className="text-xs text-muted-foreground">(comma seperated)</span></Label>
-                    <Input  onChange={e => setKeywords(e.target.value)} placeholder="iris, dataset"></Input>
-                  </div>
-                  <div className="flex flex-row space-x-2 items-center justify-between">
-                    <div>
-                    <Label>Choose a language</Label>
-                    <Select  onValueChange={(value) => setLanguage(value)}>
-                    <SelectTrigger> <SelectValue placeholder="Select a language" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                            <SelectItem value="en-us">en-us</SelectItem>
-                        </SelectGroup>
-                      </SelectContent>
-                  </Select>
-                  </div>
-                  <div>
-                  <Label>Choose a license</Label>
-                  <Select onValueChange={(value) => setLicense(value)}>
-                    <SelectTrigger> <SelectValue placeholder="Select a license" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                            <SelectItem value="CC BY 4.0">CC BY 4.0</SelectItem>
-                        </SelectGroup>
-                      </SelectContent>
-                  </Select>
-                  </div>
-                  </div>
+                  <AssetMetadataForm fields={fields} onChange={setFields} />
                     <div className="flex flex-row items-center justify-between ">
                     <Button aria-label="back" role="button" type="button" onClick={(_e) => setStep(1)}>Go Back</Button>
                     
                     <Button aria-label="edit" role="button" type="button" onClick={(_e) => createMetadata(3)}>Edit </Button>
-                    <DialogClose>
-                      <Button aria-label="create asset" role="button" type="button" onClick={(_e) => createMetadata(0)}>Create Asset</Button>
-                    </DialogClose>
+                    <Button aria-label="create asset" role="button" type="button" disabled={creating} onClick={(_e) => createMetadata(0)}>
+                      {creating ? "Creating…" : "Create Asset"}
+                    </Button>
 
                   </div>
             </DialogContent>            
@@ -326,11 +247,8 @@ export const CreateAssetComponent = ({venue: venueProp}: {venue?: Venue}) => {
                               }
                   <div className="flex flex-row items-center justify-between ">
                       <Button aria-label="back" role="button" type="button" onClick={(_e) => setStep(2)}>Go Back</Button>
-                    <DialogClose>
-                      {metadataUpdated && <Button aria-label="create asset" role="button" type="button" className="mx-2 w-32" onClick={() => createNewAsset(jsonData)}>Create Asset</Button>}
-                      {!metadataUpdated && <Button aria-label="create asset" role="button" type="button" className="mx-2 w-32" onClick={() => createNewAsset(baseData)}>Create Asset</Button>}
-                      
-                    </DialogClose>
+                      {metadataUpdated && <Button aria-label="create asset" role="button" type="button" className="mx-2 w-32" disabled={creating} onClick={() => createNewAsset(jsonData)}>{creating ? "Creating…" : "Create Asset"}</Button>}
+                      {!metadataUpdated && <Button aria-label="create asset" role="button" type="button" className="mx-2 w-32" disabled={creating} onClick={() => createNewAsset(baseData)}>{creating ? "Creating…" : "Create Asset"}</Button>}
                 
                   </div>
             </DialogContent>

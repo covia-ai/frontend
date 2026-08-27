@@ -5,6 +5,7 @@ import {
   Bot,
   Check,
   History,
+  BellRing,
   Loader2,
   MessageSquare,
   Pause,
@@ -30,15 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Select,
@@ -48,13 +41,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
-import { AgentTranscript } from "@/components/agent-explorer/AgentTranscript";
-import { ConfigFields } from "@/components/agent-explorer/ConfigFields";
+import { AgentConversation } from "@/components/AgentConversation";
+import { AgentSettings } from "@/components/agent-config/AgentSettings";
 import { AgentTimelineView } from "@/components/agent-explorer/AgentTimelineView";
+import { AgentRuntimeSummary } from "@/components/agent-explorer/AgentRuntimeSummary";
 import type { AgentExplorerController } from "@/hooks/use-agent-explorer";
 import type { Session } from "@/config/types";
 import { defaultSessionTitle, formatSessionLabel } from "@/lib/agent-sessions";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
+import { cn, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
 
 export function AgentChatPanel({
   controller,
@@ -78,7 +73,10 @@ export function AgentChatPanel({
     echoAlreadyRecorded,
     suspend,
     resume,
+    triggerAgent,
+    triggering,
     deleteAgent,
+    updateAgentConfig,
     renameSession,
     startNewChat,
     selectSession,
@@ -88,13 +86,12 @@ export function AgentChatPanel({
 
   const [renaming, setRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
-  const [showTimeline, setShowTimeline] = useState(false);
+  const [view, setView] = useState<"chat" | "timeline" | "settings">("chat");
 
   useEffect(() => {
-    // Switching agents while viewing a timeline must not leave the next
-    // agent's chat area stuck showing timeline (or a stale one, before its
-    // own detail has even loaded).
-    setShowTimeline(false);
+    // Timeline/settings are scoped to the selected agent. A switch must not
+    // leave the next agent showing the previous agent's secondary view.
+    setView("chat");
   }, [selectedAgentId]);
 
   // Venue-persisted title (if set) beats the auto-derived first-message
@@ -179,50 +176,23 @@ export function AgentChatPanel({
                 {selectedAgentDetail.tasks === 1 ? "" : "s"}
               </Badge>
             )}
-            {(selectedAgentDetail.config || selectedAgentDetail.stateConfig) && (
-              <Dialog>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DialogTrigger asChild>
-                      <button
-                        data-testid="agent-config-info"
-                        aria-label="Agent configuration"
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        <Settings size={16} />
-                      </button>
-                    </DialogTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>Config</TooltipContent>
-                </Tooltip>
-                <DialogContent className="w-[75vw] max-w-[75vw] sm:max-w-[75vw] h-[75vh] max-h-[75vh] bg-card text-card-foreground overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {selectedAgentDetail.agentId} — Configuration
-                    </DialogTitle>
-                  </DialogHeader>
-                  <Separator />
-                  <div className="space-y-5 text-xs">
-                    {selectedAgentDetail.config && (
-                      <div>
-                        <div className="font-semibold mb-2 text-foreground text-sm">
-                          Config
-                        </div>
-                        <ConfigFields data={selectedAgentDetail.config} />
-                      </div>
-                    )}
-                    {selectedAgentDetail.stateConfig && (
-                      <div>
-                        <div className="font-semibold mb-2 text-foreground text-sm">
-                          State Config (resolved)
-                        </div>
-                        <ConfigFields data={selectedAgentDetail.stateConfig} />
-                      </div>
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
-            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  data-testid="agent-settings-button"
+                  aria-label="Agent settings"
+                  aria-pressed={view === "settings"}
+                  className={cn(
+                    "hover:text-foreground",
+                    view === "settings" ? "text-primary" : "text-muted-foreground",
+                  )}
+                  onClick={() => setView(view === "settings" ? "chat" : "settings")}
+                >
+                  <Settings size={16} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Agent settings</TooltipContent>
+            </Tooltip>
             {(selectedAgentDetail.timeline?.length ?? 0) > 0 && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -230,7 +200,7 @@ export function AgentChatPanel({
                     data-testid="agent-timeline-info"
                     aria-label="Agent timeline"
                     className="text-muted-foreground hover:text-foreground"
-                    onClick={() => setShowTimeline(true)}
+                    onClick={() => setView("timeline")}
                   >
                     <History size={16} />
                   </button>
@@ -239,6 +209,40 @@ export function AgentChatPanel({
               </Tooltip>
             )}
             <div className="ml-auto flex flex-row gap-2">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={
+                      triggering ||
+                      selectedAgentDetail.status === AgentStatus.SUSPENDED ||
+                      selectedAgentDetail.status === AgentStatus.TERMINATED
+                    }
+                  >
+                    {triggering ? (
+                      <Loader2 size={14} className="mr-1 animate-spin" />
+                    ) : (
+                      <BellRing size={14} className="mr-1" />
+                    )}
+                    Trigger now
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      Trigger &quot;{selectedAgentDetail.agentId}&quot; now?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This starts an agent run cycle. It may use configured tools and model credits.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={triggerAgent}>Trigger agent</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               {(selectedAgentDetail.status === AgentStatus.RUNNING ||
                 selectedAgentDetail.status === AgentStatus.SLEEPING) && (
                 <Button variant="outline" size="sm" onClick={suspend}>
@@ -280,10 +284,19 @@ export function AgentChatPanel({
             </div>
           </div>
 
-          {showTimeline ? (
+          <AgentRuntimeSummary sessions={sessions} />
+
+          {view === "settings" ? (
+            <AgentSettings
+              key={selectedAgentDetail.agentId}
+              agent={selectedAgentDetail}
+              onBack={() => setView("chat")}
+              onSave={updateAgentConfig}
+            />
+          ) : view === "timeline" ? (
             <AgentTimelineView
               agentId={selectedAgentDetail.agentId}
-              onBack={() => setShowTimeline(false)}
+              onBack={() => setView("chat")}
             />
           ) : (
             <>
@@ -396,9 +409,8 @@ export function AgentChatPanel({
             )}
           </div>
 
-          <AgentTranscript
-            agent={selectedAgentDetail}
-            selectedAgentId={selectedAgentId}
+          <AgentConversation
+            agentId={selectedAgentDetail.agentId}
             selectedSessionId={selectedSessionId}
             session={currentSession}
             pendingChat={pendingChat}
@@ -411,9 +423,11 @@ export function AgentChatPanel({
               <Input
                 data-testid="composer-input"
                 placeholder={
-                  canSend
-                    ? `Message ${selectedAgentDetail.agentId}…`
-                    : `${selectedAgentDetail.status} — cannot send`
+                  sending
+                    ? "Waiting for the agent's reply…"
+                    : canSend
+                      ? `Message ${selectedAgentDetail.agentId}…`
+                      : `${selectedAgentDetail.status} — cannot send`
                 }
                 value={messageText}
                 onChange={(event) => setMessageText(event.target.value)}
@@ -423,7 +437,12 @@ export function AgentChatPanel({
                     send();
                   }
                 }}
-                className="text-sm"
+                // disabled:opacity-100: the placeholder carries the reason
+                // it's disabled (e.g. "SUSPENDED — cannot send") — Input's
+                // default disabled:opacity-50 would fade that out further
+                // on top of the already-dim SUGGESTION_PLACEHOLDER_CLASS
+                // right when it matters most to read.
+                className={cn("text-sm disabled:opacity-100", SUGGESTION_PLACEHOLDER_CLASS)}
                 disabled={sending || !canSend}
               />
               <Tooltip>

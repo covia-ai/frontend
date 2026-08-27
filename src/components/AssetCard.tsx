@@ -1,41 +1,26 @@
 import { Card } from "@/components/ui/card";
-import { Copy, Lock, Save }from "lucide-react";
-import { Asset, Venue } from "@covia/covia-sdk";
+import { Asset, Venue, assetHash } from "@covia/covia-sdk";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
-import { useIsAuthenticated } from "@/hooks/use-auth";
-import { Button } from "./ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { useState } from "react";
-import { JsonEditor } from "json-edit-react";
 import { AssetInfoSheet } from "./AssetInfoSheet";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
-import { notifyError } from "@/lib/notify";
-import { cn } from "@/lib/utils";
-import { JSON_EDITOR_DIALOG_CLASS, JSON_EDITOR_MAX_WIDTH } from "@/lib/dialog-sizes";
 
 interface AssetCardProps {
   asset: Asset;
   type: string;
   compact:boolean;
   venue?: Venue;
-  authenticated?: boolean;
+  // False when rendered outside a /venues/[slug] route (e.g. the unscoped
+  // /publicartifacts or /operations lists) — clicks then go to a venue-less
+  // route instead of /venues/{venueId}/{type}/{id}. Defaults true so every
+  // other caller keeps today's venue-scoped links.
+  scoped?: boolean;
 }
 
-export function AssetCard({ asset,type,compact,venue: venueProp,authenticated }: AssetCardProps) {
+export function AssetCard({ asset,type,compact,venue: venueProp,scoped = true }: AssetCardProps) {
     const fallbackVenue = useAuthenticatedVenue();
     const venue = venueProp ?? fallbackVenue;
     const router = useRouter();
-    const globalIsAuthenticated = useIsAuthenticated();
-    const isAuthenticated = authenticated ?? globalIsAuthenticated;
-    const [newJsonData, setNewJsonData] = useState<any>({});
 
     const adapter = (asset.metadata?.operation?.adapter as string | undefined)?.split(':')[0] ?? null;
 
@@ -46,100 +31,39 @@ export function AssetCard({ asset,type,compact,venue: venueProp,authenticated }:
 
 
     const handleCardClick = (assetId:string) => {
+        if (!scoped) {
+          if (type === "assets") {
+            // Assets are content-hashed, so a bare hex hash alone (plus
+            // whichever venue is selected) is enough to resolve one — see
+            // PublicArtifactViewer. Non-hash ids (rare) fall through to the
+            // venue-scoped link below.
+            const hash = assetHash(assetId);
+            if (hash) {
+              router.push("/publicartifact/"+encodeURIComponent(hash));
+              return;
+            }
+          } else if (type === "operations") {
+            // Operations are catalog-path addressed (e.g. "v/ops/a2a/agent-
+            // card"), not content-hashed, so the full path — not a hash —
+            // is what a venue-less lookup needs. See PublicOperationViewer.
+            router.push("/operation/"+assetId);
+            return;
+          }
+        }
         if (!venue) return;
         const encodedUrl = "/venues/"+encodeURIComponent(venue.venueId)+"/"+type+"/"+assetId;
         router.push(encodedUrl);
     };
-    async function copyAsset(jsonData: JSON) {
-        try {
-          if (!venue) throw new Error("No venue selected");
-          const copiedAsset = await venue.assets.register(jsonData);
-          if (copiedAsset) {
-            setNewJsonData({});
-            window.location.reload();
-          }
-        }
-        catch (error: unknown) {
-          notifyError("Unable to copy asset", error, venue?.baseUrl);
-        }
-    }
     return (
-         <Card key={asset.id} className={`shadow-md border-2 h-full bg-card flex flex-col rounded-md border-muted hover:border-accent hover:border-2 
+         <Card key={asset.id} className={`shadow-md border-2 h-full bg-card flex flex-col rounded-md border-muted hover:border-accent hover:border-2
           ${ compact ? 'h-32 p-1' : 'h-48 p-2' }`}>
                 {/* Fixed-size header */}
                 <div className={` ${ compact ? 'h-10' : 'h-14' } p-2 flex flex-row items-center border-b bg-card-banner`}>
                     <div data-testid = "asset-header" className="truncate flex-1 mr-2 text-md text-foreground"
                     onClick={() => handleCardClick(asset.id)}>{asset.metadata.name || 'Unnamed Asset'}
                     </div>
-                    {type == "operations" && 
-                       <AssetInfoSheet asset={asset} venueId={venue?.venueId ?? ""}/> 
-                    }
-                    {type == "assets" && !isAuthenticated &&
-                        <Tooltip>
-                          <TooltipTrigger>
-                              <Lock size={16} className="text-muted-foreground" data-testid="copy_btn_locked"/>
-                          </TooltipTrigger>
-                          <TooltipContent data-testid="btn-tootip">Sign in to copy assets</TooltipContent>
-                        </Tooltip>
-                    }
-                    {type == "assets" && isAuthenticated &&
-                        <Dialog>
-                            {/* Single <button> (DialogTrigger's) — TooltipTrigger
-                                adopts it via asChild; nested trigger buttons are
-                                invalid HTML and break hydration. */}
-                            <Tooltip>
-                            <TooltipTrigger asChild>
-                            <DialogTrigger>
-                                 <Copy size={16} data-testid="copy_btn"/>
-                            </DialogTrigger>
-                            </TooltipTrigger>
-                            <TooltipContent data-testid="btn-tootip">Copy Asset</TooltipContent>
-                             </Tooltip>
-                            <DialogContent className={cn(JSON_EDITOR_DIALOG_CLASS, "content-start")}>
-                            <DialogTitle className="flex flex-row items-center justify-between mr-4">
-                                Copy asset
-                                {JSON.stringify(newJsonData) != "{}" &&
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <DialogClose asChild>
-                                          <Button aria-label="save" role="button" type="button" onClick={() => copyAsset(newJsonData)}> <Save></Save></Button>
-                                        </DialogClose>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Save copied asset</TooltipContent>
-                                    </Tooltip>
-                                }
-                                {JSON.stringify(newJsonData) == "{}" &&
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <span className="inline-block">
-                                          <Button aria-label="save" role="button" type="button" disabled><Save></Save></Button>
-                                        </span>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Edit the metadata before saving</TooltipContent>
-                                    </Tooltip>
-                                }
-                            </DialogTitle>
-                            <div className="rounded-lg bg-white">
-                            {Object.keys(newJsonData).length == 0 && <JsonEditor data={asset.metadata}
-                                setData={setNewJsonData}
-                                rootName="metadata"
-                                rootFontSize="1em"
-                                collapse={1}
-                                maxWidth={JSON_EDITOR_MAX_WIDTH}
-                            />}
-                            {Object.keys(newJsonData).length > 0 && <JsonEditor data={newJsonData}
-                                setData={setNewJsonData}
-                                rootName="metadata"
-                                rootFontSize="1em"
-                                collapse={1}
-                                maxWidth={JSON_EDITOR_MAX_WIDTH}
-                            />}
-                            <p className="px-8 pb-4 text-xs italic text-neutral-500">
-                                Editing any field above creates a copy — click the save icon to register it as a brand-new asset. The original is left untouched.
-                            </p>
-                            </div>
-                            </DialogContent>
-                        </Dialog>
+                    {type == "operations" &&
+                       <AssetInfoSheet asset={asset} venueId={venue?.venueId ?? ""}/>
                     }
                 </div>
 
@@ -171,7 +95,7 @@ export function AssetCard({ asset,type,compact,venue: venueProp,authenticated }:
                     ) : null}
                 </div>
 
-                
+
         </Card>
     )
 }

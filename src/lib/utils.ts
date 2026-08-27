@@ -2,12 +2,20 @@ import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import * as mime from 'mime-types'
 import copy from 'copy-to-clipboard';
-import { notifySuccess } from "@/lib/notify"
+import { notifyError, notifySuccess } from "@/lib/notify"
 import { sendGTMEvent } from '@next/third-parties/google'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
+
+// Chat/prompt-style inputs (AIPrompt, AgentChatPanel's composer) want their
+// placeholder to read as a soft suggestion, not full-strength body text —
+// shadcn's Input/Textarea default to placeholder:text-muted-foreground at
+// full opacity, which (especially against these components' very dark
+// backgrounds) looks as prominent as real typed text. Dial it down via a
+// call-site override rather than editing the shared ui/ primitives.
+export const SUGGESTION_PLACEHOLDER_CLASS = "placeholder:text-muted-foreground/60"
 
 export function getLicenseUrl(licenseName : string) {
   if(licenseName.trim() ==  "CC BY 4.0")
@@ -58,6 +66,47 @@ export function formatRelativeTime(date: string): string {
   const diffDay = Math.round(diffHour / 24);
   if (diffDay < 7) return `${diffDay}d ago`;
   return new Date(date).toLocaleDateString();
+}
+
+// Countdown form for a future timestamp — "in 2 hr 15 min" style, mirroring
+// getExecutionTime's hr/min/sec cascade but counting down to a target instead
+// of a duration between two points. Pair with the exact fire time in an
+// adjacent cell, same rationale as formatRelativeTime above.
+export function formatCountdown(targetMs: number): string {
+  const diffMs = targetMs - Date.now();
+  if (diffMs <= 0) return "due now";
+  const diffSec = diffMs / 1000;
+  const diffMin = diffMs / 60000;
+  const diffHour = diffMs / 3600000;
+
+  if (diffHour >= 1) {
+    const hours = Math.floor(diffHour);
+    const mins = Math.round((diffHour - hours) * 60);
+    return mins > 0 ? `in ${hours} hr ${mins} min` : `in ${hours} hr`;
+  }
+  if (diffMin >= 1) {
+    const mins = Math.floor(diffMin);
+    const secs = Math.round((diffMin - mins) * 60);
+    return secs > 0 ? `in ${mins} min ${secs} sec` : `in ${mins} min`;
+  }
+  return `in ${Math.round(diffSec)} sec`;
+}
+
+const DATE_TIME_FORMATTER = new Intl.DateTimeFormat(undefined, {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  second: "2-digit",
+});
+
+export function formatDateTime(value: string | number | Date): string {
+  try {
+    return DATE_TIME_FORMATTER.format(new Date(value));
+  } catch {
+    return String(value);
+  }
 }
 
 // List a venue's MCP tools via its native MCP endpoint (JSON-RPC tools/list).
@@ -127,12 +176,27 @@ export function abbreviateDid(did: string, chars = 16): string {
   return `${did.slice(0, chars)}…${did.slice(-4)}`;
 }
 
-export function copyDataToClipBoard(entityId:string, message:string) {
-         const result = copy(entityId)
-          if(result) {
-            notifySuccess(message)
-       }
-      }
+export async function writeTextToClipboard(value: string): Promise<void> {
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return;
+    } catch {
+      // Fall through to copy-to-clipboard for browsers that expose the API
+      // but reject it outside a secure context or without permission.
+    }
+  }
+  if (!copy(value)) throw new Error("The browser did not accept the clipboard write");
+}
+
+export async function copyDataToClipBoard(entityId: string, message: string) {
+  try {
+    await writeTextToClipboard(entityId);
+    notifySuccess(message);
+  } catch (error: unknown) {
+    notifyError("Unable to copy to clipboard", error);
+  }
+}
 
 export const gtmEvent = {
   // Button clicks

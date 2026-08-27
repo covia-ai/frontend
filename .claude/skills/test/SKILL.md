@@ -9,11 +9,11 @@ Run the full frontend quality check: lint, type-check, and unit tests.
 
 ## Steps
 
-Run these sequentially — stop on first failure:
+Run from this repo root — stop on first failure:
 
 1. **Lint:**
 ```bash
-cd frontend && pnpm lint
+pnpm lint
 ```
 
 2. **Type-check (via build):**

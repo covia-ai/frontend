@@ -25,16 +25,25 @@ import { EllipsisVertical, Loader2 } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { usePendingChats } from "@/hooks/use-pending-chats";
-import { useTypewriterPlaceholder } from "@/hooks/use-typewriter-placeholder";
-import { jobFailure, notifyError, notifyInfo, notifySuccess, notifyWarning } from "@/lib/notify";
+import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { KNOWN_LLM_KEYS, LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
-import type { AgentTemplate } from "@/hooks/use-agent-templates";
 import { normalizeAgentEntries } from "@/lib/agent-list";
+import {
+  asSdkAgentConfig,
+  normalizeAgentTemplate,
+  withAgentConfigOverrides,
+  withoutAgentConfigFields,
+} from "@/lib/agent-templates";
 import { AgentStatus } from "@covia/covia-sdk";
 import { useRouter } from "next/navigation";
 import { PageHeading } from "./PageHeading";
-import { gtmEvent } from "@/lib/utils";
+import { cn, gtmEvent, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
+import { useIsAuthenticated } from "@/hooks/use-auth";
+import { useDeviceKeySignIn } from "@/hooks/use-device-key-signin";
+import { DeviceKeyDialog } from "@/components/DeviceKeyDialog";
+import { dispatchAgentMessage } from "@/lib/agent-chat";
+import { revalidateVenueOnFailure } from "@/hooks/use-authenticated-venue";
 
 // Sentinel picker value — never a real agentId — meaning "create a fresh,
 // distinctly-named agent" rather than targeting an existing one.
@@ -44,9 +53,13 @@ function makeWorkspaceAgentId(): string {
   return `workspace-agent-${Date.now().toString(36)}`;
 }
 
-export const AIPrompt = () => {
+type AIPromptProps = {
+  fixedAgentId?: string;
+  onChatStarted?: (agentId: string) => void;
+};
+
+export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) => {
   const [prompt, setPrompt] = useState('')
-  const [promptFocused, setPromptFocused] = useState(false)
   const [checking, setChecking] = useState(false)
   const [creating, setCreating] = useState(false)
   const [showKeyDialog, setShowKeyDialog] = useState(false)
@@ -56,38 +69,32 @@ export const AIPrompt = () => {
   const [detectedKeys, setDetectedKeys] = useState<string[]>([])
   const [selectedSecretName, setSelectedSecretName] = useState('')
   const [agentOptions, setAgentOptions] = useState<{ agentId: string; status?: string }[]>([])
-  const [selectedAgentId, setSelectedAgentId] = useState<string>(DEFAULT_AGENT_ID)
-  const [pendingAgentId, setPendingAgentId] = useState<string>(DEFAULT_AGENT_ID)
+  const [selectedAgentId, setSelectedAgentId] = useState<string>(fixedAgentId ?? DEFAULT_AGENT_ID)
+  const [pendingAgentId, setPendingAgentId] = useState<string>(fixedAgentId ?? DEFAULT_AGENT_ID)
   const venue = useAuthenticatedVenue();
   const router = useRouter();
+  const isAuthenticated = useIsAuthenticated();
   const startPendingChat = usePendingChats((s) => s.startPendingChat);
   const attachSessionId = usePendingChats((s) => s.attachSessionId);
   const clearPendingChat = usePendingChats((s) => s.clearPendingChat);
 
-  const promptSamples = [
-    'Automate an AP invoice pipeline',
-    'Orchestrate a cross-venue workflow',
-    'Publish an operation to REST, MCP, and A2A',
-  ]
-
-  const typingPromptSamples = [
-    'Automate an AP invoice pipeline with agents',
-    'Orchestrate a workflow across three venues',
-    'Publish an operation to REST, MCP, and A2A',
-    'Build an agent that scans and enriches vendor records',
-    'Chat with a Gemini-powered agent about my data',
-    'Set up a sovereign file store with DLFS',
-    'Issue a UCAN to share access with a partner venue',
-    'Infer a JSON schema from sample data',
-  ]
-
-  const animatedPlaceholder = useTypewriterPlaceholder(typingPromptSamples, prompt.length === 0 && !promptFocused);
+  const {
+    dialogOpen: signInDialogOpen, setDialogOpen: setSignInDialogOpen, openDialog: openSignInDialog,
+    step: signInStep, setStep: setSignInStep, deviceKey: signInDeviceKey, deviceKeyDid: signInDeviceKeyDid,
+    isExisting: signInIsExisting, pastedKey: signInPastedKey, keyError: signInKeyError,
+    copied: signInCopied, checking: signInChecking, authError: signInAuthError, storedKeys: signInStoredKeys,
+    handleGenerate: handleSignInGenerate, handleProvideKey: handleSignInProvideKey,
+    handlePastedKeyChange: handleSignInPastedKeyChange, handleSubmitProvidedKey: handleSignInSubmitProvidedKey,
+    handleCopy: handleSignInCopy, handleContinue: handleSignInContinue,
+    handleUseStoredKey: handleSignInUseStoredKey, handleUseDifferentKey: handleSignInUseDifferentKey,
+  } = useDeviceKeySignIn();
 
   // Populates the picker's option list. Best-effort and separate from the
   // fresh venue.agents.list() call in handleMagicWand — that one drives the
   // actual resume/create/send decision, this one only feeds the dropdown, so
   // it being briefly stale (until the next refresh) never causes a bad send.
   async function refreshAgentOptions() {
+    if (fixedAgentId) return;
     if (!venue) { setAgentOptions([]); return; }
     try {
       const { agents } = await venue.agents.list();
@@ -100,7 +107,7 @@ export const AIPrompt = () => {
   useEffect(() => {
     refreshAgentOptions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [venue]);
+  }, [venue, fixedAgentId]);
 
   const { defaultAgentLabel, otherAgents } = useMemo(() => {
     const hasDefault = agentOptions.some((a) => a.agentId === DEFAULT_AGENT_ID);
@@ -125,34 +132,32 @@ export const AIPrompt = () => {
   // the work deserves a durable, tracked job can spawn one itself (the
   // manager-template pattern). chat() blocks until the agent replies, so the
   // promise is deliberately left un-awaited — we publish the message as a
-  // pending chat first so the explorer we navigate to can echo it straight
+  // pending chat first so the chat surface can echo it straight
   // away, then poll up the recorded turn and the eventual reply. Failures and
   // empty replies surface via toast, which is global (sonner) and so outlives
   // this component — as does this promise chain, so clearing the pending chat
   // on settle still runs after we have unmounted.
   function sendPrompt(agentId: string) {
     if (!venue) return;
+    const text = prompt.trim();
     // No session id — chat() with none makes the venue mint a fresh session,
     // and it only comes back with the reply.
-    const chat = startPendingChat({ agentId, sessionId: null, text: prompt });
-    venue.agents.chat(agentId, prompt)
+    const chat = startPendingChat({ agentId, sessionId: null, text });
+    void dispatchAgentMessage({
+      agentId,
+      text,
+      venueId: venue.venueId,
+      venueBaseUrl: venue.baseUrl,
+      send: (message) => venue.agents.chat(agentId, message),
+      agentStatus: () => venue.agents.info(agentId).then((info) => info.status),
+    })
       .then((result) => {
         if (result?.sessionId) attachSessionId(chat, result.sessionId);
-        const r = result?.response;
-        if (r == null || (typeof r === "string" && r.trim() === "")) {
-          notifyWarning("The agent sent an empty reply", {
-            description: "It may have hit an error — check its session in the explorer.",
-          });
-        }
-        gtmEvent.sendAgentMessage(agentId);
       })
-      .catch((err: any) => {
-        gtmEvent.sendAgentMessageFailed(agentId, err?.message);
-        const { reason, jobHref } = jobFailure(err, venue.venueId);
-        notifyError("Unable to send message", reason, undefined, jobHref);
-      })
+      .catch(() => undefined)
       .finally(() => clearPendingChat(chat));
-    router.push(`/agents/explorer?agentId=${encodeURIComponent(agentId)}`);
+    if (onChatStarted) onChatStarted(agentId);
+    else router.push(`/agents/chat?agentId=${encodeURIComponent(agentId)}`);
   }
 
   async function proceedWithKey(secretName: string, agentId: string) {
@@ -181,23 +186,34 @@ export const AIPrompt = () => {
       if (!templateRead?.exists || !templateRead.value) {
         throw new Error("Skilled agent template not found on this venue");
       }
-      const template = templateRead.value as Omit<AgentTemplate, "key">;
+      const template = normalizeAgentTemplate("skilled", templateRead.value);
+      if (!template) {
+        throw new Error("Skilled agent template has an invalid format");
+      }
+
+      // The venue no longer accepts agents.create's overwrite flag — a
+      // TERMINATED slot (the only occupied state this path ever runs
+      // against, see callers below) must be cleared with an explicit
+      // delete(remove=true) before recreating. A fresh agentId has nothing
+      // to clear. list() defaults to hiding TERMINATED agents, so
+      // includeTerminated=true is required here — without it this check
+      // never finds the very state it exists to catch.
+      const { agents: existingAgents } = await venue.agents.list(true);
+      if (normalizeAgentEntries(existingAgents).some((a) => a.agentId === agentId)) {
+        await venue.agents.delete(agentId, true);
+      }
 
       await venue.agents.create({
         agentId,
-        // overwrite:true only matters when the slot is occupied — the venue
-        // allows that solely for a TERMINATED agent (recreates it fresh).
-        // This path only runs when the target is absent or TERMINATED, so
-        // it's always safe here.
-        overwrite: true,
-        config: {
-          ...(template.skills?.length ? { skills: template.skills } : {}),
-          ...(template.tools?.length ? { tools: template.tools } : {}),
-          ...(template.defaultTools != null ? { defaultTools: template.defaultTools } : {}),
-          operation: template.operation ?? "v/ops/llmagent/chat",
-          llmOperation: provider.operation,
-          ...(template.systemPrompt && { systemPrompt: template.systemPrompt }),
-        },
+        config: asSdkAgentConfig(
+          withAgentConfigOverrides(
+            // This flow chooses a provider from the user's available secret.
+            // Drop any inline model tied to the template's former provider, but
+            // preserve every other field and all ordered/reference layers.
+            withoutAgentConfigFields(template.config, ["llmOperation", "model"]),
+            { llmOperation: provider.operation },
+          ),
+        ),
       });
     } catch (err: any) {
       setCreating(false);
@@ -219,7 +235,6 @@ export const AIPrompt = () => {
     const matchedKeys = secrets.filter((s: string) => s in KNOWN_LLM_KEYS);
 
     if (matchedKeys.length === 1) {
-      notifyInfo(`Using ${KNOWN_LLM_KEYS[matchedKeys[0]]}`);
       await proceedWithKey(matchedKeys[0], agentId);
     } else if (matchedKeys.length > 1) {
       setDetectedKeys(matchedKeys);
@@ -232,6 +247,10 @@ export const AIPrompt = () => {
 
   async function handleMagicWand() {
     if (!prompt.trim()) return;
+    if (!isAuthenticated) {
+      openSignInDialog();
+      return;
+    }
     if (!venue) {
       notifyWarning("Please connect to a venue first");
       return;
@@ -273,6 +292,10 @@ export const AIPrompt = () => {
       await routeThroughKeyDetection(selectedAgentId);
     } catch (err) {
       notifyError("Unable to prepare agent", err, venue.baseUrl);
+      // Venue-level failures (unreachable, stale identity after a venue
+      // restart, rejected auth) surface here first — recheck so the app
+      // converges on the real venue state instead of repeating this error.
+      revalidateVenueOnFailure(venue, null, err);
     } finally {
       setChecking(false);
     }
@@ -304,13 +327,19 @@ export const AIPrompt = () => {
   const busy = checking || creating || savingKey;
 
   return (
-    <div data-testid="chat-container" className="flex flex-col items-center justify-center py-10 px-10 ">
-        <PageHeading text="Do anything on" highlight="the Grid" />
+    <div data-testid="chat-container" className="flex min-h-[calc(100vh-9rem)] flex-col items-center justify-center px-4 py-10 sm:px-10">
+        <PageHeading
+          text={fixedAgentId ? "How can I" : "Do anything on"}
+          highlight={fixedAgentId ? "help?" : "the Grid"}
+        />
 
-        <Card className="w-full max-w-4xl mt-6 gap-1 p-3">
+        <Card className="mt-6 w-full max-w-3xl gap-1 rounded-3xl p-3 shadow-sm">
           <Textarea
-            placeholder={promptFocused ? '' : animatedPlaceholder}
-            className="min-h-12 resize-none border-none bg-transparent p-0 shadow-none placeholder:text-muted-foreground focus-visible:ring-0 dark:bg-transparent"
+            placeholder="What would you like to do?"
+            className={cn(
+              "min-h-12 resize-none border-none bg-transparent p-0 shadow-none focus-visible:ring-0 dark:bg-transparent",
+              SUGGESTION_PLACEHOLDER_CLASS,
+            )}
             aria-label="prompt"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
@@ -320,13 +349,11 @@ export const AIPrompt = () => {
                 handleMagicWand();
               }
             }}
-            onFocus={() => setPromptFocused(true)}
-            onBlur={() => setPromptFocused(false)}
             disabled={busy}
           />
 
           <div className="flex items-center justify-end gap-1">
-            <DropdownMenu>
+            {!fixedAgentId && <DropdownMenu>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
@@ -356,7 +383,7 @@ export const AIPrompt = () => {
                   <DropdownMenuRadioItem value={NEW_AGENT_OPTION}>+ New agent</DropdownMenuRadioItem>
                 </DropdownMenuRadioGroup>
               </DropdownMenuContent>
-            </DropdownMenu>
+            </DropdownMenu>}
 
             <Tooltip>
               <TooltipTrigger asChild>
@@ -453,23 +480,30 @@ export const AIPrompt = () => {
           </DialogContent>
         </Dialog>
 
-         <div className="flex flex-row flex-wrap items-center justify-center w-full gap-2 mt-6">
-          {promptSamples.map( (promptText,_index) => (
+        <DeviceKeyDialog
+          open={signInDialogOpen}
+          onOpenChange={setSignInDialogOpen}
+          step={signInStep}
+          setStep={setSignInStep}
+          deviceKey={signInDeviceKey}
+          deviceKeyDid={signInDeviceKeyDid}
+          isExisting={signInIsExisting}
+          pastedKey={signInPastedKey}
+          onPastedKeyChange={handleSignInPastedKeyChange}
+          keyError={signInKeyError}
+          copied={signInCopied}
+          checking={signInChecking}
+          authError={signInAuthError}
+          storedKeys={signInStoredKeys}
+          onGenerate={handleSignInGenerate}
+          onProvideKey={handleSignInProvideKey}
+          onSubmitProvidedKey={handleSignInSubmitProvidedKey}
+          onCopy={handleSignInCopy}
+          onContinue={handleSignInContinue}
+          onUseStoredKey={handleSignInUseStoredKey}
+          onUseDifferentKey={handleSignInUseDifferentKey}
+        />
 
-             prompt == promptText ? (
-
-              <Badge key={promptText} variant="outline" className="bg-primary-light cursor-pointer px-2 py-1 text-xs"
-              onClick={() => setPrompt(promptText)}>
-                {promptText}
-              </Badge>
-             ) : (
-              <Badge key={promptText} variant="outline" className="bg-muted px-2 py-1 text-xs cursor-pointer hover:border-accent"
-              onClick={() => setPrompt(promptText)}>
-                {promptText}
-              </Badge>
-             )
-          ))}
-         </div>
       </div>
   );
 };

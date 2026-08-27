@@ -1,4 +1,8 @@
-# CLAUDE.md
+# Frontend — Agent instructions
+
+Canonical instructions for Cursor, Claude Code, Codex, and other agents working
+in this repo. Skills live under `.claude/skills/` (shared across tools). Cursor
+file-scoped rules live under `.cursor/rules/`.
 
 ## Project Overview
 

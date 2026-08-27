@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   ChevronRight,
-  Database,
   Folder,
   FolderOpen,
   Loader2,
@@ -15,6 +14,7 @@ import {
   type WorkspaceEntry,
   type WorkspaceMutation,
 } from "@/hooks/use-workspace-explorer";
+import { ROOT_NAMESPACE_LABELS } from "@/lib/workspace-namespaces";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -22,19 +22,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 // Root-level lattice namespace keys (see covia/venue Namespace.java) have
 // fixed meanings — only the top segment, nested keys under it (job ids,
 // agent ids, secret names, ...) are real user data and stay as typed.
-const ROOT_LABELS: Record<string, string> = {
-  j: "Jobs",
-  g: "Agents",
-  s: "Secrets",
-  a: "Assets",
-  o: "Operations",
-  h: "Inbox",
-  w: "Workspace",
-  meta: "Metadata",
-};
-
 function labelForSegment(segment: string, index: number): string {
-  return index === 0 ? ROOT_LABELS[segment] ?? segment : segment;
+  return index === 0 ? ROOT_NAMESPACE_LABELS[segment] ?? segment : segment;
 }
 
 type WorkspaceBrowserPaneProps = {
@@ -46,10 +35,11 @@ type WorkspaceBrowserPaneProps = {
   selectedPath: string | null;
   isAuthenticated: boolean;
   pendingMutation: WorkspaceMutation;
+  refreshing: boolean;
   onNavigate: (path: string) => void;
   onSelect: (path: string) => void;
-  onRefresh: () => void;
   onCreate: (key: string, value: string) => Promise<boolean>;
+  onResync: () => void;
 };
 
 export function WorkspaceBrowserPane({
@@ -61,10 +51,11 @@ export function WorkspaceBrowserPane({
   selectedPath,
   isAuthenticated,
   pendingMutation,
+  refreshing,
   onNavigate,
   onSelect,
-  onRefresh,
   onCreate,
+  onResync,
 }: WorkspaceBrowserPaneProps) {
   const [showCreate, setShowCreate] = useState(false);
   const [key, setKey] = useState("");
@@ -85,18 +76,9 @@ export function WorkspaceBrowserPane({
   return (
     <div className="flex h-full flex-col overflow-y-auto">
       <div className="flex flex-wrap items-center gap-1 border-b border-border p-2 text-xs">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => onNavigate("/")}
-              className="font-medium text-primary hover:underline"
-              aria-label="Workspace root"
-            >
-              <Database size={14} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>Go to workspace root</TooltipContent>
-        </Tooltip>
+        <span className="mr-1 font-semibold uppercase tracking-wider text-muted-foreground">
+          Keys
+        </span>
         {pathSegments.map((segment, index) => {
           const path = pathSegments.slice(0, index + 1).join("/");
           return (
@@ -117,15 +99,22 @@ export function WorkspaceBrowserPane({
         })}
         <Tooltip>
           <TooltipTrigger asChild>
-            <button
-              onClick={onRefresh}
-              className="ml-auto text-muted-foreground hover:text-foreground"
-              aria-label="Refresh workspace"
+            <Button
+              variant="ghost"
+              size="icon"
+              className="ml-auto size-6 shrink-0"
+              aria-label="Resync listing"
+              onClick={onResync}
+              disabled={refreshing}
             >
-              <RefreshCw size={12} />
-            </button>
+              {refreshing ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <RefreshCw size={13} />
+              )}
+            </Button>
           </TooltipTrigger>
-          <TooltipContent>Refresh workspace</TooltipContent>
+          <TooltipContent>Resync this listing</TooltipContent>
         </Tooltip>
       </div>
 
@@ -154,6 +143,7 @@ export function WorkspaceBrowserPane({
               : `${currentPath}/${entry.key}`;
           const isSelected = selectedPath === fullPath;
           const label = currentPath === "/" ? labelForSegment(entry.key, 0) : entry.key;
+
           return (
             <div
               key={entry.key}

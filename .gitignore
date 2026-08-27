@@ -50,3 +50,6 @@ next-env.d.ts
 # material is the private covia-demos-program/planning/<slug>/.
 DECISIONS.md
 **/DECISIONS.md
+
+# Claude Code — machine-local permissions (do not share)
+.claude/settings.local.json

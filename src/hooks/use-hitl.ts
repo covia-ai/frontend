@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { create } from "zustand";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useIsAuthenticated } from "@/hooks/use-auth";
-import { listHitlRequests, type HitlRequest } from "@/lib/hitl";
+import { countOpenHitlRequests, listHitlRequests, type HitlRequest } from "@/lib/hitl";
 
 // How often the shared poller re-checks the inbox, so a request that arrives
 // while the app is open still surfaces. Every read is a job-free values GET,
@@ -53,9 +53,11 @@ export function useHitlOpenCountPoll(): void {
     let ignore = false;
     // The background poll stays quiet — the inbox page is where a read failure
     // gets reported. Logging keeps it visible in the console rather than lost.
+    // Count-only: one server-side aggregate, not a full inbox download —
+    // this runs on every page, every 30s.
     const load = () =>
-      listHitlRequests(venue)
-        .then((list) => { if (!ignore) publishOpenCount(list); })
+      countOpenHitlRequests(venue)
+        .then((count) => { if (!ignore) useHitlCountStore.getState().setOpenCount(count); })
         .catch((err: unknown) => console.warn("HITL open-count poll failed:", err));
 
     load();

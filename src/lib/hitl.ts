@@ -1,4 +1,4 @@
-import { Venue, createUCANJWT, hexToPrivateKey } from "@covia/covia-sdk";
+import { Venue, UnsupportedVenueFeatureError, createUCANJWT, hexToPrivateKey } from "@covia/covia-sdk";
 import { resolveOperationByAddress } from "@/lib/operations-catalog";
 
 // Human-in-the-loop requests. A request is delivered as a durable record into
@@ -113,8 +113,11 @@ export type HitlAnswer = string | boolean | string[];
 
 export const HITL_RESPOND_ADDRESS = "v/ops/hitl/respond";
 
-// Job-free. The inbox is the caller's own `h/` namespace, so the key listing
-// and each record read go over GET /api/v1/values/* and persist nothing. The
+// Job-free. The inbox is the caller's own `h/` namespace, read in ONE
+// values GET: the whole {id → record} map comes back together. The per-key
+// fan-out this replaced (list + one read per record) serialised into seconds
+// against remote venues — browsers cap concurrent requests per host, so an
+// inbox of N historical records cost ⌈N/6⌉ sequential waves. The
 // `v/ops/hitl/list` operation returns the same summaries but mints a Job on
 // every call — unacceptable for a page load or a poll (AGENTS.md), which is
 // why the lattice is read directly here.
@@ -125,22 +128,54 @@ export async function listHitlRequests(venue: Venue): Promise<HitlRequest[]> {
   // session, an unreachable host. Let it propagate. Swallowing it renders
   // "nothing waiting on you", which is indistinguishable from a healthy empty
   // inbox and leaves the user with nothing to debug.
-  const res = await venue.workspace.list("h");
-  const keys = ((res as { keys?: string[] })?.keys) ?? [];
+  const res = await venue.workspace.read("h");
+  if (!res.exists) return [];
 
-  const records = await Promise.all(keys.map((key) => readHitlRequest(venue, key)));
-  return records
-    .filter((r): r is HitlRequest => r !== null)
+  // An inbox over the venue's single-read cap answers {truncated} with the
+  // value withheld — page it through slice instead.
+  const values: unknown[] = res.truncated
+    ? await sliceInboxRecords(venue)
+    : Object.values((res.value ?? {}) as Record<string, unknown>);
+
+  return values
+    .filter((value): value is HitlRequest =>
+      !!value && typeof value === "object" && !!(value as HitlRequest).id,
+    )
     .sort((a, b) => (b.created ?? 0) - (a.created ?? 0));
 }
 
-export async function readHitlRequest(venue: Venue, id: string): Promise<HitlRequest | null> {
+const INBOX_SLICE_LIMIT = 100;
+
+async function sliceInboxRecords(venue: Venue): Promise<unknown[]> {
+  const values: unknown[] = [];
+  let offset = 0;
+  for (;;) {
+    const page = await venue.workspace.slice("h", offset, INBOX_SLICE_LIMIT);
+    if (!page.exists) break;
+    const pairs = ((page.values as Array<{ value?: unknown }> | undefined) ?? []);
+    for (const pair of pairs) values.push(pair?.value);
+    const next = (page.offset ?? offset) + pairs.length;
+    if (pairs.length === 0 || (page.count !== undefined && next >= page.count)) break;
+    if (next <= offset) break; // non-advancing page — stop rather than spin
+    offset = next;
+  }
+  return values;
+}
+
+// The indicator badge only needs a number, not the records: one job-free
+// aggregate groups the inbox by status server-side. Venues without the
+// aggregate surface fall back to the full listing.
+export async function countOpenHitlRequests(venue: Venue): Promise<number> {
   try {
-    const res = await venue.workspace.read(`h/${id}`);
-    const value = (res as { value?: HitlRequest })?.value;
-    return value?.id ? value : null;
-  } catch {
-    return null;
+    const res = await venue.workspace.aggregate("h", { groupBy: "status" });
+    if (!res.exists) return 0;
+    return res.groups?.open?.count ?? 0;
+  } catch (err) {
+    if (err instanceof UnsupportedVenueFeatureError) {
+      const requests = await listHitlRequests(venue);
+      return requests.filter((r) => r.status === "open").length;
+    }
+    throw err;
   }
 }
 

@@ -49,6 +49,36 @@ export function SmartBreadcrumb({
       { label: 'Home', href: '/' }
     ];
 
+    // Catalog addresses (e.g. "v/ops/covia/aggregate-lattice-entries") arrive
+    // as path segments under both /operation/[...path] and
+    // /venues/[slug]/operations/[...id]. Middle namespace segments aren't
+    // pages of their own — skip them and jump from "Operations" to the
+    // operation name.
+    if (segments[0] === 'operation' && segments.length > 1) {
+      return [
+        ...breadcrumbs,
+        { label: 'Operations', href: '/operations' },
+        { label: operationLabel(segments), href: pathname },
+      ];
+    }
+
+    if (
+      segments[0] === 'venues' &&
+      segments[2] === 'operations' &&
+      segments.length > 3
+    ) {
+      const slug = segments[1];
+      const venueLabel =
+        venueName && isVenueSegment(slug, 'venues') ? venueName : slug;
+      return [
+        ...breadcrumbs,
+        { label: 'Venues', href: '/venues' },
+        { label: venueLabel, href: `/venues/${slug}` },
+        { label: 'Operations', href: `/venues/${slug}/operations` },
+        { label: operationLabel(segments), href: pathname },
+      ];
+    }
+
     let currentPath = '';
     segments.forEach((segment, index) => {
       currentPath += `/${segment}`;
@@ -75,9 +105,20 @@ export function SmartBreadcrumb({
         else if (index === segments.length - 1 && assetOrJobName && isAssetOrJobSegment(segment)) {
           label = assetOrJobName;
         }
+        // `/publicartifact/{hash}` and `/operation/{hash}` are singular
+        // per-item detail routes — there's no page at the bare segment, so
+        // their crumb must link to the actual list route instead of the
+        // literal path so far.
+        const listRouteOverrides: Record<string, string> = {
+          publicartifact: '/publicartifacts',
+          operation: '/operations',
+          job: '/jobs',
+        };
+        const href = listRouteOverrides[segment] ?? currentPath;
+
         breadcrumbs.push({
           label,
-          href: currentPath,
+          href,
         });
       }
     });
@@ -85,15 +126,23 @@ export function SmartBreadcrumb({
     return breadcrumbs;
   };
 
+  const operationLabel = (segments: string[]): string => {
+    const lastSegment = segments[segments.length - 1];
+    if (assetOrJobName && isAssetOrJobSegment(lastSegment)) return assetOrJobName;
+    return lastSegment
+      .replace(/-/g, ' ')
+      .replace(/\b\w/g, (l) => l.toUpperCase());
+  };
+
   // Check if a segment represents an asset (not a known route)
   const isAssetOrJobSegment = (segment: string): boolean => {
-    const knownRoutes = ['demo', 'demos', 'sdk-job-lifecycle', 'adaptive-risk', 'governed-escalation', 'publicartificats','venues', 'assets', 'operations', 'jobs', 'learning', 'workspace', 'myvenues', 'myassets', 'signup', 'privacypolicy'];
+    const knownRoutes = ['demo', 'demos', 'sdk-job-lifecycle', 'adaptive-risk', 'governed-escalation', 'publicartificats','venues', 'assets', 'operations', 'jobs', 'job', 'learning', 'workspace', 'myvenues', 'myassets', 'signup', 'privacypolicy'];
     return !knownRoutes.includes(segment) && !segment.startsWith('[') && !segment.endsWith(']');
   };
 
   // Check if a segment represents an venue (not a known route)
   const isVenueSegment = (segment: string, prevSegment: string): boolean => {
-    const knownRoutes = ['demo', 'demos', 'sdk-job-lifecycle', 'adaptive-risk', 'governed-escalation', 'publicartificats','venues', 'assets', 'operations', 'jobs', 'learning', 'workspace', 'myvenues', 'myassets', 'signup', 'privacypolicy'];
+    const knownRoutes = ['demo', 'demos', 'sdk-job-lifecycle', 'adaptive-risk', 'governed-escalation', 'publicartificats','venues', 'assets', 'operations', 'jobs', 'job', 'learning', 'workspace', 'myvenues', 'myassets', 'signup', 'privacypolicy'];
     const isPrevSegmentVenues = prevSegment == "venues" ? true : false;
     return !knownRoutes.includes(segment) && !segment.startsWith('[') && !segment.endsWith(']') && isPrevSegmentVenues;
   };
@@ -107,11 +156,21 @@ export function SmartBreadcrumb({
       'adaptive-risk': 'Adaptive Risk',
       'governed-escalation': 'Governed Escalation',
       'venues': 'Venues',
-      'assets': 'Assets',
+      // Matches the sidebar submenu label ("Public Artifacts", linking to
+      // /publicartifacts) — the venue-scoped asset routes use a different
+      // path segment ("assets") for the same concept, so without this the
+      // breadcrumb read differently than the nav the user just clicked.
+      'assets': 'Public Artifacts',
       'publicartifacts': 'Public Artifacts',
+      'publicartifact': 'Public Artifacts',
       'privateartifacts': 'Private Artifacts',
       'operations': 'Operations',
+      'operation': 'Operations',
       'jobs': 'Jobs',
+      // Matches PublicArtifactViewer/PublicOperationViewer: the venue-less
+      // job detail route uses a singular path segment ("job") for the same
+      // concept as the "jobs" list route.
+      'job': 'Jobs',
       'learning': 'Resources',
       'workspace': 'Workspace',
       'myvenues': 'My Venues',

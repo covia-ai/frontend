@@ -10,6 +10,7 @@ import {
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { resolveOperationByAddress } from "@/lib/operations-catalog";
 import { notifyError, notifySuccess } from "@/lib/notify";
+import { errorMessage, isNotFoundError } from "@/lib/errors";
 
 const POLL_INTERVAL_MS = 1000;
 
@@ -28,7 +29,7 @@ export function useExecutionLifecycle({
   venueId?: string;
   jobId: string;
 }) {
-  const { venue, auth } = useResolvedVenueContext(venueId);
+  const { venue } = useResolvedVenueContext(venueId);
   const [job, setJob] = useState<JobMetadata>();
   const [operationAsset, setOperationAsset] = useState<Asset>();
   const [loading, setLoading] = useState(true);
@@ -45,7 +46,6 @@ export function useExecutionLifecycle({
     const lifecycle = lifecycleGeneration;
     const generation = ++lifecycle.current;
     let active = true;
-    let source: EventSource | null = null;
     let pollTimer: ReturnType<typeof setInterval> | null = null;
     let pollInFlight = false;
     let updateVersion = 0;
@@ -62,8 +62,6 @@ export function useExecutionLifecycle({
       active && lifecycle.current === generation;
 
     const stopTransport = () => {
-      source?.close();
-      source = null;
       if (pollTimer) clearInterval(pollTimer);
       pollTimer = null;
       if (ownsLifecycle()) setStreaming(false);
@@ -96,11 +94,7 @@ export function useExecutionLifecycle({
       } catch (fetchError: unknown) {
         if (!ownsLifecycle() || hasLoaded) return;
         setLoading(false);
-        setError(
-          fetchError instanceof Error
-            ? fetchError.message
-            : "Unable to load job",
-        );
+        setError(errorMessage(fetchError, "Unable to load job"));
       } finally {
         pollInFlight = false;
       }
@@ -125,47 +119,53 @@ export function useExecutionLifecycle({
       }, POLL_INTERVAL_MS);
     };
 
-    // Native EventSource cannot attach bearer or Ed25519 authentication.
-    if (auth) {
-      startPolling();
-    } else {
+    // venue.jobs.stream() carries the venue's configured auth header (bearer
+    // or Ed25519) over fetch/ReadableStream — unlike native EventSource,
+    // which can't attach one — so it works for signed-in and anonymous
+    // callers alike. A drop gets one reattach (fresh GET, then reopen); a
+    // second drop, or a venue that rejects the stream outright (e.g. an
+    // older venue without the SSE route), falls back to polling.
+    const openStream = async (isRetry: boolean) => {
       try {
-        source = new EventSource(
-          `${venue.baseUrl}/api/v1/jobs/${encodeURIComponent(jobId)}/sse`,
-        );
-        source.onopen = () => {
-          if (ownsLifecycle()) setStreaming(true);
-        };
-        source.onmessage = (event) => {
+        let gotEvent = false;
+        for await (const event of venue.jobs.stream(jobId)) {
           if (!ownsLifecycle()) return;
+          if (!gotEvent) {
+            gotEvent = true;
+            setStreaming(true);
+          }
           try {
-            const data = JSON.parse(event.data);
+            const data = event.json() as any;
             ++updateVersion;
             applyMetadata((data.metadata ?? data) as JobMetadata);
           } catch {
             // Ignore malformed stream events; a later event can still recover.
           }
-        };
-        source.onerror = () => {
-          if (!ownsLifecycle() || finished) return;
-          source?.close();
-          source = null;
-          setStreaming(false);
-          startPolling();
-        };
+          if (finished || !ownsLifecycle()) return;
+        }
       } catch {
-        startPolling();
+        // Fall through to the reattach/fallback logic below.
       }
-    }
+      if (!ownsLifecycle() || finished) return;
+      setStreaming(false);
+      if (isRetry) {
+        startPolling();
+        return;
+      }
+      await fetchStatus();
+      if (!ownsLifecycle() || finished) return;
+      void openStream(true);
+    };
+
+    void openStream(false);
 
     return () => {
       active = false;
       ++lifecycle.current;
-      source?.close();
       if (pollTimer) clearInterval(pollTimer);
       refreshRef.current = null;
     };
-  }, [auth, jobId, venue]);
+  }, [jobId, venue]);
 
   useEffect(() => {
     const assetRequests = assetGeneration;
@@ -223,12 +223,14 @@ export function useExecutionLifecycle({
     }
   }, [jobId, message, venue]);
 
+  const notFound = isNotFoundError(error);
   return {
     venue,
     job,
     operationAsset,
     loading,
-    error,
+    error: notFound ? null : error,
+    notFound,
     streaming,
     message,
     setMessage,

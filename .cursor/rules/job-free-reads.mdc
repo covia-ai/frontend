@@ -1,0 +1,20 @@
+---
+description: Page loads and polls must not invoke operations (no job creation)
+globs: src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Reads must not create jobs
+
+Every operation `invoke` / `operations.run` persists a job on the venue lattice.
+Only use invoke for **explicit user actions** (run operation, call tool, message
+agent, write/delete).
+
+For page loads, polls, navigation, and display, use job-free surfaces only:
+
+- REST GETs: `/api/v1/assets|jobs|operations|secrets|status`
+- Values API: `GET /api/v1/values/*`
+- Native `/mcp` JSON-RPC
+- `/.well-known/*`
+
+Treat a non-user-driven `invoke` as a defect.

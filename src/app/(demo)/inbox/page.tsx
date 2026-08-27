@@ -10,7 +10,7 @@ import { useIsAuthenticated } from "@/hooks/use-auth";
 export default function HitlPage() {
   const isAuthenticated = useIsAuthenticated();
   // Deep link target, e.g. /inbox?requestId=<id> — same pattern as
-  // /agents/explorer?agentId=…
+  // /agents/view?agentId=…
   const requestId = useSearchParams().get("requestId") ?? undefined;
 
   return (

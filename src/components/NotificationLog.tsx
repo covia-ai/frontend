@@ -4,15 +4,18 @@ import { useNotificationLog, type NotificationKind } from "@/hooks/use-notificat
 import { Button } from "@/components/ui/button";
 import { Bell, CheckCircle2, CircleAlert, Info, TriangleAlert } from "lucide-react";
 
-const KIND_ICONS: Record<NotificationKind, React.ReactNode> = {
+// Shared with NotificationBell.tsx (#241) so the two surfaces read the same.
+export const KIND_ICONS: Record<NotificationKind, React.ReactNode> = {
   success: <CheckCircle2 size={14} className="text-green-500 shrink-0 mt-0.5" />,
   error: <CircleAlert size={14} className="text-destructive shrink-0 mt-0.5" />,
   warning: <TriangleAlert size={14} className="text-amber-500 shrink-0 mt-0.5" />,
   info: <Info size={14} className="text-blue-500 shrink-0 mt-0.5" />,
 };
 
-// The session's notification history (Profile page). Entries come from the
-// notify helpers; the log is in-memory only and resets on reload.
+// The full notification history (Profile page) — entries come from the
+// notify helpers and persist across reloads/tab closes (#241). See also
+// NotificationBell.tsx, the TopBar's grouped/mark-read panel over the same
+// store.
 export function NotificationLog() {
   const entries = useNotificationLog((state) => state.entries);
   const clear = useNotificationLog((state) => state.clear);
@@ -25,7 +28,7 @@ export function NotificationLog() {
           Notifications
           {entries.length > 0 && (
             <span className="text-xs font-normal text-muted-foreground">
-              {entries.length} this session
+              {entries.length}
             </span>
           )}
         </h3>
@@ -43,7 +46,7 @@ export function NotificationLog() {
 
       {entries.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Nothing yet this session. Toasts shown while you work will be listed here.
+          Nothing yet. Toasts shown while you work will be listed here.
         </p>
       ) : (
         <ol className="flex flex-col gap-2 max-h-80 overflow-y-auto pr-1">

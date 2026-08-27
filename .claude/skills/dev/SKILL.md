@@ -9,9 +9,9 @@ Start the Next.js development server for local development.
 
 ## Steps
 
-1. **Install dependencies:**
+1. **Install dependencies** (from this repo root):
 ```bash
-cd frontend && pnpm install
+pnpm install
 ```
 
 2. **Start dev server:**

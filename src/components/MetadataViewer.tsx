@@ -1,17 +1,21 @@
 'use client'
 
-import React from "react";
+import React, { useState } from "react";
+import * as mime from "mime-types";
 import { Asset, Venue } from "@covia/covia-sdk";
-import { Calendar, Copy, Copyright, Cpu, Download, FileJson, FileText, InfoIcon, Layers, LogIn, LogOut, MessageSquareText, Puzzle, Tag, User, Workflow, Wrench }from "lucide-react";
+import { Calendar, Copy, Copyright, Cpu, Download, FileJson, FileText, InfoIcon, Layers, Loader2, LogIn, LogOut, MessageSquareText, Puzzle, Tag, User, Workflow, Wrench }from "lucide-react";
 import Link from "next/link";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "./ui/dialog";
 import { LucideIcon } from "lucide-react";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { cn, copyDataToClipBoard, formatLabel } from "@/lib/utils";
+import { cn, copyDataToClipBoard, formatDateTime, formatLabel } from "@/lib/utils";
 import { getAssetKind } from "@/lib/asset-kind";
+import { agentConfigPreviewFromMetadata } from "@/lib/agent-templates";
 import { JSON_EDITOR_DIALOG_CLASS, JSON_EDITOR_MAX_WIDTH } from "@/lib/dialog-sizes";
+import { notifyError } from "@/lib/notify";
+import { CopyAssetDialog } from "./CopyAssetDialog";
 import {
   Accordion,
   AccordionContent,
@@ -35,6 +39,7 @@ const XML_CONTENT_TYPES = ["text/xml", "application/xml"];
 interface MetadataViewerProps {
   asset: Asset;
   venue?: Venue;
+  isAuthenticated?: boolean;
 }
 
 interface MetadataFieldConfig {
@@ -44,22 +49,6 @@ interface MetadataFieldConfig {
   path: string;
   renderValue?: (value: any) => React.ReactNode;
 }
-
-const formatDate = (value: string) => {
-  try {
-    return new Intl.DateTimeFormat('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      second: '2-digit',
-      timeZone: 'UTC',
-    }).format(new Date(value));
-  } catch {
-    return value;
-  }
-};
 
 const METADATA_FIELDS: MetadataFieldConfig[] = [
   {
@@ -84,14 +73,14 @@ const METADATA_FIELDS: MetadataFieldConfig[] = [
     label: 'Created on:',
     icon: Calendar,
     path: 'metadata.dateCreated',
-    renderValue: (value) => formatDate(value)
+    renderValue: (value) => formatDateTime(value)
   },
   {
     key: 'dateModified',
     label: 'Modified on:',
     icon: Calendar,
     path: 'metadata.dateModified',
-    renderValue: (value) => formatDate(value)
+    renderValue: (value) => formatDateTime(value)
   },
   {
     key: 'keywords',
@@ -197,7 +186,8 @@ const renderSchemaProperties = (
   );
 };
 
-export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
+export const MetadataViewer = ({ asset, venue, isAuthenticated = false }: MetadataViewerProps) => {
+
   // Skills and other inline assets carry their body in `content.inline`, with
   // no separate blob — the content endpoint 500s for them. Render the inline
   // text directly and never point Download at a URL that doesn't exist.
@@ -220,7 +210,7 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
   const hasSteps = Array.isArray(operation?.steps) && operation.steps.length > 0;
   const hasOperationFields = isOperation && (hasAdapter || hasOperationInput || hasOperationOutput || hasSteps);
 
-  const agentTemplate = asset.metadata as AgentTemplateSchema | undefined;
+  const agentTemplate = agentConfigPreviewFromMetadata(asset.metadata) as AgentTemplateSchema;
   const isAgentTemplate = kind === "agent-template";
   const hasModel = typeof agentTemplate?.llmOperation === "string" || typeof agentTemplate?.model === "string";
   const templateTools = Array.isArray(agentTemplate?.tools) ? agentTemplate.tools : [];
@@ -229,19 +219,67 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
   const hasAgentTemplateFields =
     isAgentTemplate && (hasModel || templateTools.length > 0 || templateSkills.length > 0);
 
-  // A "Download" link only makes sense for a genuine artifact — a bare
-  // reference asset (no `content`, no `operation`) has nothing at that URL to
-  // fetch (covia-ai/frontend#209 follow-up).
-  const hasBlobContent = kind === "artifact" && inlineContent === null;
+  // A "Download" link only makes sense when the asset actually has a content
+  // descriptor with nothing inline to show instead — a bare reference asset
+  // (no `content`, no `operation`) has nothing at that URL to fetch
+  // (covia-ai/frontend#209 follow-up). Keyed on the raw field rather than
+  // `kind === "artifact"` so a blob-backed skill (kind "skill", content not
+  // inline) still gets a Download button.
+  const hasBlobContent = asset.metadata?.content !== undefined && inlineContent === null;
   const contentURL = hasBlobContent ? asset.getContentURL() : null;
+
+  const [downloading, setDownloading] = useState(false);
+  // A plain <a href download> only forces a save when the URL is
+  // same-origin (or the server sends Content-Disposition: attachment) —
+  // the content endpoint lives on the venue's own origin, so the browser
+  // just navigated to/opened it instead of downloading. Fetch the bytes
+  // through the SDK (authenticated the same way as every other read) and
+  // save from a blob: URL instead, which always triggers a real download.
+  const handleDownload = async () => {
+    if (!venue) return;
+    setDownloading(true);
+    try {
+      const stream = await venue.assets.getContent(asset.id);
+      if (!stream) throw new Error("Asset content is unavailable");
+      const reader = stream.getReader();
+      const chunks: Uint8Array[] = [];
+      while (true) {
+        const { value, done } = await reader.read();
+        if (value) chunks.push(value);
+        if (done) break;
+      }
+      const blob = new Blob(chunks as BlobPart[], contentType ? { type: contentType } : undefined);
+      const objectUrl = URL.createObjectURL(blob);
+      const base = asset.metadata?.name || asset.id;
+      const ext = contentType ? mime.extension(contentType) : false;
+      const filename = ext && !base.toLowerCase().endsWith(`.${ext}`) ? `${base}.${ext}` : base;
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      notifyError("Unable to download asset", err, venue.baseUrl);
+    } finally {
+      setDownloading(false);
+    }
+  };
   // Collapsed by default only for a genuine invokable operation — a template
   // that merely names a transition op (e.g. "goaltree") isn't one.
   const defaultValue = hasOperationFields ? undefined : "metadata";
 
+  // Skill tools, inline content and system prompt are what the asset *is*,
+  // same standing as the operation/agent-template fields below — they live
+  // in the left (content) column, not the right (actions) column, so the
+  // two-column split is consistent across every asset kind instead of only
+  // appearing for assets that happen to carry provenance metadata.
+  const hasContentItems = skillTools.length > 0 || inlineContent != null || hasSystemPrompt;
   const genericFields = renderMetadataFields(asset, METADATA_FIELDS);
   const hasKindFields = hasOperationFields || hasAgentTemplateFields;
-  const hasLeftContent = hasKindFields || genericFields !== null;
-  
+  const hasLeftContent = hasKindFields || hasContentItems || genericFields !== null;
+
   return (
      <Accordion
       type="single"
@@ -254,8 +292,12 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
          <AccordionContent>
               <div className="text-sm p-2 items-center justify-between min-w-lg w-full">
                 <div className="flex flex-col md:flex-row lg:flex-row">
-                  {hasLeftContent && (
                     <div className="flex flex-col flex-3 md:border-r-2 lg:border-r-2 border-border px-2 " data-testid="asset-fields">
+                      {kind === "reference" && !hasLeftContent && (
+                        <div className="my-2 text-muted-foreground" data-testid="reference-empty-note">
+                          This asset has no content or schema of its own — it&apos;s a bare reference.
+                        </div>
+                      )}
                       {hasOperationFields && (
                         <div className="flex flex-col space-y-3 mb-3" data-testid="operation-fields">
                           {hasAdapter && (
@@ -342,81 +384,80 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
                           )}
                         </div>
                       )}
+                      {skillTools.length > 0 && (
+                        <div className="my-2" data-testid="skill-tools">
+                          <div className="flex flex-row items-center space-x-2">
+                            <Wrench size={18} />
+                            <span className="text-md">Skill tools:</span>
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {skillTools.map((tool) => (
+                              <Badge key={tool} variant="outline" className="font-mono text-[10px] text-muted-foreground">
+                                {tool}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {inlineContent != null && (
+                        <div className="my-2" data-testid="inline-content">
+                          <div className="flex flex-row items-center justify-between space-x-2">
+                            <div className="flex flex-row items-center space-x-2">
+                              <FileText size={18} />
+                              <span className="text-md">Content{contentType ? ` (${contentType})` : ""}:</span>
+                            </div>
+                            <button
+                              type="button"
+                              aria-label="Copy content"
+                              data-testid="copy-inline-content"
+                              onClick={() => copyDataToClipBoard(inlineContent, "Content copied to clipboard")}
+                              className="text-muted-foreground hover:text-foreground"
+                            >
+                              <Copy size={14} />
+                            </button>
+                          </div>
+                          {/* Fixed dark code-panel background (matches XmlViewer/
+                              JsonViewer's preview) rather than the theme's bg-muted,
+                              so this reads as a code/text panel in both themes. */}
+                          <pre className="mt-1 max-h-96 overflow-auto rounded bg-[hsl(220,13%,18%)] text-gray-100 p-3 text-xs whitespace-pre-wrap break-words font-mono">
+                            {inlineContent}
+                          </pre>
+                        </div>
+                      )}
+                      {hasSystemPrompt && (
+                        <div className="my-2" data-testid="system-prompt">
+                          <div className="flex flex-row items-center space-x-2">
+                            <MessageSquareText size={18} />
+                            <span className="text-md">System prompt:</span>
+                          </div>
+                          <pre className="mt-1 max-h-96 overflow-auto rounded bg-muted p-3 text-xs whitespace-pre-wrap break-words font-mono">
+                            {agentTemplate?.systemPrompt}
+                          </pre>
+                        </div>
+                      )}
                       {genericFields && (
-                        // Kind-specific fields (adapter/schema, model/tools) are why
-                        // you're looking at this asset; creator/license/keywords are
-                        // provenance. De-emphasize the latter only when both are
-                        // present, so the hierarchy matches what's actually load-bearing.
-                        <div className={hasKindFields ? "pt-3 mt-1 border-t border-border/60 opacity-70" : undefined}>
+                        // Kind-specific fields and content items are why you're
+                        // looking at this asset; creator/license/keywords are
+                        // provenance. De-emphasize the latter only when something
+                        // load-bearing is also shown, so the hierarchy matches
+                        // what's actually load-bearing.
+                        <div className={hasKindFields || hasContentItems ? "pt-3 mt-1 border-t border-border/60 opacity-70" : undefined}>
                           {genericFields}
                         </div>
                       )}
                     </div>
-                  )}
                   <div className="flex flex-col flex-2 px-2 ">
-                    {kind === "reference" && !hasLeftContent && (
-                      <div className="my-2 text-muted-foreground" data-testid="reference-empty-note">
-                        This asset has no content or schema of its own — it&apos;s a bare reference.
-                      </div>
-                    )}
-                    {skillTools.length > 0 && (
-                      <div className="my-2" data-testid="skill-tools">
-                        <div className="flex flex-row items-center space-x-2">
-                          <Wrench size={18} />
-                          <span className="text-md">Skill tools:</span>
-                        </div>
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {skillTools.map((tool) => (
-                            <Badge key={tool} variant="outline" className="font-mono text-[10px] text-muted-foreground">
-                              {tool}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {inlineContent != null && (
-                      <div className="my-2" data-testid="inline-content">
-                        <div className="flex flex-row items-center justify-between space-x-2">
-                          <div className="flex flex-row items-center space-x-2">
-                            <FileText size={18} />
-                            <span className="text-md">Content{contentType ? ` (${contentType})` : ""}:</span>
-                          </div>
-                          <button
-                            type="button"
-                            aria-label="Copy content"
-                            data-testid="copy-inline-content"
-                            onClick={() => copyDataToClipBoard(inlineContent, "Content copied to clipboard")}
-                            className="text-muted-foreground hover:text-foreground"
-                          >
-                            <Copy size={14} />
-                          </button>
-                        </div>
-                        {/* Fixed dark code-panel background (matches XmlViewer/
-                            JsonViewer's preview) rather than the theme's bg-muted,
-                            so this reads as a code/text panel in both themes. */}
-                        <pre className="mt-1 max-h-96 overflow-auto rounded bg-[hsl(220,13%,18%)] text-gray-100 p-3 text-xs whitespace-pre-wrap break-words font-mono">
-                          {inlineContent}
-                        </pre>
-                      </div>
-                    )}
-                    {hasSystemPrompt && (
-                      <div className="my-2" data-testid="system-prompt">
-                        <div className="flex flex-row items-center space-x-2">
-                          <MessageSquareText size={18} />
-                          <span className="text-md">System prompt:</span>
-                        </div>
-                        <pre className="mt-1 max-h-96 overflow-auto rounded bg-muted p-3 text-xs whitespace-pre-wrap break-words font-mono">
-                          {agentTemplate?.systemPrompt}
-                        </pre>
-                      </div>
-                    )}
                     {contentURL && (
                       <div className="flex flex-row flex-wrap items-center gap-2 my-2">
-                        <Button asChild variant="outline" size="sm" className="gap-1.5 text-muted-foreground">
-                          <Link href={contentURL} download>
-                            <Download size={14} />
-                            Download
-                          </Link>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 text-muted-foreground"
+                          onClick={handleDownload}
+                          disabled={downloading}
+                        >
+                          {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                          Download
                         </Button>
                         {contentType == "application/json" && <JsonViewer assetId={asset.id} venue={venue} />}
                         {XML_CONTENT_TYPES.includes(contentType ?? "") && <XmlViewer assetId={asset.id} venue={venue} />}
@@ -425,7 +466,7 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
                         )}
                       </div>
                     )}
-                    <div className="flex flex-row items-center mt-1">
+                    <div className="flex flex-row items-center gap-2 mt-1">
                       <Dialog>
                         <DialogTrigger asChild>
                           <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground">
@@ -442,6 +483,7 @@ export const MetadataViewer = ({ asset, venue }: MetadataViewerProps) => {
                           />
                         </DialogContent>
                       </Dialog>
+                      <CopyAssetDialog asset={asset} venue={venue} isAuthenticated={isAuthenticated} />
                     </div>
                   </div>
                 </div>

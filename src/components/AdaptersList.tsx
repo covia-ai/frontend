@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { AdapterInfo } from "@covia/covia-sdk";
 import { useResolvedVenue } from "@/hooks/use-resolved-venue";
 import { useRouter } from "next/navigation";
@@ -9,10 +9,13 @@ import { TopBar } from "@/components/admin-panel/TopBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
-import { Plug, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, Plug, Search } from "lucide-react";
 import { notifyError } from "@/lib/notify";
+import { cn } from "@/lib/utils";
+
+type SortCol = "name" | "ops";
 
 interface AdaptersListProps {
   venueId: string;
@@ -23,7 +26,14 @@ export function AdaptersList({ venueId }: AdaptersListProps) {
   const [adapters, setAdapters] = useState<AdapterInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<{ col: SortCol; dir: "asc" | "desc" }>({ col: "name", dir: "asc" });
+  // Single-expand, like the accordion this replaced — only one adapter's
+  // operations are shown at a time.
+  const [expandedAdapter, setExpandedAdapter] = useState<string | null>(null);
   const router = useRouter();
+
+  const toggleSort = (col: SortCol) =>
+    setSort((prev) => (prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" }));
 
   useEffect(() => {
     if (!venue) return;
@@ -47,14 +57,20 @@ export function AdaptersList({ venueId }: AdaptersListProps) {
 
   const filteredAdapters = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const sorted = [...adapters].sort((a, b) => a.name.localeCompare(b.name));
-    if (!term) return sorted;
-    return sorted.filter(
-      (a) =>
-        a.name.toLowerCase().includes(term) ||
-        (a.description ?? "").toLowerCase().includes(term)
+    const filtered = term
+      ? adapters.filter(
+          (a) =>
+            a.name.toLowerCase().includes(term) ||
+            (a.description ?? "").toLowerCase().includes(term)
+        )
+      : adapters;
+    const dirMul = sort.dir === "asc" ? 1 : -1;
+    return [...filtered].sort((a, b) =>
+      sort.col === "name"
+        ? a.name.localeCompare(b.name) * dirMul
+        : (a.operations.length - b.operations.length) * dirMul
     );
-  }, [adapters, search]);
+  }, [adapters, search, sort]);
 
   const goToOperation = (path: string) => {
     if (!venue) return;
@@ -64,7 +80,7 @@ export function AdaptersList({ venueId }: AdaptersListProps) {
 
   return (
     <ContentLayout>
-      <TopBar venueName={venue?.metadata.name} />
+      <TopBar venueId={venueId} venueName={venue?.metadata.name} />
 
       <div className="flex flex-col gap-6">
         <Card className="p-6">
@@ -93,7 +109,10 @@ export function AdaptersList({ venueId }: AdaptersListProps) {
         </Card>
 
         <Card>
-          <CardHeader>
+          {/* px-2 lines up with the table's own TableCell padding below,
+              instead of the Card default's wider px-6 pushing the title
+              in further than the table content it labels. */}
+          <CardHeader className="px-2">
             <CardTitle className="text-base font-medium">Adapter Catalog</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -110,45 +129,105 @@ export function AdaptersList({ venueId }: AdaptersListProps) {
             )}
 
             {!loading && filteredAdapters.length > 0 && (
-              <Accordion type="single" collapsible className="px-4">
-                {filteredAdapters.map((adapter) => (
-                  <AccordionItem key={adapter.name} value={adapter.name}>
-                    <AccordionTrigger className="hover:no-underline">
-                      <div className="flex flex-1 items-center justify-between gap-3 pr-2">
-                        <div className="flex flex-col items-start gap-1 text-left">
-                          <span className="font-mono text-sm font-semibold">{adapter.name}</span>
-                          {adapter.description && (
-                            <span className="text-xs text-muted-foreground font-normal">{adapter.description}</span>
-                          )}
-                        </div>
-                        <Badge variant="outline" className="shrink-0">
-                          {adapter.operations.length} op{adapter.operations.length !== 1 ? "s" : ""}
-                        </Badge>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      {adapter.operations.length === 0 ? (
-                        <p className="text-xs text-muted-foreground pb-2">
-                          No catalog operations for this adapter.
-                        </p>
-                      ) : (
-                        <ul className="flex flex-col gap-1 pb-2">
-                          {adapter.operations.map((path) => (
-                            <li key={path}>
-                              <button
-                                onClick={() => goToOperation(path)}
-                                className="font-mono text-xs text-muted-foreground hover:text-primary hover:underline text-left"
-                              >
-                                {path}
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-secondary hover:bg-secondary text-secondary-foreground">
+                    <TableCell className="text-left">
+                      <button
+                        onClick={() => toggleSort("name")}
+                        className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                      >
+                        Adapter
+                        {sort.col === "name" ? (
+                          sort.dir === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />
+                        ) : (
+                          <ArrowUpDown size={14} />
+                        )}
+                      </button>
+                    </TableCell>
+                    <TableCell className="text-left">Description</TableCell>
+                    <TableCell className="text-right">
+                      <button
+                        onClick={() => toggleSort("ops")}
+                        className="inline-flex items-center gap-1 hover:text-foreground transition-colors ml-auto"
+                      >
+                        Operations
+                        {sort.col === "ops" ? (
+                          sort.dir === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />
+                        ) : (
+                          <ArrowUpDown size={14} />
+                        )}
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredAdapters.map((adapter) => {
+                    const isExpanded = expandedAdapter === adapter.name;
+                    return (
+                      <Fragment key={adapter.name}>
+                        <TableRow
+                          className="cursor-pointer"
+                          onClick={() =>
+                            setExpandedAdapter(isExpanded ? null : adapter.name)
+                          }
+                        >
+                          <TableCell className="font-mono font-semibold whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1.5">
+                              <ChevronRight
+                                size={14}
+                                className={cn(
+                                  "shrink-0 text-muted-foreground transition-transform",
+                                  isExpanded && "rotate-90",
+                                )}
+                              />
+                              {adapter.name}
+                            </span>
+                          </TableCell>
+                          <TableCell
+                            className="max-w-0 w-full truncate text-muted-foreground"
+                            title={adapter.description}
+                          >
+                            {adapter.description}
+                          </TableCell>
+                          <TableCell className="text-right whitespace-nowrap">
+                            <Badge variant="outline">
+                              {adapter.operations.length} op{adapter.operations.length !== 1 ? "s" : ""}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                        {isExpanded && (
+                          <TableRow className="hover:bg-transparent bg-muted/30">
+                            <TableCell colSpan={3} className="whitespace-normal py-3">
+                              {adapter.operations.length === 0 ? (
+                                <p className="text-xs text-muted-foreground">
+                                  No catalog operations for this adapter.
+                                </p>
+                              ) : (
+                                <ul className="flex flex-col gap-1">
+                                  {adapter.operations.map((path) => (
+                                    <li key={path}>
+                                      <button
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          goToOperation(path);
+                                        }}
+                                        className="font-mono text-xs text-muted-foreground hover:text-primary hover:underline text-left"
+                                      >
+                                        {path}
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             )}
           </CardContent>
         </Card>

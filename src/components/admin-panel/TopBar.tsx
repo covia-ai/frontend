@@ -5,6 +5,7 @@ import { SheetMenu } from "@/components/admin-panel/sheet-menu";
 import { ChromeSignInButton } from "./signin-button";
 import { VenueSelector } from "@/components/VenueSelector";
 import { HitlIndicator } from "@/components/HitlIndicator";
+import { NotificationBell } from "@/components/NotificationBell";
 import { DarkLightToggle } from "../DarkLightToggle";
 import { SmartBreadcrumb } from "../smartbreadcrumb2";
 import { Separator } from "../ui/separator";
@@ -28,7 +29,13 @@ function docsLinkFor(pathname: string): string | undefined {
   return DOCS_LINKS.find(({ test }) => test(pathname))?.href;
 }
 
-export function TopBar(props:any) {
+type TopBarProps = {
+  assetOrJobName?: string;
+  venueName?: string;
+  venueId?: string;
+};
+
+export function TopBar(props: TopBarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const docsHref = docsLinkFor(pathname);
@@ -57,9 +64,10 @@ export function TopBar(props:any) {
                 </Tooltip>
               )}
               <HitlIndicator />
+              <NotificationBell />
               <DarkLightToggle/>
-              <VenueSelector />
-              <ChromeSignInButton/>
+              <VenueSelector venueId={props.venueId} />
+              <ChromeSignInButton venueId={props.venueId}/>
           </div>
         </div>
       </div>

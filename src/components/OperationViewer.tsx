@@ -1,17 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
 import { AssetHeader } from "@/components/AssetHeader";
 import { AssetLoadState } from "@/components/AssetLoadState";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { MetadataViewer } from "@/components/MetadataViewer";
 import { OperationInputForm } from "@/components/OperationInputForm";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
-import { FileJson } from "lucide-react";
 import { useOperationAsset } from "@/hooks/use-operation-asset";
 import { useOperationInput } from "@/hooks/use-operation-input";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
@@ -19,8 +15,8 @@ import {
   validateOperationInput,
   type OperationInputSchema,
 } from "@/lib/operation-input";
-import { cn, gtmEvent } from "@/lib/utils";
-import { JSON_EDITOR_DIALOG_CLASS, JSON_EDITOR_MAX_WIDTH } from "@/lib/dialog-sizes";
+import { gtmEvent } from "@/lib/utils";
+import { useJobExecution } from "@/hooks/use-job-execution";
 
 const DiagramViewer = dynamic(
   () =>
@@ -35,26 +31,31 @@ const DiagramViewer = dynamic(
   },
 );
 
-const ThemedJsonEditor = dynamic(
-  () => import("@/components/ThemedJsonEditor").then((module) => module.ThemedJsonEditor),
-  { ssr: false },
-);
-
 type OperationViewerProps = {
   assetId: string;
   venueId: string;
+  // Fires once when the operation turns out not to exist on the resolved
+  // venue — e.g. PublicOperationViewer redirects back to /operations, since
+  // a venue-less operation page follows whichever venue is globally selected
+  // and has no "correct" venue to fall back to.
+  onNotFound?: () => void;
 };
 
 export function OperationViewer({
   assetId,
   venueId,
+  onNotFound,
 }: OperationViewerProps) {
-  const router = useRouter();
   const { venue, isAuthenticated } = useResolvedVenueContext(venueId);
   const { asset, errorMessage: loadError, notFound, loading: assetLoading } = useOperationAsset(
     venue,
     assetId,
   );
+
+  useEffect(() => {
+    if (notFound) onNotFound?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notFound]);
   const schema = useMemo(
     () =>
       asset?.metadata?.operation
@@ -64,7 +65,7 @@ export function OperationViewer({
   );
   const inputController = useOperationInput(venue?.venueId, assetId, schema);
   const [invocationError, setInvocationError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { execute: executeJob, running: loading } = useJobExecution(venue);
   const [confirmationRequired, setConfirmationRequired] = useState(false);
 
   const runOperation = async () => {
@@ -73,34 +74,19 @@ export function OperationViewer({
       return;
     }
 
-    setLoading(true);
-    setInvocationError("");
     setConfirmationRequired(false);
-    try {
-      const response = await asset.invoke(inputController.input);
-      if (response?.id) {
-        router.push(
-          `/venues/${encodeURIComponent(venue.venueId)}/jobs/${response.id}`,
-        );
-      } else {
-        setInvocationError(
-          "The operation completed without returning a job ID",
-        );
-      }
-    } catch (error: unknown) {
-      setInvocationError(
-        error instanceof Error ? error.message : "Unable to run operation",
-      );
-    } finally {
-      setLoading(false);
-    }
+    await executeJob({
+      action: () => asset.invoke(inputController.input),
+      failureTitle: "Unable to run operation",
+      onError: setInvocationError,
+    });
   };
 
-  const requestRun = (requiredKeys: string[]) => {
+  const requestRun = () => {
     if (!confirmationRequired) {
       const validationError = validateOperationInput(
         inputController.input,
-        requiredKeys,
+        schema,
       );
       if (validationError) {
         setInvocationError(validationError);
@@ -119,6 +105,7 @@ export function OperationViewer({
   return (
     <ContentLayout>
       <TopBar
+        venueId={venueId}
         assetOrJobName={asset?.metadata?.name}
         venueName={venue?.metadata.name}
       />
@@ -131,33 +118,13 @@ export function OperationViewer({
         />
 
         {asset && <AssetHeader asset={asset} />}
-        {asset && <MetadataViewer asset={asset} venue={venue} />}
+        {asset && <MetadataViewer asset={asset} venue={venue} isAuthenticated={isAuthenticated} />}
         {asset?.metadata?.operation && (
           <>
-            <div className="w-full flex justify-end mb-1">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground">
-                    <FileJson size={14} />
-                    View Schema
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className={cn(JSON_EDITOR_DIALOG_CLASS, "content-start overflow-y-auto")}>
-                  <DialogTitle>Operation Schema</DialogTitle>
-                  <ThemedJsonEditor
-                    data={{
-                      input: asset.metadata.operation.input,
-                      output: asset.metadata.operation.output,
-                    }}
-                    rootName="schema"
-                    maxWidth={JSON_EDITOR_MAX_WIDTH}
-                  />
-                </DialogContent>
-              </Dialog>
-            </div>
             {inputController.ready ? (
               <OperationInputForm
                 schema={schema}
+                outputSchema={asset.metadata.operation.output}
                 controller={inputController}
                 errorMessage={invocationError}
                 loading={loading}

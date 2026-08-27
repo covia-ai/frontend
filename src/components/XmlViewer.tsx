@@ -2,13 +2,12 @@
 
 import { useState } from "react";
 import type { Venue } from "@covia/covia-sdk";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Eye, Loader2 } from "lucide-react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useAssetTextContent } from "@/hooks/use-asset-text-content";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { RawTextPanel } from "@/components/content-preview/RawTextPanel";
+import { ShikiCodeBlock } from "@/components/ShikiCodeBlock";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -62,19 +61,13 @@ export const XmlViewer = ({ assetId, venue: providedVenue }: XmlViewerProps) => 
               ) : content.error ? (
                 <ErrorDisplay error={content.error} className="p-4" />
               ) : (
-                <SyntaxHighlighter
+                <ShikiCodeBlock
+                  code={content.text}
                   language="xml"
-                  style={oneDark}
                   showLineNumbers
                   wrapLongLines
-                  customStyle={{
-                    margin: 0,
-                    borderRadius: "0.5rem",
-                    fontSize: "0.875rem",
-                  }}
-                >
-                  {content.text}
-                </SyntaxHighlighter>
+                  className="m-0 rounded-lg"
+                />
               )}
               <ScrollBar orientation="horizontal" />
               <ScrollBar orientation="vertical" />

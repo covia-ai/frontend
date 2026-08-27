@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { Venue, getAssetIdFromVenueId } from "@covia/covia-sdk";
 import { AssetEntry, loadAssetEntries } from "@/lib/asset-metadata";
 import { getVenueFor, useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
-import { useCurrentAuth } from "@/hooks/use-auth";
+import { useAuthStore } from "@/hooks/use-auth";
 import { ScrollArea } from "./ui/scroll-area";
 import { DialogClose } from "@radix-ui/react-dialog";
 import { Button } from "./ui/button";
@@ -23,7 +23,7 @@ import type { VenueDescriptor } from "@/hooks/use-venues";
 export const AssetLookup = ({sendAssetIdBackToForm}: {sendAssetIdBackToForm: (id: string) => void}) => {
 
   const venue = useAuthenticatedVenue();
-  const authData = useCurrentAuth();
+  const getAuthForVenue = useAuthStore((state) => state.getAuthForVenue);
 
   const [assetsMetadata, setAssetsMetadata] = useState<AssetEntry[]>([]);
   const [filteredAsset, setFilteredAsset] = useState<AssetEntry[]>([]);
@@ -49,7 +49,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}: {sendAssetIdBackToForm: (id
         loadAssetEntries(selectedVenue, assetList.items, (entries) => {
           if (ignore) return;
           setAssetsMetadata(entries);
-        })
+        }, 48)
       ).catch(() => {});
       return () => { ignore = true; };
   },[open, selectedVenue]);
@@ -71,7 +71,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}: {sendAssetIdBackToForm: (id
   },[filterValue, assetsMetadata])
 
   const handleVenueSelect = (venue: VenueDescriptor) => {
-    setSelectedVenue(getVenueFor(venue, authData));
+    setSelectedVenue(getVenueFor(venue, getAuthForVenue(venue.venueId)));
   };
   return (
      <Dialog open={open} onOpenChange={setOpen}>

@@ -50,6 +50,17 @@ export function toneForAgentStatus(status?: string): StatusTone {
   return (status && AGENT_STATUS_TONE[status as AgentStatus]) || "neutral";
 }
 
+const AGENT_STATUS_DESCRIPTION: Partial<Record<AgentStatus, string>> = {
+  [AgentStatus.RUNNING]: "Running — the agent is actively processing work.",
+  [AgentStatus.SLEEPING]: "Sleeping — the agent is idle and will run when work arrives or a wake is due.",
+  [AgentStatus.SUSPENDED]: "Suspended — processing is paused until the agent is resumed.",
+  [AgentStatus.TERMINATED]: "Terminated — the agent cannot process further work.",
+};
+
+export function agentStatusDescription(status?: string): string | undefined {
+  return status ? AGENT_STATUS_DESCRIPTION[status as AgentStatus] : undefined;
+}
+
 export function toneForHitlStatus(status?: string): StatusTone {
   return (status && HITL_STATUS_TONE[status]) || "neutral";
 }

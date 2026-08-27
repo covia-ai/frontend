@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Check, Copy } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, writeTextToClipboard } from "@/lib/utils";
+import { notifyError } from "@/lib/notify";
 
 interface CopyFieldProps {
   label: string;
@@ -20,10 +21,14 @@ interface CopyFieldProps {
 // checkmark confirms the copy without a toast.
 export function CopyField({ label, value, href, className }: CopyFieldProps) {
   const [copied, setCopied] = useState(false);
-  const copy = () => {
-    navigator.clipboard.writeText(value);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copy = async () => {
+    try {
+      await writeTextToClipboard(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error: unknown) {
+      notifyError(`Unable to copy ${label.toLowerCase()}`, error);
+    }
   };
 
   const valueClasses = "bg-muted flex-1 min-w-0 rounded-md px-3 py-2 text-xs font-mono break-all";

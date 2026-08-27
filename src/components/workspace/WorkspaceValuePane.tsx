@@ -3,11 +3,9 @@
 import dynamic from "next/dynamic";
 import {
   Database,
-  Eye,
   FileText,
   Loader2,
   Lock,
-  PenLine,
   Trash2,
 } from "lucide-react";
 import {
@@ -30,6 +28,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  isWorkspaceNamespaceRoot,
+  workspaceNamespaceForPath,
+} from "@/lib/workspace-namespaces";
 
 const ThemedJsonEditor = dynamic(
   () =>
@@ -40,42 +42,34 @@ const ThemedJsonEditor = dynamic(
 );
 
 type WorkspaceValuePaneProps = {
+  currentPath: string;
   selectedPath: string | null;
+  namespaceEmpty: boolean;
   selectedValue: WorkspaceValue;
   loading: boolean;
   error: string | null;
   editedData: unknown;
-  editMode: boolean;
   isAuthenticated: boolean;
   pendingMutation: WorkspaceMutation;
   onEditedDataChange: (value: unknown) => void;
-  onEditModeChange: (editing: boolean) => void;
   onSave: (value?: unknown) => Promise<boolean>;
   onDelete: () => Promise<boolean>;
 };
 
 export function WorkspaceValuePane({
+  currentPath,
   selectedPath,
+  namespaceEmpty,
   selectedValue,
   loading,
   error,
   editedData,
-  editMode,
   isAuthenticated,
   pendingMutation,
   onEditedDataChange,
-  onEditModeChange,
   onSave,
   onDelete,
 }: WorkspaceValuePaneProps) {
-  // Edits autosave as they happen (see onChange/onBlur below), so leaving
-  // edit mode just flushes whatever hasn't committed yet — there's nothing
-  // to discard, unlike a traditional cancel.
-  const exitEditMode = async () => {
-    await onSave();
-    onEditModeChange(false);
-  };
-
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -84,7 +78,9 @@ export function WorkspaceValuePane({
     );
   }
 
-  if (!selectedPath) {
+  const displayPath = selectedPath ?? (currentPath === "/" ? null : currentPath);
+
+  if (!displayPath) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
         <Database size={32} />
@@ -102,7 +98,15 @@ export function WorkspaceValuePane({
     );
   }
 
-  if (!selectedValue.exists) {
+  const namespace = workspaceNamespaceForPath(displayPath);
+  const directoryLanding = !selectedPath;
+  const namespaceLanding = directoryLanding && isWorkspaceNamespaceRoot(currentPath);
+  const emptyNamespace =
+    namespaceLanding
+      ? namespaceEmpty
+      : !selectedValue.exists && isWorkspaceNamespaceRoot(displayPath);
+
+  if (selectedPath && !selectedValue.exists && !emptyNamespace) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
         <FileText size={32} />
@@ -113,53 +117,19 @@ export function WorkspaceValuePane({
 
   const readData = selectedValue.value;
   const isObject = typeof readData === "object" && readData !== null;
-  const canMutate = isAuthenticated && isWritableWorkspaceEntry(selectedPath);
+  const canMutate =
+    !!selectedPath && isAuthenticated && isWritableWorkspaceEntry(selectedPath);
 
   return (
     <>
       <div className="flex flex-wrap items-center gap-2 border-b border-border p-3">
         <Badge variant="outline" className="max-w-xs truncate font-mono text-xs">
-          {selectedPath}
-        </Badge>
-        <Badge variant="secondary" className="text-xs">
-          {selectedValue.type}
+          {displayPath}
         </Badge>
 
         <div className="ml-auto flex items-center gap-1">
-          {canMutate ? (
+          {selectedPath && canMutate ? (
             <>
-              {!editMode ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => onEditModeChange(true)}
-                      aria-label="Edit"
-                    >
-                      <PenLine size={14} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Edit</TooltipContent>
-                </Tooltip>
-              ) : (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => void exitEditMode()}
-                      disabled={pendingMutation === "save"}
-                      aria-label={pendingMutation === "save" ? "Saving" : "View"}
-                    >
-                      <Eye size={14} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {pendingMutation === "save" ? "Saving..." : "View"}
-                  </TooltipContent>
-                </Tooltip>
-              )}
               <AlertDialog>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -179,7 +149,7 @@ export function WorkspaceValuePane({
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>
-                      Delete &quot;{selectedPath}&quot;?
+                      Delete &quot;{displayPath}&quot;?
                     </AlertDialogTitle>
                     <AlertDialogDescription>
                       {isObject
@@ -199,30 +169,56 @@ export function WorkspaceValuePane({
                 </AlertDialogContent>
               </AlertDialog>
             </>
-          ) : (
+          ) : selectedPath ? (
             <span
               className="flex items-center gap-1 text-xs text-muted-foreground"
               title={
                 !isAuthenticated
                   ? "Read-only — sign in to modify workspace data"
-                  : selectedPath === "w"
+                  : displayPath === "w"
                     ? "Read-only — select a key inside Workspace to edit it"
                     : "Read-only — only paths under \"w\" (Workspace) can be edited"
               }
             >
               <Lock size={14} aria-label="Read-only" />
-              {selectedPath === "w" && "Choose a key to edit"}
+              {displayPath === "w" && "Choose a key to edit"}
             </span>
-          )}
+          ) : null}
         </div>
+        {namespace && (
+          <p
+            data-testid="workspace-namespace-description"
+            className="basis-full text-sm text-muted-foreground"
+          >
+            <span className="font-medium text-foreground">{namespace.label}</span>
+            {" — "}{namespace.description}
+          </p>
+        )}
       </div>
 
       <div className="flex-1 overflow-auto p-4">
-        {isObject ? (
+        {directoryLanding && namespaceEmpty ? (
+          <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
+            <Database size={32} />
+            <p className="mt-2 text-sm">
+              This {namespaceLanding ? "namespace" : "directory"} is empty
+            </p>
+          </div>
+        ) : emptyNamespace ? (
+          <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
+            <Database size={32} />
+            <p className="mt-2 text-sm">This namespace is empty</p>
+          </div>
+        ) : directoryLanding ? (
+          <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
+            <Database size={32} />
+            <p className="mt-2 text-sm">Select a key to view its data</p>
+          </div>
+        ) : isObject ? (
           <ThemedJsonEditor
             data={editedData as object}
-            editable={editMode}
-            rootName={selectedPath.split("/").pop() || "data"}
+            editable={canMutate}
+            rootName={displayPath.split("/").pop() || "data"}
             collapse={2}
             onChange={(value) => {
               onEditedDataChange(value);
@@ -236,7 +232,7 @@ export function WorkspaceValuePane({
             <div className="text-xs uppercase tracking-wider text-muted-foreground">
               Value
             </div>
-            {editMode ? (
+            {canMutate ? (
               <Textarea
                 value={
                   typeof editedData === "string"

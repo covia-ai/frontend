@@ -1,0 +1,22 @@
+---
+description: Authenticated venue access — never construct Venue in components
+globs: src/hooks/**/*.{ts,tsx},src/components/**/*.{ts,tsx},src/app/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Authenticated venue
+
+Use `useAuthenticatedVenue()` (or `getVenueFor(venueObj, auth)`) for API calls.
+Both return a **single cached `Venue` per (venue, auth)** and validate with a
+background `status()`.
+
+```tsx
+// ❌ BAD — discards SDK cache and skips connection validation
+const venue = new Venue({ url, auth });
+
+// ✅ GOOD
+const venue = useAuthenticatedVenue();
+```
+
+Auth state lives in localStorage under `"venue-auth"` via `hooks/use-auth.ts`.
+Bridge to SDK auth with `lib/auth-provider.ts`.

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import {
   Check,
   Clock,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import { RunStatus, isJobFinished } from "@covia/covia-sdk";
 import { TbSubtask } from "react-icons/tb";
+import { AssetLoadState } from "@/components/AssetLoadState";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { ExecutionHeader } from "@/components/ExecutionHeader";
 import { ExecutionToolbar } from "@/components/ExecutionToolbar";
@@ -27,17 +29,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { useExecutionLifecycle } from "@/hooks/use-execution-lifecycle";
-import { copyDataToClipBoard, getExecutionTime } from "@/lib/utils";
-
-const dateFormatter = new Intl.DateTimeFormat("en-US", {
-  year: "numeric",
-  month: "short",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  second: "2-digit",
-  timeZone: "UTC",
-});
+import { copyDataToClipBoard, formatDateTime, getExecutionTime } from "@/lib/utils";
 
 function StatusIcon({ status }: { status?: string }) {
   if (status === RunStatus.COMPLETE) return <Check />;
@@ -51,18 +43,30 @@ function StatusIcon({ status }: { status?: string }) {
 export function ExecutionViewer({
   jobId,
   venueId,
+  onNotFound,
 }: {
   jobId: string;
   venueId?: string;
+  // Fires once when the job turns out not to exist on the resolved venue —
+  // e.g. PublicJobViewer redirects back to /jobs, since a venue-less job
+  // page follows whichever venue is globally selected and has no "correct"
+  // venue to fall back to.
+  onNotFound?: () => void;
 }) {
   const execution = useExecutionLifecycle({ jobId, venueId });
   const { venue, job, operationAsset } = execution;
   const resolvedVenueId = venue?.venueId ?? venueId ?? "";
   const operationSchema = operationAsset?.metadata?.operation;
 
+  useEffect(() => {
+    if (execution.notFound) onNotFound?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [execution.notFound]);
+
   return (
     <>
       <TopBar
+        venueId={venueId}
         assetOrJobName={job?.name}
         venueName={venue?.metadata.name}
       />
@@ -76,6 +80,11 @@ export function ExecutionViewer({
       {execution.error && (
         <ErrorDisplay error={execution.error} className="my-4" />
       )}
+      <AssetLoadState
+        notFound={execution.notFound}
+        notFoundTitle="Job Not Found"
+        notFoundMessage={`The job ID "${jobId}" does not exist on this venue.`}
+      />
 
       {job && (
         <div className="flex flex-col w-full items-center justify-center">
@@ -167,7 +176,7 @@ export function ExecutionViewer({
                 <span className="w-28">Created Date</span>
                 <span className="text-card-foreground">
                   {job.created
-                    ? dateFormatter.format(new Date(job.created))
+                    ? formatDateTime(job.created)
                     : "N/A"}
                 </span>
               </div>
@@ -176,7 +185,7 @@ export function ExecutionViewer({
                 <span className="w-28">Updated Date:</span>
                 <span className="text-card-foreground">
                   {job.updated
-                    ? dateFormatter.format(new Date(job.updated))
+                    ? formatDateTime(job.updated)
                     : "N/A"}
                 </span>
               </div>

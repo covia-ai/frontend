@@ -37,20 +37,30 @@ function cachePut(id: string, metadata: any): void {
  * entry list (input order, failures skipped) after the cached tranche and
  * after each batch, so callers can render incrementally instead of blocking
  * on the slowest of N individual GETs.
+ *
+ * `priorityCount`: how many of the leading ids to hydrate FIRST. The venue
+ * has no bulk-metadata read (each miss is one GET), so on a cold cache a
+ * large catalog takes many batches — without priority, the cards actually
+ * on screen can land in the last one. Callers put their visible window at
+ * the head of `ids` and the first screen fills in one or two batches while
+ * the rest hydrates behind.
  */
 export async function loadAssetEntries(
   venue: Venue,
   ids: string[],
   onProgress?: (entries: AssetEntry[]) => void,
+  priorityCount = 0,
 ): Promise<AssetEntry[]> {
   const resolved = new Map<string, any>();
-  const misses: string[] = [];
+  const priorityMisses: string[] = [];
+  const restMisses: string[] = [];
 
-  for (const id of ids) {
+  ids.forEach((id, index) => {
     const cached = cacheGet(id);
     if (cached) resolved.set(id, cached);
-    else misses.push(id);
-  }
+    else (index < priorityCount ? priorityMisses : restMisses).push(id);
+  });
+  const misses = [...priorityMisses, ...restMisses];
 
   const snapshot = () =>
     ids.filter((id) => resolved.has(id)).map((id) => ({ id, metadata: resolved.get(id) }));

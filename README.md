@@ -28,8 +28,10 @@ venues.
 Authentication belongs to each venue rather than to the Next.js application:
 
 - Device-key sign-in generates or imports an Ed25519 key in the browser.
-- Venue OAuth redirects through the selected venue and returns a bearer token
-  to `/auth/callback`.
+- OAuth providers are discovered from the selected venue's job-free `/login`
+  page, so only providers configured by that venue are shown. OAuth redirects
+  through `/auth/{provider}` and returns a venue bearer token to
+  `/auth/callback`, which sends the user back to the page where sign-in began.
 
 Both modes are stored per venue in browser local storage under `venue-auth`.
 No NextAuth secret or Google/GitHub credentials are required by this project.

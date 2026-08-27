@@ -7,8 +7,7 @@ import {
 } from "@/components/ui/dialog"
 import { useState } from "react"
 import { useVenues } from "@/hooks/use-venues";
-import { Venue } from "@covia/covia-sdk";
-import { createAuthProvider } from "@/lib/auth-provider";
+import { connectVenue } from "@/lib/venue-registry";
 import { notifySuccess } from "@/lib/notify";
 import { useAuthStore } from "@/hooks/use-auth";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
@@ -47,8 +46,11 @@ export const AddNewVenueModal = () => {
       setLoading(true);
       setError("");
       try {
-        const authOption = createAuthProvider(getAuthForVenue(processVenueDidOrUrl));
-        const venue = await Venue.connect(processVenueDidOrUrl, authOption);
+        const venue = await connectVenue(
+          processVenueDidOrUrl,
+          getAuthForVenue(processVenueDidOrUrl),
+          10_000,
+        );
         addVenue(venue);
         gtmEvent.connectVenue(venue.venueId);
         notifySuccess("Venue connected successfully");

@@ -1,9 +1,23 @@
-import { Ed25519Auth, GridError, Venue } from "@covia/covia-sdk";
+import { Ed25519Auth, fetchWithError, GridError, Venue } from "@covia/covia-sdk";
 
 export type AuthProbeResult =
   | { ok: true }
   | { ok: false; kind: "rejected"; status: number; message: string }
   | { ok: false; kind: "unverified"; message: string };
+
+// Permission-neutral, authenticated identity check for current Covia venues.
+// Use the raw GET so this background/read-only probe can never take the SDK's
+// legacy invoke fallback and accidentally create a job.
+export async function verifyVenueAccount(venue: Venue): Promise<void> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  venue.auth.apply(headers, venue.venueId);
+  await fetchWithError(
+    `${venue.baseUrl}/api/v1/agents?includeTerminated=false`,
+    { headers },
+  );
+}
 
 // Checks whether a venue actually accepts a device key before the app commits
 // to signing in with it — a stored key can be unknown to a venue that
@@ -30,7 +44,7 @@ export async function probeDeviceKeyAuth(
       venueId,
       auth: Ed25519Auth.fromHex(privateKeyHex),
     });
-    await venue.secrets.list();
+    await verifyVenueAccount(venue);
     return { ok: true };
   } catch (err) {
     if (err instanceof GridError && (err.statusCode === 401 || err.statusCode === 403)) {

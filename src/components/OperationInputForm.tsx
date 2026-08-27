@@ -2,10 +2,11 @@
 
 import { Fragment } from "react";
 import dynamic from "next/dynamic";
-import { Lock } from "lucide-react";
+import { FileJson, Lock } from "lucide-react";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -24,13 +25,19 @@ import {
   type OperationInputProperty,
   type OperationInputSchema,
 } from "@/lib/operation-input";
-import { formatLabel } from "@/lib/utils";
+import { cn, formatLabel } from "@/lib/utils";
+import { JSON_EDITOR_DIALOG_CLASS, JSON_EDITOR_MAX_WIDTH } from "@/lib/dialog-sizes";
 
 const AssetLookup = dynamic(
   () =>
     import("@/components/AssetLookup").then(
       (module) => module.AssetLookup,
     ),
+  { ssr: false },
+);
+
+const ThemedJsonEditor = dynamic(
+  () => import("@/components/ThemedJsonEditor").then((module) => module.ThemedJsonEditor),
   { ssr: false },
 );
 
@@ -46,13 +53,46 @@ const INPUT_TYPES = [
 
 type OperationInputFormProps = {
   schema?: OperationInputSchema;
+  outputSchema?: unknown;
   controller: OperationInputController;
   errorMessage: string;
   loading: boolean;
   confirmationRequired: boolean;
   isAuthenticated: boolean;
-  onRun: (requiredKeys: string[]) => void;
+  onRun: () => void;
 };
+
+// Bottom-of-card link to the raw input/output schema — kept next to the
+// actions rather than above the form so it reads as "more about this
+// operation" instead of competing with Run/Reset for top-of-card attention.
+function ViewSchemaButton({
+  inputSchema,
+  outputSchema,
+}: {
+  inputSchema?: OperationInputSchema;
+  outputSchema?: unknown;
+}) {
+  if (!inputSchema && !outputSchema) return null;
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground">
+          <FileJson size={14} />
+          View Schema
+        </Button>
+      </DialogTrigger>
+      <DialogContent className={cn(JSON_EDITOR_DIALOG_CLASS, "content-start overflow-y-auto")}>
+        <DialogTitle>Operation Schema</DialogTitle>
+        <ThemedJsonEditor
+          data={{ input: inputSchema, output: outputSchema }}
+          rootName="schema"
+          maxWidth={JSON_EDITOR_MAX_WIDTH}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function OperationActions({
   loading,
@@ -208,6 +248,7 @@ function InputEditor({
 
 export function OperationInputForm({
   schema,
+  outputSchema,
   controller,
   errorMessage,
   loading,
@@ -226,9 +267,10 @@ export function OperationInputForm({
           <InputEditor
             fieldKey={TOP_LEVEL_INPUT_KEY}
             schema={{
-              type: "any",
-              description: "Provide input for the operation",
-              default: "",
+              ...schema,
+              type: schema?.type ?? "any",
+              description: schema?.description ?? "Provide input for the operation",
+              default: schema?.default ?? "",
             }}
             controller={controller}
           />
@@ -242,9 +284,12 @@ export function OperationInputForm({
             loading={loading}
             confirmationRequired={confirmationRequired}
             isAuthenticated={isAuthenticated}
-            onRun={() => onRun([])}
+            onRun={onRun}
             onReset={controller.reset}
           />
+        </div>
+        <div className="flex justify-end">
+          <ViewSchemaButton inputSchema={schema} outputSchema={outputSchema} />
         </div>
       </div>
     );
@@ -282,9 +327,12 @@ export function OperationInputForm({
             loading={loading}
             confirmationRequired={confirmationRequired}
             isAuthenticated={isAuthenticated}
-            onRun={() => onRun(requiredKeys)}
+            onRun={onRun}
             onReset={controller.reset}
           />
+        </div>
+        <div className="flex justify-end">
+          <ViewSchemaButton inputSchema={schema} outputSchema={outputSchema} />
         </div>
       </CardContent>
     </Card>

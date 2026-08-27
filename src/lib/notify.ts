@@ -10,12 +10,19 @@ import { recordNotification } from "@/hooks/use-notification-log";
 //  - Success/warning/info use sonner's coloured variants so the outcome is
 //    readable at a glance, not only from the text.
 //  - Failure titles read "Unable to <verb> <object>".
-//  - Everything is recorded to the session notification log (Profile page).
+//  - Everything is recorded to the persistent notification log (#241) —
+//    surfaced on the Profile page and the TopBar's notification bell.
 
 type NotifyOptions = {
   description?: string;
   duration?: number;
   closeButton?: boolean;
+  // Deep-link to whatever this notification is about (job/agent/schedule
+  // detail page) — carried into the persistent log for the TopBar bell panel
+  // (#241) so every entry can link its receipt, not just failures. Not
+  // rendered on the toast itself (toasts stay ephemeral); the panel is the
+  // durable place a receipt link matters.
+  receiptHref?: string;
 };
 
 // Job failure messages (e.g. a chat send that dies mid-transition) can run
@@ -25,18 +32,21 @@ type NotifyOptions = {
 const JOB_ERROR_PREVIEW_LENGTH = 80;
 
 export function notifySuccess(title: string, options?: NotifyOptions): void {
-  recordNotification("success", title, options?.description);
-  toast.success(title, { closeButton: true, ...options });
+  const { receiptHref, ...toastOptions } = options ?? {};
+  recordNotification("success", title, toastOptions.description, receiptHref);
+  toast.success(title, { closeButton: true, ...toastOptions });
 }
 
 export function notifyInfo(title: string, options?: NotifyOptions): void {
-  recordNotification("info", title, options?.description);
-  toast.info(title, { closeButton: true, ...options });
+  const { receiptHref, ...toastOptions } = options ?? {};
+  recordNotification("info", title, toastOptions.description, receiptHref);
+  toast.info(title, { closeButton: true, ...toastOptions });
 }
 
 export function notifyWarning(title: string, options?: NotifyOptions): void {
-  recordNotification("warning", title, options?.description);
-  toast.warning(title, { closeButton: true, ...options });
+  const { receiptHref, ...toastOptions } = options ?? {};
+  recordNotification("warning", title, toastOptions.description, receiptHref);
+  toast.warning(title, { closeButton: true, ...toastOptions });
 }
 
 // Every job-invoking SDK call (operations.run, agent chat/suspend/resume/
@@ -87,11 +97,13 @@ export function notifyError(
       : ((err as { message?: string })?.message ?? String(err));
   const isNetworkFailure =
     message !== undefined && /failed to fetch|load failed|networkerror/i.test(message);
+  // A network-level failure is a connectivity problem, not a feature
+  // problem — lead with that plainly instead of the raw fetch error.
   const detail =
     isNetworkFailure && target
-      ? `${message} — could not reach ${target}. Is the venue running and reachable from this browser?`
+      ? `Can't connect to ${target}. Is the venue running and reachable from this browser?`
       : message;
-  recordNotification("error", title, detail);
+  recordNotification("error", title, detail, jobHref);
   const preview =
     jobHref && detail && detail.length > JOB_ERROR_PREVIEW_LENGTH
       ? `${detail.slice(0, JOB_ERROR_PREVIEW_LENGTH)}…`

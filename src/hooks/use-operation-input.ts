@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   defaultsFromOperationSchema,
+  parseOperationInput,
   printOperationInput,
   TOP_LEVEL_INPUT_KEY,
   type OperationInputSchema,
@@ -99,12 +100,21 @@ export function useOperationInput(
           : typeof input === "object" && input !== null
             ? (input as Record<string, unknown>)[key]
             : undefined;
-      setRawInput((previous) => ({
-        ...previous,
-        [key]: printOperationInput(currentValue, type),
-      }));
+      const newRaw = printOperationInput(currentValue, type);
+      setRawInput((previous) => ({ ...previous, [key]: newRaw }));
+      // printOperationInput above only refreshes the displayed text — without
+      // re-coercing it back through the new type, `input[key]` stays whatever
+      // it was under the *previous* type, so the submitted payload silently
+      // disagrees with what the type selector shows (covia-ai/frontend#271,
+      // e.g. after: "90000" still sent as a string once switched to number).
+      try {
+        setValue(key, parseOperationInput(newRaw, type));
+      } catch {
+        // Round-trip failed (e.g. an object-typed value that doesn't
+        // stringify to valid JSON) — leave the existing coerced value as is.
+      }
     },
-    [input],
+    [input, setValue],
   );
 
   const reset = useCallback(() => {

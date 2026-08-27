@@ -11,7 +11,9 @@ import { use, useEffect, useState } from "react";
 import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
 import { CopyField } from "@/components/CopyField";
 import { TopBar } from "@/components/admin-panel/TopBar";
-import { useResolvedVenue } from "@/hooks/use-resolved-venue";
+import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
+import { VenueResolutionState } from "@/components/VenueResolutionState";
+import { getVenueStatus } from "@/lib/venue-registry";
 
 interface VenuePageProps {
   params: Promise<{
@@ -23,7 +25,7 @@ export default function VenuePage({ params }: VenuePageProps) {
   const router = useRouter();
   const { slug } = use(params);
   const routeVenueId = decodeURIComponent(slug);
-  const venue = useResolvedVenue(routeVenueId);
+  const { venue, status, error } = useResolvedVenueContext(routeVenueId);
   const selectedVenueId = useVenues((state) => state.selectedVenueId);
   const selectVenue = useVenues((state) => state.selectVenue);
   const [ venueDID, setVenueDID] = useState("");
@@ -37,7 +39,7 @@ export default function VenuePage({ params }: VenuePageProps) {
   const [ mcpTools, setMcpTools] = useState<{name:string}[]>([])
   const [ showClaudeSnippet, setShowClaudeSnippet] = useState(false)
   useEffect(() => {
-       if (!venue) return;
+       if (!venue || status !== "ready") return;
        const fetchMCP = async () => {
           try {
             const response = await fetch(`${venue.baseUrl}/.well-known/mcp`);
@@ -50,7 +52,7 @@ export default function VenuePage({ params }: VenuePageProps) {
       }
        const fetchStats = async () => {
          try {
-          const status =  await venue?.status();
+          const status = await getVenueStatus(venue);
           if(status?.stats) {
               setNoOfAssets(status?.stats?.assets ?? 0);
               setNoOfOps(status?.stats?.ops ?? 0);
@@ -85,23 +87,27 @@ export default function VenuePage({ params }: VenuePageProps) {
       fetchStats();
       fetchMcpTools();
       fetchAdapters();
-  }, [venue]);
+  }, [venue, status]);
 
   const isCurrentVenue = selectedVenueId === venue?.venueId;
-  if (!venue) {
+  if (status !== "ready" || !venue) {
     return (
       <ContentLayout>
-        <TopBar assetOrJobName={slug}/>
-        <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Venue not found</p>
-        </div>
+        <TopBar venueId={routeVenueId} assetOrJobName={routeVenueId}/>
+        {status === "connecting" || status === "unreachable" || status === "auth-required" ? (
+          <VenueResolutionState status={status} error={error} icon={Building2} subject="this venue" venueId={routeVenueId} />
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <p className="text-muted-foreground">Venue not found</p>
+          </div>
+        )}
       </ContentLayout>
     );
   }
 
   return (
     <ContentLayout>
-      <TopBar  venueName={venue.metadata.name}/>
+      <TopBar venueId={routeVenueId} venueName={venue.metadata.name}/>
       
       <div className="flex flex-col space-y-6">
         {/* Venue Header */}

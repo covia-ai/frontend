@@ -4,69 +4,95 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "./ui/button";
+import { Checkbox } from "./ui/checkbox";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
-import { Textarea } from "./ui/textarea";
-import { Separator } from "./ui/separator";
-import { jobFailure, notifyError, notifyWarning } from "@/lib/notify";
+import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, BookmarkPlus, Plus, Trash2, Wrench } from "lucide-react";
 import Link from "next/link";
-import { gtmEvent } from "@/lib/utils";
-
-// The capability half of a venue agent template (COG-18 skills + tool palette)
-// that the dialog carries into the created agent unchanged — name, prompt,
-// provider and model are edited in the form, these ride along.
-export interface AgentTemplateConfig {
-  operation?: string;
-  skills?: string[];
-  tools?: string[];
-  defaultTools?: boolean;
-}
+import { gtmEvent, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
+import {
+  AgentRuntimeFields,
+  AgentSystemPromptField,
+  CUSTOM_PROVIDER_OPTION,
+  isAgentProviderReady,
+  modelSelectionFromId,
+  resolvedModelId,
+} from "@/components/agent-config/AgentConfigEditor";
+import { ToolSkillPicker } from "@/components/agent-config/ToolSkillPicker";
+import { withToolToggled, type CatalogOp } from "@/lib/operations-catalog";
+import { withSkillToggled, type SkillSummary } from "@/lib/skills";
+import {
+  cleanCaps,
+  emptyCap,
+  isAgentCap,
+  COMMON_ABILITIES,
+  CUSTOM_ABILITY_OPTION,
+  type AgentCap,
+} from "@/lib/agent-caps";
+import {
+  AGENT_TEMPLATES_CHANGED_EVENT,
+  asSdkAgentConfig,
+  inlineAgentConfigPreview,
+  type AgentConfigInput,
+  type AgentConfigMap,
+  withAgentConfigOverrides,
+  withoutAgentConfigFields,
+} from "@/lib/agent-templates";
 
 interface AddNewAgentProps {
-  trigger?: React.ReactNode;
+  trigger?: React.ReactNode | null;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  dialogTitle?: string;
+  submitLabel?: string;
   initialAgentName?: string;
   initialSystemPrompt?: string;
   initialProvider?: string;
-  /** Skills/tools/operation from a venue template, applied to the created agent. */
-  initialConfig?: AgentTemplateConfig;
+  initialModel?: string;
+  preferAvailableProvider?: boolean;
+  /** Exact template/clone config: an inline map, reference, or ordered layers. */
+  initialConfig?: AgentConfigInput;
+  /** Resolved inline fields for describing configs that contain references. */
+  initialConfigPreview?: AgentConfigMap;
 }
-
-const CUSTOM_MODEL_OPTION = "__custom__";
-const DEFAULT_MODEL_OPTION = "__default__";
 
 const slugify = (name: string) =>
   name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
 
 export function AddNewAgent({
   trigger,
+  open: controlledOpen,
+  onOpenChange,
+  dialogTitle = "Create a new agent",
+  submitLabel = "Create",
   initialAgentName = "",
   initialSystemPrompt = "",
   initialProvider = "anthropic",
+  initialModel = "",
+  preferAvailableProvider = true,
   initialConfig,
+  initialConfigPreview,
 }: AddNewAgentProps = {}) {
   const router = useRouter();
   const [agentName, setAgentName] = useState(initialAgentName);
   const [agentId, setAgentId] = useState("");
   const [agentIdEdited, setAgentIdEdited] = useState(false);
   const [llmProvider, setLlmProvider] = useState(initialProvider);
+  const [customProviderOperation, setCustomProviderOperation] = useState("");
   // "" = venue default (model omitted from config); CUSTOM_MODEL_OPTION shows
   // a free-text input for ids not in the curated list.
   const [model, setModel] = useState("");
@@ -74,14 +100,35 @@ export function AddNewAgent({
   const [systemPrompt, setSystemPrompt] = useState(initialSystemPrompt);
   const [initialCommand, setInitialCommand] = useState("");
   const [creating, setCreating] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [availableKeys, setAvailableKeys] = useState<string[]>([]);
+  // Staged tools/skills: there's no agentId to call agent:update against
+  // until creation completes, so the picker only edits this local state and
+  // it rides along in buildAgentConfig()'s overrides at submit time.
+  const [stagedTools, setStagedTools] = useState<string[]>([]);
+  const [stagedSkills, setStagedSkills] = useState<string[]>([]);
+  const [touchedCapabilities, setTouchedCapabilities] = useState(false);
+  // Caps default absent (unrestricted). capsEnabled/caps seed from a cloned
+  // template so the editor honestly shows what's already there, but — same
+  // reasoning as touchedCapabilities for tools/skills — only touchedCaps
+  // (set on actual user interaction, not on seeding) decides whether the
+  // built config carries an override; otherwise an untouched clone would
+  // silently duplicate its own inherited caps layer.
+  const [capsEnabled, setCapsEnabled] = useState(false);
+  const [caps, setCaps] = useState<AgentCap[]>([]);
+  const [touchedCaps, setTouchedCaps] = useState(false);
   // A key pasted inline when the chosen provider has none — stored on create
   // so you don't have to leave the dialog to add it in Secrets first.
   const [apiKeyInput, setApiKeyInput] = useState("");
 
 
   const venue = useAuthenticatedVenue();
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (nextOpen: boolean) => {
+    if (controlledOpen === undefined) setInternalOpen(nextOpen);
+    onOpenChange?.(nextOpen);
+  };
 
   const resolvedAgentId = agentId.trim() || slugify(agentName);
   const isReservedAgentId = resolvedAgentId === DEFAULT_AGENT_ID;
@@ -93,10 +140,22 @@ export function AddNewAgent({
     setAgentIdEdited(false);
     setSystemPrompt(initialSystemPrompt);
     setLlmProvider(initialProvider);
-    setModel("");
-    setCustomModel("");
+    setCustomProviderOperation("");
+    const modelSelection = modelSelectionFromId(initialProvider, initialModel);
+    setModel(modelSelection.model);
+    setCustomModel(modelSelection.customModel);
     setInitialCommand("");
     setApiKeyInput("");
+    const preview = initialConfigPreview ?? (
+      initialConfig === undefined ? {} : inlineAgentConfigPreview(initialConfig)
+    );
+    setStagedTools(Array.isArray(preview.tools) ? preview.tools : []);
+    setStagedSkills(Array.isArray(preview.skills) ? preview.skills : []);
+    setTouchedCapabilities(false);
+    const previewCaps = Array.isArray(preview.caps) ? preview.caps.filter(isAgentCap) : [];
+    setCaps(previewCaps);
+    setCapsEnabled(Array.isArray(preview.caps));
+    setTouchedCaps(false);
     if (!venue) return;
     venue.secrets
       .list()
@@ -109,30 +168,67 @@ export function AddNewAgent({
           const p = LLM_PROVIDERS[id];
           return !!p && (!p.requiresKey || secrets.includes(p.secretKey));
         };
-        if (!ready(initialProvider)) {
+        if (preferAvailableProvider && !ready(initialProvider)) {
           const pick = Object.keys(LLM_PROVIDERS).find(ready);
-          if (pick) setLlmProvider(pick);
+          if (pick) {
+            setLlmProvider(pick);
+            setModel("");
+            setCustomModel("");
+          }
         }
       })
       .catch(() => setAvailableKeys([]));
-  }, [open, venue, initialAgentName, initialSystemPrompt, initialProvider]);
+    // initialConfig/initialConfigPreview intentionally excluded: they seed
+    // the staged tools/skills only on the open transition, same as every
+    // other field here — adding them would refire this reset (wiping
+    // in-progress edits) whenever a caller passes a fresh inline object.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    open,
+    venue,
+    initialAgentName,
+    initialSystemPrompt,
+    initialProvider,
+    initialModel,
+    preferAvailableProvider,
+  ]);
 
   // The model actually sent in the agent config; "" means omit (venue default).
-  const resolvedModel =
-    model === CUSTOM_MODEL_OPTION ? customModel.trim() : model === DEFAULT_MODEL_OPTION ? "" : model;
+  const resolvedModel = resolvedModelId(model, customModel);
 
   const handleProviderChange = (providerId: string) => {
     setLlmProvider(providerId);
+    if (providerId !== CUSTOM_PROVIDER_OPTION) setCustomProviderOperation("");
     // Model ids are provider-specific — a Claude id is meaningless on OpenAI.
     setModel("");
     setCustomModel("");
   };
 
-  const isProviderReady = (providerId: string) => {
-    const provider = LLM_PROVIDERS[providerId];
-    if (!provider) return false;
-    if (!provider.requiresKey) return true;
-    return availableKeys.includes(provider.secretKey);
+  const isProviderReady = (providerId: string) =>
+    isAgentProviderReady(providerId, availableKeys);
+
+  const buildAgentConfig = (): AgentConfigInput => {
+    const provider = LLM_PROVIDERS[llmProvider];
+    const baseConfig = withoutAgentConfigFields(
+      initialConfig,
+      ["llmOperation", "model", "systemPrompt"],
+    );
+    const overrides: AgentConfigMap = {
+      ...(initialConfig === undefined ? { operation: "v/ops/llmagent/chat" } : {}),
+      llmOperation:
+        llmProvider === CUSTOM_PROVIDER_OPTION
+          ? customProviderOperation.trim()
+          : provider.operation,
+      ...(resolvedModel && { model: resolvedModel }),
+      ...(systemPrompt.trim() && { systemPrompt: systemPrompt.trim() }),
+      // Only override tools/skills once the picker's actually been touched —
+      // an untouched template may carry them on an unresolved reference layer
+      // (inlineAgentConfigPreview can't see those), and forcing [] here would
+      // silently strip them. Once touched, the picker owns the full array.
+      ...(touchedCapabilities && { tools: stagedTools, skills: stagedSkills }),
+      ...(touchedCaps && { caps: cleanCaps(caps) }),
+    };
+    return withAgentConfigOverrides(baseConfig, overrides);
   };
 
   const handleNewAgent = async () => {
@@ -142,6 +238,10 @@ export function AddNewAgent({
     }
     if (!agentName.trim()) {
       notifyWarning("Please enter an agent name");
+      return;
+    }
+    if (llmProvider === CUSTOM_PROVIDER_OPTION && !customProviderOperation.trim()) {
+      notifyWarning("Enter the custom provider operation path");
       return;
     }
     const provider = LLM_PROVIDERS[llmProvider];
@@ -164,19 +264,7 @@ export function AddNewAgent({
       }
       const result = await venue.agents.create({
         agentId: resolvedAgentId,
-        config: {
-          // Template capabilities (skills, tools, defaultTools) ride along; the
-          // form's provider/model/prompt below always win over the template's.
-          ...(initialConfig?.skills?.length ? { skills: initialConfig.skills } : {}),
-          ...(initialConfig?.tools?.length ? { tools: initialConfig.tools } : {}),
-          ...(initialConfig?.defaultTools != null ? { defaultTools: initialConfig.defaultTools } : {}),
-          operation: initialConfig?.operation ?? "v/ops/llmagent/chat",
-          llmOperation: provider.operation,
-          // The agent loop forwards `model` into the LLM op input
-          // (AbstractLLMAdapter K_MODEL); omitted → provider default.
-          ...(resolvedModel && { model: resolvedModel }),
-          ...(systemPrompt.trim() && { systemPrompt: systemPrompt.trim() }),
-        },
+        config: asSdkAgentConfig(buildAgentConfig()),
       });
 
       if (initialCommand.trim()) {
@@ -192,9 +280,10 @@ export function AddNewAgent({
       setAgentId("");
       setAgentIdEdited(false);
       setSystemPrompt("");
+      setCustomProviderOperation("");
       setInitialCommand("");
       setOpen(false);
-      router.push(`/agents/explorer?agentId=${encodeURIComponent(result.agentId)}`);
+      router.push(`/agents/chat?agentId=${encodeURIComponent(result.agentId)}`);
     } catch (err) {
       gtmEvent.createAgentFailed(resolvedAgentId, err instanceof Error ? err.message : undefined);
       const { reason, jobHref } = jobFailure(err, venue.venueId);
@@ -204,195 +293,329 @@ export function AddNewAgent({
     }
   };
 
+  const handleSaveTemplate = async () => {
+    if (
+      !venue || !agentName.trim() || !resolvedAgentId || isReservedAgentId ||
+      (llmProvider === CUSTOM_PROVIDER_OPTION && !customProviderOperation.trim())
+    ) return;
+    const path = `w/templates/${resolvedAgentId}`;
+    setSavingTemplate(true);
+    try {
+      const existing = await venue.workspace.read(path);
+      if (existing?.exists) {
+        notifyWarning("A template with this ID already exists", { description: path });
+        return;
+      }
+      await venue.workspace.write(path, {
+        name: agentName.trim(),
+        agent: { config: buildAgentConfig() },
+      });
+      window.dispatchEvent(new Event(AGENT_TEMPLATES_CHANGED_EVENT));
+      notifySuccess("Template saved", { description: path });
+    } catch (error) {
+      notifyError("Unable to save agent template", error, venue.baseUrl);
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  const configPreview = initialConfigPreview ?? (
+    initialConfig === undefined ? {} : inlineAgentConfigPreview(initialConfig)
+  );
+  const capabilitiesSummary = [
+    stagedSkills.length ? `a skills index (${stagedSkills.join(", ")})` : "",
+    stagedTools.length ? `${stagedTools.length} tool${stagedTools.length === 1 ? "" : "s"}` : "",
+    configPreview.defaultTools ? "the platform default tools" : "",
+  ].filter(Boolean);
+
+  const handleToggleTool = (op: CatalogOp, attached: boolean) => {
+    setStagedTools((current) => withToolToggled(current, op, attached));
+    setTouchedCapabilities(true);
+  };
+  const handleToggleSkill = (skill: SkillSummary, attached: boolean) => {
+    setStagedSkills((current) => withSkillToggled(current, skill, attached));
+    setTouchedCapabilities(true);
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button data-testid="create-agent-trigger" className="shrink-0 gap-2">
-            <PlusCircledIcon />
-            Create Agent
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="flex flex-col bg-card text-card-foreground max-h-[85vh] overflow-y-auto">
-        <DialogTitle className="space-y-2">
-          <Label className="text-md">Create a new agent</Label>
-          <Separator />
-        </DialogTitle>
-        <DialogDescription className="sr-only">
-          Configure the identity, model, and initial prompt for a new venue agent.
-        </DialogDescription>
-
-        <div className="flex flex-col items-start justify-center space-y-6">
-          {/* What a template contributes beyond the editable fields below. */}
-          {initialConfig && Boolean(initialConfig.skills?.length || initialConfig.tools?.length || initialConfig.defaultTools) && (
-            <p data-testid="template-capabilities" className="w-full text-xs text-muted-foreground border rounded-md p-2">
-              This template adds{initialConfig.skills?.length ? ` a skills index (${initialConfig.skills.join(", ")})` : ""}
-              {initialConfig.tools?.length ? `${initialConfig.skills?.length ? "," : ""} ${initialConfig.tools.length} tool${initialConfig.tools.length === 1 ? "" : "s"}` : ""}
-              {initialConfig.defaultTools ? `${(initialConfig.skills?.length || initialConfig.tools?.length) ? ", and" : ""} read-only workspace access` : ""}. Set the name, provider and prompt below.
-            </p>
+      {trigger !== null && (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button data-testid="create-agent-trigger" className="shrink-0 gap-2">
+              <PlusCircledIcon />
+              Create Agent
+            </Button>
           )}
-          {/* Agent Name */}
-          <div className="space-y-2 w-full">
-            <Label htmlFor="agent-name" className="w-32 text-sm">
-              Agent Name:
-            </Label>
-            <Input
-              data-testid="agent-name"
-              placeholder="e.g., Customer Support Agent"
-              value={agentName}
-              onChange={(e) => {
-                setAgentName(e.target.value);
-                if (!agentIdEdited) setAgentId(slugify(e.target.value));
-              }}
-            />
-          </div>
+        </DialogTrigger>
+      )}
+      <DialogContent className="max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden bg-card p-0 text-card-foreground sm:max-w-5xl">
+        <DialogHeader className="border-b px-6 py-4">
+          <DialogTitle className="text-lg">{dialogTitle}</DialogTitle>
+          <DialogDescription>
+            Define the agent, then create it now or save the configuration as a template.
+          </DialogDescription>
+        </DialogHeader>
 
-          {/* Agent ID */}
-          <div className="space-y-2 w-full">
-            <Label htmlFor="agent-id" className="w-32 text-sm">
-              Agent ID:
-            </Label>
-            <Input
-              id="agent-id"
-              placeholder="e.g., customer-support-agent"
-              value={agentId}
-              onChange={(e) => {
-                setAgentId(e.target.value);
-                setAgentIdEdited(true);
-              }}
-            />
-            {isReservedAgentId ? (
-              <p className="text-xs text-amber-500 flex items-center gap-1">
-                <AlertTriangle size={12} />
-                &quot;{DEFAULT_AGENT_ID}&quot; is reserved for the workspace prompt bar — pick another id.
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Unique identifier — auto-suggested from name. Edit to override.
-              </p>
-            )}
-          </div>
+        <div className="grid min-h-0 overflow-y-auto lg:grid-cols-2">
+          <section
+            data-testid="agent-identity-column"
+            className="flex flex-col gap-5 p-6 lg:border-r"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="agent-name">Name</Label>
+              <Input
+                data-testid="agent-name"
+                id="agent-name"
+                className={SUGGESTION_PLACEHOLDER_CLASS}
+                placeholder="e.g., Customer Support Agent"
+                value={agentName}
+                onChange={(e) => {
+                  setAgentName(e.target.value);
+                  if (!agentIdEdited) setAgentId(slugify(e.target.value));
+                }}
+              />
+            </div>
 
-          {/* LLM Provider */}
-          <div className="space-y-2 w-full">
-            <Label>LLM Provider:</Label>
-            <Select value={llmProvider} onValueChange={handleProviderChange}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(LLM_PROVIDERS).map(([id, provider]) => (
-                  <SelectItem key={id} value={id}>
-                    {provider.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {!isProviderReady(llmProvider) && LLM_PROVIDERS[llmProvider]?.requiresKey && (
-              <div className="space-y-1">
-                <p className="text-xs text-amber-500 flex items-center gap-1">
-                  <AlertTriangle size={12} />
-                  No {LLM_PROVIDERS[llmProvider]?.label} key yet — paste one to store it, or{" "}
-                  <Link href="/secrets" className="underline">add it in Secrets</Link>.
+            <div className="space-y-2">
+              <Label htmlFor="agent-id">Agent ID</Label>
+              <Input
+                id="agent-id"
+                className={SUGGESTION_PLACEHOLDER_CLASS}
+                placeholder="e.g., customer-support-agent"
+                value={agentId}
+                onChange={(e) => {
+                  setAgentId(e.target.value);
+                  setAgentIdEdited(true);
+                }}
+              />
+              {isReservedAgentId ? (
+                <p className="flex items-center gap-1 text-sm text-amber-500">
+                  <AlertTriangle size={14} />
+                  &quot;{DEFAULT_AGENT_ID}&quot; is reserved. Choose another ID.
                 </p>
-                <Input
-                  type="password"
-                  data-testid="inline-api-key"
-                  placeholder={`${LLM_PROVIDERS[llmProvider]?.secretKey}`}
-                  value={apiKeyInput}
-                  onChange={(e) => setApiKeyInput(e.target.value)}
-                  autoComplete="new-password"
-                  data-1p-ignore
-                  data-lpignore="true"
-                  spellCheck={false}
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Generated from the name. You can change it.
+                </p>
+              )}
+            </div>
+
+            <AgentSystemPromptField
+              value={systemPrompt}
+              onChange={setSystemPrompt}
+            />
+          </section>
+
+          <section
+            data-testid="agent-settings-column"
+            className="flex flex-col gap-5 border-t p-6 lg:border-t-0"
+          >
+            <div>
+              <h3 className="font-semibold">Settings</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Choose the runtime settings for this agent.
+              </p>
+            </div>
+
+            <div data-testid="capabilities-picker" className="space-y-2 rounded-md border p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">Tools &amp; skills</p>
+                <ToolSkillPicker
+                  venue={venue}
+                  attachedTools={stagedTools}
+                  attachedSkills={stagedSkills}
+                  onToggleTool={handleToggleTool}
+                  onToggleSkill={handleToggleSkill}
+                  trigger={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      data-testid="open-tool-skill-picker"
+                    >
+                      <Wrench size={14} /> Browse &amp; attach
+                    </Button>
+                  }
                 />
               </div>
-            )}
-          </div>
+              <p className="text-sm text-muted-foreground">
+                {capabilitiesSummary.length
+                  ? `Includes ${capabilitiesSummary.join(", ")}.`
+                  : "No tools or skills attached yet."}
+              </p>
+            </div>
 
-          {/* Model */}
-          <div className="space-y-2 w-full">
-            <Label>Model:</Label>
-            <Select
-              value={model || DEFAULT_MODEL_OPTION}
-              onValueChange={(v) => setModel(v === DEFAULT_MODEL_OPTION ? "" : v)}
-            >
-              <SelectTrigger data-testid="model-select">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={DEFAULT_MODEL_OPTION}>Venue default</SelectItem>
-                {(LLM_PROVIDERS[llmProvider]?.models ?? []).map((m) => (
-                  <SelectItem key={m} value={m}>{m}</SelectItem>
-                ))}
-                <SelectItem value={CUSTOM_MODEL_OPTION}>Custom…</SelectItem>
-              </SelectContent>
-            </Select>
-            {model === CUSTOM_MODEL_OPTION && (
+            <div data-testid="caps-editor" className="space-y-3 rounded-md border p-3">
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="agent-caps-enabled"
+                  checked={capsEnabled}
+                  onCheckedChange={(checked) => {
+                    const next = checked === true;
+                    setCapsEnabled(next);
+                    setTouchedCaps(true);
+                    if (next && caps.length === 0) setCaps([emptyCap()]);
+                  }}
+                />
+                <div>
+                  <Label htmlFor="agent-caps-enabled">Capabilities (optional)</Label>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Without this, the agent may use any tool it&apos;s given. Enable to
+                    restrict it to specific (resource, ability) pairs.
+                  </p>
+                </div>
+              </div>
+
+              {capsEnabled && (
+                <div className="space-y-2">
+                  {caps.length === 0 && (
+                    <p className="flex items-center gap-1 text-sm text-amber-500">
+                      <AlertTriangle size={14} />
+                      No capabilities added — this denies every tool call.
+                    </p>
+                  )}
+                  {caps.map((cap, index) => {
+                    const isCustom = !COMMON_ABILITIES.some((a) => a.value === cap.can);
+                    const updateCap = (patch: Partial<AgentCap>) => {
+                      const next = [...caps];
+                      next[index] = { ...next[index], ...patch };
+                      setCaps(next);
+                      setTouchedCaps(true);
+                    };
+                    return (
+                      <div key={index} className="flex items-center gap-2">
+                        <Input
+                          data-testid={`cap-with-${index}`}
+                          placeholder="Resource (path or DID), e.g. w/"
+                          value={cap.with}
+                          onChange={(e) => updateCap({ with: e.target.value })}
+                          className="flex-1"
+                        />
+                        <Select
+                          value={isCustom ? CUSTOM_ABILITY_OPTION : cap.can}
+                          onValueChange={(value) =>
+                            updateCap({ can: value === CUSTOM_ABILITY_OPTION ? "" : value })
+                          }
+                        >
+                          <SelectTrigger data-testid={`cap-can-${index}`} className="w-56 shrink-0">
+                            <SelectValue placeholder="Ability" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {COMMON_ABILITIES.map((a) => (
+                              <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
+                            ))}
+                            <SelectItem value={CUSTOM_ABILITY_OPTION}>Custom…</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {isCustom && (
+                          <Input
+                            data-testid={`cap-can-custom-${index}`}
+                            placeholder="e.g. covia/read"
+                            value={cap.can}
+                            onChange={(e) => updateCap({ can: e.target.value })}
+                            className="w-40 shrink-0"
+                          />
+                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`Remove capability ${index + 1}`}
+                          onClick={() => {
+                            setCaps(caps.filter((_, i) => i !== index));
+                            setTouchedCaps(true);
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => {
+                      setCaps([...caps, emptyCap()]);
+                      setTouchedCaps(true);
+                    }}
+                  >
+                    <Plus size={14} /> Add capability
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <AgentRuntimeFields
+              providerId={llmProvider}
+              onProviderChange={handleProviderChange}
+              model={model}
+              onModelChange={setModel}
+              customModel={customModel}
+              onCustomModelChange={setCustomModel}
+              availableKeys={availableKeys}
+              apiKey={apiKeyInput}
+              onApiKeyChange={setApiKeyInput}
+              customProviderOperation={customProviderOperation}
+              onCustomProviderOperationChange={setCustomProviderOperation}
+            />
+
+            <div className="space-y-2">
+              <Label htmlFor="initial-command">First task <span className="font-normal text-muted-foreground">(optional)</span></Label>
               <Input
-                data-testid="model-custom-input"
-                placeholder="e.g. claude-opus-4-8"
-                value={customModel}
-                onChange={(e) => setCustomModel(e.target.value)}
+                id="initial-command"
+                className={SUGGESTION_PLACEHOLDER_CLASS}
+                placeholder="e.g., Greet the user and ask how you can help"
+                value={initialCommand}
+                onChange={(e) => setInitialCommand(e.target.value)}
               />
+              <p className="text-sm text-muted-foreground">
+                Sent after creation. This is not saved in a template.
+              </p>
+            </div>
+
+            {!venue && (
+              <p className="flex items-center gap-1 text-sm text-amber-500">
+                <AlertTriangle size={14} /> No venue connected.{" "}
+                <Link href="/venues" className="underline">Connect one in Venues</Link>.
+              </p>
             )}
-            <p className="text-xs text-muted-foreground">
-              Venue default uses the provider&apos;s configured model.
-            </p>
-          </div>
-
-          {/* System Prompt */}
-          <div className="space-y-2 w-full">
-            <Label htmlFor="system-prompt">System Prompt:</Label>
-            <Textarea
-              id="system-prompt"
-              placeholder="e.g., You are a helpful customer support agent that..."
-              value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
-              className="text-sm w-full"
-              rows={3}
-            />
-            <p className="text-xs text-muted-foreground">
-              Instructions that define the agent&apos;s behavior and persona.
-            </p>
-          </div>
-
-          {/* Initial Command */}
-          <div className="space-y-2 w-full">
-            <Label htmlFor="initial-command">Initial Command:</Label>
-            <Input
-              id="initial-command"
-              placeholder="e.g., Greet the user and ask how you can help"
-              value={initialCommand}
-              onChange={(e) => setInitialCommand(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              First task to send to the agent after creation.
-            </p>
-          </div>
+          </section>
         </div>
 
-        {!venue && (
-          <p className="text-xs text-amber-500 flex items-center gap-1">
-            <AlertTriangle size={12} />
-            No venue connected.{" "}
-            <Link href="/venues" className="underline">
-              Connect one in Venues
-            </Link>
-          </p>
-        )}
-
-        <Button
-          aria-label="create agent"
-          role="button"
-          data-testid="create-agent"
-          onClick={handleNewAgent}
-          disabled={creating || !venue || !agentName.trim() || !isProviderReady(llmProvider) || isReservedAgentId}
-          className="btn-sm mt-2"
-        >
-          {creating ? "Creating..." : "Create"}
-        </Button>
+        <DialogFooter data-testid="agent-actions" className="border-t px-6 py-4">
+          <Button
+            type="button"
+            variant="outline"
+            data-testid="save-agent-template"
+            onClick={handleSaveTemplate}
+            disabled={
+              savingTemplate || creating || !venue || !agentName.trim() ||
+              isReservedAgentId ||
+              (llmProvider === CUSTOM_PROVIDER_OPTION && !customProviderOperation.trim())
+            }
+            className="gap-2"
+          >
+            <BookmarkPlus size={16} />
+            {savingTemplate ? "Saving…" : "Save template"}
+          </Button>
+          <Button
+            aria-label="create agent"
+            type="button"
+            data-testid="create-agent"
+            onClick={handleNewAgent}
+            disabled={
+              creating || savingTemplate || !venue || !agentName.trim() ||
+              !isProviderReady(llmProvider) || isReservedAgentId ||
+              (llmProvider === CUSTOM_PROVIDER_OPTION && !customProviderOperation.trim())
+            }
+          >
+            {creating ? "Creating…" : submitLabel}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
