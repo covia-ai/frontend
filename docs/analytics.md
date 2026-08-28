@@ -239,12 +239,36 @@ Note that adding PostHog **at all**, events only and no replay, makes it a
 sub-processor. Policy v1.2 covers that case; `NEXT_PUBLIC_POSTHOG_KEY` is still
 unset by default so nothing loads until someone deliberately configures it.
 
-### Retention commitment
+### Retention
 
-Policy v1.2 states raw analytics events are kept for **90 days** in both
-Google Analytics and PostHog (D070 §5.7). That is a published commitment, not a
-default: **set GA4's data-retention period and PostHog's to 90 days**, or the
-policy overstates what is true.
+**GA4 has no 90-day option.** A standard property offers exactly two values for
+user and event data: 2 months or 14 months. D070 §5.7's "90 days raw" was
+written without checking, and is not configurable.
+
+Configured on 2026-08-28 in property "Main website" (`G-CS4QNLYT4M`): **Event
+data 14 months, User data 14 months** — the maximum a standard property allows.
+Event data had been on 2 months, so granular data older than that was already
+being deleted.
+
+What that setting does and does not cover, in Google's own words on the page:
+*"These controls don't affect most standard reporting, which is based on
+aggregated data."*
+
+- **Aggregated standard reports are kept indefinitely.** Users, sessions, page
+  views, events by name, traffic sources, conversions, trends over time. The
+  retention setting never deletes these.
+- **What expires at 14 months** is the granular user-and-event-level data tied
+  to cookies and identifiers, which is what Explorations and user-scoped Data
+  API queries read. Past the window you cannot build a *new* exploration
+  reaching that far back.
+
+Policy v1.2 describes this as "up to 14 months" for granular events with
+aggregates indefinite, which matches the configuration.
+
+**PostHog is not configured yet** — no project exists, so there is nothing to
+set. When one is created, check its retention against the policy: the published
+commitment is 14 months for granular events, so PostHog must be at or below
+that, or the policy needs amending again.
 
 ## Verifying
 

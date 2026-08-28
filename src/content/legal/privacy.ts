@@ -1,6 +1,8 @@
 // Covia Privacy Policy v1.2 (effective 2026-08-28): names PostHog as an
 // analytics processor, discloses the hashed-DID analytics identifier, and adds
-// analytics retention. Required before NEXT_PUBLIC_POSTHOG_KEY is set: PostHog
+// analytics retention (14 months granular, aggregates indefinite, matching
+// what GA4 is actually configured to do). Required before
+// NEXT_PUBLIC_POSTHOG_KEY is set: PostHog
 // is a sub-processor, so the disclosure gates the key, not just session replay.
 // v1.1 (effective 2026-08-27) added the connector.covia.ai paragraph; v1.0
 // (effective 2026-08-14) approved by Chirdeep Chhabra 2026-08-14; v1.1 and v1.2
@@ -69,7 +71,7 @@ Covia-operated venues and services are hosted in Singapore, the United States, a
 - **Job records**: retained as your audit trail while your account is active; you may delete your own job records at any time (each deletion is itself an auditable action).
 - **venue-test**: a scratch venue; data may be cleared at any time without notice and should never contain personal data you care about.
 - **Server logs**: 90 days.
-- **Analytics events**: 90 days in Google Analytics and PostHog. Aggregate reports derived from them are kept longer and identify no one.
+- **Analytics events**: granular events tied to the pseudonymous identifier are retained for up to 14 months, then deleted. The aggregate reports derived from them (visit counts, page and feature popularity, traffic sources) are kept indefinitely and identify no one.
 - **Connector grants and tokens**: a capability grant you sign through connector.covia.ai is stored, encrypted, until it expires or you revoke it; issued access tokens expire within one hour and refresh tokens within 30 days, and never outlive the grant; short-lived authorisation requests and codes are held only for minutes. Connector request logs follow the server-log period above.
 - **Backups**: deleted data leaves backups within 35 days.
 
