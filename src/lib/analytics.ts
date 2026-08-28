@@ -20,15 +20,17 @@
  * see them drift (D070 §2.4, §8.1). `gtmEvent` in `lib/utils` is now a thin
  * shim over `track()`, so existing call sites were left untouched.
  *
- * DEVIATION FROM §4 — identity is the hashed DID, not the hashed email.
- * This app never sees an email address: sign-in is either an Ed25519 device
- * key (`did:key`) or a venue OAuth callback that returns only `token` + `did`,
- * and the SDK exposes no account/profile endpoint. The DID is the only stable
- * identifier available client-side. Consequence: `user_id` here does NOT join
- * with the hashed-email `user_id` on covia.ai or in Brevo, so D070 §10's
- * cross-property attribution closes only through the anonymous GA4 linker
- * `client_id`. Closing it properly needs the venue to expose the OAuth email
- * (or a precomputed hash) — tracked as Phase 3 follow-up work in covia-repo.
+ * IDENTITY (§4). OAuth accounts hash the email, exactly as the spec defines.
+ * The venue puts an `email` claim in the JWT it issues, so the client already
+ * holds one; it is hashed in memory here and never stored or transmitted.
+ * Device-key accounts have no email anywhere in the system and fall back to a
+ * hashed DID, which keeps in-app retention and cohorts working for them but
+ * cannot join to covia.ai or Brevo.
+ *
+ * The end state is for the venue to emit a precomputed `covia_uid` claim so
+ * the browser never touches a raw address, and then to drop the `email` and
+ * `name` claims from the token entirely. `resolveAnalyticsId` prefers that
+ * claim already, so adopting it is a venue-side change with no client work.
  */
 
 import posthog from 'posthog-js'
@@ -38,6 +40,7 @@ import {
   hasConsent,
   isDoNotTrackEnabled,
 } from '@/lib/consent'
+import { decodeJwtClaims } from '@/lib/identity-token'
 
 /** Shared across covia.ai, docs, app and preview — never create a second property. */
 export const GA_MEASUREMENT_ID = 'G-CS4QNLYT4M'
@@ -311,18 +314,54 @@ export function trackPageView(path: string, title: string): void {
   track('content_page_view', { path })
 }
 
+/** What a sign-in gives us to derive an analytics identity from. */
+export type AnalyticsIdentity = {
+  did: string
+  /** The venue-issued JWT, for OAuth accounts. Device keys have none. */
+  token?: string
+}
+
+/**
+ * Picks the identifier for a signed-in account, in order of preference:
+ *
+ *   1. `covia_uid` — a hash the venue precomputed. Preferred so the browser
+ *      need not handle the raw address. Not emitted by any venue yet.
+ *   2. `sha256(email)` — the §4 identifier. Lowercased and trimmed to match
+ *      `hashEmail` in covia-website exactly; without that the two properties
+ *      produce different ids for the same person and the join fails silently.
+ *   3. `sha256(did)` — device-key accounts, which have no email at all.
+ *
+ * Exported for tests: getting the normalisation wrong breaks cross-property
+ * attribution with no error anywhere.
+ */
+export async function resolveAnalyticsId(
+  identity: AnalyticsIdentity,
+): Promise<string | null> {
+  const claims = identity.token ? decodeJwtClaims(identity.token) : null
+
+  const precomputed = claims?.covia_uid
+  if (typeof precomputed === 'string' && precomputed) return precomputed
+
+  const email = claims?.email
+  if (typeof email === 'string' && email.trim()) {
+    return hashIdentity(email.trim().toLowerCase())
+  }
+
+  return hashIdentity(identity.did)
+}
+
 /**
  * Ties this browser's events to a stable pseudonymous id (D070 §4).
  *
- * Takes the DID rather than an email — see the deviation note at the top of
- * this file. Safe to call on every sign-in; repeat calls with the same DID are
- * cheap and idempotent.
+ * Safe to call on every sign-in; repeat calls for the same account are cheap
+ * and idempotent. The raw email, where there is one, is hashed in memory and
+ * never stored or sent.
  */
 export async function identify(
-  did: string,
+  identity: AnalyticsIdentity,
   properties: Record<string, unknown> = {},
 ): Promise<void> {
-  const userId = await hashIdentity(did)
+  const userId = await resolveAnalyticsId(identity)
   if (!userId) return
   currentUserId = userId
 

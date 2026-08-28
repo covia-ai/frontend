@@ -55,23 +55,46 @@ Nothing loads before consent:
 A decision made under the previous binary `react-cookie-consent` banner is
 migrated once, silently, so returning users are not asked twice.
 
-## Identity — deviates from §4
+## Identity (§4)
 
-The spec defines `user_id = sha256(email).slice(0,16)`. **This app never sees an
-email address.** Sign-in is either an Ed25519 device key (`did:key`) or a venue
-OAuth callback that returns only `token` and `did`, and the SDK exposes no
-account or profile endpoint. Email is received by the *venue*, not by this
-client.
+`user_id` is `sha256(...).slice(0,16)`, resolved by `resolveAnalyticsId` in
+preference order:
 
-So `user_id` here is `sha256(did).slice(0,16)` — same shape, same truncation,
-different input. The raw DID never enters a payload.
+1. **`covia_uid`** — a hash the venue precomputed. Preferred, so the browser
+   never handles a raw address. No venue emits this yet; the client is ready
+   for it, so adopting it needs no frontend change.
+2. **`sha256(email)`** — for OAuth accounts. The venue puts an `email` claim in
+   the JWT it issues ([`LoginProviders.java`](https://github.com/covia-ai/covia-repo)),
+   so the client already holds one. It is hashed in memory and never stored,
+   logged or transmitted.
+3. **`sha256(did)`** — for device-key accounts, which have no email anywhere in
+   the system.
 
-**Consequence:** this `user_id` does not join with the hashed-email `user_id`
-used on covia.ai or in Brevo. §10's "what percentage of app.covia.ai signups
-came from a known covia.ai session" therefore closes only through the anonymous
-GA4 linker `client_id`, not through `user_id`. Closing it properly requires the
-venue to expose the OAuth email or a precomputed hash — follow-up work in
-`covia-repo`.
+### The normalisation is load-bearing
+
+covia-website hashes `email.trim().toLowerCase()`. This repo must do exactly
+the same or the two properties produce different ids for the same person and
+the cross-property join fails **with no error anywhere** — you would simply see
+two users. A test pins `Alice@Corp.com`, `ALICE@CORP.COM` and a padded variant
+all resolving to one id. Do not "simplify" it.
+
+### What this buys
+
+- §10's cross-property attribution closes: a covia.ai form submit and a later
+  app sign-in share a `user_id`.
+- The same hash is stored in Brevo, so the CRM joins too.
+- **Delete-by-email (§5.8) works.** Given an email in a deletion request, you
+  can compute the hash and find that person's analytics records. With a hashed
+  DID you could not.
+
+### Device-key accounts stay unjoined
+
+They have no email, so they keep the DID hash. In-app retention and cohorts
+work for them; marketing attribution cannot. That is inherent, not a gap to
+close: a device-key user has never given us an address on any surface.
+
+A person who uses both a device key and an OAuth account on the same venue
+counts as two users. Linking those is venue-side account work, not analytics.
 
 ## Cross-domain measurement
 

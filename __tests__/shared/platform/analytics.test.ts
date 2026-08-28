@@ -304,6 +304,104 @@ describe('analytics', () => {
     });
   });
 
+  describe('resolveAnalyticsId', () => {
+    // Minimal unsigned JWT: only the payload is ever read, and only for
+    // non-security claims.
+    function tokenWith(claims: Record<string, unknown>): string {
+      const b64 = Buffer.from(JSON.stringify(claims), 'utf8')
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+      return `header.${b64}.signature`;
+    }
+
+    it('hashes the email claim for an OAuth account', async () => {
+      const { resolveAnalyticsId, hashIdentity } = freshAnalytics();
+      const id = await resolveAnalyticsId({
+        did: 'did:web:venue:alice',
+        token: tokenWith({ email: 'alice@corp.com' }),
+      });
+
+      expect(id).toBe(await hashIdentity('alice@corp.com'));
+      // Not the DID hash, or the cross-property join would not close.
+      expect(id).not.toBe(await hashIdentity('did:web:venue:alice'));
+    });
+
+    it('lowercases and trims so it matches covia.ai for the same person', async () => {
+      const { resolveAnalyticsId } = freshAnalytics();
+      const canonical = await resolveAnalyticsId({
+        did: 'did:web:venue:alice',
+        token: tokenWith({ email: 'alice@corp.com' }),
+      });
+
+      // covia.ai hashes email.trim().toLowerCase(); anything else silently
+      // produces a second user for the same human.
+      for (const variant of ['Alice@Corp.com', '  alice@corp.com  ', 'ALICE@CORP.COM']) {
+        expect(
+          await resolveAnalyticsId({
+            did: 'did:web:venue:alice',
+            token: tokenWith({ email: variant }),
+          }),
+        ).toBe(canonical);
+      }
+    });
+
+    it('prefers a venue-precomputed covia_uid over hashing the email itself', async () => {
+      const { resolveAnalyticsId } = freshAnalytics();
+      const id = await resolveAnalyticsId({
+        did: 'did:web:venue:alice',
+        token: tokenWith({ covia_uid: 'abc123def4567890', email: 'alice@corp.com' }),
+      });
+
+      expect(id).toBe('abc123def4567890');
+    });
+
+    it('falls back to the DID for a device-key account with no token', async () => {
+      const { resolveAnalyticsId, hashIdentity } = freshAnalytics();
+      const id = await resolveAnalyticsId({ did: 'did:key:z6MkAlice' });
+
+      expect(id).toBe(await hashIdentity('did:key:z6MkAlice'));
+    });
+
+    it('falls back to the DID when the token carries no email', async () => {
+      const { resolveAnalyticsId, hashIdentity } = freshAnalytics();
+      const id = await resolveAnalyticsId({
+        did: 'did:web:venue:alice',
+        token: tokenWith({ sub: 'did:web:venue:alice' }),
+      });
+
+      expect(id).toBe(await hashIdentity('did:web:venue:alice'));
+    });
+
+    it.each([
+      ['a malformed token', 'not-a-jwt'],
+      ['an unparseable payload', 'header.!!!not-base64!!!.signature'],
+      ['an empty token', ''],
+    ])('falls back to the DID for %s rather than throwing', async (_label, token) => {
+      const { resolveAnalyticsId, hashIdentity } = freshAnalytics();
+      const id = await resolveAnalyticsId({ did: 'did:web:venue:alice', token });
+
+      expect(id).toBe(await hashIdentity('did:web:venue:alice'));
+    });
+
+    it('never lets the raw email reach a payload', async () => {
+      grantConsent(true);
+      const { initAnalytics, identify, track } = freshAnalytics();
+      initAnalytics();
+
+      await identify({
+        did: 'did:web:venue:alice',
+        token: tokenWith({ email: 'alice@corp.com', name: 'Alice Example' }),
+      });
+      track('product_login', { method: 'oauth' });
+
+      const sent = JSON.stringify(gtag.mock.calls);
+      expect(sent).not.toContain('alice@corp.com');
+      expect(sent).not.toContain('Alice Example');
+    });
+  });
+
   describe('identity', () => {
     it('attaches the hashed DID as user_id on later events', async () => {
       grantConsent(true);
@@ -311,7 +409,7 @@ describe('analytics', () => {
       initAnalytics();
 
       const did = 'did:key:z6MkTestIdentity';
-      await identify(did);
+      await identify({ did });
       gtag.mockClear();
       track('product_feature_used', { feature_id: 'create_agent' });
 
@@ -328,7 +426,7 @@ describe('analytics', () => {
       initAnalytics();
 
       const did = 'did:key:z6MkTestIdentity';
-      await identify(did);
+      await identify({ did });
 
       expect(JSON.stringify(gtag.mock.calls)).not.toContain(did);
     });
@@ -338,7 +436,7 @@ describe('analytics', () => {
       const { initAnalytics, identify, resetIdentity, track } = freshAnalytics();
       initAnalytics();
 
-      await identify('did:key:z6MkTestIdentity');
+      await identify({ did: 'did:key:z6MkTestIdentity' });
       resetIdentity();
       gtag.mockClear();
       track('product_login', { method: 'keypair' });

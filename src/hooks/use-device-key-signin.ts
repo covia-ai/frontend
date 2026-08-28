@@ -153,7 +153,7 @@ export function useDeviceKeySignIn(options: { trackSignUp?: boolean; venueId?: s
     // came from the /signUp page: the topbar route was previously invisible to
     // analytics, which made the login count wrong rather than conservative.
     gtmEvent.signUp("keypair");
-    void identify(did, { auth_method: "keypair" });
+    void identify({ did }, { auth_method: "keypair" });
     setDeviceKeyHex(key);
     loginWithKeypair(venueId, key, did);
     setDialogOpen(false);

@@ -1,7 +1,9 @@
 // Covia Privacy Policy v1.2 (effective 2026-08-28): names PostHog as an
 // analytics processor, discloses the hashed-DID analytics identifier, and adds
 // analytics retention (14 months granular, aggregates indefinite, matching
-// what GA4 is actually configured to do). Required before
+// what GA4 is actually configured to do), and describes the pseudonymous
+// analytics identifier as hashed email for OAuth accounts, hashed DID for
+// device keys. Required before
 // NEXT_PUBLIC_POSTHOG_KEY is set: PostHog
 // is a sub-processor, so the disclosure gates the key, not just session replay.
 // v1.1 (effective 2026-08-27) added the connector.covia.ai paragraph; v1.0
@@ -41,7 +43,7 @@ Three structural facts shape everything below:
 **On the app and websites:**
 
 - **Local browser storage**: your venue list, device keys, session tokens, and preferences. Stored on your device, not our servers.
-- **Analytics**: with your consent, usage events on app.covia.ai and our websites, processed by Google Analytics and PostHog. These record which pages and features are used, not what you put into them: we do not send your job inputs or outputs, asset contents, agent conversations, workspace data, or secrets to either service, and we do not record your screen or session. Where you are signed in, events carry a truncated one-way hash of your DID as a pseudonymous identifier, so that repeat visits can be counted as one person; the hash cannot be reversed to your DID and no email address is involved. Declining non-essential cookies means neither service is loaded at all.
+- **Analytics**: with your consent, usage events on app.covia.ai and our websites, processed by Google Analytics and PostHog. These record which pages and features are used, not what you put into them: we do not send your job inputs or outputs, asset contents, agent conversations, workspace data, or secrets to either service, and we do not record your screen or session. Where you are signed in, events carry a truncated one-way hash as a pseudonymous identifier, so that repeat visits can be counted as one person: derived from your email address if you signed in with OAuth, or from your DID if you use a device key. The hash is computed in your browser, cannot be reversed, and neither your email address nor your DID is sent to either service. Using the same hash our website uses is also what lets us find and delete your analytics records when you ask us to. Declining non-essential cookies means neither service is loaded at all.
 
 **What we deliberately do not collect:** private keys; secret values in readable form; the content of prompts you send to LLM providers under your own API keys; anything at all from self-hosted venues.
 
