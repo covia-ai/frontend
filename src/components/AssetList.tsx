@@ -6,7 +6,7 @@ import { useSearchParams, usePathname } from 'next/navigation';
 import { useCallback, useEffect, useState, useMemo } from "react";
 
 import { Asset, DataAsset }from "@covia/covia-sdk";
-import { loadAssetEntries } from "@/lib/asset-metadata";
+import { getAssetKind } from "@/lib/asset-kind";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { Spinner } from '@/components/ui/shadcn-io/spinner';
 import { AssetCard } from "./AssetCard";
@@ -28,11 +28,6 @@ import { VenueResolutionState } from "@/components/VenueResolutionState";
 interface AssetListProps {
   venueId?: string;
 }
-
-// Roughly two grid pages of leading ids hydrate before the rest of the
-// catalog, independent of the live grid size so a window resize never
-// re-fetches.
-const PRIORITY_HYDRATE_COUNT = 48;
 
 export function AssetList({ venueId }: AssetListProps = {}) {
   const searchParams = useSearchParams()
@@ -68,31 +63,31 @@ export function AssetList({ venueId }: AssetListProps = {}) {
   // drops in-flight results after venue change or unmount, so stale assets
   // never land in the fresh list. Fetches the full id list unconditionally —
   // search text only filters client-side (see filteredAssets) so typing
-  // never triggers a refetch. Metadata resolves through the content-addressed
-  // cache (immutable, so revisits are near-free) and streams in per batch
-  // with the leading ids hydrated first, so the first screen of cards paints
-  // in a batch or two while the rest of a large catalog fills in behind.
+  // never triggers a refetch. expand: 'metadata' inlines every item's
+  // metadata into the one listing call, so there's no per-id hydration pass.
   const fetchAssets = useCallback(() => {
     if (!venue || venueStatus !== "ready") {
       resetAssetQuery();
       return Promise.resolve();
     }
     return runAssetQuery(
-      async (publish) => {
-        const assetList = await venue.listAssets();
-        const toDataAssets = (entries: Awaited<ReturnType<typeof loadAssetEntries>>) =>
-          entries
-            // Everything except operations (which have their own page) is an
-            // artifact here — skills and agent templates included.
-            .filter((e) => e.metadata.name != undefined && e.metadata.operation == undefined)
-            .map((e) => new DataAsset(e.id, venue, e.metadata));
-        const entries = await loadAssetEntries(
-          venue,
-          assetList.items,
-          (progress) => publish(toDataAssets(progress), { loading: false }),
-          PRIORITY_HYDRATE_COUNT,
-        );
-        return toDataAssets(entries);
+      async () => {
+        const assetList = await venue.listAssets({ expand: "metadata" });
+        return assetList.items
+          // venue.listAssets() is a hash-only CAS scan (GET /api/v1/assets) —
+          // it has no path field, so anything catalog-owned that ends up
+          // here can only be shown at a bare /a/<hash>, which misdisplays
+          // venue-catalog content as the caller's own pinned asset (covia#390).
+          // Operations, agent templates, and skills are catalog content with
+          // their own path-first views (Operations, Skills), so they're
+          // excluded here rather than given an invented catalog address;
+          // what's left is genuinely CAS-only content, correctly hash-addressed.
+          .filter((e) => {
+            if (e.metadata.name == undefined) return false;
+            const kind = getAssetKind(e.metadata);
+            return kind !== "operation" && kind !== "agent-template" && kind !== "skill";
+          })
+          .map((e) => new DataAsset(e.id, venue, e.metadata));
       },
       { clear: true },
     );

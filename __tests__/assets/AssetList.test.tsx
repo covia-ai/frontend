@@ -35,7 +35,6 @@ const mockVenue: any = {
   venueId: 'venue-1',
   metadata: { name: 'Test Venue' },
   listAssets: jest.fn(),
-  getAsset: jest.fn(),
 };
 
 let mockAuthenticated = true;
@@ -53,35 +52,24 @@ jest.mock('@/hooks/use-resolved-venue', () => ({
 
 import { AssetList } from '@/components/AssetList';
 
-function makeAsset(id: string, name: string) {
-  return {
-    id,
-    venue: mockVenue,
-    metadata: { name, operation: undefined },
-    getMetadata: jest.fn().mockResolvedValue({ name, operation: undefined }),
-  };
-}
-
 describe('AssetList', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Metadata is cached content-addressed in localStorage — clear it so each
-    // test controls whether it exercises the fetch path or the cache path.
-    window.localStorage.clear();
     mockSearchParam = null;
     mockAuthenticated = true;
-    mockVenue.listAssets.mockResolvedValue({ items: ['a1', 'a2'] });
-    mockVenue.getAsset.mockImplementation((id: string) => {
-      if (id === 'a1') return Promise.resolve(makeAsset('a1', 'Alpha Report'));
-      if (id === 'a2') return Promise.resolve(makeAsset('a2', 'Beta Dataset'));
-      return Promise.reject(new Error('unknown asset'));
+    mockVenue.listAssets.mockResolvedValue({
+      items: [
+        { id: 'a1', metadata: { name: 'Alpha Report' } },
+        { id: 'a2', metadata: { name: 'Beta Dataset' } },
+      ],
     });
   });
 
-  it('loads and displays all assets once, unfiltered', async () => {
+  it('loads and displays all assets once, unfiltered, with metadata inlined via expand', async () => {
     render(<AssetList />);
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
     expect(mockVenue.listAssets).toHaveBeenCalledTimes(1);
+    expect(mockVenue.listAssets).toHaveBeenCalledWith({ expand: 'metadata' });
   });
 
   it('shows the Create Asset button when signed in', async () => {
@@ -97,15 +85,12 @@ describe('AssetList', () => {
     expect(screen.queryByTestId('create-asset')).not.toBeInTheDocument();
   });
 
-  it('serves metadata from the content-addressed cache on revisit — no per-asset GETs', async () => {
-    window.localStorage.setItem('asset-meta:a1', JSON.stringify({ name: 'Alpha Report' }));
-    window.localStorage.setItem('asset-meta:a2', JSON.stringify({ name: 'Beta Dataset' }));
-
+  it('never fetches per-asset metadata — expand: metadata returns it inline', async () => {
     render(<AssetList />);
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
 
     expect(mockVenue.listAssets).toHaveBeenCalledTimes(1);
-    expect(mockVenue.getAsset).not.toHaveBeenCalled();
+    expect(mockVenue.getAsset).toBeUndefined();
   });
 
   // The search box lives directly in the toolbar now, not staged behind the
@@ -154,5 +139,28 @@ describe('AssetList', () => {
     mockSearchParam = 'beta';
     render(<AssetList />);
     expect(await screen.findByPlaceholderText('Type keyword to search…')).toHaveValue('beta');
+  });
+
+  // venue.listAssets() is a hash-only CAS scan with no path field. Catalog
+  // content (agent templates, skills) resolved through it would only ever
+  // be addressable as a bare /a/<hash>, misdisplaying it as the caller's own
+  // pinned asset (covia#390) instead of its real venue-catalog identity —
+  // those kinds have their own path-first views, so they're excluded here.
+  it('excludes agent templates and skills — catalog content with no path in this hash-only listing', async () => {
+    mockVenue.listAssets.mockResolvedValue({
+      items: [
+        { id: 'a1', metadata: { name: 'Alpha Report' } },
+        { id: 'a2', metadata: { name: 'Beta Dataset' } },
+        { id: 'a3', metadata: { name: 'Skilled Template', agent: { config: {} } } },
+        { id: 'a4', metadata: { name: 'Research Skill', skill: { tools: ['search'] } } },
+      ],
+    });
+
+    render(<AssetList />);
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
+    expect(screen.getByText('Alpha Report')).toBeInTheDocument();
+    expect(screen.getByText('Beta Dataset')).toBeInTheDocument();
+    expect(screen.queryByText('Skilled Template')).not.toBeInTheDocument();
+    expect(screen.queryByText('Research Skill')).not.toBeInTheDocument();
   });
 });

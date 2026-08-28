@@ -68,6 +68,58 @@ export function formatRelativeTime(date: string): string {
   return new Date(date).toLocaleDateString();
 }
 
+// Countdown form for a future timestamp — "in 2 hr 15 min" style, mirroring
+// getExecutionTime's hr/min/sec cascade but counting down to a target instead
+// of a duration between two points. Pair with the exact fire time in an
+// adjacent cell, same rationale as formatRelativeTime above.
+export function formatCountdown(targetMs: number): string {
+  const diffMs = targetMs - Date.now();
+  if (diffMs <= 0) return "due now";
+  const diffSec = diffMs / 1000;
+  const diffMin = diffMs / 60000;
+  const diffHour = diffMs / 3600000;
+
+  if (diffHour >= 1) {
+    const hours = Math.floor(diffHour);
+    const mins = Math.round((diffHour - hours) * 60);
+    return mins > 0 ? `in ${hours} hr ${mins} min` : `in ${hours} hr`;
+  }
+  if (diffMin >= 1) {
+    const mins = Math.floor(diffMin);
+    const secs = Math.round((diffMin - mins) * 60);
+    return secs > 0 ? `in ${mins} min ${secs} sec` : `in ${mins} min`;
+  }
+  return `in ${Math.round(diffSec)} sec`;
+}
+
+// Fixed-interval cadence for a recurring schedule's `repeat.every` — "every
+// 5 min" style. Only whole-unit intervals need to look clean here (presets
+// are hourly/daily/weekly); anything else falls back to the largest whole
+// unit plus a remainder in the next one down.
+export function formatInterval(ms: number): string {
+  const sec = ms / 1000;
+  const min = ms / 60000;
+  const hour = ms / 3600000;
+  const day = ms / 86400000;
+
+  if (day >= 1) {
+    const days = Math.floor(day);
+    const hours = Math.round((day - days) * 24);
+    return hours > 0 ? `every ${days} d ${hours} hr` : `every ${days} d`;
+  }
+  if (hour >= 1) {
+    const hours = Math.floor(hour);
+    const mins = Math.round((hour - hours) * 60);
+    return mins > 0 ? `every ${hours} hr ${mins} min` : `every ${hours} hr`;
+  }
+  if (min >= 1) {
+    const mins = Math.floor(min);
+    const secs = Math.round((min - mins) * 60);
+    return secs > 0 ? `every ${mins} min ${secs} sec` : `every ${mins} min`;
+  }
+  return `every ${Math.round(sec)} sec`;
+}
+
 const DATE_TIME_FORMATTER = new Intl.DateTimeFormat(undefined, {
   year: "numeric",
   month: "short",

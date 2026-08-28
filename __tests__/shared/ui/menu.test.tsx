@@ -22,7 +22,7 @@ describe('Menu — group headers', () => {
     render(<Menu isOpen={true} />);
     expect(screen.getByText('Agents')).toBeInTheDocument();
     expect(screen.getByText('Grid')).toBeInTheDocument();
-    expect(screen.getByText('Manage')).toBeInTheDocument();
+    expect(screen.getByText('Data')).toBeInTheDocument();
     expect(screen.getByText('Learn')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /create/i })).toHaveAttribute('href', '/agents/create');
     expect(screen.getByRole('link', { name: /view/i })).toHaveAttribute('href', '/agents/view');
@@ -42,9 +42,10 @@ describe('Menu — group headers', () => {
     expect(screen.queryByText('Secrets')).not.toBeInTheDocument();
     expect(screen.queryByText('Inbox')).not.toBeInTheDocument();
     expect(screen.queryByText('Workspace')).not.toBeInTheDocument();
+    expect(screen.queryByText('Context')).not.toBeInTheDocument();
     expect(screen.getByText('Agents')).toBeInTheDocument();
     expect(screen.getByText('Grid')).toBeInTheDocument();
-    expect(screen.getByText('Manage')).toBeInTheDocument();
+    expect(screen.getByText('Data')).toBeInTheDocument();
     expect(screen.getByText('Venues')).toBeInTheDocument();
   });
 });

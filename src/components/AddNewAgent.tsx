@@ -31,8 +31,10 @@ import {
   resolvedModelId,
 } from "@/components/agent-config/AgentConfigEditor";
 import { ToolSkillPicker } from "@/components/agent-config/ToolSkillPicker";
+import { AgentCapsEditor } from "@/components/agent-config/AgentCapsEditor";
 import { withToolToggled, type CatalogOp } from "@/lib/operations-catalog";
 import { withSkillToggled, type SkillSummary } from "@/lib/skills";
+import { cleanCaps, emptyCap, isAgentCap, type AgentCap } from "@/lib/agent-caps";
 import {
   AGENT_TEMPLATES_CHANGED_EVENT,
   asSdkAgentConfig,
@@ -99,6 +101,15 @@ export function AddNewAgent({
   const [stagedTools, setStagedTools] = useState<string[]>([]);
   const [stagedSkills, setStagedSkills] = useState<string[]>([]);
   const [touchedCapabilities, setTouchedCapabilities] = useState(false);
+  // Caps default absent (unrestricted). capsEnabled/caps seed from a cloned
+  // template so the editor honestly shows what's already there, but — same
+  // reasoning as touchedCapabilities for tools/skills — only touchedCaps
+  // (set on actual user interaction, not on seeding) decides whether the
+  // built config carries an override; otherwise an untouched clone would
+  // silently duplicate its own inherited caps layer.
+  const [capsEnabled, setCapsEnabled] = useState(false);
+  const [caps, setCaps] = useState<AgentCap[]>([]);
+  const [touchedCaps, setTouchedCaps] = useState(false);
   // A key pasted inline when the chosen provider has none — stored on create
   // so you don't have to leave the dialog to add it in Secrets first.
   const [apiKeyInput, setApiKeyInput] = useState("");
@@ -133,6 +144,10 @@ export function AddNewAgent({
     setStagedTools(Array.isArray(preview.tools) ? preview.tools : []);
     setStagedSkills(Array.isArray(preview.skills) ? preview.skills : []);
     setTouchedCapabilities(false);
+    const previewCaps = Array.isArray(preview.caps) ? preview.caps.filter(isAgentCap) : [];
+    setCaps(previewCaps);
+    setCapsEnabled(Array.isArray(preview.caps));
+    setTouchedCaps(false);
     if (!venue) return;
     venue.secrets
       .list()
@@ -203,6 +218,7 @@ export function AddNewAgent({
       // (inlineAgentConfigPreview can't see those), and forcing [] here would
       // silently strip them. Once touched, the picker owns the full array.
       ...(touchedCapabilities && { tools: stagedTools, skills: stagedSkills }),
+      ...(touchedCaps && { caps: cleanCaps(caps) }),
     };
     return withAgentConfigOverrides(baseConfig, overrides);
   };
@@ -422,6 +438,20 @@ export function AddNewAgent({
                   : "No tools or skills attached yet."}
               </p>
             </div>
+
+            <AgentCapsEditor
+              enabled={capsEnabled}
+              onEnabledChange={(next) => {
+                setCapsEnabled(next);
+                setTouchedCaps(true);
+                if (next && caps.length === 0) setCaps([emptyCap()]);
+              }}
+              caps={caps}
+              onCapsChange={(next) => {
+                setCaps(next);
+                setTouchedCaps(true);
+              }}
+            />
 
             <AgentRuntimeFields
               providerId={llmProvider}

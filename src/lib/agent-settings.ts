@@ -5,6 +5,7 @@ import {
   modelSelectionFromId,
   resolvedModelId,
 } from "@/lib/agent-config";
+import { cleanCaps, isAgentCap, type AgentCap } from "@/lib/agent-caps";
 
 export type AgentSettingsDraft = {
   systemPrompt: string;
@@ -14,7 +15,9 @@ export type AgentSettingsDraft = {
   customModel: string;
   toolsJson: string;
   skillsJson: string;
-  capsJson: string;
+  capsEnabled: boolean;
+  caps: AgentCap[];
+  contextJson: string;
   defaultTools: boolean;
   advancedJson: string;
 };
@@ -23,6 +26,17 @@ export type AgentSettingsResult =
   | { config: Record<string, unknown>; error: null }
   | { config: null; error: string };
 
+// Result of an agent:update save attempt (see use-agent-explorer.ts's
+// updateAgentConfig). "conflict" carries the freshly re-fetched config that
+// caused the rejection so the caller can rebase its editor onto it — reading
+// the `agent` prop after the fact isn't safe, since a React state update
+// (setSelectedAgentDetail) isn't guaranteed visible in the same closure the
+// save was called from.
+export type AgentConfigSaveOutcome =
+  | { status: "saved" }
+  | { status: "conflict"; freshConfig: Record<string, unknown> }
+  | { status: "failed" };
+
 const MANAGED_FIELDS = new Set([
   "systemPrompt",
   "llmOperation",
@@ -30,6 +44,7 @@ const MANAGED_FIELDS = new Set([
   "tools",
   "skills",
   "caps",
+  "context",
   "defaultTools",
 ]);
 
@@ -71,7 +86,9 @@ export function createAgentSettingsDraft(
     ...model,
     toolsJson: prettyJson(config.tools),
     skillsJson: prettyJson(config.skills),
-    capsJson: prettyJson(config.caps),
+    capsEnabled: Array.isArray(config.caps),
+    caps: Array.isArray(config.caps) ? config.caps.filter(isAgentCap) : [],
+    contextJson: prettyJson(config.context),
     defaultTools: config.defaultTools === true,
     advancedJson: prettyJson(advanced) || "{}",
   };
@@ -126,13 +143,15 @@ export function configFromAgentSettingsDraft(
   for (const [key, label, text] of [
     ["tools", "Tools", draft.toolsJson],
     ["skills", "Skills", draft.skillsJson],
-    ["caps", "Capabilities", draft.capsJson],
+    ["context", "Context", draft.contextJson],
   ] as const) {
     if (!text.trim()) continue;
     const parsed = parseJson(label, text, "array");
     if (parsed.error) return { config: null, error: parsed.error };
     config[key] = parsed.value;
   }
+
+  if (draft.capsEnabled) config.caps = cleanCaps(draft.caps);
 
   if (draft.defaultTools || Object.hasOwn(originalConfig, "defaultTools")) {
     config.defaultTools = draft.defaultTools;
@@ -155,6 +174,12 @@ function stable(value: unknown): unknown {
 function equal(left: unknown, right: unknown): boolean {
   return JSON.stringify(stable(left)) === JSON.stringify(stable(right));
 }
+
+// Order-independent deep equality for agent config objects — used both to
+// compute the update patch below and, in use-agent-explorer.ts, to detect a
+// concurrent edit by comparing a freshly re-fetched config against the one
+// this editing session started from (see covia-ai/frontend#161).
+export const agentConfigsEqual = equal;
 
 /**
  * agent:update recursively merges maps, replaces arrays/scalars, and accepts

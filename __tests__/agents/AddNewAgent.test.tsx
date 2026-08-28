@@ -395,6 +395,75 @@ describe('AddNewAgent', () => {
     expect(mockVenue.agents.create).toHaveBeenCalledTimes(1);
   });
 
+  it('omits caps from the agent config by default (unrestricted)', async () => {
+    const user = await renderAndOpenDialog();
+    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    expect(mockVenue.agents.create.mock.calls[0][0].config).not.toHaveProperty('caps');
+  });
+
+  it('enabling capabilities seeds one empty row and warns on an empty caps array', async () => {
+    const user = await renderAndOpenDialog();
+    await user.click(screen.getByLabelText('Capabilities (optional)'));
+
+    expect(screen.getByTestId('cap-with-0')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Remove capability 1' }));
+    expect(screen.getByText(/denies every tool call/)).toBeInTheDocument();
+  });
+
+  it('sends a filled-in capability in the agent config, using the curated ability list', async () => {
+    const user = await renderAndOpenDialog();
+    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+    await user.click(screen.getByLabelText('Capabilities (optional)'));
+
+    await user.type(screen.getByTestId('cap-with-0'), 'w/notes/');
+    await user.click(screen.getByTestId('cap-can-0'));
+    await user.click(await screen.findByRole('option', { name: /crud\/write/ }));
+
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    const config = mockVenue.agents.create.mock.calls[0][0].config;
+    expect(config.caps).toEqual([{ with: 'w/notes/', can: 'crud/write' }]);
+  });
+
+  it('supports a custom-typed ability outside the curated list', async () => {
+    const user = await renderAndOpenDialog();
+    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+    await user.click(screen.getByLabelText('Capabilities (optional)'));
+
+    await user.type(screen.getByTestId('cap-with-0'), 'w/');
+    await user.click(screen.getByTestId('cap-can-0'));
+    await user.click(await screen.findByRole('option', { name: 'Custom…' }));
+    await user.type(screen.getByTestId('cap-can-custom-0'), 'covia/read');
+
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    const config = mockVenue.agents.create.mock.calls[0][0].config;
+    expect(config.caps).toEqual([{ with: 'w/', can: 'covia/read' }]);
+  });
+
+  it('drops a blank unfinished row instead of sending it', async () => {
+    const user = await renderAndOpenDialog();
+    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+    await user.click(screen.getByLabelText('Capabilities (optional)'));
+    // Seeded row is left blank; add a second, filled-in row.
+    await user.click(screen.getByRole('button', { name: /Add capability/ }));
+    await user.type(screen.getByTestId('cap-with-1'), 'w/');
+    await user.click(screen.getByTestId('cap-can-1'));
+    await user.click(await screen.findByRole('option', { name: /crud\/read/ }));
+
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    const config = mockVenue.agents.create.mock.calls[0][0].config;
+    expect(config.caps).toEqual([{ with: 'w/', can: 'crud/read' }]);
+  });
+
   it('leaves an untouched template config untouched by the picker', async () => {
     const user = userEvent.setup();
     render(
