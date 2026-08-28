@@ -313,13 +313,24 @@ export const gtmEvent = {
     track('remove_venue', { venue_id: venueId })
   },
 
-  createAsset: (assetName: string) => {
-    track('create_asset', { asset_name: assetName })
+  /**
+   * Takes the content-addressed asset id, never `metadata.name`. An asset name
+   * is free text a user typed ("Acme Q3 payroll model"), so sending it would
+   * put customer data and business facts into a third-party analytics store.
+   * The id answers every question the name did, and identifies nothing.
+   */
+  createAsset: (assetId: string) => {
+    track('create_asset', { asset_id: assetId })
     feature('create_asset')
   },
 
-  createAssetFailed: (assetName: string, reason?: string) => {
-    track('create_asset_failed', { asset_name: assetName, reason })
+  /**
+   * Registration failed, so there is no content-addressed id to report and no
+   * non-identifying stand-in for the name. The failure and its reason are the
+   * whole signal.
+   */
+  createAssetFailed: (reason?: string) => {
+    track('create_asset_failed', { reason })
   },
 
   createAgent: (agentId: string, provider?: string) => {

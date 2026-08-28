@@ -71,6 +71,43 @@ describe('gtmEvent → D070 taxonomy', () => {
   });
 });
 
+describe('user-authored text never reaches a vendor', () => {
+  /*
+   * An asset name is free text someone typed. Sending it would put customer
+   * names and business facts into a third-party analytics store, which is what
+   * autocapture is disabled for and what privacy policy v1.2 says we do not do.
+   */
+
+  it('reports the content-addressed id for a created asset, not its name', () => {
+    gtmEvent.createAsset('a1b2c3d4e5f6');
+
+    expect(mockTrack).toHaveBeenCalledWith('create_asset', {
+      asset_id: 'a1b2c3d4e5f6',
+    });
+    expect(JSON.stringify(mockTrack.mock.calls)).not.toContain('asset_name');
+  });
+
+  it('reports only the reason when asset creation fails', () => {
+    // Registration failed, so there is no id, and the name is not an
+    // acceptable stand-in.
+    gtmEvent.createAssetFailed('venue rejected the metadata');
+
+    expect(mockTrack).toHaveBeenCalledWith('create_asset_failed', {
+      reason: 'venue rejected the metadata',
+    });
+  });
+
+  it('carries no free-text field on any asset event', () => {
+    gtmEvent.createAsset('a1b2c3d4e5f6');
+    gtmEvent.createAssetFailed('boom');
+
+    const params = mockTrack.mock.calls.map(([, p]) => p ?? {});
+    for (const p of params) {
+      expect(p).not.toHaveProperty('asset_name');
+    }
+  });
+});
+
 describe('deprecated GA4 names kept for report continuity', () => {
   /*
    * The retired GTM container renamed two events on their way to GA4. These

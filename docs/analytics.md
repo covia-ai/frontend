@@ -183,6 +183,25 @@ already running.
 `suspend_agent_failed`, `resume_agent`, `resume_agent_failed`,
 `send_agent_message`, `send_agent_message_failed`.
 
+### No user-authored text in event parameters
+
+Every identifier on these events is content-addressed or structural: asset ids,
+agent ids, venue ids, job ids, operation addresses. **No parameter carries text
+a user typed.** An asset name is free text ("Acme Q3 payroll model"), so
+sending it would place customer names and business facts in a third-party
+analytics store. That is the same reason PostHog's `autocapture` is off, and
+privacy policy v1.2 states we do not send asset contents.
+
+`create_asset` therefore carries `asset_id`, replacing the previous
+`asset_name`, and `create_asset_failed` carries only `reason` — registration
+failed, so there is no id, and the name is not an acceptable substitute. If a
+GA4 report keys on `asset_name`, repoint it to `asset_id`; the two are not
+aliased, because continuing to emit the name would defeat the change.
+
+Operation addresses (`op_slug`-style catalog paths, as on `Create Schedule`)
+are kept. They are structural addresses that D070 §3.2 names explicitly, not
+display text.
+
 ### Transition aliases (temporary)
 
 Two event names changed at the GTM cutover. Both are still emitted under their
