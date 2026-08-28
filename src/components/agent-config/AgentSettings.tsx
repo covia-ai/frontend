@@ -147,8 +147,8 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
 
   return (
     <div data-testid="agent-settings" className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-start gap-3 border-b px-6 py-4">
-        <Button variant="ghost" size="sm" className="mt-0.5 gap-2" onClick={onBack}>
+      <div className="border-b px-6 py-4">
+        <Button variant="ghost" size="sm" className="mb-4 gap-2" onClick={onBack}>
           <ArrowLeft size={15} /> Chat
         </Button>
         <div>

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   Bot,
   Check,
+  Eye,
   History,
   BellRing,
   Loader2,
@@ -44,6 +45,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { AgentConversation } from "@/components/AgentConversation";
 import { AgentSettings } from "@/components/agent-config/AgentSettings";
 import { AgentTimelineView } from "@/components/agent-explorer/AgentTimelineView";
+import { AgentContextView } from "@/components/agent-explorer/AgentContextView";
 import { AgentRuntimeSummary } from "@/components/agent-explorer/AgentRuntimeSummary";
 import { SchedulePickerDialog } from "@/components/SchedulePickerDialog";
 import type { AgentExplorerController } from "@/hooks/use-agent-explorer";
@@ -89,7 +91,7 @@ export function AgentChatPanel({
 
   const [renaming, setRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
-  const [view, setView] = useState<"chat" | "timeline" | "settings">("chat");
+  const [view, setView] = useState<"chat" | "timeline" | "settings" | "context">("chat");
 
   useEffect(() => {
     // Timeline/settings are scoped to the selected agent. A switch must not
@@ -211,6 +213,19 @@ export function AgentChatPanel({
                 <TooltipContent>Timeline</TooltipContent>
               </Tooltip>
             )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  data-testid="agent-context-info"
+                  aria-label="Agent context"
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={() => setView("context")}
+                >
+                  <Eye size={16} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Context</TooltipContent>
+            </Tooltip>
             <div className="ml-auto flex flex-row gap-2">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -312,6 +327,13 @@ export function AgentChatPanel({
           ) : view === "timeline" ? (
             <AgentTimelineView
               agentId={selectedAgentDetail.agentId}
+              onBack={() => setView("chat")}
+            />
+          ) : view === "context" ? (
+            <AgentContextView
+              agentId={selectedAgentDetail.agentId}
+              sessions={sessions}
+              initialSessionId={selectedSessionId}
               onBack={() => setView("chat")}
             />
           ) : (
