@@ -51,6 +51,17 @@ interface JobListProps {
 }
 
 export function JobList({ venueId }: JobListProps = {}) {
+  // Lets SchedulePickerDialog's "Schedule created" toast deep-link to
+  // /jobs?tab=scheduled (#230). Read after mount rather than via
+  // next/navigation's useSearchParams so this doesn't force the route out
+  // of static rendering / require a Suspense boundary for what's a one-off
+  // query param read.
+  const [activeTab, setActiveTab] = useState("history");
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("tab") === "scheduled") {
+      setActiveTab("scheduled");
+    }
+  }, []);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [dateFilter, setDateFilter] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -337,7 +348,7 @@ export function JobList({ venueId }: JobListProps = {}) {
   return (
     <ContentLayout >
       <TopBar venueId={venueId} venueName={venueObj?.metadata.name}/>
-      <Tabs defaultValue="history" className="mt-2">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-2">
         <TabsList data-testid="jobs-tabs">
           <TabsTrigger value="history" data-testid="jobs-tab-history">History</TabsTrigger>
           <TabsTrigger value="scheduled" data-testid="jobs-tab-scheduled">Scheduled</TabsTrigger>

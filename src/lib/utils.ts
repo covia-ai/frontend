@@ -92,6 +92,34 @@ export function formatCountdown(targetMs: number): string {
   return `in ${Math.round(diffSec)} sec`;
 }
 
+// Fixed-interval cadence for a recurring schedule's `repeat.every` — "every
+// 5 min" style. Only whole-unit intervals need to look clean here (presets
+// are hourly/daily/weekly); anything else falls back to the largest whole
+// unit plus a remainder in the next one down.
+export function formatInterval(ms: number): string {
+  const sec = ms / 1000;
+  const min = ms / 60000;
+  const hour = ms / 3600000;
+  const day = ms / 86400000;
+
+  if (day >= 1) {
+    const days = Math.floor(day);
+    const hours = Math.round((day - days) * 24);
+    return hours > 0 ? `every ${days} d ${hours} hr` : `every ${days} d`;
+  }
+  if (hour >= 1) {
+    const hours = Math.floor(hour);
+    const mins = Math.round((hour - hours) * 60);
+    return mins > 0 ? `every ${hours} hr ${mins} min` : `every ${hours} hr`;
+  }
+  if (min >= 1) {
+    const mins = Math.floor(min);
+    const secs = Math.round((min - mins) * 60);
+    return secs > 0 ? `every ${mins} min ${secs} sec` : `every ${mins} min`;
+  }
+  return `every ${Math.round(sec)} sec`;
+}
+
 const DATE_TIME_FORMATTER = new Intl.DateTimeFormat(undefined, {
   year: "numeric",
   month: "short",

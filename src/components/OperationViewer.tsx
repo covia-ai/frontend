@@ -131,6 +131,9 @@ export function OperationViewer({
                 confirmationRequired={confirmationRequired}
                 isAuthenticated={isAuthenticated}
                 onRun={requestRun}
+                scheduleTarget={
+                  venue ? { venue, operation: asset.id, input: inputController.input } : undefined
+                }
               />
             ) : (
               <div className="my-2 h-32 w-full animate-pulse rounded-md bg-muted" />

@@ -3,7 +3,9 @@
 import { Fragment } from "react";
 import dynamic from "next/dynamic";
 import { FileJson, Lock } from "lucide-react";
+import type { Venue } from "@covia/covia-sdk";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { SchedulePickerDialog } from "@/components/SchedulePickerDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
@@ -51,6 +53,15 @@ const INPUT_TYPES = [
   "array",
 ];
 
+// Passed only when the resolved asset/venue are known — lets
+// OperationActions render "Run on a schedule" next to Run/Reset (#230).
+// Absent for callers that haven't resolved an operation reference yet.
+type ScheduleTarget = {
+  venue: Venue;
+  operation: string;
+  input: unknown;
+};
+
 type OperationInputFormProps = {
   schema?: OperationInputSchema;
   outputSchema?: unknown;
@@ -60,6 +71,7 @@ type OperationInputFormProps = {
   confirmationRequired: boolean;
   isAuthenticated: boolean;
   onRun: () => void;
+  scheduleTarget?: ScheduleTarget;
 };
 
 // Bottom-of-card link to the raw input/output schema — kept next to the
@@ -100,12 +112,14 @@ function OperationActions({
   isAuthenticated,
   onRun,
   onReset,
+  scheduleTarget,
 }: {
   loading: boolean;
   confirmationRequired: boolean;
   isAuthenticated: boolean;
   onRun: () => void;
   onReset: () => void;
+  scheduleTarget?: ScheduleTarget;
 }) {
   if (loading) {
     return (
@@ -142,6 +156,13 @@ function OperationActions({
       >
         Reset
       </Button>
+      {scheduleTarget && (
+        <SchedulePickerDialog
+          venue={scheduleTarget.venue}
+          operation={scheduleTarget.operation}
+          input={scheduleTarget.input}
+        />
+      )}
     </>
   );
 }
@@ -255,6 +276,7 @@ export function OperationInputForm({
   confirmationRequired,
   isAuthenticated,
   onRun,
+  scheduleTarget,
 }: OperationInputFormProps) {
   const properties = schema?.properties;
   const requiredKeys = schema?.required ?? [];
@@ -286,6 +308,7 @@ export function OperationInputForm({
             isAuthenticated={isAuthenticated}
             onRun={onRun}
             onReset={controller.reset}
+            scheduleTarget={scheduleTarget}
           />
         </div>
         <div className="flex justify-end">
@@ -329,6 +352,7 @@ export function OperationInputForm({
             isAuthenticated={isAuthenticated}
             onRun={onRun}
             onReset={controller.reset}
+            scheduleTarget={scheduleTarget}
           />
         </div>
         <div className="flex justify-end">
