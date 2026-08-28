@@ -11,6 +11,7 @@ import {
   AgentSystemPromptField,
 } from "@/components/agent-config/AgentConfigEditor";
 import { ToolSkillPicker } from "@/components/agent-config/ToolSkillPicker";
+import { AgentCapsEditor } from "@/components/agent-config/AgentCapsEditor";
 import { ConfigFields } from "@/components/agent-explorer/ConfigFields";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import {
   agentConfigUpdatePatch,
   configFromAgentSettingsDraft,
   createAgentSettingsDraft,
+  type AgentConfigSaveOutcome,
   type AgentSettingsDraft,
 } from "@/lib/agent-settings";
 
@@ -34,7 +36,7 @@ function stringArray(value: unknown): string[] {
 type AgentSettingsProps = {
   agent: AgentDetail;
   onBack: () => void;
-  onSave: (config: Record<string, unknown>) => Promise<boolean>;
+  onSave: (config: Record<string, unknown>) => Promise<AgentConfigSaveOutcome>;
 };
 
 export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
@@ -98,12 +100,18 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
   ) => {
     setCapabilitySaving(true);
     try {
-      const saved = await onSave({ [key]: nextValue });
-      if (saved) {
+      const outcome = await onSave({ [key]: nextValue });
+      if (outcome.status === "saved") {
         initialConfig.current = { ...initialConfig.current, [key]: nextValue };
         const jsonField =
           key === "tools" ? "toolsJson" : key === "skills" ? "skillsJson" : "contextJson";
         setField(jsonField, JSON.stringify(nextValue, null, 2));
+      } else if (outcome.status === "conflict") {
+        // The server config moved since this editor loaded — rebase the
+        // whole draft onto the fresh truth rather than reapplying just this
+        // one toggle against a config we now know is stale.
+        initialConfig.current = outcome.freshConfig;
+        setDraft(createAgentSettingsDraft(outcome.freshConfig));
       }
     } finally {
       setCapabilitySaving(false);
@@ -124,10 +132,13 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
     if (!result.config || !dirty) return;
     setSaving(true);
     try {
-      const saved = await onSave(patch);
-      if (saved) {
+      const outcome = await onSave(patch);
+      if (outcome.status === "saved") {
         initialConfig.current = result.config;
         setDraft(createAgentSettingsDraft(result.config));
+      } else if (outcome.status === "conflict") {
+        initialConfig.current = outcome.freshConfig;
+        setDraft(createAgentSettingsDraft(outcome.freshConfig));
       }
     } finally {
       setSaving(false);
@@ -244,14 +255,11 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
                 onChange={(value) => setField("skillsJson", value)}
                 placeholder={'[\n  "w/skills"\n]'}
               />
-              <AgentJsonConfigField
-                id="agent-caps-json"
-                label="Capabilities"
-                description="Hard authorization scopes. Review changes carefully; an empty array grants no scoped authority."
-                value={draft.capsJson}
-                onChange={(value) => setField("capsJson", value)}
-                placeholder={'[\n  { "with": "w/", "can": "crud/read" }\n]'}
-                className="min-h-44"
+              <AgentCapsEditor
+                enabled={draft.capsEnabled}
+                onEnabledChange={(next) => setField("capsEnabled", next)}
+                caps={draft.caps}
+                onCapsChange={(next) => setField("caps", next)}
               />
               <div className="rounded-md border p-4">
                 <div className="flex items-start gap-3">

@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { NotFoundError } from "@covia/covia-sdk";
 import { useAgentExplorer } from "@/hooks/use-agent-explorer";
 
@@ -15,7 +15,7 @@ jest.mock("@/lib/notify", () => ({
   jobFailure: (err: unknown) => ({ reason: err, jobHref: undefined }),
 }));
 
-function makeVenue(venueId: string, agentIds: string[]) {
+function makeVenue(venueId: string, agentIds: string[], configs: Record<string, unknown> = {}) {
   return {
     venueId,
     agents: {
@@ -24,12 +24,15 @@ function makeVenue(venueId: string, agentIds: string[]) {
       }),
       info: jest.fn().mockImplementation((agentId: string) =>
         agentIds.includes(agentId)
-          ? Promise.resolve({ agentId, status: "SLEEPING" })
+          ? Promise.resolve({ agentId, status: "SLEEPING", config: configs[agentId] ?? {} })
           : Promise.reject(new NotFoundError(`Agent not found: ${agentId}`)),
       ),
     },
     agent: jest.fn().mockImplementation(() => ({
       chatSession: jest.fn(),
+      update: jest.fn().mockResolvedValue(undefined),
+      suspend: jest.fn().mockResolvedValue(undefined),
+      resume: jest.fn().mockResolvedValue(undefined),
     })),
     workspace: {
       read: jest.fn().mockResolvedValue({ exists: false, value: null }),
@@ -38,7 +41,7 @@ function makeVenue(venueId: string, agentIds: string[]) {
   };
 }
 
-const { notifyError } = jest.requireMock("@/lib/notify");
+const { notifyError, notifyWarning } = jest.requireMock("@/lib/notify");
 
 describe("useAgentExplorer — venue switch under an open agent", () => {
   beforeEach(() => {
@@ -72,5 +75,55 @@ describe("useAgentExplorer — venue switch under an open agent", () => {
     await waitFor(() => expect(notifyError).toHaveBeenCalled());
     expect(result.current.selectedAgentId).toBe("agent-a");
     expect(result.current.detailError).toBe(true);
+  });
+});
+
+describe("useAgentExplorer — updateAgentConfig re-fetch-before-save guard (#161)", () => {
+  beforeEach(() => {
+    (notifyError as jest.Mock).mockReset();
+    (notifyWarning as jest.Mock).mockReset();
+  });
+
+  it("aborts without writing when the server config changed since it was loaded", async () => {
+    mockVenue = makeVenue("venue-a", ["agent-a"], { "agent-a": { systemPrompt: "v1" } });
+    const { result } = renderHook(() => useAgentExplorer("agent-a"));
+    await waitFor(() => expect(result.current.selectedAgentDetail).not.toBeNull());
+
+    const agentHandle = mockVenue.agent.mock.results[0].value;
+    // Simulate an external edit landing between load and this save attempt.
+    mockVenue.agents.info.mockResolvedValueOnce({
+      agentId: "agent-a",
+      status: "SLEEPING",
+      config: { systemPrompt: "changed elsewhere" },
+    });
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await result.current.updateAgentConfig({ systemPrompt: "my edit" });
+    });
+
+    expect(outcome).toEqual({ status: "conflict", freshConfig: { systemPrompt: "changed elsewhere" } });
+    expect(agentHandle.update).not.toHaveBeenCalled();
+    expect(notifyWarning).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(result.current.selectedAgentDetail?.config).toEqual({ systemPrompt: "changed elsewhere" }),
+    );
+  });
+
+  it("proceeds normally when the server config hasn't changed", async () => {
+    mockVenue = makeVenue("venue-a", ["agent-a"], { "agent-a": { systemPrompt: "v1" } });
+    const { result } = renderHook(() => useAgentExplorer("agent-a"));
+    await waitFor(() => expect(result.current.selectedAgentDetail).not.toBeNull());
+
+    const agentHandle = mockVenue.agent.mock.results[0].value;
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await result.current.updateAgentConfig({ systemPrompt: "my edit" });
+    });
+
+    expect(outcome).toEqual({ status: "saved" });
+    expect(agentHandle.update).toHaveBeenCalledWith({ config: { systemPrompt: "my edit" } });
+    expect(notifyWarning).not.toHaveBeenCalled();
   });
 });
