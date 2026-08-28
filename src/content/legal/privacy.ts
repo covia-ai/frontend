@@ -1,8 +1,14 @@
-// Covia Privacy Policy v1.1 (effective 2026-08-27): adds the connector.covia.ai
-// paragraph. v1.0 (effective 2026-08-14) approved by Chirdeep Chhabra 2026-08-14;
-// v1.1 pending his approval (this PR). Edit the markdown below to change the page.
+// Covia Privacy Policy v1.2 (effective 2026-08-28): names PostHog as an
+// analytics processor, discloses the hashed-DID analytics identifier, and adds
+// analytics retention. Required before NEXT_PUBLIC_POSTHOG_KEY is set: PostHog
+// is a sub-processor, so the disclosure gates the key, not just session replay.
+// v1.1 (effective 2026-08-27) added the connector.covia.ai paragraph; v1.0
+// (effective 2026-08-14) approved by Chirdeep Chhabra 2026-08-14; v1.1 and v1.2
+// pending his approval. Keep in step with PRIVACY_POLICY_VERSION in
+// src/lib/consent.ts, which re-prompts for consent when it moves.
+// No em dashes in the copy below (house style). Edit the markdown to change the page.
 export const PRIVACY_POLICY_MD = `
-**Effective date: 27 August 2026** · Version 1.1
+**Effective date: 28 August 2026** · Version 1.2
 
 ## Introduction
 
@@ -33,7 +39,7 @@ Three structural facts shape everything below:
 **On the app and websites:**
 
 - **Local browser storage**: your venue list, device keys, session tokens, and preferences. Stored on your device, not our servers.
-- **Analytics**: with your consent (Google consent mode), aggregated usage events on app.covia.ai and our websites. Declining non-essential cookies disables this.
+- **Analytics**: with your consent, usage events on app.covia.ai and our websites, processed by Google Analytics and PostHog. These record which pages and features are used, not what you put into them: we do not send your job inputs or outputs, asset contents, agent conversations, workspace data, or secrets to either service, and we do not record your screen or session. Where you are signed in, events carry a truncated one-way hash of your DID as a pseudonymous identifier, so that repeat visits can be counted as one person; the hash cannot be reversed to your DID and no email address is involved. Declining non-essential cookies means neither service is loaded at all.
 
 **What we deliberately do not collect:** private keys; secret values in readable form; the content of prompts you send to LLM providers under your own API keys; anything at all from self-hosted venues.
 
@@ -47,11 +53,11 @@ We use personal data to: operate and secure the services (legal bases: performan
 
 ## Cookies & tracking
 
-app.covia.ai uses a consent banner with Google consent mode. Essential storage (your venue list, keys, session state) is local to your browser and functions without consent because the app cannot work without it; it is not tracking. Analytics cookies load only after you opt in, and the most privacy-preserving choice is preselected. We use no advertising trackers.
+app.covia.ai uses a consent banner with three categories: essential, analytics, and marketing. Essential storage (your venue list, keys, session state) is local to your browser and functions without consent because the app cannot work without it; it is not tracking. Analytics is off unless you opt in, and the most privacy-preserving choice is preselected: until you accept, neither Google Analytics nor PostHog is loaded. If your browser sends a Do Not Track signal we do not load them at all, whatever the banner says. The marketing category is reserved and currently sets nothing. You can change or withdraw your choice at any time from the Privacy Policy page in the app. We use no advertising trackers.
 
 ## Third-party services
 
-Service providers that may process personal data on our behalf: cloud hosting (Google Cloud, Amazon Web Services, Microsoft Azure), Cloudflare (hosting and edge delivery of the connector at connector.covia.ai, including its encrypted grant store), Google Workspace (email and internal collaboration), Google Analytics (with consent), Brevo (email communications), Notion (internal documentation), and customer-relationship-management tooling for handling enquiries. OAuth sign-in involves your chosen identity provider. A current sub-processor list is available on request at privacy@covia.ai.
+Service providers that may process personal data on our behalf: cloud hosting (Google Cloud, Amazon Web Services, Microsoft Azure), Cloudflare (hosting and edge delivery of the connector at connector.covia.ai, including its encrypted grant store), Google Workspace (email and internal collaboration), Google Analytics and PostHog (product analytics, both only with consent; PostHog processes in the European Union), Brevo (email communications), Notion (internal documentation), and customer-relationship-management tooling for handling enquiries. OAuth sign-in involves your chosen identity provider. A current sub-processor list is available on request at privacy@covia.ai.
 
 ## International transfers
 
@@ -63,6 +69,7 @@ Covia-operated venues and services are hosted in Singapore, the United States, a
 - **Job records**: retained as your audit trail while your account is active; you may delete your own job records at any time (each deletion is itself an auditable action).
 - **venue-test**: a scratch venue; data may be cleared at any time without notice and should never contain personal data you care about.
 - **Server logs**: 90 days.
+- **Analytics events**: 90 days in Google Analytics and PostHog. Aggregate reports derived from them are kept longer and identify no one.
 - **Connector grants and tokens**: a capability grant you sign through connector.covia.ai is stored, encrypted, until it expires or you revoke it; issued access tokens expire within one hour and refresh tokens within 30 days, and never outlive the grant; short-lived authorisation requests and codes are held only for minutes. Connector request logs follow the server-log period above.
 - **Backups**: deleted data leaves backups within 35 days.
 

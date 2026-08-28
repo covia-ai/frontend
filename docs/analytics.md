@@ -214,26 +214,37 @@ asset names, agent names and DIDs.
 
 ## Session replay
 
-**Off, and must stay off until the privacy policy is updated.**
+**Off, and must stay off until the privacy policy discloses it.**
 
-Privacy policy v1.0 (`src/content/legal/privacy.ts`) does not name PostHog as a
-processor and describes analytics as "aggregated usage events". Replay on this
-app would capture job inputs and outputs, agent transcripts, workspace and
-asset content, and secret names. PostHog masks form inputs by default but not
-arbitrary rendered text.
+Privacy policy v1.2 (`src/content/legal/privacy.ts`) names PostHog as a
+processor, which is what permits events. It also states plainly that we do not
+record your screen or session, so enabling replay contradicts the published
+policy until that sentence changes.
+
+Replay on this app would capture job inputs and outputs, agent transcripts,
+workspace and asset content, and secret names. PostHog masks form inputs by
+default but not arbitrary rendered text.
 
 Before setting `NEXT_PUBLIC_POSTHOG_SESSION_RECORDING=true`:
 
-1. Update the privacy policy to name PostHog as a sub-processor and disclose
-   replay, with an updated effective date and version.
+1. Amend the policy: remove the "we do not record your screen or session"
+   commitment, disclose replay and what it captures, bump the version and
+   effective date, and bump `PRIVACY_POLICY_VERSION` in `src/lib/consent.ts`
+   to match (which re-prompts every user for consent).
 2. Agree a masking configuration covering job, asset, workspace and agent-chat
    surfaces.
 3. Update the public telemetry manifest at `covia.ai/telemetry` (§7).
 
-Note that adding PostHog **at all** — even events only — makes it a
-sub-processor the current policy does not list. That is why
-`NEXT_PUBLIC_POSTHOG_KEY` is unset by default: PostHog cannot load until
-someone deliberately configures it.
+Note that adding PostHog **at all**, events only and no replay, makes it a
+sub-processor. Policy v1.2 covers that case; `NEXT_PUBLIC_POSTHOG_KEY` is still
+unset by default so nothing loads until someone deliberately configures it.
+
+### Retention commitment
+
+Policy v1.2 states raw analytics events are kept for **90 days** in both
+Google Analytics and PostHog (D070 §5.7). That is a published commitment, not a
+default: **set GA4's data-retention period and PostHog's to 90 days**, or the
+policy overstates what is true.
 
 ## Verifying
 
