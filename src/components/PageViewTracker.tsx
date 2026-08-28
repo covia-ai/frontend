@@ -1,38 +1,29 @@
 // components/PageViewTracker.tsx
 'use client'
 
-import { useEffect, Suspense } from 'react'
+import { useEffect, useRef, Suspense } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { gtmEvent } from '@/lib/utils'
+import { buildAnalyticsPath, trackPageView } from '@/lib/analytics'
 
-const SENSITIVE_QUERY_PARAMS = new Set([
-  'token',
-  'access_token',
-  'refresh_token',
-  'id_token',
-  'code',
-]);
-
-export function buildAnalyticsPath(pathname: string, rawQuery: string): string | null {
-  // Authentication callbacks can carry bearer credentials. Never put any
-  // part of those URLs in the analytics data layer.
-  if (pathname === '/auth/callback') return null;
-
-  const params = new URLSearchParams(rawQuery);
-  for (const key of SENSITIVE_QUERY_PARAMS) params.delete(key);
-  const query = params.toString();
-  return pathname + (query ? `?${query}` : '');
-}
+// Re-exported so existing importers (and the test suite) keep their entry
+// point; the implementation now lives with the rest of the analytics config.
+export { buildAnalyticsPath }
 
 function PageViewTrackerContent() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  // GA4's `config` call emits the page_view for the load that brings gtag in,
+  // so the first render here must not send a second one.
+  const initialView = useRef(true)
 
   useEffect(() => {
-    if (pathname) {
-      const url = buildAnalyticsPath(pathname, searchParams?.toString() ?? '')
-      if (url) gtmEvent.pageView(url, document.title)
+    if (!pathname) return
+    if (initialView.current) {
+      initialView.current = false
+      return
     }
+    const url = buildAnalyticsPath(pathname, searchParams?.toString() ?? '')
+    if (url) trackPageView(url, document.title)
   }, [pathname, searchParams])
 
   return null

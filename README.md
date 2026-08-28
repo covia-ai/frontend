@@ -23,6 +23,20 @@ Set `NEXT_PUBLIC_IS_ENV_PROD=false` to include development and local venues in
 the default venue list. Production mode connects only to the released Covia
 venues.
 
+## Analytics
+
+GA4 and PostHog, both gated on the analytics cookie-consent category and both
+inert during local development. See [docs/analytics.md](docs/analytics.md) for
+the configuration, the event taxonomy, and the two decisions that deviate from
+the D070 spec (identity is a hashed DID, and session replay stays off).
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `NEXT_PUBLIC_POSTHOG_KEY` | unset | PostHog project key. PostHog does not load while unset. |
+| `NEXT_PUBLIC_POSTHOG_HOST` | `https://eu.i.posthog.com` | PostHog ingestion host. |
+| `NEXT_PUBLIC_POSTHOG_SESSION_RECORDING` | unset | Session replay. Leave unset — needs a privacy policy update first. |
+| `NEXT_PUBLIC_ANALYTICS_DEBUG` | unset | Let a non-production host send to the real GA4 property. |
+
 ## Authentication
 
 Authentication belongs to each venue rather than to the Next.js application:

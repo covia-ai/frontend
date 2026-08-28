@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/hooks/use-auth";
 import { useVenues } from "@/hooks/use-venues";
 import { gtmEvent } from "@/lib/utils";
+import { identify } from "@/lib/analytics";
 import { safeReturnTo } from "@/lib/oauth";
 
 function AuthCallbackInner() {
@@ -22,6 +23,9 @@ function AuthCallbackInner() {
     if (token && did && venueId) {
       loginWithToken(venueId, token, did);
       gtmEvent.signUp('oauth');
+      // D070 §4 identity. The DID stands in for the spec's hashed email,
+      // which this app never sees — see the note in lib/analytics.
+      void identify(did, { auth_method: 'oauth' });
       router.replace(returnTo);
     } else {
       router.replace("/signUp");

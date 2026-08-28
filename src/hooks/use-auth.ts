@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { useVenues } from "@/hooks/use-venues";
 import { browserStorage } from "@/lib/persist-storage";
+import { resetIdentity } from "@/lib/analytics";
 
 export type BearerVenueAuth = {
   type: "bearer";
@@ -161,6 +162,9 @@ export const useAuthStore = create(
           const { [venueId]: _, ...rest } = authMap;
           set({ authMap: rest });
         }
+        // Signing out of any venue drops the analytics identity (D070 §4):
+        // subsequent events must not stay attributed to the DID that left.
+        resetIdentity();
       },
 
       purgeVenueAuth: (venueId: string) => {

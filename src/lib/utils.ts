@@ -3,7 +3,7 @@ import { twMerge } from "tailwind-merge"
 import * as mime from 'mime-types'
 import copy from 'copy-to-clipboard';
 import { notifyError, notifySuccess } from "@/lib/notify"
-import { sendGTMEvent } from '@next/third-parties/google'
+import { track, trackLegacyAlias, trackPageView } from "@/lib/analytics"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -174,161 +174,141 @@ export async function copyDataToClipBoard(entityId: string, message: string) {
   }
 }
 
+/**
+ * Product event helpers.
+ *
+ * The name is historic: these used to push into the GTM dataLayer. They now
+ * go through `lib/analytics.track()`, which is consent-gated and fires to GA4
+ * and PostHog. The exported shape is unchanged so no call site had to move.
+ *
+ * Event names are preserved as they were, so existing GA4 reports keep
+ * working. Where D070 §3.2 names an event for this surface, that taxonomy
+ * event is emitted as well — `product_login`, `product_signup`,
+ * `product_feature_used`, `agent_did_issued`, `content_page_view`.
+ */
+
+/** The handful of actions reported as D070 §3.2 `product.feature_used`. */
+function feature(featureId: string) {
+  track('product_feature_used', { feature_id: featureId })
+}
+
 export const gtmEvent = {
   // Button clicks
-  buttonClick: (buttonName: string, param:string) => {
-    sendGTMEvent({
-      event: 'button_click',
+  buttonClick: (buttonName: string, param: string) => {
+    track('button_click', {
       button_name: buttonName,
-      custom_param : param
+      custom_param: param,
     })
+    // The retired GTM container renamed this to `click` on the way to GA4,
+    // mapping button_name → button_label. Note GA4's enhanced measurement
+    // also emits an event called `click` for outbound links, so reports on
+    // this name were already a mix of the two.
+    trackLegacyAlias('click', {
+      button_label: buttonName,
+      custom_param: param,
+    })
+    if (buttonName === 'Invoke Operation') feature('run_operation')
   },
 
   // Page views (for custom page tracking)
   pageView: (pagePath: string, pageTitle: string) => {
-    sendGTMEvent({
-      event: 'page_view',
-      page_path: pagePath,
-      page_title: pageTitle,
-    })
+    trackPageView(pagePath, pageTitle)
   },
 
   // Form submissions
   formSubmit: (formName: string, formId?: string) => {
-    sendGTMEvent({
-      event: 'form_submit',
-      form_name: formName,
-      form_id: formId,
-    })
+    track('form_submit', { form_name: formName, form_id: formId })
   },
 
-
-  custom: (eventName: string, params?: Record<string, any>) => {
-    sendGTMEvent({
-      event: eventName,
-      ...params,
-    })
+  custom: (eventName: string, params?: Record<string, unknown>) => {
+    track(eventName, params ?? {})
   },
 
-  // GA4 recommended sign_up event: https://support.google.com/analytics/answer/9267735
+  /**
+   * Fired when a user completes sign-in. Despite the name this has always run
+   * for returning users too — the app holds no server-side state and cannot
+   * tell a first sign-in from a repeat one — so it reports D070's
+   * `product.login`. Genuinely new identities are reported separately by
+   * `didIssued`, which fires when a device key is created.
+   */
   signUp: (method: string) => {
-    sendGTMEvent({
-      event: 'sign_up',
-      method,
-    })
+    track('product_login', { method })
+    // The retired GTM container forwarded this to GA4 as `sign_up`, carrying
+    // `method`. Kept so existing reports do not go flat at the cutover.
+    trackLegacyAlias('sign_up', { method })
+  },
+
+  /**
+   * D070 §3.2 `agent.did_issued` — a new identity entering the ecosystem.
+   * Also emits `product.signup`, since a freshly generated device key is the
+   * one moment this client can honestly call a signup.
+   */
+  didIssued: (type: 'user' | 'venue' | 'agent', source: string) => {
+    track('agent_did_issued', { type, source })
+    if (type === 'user') track('product_signup', { source })
   },
 
   connectVenue: (venueId: string) => {
-    sendGTMEvent({
-      event: 'connect_venue',
-      venue_id: venueId,
-    })
+    track('connect_venue', { venue_id: venueId })
+    feature('connect_venue')
   },
 
   connectVenueFailed: (venueId: string, reason?: string) => {
-    sendGTMEvent({
-      event: 'connect_venue_failed',
-      venue_id: venueId,
-      reason,
-    })
+    track('connect_venue_failed', { venue_id: venueId, reason })
   },
 
   removeVenue: (venueId: string) => {
-    sendGTMEvent({
-      event: 'remove_venue',
-      venue_id: venueId,
-    })
+    track('remove_venue', { venue_id: venueId })
   },
 
   createAsset: (assetName: string) => {
-    sendGTMEvent({
-      event: 'create_asset',
-      asset_name: assetName,
-    })
+    track('create_asset', { asset_name: assetName })
+    feature('create_asset')
   },
 
   createAssetFailed: (assetName: string, reason?: string) => {
-    sendGTMEvent({
-      event: 'create_asset_failed',
-      asset_name: assetName,
-      reason,
-    })
+    track('create_asset_failed', { asset_name: assetName, reason })
   },
 
   createAgent: (agentId: string, provider?: string) => {
-    sendGTMEvent({
-      event: 'create_agent',
-      agent_id: agentId,
-      provider,
-    })
+    track('create_agent', { agent_id: agentId, provider })
+    feature('create_agent')
   },
 
   createAgentFailed: (agentId?: string, reason?: string) => {
-    sendGTMEvent({
-      event: 'create_agent_failed',
-      agent_id: agentId,
-      reason,
-    })
+    track('create_agent_failed', { agent_id: agentId, reason })
   },
 
   deleteAgent: (agentId: string) => {
-    sendGTMEvent({
-      event: 'delete_agent',
-      agent_id: agentId,
-    })
+    track('delete_agent', { agent_id: agentId })
   },
 
   deleteAgentFailed: (agentId: string, reason?: string) => {
-    sendGTMEvent({
-      event: 'delete_agent_failed',
-      agent_id: agentId,
-      reason,
-    })
+    track('delete_agent_failed', { agent_id: agentId, reason })
   },
 
   suspendAgent: (agentId: string) => {
-    sendGTMEvent({
-      event: 'suspend_agent',
-      agent_id: agentId,
-    })
+    track('suspend_agent', { agent_id: agentId })
   },
 
   suspendAgentFailed: (agentId: string, reason?: string) => {
-    sendGTMEvent({
-      event: 'suspend_agent_failed',
-      agent_id: agentId,
-      reason,
-    })
+    track('suspend_agent_failed', { agent_id: agentId, reason })
   },
 
   resumeAgent: (agentId: string) => {
-    sendGTMEvent({
-      event: 'resume_agent',
-      agent_id: agentId,
-    })
+    track('resume_agent', { agent_id: agentId })
   },
 
   resumeAgentFailed: (agentId: string, reason?: string) => {
-    sendGTMEvent({
-      event: 'resume_agent_failed',
-      agent_id: agentId,
-      reason,
-    })
+    track('resume_agent_failed', { agent_id: agentId, reason })
   },
 
   sendAgentMessage: (agentId: string) => {
-    sendGTMEvent({
-      event: 'send_agent_message',
-      agent_id: agentId,
-    })
+    track('send_agent_message', { agent_id: agentId })
+    feature('send_agent_message')
   },
 
   sendAgentMessageFailed: (agentId: string, reason?: string) => {
-    sendGTMEvent({
-      event: 'send_agent_message_failed',
-      agent_id: agentId,
-      reason,
-    })
+    track('send_agent_message_failed', { agent_id: agentId, reason })
   },
 }
-
