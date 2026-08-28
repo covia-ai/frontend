@@ -23,7 +23,7 @@ jest.mock('posthog-js', () => ({
 }));
 
 import { webcrypto } from 'crypto';
-import { CONSENT_KEY } from '@/lib/consent';
+import { CONSENT_KEY, PRIVACY_POLICY_VERSION } from '@/lib/consent';
 
 // jsdom ships no WebCrypto; hashIdentity returns null without it.
 if (!globalThis.crypto?.subtle) {
@@ -40,8 +40,9 @@ function grantConsent(analytics = true) {
     CONSENT_KEY,
     JSON.stringify({
       categories: { essential: true, analytics, marketing: false },
-      // Must match lib/consent's PRIVACY_POLICY_VERSION or it reads as stale.
-      version: '2026-08-14',
+      // Anything other than the current version reads as stale, so take it
+      // from the module rather than restating the date here.
+      version: PRIVACY_POLICY_VERSION,
       givenAt: new Date().toISOString(),
     }),
   );

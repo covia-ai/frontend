@@ -1,7 +1,12 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CookieConsentComponent } from '@/components/CookieConsent';
-import { CONSENT_KEY, hasConsent, openConsentPreferences } from '@/lib/consent';
+import {
+  CONSENT_KEY,
+  PRIVACY_POLICY_VERSION,
+  hasConsent,
+  openConsentPreferences,
+} from '@/lib/consent';
 
 function clearAllStorage() {
   localStorage.clear();
@@ -24,7 +29,7 @@ describe('CookieConsentComponent', () => {
       CONSENT_KEY,
       JSON.stringify({
         categories: { essential: true, analytics: true, marketing: false },
-        version: '2026-08-14',
+        version: PRIVACY_POLICY_VERSION,
         givenAt: new Date().toISOString(),
       }),
     );

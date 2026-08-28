@@ -180,7 +180,7 @@ export const CookieConsentComponent = () => {
           />
           <CategoryRow
             name="Marketing"
-            description="Used to measure campaign effectiveness. Currently unused — reserved for future retargeting."
+            description="Used to measure campaign effectiveness. Currently unused, and reserved for future retargeting."
             checked={categories.marketing}
             onChange={(v) => toggle("marketing", v)}
           />
