@@ -45,7 +45,9 @@ import { AgentConversation } from "@/components/AgentConversation";
 import { AgentSettings } from "@/components/agent-config/AgentSettings";
 import { AgentTimelineView } from "@/components/agent-explorer/AgentTimelineView";
 import { AgentRuntimeSummary } from "@/components/agent-explorer/AgentRuntimeSummary";
+import { SchedulePickerDialog } from "@/components/SchedulePickerDialog";
 import type { AgentExplorerController } from "@/hooks/use-agent-explorer";
+import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import type { Session } from "@/config/types";
 import { defaultSessionTitle, formatSessionLabel } from "@/lib/agent-sessions";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
@@ -82,6 +84,7 @@ export function AgentChatPanel({
     selectSession,
     send,
   } = controller;
+  const venue = useAuthenticatedVenue();
   const transcriptRef = useRef<HTMLDivElement | null>(null);
 
   const [renaming, setRenaming] = useState(false);
@@ -243,6 +246,19 @@ export function AgentChatPanel({
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+              <SchedulePickerDialog
+                venue={venue}
+                operation="agent:trigger"
+                input={{ agentId: selectedAgentDetail.agentId, force: false, wait: false }}
+                triggerLabel="Schedule wake"
+                triggerSize="sm"
+                triggerClassName="w-auto"
+                disabled={
+                  !venue ||
+                  selectedAgentDetail.status === AgentStatus.SUSPENDED ||
+                  selectedAgentDetail.status === AgentStatus.TERMINATED
+                }
+              />
               {(selectedAgentDetail.status === AgentStatus.RUNNING ||
                 selectedAgentDetail.status === AgentStatus.SLEEPING) && (
                 <Button variant="outline" size="sm" onClick={suspend}>
