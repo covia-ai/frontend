@@ -75,7 +75,7 @@ preference order:
 | Branch | Verified in production |
 | --- | --- |
 | `sha256(did)` — device keys | **Yes.** preview.covia.ai, 2026-08-29: person `f440f1f783ed7d16`, 16 hex chars, `method: keypair`, full `agent_did_issued` → `product_signup` → `product_login` → `Identify` sequence |
-| `sha256(email)` — OAuth | **No. Never exercised against a real venue.** |
+| `sha256(email)` — OAuth | **No, and cannot be tested today.** No venue currently offers an OAuth provider, so there is no way to exercise this branch. Retained deliberately, not abandoned. |
 | `covia_uid` — venue-precomputed | **No.** No venue emits the claim yet |
 
 **The email branch is the one that matters and the one nobody has run.** It is
@@ -88,9 +88,19 @@ time.
 Unit tests cover it, including the normalisation cases below, but a test proves
 the hashing, not that the venue actually puts an `email` claim in the token for
 a given provider, nor that the value matches what covia.ai computed for the
-same person. **Do not treat the join as working until an OAuth sign-in has been
-observed producing a `user_id` on `product_login`.** Check it against
-`hashEmail` in covia-website for the same address.
+same person.
+
+**Status as of 2026-08-29: no venue offers an OAuth provider, so the branch
+cannot be exercised.** It ships anyway, because the alternative is deleting
+working code that costs nothing while dormant and would have to be rebuilt
+when a venue enables a provider. Device-key sign-in is unaffected and is what
+every current user takes.
+
+**Before relying on any §10 dashboard that depends on the cross-property
+join**, run one OAuth sign-in and confirm `product_login` carries a `user_id`
+matching `hashEmail` in covia-website for the same address. Until then the join
+is designed and tested, not demonstrated, and should not be quoted as a working
+metric.
 
 ### The normalisation is load-bearing
 

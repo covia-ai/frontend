@@ -1,20 +1,34 @@
-// Covia Privacy Policy v1.2 (effective 2026-08-28): names PostHog as an
-// analytics processor, discloses the hashed-DID analytics identifier, and adds
-// analytics retention stated per vendor, because they differ: GA4 is
-// configured to delete granular data at 14 months, while PostHog offers no
-// deletion schedule at all (its plans set a guaranteed *minimum* retention,
-// and a paid plan would raise that to seven years). Promising one figure for
-// both would be inaccurate whichever number was chosen. Also describes the
-// pseudonymous
-// analytics identifier as hashed email for OAuth accounts, hashed DID for
-// device keys. Required before
-// NEXT_PUBLIC_POSTHOG_KEY is set: PostHog
-// is a sub-processor, so the disclosure gates the key, not just session replay.
-// v1.1 (effective 2026-08-27) added the connector.covia.ai paragraph; v1.0
-// (effective 2026-08-14) approved by Chirdeep Chhabra 2026-08-14; v1.1 and v1.2
-// pending his approval. Keep in step with PRIVACY_POLICY_VERSION in
-// src/lib/consent.ts, which re-prompts for consent when it moves.
-// No em dashes in the copy below (house style). Edit the markdown to change the page.
+// Covia Privacy Policy v1.2 (effective 2026-08-28).
+//
+// Version history and approvals:
+//   v1.0  2026-08-14  approved by Chirdeep Chhabra 2026-08-14
+//   v1.1  2026-08-27  approved by Chirdeep Chhabra 2026-08-29
+//   v1.2  2026-08-28  approved by Chirdeep Chhabra 2026-08-29
+//
+// None of these has been reviewed by external counsel. That is a separate
+// question from the approvals above and is still outstanding.
+//
+// v1.1 added the connector.covia.ai paragraph. v1.2 covers the Phase 3
+// analytics work (D070) and says four things the earlier text did not:
+//
+//   1. PostHog is named as a processor. Adding it at all, events only and no
+//      replay, makes it a sub-processor, so this disclosure is what gates
+//      NEXT_PUBLIC_POSTHOG_KEY, not just session recording.
+//   2. The pseudonymous analytics identifier is disclosed: a truncated
+//      one-way hash of the email for OAuth accounts, of the DID for device
+//      keys, computed in the browser with neither raw value sent.
+//   3. Retention is stated per vendor because they differ. GA4 is configured
+//      to delete granular data at 14 months; PostHog has no deletion schedule
+//      at all, since its plans set a guaranteed *minimum* retention and a paid
+//      plan would raise that to seven years. One figure for both would have
+//      been inaccurate whichever number was chosen.
+//   4. The IP-derived approximate location both services record is disclosed,
+//      along with the fact that the raw IP is discarded and never stored.
+//
+// Keep in step with PRIVACY_POLICY_VERSION in src/lib/consent.ts, which
+// invalidates stored consent and re-prompts every user when it moves.
+// No em dashes in the copy below (house style). Edit the markdown to change
+// the page.
 export const PRIVACY_POLICY_MD = `
 **Effective date: 28 August 2026** · Version 1.2
 
