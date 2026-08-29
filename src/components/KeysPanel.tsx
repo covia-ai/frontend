@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Ed25519Auth, generateKeyPair, privateKeyToHex } from "@covia/covia-sdk";
+import { gtmEvent } from "@/lib/utils";
 import { useAuthStore } from "@/hooks/use-auth";
 import { useVenues } from "@/hooks/use-venues";
 import { notifySuccess, notifyWarning } from "@/lib/notify";
@@ -59,6 +60,7 @@ export function KeysPanel() {
     const { privateKey } = generateKeyPair();
     const hex = privateKeyToHex(privateKey);
     addDeviceKey(hex);
+    gtmEvent.didIssued("user", "keys-panel");
     notifySuccess("New device key generated", {
       description: `${didForKey(hex)} — export a copy if you need it on another device.`,
     });

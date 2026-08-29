@@ -95,10 +95,9 @@ export function OperationViewer({
       }
     }
 
-    gtmEvent.buttonClick(
-      "Invoke Operation",
-      asset?.metadata?.name || asset?.id || "unknown",
-    );
+    // The asset id, not metadata.name: an operation's name is free text its
+    // author chose, and must not travel to an analytics vendor.
+    gtmEvent.buttonClick("Invoke Operation", asset?.id || "unknown");
     void runOperation();
   };
 
@@ -131,6 +130,9 @@ export function OperationViewer({
                 confirmationRequired={confirmationRequired}
                 isAuthenticated={isAuthenticated}
                 onRun={requestRun}
+                scheduleTarget={
+                  venue ? { venue, operation: asset.id, input: inputController.input } : undefined
+                }
               />
             ) : (
               <div className="my-2 h-32 w-full animate-pulse rounded-md bg-muted" />

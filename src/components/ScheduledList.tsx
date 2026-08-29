@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,12 +19,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { useLatestQuery } from "@/hooks/use-latest-query";
 import { listScheduledEvents, type ScheduledEvent } from "@/lib/schedules";
-import { formatCountdown, formatDateTime, gtmEvent } from "@/lib/utils";
+import { formatCountdown, formatDateTime, formatInterval, formatRelativeTime, gtmEvent } from "@/lib/utils";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { VenueResolutionState } from "@/components/VenueResolutionState";
-import { CalendarClock, PlayCircle, XCircle } from "lucide-react";
+import { CalendarClock, PlayCircle, Repeat, XCircle } from "lucide-react";
 
 interface ScheduledListProps {
   venueId?: string;
@@ -51,6 +52,25 @@ export function ScheduledList({ venueId }: ScheduledListProps = {}) {
   const venueStatus = resolvedVenue.status ?? (venue ? "ready" : "absent");
   const [, setTick] = useState(0);
   const [actioning, setActioning] = useState<string | null>(null);
+
+  const jobHref = useCallback(
+    (jobId: string) =>
+      venueId ? `/venues/${encodeURIComponent(venue?.venueId ?? "")}/jobs/${jobId}` : `/job/${jobId}`,
+    [venueId, venue],
+  );
+
+  // scheduler:list only reports the target `op` (a catalog path or asset id,
+  // per AssetCard's operations-link handling) — never the agent an
+  // agent:trigger wake targets, since that lives in the event's `input`
+  // which the list endpoint doesn't surface. So this always links the
+  // operation itself; an agent wake links to the agent:trigger adapter.
+  const opHref = useCallback(
+    (op: string) =>
+      venueId
+        ? `/venues/${encodeURIComponent(venue?.venueId ?? "")}/operations/${op}`
+        : `/operation/${op}`,
+    [venueId, venue],
+  );
 
   const fetchEvents = useCallback(() => {
     if (!venue || venueStatus !== "ready") {
@@ -128,6 +148,7 @@ export function ScheduledList({ venueId }: ScheduledListProps = {}) {
             <TableHeader>
               <TableRow className="bg-secondary hover:bg-secondary rounded-full text-secondary-foreground">
                 <TableCell className="text-left">Operation</TableCell>
+                <TableCell className="text-left">Cadence</TableCell>
                 <TableCell className="text-left">Fires At</TableCell>
                 <TableCell className="text-left">Next Run</TableCell>
                 <TableCell className="text-left">Actions</TableCell>
@@ -136,14 +157,53 @@ export function ScheduledList({ venueId }: ScheduledListProps = {}) {
             <TableBody className="[&_tr:last-child]:border-b!">
               {events.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={4} className="h-[38vh] text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="h-[38vh] text-center text-muted-foreground">
                     No scheduled events
                   </TableCell>
                 </TableRow>
               ) : (
                 events.map((event) => (
                   <TableRow key={event.handle}>
-                    <TableCell className="font-mono">{event.op}</TableCell>
+                    <TableCell className="font-mono">
+                      <Link href={opHref(event.op)} className="hover:underline">
+                        {event.op}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      {event.repeat ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-1">
+                              <Repeat className="size-3.5 text-muted-foreground" />
+                              {formatInterval(event.repeat.every)}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {event.lastFired ? (
+                              <>
+                                Last fired {formatRelativeTime(new Date(event.lastFired).toISOString())}
+                                {event.lastJob && (
+                                  <>
+                                    {" — "}
+                                    <Link
+                                      href={jobHref(event.lastJob)}
+                                      className="underline"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      view job
+                                    </Link>
+                                  </>
+                                )}
+                              </>
+                            ) : (
+                              "Not fired yet"
+                            )}
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <span className="text-muted-foreground">Once</span>
+                      )}
+                    </TableCell>
                     <TableCell>{formatDateTime(event.time)}</TableCell>
                     <TableCell>{formatCountdown(event.time)}</TableCell>
                     <TableCell>
@@ -171,7 +231,11 @@ export function ScheduledList({ venueId }: ScheduledListProps = {}) {
                               <AlertDialogTitle>Trigger this scheduled event now?</AlertDialogTitle>
                               <AlertDialogDescription>
                                 {event.op} will run immediately instead of waiting for its scheduled
-                                time, then be removed from the schedule. This action cannot be undone.
+                                time
+                                {event.repeat
+                                  ? ", then stay scheduled at its next fire time."
+                                  : ", then be removed from the schedule."}{" "}
+                                This action cannot be undone.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>

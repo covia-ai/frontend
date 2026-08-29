@@ -60,12 +60,11 @@ export const CreateAssetComponent = ({venue: venueProp}: {venue?: Venue}) => {
             if (!assetFileData) throw new Error("Choose a file before continuing");
             await asset.putContent(assetFileData);
           }
-          gtmEvent.createAsset(jsonData.name ?? asset.id);
+          gtmEvent.createAsset(asset.id);
           setOpen(false);
           router.push(`/venues/${encodeURIComponent(venue.venueId)}/assets/${asset.id}`);
         } catch (error: unknown) {
           gtmEvent.createAssetFailed(
-            jsonData.name ?? "unknown",
             error instanceof Error ? error.message : undefined,
           );
           notifyError("Unable to create asset", error, venue?.baseUrl);

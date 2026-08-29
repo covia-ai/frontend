@@ -22,7 +22,8 @@ import {
 import { normalizeAgentEntries } from "@/lib/agent-list";
 import { messageContentToString } from "@/lib/agent-turns";
 import { sessionEntriesToSessions } from "@/lib/agent-sessions";
-import { jobFailure, notifyError, notifySuccess } from "@/lib/notify";
+import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
+import { agentConfigsEqual, type AgentConfigSaveOutcome } from "@/lib/agent-settings";
 import { gtmEvent } from "@/lib/utils";
 import { dispatchAgentMessage } from "@/lib/agent-chat";
 
@@ -378,9 +379,30 @@ export function useAgentExplorer(initialAgentId?: string) {
   };
 
   const updateAgentConfig = useCallback(
-    async (config: Record<string, unknown>): Promise<boolean> => {
-      if (!agentHandle || !selectedAgentId || !selectedAgentDetail) return false;
+    async (config: Record<string, unknown>): Promise<AgentConfigSaveOutcome> => {
+      if (!agentHandle || !selectedAgentId || !selectedAgentDetail) return { status: "failed" };
       const agentId = selectedAgentId;
+
+      // Re-fetch immediately before writing so a concurrent edit made
+      // elsewhere (another tab/session) since this config was loaded is
+      // caught rather than silently overwritten (#161). No version/etag
+      // exists on agent config, so this is a plain fetch-and-compare against
+      // the config this hook currently believes is live.
+      let fresh: AgentDetail;
+      try {
+        fresh = await loadAgentDetail(agentId);
+      } catch (error) {
+        notifyError("Unable to verify agent settings before saving", error, venue?.baseUrl);
+        return { status: "failed" };
+      }
+      if (!agentConfigsEqual(fresh.config ?? {}, selectedAgentDetail.config ?? {})) {
+        setSelectedAgentDetail(fresh);
+        notifyWarning(
+          "This agent's settings changed since you loaded this editor. The latest version is now shown — reapply your edit and save again.",
+        );
+        return { status: "conflict", freshConfig: fresh.config ?? {} };
+      }
+
       const wasRunning = selectedAgentDetail.status === AgentStatus.RUNNING;
       let suspendedForUpdate = false;
 
@@ -406,7 +428,7 @@ export function useAgentExplorer(initialAgentId?: string) {
         notifyError("Unable to update agent settings", reason, venue?.baseUrl, jobHref);
         void refreshAgentDetail(agentId);
         void refreshAgentList();
-        return false;
+        return { status: "failed" };
       }
 
       if (wasRunning) {
@@ -426,13 +448,14 @@ export function useAgentExplorer(initialAgentId?: string) {
         refreshAgentDetail(agentId),
         refreshAgentList(),
       ]);
-      return true;
+      return { status: "saved" };
     },
     [
       agentHandle,
       selectedAgentDetail,
       selectedAgentId,
       venue,
+      loadAgentDetail,
       refreshAgentDetail,
       refreshAgentList,
     ],
