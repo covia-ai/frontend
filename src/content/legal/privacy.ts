@@ -1,7 +1,11 @@
 // Covia Privacy Policy v1.2 (effective 2026-08-28): names PostHog as an
 // analytics processor, discloses the hashed-DID analytics identifier, and adds
-// analytics retention (14 months granular, aggregates indefinite, matching
-// what GA4 is actually configured to do), and describes the pseudonymous
+// analytics retention stated per vendor, because they differ: GA4 is
+// configured to delete granular data at 14 months, while PostHog offers no
+// deletion schedule at all (its plans set a guaranteed *minimum* retention,
+// and a paid plan would raise that to seven years). Promising one figure for
+// both would be inaccurate whichever number was chosen. Also describes the
+// pseudonymous
 // analytics identifier as hashed email for OAuth accounts, hashed DID for
 // device keys. Required before
 // NEXT_PUBLIC_POSTHOG_KEY is set: PostHog
@@ -73,7 +77,7 @@ Covia-operated venues and services are hosted in Singapore, the United States, a
 - **Job records**: retained as your audit trail while your account is active; you may delete your own job records at any time (each deletion is itself an auditable action).
 - **venue-test**: a scratch venue; data may be cleared at any time without notice and should never contain personal data you care about.
 - **Server logs**: 90 days.
-- **Analytics events**: granular events tied to the pseudonymous identifier are retained for up to 14 months, then deleted. The aggregate reports derived from them (visit counts, page and feature popularity, traffic sources) are kept indefinitely and identify no one.
+- **Analytics events**: in Google Analytics, granular events tied to the pseudonymous identifier are deleted after 14 months. In PostHog they are kept while your account is active, and we delete them on request. The aggregate reports derived from both (visit counts, page and feature popularity, traffic sources) are kept indefinitely and identify no one.
 - **Connector grants and tokens**: a capability grant you sign through connector.covia.ai is stored, encrypted, until it expires or you revoke it; issued access tokens expire within one hour and refresh tokens within 30 days, and never outlive the grant; short-lived authorisation requests and codes are held only for minutes. Connector request logs follow the server-log period above.
 - **Backups**: deleted data leaves backups within 35 days.
 

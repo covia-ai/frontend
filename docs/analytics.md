@@ -283,6 +283,10 @@ unset by default so nothing loads until someone deliberately configures it.
 
 ### Retention
 
+The two vendors behave differently enough that the privacy policy states them
+separately. Promising a single figure for both would be inaccurate whichever
+number was chosen.
+
 **GA4 has no 90-day option.** A standard property offers exactly two values for
 user and event data: 2 months or 14 months. D070 §5.7's "90 days raw" was
 written without checking, and is not configurable.
@@ -304,8 +308,30 @@ aggregated data."*
   API queries read. Past the window you cannot build a *new* exploration
   reaching that far back.
 
-Policy v1.2 describes this as "up to 14 months" for granular events with
-aggregates indefinite, which matches the configuration.
+**PostHog has no retention setting and no deletion schedule.** Searching
+project settings for "retention" returns controls for Logs and Session replay
+only. Retention is a property of the billing plan, and PostHog's pricing FAQ
+states it as a floor rather than a ceiling:
+
+> Events and metadata are guaranteed to be retained for 7 years on any paid
+> plan and 1 year on a free plan. After 1 year, data may be moved into cold
+> storage so queries may run more slowly.
+
+Two consequences:
+
+- "Guaranteed to be retained *for* one year" promises availability, not
+  deletion. Nothing says the data goes away afterwards, so the policy must not
+  claim it does. It says events are kept while the account is active and
+  deleted on request.
+- ⚠️ **Adding a credit card would move events to seven-year retention**, on any
+  paid plan. That is a billing decision that silently changes what the
+  published privacy policy would have to say. Check the policy before
+  upgrading.
+
+Deletion on request is executable rather than aspirational: PostHog's Persons
+API finds a person by `distinct_id` — which is exactly the hashed email from
+§4 — and `DELETE` with `delete_events=true` removes their events too. That is
+what makes D070 §5.8's delete-by-email promise keepable on this vendor.
 
 **PostHog is not configured yet** — no project exists, so there is nothing to
 set. When one is created, check its retention against the policy: the published
