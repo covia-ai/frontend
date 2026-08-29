@@ -59,12 +59,11 @@ export function CopyAssetDialog({ asset, venue, isAuthenticated }: CopyAssetDial
     setRegistering(true);
     try {
       const copiedAsset = await venue.assets.register(metadata);
-      gtmEvent.createAsset(metadata.name ?? copiedAsset.id);
+      gtmEvent.createAsset(copiedAsset.id);
       setOpen(false);
       router.push(`/venues/${encodeURIComponent(venue.venueId)}/assets/${copiedAsset.id}`);
     } catch (error: unknown) {
       gtmEvent.createAssetFailed(
-        metadata.name ?? "unknown",
         error instanceof Error ? error.message : undefined,
       );
       notifyError("Unable to copy asset", error, venue.baseUrl);
