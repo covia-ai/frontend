@@ -1,20 +1,34 @@
-// Covia Privacy Policy v1.2 (effective 2026-08-28): names PostHog as an
-// analytics processor, discloses the hashed-DID analytics identifier, and adds
-// analytics retention stated per vendor, because they differ: GA4 is
-// configured to delete granular data at 14 months, while PostHog offers no
-// deletion schedule at all (its plans set a guaranteed *minimum* retention,
-// and a paid plan would raise that to seven years). Promising one figure for
-// both would be inaccurate whichever number was chosen. Also describes the
-// pseudonymous
-// analytics identifier as hashed email for OAuth accounts, hashed DID for
-// device keys. Required before
-// NEXT_PUBLIC_POSTHOG_KEY is set: PostHog
-// is a sub-processor, so the disclosure gates the key, not just session replay.
-// v1.1 (effective 2026-08-27) added the connector.covia.ai paragraph; v1.0
-// (effective 2026-08-14) approved by Chirdeep Chhabra 2026-08-14; v1.1 and v1.2
-// pending his approval. Keep in step with PRIVACY_POLICY_VERSION in
-// src/lib/consent.ts, which re-prompts for consent when it moves.
-// No em dashes in the copy below (house style). Edit the markdown to change the page.
+// Covia Privacy Policy v1.2 (effective 2026-08-28).
+//
+// Version history and approvals:
+//   v1.0  2026-08-14  approved by Chirdeep Chhabra 2026-08-14
+//   v1.1  2026-08-27  approved by Chirdeep Chhabra 2026-08-29
+//   v1.2  2026-08-28  approved by Chirdeep Chhabra 2026-08-29
+//
+// None of these has been reviewed by external counsel. That is a separate
+// question from the approvals above and is still outstanding.
+//
+// v1.1 added the connector.covia.ai paragraph. v1.2 covers the Phase 3
+// analytics work (D070) and says four things the earlier text did not:
+//
+//   1. PostHog is named as a processor. Adding it at all, events only and no
+//      replay, makes it a sub-processor, so this disclosure is what gates
+//      NEXT_PUBLIC_POSTHOG_KEY, not just session recording.
+//   2. The pseudonymous analytics identifier is disclosed: a truncated
+//      one-way hash of the email for OAuth accounts, of the DID for device
+//      keys, computed in the browser with neither raw value sent.
+//   3. Retention is stated per vendor because they differ. GA4 is configured
+//      to delete granular data at 14 months; PostHog has no deletion schedule
+//      at all, since its plans set a guaranteed *minimum* retention and a paid
+//      plan would raise that to seven years. One figure for both would have
+//      been inaccurate whichever number was chosen.
+//   4. The IP-derived approximate location both services record is disclosed,
+//      along with the fact that the raw IP is discarded and never stored.
+//
+// Keep in step with PRIVACY_POLICY_VERSION in src/lib/consent.ts, which
+// invalidates stored consent and re-prompts every user when it moves.
+// No em dashes in the copy below (house style). Edit the markdown to change
+// the page.
 export const PRIVACY_POLICY_MD = `
 **Effective date: 28 August 2026** · Version 1.2
 
@@ -47,7 +61,9 @@ Three structural facts shape everything below:
 **On the app and websites:**
 
 - **Local browser storage**: your venue list, device keys, session tokens, and preferences. Stored on your device, not our servers.
-- **Analytics**: with your consent, usage events on app.covia.ai and our websites, processed by Google Analytics and PostHog. These record which pages and features are used, not what you put into them: we do not send your job inputs or outputs, asset contents, agent conversations, workspace data, or secrets to either service, and we do not record your screen or session. Where you are signed in, events carry a truncated one-way hash as a pseudonymous identifier, so that repeat visits can be counted as one person: derived from your email address if you signed in with OAuth, or from your DID if you use a device key. The hash is computed in your browser, cannot be reversed, and neither your email address nor your DID is sent to either service. Using the same hash our website uses is also what lets us find and delete your analytics records when you ask us to. Declining non-essential cookies means neither service is loaded at all.
+- **Analytics**: with your consent, usage events on app.covia.ai and our websites, processed by Google Analytics and PostHog. These record which pages and features are used, not what you put into them: we do not send your job inputs or outputs, asset contents, agent conversations, workspace data, or secrets to either service, and we do not record your screen or session. Where you are signed in, events carry a truncated one-way hash as a pseudonymous identifier, so that repeat visits can be counted as one person: derived from your email address if you signed in with OAuth, or from your DID if you use a device key. The hash is computed in your browser, cannot be reversed, and neither your email address nor your DID is sent to either service. Using the same hash our website uses is also what lets us find and delete your analytics records when you ask us to.
+
+  Analytics events also carry an approximate location worked out from your IP address: country and city in both services, and in PostHog also a postal area and coordinates accurate to within a few kilometres. These describe roughly where your network connects from, not where your device is; they are looked up from the address block, not from GPS or any device sensor. **Your IP address itself is discarded during processing and is never stored with the events.** Declining non-essential cookies means neither service is loaded at all.
 
 **What we deliberately do not collect:** private keys; secret values in readable form; the content of prompts you send to LLM providers under your own API keys; anything at all from self-hosted venues.
 

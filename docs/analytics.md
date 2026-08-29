@@ -70,6 +70,38 @@ preference order:
 3. **`sha256(did)`** — for device-key accounts, which have no email anywhere in
    the system.
 
+### Verification status
+
+| Branch | Verified in production |
+| --- | --- |
+| `sha256(did)` — device keys | **Yes.** preview.covia.ai, 2026-08-29: person `f440f1f783ed7d16`, 16 hex chars, `method: keypair`, full `agent_did_issued` → `product_signup` → `product_login` → `Identify` sequence |
+| `sha256(email)` — OAuth | **No, and cannot be tested today.** No venue currently offers an OAuth provider, so there is no way to exercise this branch. Retained deliberately, not abandoned. |
+| `covia_uid` — venue-precomputed | **No.** No venue emits the claim yet |
+
+**The email branch is the one that matters and the one nobody has run.** It is
+what closes the cross-property join with covia.ai and Brevo, and what lets a
+delete-by-email request reach analytics records (§5.8). It is also the branch
+whose premise was wrong twice: Phase 3 first concluded the app had no access to
+an email at all, then found the venue had been putting one in the JWT the whole
+time.
+
+Unit tests cover it, including the normalisation cases below, but a test proves
+the hashing, not that the venue actually puts an `email` claim in the token for
+a given provider, nor that the value matches what covia.ai computed for the
+same person.
+
+**Status as of 2026-08-29: no venue offers an OAuth provider, so the branch
+cannot be exercised.** It ships anyway, because the alternative is deleting
+working code that costs nothing while dormant and would have to be rebuilt
+when a venue enables a provider. Device-key sign-in is unaffected and is what
+every current user takes.
+
+**Before relying on any §10 dashboard that depends on the cross-property
+join**, run one OAuth sign-in and confirm `product_login` carries a `user_id`
+matching `hashEmail` in covia-website for the same address. Until then the join
+is designed and tested, not demonstrated, and should not be quoted as a working
+metric.
+
 ### The normalisation is load-bearing
 
 covia-website hashes `email.trim().toLowerCase()`. This repo must do exactly
@@ -254,6 +286,34 @@ are kept away from it:
 `autocapture` is off for a second reason: on this app, element text carries
 asset names, agent names and DIDs.
 
+### The capture surface is pinned in code
+
+`autocapture: false` does not cover every capture path. PostHog has several
+others, each with its own flag, and **PostHog's server-side remote config
+enables them by default** — verified on preview 2026-08-29, where the SDK
+downloaded `dead-clicks-autocapture`, `web-vitals-with-attribution` and
+`surveys` purely because remote config asked for them.
+
+| Flag | Pinned | Why |
+| --- | --- | --- |
+| `autocapture` | `false` | Element text carries asset names, agent names, DIDs |
+| `capture_pageview` | `false` | Would record the raw `/auth/callback?token=…` URL |
+| `capture_dead_clicks` | `false` | Records the element clicked, same exposure as autocapture |
+| `capture_performance` | `false` | Attaches URLs to web-vitals events |
+| `disable_surveys` | `true` | Would render vendor UI inside the product |
+| `disable_session_recording` | `true` | See "Session replay" below |
+
+None of these is disclosed in privacy policy v1.2, and none is needed for the
+D070 taxonomy. Pinning them in code means the behaviour cannot be changed from
+the PostHog UI: the same two-gate posture used for session replay, where the
+project toggle and the client flag both have to say yes. A test asserts each
+value, so deleting a line fails the suite rather than silently widening what
+leaves the app.
+
+Observed effect on preview after granting consent: exactly two
+`content_page_view` events and PostHog's own `Opt in`. No `$autocapture`, no
+`$pageview`, no `$dead_click`, no `$web_vitals`.
+
 ## Session replay
 
 **Off, and must stay off until the privacy policy discloses it.**
@@ -280,6 +340,30 @@ Before setting `NEXT_PUBLIC_POSTHOG_SESSION_RECORDING=true`:
 Note that adding PostHog **at all**, events only and no replay, makes it a
 sub-processor. Policy v1.2 covers that case; `NEXT_PUBLIC_POSTHOG_KEY` is still
 unset by default so nothing loads until someone deliberately configures it.
+
+### Location data
+
+Both services derive an approximate location from the request IP. Verified on
+preview 2026-08-29, a PostHog event carries `Country name`, `City name`,
+`Postal code`, `Latitude`, `Longitude` and `GeoIP detection accuracy radius`
+(5km on that sample). GA4 derives country, region and city, not coordinates.
+
+**This is broader than D070 §3.3, which lists only `country`.** The decision
+was to keep the enrichment and disclose it, rather than trim it: the
+coordinates are the centroid of an IP address block with a stated accuracy
+radius, so they describe a network's rough area rather than a device position,
+and city-level data is genuinely useful for a product with users across
+several regions.
+
+Narrowing it later is not a toggle. GeoIP enrichment happens server-side in
+PostHog's ingestion pipeline, so `sanitize_properties` cannot reach it. It
+would need the built-in GeoIP transformation replaced by a custom Hog
+transformation that drops the fine-grained fields, under Data → Transformations.
+
+**Raw IP addresses are not stored.** PostHog's *Discard client IP data* is on
+(Settings → Project → Privacy), and its docs confirm GeoIP enrichment still
+runs before the address is dropped. GA4 has `anonymize_ip: true`. Privacy
+policy v1.2 states both the location fields and the IP discard.
 
 ### Retention
 

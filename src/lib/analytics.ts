@@ -238,6 +238,21 @@ function ensurePostHog(): void {
     api_host: POSTHOG_HOST,
     autocapture: false,
     capture_pageview: false,
+    // Each of these is a separate capture path that `autocapture: false` does
+    // not cover, and each is enabled by PostHog's *server-side* remote config
+    // by default. Verified on preview 2026-08-29: the SDK downloads
+    // dead-clicks-autocapture, web-vitals-with-attribution and surveys purely
+    // because remote config asked for them. Pinning them here means the
+    // behaviour cannot change from the PostHog UI, the same two-gate posture
+    // used for session replay.
+    //
+    // `capture_dead_clicks` records the element a user clicked, which on this
+    // app carries asset names, agent names and DIDs. `capture_performance`
+    // attaches URLs to web-vitals events. Neither is disclosed in privacy
+    // policy v1.2, and surveys would render vendor UI inside the product.
+    capture_dead_clicks: false,
+    capture_performance: false,
+    disable_surveys: true,
     persistence: 'localStorage+cookie',
     person_profiles: 'identified_only',
     respect_dnt: true,

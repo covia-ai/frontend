@@ -152,8 +152,15 @@ export function useDeviceKeySignIn(options: { trackSignUp?: boolean; venueId?: s
     // Every completed sign-in reports product.login, not just the ones that
     // came from the /signUp page: the topbar route was previously invisible to
     // analytics, which made the login count wrong rather than conservative.
-    gtmEvent.signUp("keypair");
-    void identify({ did }, { auth_method: "keypair" });
+    //
+    // Resolve the analytics identity *before* reporting the login, so the
+    // event carries user_id. Hashing is async, so firing the event first sent
+    // it anonymously (observed on preview: product_login with
+    // "Is identified: false"). Not awaited, because sign-in must never block
+    // on analytics; `finally` so the event still fires if identify fails.
+    void identify({ did }, { auth_method: "keypair" }).finally(() => {
+      gtmEvent.signUp("keypair");
+    });
     setDeviceKeyHex(key);
     loginWithKeypair(venueId, key, did);
     setDialogOpen(false);

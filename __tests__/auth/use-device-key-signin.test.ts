@@ -16,6 +16,33 @@ jest.mock('@/lib/notify', () => ({
   notifyInfo: jest.fn(),
 }));
 
+const analyticsCalls: string[] = [];
+jest.mock('@/lib/analytics', () => ({
+  identify: jest.fn(
+    () =>
+      new Promise<void>((resolve) =>
+        // Hashing is async in the real module; resolve on a later tick so a
+        // regression that reports the login synchronously is visible here.
+        setTimeout(() => {
+          analyticsCalls.push('identify');
+          resolve();
+        }, 0),
+      ),
+  ),
+  track: jest.fn(),
+  trackLegacyAlias: jest.fn(),
+  trackPageView: jest.fn(),
+  resetIdentity: jest.fn(),
+}));
+
+jest.mock('@/lib/utils', () => ({
+  ...jest.requireActual('@/lib/utils'),
+  gtmEvent: {
+    signUp: () => analyticsCalls.push('product_login'),
+    didIssued: () => analyticsCalls.push('agent_did_issued'),
+  },
+}));
+
 import { useDeviceKeySignIn } from '@/hooks/use-device-key-signin';
 import { useAuthStore } from '@/hooks/use-auth';
 import { useVenues } from '@/hooks/use-venues';
@@ -129,5 +156,47 @@ describe('useDeviceKeySignIn venue validation', () => {
     expect(result.current.authError).toBeNull();
     expect(result.current.step).toBe('choose');
     expect(result.current.dialogOpen).toBe(true);
+  });
+});
+
+
+describe('useDeviceKeySignIn analytics ordering', () => {
+  beforeEach(() => {
+    analyticsCalls.length = 0;
+    jest.clearAllMocks();
+    act(() => {
+      useAuthStore.setState({ authMap: {}, accountsMap: {}, deviceKeyHex: null, deviceKeys: [] });
+      useVenues.setState({
+        venues: [
+          { venueId: VENUE, baseUrl: 'https://venue-1.example.com', metadata: { name: 'Venue 1' } },
+        ],
+        selectedVenueId: VENUE,
+      });
+    });
+  });
+
+  /*
+   * product_login must carry user_id, and user_id only exists once identify
+   * has finished hashing. Reporting the login first sends it anonymously:
+   * observed on preview as product_login with "Is identified: false". Keep
+   * identify ahead of the event.
+   */
+  it('resolves the identity before reporting the login', async () => {
+    mockProbe.mockResolvedValue({ ok: true });
+    const { result } = renderHook(() => useDeviceKeySignIn({ trackSignUp: true }));
+
+    await act(async () => {
+      result.current.handlePastedKeyChange(KEY);
+    });
+    await act(async () => {
+      result.current.handleSubmitProvidedKey();
+      await new Promise((r) => setTimeout(r, 10));
+    });
+
+    expect(analyticsCalls).toContain('identify');
+    expect(analyticsCalls).toContain('product_login');
+    expect(analyticsCalls.indexOf('identify')).toBeLessThan(
+      analyticsCalls.indexOf('product_login'),
+    );
   });
 });
