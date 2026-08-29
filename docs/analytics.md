@@ -70,6 +70,28 @@ preference order:
 3. **`sha256(did)`** — for device-key accounts, which have no email anywhere in
    the system.
 
+### Verification status
+
+| Branch | Verified in production |
+| --- | --- |
+| `sha256(did)` — device keys | **Yes.** preview.covia.ai, 2026-08-29: person `f440f1f783ed7d16`, 16 hex chars, `method: keypair`, full `agent_did_issued` → `product_signup` → `product_login` → `Identify` sequence |
+| `sha256(email)` — OAuth | **No. Never exercised against a real venue.** |
+| `covia_uid` — venue-precomputed | **No.** No venue emits the claim yet |
+
+**The email branch is the one that matters and the one nobody has run.** It is
+what closes the cross-property join with covia.ai and Brevo, and what lets a
+delete-by-email request reach analytics records (§5.8). It is also the branch
+whose premise was wrong twice: Phase 3 first concluded the app had no access to
+an email at all, then found the venue had been putting one in the JWT the whole
+time.
+
+Unit tests cover it, including the normalisation cases below, but a test proves
+the hashing, not that the venue actually puts an `email` claim in the token for
+a given provider, nor that the value matches what covia.ai computed for the
+same person. **Do not treat the join as working until an OAuth sign-in has been
+observed producing a `user_id` on `product_login`.** Check it against
+`hashEmail` in covia-website for the same address.
+
 ### The normalisation is load-bearing
 
 covia-website hashes `email.trim().toLowerCase()`. This repo must do exactly
