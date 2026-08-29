@@ -309,6 +309,30 @@ Note that adding PostHog **at all**, events only and no replay, makes it a
 sub-processor. Policy v1.2 covers that case; `NEXT_PUBLIC_POSTHOG_KEY` is still
 unset by default so nothing loads until someone deliberately configures it.
 
+### Location data
+
+Both services derive an approximate location from the request IP. Verified on
+preview 2026-08-29, a PostHog event carries `Country name`, `City name`,
+`Postal code`, `Latitude`, `Longitude` and `GeoIP detection accuracy radius`
+(5km on that sample). GA4 derives country, region and city, not coordinates.
+
+**This is broader than D070 §3.3, which lists only `country`.** The decision
+was to keep the enrichment and disclose it, rather than trim it: the
+coordinates are the centroid of an IP address block with a stated accuracy
+radius, so they describe a network's rough area rather than a device position,
+and city-level data is genuinely useful for a product with users across
+several regions.
+
+Narrowing it later is not a toggle. GeoIP enrichment happens server-side in
+PostHog's ingestion pipeline, so `sanitize_properties` cannot reach it. It
+would need the built-in GeoIP transformation replaced by a custom Hog
+transformation that drops the fine-grained fields, under Data → Transformations.
+
+**Raw IP addresses are not stored.** PostHog's *Discard client IP data* is on
+(Settings → Project → Privacy), and its docs confirm GeoIP enrichment still
+runs before the address is dropped. GA4 has `anonymize_ip: true`. Privacy
+policy v1.2 states both the location fields and the IP discard.
+
 ### Retention
 
 The two vendors behave differently enough that the privacy policy states them
