@@ -23,6 +23,7 @@ jest.mock('posthog-js', () => ({
 }));
 
 import { webcrypto } from 'crypto';
+import posthog from 'posthog-js';
 import { CONSENT_KEY, PRIVACY_POLICY_VERSION } from '@/lib/consent';
 
 // jsdom ships no WebCrypto; hashIdentity returns null without it.
@@ -301,6 +302,64 @@ describe('analytics', () => {
         'sign_up',
         expect.anything(),
       );
+    });
+  });
+
+  describe('PostHog capture surface', () => {
+    /*
+     * Every one of these is a distinct capture path that `autocapture: false`
+     * does not cover, and PostHog's server-side remote config turns them on by
+     * default. Pinned in code so the behaviour cannot be changed from the
+     * PostHog UI. Deleting any of these lines widens what leaves the app.
+     */
+    function initConfig(): Record<string, unknown> {
+      grantConsent(true);
+      process.env.NEXT_PUBLIC_POSTHOG_KEY = 'phc_test';
+      const { initAnalytics } = freshAnalytics();
+      initAnalytics();
+      const call = jest.mocked(posthog.init).mock.calls.at(-1);
+      return (call?.[1] ?? {}) as Record<string, unknown>;
+    }
+
+    afterEach(() => {
+      delete process.env.NEXT_PUBLIC_POSTHOG_KEY;
+    });
+
+    it.each([
+      ['autocapture', false],
+      ['capture_pageview', false],
+      ['capture_dead_clicks', false],
+      ['capture_performance', false],
+      ['disable_surveys', true],
+      ['respect_dnt', true],
+    ])('pins %s to %s', (key, expected) => {
+      expect(initConfig()[key]).toBe(expected);
+    });
+
+    it('keeps session recording disabled unless explicitly enabled', () => {
+      expect(initConfig().disable_session_recording).toBe(true);
+    });
+
+    it('creates person profiles only for identified users', () => {
+      expect(initConfig().person_profiles).toBe('identified_only');
+    });
+
+    it('sends to the EU host, matching what the privacy policy states', () => {
+      expect(initConfig().api_host).toBe('https://eu.i.posthog.com');
+    });
+
+    it('scrubs credentials out of the URL properties PostHog attaches', () => {
+      const sanitize = initConfig().sanitize_properties as (
+        p: Record<string, unknown>,
+      ) => Record<string, unknown>;
+
+      const out = sanitize({
+        $current_url: 'https://app.covia.ai/auth/callback?token=secret',
+        $referrer: 'https://app.covia.ai/jobs?access_token=secret',
+      });
+
+      expect(JSON.stringify(out)).not.toContain('secret');
+      expect(out.property).toBe('app.covia.ai');
     });
   });
 

@@ -254,6 +254,34 @@ are kept away from it:
 `autocapture` is off for a second reason: on this app, element text carries
 asset names, agent names and DIDs.
 
+### The capture surface is pinned in code
+
+`autocapture: false` does not cover every capture path. PostHog has several
+others, each with its own flag, and **PostHog's server-side remote config
+enables them by default** — verified on preview 2026-08-29, where the SDK
+downloaded `dead-clicks-autocapture`, `web-vitals-with-attribution` and
+`surveys` purely because remote config asked for them.
+
+| Flag | Pinned | Why |
+| --- | --- | --- |
+| `autocapture` | `false` | Element text carries asset names, agent names, DIDs |
+| `capture_pageview` | `false` | Would record the raw `/auth/callback?token=…` URL |
+| `capture_dead_clicks` | `false` | Records the element clicked, same exposure as autocapture |
+| `capture_performance` | `false` | Attaches URLs to web-vitals events |
+| `disable_surveys` | `true` | Would render vendor UI inside the product |
+| `disable_session_recording` | `true` | See "Session replay" below |
+
+None of these is disclosed in privacy policy v1.2, and none is needed for the
+D070 taxonomy. Pinning them in code means the behaviour cannot be changed from
+the PostHog UI: the same two-gate posture used for session replay, where the
+project toggle and the client flag both have to say yes. A test asserts each
+value, so deleting a line fails the suite rather than silently widening what
+leaves the app.
+
+Observed effect on preview after granting consent: exactly two
+`content_page_view` events and PostHog's own `Opt in`. No `$autocapture`, no
+`$pageview`, no `$dead_click`, no `$web_vitals`.
+
 ## Session replay
 
 **Off, and must stay off until the privacy policy discloses it.**
