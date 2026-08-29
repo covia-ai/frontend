@@ -31,11 +31,16 @@ function AuthCallbackInner() {
 
     if (token && did && venueId) {
       loginWithToken(venueId, token, did);
-      gtmEvent.signUp('oauth');
       // D070 §4 identity. The token carries the venue's `email` claim, which
       // is what produces the same user_id as covia.ai and Brevo. It is hashed
       // in memory and never stored or sent; see lib/analytics.
-      void identify({ did, token }, { auth_method: 'oauth' });
+      //
+      // Identify resolves before the login event is reported, so the event
+      // carries user_id. Not awaited, so the redirect below is never delayed;
+      // `finally` so the event still fires if identify fails.
+      void identify({ did, token }, { auth_method: 'oauth' }).finally(() => {
+        gtmEvent.signUp('oauth');
+      });
       router.replace(returnTo);
     } else {
       router.replace("/signUp");
