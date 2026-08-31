@@ -24,6 +24,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { ExecutionChildJobs } from "@/components/execution/ExecutionChildJobs";
 import { ExecutionDataTable } from "@/components/execution/ExecutionDataTable";
+import { TypedResultRenderer } from "@/components/typed-result/TypedResultRenderer";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
@@ -231,11 +232,19 @@ export function ExecutionViewer({
                       <FileOutput />
                       <span className="w-28">Output:</span>
                     </div>
-                    <ExecutionDataTable
-                      value={job.output}
-                      schema={operationSchema?.output}
-                      direction="output"
-                    />
+                    {job.responseSchema ? (
+                      <TypedResultRenderer
+                        value={job.output}
+                        schema={job.responseSchema}
+                        strict={job.strict === true}
+                      />
+                    ) : (
+                      <ExecutionDataTable
+                        value={job.output}
+                        schema={operationSchema?.output}
+                        direction="output"
+                      />
+                    )}
                   </div>
                 )}
 
