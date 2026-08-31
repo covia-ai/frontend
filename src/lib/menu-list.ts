@@ -15,6 +15,7 @@ import {
   PlayCircle,
   Plus,
   ScrollText,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 
@@ -25,6 +26,7 @@ export type MenuItem = {
   requiresAuth?: boolean;
   badge?: "inbox";
   match?: "exact" | "prefix";
+  children?: MenuItem[];
 };
 
 export type MenuGroup = {
@@ -51,7 +53,14 @@ export const MENU_LIST: MenuGroup[] = [
     menus: [
       { href: "/publicartifacts", label: "Public Artifacts", icon: Database },
       { href: "/myartifacts", label: "My Artifacts", icon: FileStack, requiresAuth: true },
-      { href: "/operations", label: "Operations", icon: PlayCircle },
+      {
+        href: "/operations",
+        label: "Operations",
+        icon: PlayCircle,
+        children: [
+          { href: "/operations/playground", label: "Playground", icon: Wrench, requiresAuth: true },
+        ],
+      },
       { href: "/jobs", label: "Jobs", icon: ScrollText },
       { href: "/inbox", label: "Inbox", icon: Inbox, requiresAuth: true, badge: "inbox" },
     ],
