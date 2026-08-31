@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Ellipsis } from "lucide-react";
+import { ChevronDown, ChevronRight, Ellipsis } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/utils";
-import { MENU_LIST } from "@/lib/menu-list";
+import { MENU_LIST, type MenuItem } from "@/lib/menu-list";
 import { TONE_STYLES } from "@/lib/status";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { useHitlOpenCount } from "@/hooks/use-hitl";
@@ -23,17 +23,133 @@ interface MenuProps {
   isOpen: boolean | undefined;
 }
 
+function isItemActive(item: Pick<MenuItem, "href" | "match">, pathname: string): boolean {
+  return item.match === "exact"
+    ? pathname === item.href
+    : pathname === item.href || pathname.startsWith(`${item.href}/`);
+}
+
+function MenuItemRow({
+  item,
+  isOpen,
+  pathname,
+  hitlOpenCount,
+}: {
+  item: MenuItem;
+  isOpen: boolean | undefined;
+  pathname: string;
+  hitlOpenCount: number;
+}) {
+  const { href, label, icon: Icon, badge, children } = item;
+  const active = isItemActive(item, pathname);
+  // Icon-rail mode never shows children — a submenu has nowhere to render
+  // when labels are hidden, so it degrades to the parent's own link.
+  const showChildren = isOpen !== false && !!children?.length;
+  const childActive = showChildren
+    ? children!.some((child) => isItemActive(child, pathname))
+    : false;
+  const [expanded, setExpanded] = useState(childActive);
+
+  return (
+    <div className="w-full">
+      <div className="w-full flex items-center gap-0.5">
+        <Tooltip delayDuration={100}>
+          <TooltipTrigger asChild>
+            <Button
+              variant={active ? "secondary" : "ghost"}
+              className={cn("justify-start h-8 mb-0 relative", showChildren ? "flex-1" : "w-full")}
+              asChild
+            >
+              <Link href={href}>
+                <span className={cn(isOpen === false ? "" : "mr-2")}>
+                  <Icon size={18} />
+                </span>
+                <p
+                  className={cn(
+                    "max-w-[200px] truncate text-sm",
+                    isOpen === false
+                      ? "-translate-x-96 opacity-0"
+                      : "translate-x-0 opacity-100"
+                  )}
+                >
+                  {label}
+                </p>
+                {/* Collapsed, the label is translated off-screen and a
+                    count would have nowhere to sit — so the pending
+                    state degrades to a dot on the icon rather than
+                    disappearing entirely. */}
+                {badge === "inbox" && hitlOpenCount > 0 && (
+                  isOpen === false ? (
+                    <span
+                      data-testid="hitl-nav-dot"
+                      className={cn(
+                        "absolute top-1.5 right-1.5 h-2 w-2 rounded-full",
+                        TONE_STYLES.attention.dot,
+                      )}
+                    />
+                  ) : (
+                    <span
+                      data-testid="hitl-nav-badge"
+                      className={cn(
+                        "ml-auto min-w-5 h-5 px-1.5 flex items-center justify-center rounded-full text-xs font-semibold",
+                        TONE_STYLES.attention.pill,
+                      )}
+                    >
+                      {hitlOpenCount}
+                    </span>
+                  )
+                )}
+              </Link>
+            </Button>
+          </TooltipTrigger>
+          {isOpen === false && (
+            <TooltipContent side="right">
+              {label}
+            </TooltipContent>
+          )}
+        </Tooltip>
+        {showChildren && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            aria-label={expanded ? `Collapse ${label}` : `Expand ${label}`}
+            onClick={() => setExpanded((e) => !e)}
+          >
+            {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </Button>
+        )}
+      </div>
+      {showChildren && expanded && (
+        <ul className="pl-6 flex flex-col space-y-0.5 mt-0.5">
+          {children!.map((child) => (
+            <li key={child.href} className="w-full">
+              <MenuItemRow item={child} isOpen={isOpen} pathname={pathname} hitlOpenCount={hitlOpenCount} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function Menu({ isOpen }: MenuProps) {
   const pathname = usePathname();
   const isAuthenticated = useIsAuthenticated();
   const hitlOpenCount = useHitlOpenCount();
   const menuList = useMemo(() => {
-    const list = isAuthenticated
-      ? MENU_LIST
-      : MENU_LIST.map((group) => ({
-          ...group,
-          menus: group.menus.filter((menu) => !menu.requiresAuth),
-        }));
+    if (isAuthenticated) return MENU_LIST;
+    // Filter children too — an item's own requiresAuth only gates the item
+    // itself, not what's nested under it (e.g. Operations has none, but its
+    // Playground child does).
+    const dropAuthOnly = (item: MenuItem): MenuItem => ({
+      ...item,
+      children: item.children?.filter((child) => !child.requiresAuth),
+    });
+    const list = MENU_LIST.map((group) => ({
+      ...group,
+      menus: group.menus.filter((menu) => !menu.requiresAuth).map(dropAuthOnly),
+    }));
     // Drop a group when all its entries require authentication rather than
     // rendering a bare heading above empty space.
     return list.filter((group) => group.menus.length > 0);
@@ -70,70 +186,9 @@ export function Menu({ isOpen }: MenuProps) {
                 ) : (
                   <p className="pb-1" />
                 )}
-                {menus.map(({ href, label, icon: Icon, badge, match }) => {
-                  const active = match === "exact"
-                    ? pathname === href
-                    : pathname === href || pathname.startsWith(`${href}/`);
-                  return (
-                    <div className="w-full" key={href}>
-                      <Tooltip delayDuration={100}>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant={active ? "secondary" : "ghost"}
-                            className="w-full justify-start h-8 mb-0 relative"
-                            asChild
-                          >
-                            <Link href={href}>
-                              <span className={cn(isOpen === false ? "" : "mr-2")}>
-                                <Icon size={18} />
-                              </span>
-                              <p
-                                className={cn(
-                                  "max-w-[200px] truncate text-sm",
-                                  isOpen === false
-                                    ? "-translate-x-96 opacity-0"
-                                    : "translate-x-0 opacity-100"
-                                )}
-                              >
-                                {label}
-                              </p>
-                              {/* Collapsed, the label is translated off-screen and a
-                                  count would have nowhere to sit — so the pending
-                                  state degrades to a dot on the icon rather than
-                                  disappearing entirely. */}
-                              {badge === "inbox" && hitlOpenCount > 0 && (
-                                isOpen === false ? (
-                                  <span
-                                    data-testid="hitl-nav-dot"
-                                    className={cn(
-                                      "absolute top-1.5 right-1.5 h-2 w-2 rounded-full",
-                                      TONE_STYLES.attention.dot,
-                                    )}
-                                  />
-                                ) : (
-                                  <span
-                                    data-testid="hitl-nav-badge"
-                                    className={cn(
-                                      "ml-auto min-w-5 h-5 px-1.5 flex items-center justify-center rounded-full text-xs font-semibold",
-                                      TONE_STYLES.attention.pill,
-                                    )}
-                                  >
-                                    {hitlOpenCount}
-                                  </span>
-                                )
-                              )}
-                            </Link>
-                          </Button>
-                        </TooltipTrigger>
-                        {isOpen === false && (
-                          <TooltipContent side="right">
-                            {label}
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                    </div>
-                  );
-                })}
+                {menus.map((item) => (
+                  <MenuItemRow key={item.href} item={item} isOpen={isOpen} pathname={pathname} hitlOpenCount={hitlOpenCount} />
+                ))}
               </li>
             ))}
           </ul>
