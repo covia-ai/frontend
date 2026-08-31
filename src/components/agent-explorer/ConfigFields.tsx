@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 // Acronyms that should stay upper-case rather than title-cased.
 const ACRONYMS = new Set(["llm", "id", "url", "api", "ucan", "did", "mcp"]);
 
-function humanizeKey(key: string): string {
+export function humanizeKey(key: string): string {
   return key
     // camelCase / PascalCase -> spaced words
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
