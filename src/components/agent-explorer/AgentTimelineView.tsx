@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, Clock, Loader2, MessageSquare, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { DidDisplay } from "@/components/DidDisplay";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { notifyError } from "@/lib/notify";
@@ -221,12 +222,9 @@ export function AgentTimelineView({
 
   return (
     <div className="flex-1 overflow-y-auto p-6 bg-background">
-      <button
-        onClick={onBack}
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4"
-      >
-        <ArrowLeft size={14} /> Back to chat
-      </button>
+      <Button variant="ghost" size="sm" className="mb-4 gap-2" onClick={onBack}>
+        <ArrowLeft size={15} /> Chat
+      </Button>
 
       {loading && (
         <div className="flex items-center justify-center py-16">
