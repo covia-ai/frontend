@@ -11,6 +11,7 @@ import {
   List,
   MapPinned,
   MessageSquareText,
+  Plug,
   BookOpenCheck,
   PlayCircle,
   Plus,
@@ -72,6 +73,7 @@ export const MENU_LIST: MenuGroup[] = [
     groupLabel: "Data",
     menus: [
       { href: "/context", label: "Context", icon: BrainCircuit, requiresAuth: true },
+      { href: "/connections", label: "Connections", icon: Plug, requiresAuth: true },
       { href: "/secrets", label: "Secrets", icon: KeyRound, requiresAuth: true },
       { href: "/venues", label: "Venues", icon: MapPinned },
       { href: "/workspace", label: "Workspace", icon: FolderOpen, requiresAuth: true },
