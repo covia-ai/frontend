@@ -26,7 +26,7 @@ const skillPath = (id: string) => `v/skills/connections/${id}`;
  * secret is present) appear here.
  */
 export function AgentConnectionsPicker({ venue, attachedSkills, onToggleSkill }: Props) {
-  const { skills } = useToolSkillPickerData(venue, true);
+  const { skills } = useToolSkillPickerData(venue ?? null, true, true);
   const [connectedSecrets, setConnectedSecrets] = useState<Set<string>>(new Set());
   const [loaded, setLoaded] = useState(false);
 
