@@ -6,6 +6,7 @@ import type { Venue } from "@covia/covia-sdk";
 import { Plug, ExternalLink } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CONNECTIONS, type ConnectionService } from "@/config/connections";
+import { ConnectionLogo } from "@/components/ConnectionLogo";
 import { useToolSkillPickerData } from "@/hooks/use-tool-skill-picker-data";
 import type { SkillSummary } from "@/lib/skills";
 
@@ -131,13 +132,7 @@ export function AgentConnectionsPicker({ venue, attachedSkills, onToggleSkill }:
                       onToggleSkill(summaryFor(service), next === true)
                     }
                   />
-                  <span
-                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-[10px] font-bold text-white"
-                    style={{ backgroundColor: service.color }}
-                    aria-hidden
-                  >
-                    {service.initials}
-                  </span>
+                  <ConnectionLogo service={service} size={24} />
                   <span className="text-sm font-medium">{service.name}</span>
                   <span className="ml-auto truncate text-xs text-muted-foreground">
                     {service.blurb}

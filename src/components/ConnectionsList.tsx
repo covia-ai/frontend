@@ -13,6 +13,7 @@ import {
   detectService,
   type ConnectionService,
 } from "@/config/connections";
+import { ConnectionLogo as Logo } from "@/components/ConnectionLogo";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
@@ -47,18 +48,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-
-function Logo({ service, size = 36 }: { service: ConnectionService; size?: number }) {
-  return (
-    <span
-      className="flex shrink-0 items-center justify-center rounded-lg font-bold text-white"
-      style={{ backgroundColor: service.color, width: size, height: size, fontSize: size * 0.32 }}
-      aria-hidden
-    >
-      {service.initials}
-    </span>
-  );
-}
 
 type TestState =
   | { phase: "idle" }
