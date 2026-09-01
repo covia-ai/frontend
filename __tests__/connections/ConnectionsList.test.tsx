@@ -112,9 +112,11 @@ describe("ConnectionsList", () => {
 
   it("verifies the token before saving, then reports success and marks the service connected", async () => {
     const user = userEvent.setup();
+    // The http op returns body as a JSON *string* — mirror that so this guards
+    // the parse in runVerify (an object here would hide a real 200 regression).
     mockVenue.operations.run.mockResolvedValue({
       status: 200,
-      body: { login: "octocat" },
+      body: '{"login":"octocat"}',
     });
     render(<ConnectionsList />);
     await waitFor(() => expect(mockVenue.secrets.list).toHaveBeenCalled());
@@ -144,7 +146,7 @@ describe("ConnectionsList", () => {
     const user = userEvent.setup();
     mockVenue.operations.run.mockResolvedValue({
       status: 401,
-      body: { message: "Bad credentials" },
+      body: '{"message":"Bad credentials"}',
     });
     render(<ConnectionsList />);
     await waitFor(() => expect(mockVenue.secrets.list).toHaveBeenCalled());
