@@ -10,6 +10,7 @@ import { notifyError, notifySuccess } from "@/lib/notify";
 import {
   CONNECTIONS,
   CONNECTION_CATEGORIES,
+  CONNECTION_CAPABILITIES,
   detectService,
   type ConnectionService,
 } from "@/config/connections";
@@ -212,6 +213,11 @@ export function ConnectionsList() {
               <span className="font-mono text-[10px] uppercase text-muted-foreground">{service.method}</span>
             </div>
             <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{service.blurb}</p>
+            {on && CONNECTION_CAPABILITIES[service.id]?.examples[0] && (
+              <p className="mt-1 line-clamp-1 text-xs italic text-muted-foreground/80">
+                Try: &ldquo;{CONNECTION_CAPABILITIES[service.id].examples[0]}&rdquo;
+              </p>
+            )}
           </div>
         </div>
         <div className="mt-4 flex items-center justify-between">
@@ -346,6 +352,28 @@ export function ConnectionsList() {
                   </div>
                 </div>
               </DialogHeader>
+
+              {CONNECTION_CAPABILITIES[active.id] && (
+                <div className="rounded-lg bg-muted/50 p-3">
+                  <p className="text-xs font-semibold">Once connected, your agent can</p>
+                  <ul className="mt-1.5 space-y-1">
+                    {CONNECTION_CAPABILITIES[active.id].does.map((d, i) => (
+                      <li key={i} className="flex gap-1.5 text-xs text-muted-foreground">
+                        <Check size={13} className="mt-0.5 shrink-0 text-green-600 dark:text-green-400" />
+                        {d}
+                      </li>
+                    ))}
+                  </ul>
+                  {CONNECTION_CAPABILITIES[active.id].examples[0] && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Try asking:{" "}
+                      <span className="italic">
+                        &ldquo;{CONNECTION_CAPABILITIES[active.id].examples[0]}&rdquo;
+                      </span>
+                    </p>
+                  )}
+                </div>
+              )}
 
               <ol className="space-y-3 py-1">
                 {active.createSteps.map((step, i) => (
