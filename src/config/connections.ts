@@ -41,8 +41,11 @@ export type ConnectionService = {
   placeholder: string;
   /** API base + how the secret is presented. */
   baseUrl: string;
-  /** "bearer" → bearerSecret (Authorization: Bearer …); "header" → secretHeaders (the stored value is the full header). */
-  auth: "bearer" | "header";
+  /** "bearer" → bearerSecret (Authorization: Bearer …); "header" → secretHeaders
+   *  (the stored value is the full header); "url" → the token rides in the URL
+   *  itself via an {s/NAME} placeholder (e.g. Telegram's /bot<token>/), so no
+   *  auth header is added. */
+  auth: "bearer" | "header" | "url";
   /** Header name for `auth: "header"` (default Authorization). */
   headerName?: string;
   /** Optional live validation call. */
@@ -132,6 +135,14 @@ export const CONNECTIONS: ConnectionService[] = [
     placeholder: "Bot …", baseUrl: "https://discord.com/api/v10", auth: "header",
     verify: { path: "/users/@me", label: (b) => (b?.username ? `Connected as ${b.username}` : null) },
     detect: ["Bot "],
+  },
+  {
+    id: "telegram", name: "Telegram", method: "bot", secretName: "TELEGRAM_BOT_TOKEN", skillId: "connections/telegram",
+    blurb: "Send messages, read updates via a bot.", category: "Comms", initials: "TG", color: "#26A5E4",
+    tokenUrl: "https://t.me/BotFather",
+    createSteps: ["Open @BotFather in Telegram and send /newbot.", "Choose a name and username for your bot.", "Paste the token BotFather gives you (looks like 123456789:AA…)."],
+    placeholder: "123456789:AA…", baseUrl: "https://api.telegram.org", auth: "url",
+    verify: { url: "https://api.telegram.org/bot{s/TELEGRAM_BOT_TOKEN}/getMe", label: (b) => (b?.ok ? `Connected as @${b.result?.username ?? "bot"}` : null) },
   },
   {
     id: "asana", name: "Asana", method: "token", secretName: "ASANA_TOKEN", skillId: "connections/asana",
