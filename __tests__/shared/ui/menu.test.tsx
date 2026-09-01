@@ -11,6 +11,9 @@ jest.mock('@/hooks/use-auth', () => ({
 jest.mock('@/hooks/use-hitl', () => ({
   useHitlOpenCount: () => 0,
 }));
+jest.mock('@/hooks/use-connection-count', () => ({
+  useConnectionCount: () => 0,
+}));
 jest.mock('next/navigation', () => ({
   usePathname: () => mockPathname,
 }));
