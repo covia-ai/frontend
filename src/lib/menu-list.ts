@@ -25,7 +25,7 @@ export type MenuItem = {
   label: string;
   icon: LucideIcon;
   requiresAuth?: boolean;
-  badge?: "inbox";
+  badge?: "inbox" | "connections";
   match?: "exact" | "prefix";
   children?: MenuItem[];
 };
@@ -73,7 +73,7 @@ export const MENU_LIST: MenuGroup[] = [
     groupLabel: "Data",
     menus: [
       { href: "/context", label: "Context", icon: BrainCircuit, requiresAuth: true },
-      { href: "/connections", label: "Connections", icon: Plug, requiresAuth: true },
+      { href: "/connections", label: "Connections", icon: Plug, requiresAuth: true, badge: "connections" },
       { href: "/secrets", label: "Secrets", icon: KeyRound, requiresAuth: true },
       { href: "/venues", label: "Venues", icon: MapPinned },
       { href: "/workspace", label: "Workspace", icon: FolderOpen, requiresAuth: true },

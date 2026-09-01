@@ -6,6 +6,7 @@ import {
   useAuthenticatedVenue,
 } from "@/hooks/use-authenticated-venue";
 import { useIsAuthenticated } from "@/hooks/use-auth";
+import { cn } from "@/lib/utils";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import {
   CONNECTIONS,
@@ -63,6 +64,8 @@ export function ConnectionsList() {
   const [connected, setConnected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  // Category filter chip; null = All. Complements search (search wins).
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   // Quick-connect (paste any token → detect the service).
   const [quick, setQuick] = useState("");
@@ -189,6 +192,13 @@ export function ConnectionsList() {
     category: cat,
     services: CONNECTIONS.filter((s) => s.category === cat && !isConnected(s)),
   })).filter((g) => g.services.length > 0);
+  // Category chip narrows both the connected-first row and the catalogue.
+  const shownConnected = activeCategory
+    ? connectedServices.filter((s) => s.category === activeCategory)
+    : connectedServices;
+  const shownCatalogue = activeCategory
+    ? catalogueByCategory.filter((g) => g.category === activeCategory)
+    : catalogueByCategory;
 
   if (!isAuthenticated) {
     return (
@@ -299,6 +309,30 @@ export function ConnectionsList() {
         )}
       </div>
 
+      {/* Category filter chips (hidden while searching — search is its own filter) */}
+      {!searching && (
+        <div className="flex flex-wrap gap-2">
+          {[null, ...CONNECTION_CATEGORIES].map((cat) => {
+            const label = cat ?? "All";
+            const on = activeCategory === cat;
+            return (
+              <button
+                key={label}
+                onClick={() => setActiveCategory(cat)}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                  on
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted",
+                )}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Search results (flat, with status) */}
       {searching ? (
         <section>
@@ -316,18 +350,18 @@ export function ConnectionsList() {
       ) : (
         <>
           {/* Connected first */}
-          {connectedServices.length > 0 && (
+          {shownConnected.length > 0 && (
             <section>
               <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Connected · {connectedServices.length}
+                Connected · {shownConnected.length}
               </h3>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {connectedServices.map((s) => <Card key={s.id} service={s} />)}
+                {shownConnected.map((s) => <Card key={s.id} service={s} />)}
               </div>
             </section>
           )}
           {/* Browse the rest */}
-          {catalogueByCategory.map(({ category, services }) => (
+          {shownCatalogue.map(({ category, services }) => (
             <section key={category}>
               <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{category}</h3>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

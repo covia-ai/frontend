@@ -10,6 +10,7 @@ import { MENU_LIST, type MenuItem } from "@/lib/menu-list";
 import { TONE_STYLES } from "@/lib/status";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { useHitlOpenCount } from "@/hooks/use-hitl";
+import { useConnectionCount } from "@/hooks/use-connection-count";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -34,14 +35,19 @@ function MenuItemRow({
   isOpen,
   pathname,
   hitlOpenCount,
+  connectionCount,
 }: {
   item: MenuItem;
   isOpen: boolean | undefined;
   pathname: string;
   hitlOpenCount: number;
+  connectionCount: number;
 }) {
   const { href, label, icon: Icon, badge, children } = item;
   const active = isItemActive(item, pathname);
+  // inbox is a needs-attention signal; connections is a neutral count.
+  const badgeCount = badge === "inbox" ? hitlOpenCount : badge === "connections" ? connectionCount : 0;
+  const attention = badge === "inbox";
   // Icon-rail mode never shows children — a submenu has nowhere to render
   // when labels are hidden, so it degrades to the parent's own link.
   const showChildren = isOpen !== false && !!children?.length;
@@ -75,27 +81,29 @@ function MenuItemRow({
                   {label}
                 </p>
                 {/* Collapsed, the label is translated off-screen and a
-                    count would have nowhere to sit — so the pending
-                    state degrades to a dot on the icon rather than
+                    count would have nowhere to sit — so the count
+                    degrades to a dot on the icon rather than
                     disappearing entirely. */}
-                {badge === "inbox" && hitlOpenCount > 0 && (
+                {badge && badgeCount > 0 && (
                   isOpen === false ? (
                     <span
-                      data-testid="hitl-nav-dot"
+                      data-testid={`${badge}-nav-dot`}
                       className={cn(
                         "absolute top-1.5 right-1.5 h-2 w-2 rounded-full",
-                        TONE_STYLES.attention.dot,
+                        attention ? TONE_STYLES.attention.dot : "bg-sidebar-foreground/40",
                       )}
                     />
                   ) : (
                     <span
-                      data-testid="hitl-nav-badge"
+                      data-testid={`${badge}-nav-badge`}
                       className={cn(
                         "ml-auto min-w-5 h-5 px-1.5 flex items-center justify-center rounded-full text-xs font-semibold",
-                        TONE_STYLES.attention.pill,
+                        attention
+                          ? TONE_STYLES.attention.pill
+                          : "bg-sidebar-foreground/10 text-sidebar-foreground/70",
                       )}
                     >
-                      {hitlOpenCount}
+                      {badgeCount}
                     </span>
                   )
                 )}
@@ -124,7 +132,7 @@ function MenuItemRow({
         <ul className="pl-6 flex flex-col space-y-0.5 mt-0.5">
           {children!.map((child) => (
             <li key={child.href} className="w-full">
-              <MenuItemRow item={child} isOpen={isOpen} pathname={pathname} hitlOpenCount={hitlOpenCount} />
+              <MenuItemRow item={child} isOpen={isOpen} pathname={pathname} hitlOpenCount={hitlOpenCount} connectionCount={connectionCount} />
             </li>
           ))}
         </ul>
@@ -137,6 +145,7 @@ export function Menu({ isOpen }: MenuProps) {
   const pathname = usePathname();
   const isAuthenticated = useIsAuthenticated();
   const hitlOpenCount = useHitlOpenCount();
+  const connectionCount = useConnectionCount();
   const menuList = useMemo(() => {
     if (isAuthenticated) return MENU_LIST;
     // Filter children too — an item's own requiresAuth only gates the item
@@ -187,7 +196,7 @@ export function Menu({ isOpen }: MenuProps) {
                   <p className="pb-1" />
                 )}
                 {menus.map((item) => (
-                  <MenuItemRow key={item.href} item={item} isOpen={isOpen} pathname={pathname} hitlOpenCount={hitlOpenCount} />
+                  <MenuItemRow key={item.href} item={item} isOpen={isOpen} pathname={pathname} hitlOpenCount={hitlOpenCount} connectionCount={connectionCount} />
                 ))}
               </li>
             ))}
