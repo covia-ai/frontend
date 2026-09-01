@@ -16,6 +16,7 @@ import {
   type ConnectionService,
 } from "@/config/connections";
 import { ConnectionLogo as Logo } from "@/components/ConnectionLogo";
+import { buildVerifyCall, interpretVerify } from "@/lib/connection-verify";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
@@ -103,33 +104,10 @@ export function ConnectionsList() {
 
   /** Run the service's verify call through the venue (secret already stored). */
   const runVerify = async (service: ConnectionService): Promise<string> => {
-    if (!venue || !service.verify) throw new Error("No verification available.");
-    const v = service.verify;
-    const url = v.url ?? service.baseUrl + (v.path ?? "");
-    const secretRef = `s/${service.secretName}`;
-    const input: Record<string, unknown> = { url, headers: { ...(v.headers ?? {}) } };
-    if (service.auth === "bearer") input.bearerSecret = secretRef;
-    else if (service.auth === "header") input.secretHeaders = { [service.headerName ?? "Authorization"]: secretRef };
-    // auth === "url": the token rides in the URL via {s/NAME}; no header to add.
-    if (v.method === "post") input.body = v.body;
-    const op = v.method === "post" ? "v/ops/http/post" : "v/ops/http/get";
-    const out: any = await venue.operations.run(op, input);
-    // out = { status, body }. The http op returns body as a string, so parse
-    // JSON before the label reads fields off it — otherwise a valid 200 with a
-    // real body still fails every `b?.field` check and reads as a rejection.
-    // A non-JSON body is left as the raw string for the label to handle.
-    let body: any = out?.body;
-    if (typeof body === "string") {
-      try { body = JSON.parse(body); } catch { /* non-JSON: keep the string */ }
-    }
-    // Some APIs (Slack, Linear) 200 with an error body, so the per-service
-    // label is the source of truth.
-    const label = v.label(body);
-    if (label) return label;
-    const status = out?.status;
-    const detail =
-      body?.message ?? body?.error ?? body?.errors?.[0]?.message ?? body?.description ?? "";
-    throw new Error(`${service.name} rejected the token${status ? ` (${status})` : ""}${detail ? `: ${detail}` : ""}`);
+    const call = venue && buildVerifyCall(service);
+    if (!venue || !call) throw new Error("No verification available.");
+    const out = await venue.operations.run(call.op, call.input);
+    return interpretVerify(service, out);
   };
 
   const connect = async () => {

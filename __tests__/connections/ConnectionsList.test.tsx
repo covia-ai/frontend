@@ -3,6 +3,8 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { ConnectionsList } from "@/components/ConnectionsList";
+import { CONNECTIONS } from "@/config/connections";
+import { VERIFY_FIXTURES } from "./connection-fixtures";
 
 let mockAuthenticated = true;
 jest.mock("@/hooks/use-auth", () => ({
@@ -195,5 +197,72 @@ describe("ConnectionsList", () => {
     expect(mockVenue.secrets.delete).toHaveBeenCalledWith("GITHUB_TOKEN");
     expect(mockNotifySuccess).toHaveBeenCalledWith("GitHub disconnected");
     await waitFor(() => expect(screen.queryByText("Connected · 1")).not.toBeInTheDocument());
+  });
+
+  // End-to-end connect flow for every connector: open the dialog, paste a
+  // token, hit Test & connect, and assert what the user sees — driven from the
+  // real catalogue and the shared fixtures, so a new connector is covered the
+  // moment it is added.
+  describe("connect flow per connector", () => {
+    const verifiable = CONNECTIONS.filter((s) => s.verify);
+
+    it.each(verifiable.map((s) => [s.id, s] as const))(
+      "%s: a valid token verifies and marks the service connected",
+      async (_id, service) => {
+        const user = userEvent.setup();
+        const fx = VERIFY_FIXTURES[service.id];
+        mockVenue.operations.run.mockResolvedValue({ status: 200, body: fx.success });
+        render(<ConnectionsList />);
+        await waitFor(() => expect(mockVenue.secrets.list).toHaveBeenCalled());
+
+        await openConnectDialog(user, service.name);
+        const dialog = await screen.findByRole("dialog");
+        await within(dialog).findByText(`Connect ${service.name}`);
+        await user.type(screen.getByPlaceholderText(service.placeholder), "token-value-123");
+        await user.click(screen.getByRole("button", { name: /Test & connect/ }));
+
+        // Scoped to the dialog: a generic "Connected" also appears on the card
+        // badge once the service is marked connected.
+        expect(await within(dialog).findByText(fx.connected)).toBeInTheDocument();
+        expect(mockVenue.secrets.set).toHaveBeenCalledWith(service.secretName, "token-value-123");
+        expect(mockVenue.secrets.delete).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(verifiable.map((s) => [s.id, s] as const))(
+      "%s: a bad token is rejected and the stored secret is removed",
+      async (_id, service) => {
+        const user = userEvent.setup();
+        const fx = VERIFY_FIXTURES[service.id];
+        mockVenue.operations.run.mockResolvedValue({ status: 401, body: fx.failure });
+        render(<ConnectionsList />);
+        await waitFor(() => expect(mockVenue.secrets.list).toHaveBeenCalled());
+
+        await openConnectDialog(user, service.name);
+        await screen.findByText(`Connect ${service.name}`);
+        await user.type(screen.getByPlaceholderText(service.placeholder), "bad-token");
+        await user.click(screen.getByRole("button", { name: /Test & connect/ }));
+
+        expect(
+          await screen.findByText(new RegExp(`${service.name} rejected the token`)),
+        ).toBeInTheDocument();
+        expect(mockVenue.secrets.delete).toHaveBeenCalledWith(service.secretName);
+      },
+    );
+
+    it("jira has no generic verify — it saves and validates on first use", async () => {
+      const user = userEvent.setup();
+      render(<ConnectionsList />);
+      await waitFor(() => expect(mockVenue.secrets.list).toHaveBeenCalled());
+
+      await openConnectDialog(user, "Jira");
+      const dialog = await screen.findByRole("dialog");
+      await user.type(screen.getByPlaceholderText("Basic …"), "Basic abc123");
+      await user.click(within(dialog).getByRole("button", { name: "Connect" }));
+
+      expect(await screen.findByText(/Saved\. Validates on first use\./)).toBeInTheDocument();
+      expect(mockVenue.secrets.set).toHaveBeenCalledWith("ATLASSIAN_AUTH", "Basic abc123");
+      expect(mockVenue.operations.run).not.toHaveBeenCalled();
+    });
   });
 });
