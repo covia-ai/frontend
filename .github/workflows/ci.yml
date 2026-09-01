@@ -1,0 +1,43 @@
+name: CI
+
+# Build-and-test quality gate. Runs on every pull request and on pushes to
+# the long-lived branches. Pair this with a required-status-check branch
+# protection rule on develop/main — the workflow alone reports status but
+# does not block a merge on its own.
+
+on:
+  pull_request:
+    branches: [ develop, main ]
+  push:
+    branches: [ develop, main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm version comes from the "packageManager" field in package.json.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Build (also type-checks)
+        run: pnpm run build
+
+      - name: Test
+        run: pnpm test
