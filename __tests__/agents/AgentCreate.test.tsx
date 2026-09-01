@@ -22,6 +22,11 @@ const mockVenue = {
   secrets: {
     list: jest.fn().mockResolvedValue(["ANTHROPIC_API_KEY"]),
   },
+  // AddNewAgent now also renders AgentConnectionsPicker, which fetches
+  // venue.skills.list(...) eagerly on mount (#295).
+  skills: {
+    list: jest.fn().mockResolvedValue([]),
+  },
 };
 
 jest.mock("@/hooks/use-authenticated-venue", () => ({
