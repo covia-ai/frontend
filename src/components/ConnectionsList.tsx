@@ -114,13 +114,21 @@ export function ConnectionsList() {
     if (v.method === "post") input.body = v.body;
     const op = v.method === "post" ? "v/ops/http/post" : "v/ops/http/get";
     const out: any = await venue.operations.run(op, input);
-    // out = { status, body }. Some APIs (Slack, Linear) 200 with an error body,
-    // so the per-service label is the source of truth.
-    const label = v.label(out?.body);
+    // out = { status, body }. The http op returns body as a string, so parse
+    // JSON before the label reads fields off it — otherwise a valid 200 with a
+    // real body still fails every `b?.field` check and reads as a rejection.
+    // A non-JSON body is left as the raw string for the label to handle.
+    let body: any = out?.body;
+    if (typeof body === "string") {
+      try { body = JSON.parse(body); } catch { /* non-JSON: keep the string */ }
+    }
+    // Some APIs (Slack, Linear) 200 with an error body, so the per-service
+    // label is the source of truth.
+    const label = v.label(body);
     if (label) return label;
     const status = out?.status;
     const detail =
-      out?.body?.message ?? out?.body?.error ?? out?.body?.errors?.[0]?.message ?? out?.body?.description ?? "";
+      body?.message ?? body?.error ?? body?.errors?.[0]?.message ?? body?.description ?? "";
     throw new Error(`${service.name} rejected the token${status ? ` (${status})` : ""}${detail ? `: ${detail}` : ""}`);
   };
 
