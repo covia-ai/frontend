@@ -264,5 +264,27 @@ describe("ConnectionsList", () => {
       expect(mockVenue.secrets.set).toHaveBeenCalledWith("ATLASSIAN_AUTH", "Basic abc123");
       expect(mockVenue.operations.run).not.toHaveBeenCalled();
     });
+
+    it("telegram on a venue without URL-secret support keeps the token and says so", async () => {
+      const user = userEvent.setup();
+      // The venue can't resolve {s/NAME} yet, so http/get fails building the URI.
+      mockVenue.operations.run.mockRejectedValue(
+        new Error(
+          "HTTP 500: Bad URI syntax: https://api.telegram.org/bot{s/TELEGRAM_BOT_TOKEN}/getMe",
+        ),
+      );
+      render(<ConnectionsList />);
+      await waitFor(() => expect(mockVenue.secrets.list).toHaveBeenCalled());
+
+      await openConnectDialog(user, "Telegram");
+      await screen.findByText("Connect Telegram");
+      await user.type(screen.getByPlaceholderText("123456789:AA…"), "123:AA-bot");
+      await user.click(screen.getByRole("button", { name: /Test & connect/ }));
+
+      expect(await screen.findByText(/verifies once your venue supports URL secrets/)).toBeInTheDocument();
+      // The token is kept — this is a venue-capability gap, not a bad token.
+      expect(mockVenue.secrets.set).toHaveBeenCalledWith("TELEGRAM_BOT_TOKEN", "123:AA-bot");
+      expect(mockVenue.secrets.delete).not.toHaveBeenCalled();
+    });
   });
 });
