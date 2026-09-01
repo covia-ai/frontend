@@ -369,6 +369,15 @@ export const gtmEvent = {
     track('resume_agent_failed', { agent_id: agentId, reason })
   },
 
+  forkAgent: (sourceId: string, agentId: string) => {
+    track('fork_agent', { source_id: sourceId, agent_id: agentId })
+    feature('fork_agent')
+  },
+
+  forkAgentFailed: (sourceId: string, reason?: string) => {
+    track('fork_agent_failed', { source_id: sourceId, reason })
+  },
+
   sendAgentMessage: (agentId: string) => {
     track('send_agent_message', { agent_id: agentId })
     feature('send_agent_message')

@@ -26,6 +26,7 @@ import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/not
 import { agentConfigsEqual, type AgentConfigSaveOutcome } from "@/lib/agent-settings";
 import { gtmEvent } from "@/lib/utils";
 import { dispatchAgentMessage } from "@/lib/agent-chat";
+import { useAgentForkProvenance } from "@/hooks/use-agent-fork-provenance";
 
 const POLL_INTERVAL_MS = 3000;
 const SESSION_LIMIT = 50;
@@ -47,6 +48,7 @@ export function useAgentExplorer(initialAgentId?: string) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [messageText, setMessageText] = useState("");
   const [triggering, setTriggering] = useState(false);
+  const [forking, setForking] = useState(false);
   const listRequest = useRef(0);
   const detailRequest = useRef(0);
   const sessionRequest = useRef(0);
@@ -59,6 +61,7 @@ export function useAgentExplorer(initialAgentId?: string) {
   const startPendingChat = usePendingChats((state) => state.startPendingChat);
   const attachSessionId = usePendingChats((state) => state.attachSessionId);
   const clearPendingChat = usePendingChats((state) => state.clearPendingChat);
+  const recordForkProvenance = useAgentForkProvenance((state) => state.record);
 
   const awaitingNewSession =
     !!selectedAgentId &&
@@ -378,6 +381,39 @@ export function useAgentExplorer(initialAgentId?: string) {
       });
   };
 
+  const forkAgent = async (options: {
+    agentId: string;
+    includeTimeline: boolean;
+    config?: Record<string, unknown>;
+  }): Promise<{ status: "created" | "failed"; agentId?: string }> => {
+    if (!venue || !selectedAgentId || forking) return { status: "failed" };
+    const sourceId = selectedAgentId;
+    setForking(true);
+    try {
+      const result = await venue.agents.fork({
+        sourceId,
+        agentId: options.agentId,
+        includeTimeline: options.includeTimeline,
+        ...(options.config && Object.keys(options.config).length > 0
+          ? { config: options.config }
+          : {}),
+      });
+      gtmEvent.forkAgent(sourceId, result.agentId);
+      recordForkProvenance(venue.venueId, result.agentId, result.forkedFrom);
+      notifySuccess(`Forked "${result.agentId}" from "${result.forkedFrom}"`);
+      await refreshAgentList();
+      setSelectedAgentId(result.agentId);
+      return { status: "created", agentId: result.agentId };
+    } catch (error) {
+      gtmEvent.forkAgentFailed(sourceId, error instanceof Error ? error.message : undefined);
+      const { reason, jobHref } = jobFailure(error, venue?.venueId);
+      notifyError("Unable to fork agent", reason, venue?.baseUrl, jobHref);
+      return { status: "failed" };
+    } finally {
+      setForking(false);
+    }
+  };
+
   const updateAgentConfig = useCallback(
     async (config: Record<string, unknown>): Promise<AgentConfigSaveOutcome> => {
       if (!agentHandle || !selectedAgentId || !selectedAgentDetail) return { status: "failed" };
@@ -567,6 +603,8 @@ export function useAgentExplorer(initialAgentId?: string) {
     resume,
     triggerAgent,
     triggering,
+    forkAgent,
+    forking,
     deleteAgent,
     updateAgentConfig,
     renameSession,

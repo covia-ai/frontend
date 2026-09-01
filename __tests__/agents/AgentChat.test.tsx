@@ -52,6 +52,8 @@ function controller(overrides: Record<string, unknown> = {}) {
     resume: jest.fn(),
     triggerAgent: jest.fn(),
     triggering: false,
+    forkAgent: jest.fn().mockResolvedValue({ status: "created", agentId: "writer-fork" }),
+    forking: false,
     deleteAgent: jest.fn(),
     updateAgentConfig: jest.fn().mockResolvedValue(true),
     renameSession: jest.fn(),

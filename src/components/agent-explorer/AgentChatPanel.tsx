@@ -5,6 +5,7 @@ import {
   Bot,
   Check,
   Eye,
+  GitFork,
   History,
   BellRing,
   Loader2,
@@ -47,9 +48,11 @@ import { AgentSettings } from "@/components/agent-config/AgentSettings";
 import { AgentTimelineView } from "@/components/agent-explorer/AgentTimelineView";
 import { AgentContextView } from "@/components/agent-explorer/AgentContextView";
 import { AgentRuntimeSummary } from "@/components/agent-explorer/AgentRuntimeSummary";
+import { ForkAgentDialog } from "@/components/agent-explorer/ForkAgentDialog";
 import { SchedulePickerDialog } from "@/components/SchedulePickerDialog";
 import type { AgentExplorerController } from "@/hooks/use-agent-explorer";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useAgentForkProvenance } from "@/hooks/use-agent-fork-provenance";
 import type { Session } from "@/config/types";
 import { defaultSessionTitle, formatSessionLabel } from "@/lib/agent-sessions";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
@@ -79,6 +82,8 @@ export function AgentChatPanel({
     resume,
     triggerAgent,
     triggering,
+    forkAgent,
+    forking,
     deleteAgent,
     updateAgentConfig,
     renameSession,
@@ -88,6 +93,11 @@ export function AgentChatPanel({
   } = controller;
   const venue = useAuthenticatedVenue();
   const transcriptRef = useRef<HTMLDivElement | null>(null);
+  const forkedFrom = useAgentForkProvenance((s) =>
+    venue && selectedAgentDetail
+      ? s.forkedFromOf(venue.venueId, selectedAgentDetail.agentId)
+      : null,
+  );
 
   const [renaming, setRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
@@ -175,6 +185,22 @@ export function AgentChatPanel({
               kind="agent"
               as="pill"
             />
+            {forkedFrom && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    data-testid="agent-forked-from"
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => forkedFrom && controller.setSelectedAgentId(forkedFrom)}
+                  >
+                    <GitFork size={12} />
+                    forked from {forkedFrom}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Open source agent</TooltipContent>
+              </Tooltip>
+            )}
             {(selectedAgentDetail.tasks ?? 0) > 0 && (
               <Badge variant="outline">
                 {selectedAgentDetail.tasks} task
@@ -273,6 +299,11 @@ export function AgentChatPanel({
                   selectedAgentDetail.status === AgentStatus.SUSPENDED ||
                   selectedAgentDetail.status === AgentStatus.TERMINATED
                 }
+              />
+              <ForkAgentDialog
+                sourceAgentId={selectedAgentDetail.agentId}
+                forking={forking}
+                onFork={forkAgent}
               />
               {(selectedAgentDetail.status === AgentStatus.RUNNING ||
                 selectedAgentDetail.status === AgentStatus.SLEEPING) && (
