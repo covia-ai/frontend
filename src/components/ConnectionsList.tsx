@@ -123,9 +123,26 @@ export function ConnectionsList() {
           setConnected((prev) => new Set(prev).add(active.secretName));
           setTest({ phase: "ok", message });
         } catch (verifyErr: any) {
-          // Don't persist a token we couldn't validate.
-          await venue.secrets.delete(active.secretName).catch(() => {});
-          setTest({ phase: "error", message: verifyErr?.message ?? "Could not verify the token." });
+          const msg = String(verifyErr?.message ?? "");
+          // A url-mode connector (e.g. Telegram) on a venue that can't yet
+          // resolve an {s/NAME} URL placeholder fails with a "Bad URI syntax"
+          // carrying the literal placeholder — a venue-capability gap, not a bad
+          // token. Keep the token and say so, rather than deleting it and
+          // surfacing a raw 500.
+          if (
+            active.auth === "url" &&
+            (msg.includes(`{s/${active.secretName}}`) || /bad uri/i.test(msg))
+          ) {
+            setConnected((prev) => new Set(prev).add(active.secretName));
+            setTest({
+              phase: "ok",
+              message: `Saved. ${active.name} verifies once your venue supports URL secrets (an upcoming release).`,
+            });
+          } else {
+            // Don't persist a token we couldn't validate.
+            await venue.secrets.delete(active.secretName).catch(() => {});
+            setTest({ phase: "error", message: msg || "Could not verify the token." });
+          }
         }
       } else {
         // No generic verify (e.g. Jira's per-user host) — store and confirm.
