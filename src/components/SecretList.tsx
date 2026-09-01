@@ -5,7 +5,10 @@ import { revalidateVenueOnFailure, useAuthenticatedVenue } from "@/hooks/use-aut
 import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { KeyRound, Loader2, Plus, Trash2, EyeOff, Lock, ChevronDown } from "lucide-react";
+import { KeyRound, Loader2, Plus, Trash2, EyeOff, Lock, ChevronDown, Plug } from "lucide-react";
+import Link from "next/link";
+import { Badge } from "./ui/badge";
+import { CONNECTIONS } from "@/config/connections";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { KNOWN_LLM_KEYS } from "@/config/llm-providers";
 import { keyNameSuggestions, recentKeyNames, rememberKeyName } from "@/lib/recent-keys";
@@ -26,6 +29,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+
+/** Secret name → the connection that stores it, so the Secrets page can show
+ *  which secrets are a connection's credential rather than a bare LLM/API key. */
+const CONNECTION_BY_SECRET = new Map(CONNECTIONS.map((s) => [s.secretName, s]));
 
 export function SecretList() {
   const [secrets, setSecrets] = useState<string[]>([]);
@@ -233,7 +240,21 @@ export function SecretList() {
             <TableBody>
               {secrets.map((name) => (
                 <TableRow key={name}>
-                  <TableCell className="font-mono text-sm">{name}</TableCell>
+                  <TableCell className="font-mono text-sm">
+                    <span className="flex flex-wrap items-center gap-2">
+                      {name}
+                      {CONNECTION_BY_SECRET.get(name) && (
+                        <Link href="/connections">
+                          <Badge
+                            variant="outline"
+                            className="gap-1 font-sans text-[10px] font-normal text-muted-foreground hover:bg-muted"
+                          >
+                            <Plug size={10} /> {CONNECTION_BY_SECRET.get(name)!.name} connection
+                          </Badge>
+                        </Link>
+                      )}
+                    </span>
+                  </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
                     <span className="flex items-center gap-1">
                       <EyeOff size={14} /> ••••••••
