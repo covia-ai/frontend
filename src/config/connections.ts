@@ -201,3 +201,71 @@ export function detectService(token: string): ConnectionService | null {
   const hits = CONNECTIONS.filter((s) => s.detect?.some((p) => t.startsWith(p)));
   return hits.length === 1 ? hits[0] : null;
 }
+
+/** What an agent can do with each connection, and a prompt or two to try —
+ *  distilled from each connection skill's common calls. Shown in the add-flow
+ *  and on connected cards so a freshly connected service is obviously useful. */
+export type ConnectionCapabilities = { does: string[]; examples: string[] };
+
+export const CONNECTION_CAPABILITIES: Record<string, ConnectionCapabilities> = {
+  github: {
+    does: ["Read repos, issues, and pull requests", "Open, comment on, and label issues", "Create and review pull requests"],
+    examples: ["Summarise the open PRs on my repo", "Open an issue titled 'flaky test' with the details above"],
+  },
+  notion: {
+    does: ["Search and read pages and databases", "Create and update pages", "Query database entries"],
+    examples: ["Summarise the Q3 plan page", "Add a row to my Tasks database for this"],
+  },
+  slack: {
+    does: ["Post messages to channels", "Read recent channel history", "List channels and users"],
+    examples: ["Post the deploy summary to #releases", "What was discussed in #eng today?"],
+  },
+  hubspot: {
+    does: ["Look up contacts, companies, and deals", "Create and update CRM records", "Add notes to a contact"],
+    examples: ["Find the deal for Acme Corp", "Create a contact for jane@acme.com"],
+  },
+  jira: {
+    does: ["Search issues with JQL", "Create and transition issues", "Comment on issues"],
+    examples: ["List my open bugs in project ABC", "Create a task to update the docs"],
+  },
+  linear: {
+    does: ["Search and read issues", "Create issues and comments", "Move issues across states"],
+    examples: ["Open a Linear issue for this bug", "What's in my current cycle?"],
+  },
+  stripe: {
+    does: ["Look up customers, charges, and invoices", "Read balance and payouts", "Search payments"],
+    examples: ["Find recent failed charges", "What's my current balance?"],
+  },
+  airtable: {
+    does: ["List and read records", "Create and update records", "Query a table with filters"],
+    examples: ["Add a lead to my CRM base", "List records where Status is Open"],
+  },
+  discord: {
+    does: ["Post messages to channels", "Read channel history", "List guild channels"],
+    examples: ["Post the changelog to #announcements", "Summarise the last 50 messages in #support"],
+  },
+  telegram: {
+    does: ["Send messages to chats", "Read incoming updates", "Look up chat info"],
+    examples: ["Send me a summary on Telegram", "Reply to the latest message with an ack"],
+  },
+  asana: {
+    does: ["List tasks and projects", "Create and update tasks", "Search across workspaces"],
+    examples: ["Create a task to review the PR", "What's due this week in my project?"],
+  },
+  intercom: {
+    does: ["Search contacts and conversations", "Read and reply to conversations", "Create notes"],
+    examples: ["Find the conversation with jane@acme.com", "Summarise the open conversations"],
+  },
+  sentry: {
+    does: ["List issues and events", "Read error details and stack traces", "Search by project"],
+    examples: ["What are the top errors this week?", "Show details for the latest crash"],
+  },
+  sendgrid: {
+    does: ["Send transactional email", "Read delivery and engagement stats", "Manage templates"],
+    examples: ["Email this report to the team", "What's my open rate this week?"],
+  },
+  twilio: {
+    does: ["Send SMS messages", "Look up message logs", "Read account usage"],
+    examples: ["Text me when the build finishes", "List the last 10 SMS I sent"],
+  },
+};
