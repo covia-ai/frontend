@@ -12,6 +12,7 @@ import {
 } from "@/components/agent-config/AgentConfigEditor";
 import { ToolSkillPicker } from "@/components/agent-config/ToolSkillPicker";
 import { AgentCapsEditor } from "@/components/agent-config/AgentCapsEditor";
+import { AgentConnectionsPicker } from "@/components/agent-config/AgentConnectionsPicker";
 import { ConfigFields } from "@/components/agent-explorer/ConfigFields";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -238,6 +239,11 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
                 }
               />
             </div>
+            <AgentConnectionsPicker
+              venue={venue}
+              attachedSkills={attachedSkills}
+              onToggleSkill={handleToggleSkill}
+            />
             <div className="grid gap-6 lg:grid-cols-2">
               <AgentJsonConfigField
                 id="agent-tools-json"
