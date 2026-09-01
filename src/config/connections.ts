@@ -79,7 +79,7 @@ export const CONNECTIONS: ConnectionService[] = [
     tokenUrl: "https://api.slack.com/apps",
     createSteps: ["api.slack.com/apps → Create New App → From scratch, in your workspace.", "Add the OAuth scopes you need, then Install to Workspace.", "Paste the Bot User OAuth Token (starts with xoxb-)."],
     placeholder: "xoxb-…", baseUrl: "https://slack.com/api", auth: "bearer",
-    verify: { path: "/auth.test", label: (b) => (b?.ok ? `Connected to ${b.team}` : b?.error ? `Slack: ${b.error}` : null) },
+    verify: { path: "/auth.test", label: (b) => (b?.ok ? `Connected to ${b.team}` : null) },
     detect: ["xoxb-", "xoxp-"],
   },
   {
