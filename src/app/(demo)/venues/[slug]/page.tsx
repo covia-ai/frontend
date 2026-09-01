@@ -4,16 +4,16 @@ import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Card, CardContent, CardHeader }from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Building2, Database, Settings, Users, Globe, Activity, ArrowRight, ExternalLink, Link as LinkIcon, Fingerprint, Copy, Wrench, ChevronDown, ChevronUp, Plug }from "lucide-react";
+import { Building2, Database, Settings, Users, Globe, Activity, ArrowRight, ExternalLink, Link as LinkIcon, Fingerprint, Plug }from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useVenues } from "@/hooks/use-venues";
 import { use, useEffect, useState } from "react";
-import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
 import { CopyField } from "@/components/CopyField";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { VenueResolutionState } from "@/components/VenueResolutionState";
 import { getVenueStatus } from "@/lib/venue-registry";
+import { McpConnectSection } from "@/components/venue/McpConnectSection";
 
 interface VenuePageProps {
   params: Promise<{
@@ -36,8 +36,6 @@ export default function VenuePage({ params }: VenuePageProps) {
   const [ noOfAdapters, setNoOfAdapters] = useState(0)
   const [ noOfRuns, setNoOfRuns] = useState(0)
   const [ noOfUsers, setNoOfUsers] = useState(0)
-  const [ mcpTools, setMcpTools] = useState<{name:string}[]>([])
-  const [ showClaudeSnippet, setShowClaudeSnippet] = useState(false)
   useEffect(() => {
        if (!venue || status !== "ready") return;
        const fetchMCP = async () => {
@@ -73,11 +71,6 @@ export default function VenuePage({ params }: VenuePageProps) {
           console.log(e)
         }
       }
-      const fetchMcpTools = async () => {
-        try {
-          if (venue) setMcpTools(await listMcpTools(venue.baseUrl));
-        } catch { /* non-fatal */ }
-      }
       const fetchAdapters = async () => {
         try {
           if (venue) setNoOfAdapters((await venue.adapters.list()).length);
@@ -85,7 +78,6 @@ export default function VenuePage({ params }: VenuePageProps) {
       }
       fetchMCP();
       fetchStats();
-      fetchMcpTools();
       fetchAdapters();
   }, [venue, status]);
 
@@ -131,7 +123,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               </div>
             </div>
             <div className="flex flex-col space-y-2">
-              <Button 
+              <Button
                 onClick={() => window.open(venue.baseUrl, '_blank')}
                 variant="outline"
                 aria-label="open venue" role="button"
@@ -140,8 +132,18 @@ export default function VenuePage({ params }: VenuePageProps) {
                 <ExternalLink size={16} />
                 <span>Open Venue</span>
               </Button>
-              
-              <Button 
+
+              <Button
+                onClick={() => router.push(`/venues/${slug}/connect`)}
+                variant="outline"
+                aria-label="connect" role="button"
+                className="flex items-center space-x-2"
+              >
+                <Plug size={16} />
+                <span>Connect</span>
+              </Button>
+
+              <Button
                 onClick={() => selectVenue(venue.venueId)}
                 variant={isCurrentVenue ? "default" : "secondary"}
                 aria-label="make default" role="button"
@@ -310,84 +312,7 @@ export default function VenuePage({ params }: VenuePageProps) {
         </Card>
         </div>
 
-        {/* MCP Integration Card */}
-        <Card className="p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="bg-primary-vlight p-2 rounded-lg">
-              <Wrench size={20} className="text-primary" />
-            </div>
-            <div>
-              <h2 className="text-lg font-medium">MCP Integration</h2>
-              <p className="text-sm text-muted-foreground">
-                {mcpTools.length > 0
-                  ? `${mcpTools.length} tool${mcpTools.length !== 1 ? "s" : ""} available as MCP tools`
-                  : "This venue exposes every operation as an MCP tool"}
-              </p>
-            </div>
-          </div>
-
-          {/* Top-5 preview */}
-          {mcpTools.length > 0 && (
-            <ul className="mb-4 space-y-1">
-              {mcpTools.slice(0, 5).map((t) => (
-                <li key={t.name} className="font-mono text-xs text-muted-foreground pl-2 border-l-2 border-primary/30">
-                  {t.name}
-                </li>
-              ))}
-              {mcpTools.length > 5 && (
-                <li className="text-xs text-muted-foreground pl-2">
-                  +{mcpTools.length - 5} more…
-                </li>
-              )}
-            </ul>
-          )}
-
-          <div className="flex flex-wrap gap-3 mb-4">
-            <Button
-              className="flex items-center gap-2"
-              onClick={() => copyDataToClipBoard(venueMCPUrl, "MCP URL copied")}
-              variant="default"
-            >
-              <Copy size={14} /> Copy MCP URL
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => router.push(`/venues/${slug}/mcp`)}
-              className="flex items-center gap-2"
-            >
-              <Wrench size={14} /> MCP Tools
-              <ArrowRight size={14} />
-            </Button>
-          </div>
-
-          {/* Expandable Claude Desktop snippet */}
-          <button
-            className="flex items-center gap-1 text-sm text-primary hover:underline"
-            onClick={() => setShowClaudeSnippet((v) => !v)}
-          >
-            {showClaudeSnippet ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            Connect to Claude Desktop
-          </button>
-          {showClaudeSnippet && (
-            <div className="mt-3">
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-xs text-muted-foreground">Add to your Claude Desktop <code>claude_desktop_config.json</code></p>
-                <button
-                  className="text-xs text-primary flex items-center gap-1 hover:underline"
-                  onClick={() => copyDataToClipBoard(
-                    JSON.stringify({ mcpServers: { covia: { command: "npx", args: ["-y", "mcp-remote", venueMCPUrl] } } }, null, 2),
-                    "Snippet copied"
-                  )}
-                >
-                  <Copy size={11} /> Copy
-                </button>
-              </div>
-              <pre className="text-xs bg-muted rounded-md p-3 overflow-x-auto whitespace-pre-wrap break-all">
-{JSON.stringify({ mcpServers: { covia: { command: "npx", args: ["-y", "mcp-remote", venueMCPUrl] } } }, null, 2)}
-              </pre>
-            </div>
-          )}
-        </Card>
+        <McpConnectSection venue={venue} slug={slug} />
       </div>
     </ContentLayout>
   );
