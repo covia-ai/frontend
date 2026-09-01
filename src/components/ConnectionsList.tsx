@@ -116,7 +116,8 @@ export function ConnectionsList() {
     const secretRef = `s/${service.secretName}`;
     const input: Record<string, unknown> = { url, headers: { ...(v.headers ?? {}) } };
     if (service.auth === "bearer") input.bearerSecret = secretRef;
-    else input.secretHeaders = { [service.headerName ?? "Authorization"]: secretRef };
+    else if (service.auth === "header") input.secretHeaders = { [service.headerName ?? "Authorization"]: secretRef };
+    // auth === "url": the token rides in the URL via {s/NAME}; no header to add.
     if (v.method === "post") input.body = v.body;
     const op = v.method === "post" ? "v/ops/http/post" : "v/ops/http/get";
     const out: any = await venue.operations.run(op, input);
@@ -126,7 +127,7 @@ export function ConnectionsList() {
     if (label) return label;
     const status = out?.status;
     const detail =
-      out?.body?.message ?? out?.body?.error ?? out?.body?.errors?.[0]?.message ?? "";
+      out?.body?.message ?? out?.body?.error ?? out?.body?.errors?.[0]?.message ?? out?.body?.description ?? "";
     throw new Error(`${service.name} rejected the token${status ? ` (${status})` : ""}${detail ? `: ${detail}` : ""}`);
   };
 
