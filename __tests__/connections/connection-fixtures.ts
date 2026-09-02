@@ -23,4 +23,9 @@ export const VERIFY_FIXTURES: Record<
   sentry: { success: '[{"slug":"org1"}]', connected: "Connected (1 org)", failure: '{"detail":"Invalid token"}' },
   sendgrid: { success: '{"scopes":["mail.send"]}', connected: "Connected", failure: '{"errors":[{"message":"authorization required"}]}' },
   twilio: { success: '{"accounts":[{"sid":"AC1"}]}', connected: "Connected", failure: '{"message":"Authenticate"}' },
+  gitlab: { success: '{"username":"ada"}', connected: "Connected as @ada", failure: '{"message":"401 Unauthorized"}' },
+  clickup: { success: '{"user":{"username":"Ada"}}', connected: "Connected as Ada", failure: '{"err":"Token invalid","ECODE":"OAUTH_025"}' },
+  calendly: { success: '{"resource":{"name":"Ada Lovelace"}}', connected: "Connected as Ada Lovelace", failure: '{"title":"Unauthorized","message":"The access token is invalid"}' },
+  monday: { success: '{"data":{"me":{"name":"Ada"}}}', connected: "Connected as Ada", failure: '{"errors":[{"message":"Not Authenticated"}]}' },
+  pagerduty: { success: '{"abilities":["sso"]}', connected: "Connected", failure: '{"error":{"code":2001,"message":"Invalid API key"}}' },
 };

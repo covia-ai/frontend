@@ -188,6 +188,51 @@ export const CONNECTIONS: ConnectionService[] = [
     verify: { url: "https://api.twilio.com/2010-04-01/Accounts.json", label: (b) => (Array.isArray(b?.accounts) ? "Connected" : null) },
     detect: ["Basic "],
   },
+  {
+    id: "gitlab", name: "GitLab", method: "token", secretName: "GITLAB_TOKEN", skillId: "connections/gitlab",
+    blurb: "Projects, issues, and merge requests.", category: "Dev", initials: "GL", color: "#FC6D26",
+    tokenUrl: "https://gitlab.com/-/user_settings/personal_access_tokens",
+    createSteps: ["GitLab → Preferences → Access Tokens → Add new token.", "Grant the api (or read_api) scope.", "Paste the token (starts with glpat-)."],
+    placeholder: "glpat-…", baseUrl: "https://gitlab.com/api/v4", auth: "bearer",
+    verify: { path: "/user", label: (b) => (b?.username ? `Connected as @${b.username}` : null) },
+    detect: ["glpat-"],
+  },
+  {
+    id: "clickup", name: "ClickUp", method: "key", secretName: "CLICKUP_TOKEN", skillId: "connections/clickup",
+    blurb: "Tasks, lists, and spaces.", category: "Docs & PM", initials: "CU", color: "#7B68EE",
+    tokenUrl: "https://app.clickup.com/settings/apps",
+    createSteps: ["ClickUp → Settings → Apps → API Token → Generate.", "Copy your personal token.", "Paste it (starts with pk_)."],
+    placeholder: "pk_…", baseUrl: "https://api.clickup.com/api/v2", auth: "header",
+    // ClickUp sends the raw token as the Authorization value (no "Bearer").
+    // No `detect`: the pk_ prefix collides with Stripe publishable keys.
+    verify: { path: "/user", label: (b) => (b?.user?.username ? `Connected as ${b.user.username}` : null) },
+  },
+  {
+    id: "calendly", name: "Calendly", method: "token", secretName: "CALENDLY_TOKEN", skillId: "connections/calendly",
+    blurb: "Scheduled events and invitees.", category: "Docs & PM", initials: "CL", color: "#006BFF",
+    tokenUrl: "https://calendly.com/integrations/api_webhooks",
+    createSteps: ["Calendly → Integrations → API & Webhooks → Personal Access Tokens.", "Generate a token.", "Paste it here."],
+    placeholder: "personal access token", baseUrl: "https://api.calendly.com", auth: "bearer",
+    verify: { path: "/users/me", label: (b) => (b?.resource?.name ? `Connected as ${b.resource.name}` : null) },
+  },
+  {
+    id: "monday", name: "monday.com", method: "key", secretName: "MONDAY_TOKEN", skillId: "connections/monday",
+    blurb: "Boards, items, and updates (GraphQL).", category: "Docs & PM", initials: "M", color: "#FF3D57",
+    tokenUrl: "https://monday.com/developers/v2",
+    createSteps: ["monday.com → your avatar → Developers → My access tokens.", "Copy your personal API token.", "Paste it as-is."],
+    placeholder: "API token", baseUrl: "https://api.monday.com/v2", auth: "header",
+    // monday sends the raw token as the Authorization value; the API is a single GraphQL endpoint.
+    verify: { method: "post", body: { query: "{ me { name } }" }, label: (b) => (b?.data?.me?.name ? `Connected as ${b.data.me.name}` : null) },
+  },
+  {
+    id: "pagerduty", name: "PagerDuty", method: "token", secretName: "PAGERDUTY_TOKEN", skillId: "connections/pagerduty",
+    blurb: "Incidents, services, and on-call.", category: "Dev", initials: "PD", color: "#06AC38",
+    tokenUrl: "https://support.pagerduty.com/docs/api-access-keys",
+    createSteps: ["PagerDuty → Integrations → API Access Keys → Create New API Key.", "Copy the key.", "Paste the complete header value: Token token=<key>."],
+    placeholder: "Token token=…", baseUrl: "https://api.pagerduty.com", auth: "header",
+    verify: { path: "/abilities", headers: { Accept: "application/vnd.pagerduty+json;version=2" }, label: (b) => (Array.isArray(b?.abilities) ? "Connected" : null) },
+    detect: ["Token token="],
+  },
 ];
 
 export const CONNECTION_CATEGORIES = [
@@ -267,5 +312,25 @@ export const CONNECTION_CAPABILITIES: Record<string, ConnectionCapabilities> = {
   twilio: {
     does: ["Send SMS messages", "Look up message logs", "Read account usage"],
     examples: ["Text me when the build finishes", "List the last 10 SMS I sent"],
+  },
+  gitlab: {
+    does: ["Read projects, issues, and merge requests", "Open and comment on issues", "Create and review merge requests"],
+    examples: ["Summarise the open merge requests on my project", "Open an issue titled 'flaky pipeline' with the details above"],
+  },
+  clickup: {
+    does: ["List tasks, lists, and spaces", "Create and update tasks", "Search tasks with filters"],
+    examples: ["Create a task to review the PR", "What's due this week in my space?"],
+  },
+  calendly: {
+    does: ["List scheduled events and invitees", "Read event types", "Look up who booked and when"],
+    examples: ["What meetings do I have this week?", "Who booked the 30-minute intro calls?"],
+  },
+  monday: {
+    does: ["Read boards and items", "Create and update items", "Post updates to an item"],
+    examples: ["Add an item to my Leads board for Acme", "What's the status of items in the Sprint board?"],
+  },
+  pagerduty: {
+    does: ["List incidents and their status", "Read services and on-call schedules", "Acknowledge or resolve incidents"],
+    examples: ["What incidents are open right now?", "Who's on call for the payments service?"],
   },
 };
