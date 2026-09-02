@@ -152,7 +152,7 @@ export function DeviceKeyDialog({
                   : "Your device key is stored in your browser — as long as you don't clear your browser data, we'll read it from there automatically."}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-3">
+            <div className="min-w-0 space-y-3">
               {isExisting && deviceKeyDid ? (
                 <div className="flex flex-col gap-1">
                   <p className="text-sm text-muted-foreground">You&apos;ll sign in as:</p>
