@@ -48,7 +48,12 @@ export function interpretVerify(service: ConnectionService, out: any): string {
   if (label) return label;
   const status = out?.status;
   const detail =
-    body?.message ?? body?.error ?? body?.errors?.[0]?.message ?? body?.description ?? "";
+    body?.message ??
+    body?.error ??
+    body?.errors?.[0]?.message ??
+    body?.description ??
+    body?.detail ?? // Sentry, and other DRF-based APIs, put the reason here
+    "";
   throw new Error(
     `${service.name} rejected the token${status ? ` (${status})` : ""}${detail ? `: ${detail}` : ""}`,
   );

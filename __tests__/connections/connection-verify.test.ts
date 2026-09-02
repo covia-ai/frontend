@@ -76,4 +76,14 @@ describe("interpretVerify — success and rejection per connector", () => {
     const github = CONNECTIONS.find((s) => s.id === "github")!;
     expect(interpretVerify(github, { status: 200, body: { login: "octocat" } })).toBe("Connected as @octocat");
   });
+
+  it("surfaces the reason from a `detail` field (Sentry 403 scope gap)", () => {
+    const sentry = CONNECTIONS.find((s) => s.id === "sentry")!;
+    expect(() =>
+      interpretVerify(sentry, {
+        status: 403,
+        body: '{"detail":"You do not have permission to perform this action."}',
+      }),
+    ).toThrow(/Sentry rejected the token \(403\): You do not have permission/);
+  });
 });
