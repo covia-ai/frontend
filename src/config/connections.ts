@@ -262,6 +262,93 @@ export const CONNECTIONS: ConnectionService[] = [
     verify: { path: "/abilities", headers: { Accept: "application/vnd.pagerduty+json;version=2" }, label: (b) => (Array.isArray(b?.abilities) ? "Connected" : null) },
     detect: ["Token token="],
   },
+  // ---- Wave B: multi-value connections (a site subdomain + a token, or two
+  //      secrets). Staged ahead of their venue skills (covia#480). ----
+  {
+    id: "zendesk", name: "Zendesk", method: "basic", secretName: "ZENDESK_AUTH", skillId: "connections/zendesk",
+    blurb: "Tickets, users, and organisations.", category: "CRM & Support", initials: "ZD", color: "#03363D",
+    tokenUrl: "https://support.zendesk.com/hc/en-us/articles/4408889192858",
+    createSteps: [
+      "Zendesk Admin Center → Apps and integrations → APIs → Zendesk API → enable token access and add a token.",
+      "Base64-encode {your-email}/token:{the-api-token}.",
+      "Enter your subdomain, then paste the header value: Basic <that base64>.",
+    ],
+    placeholder: "Basic …", baseUrl: "https://{s/ZENDESK_SITE}.zendesk.com/api/v2", auth: "header",
+    secrets: [
+      { name: "ZENDESK_SITE", label: "Subdomain", placeholder: "acme" },
+      { name: "ZENDESK_AUTH", label: "Basic auth header", placeholder: "Basic …" },
+    ],
+    verify: { path: "/users/me.json", label: (b) => (b?.user?.name ? `Connected as ${b.user.name}` : null) },
+  },
+  {
+    id: "confluence", name: "Confluence", method: "basic", secretName: "CONFLUENCE_AUTH", skillId: "connections/confluence",
+    blurb: "Pages, spaces, and search.", category: "Docs & PM", initials: "CF", color: "#172B4D",
+    tokenUrl: "https://id.atlassian.com/manage-profile/security/api-tokens",
+    createSteps: [
+      "id.atlassian.com → Security → Create API token.",
+      "Base64-encode {your-email}:{the-token}.",
+      "Enter your site, then paste the header value: Basic <that base64>.",
+    ],
+    placeholder: "Basic …", baseUrl: "https://{s/CONFLUENCE_SITE}.atlassian.net/wiki", auth: "header",
+    secrets: [
+      { name: "CONFLUENCE_SITE", label: "Site", placeholder: "your-team" },
+      { name: "CONFLUENCE_AUTH", label: "Basic auth header", placeholder: "Basic …" },
+    ],
+    verify: { path: "/rest/api/user/current", label: (b) => (b?.accountId ? `Connected as ${b.displayName ?? b.accountId}` : null) },
+  },
+  {
+    id: "shopify", name: "Shopify", method: "token", secretName: "SHOPIFY_TOKEN", skillId: "connections/shopify",
+    blurb: "Products, orders, and customers.", category: "Data", initials: "SH", color: "#95BF47",
+    tokenUrl: "https://help.shopify.com/en/manual/apps/app-types/custom-apps",
+    createSteps: [
+      "Shopify admin → Settings → Apps and sales channels → Develop apps → create an app.",
+      "Set Admin API scopes, install the app, and reveal the Admin API access token (starts with shpat_).",
+      "Enter your store (the myshopify.com subdomain), then paste the token.",
+    ],
+    placeholder: "shpat_…", baseUrl: "https://{s/SHOPIFY_STORE}.myshopify.com/admin/api/2024-10", auth: "header", headerName: "X-Shopify-Access-Token",
+    secrets: [
+      { name: "SHOPIFY_STORE", label: "Store", placeholder: "acme" },
+      { name: "SHOPIFY_TOKEN", label: "Admin API token", placeholder: "shpat_…" },
+    ],
+    verify: { path: "/shop.json", label: (b) => (b?.shop?.name ? `Connected to ${b.shop.name}` : null) },
+    detect: ["shpat_"],
+  },
+  {
+    id: "trello", name: "Trello", method: "key", secretName: "TRELLO_KEY", skillId: "connections/trello",
+    blurb: "Boards, lists, and cards.", category: "Docs & PM", initials: "TR", color: "#0079BF",
+    tokenUrl: "https://trello.com/power-ups/admin",
+    createSteps: [
+      "trello.com/power-ups/admin → create a Power-Up, then generate an API key.",
+      "Click the Token link by the key to authorise and get a token.",
+      "Paste the API key and the token.",
+    ],
+    placeholder: "", baseUrl: "https://api.trello.com/1", auth: "url",
+    secrets: [
+      { name: "TRELLO_KEY", label: "API key", placeholder: "key" },
+      { name: "TRELLO_TOKEN", label: "Token", placeholder: "token" },
+    ],
+    verify: {
+      url: "https://api.trello.com/1/members/me?key={s/TRELLO_KEY}&token={s/TRELLO_TOKEN}",
+      label: (b) => (b?.id ? `Connected as ${b.fullName ?? b.username ?? "you"}` : null),
+    },
+  },
+  {
+    id: "datadog", name: "Datadog", method: "key", secretName: "DATADOG_API_KEY", skillId: "connections/datadog",
+    blurb: "Metrics, monitors, and events.", category: "Dev", initials: "DD", color: "#632CA6",
+    tokenUrl: "https://app.datadoghq.com/organization-settings/api-keys",
+    createSteps: [
+      "Datadog → Organization Settings → API Keys → New Key (the API key).",
+      "Organization Settings → Application Keys → New Key (the application key).",
+      "Paste both. (US1 region; other regions need a different base URL for now.)",
+    ],
+    placeholder: "", baseUrl: "https://api.datadoghq.com/api/v1", auth: "header",
+    secrets: [
+      { name: "DATADOG_API_KEY", label: "API key", placeholder: "api key" },
+      { name: "DATADOG_APP_KEY", label: "Application key", placeholder: "app key" },
+    ],
+    secretHeaders: { "DD-API-KEY": "s/DATADOG_API_KEY", "DD-APPLICATION-KEY": "s/DATADOG_APP_KEY" },
+    verify: { path: "/validate", label: (b) => (b?.valid ? "Connected" : null) },
+  },
 ];
 
 export const CONNECTION_CATEGORIES = [
@@ -369,5 +456,25 @@ export const CONNECTION_CAPABILITIES: Record<string, ConnectionCapabilities> = {
   pagerduty: {
     does: ["List incidents and their status", "Read services and on-call schedules", "Acknowledge or resolve incidents"],
     examples: ["What incidents are open right now?", "Who's on call for the payments service?"],
+  },
+  zendesk: {
+    does: ["Search tickets and users", "Read and comment on tickets", "Look up organisations"],
+    examples: ["Find open tickets from acme.com", "Summarise ticket 12345"],
+  },
+  confluence: {
+    does: ["Search and read pages", "Read spaces", "Find content with CQL"],
+    examples: ["Find the onboarding page", "Summarise the Q3 planning space"],
+  },
+  shopify: {
+    does: ["Look up products, orders, and customers", "Read inventory and fulfilment", "Search orders"],
+    examples: ["What were yesterday's orders?", "Find the product 'Blue Widget'"],
+  },
+  trello: {
+    does: ["List boards, lists, and cards", "Create and move cards", "Comment on cards"],
+    examples: ["Add a card to my To Do list", "What's on my Sprint board?"],
+  },
+  datadog: {
+    does: ["Query metrics and monitors", "Read events and alerts", "Look up monitor status"],
+    examples: ["Which monitors are alerting?", "Show CPU for the web service"],
   },
 };

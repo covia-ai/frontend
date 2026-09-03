@@ -28,4 +28,9 @@ export const VERIFY_FIXTURES: Record<
   calendly: { success: '{"resource":{"name":"Ada Lovelace"}}', connected: "Connected as Ada Lovelace", failure: '{"title":"Unauthorized","message":"The access token is invalid"}' },
   monday: { success: '{"data":{"me":{"name":"Ada"}}}', connected: "Connected as Ada", failure: '{"errors":[{"message":"Not Authenticated"}]}' },
   pagerduty: { success: '{"abilities":["sso"]}', connected: "Connected", failure: '{"error":{"code":2001,"message":"Invalid API key"}}' },
+  zendesk: { success: '{"user":{"name":"Ada"}}', connected: "Connected as Ada", failure: '{"error":"Could not authenticate you"}' },
+  confluence: { success: '{"accountId":"a1","displayName":"Ada"}', connected: "Connected as Ada", failure: '{"statusCode":401,"message":"Unauthorized"}' },
+  shopify: { success: '{"shop":{"name":"Acme"}}', connected: "Connected to Acme", failure: '{"errors":"[API] Invalid access token"}' },
+  trello: { success: '{"id":"m1","fullName":"Ada"}', connected: "Connected as Ada", failure: "invalid token" },
+  datadog: { success: '{"valid":true}', connected: "Connected", failure: '{"errors":["Invalid API key"]}' },
 };
