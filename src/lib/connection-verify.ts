@@ -5,9 +5,15 @@ export type VerifyCall = { op: string; input: Record<string, unknown> };
 
 /**
  * Builds the `v/ops/http/*` call for a service's verify, or null if the service
- * has no generic verify (e.g. Jira, whose host is per-user). The credential is
- * referenced by name — `bearerSecret`, a `secretHeaders` entry, or an `{s/NAME}`
- * placeholder already in the URL for `auth: "url"` — never inlined.
+ * has no generic verify (e.g. Jira, whose host is per-user). Every credential is
+ * referenced by name, never inlined:
+ *  - `bearer`  → `bearerSecret: s/<secretName>`
+ *  - `header`  → `secretHeaders`: the service's `secretHeaders` map when set
+ *                (multi-header, e.g. Datadog), else the single
+ *                `{ [headerName ?? Authorization]: s/<secretName> }`
+ *  - `url`     → the value(s) ride the URL as `{s/NAME}` placeholders the venue
+ *                resolves; a site subdomain in `baseUrl` works the same way
+ *                alongside a bearer/header token.
  */
 export function buildVerifyCall(service: ConnectionService): VerifyCall | null {
   const v = service.verify;
@@ -16,8 +22,9 @@ export function buildVerifyCall(service: ConnectionService): VerifyCall | null {
   const secretRef = `s/${service.secretName}`;
   const input: Record<string, unknown> = { url, headers: { ...(v.headers ?? {}) } };
   if (service.auth === "bearer") input.bearerSecret = secretRef;
-  else if (service.auth === "header") input.secretHeaders = { [service.headerName ?? "Authorization"]: secretRef };
-  // auth === "url": the token rides in the URL via {s/NAME}; no header to add.
+  else if (service.auth === "header")
+    input.secretHeaders = service.secretHeaders ?? { [service.headerName ?? "Authorization"]: secretRef };
+  // auth === "url": the value(s) ride the URL via {s/NAME}; no header to add.
   if (v.method === "post") input.body = v.body;
   return { op: v.method === "post" ? "v/ops/http/post" : "v/ops/http/get", input };
 }

@@ -23,12 +23,28 @@ export type ConnectionVerify = {
   label: (body: any) => string | null;
 };
 
+/**
+ * One stored value a connection collects during setup. Single-value connections
+ * omit {@link ConnectionService.secrets} and are described by `secretName` /
+ * `placeholder`; multi-value ones (a key + a token, or a site subdomain + a
+ * token) list each value here, collected in setup order.
+ */
+export type SecretField = {
+  /** Stored under `s/<name>`; must match /^[A-Z0-9_]+$/. */
+  name: string;
+  /** UI label for the field, e.g. "API key", "App key", "Site". */
+  label: string;
+  placeholder?: string;
+};
+
 export type ConnectionService = {
   /** Stable id, matches the skill name: v/skills/connections/<id>. */
   id: string;
   name: string;
   method: ConnectionMethod;
-  /** Secret name the token is stored under (e.g. GITHUB_TOKEN). */
+  /** Secret name the token is stored under (e.g. GITHUB_TOKEN). For a
+   *  multi-value connection this is the primary auth credential (the one used by
+   *  `bearer` / single-`header` verify) and must be one of `secrets`. */
   secretName: string;
   skillId: string;
   blurb: string;
@@ -52,6 +68,19 @@ export type ConnectionService = {
   verify?: ConnectionVerify;
   /** Token prefixes for paste-to-detect (distinctive ones only). */
   detect?: string[];
+  /** Multi-value connections (Phase 3): each value the setup flow collects and
+   *  stores as `s/<name>`, in setup order (a site subdomain typically precedes
+   *  its token). `secretName` names the primary auth credential and is one of
+   *  these — not necessarily the first. Unset ⇒ a single secret via `secretName`.
+   *  A value used in the URL (a site subdomain, a key in the query string) is
+   *  referenced as `{s/<name>}` in `baseUrl` / `verify.url` and resolved by the
+   *  venue; a value sent as a header goes in `secretHeaders`. */
+  secrets?: SecretField[];
+  /** For `auth: "header"` connections that send more than one secret header
+   *  (e.g. Datadog's `DD-API-KEY` + `DD-APPLICATION-KEY`): header name →
+   *  `s/<name>`. When set it supersedes the single `headerName` / `secretName`
+   *  header in the verify call. */
+  secretHeaders?: Record<string, string>;
 };
 
 export const CONNECTIONS: ConnectionService[] = [
@@ -238,6 +267,14 @@ export const CONNECTIONS: ConnectionService[] = [
 export const CONNECTION_CATEGORIES = [
   "Dev", "Docs & PM", "CRM & Support", "Payments", "Comms", "Data",
 ] as const;
+
+/** Every value a connection collects during setup, in order. A single-value
+ *  connection derives one entry from `secretName` / `placeholder`; a multi-value
+ *  one returns its declared `secrets`. One helper for the setup flow, the
+ *  connected-state display, and the verify builder. */
+export function connectionSecrets(s: ConnectionService): SecretField[] {
+  return s.secrets ?? [{ name: s.secretName, label: "Token", placeholder: s.placeholder }];
+}
 
 /** Match a pasted token to a service by its distinctive prefix. Ambiguous → null. */
 export function detectService(token: string): ConnectionService | null {
