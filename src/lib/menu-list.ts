@@ -4,6 +4,7 @@ import {
   FileStack,
   FlaskConical,
   FolderOpen,
+  HardDrive,
   Home,
   Inbox,
   KeyRound,
@@ -77,6 +78,7 @@ export const MENU_LIST: MenuGroup[] = [
       { href: "/secrets", label: "Secrets", icon: KeyRound, requiresAuth: true },
       { href: "/venues", label: "Venues", icon: MapPinned },
       { href: "/workspace", label: "Workspace", icon: FolderOpen, requiresAuth: true },
+      { href: "/files", label: "Files", icon: HardDrive, requiresAuth: true },
     ],
   },
   {
