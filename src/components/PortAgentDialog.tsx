@@ -15,7 +15,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowDownToLine, FileText, Loader2, Plus, X } from "lucide-react";
+import { ArrowDownToLine, ExternalLink, FileText, Info, Loader2, Plus, X } from "lucide-react";
+
+const MIGRATE_DOCS_URL = "https://docs.covia.ai/docs/user-guide/agents/migrate-an-agent";
+const SKILLS_DOCS_URL = "https://docs.covia.ai/docs/user-guide/agents/tools-and-context";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { parseSkillFrontmatter } from "@/lib/skills";
@@ -151,11 +154,29 @@ export function PortAgentDialog({ trigger, open, onOpenChange }: PortAgentDialog
           </DialogTitle>
           <DialogDescription>
             Bring an existing agent&apos;s system prompt and its SKILL.md skills across as a native
-            Covia agent. Tools and memory are not migrated yet.
+            Covia agent.{" "}
+            <a
+              href={MIGRATE_DOCS_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+            >
+              How porting works <ExternalLink size={12} />
+            </a>
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 overflow-y-auto p-6">
+          <div className="flex gap-3 rounded-md border border-primary/20 bg-primary/5 p-3 text-xs leading-5 text-muted-foreground">
+            <Info size={15} className="mt-0.5 shrink-0 text-primary" />
+            <p>
+              Covia imports each skill into your <span className="font-mono">w/skills</span> and
+              creates a native agent that runs on your venue: governed, discoverable, and
+              resumable. Its <span className="font-medium text-foreground">tools and memory are not
+              migrated yet</span>, and those come next.
+            </p>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="port-name">Agent name</Label>
             <Input
@@ -188,8 +209,23 @@ export function PortAgentDialog({ trigger, open, onOpenChange }: PortAgentDialog
             <Label htmlFor="port-skill">Skills</Label>
             <p className="text-xs text-muted-foreground">
               Paste a SKILL.md (the format Claude and others already use), then add it. Each one is
-              imported into <span className="font-mono">w/skills</span> and indexed by the agent.
+              imported into <span className="font-mono">w/skills</span> and indexed by the agent.{" "}
+              <a
+                href={SKILLS_DOCS_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+              >
+                What is a SKILL.md? <ExternalLink size={11} />
+              </a>
             </p>
+
+            {skills.length === 0 && (
+              <p className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
+                No skills yet. You can port an agent with just a system prompt, but adding its skills
+                is what carries its know-how across.
+              </p>
+            )}
 
             {skills.length > 0 && (
               <ul className="space-y-2" data-testid="port-skill-list">
