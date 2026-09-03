@@ -4,7 +4,7 @@ import { Building2, Check, ChevronDown, EllipsisVertical }from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTrigger }from "./ui/dialog";
 import { useEffect, useState } from "react";
 import { Venue, getAssetIdFromVenueId } from "@covia/covia-sdk";
-import { AssetEntry, loadAssetEntries } from "@/lib/asset-metadata";
+import type { AssetListItem } from "@covia/covia-sdk";
 import { getVenueFor, useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useAuthStore } from "@/hooks/use-auth";
 import { ScrollArea } from "./ui/scroll-area";
@@ -25,8 +25,8 @@ export const AssetLookup = ({sendAssetIdBackToForm}: {sendAssetIdBackToForm: (id
   const venue = useAuthenticatedVenue();
   const getAuthForVenue = useAuthStore((state) => state.getAuthForVenue);
 
-  const [assetsMetadata, setAssetsMetadata] = useState<AssetEntry[]>([]);
-  const [filteredAsset, setFilteredAsset] = useState<AssetEntry[]>([]);
+  const [assetsMetadata, setAssetsMetadata] = useState<AssetListItem[]>([]);
+  const [filteredAsset, setFilteredAsset] = useState<AssetListItem[]>([]);
   const [assetId, setAssetId] =  useState("");
   const [filterValue, setFilterValue] =  useState("");
   const [selectedVenue, setSelectedVenue]=  useState<Venue | null>();
@@ -39,18 +39,16 @@ export const AssetLookup = ({sendAssetIdBackToForm}: {sendAssetIdBackToForm: (id
 
   // Fetch only while the dialog is actually open — this component is mounted
   // inside forms, and previously hydrated the venue's entire asset store on
-  // mount even if the picker was never used. Metadata streams in per batch
-  // through the content-addressed cache.
+  // mount even if the picker was never used. expand: 'metadata' inlines every
+  // item's metadata into the one listing call, so there's no per-id pass.
   useEffect( () => {
       if (!open || !selectedVenue) return;
       let ignore = false;
       setAssetsMetadata([]);
-      selectedVenue.listAssets().then((assetList) =>
-        loadAssetEntries(selectedVenue, assetList.items, (entries) => {
-          if (ignore) return;
-          setAssetsMetadata(entries);
-        }, 48)
-      ).catch(() => {});
+      selectedVenue.listAssets({ expand: "metadata" }).then((assetList) => {
+        if (ignore) return;
+        setAssetsMetadata(assetList.items);
+      }).catch(() => {});
       return () => { ignore = true; };
   },[open, selectedVenue]);
 
@@ -121,18 +119,18 @@ export const AssetLookup = ({sendAssetIdBackToForm}: {sendAssetIdBackToForm: (id
               
                 
                   {
-                    filteredAsset && filteredAsset.map((asset: AssetEntry) =>
+                    filteredAsset && filteredAsset.map((asset: AssetListItem) =>
 
 
                         asset.id != assetId ?
-                        ( <div  onClick={() => setSelectedAsset(asset.id)}
+                        ( <div  onClick={() => setSelectedAsset(asset.id)} data-testid="asset-lookup-item"
                         className="flex flex-col items-start justify-center  text-xs text-left  hover:bg-muted rounded-md my-4"  key={asset.id}>
                           <span className="px-2 rounded-sm text-[1rem] font-medium">{asset.metadata.name || "Unamed asset"}</span>
                           <span className="px-2 rounded-sm text-xs text-card-foreground my-1">{asset.id.substring(0,50)+".."}</span>
                         </div>)
                         :
                         (
-                        <div  onClick={() => setSelectedAsset("")}
+                        <div  onClick={() => setSelectedAsset("")} data-testid="asset-lookup-item"
                         className="flex flex-col items-start justify-center  text-xs text-left bg-secondary-vlight  rounded-md my-4"  key={asset.id}>
                           <span className="px-2 rounded-sm text-[1rem] font-medium">{asset.metadata.name || "Unamed asset"}</span>
                           <span className="px-2 rounded-sm text-xs text-card-foreground my-1">{asset.id.substring(0,50)+".."}</span>
@@ -146,7 +144,7 @@ export const AssetLookup = ({sendAssetIdBackToForm}: {sendAssetIdBackToForm: (id
             </ScrollArea>
          
 
-             <DialogClose><Button onClick={(_e) => sendAssetIdBackToForm(getAssetIdFromVenueId(assetId!,selectedVenue?.venueId ?? ""))}>Select</Button></DialogClose>
+             <DialogClose asChild><Button onClick={(_e) => sendAssetIdBackToForm(getAssetIdFromVenueId(assetId!,selectedVenue?.venueId ?? ""))}>Select</Button></DialogClose>
       </DialogContent>
       
      </Dialog>
