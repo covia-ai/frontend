@@ -1,6 +1,6 @@
 import type { IconType } from "react-icons";
 import { FaSlack } from "react-icons/fa";
-import { TbBrandTwilio } from "react-icons/tb";
+import { TbBrandTwilio, TbBrandMonday } from "react-icons/tb";
 import {
   SiGithub,
   SiNotion,
@@ -14,6 +14,10 @@ import {
   SiSentry,
   SiHubspot,
   SiTelegram,
+  SiGitlab,
+  SiClickup,
+  SiCalendly,
+  SiPagerduty,
 } from "react-icons/si";
 import type { ConnectionService } from "@/config/connections";
 import { SendGridGlyph } from "@/components/brand-glyphs";
@@ -40,6 +44,11 @@ const BRAND_ICON: Record<string, IconType> = {
   telegram: SiTelegram,
   twilio: TbBrandTwilio,
   sendgrid: SendGridGlyph,
+  gitlab: SiGitlab,
+  clickup: SiClickup,
+  calendly: SiCalendly,
+  monday: TbBrandMonday,
+  pagerduty: SiPagerduty,
 };
 
 /** Ids whose glyph carries its own colours, so it needs a light tile rather
