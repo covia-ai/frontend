@@ -274,8 +274,8 @@ export default function VenuePage({ params }: VenuePageProps) {
             </div>
             </CardHeader>
             <CardContent>
-                <Button 
-                  disabled
+                <Button
+                  onClick={() => router.push(`/venues/${slug}/users`)}
                   className="w-full"
                   variant="outline"
                     aria-label="view users" role="button"
