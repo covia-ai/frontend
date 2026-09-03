@@ -12,6 +12,7 @@ import {
   CONNECTIONS,
   CONNECTION_CATEGORIES,
   CONNECTION_CAPABILITIES,
+  connectionSecrets,
   detectService,
   type ConnectionService,
 } from "@/config/connections";
@@ -72,10 +73,14 @@ export function ConnectionsList() {
   const [quick, setQuick] = useState("");
   const detected = useMemo(() => detectService(quick), [quick]);
 
-  // Add dialog.
+  // Add dialog. `values` holds one entry per collected secret (keyed by its
+  // s/<name>); single-value connections have exactly one.
   const [active, setActive] = useState<ConnectionService | null>(null);
-  const [value, setValue] = useState("");
+  const [values, setValues] = useState<Record<string, string>>({});
   const [test, setTest] = useState<TestState>({ phase: "idle" });
+  const fields = useMemo(() => (active ? connectionSecrets(active) : []), [active]);
+  const allFilled = fields.length > 0 && fields.every((f) => (values[f.name] ?? "").trim());
+  const setField = (name: string, v: string) => setValues((prev) => ({ ...prev, [name]: v }));
 
   const loadConnections = useCallback(() => {
     if (!venue || !isAuthenticated) {
@@ -98,7 +103,12 @@ export function ConnectionsList() {
 
   const openAdd = (service: ConnectionService, prefill = "") => {
     setActive(service);
-    setValue(prefill);
+    // Empty per field; a quick-connect prefill seeds the primary secret.
+    setValues(
+      Object.fromEntries(
+        connectionSecrets(service).map((f) => [f.name, f.name === service.secretName ? prefill : ""]),
+      ),
+    );
     setTest({ phase: "idle" });
   };
 
@@ -111,46 +121,47 @@ export function ConnectionsList() {
   };
 
   const connect = async () => {
-    if (!venue || !active) return;
-    const token = value.trim();
-    if (!token) return;
+    if (!venue || !active || !allFilled) return;
+    const svc = active;
+    const svcFields = connectionSecrets(svc);
     setTest({ phase: "testing" });
+    // Discard everything we stored if verification fails — never leave a
+    // half-configured connection behind.
+    const cleanup = () => Promise.all(svcFields.map((f) => venue.secrets.delete(f.name).catch(() => {})));
     try {
-      await venue.secrets.set(active.secretName, token);
-      if (active.verify) {
+      await Promise.all(svcFields.map((f) => venue.secrets.set(f.name, values[f.name].trim())));
+      if (svc.verify) {
         try {
-          const message = await runVerify(active);
-          setConnected((prev) => new Set(prev).add(active.secretName));
+          const message = await runVerify(svc);
+          setConnected((prev) => new Set(prev).add(svc.secretName));
           setTest({ phase: "ok", message });
         } catch (verifyErr: any) {
           const msg = String(verifyErr?.message ?? "");
-          // A url-mode connector (e.g. Telegram) on a venue that can't yet
-          // resolve an {s/NAME} URL placeholder fails with a "Bad URI syntax"
-          // carrying the literal placeholder — a venue-capability gap, not a bad
-          // token. Keep the token and say so, rather than deleting it and
-          // surfacing a raw 500.
-          if (
-            active.auth === "url" &&
-            (msg.includes(`{s/${active.secretName}}`) || /bad uri/i.test(msg))
-          ) {
-            setConnected((prev) => new Set(prev).add(active.secretName));
+          // A url-mode connector on a venue that can't yet resolve an {s/NAME}
+          // URL placeholder fails with "Bad URI syntax" carrying the literal
+          // placeholder — a venue-capability gap, not a bad value. Keep it and
+          // say so, rather than deleting and surfacing a raw 500.
+          const placeholderGap =
+            svc.auth === "url" &&
+            (/bad uri/i.test(msg) || svcFields.some((f) => msg.includes(`{s/${f.name}}`)));
+          if (placeholderGap) {
+            setConnected((prev) => new Set(prev).add(svc.secretName));
             setTest({
               phase: "ok",
-              message: `Saved. ${active.name} verifies once your venue supports URL secrets (an upcoming release).`,
+              message: `Saved. ${svc.name} verifies once your venue supports URL secrets (an upcoming release).`,
             });
           } else {
-            // Don't persist a token we couldn't validate.
-            await venue.secrets.delete(active.secretName).catch(() => {});
-            setTest({ phase: "error", message: msg || "Could not verify the token." });
+            await cleanup();
+            setTest({ phase: "error", message: msg || "Could not verify the connection." });
           }
         }
       } else {
         // No generic verify (e.g. Jira's per-user host) — store and confirm.
-        setConnected((prev) => new Set(prev).add(active.secretName));
+        setConnected((prev) => new Set(prev).add(svc.secretName));
         setTest({ phase: "ok", message: "Saved. Validates on first use." });
       }
     } catch (err: unknown) {
-      notifyError(`Unable to connect ${active.name}`, err, venue?.baseUrl);
+      notifyError(`Unable to connect ${svc.name}`, err, venue?.baseUrl);
       setTest({ phase: "idle" });
     }
   };
@@ -162,14 +173,14 @@ export function ConnectionsList() {
       });
     }
     setActive(null);
-    setValue("");
+    setValues({});
     setTest({ phase: "idle" });
   };
 
   const disconnect = (service: ConnectionService) => {
     if (!venue) return;
-    venue.secrets
-      .delete(service.secretName)
+    // Remove every value the connection stored, not just the primary.
+    Promise.all(connectionSecrets(service).map((f) => venue.secrets.delete(f.name)))
       .then(() => {
         setConnected((prev) => {
           const next = new Set(prev);
@@ -426,16 +437,25 @@ export function ConnectionsList() {
               </a>
 
               <div className="mt-1">
-                <Input
-                  autoFocus
-                  type="password"
-                  placeholder={active.placeholder}
-                  value={value}
-                  onChange={(e) => { setValue(e.target.value); if (test.phase !== "idle") setTest({ phase: "idle" }); }}
-                  onKeyDown={(e) => { if (e.key === "Enter" && value.trim() && test.phase !== "testing") connect(); }}
-                  className="font-mono"
-                  disabled={test.phase === "testing" || test.phase === "ok"}
-                />
+                <div className="space-y-3">
+                  {fields.map((f, idx) => (
+                    <div key={f.name}>
+                      {fields.length > 1 && (
+                        <label className="mb-1 block text-xs font-medium text-muted-foreground">{f.label}</label>
+                      )}
+                      <Input
+                        autoFocus={idx === 0}
+                        type="password"
+                        placeholder={f.placeholder ?? active.placeholder}
+                        value={values[f.name] ?? ""}
+                        onChange={(e) => { setField(f.name, e.target.value); if (test.phase !== "idle") setTest({ phase: "idle" }); }}
+                        onKeyDown={(e) => { if (e.key === "Enter" && allFilled && test.phase !== "testing") connect(); }}
+                        className="font-mono"
+                        disabled={test.phase === "testing" || test.phase === "ok"}
+                      />
+                    </div>
+                  ))}
+                </div>
                 {test.phase === "ok" ? (
                   <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-green-700 dark:text-green-400">
                     <CheckCircle2 size={14} /> {test.message}
@@ -446,8 +466,14 @@ export function ConnectionsList() {
                   </p>
                 ) : (
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Stored encrypted as <code className="rounded bg-muted px-1 font-mono">{active.secretName}</code>.
-                    {active.verify ? " We'll test it before saving." : " Stored on your venue only."}
+                    Stored encrypted as{" "}
+                    {fields.map((f, i) => (
+                      <span key={f.name}>
+                        {i > 0 && ", "}
+                        <code className="rounded bg-muted px-1 font-mono">{f.name}</code>
+                      </span>
+                    ))}
+                    .{active.verify ? " We'll test it before saving." : " Stored on your venue only."}
                   </p>
                 )}
               </div>
@@ -458,7 +484,7 @@ export function ConnectionsList() {
                 ) : (
                   <>
                     <Button variant="ghost" onClick={() => setActive(null)}>Cancel</Button>
-                    <Button onClick={connect} disabled={!value.trim() || test.phase === "testing"}>
+                    <Button onClick={connect} disabled={!allFilled || test.phase === "testing"}>
                       {test.phase === "testing" && <Loader2 className="animate-spin" size={14} />}
                       {active.verify ? "Test & connect" : "Connect"}
                     </Button>
