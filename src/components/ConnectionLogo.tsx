@@ -18,6 +18,11 @@ import {
   SiClickup,
   SiCalendly,
   SiPagerduty,
+  SiZendesk,
+  SiConfluence,
+  SiShopify,
+  SiTrello,
+  SiDatadog,
 } from "react-icons/si";
 import type { ConnectionService } from "@/config/connections";
 import { SendGridGlyph } from "@/components/brand-glyphs";
@@ -49,6 +54,11 @@ const BRAND_ICON: Record<string, IconType> = {
   calendly: SiCalendly,
   monday: TbBrandMonday,
   pagerduty: SiPagerduty,
+  zendesk: SiZendesk,
+  confluence: SiConfluence,
+  shopify: SiShopify,
+  trello: SiTrello,
+  datadog: SiDatadog,
 };
 
 /** Ids whose glyph carries its own colours, so it needs a light tile rather

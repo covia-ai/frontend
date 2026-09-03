@@ -40,7 +40,13 @@ describe("buildVerifyCall — request shape and secret-by-reference", () => {
         expect(call.input.bearerSecret).toBe(ref);
         expect(call.input.secretHeaders).toBeUndefined();
       } else if (s.auth === "header") {
-        expect((call.input.secretHeaders as Record<string, string>)[s.headerName ?? "Authorization"]).toBe(ref);
+        const headers = call.input.secretHeaders as Record<string, string>;
+        if (s.secretHeaders) {
+          // multi-header: the primary secret is referenced under one of the headers
+          expect(Object.values(headers)).toContain(ref);
+        } else {
+          expect(headers[s.headerName ?? "Authorization"]).toBe(ref);
+        }
         expect(call.input.bearerSecret).toBeUndefined();
       } else {
         // url mode: the token rides in the URL placeholder, no auth header

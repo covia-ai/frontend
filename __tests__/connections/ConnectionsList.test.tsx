@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { ConnectionsList } from "@/components/ConnectionsList";
-import { CONNECTIONS } from "@/config/connections";
+import { CONNECTIONS, connectionSecrets } from "@/config/connections";
 import { VERIFY_FIXTURES } from "./connection-fixtures";
 
 let mockAuthenticated = true;
@@ -218,13 +218,16 @@ describe("ConnectionsList", () => {
         await openConnectDialog(user, service.name);
         const dialog = await screen.findByRole("dialog");
         await within(dialog).findByText(`Connect ${service.name}`);
-        await user.type(screen.getByPlaceholderText(service.placeholder), "token-value-123");
+        // Fill every collected value (one for single-secret, N for multi-value).
+        for (const f of connectionSecrets(service)) {
+          await user.type(screen.getByPlaceholderText(f.placeholder ?? service.placeholder), `val-${f.name}`);
+        }
         await user.click(screen.getByRole("button", { name: /Test & connect/ }));
 
         // Scoped to the dialog: a generic "Connected" also appears on the card
         // badge once the service is marked connected.
         expect(await within(dialog).findByText(fx.connected)).toBeInTheDocument();
-        expect(mockVenue.secrets.set).toHaveBeenCalledWith(service.secretName, "token-value-123");
+        expect(mockVenue.secrets.set).toHaveBeenCalledWith(service.secretName, `val-${service.secretName}`);
         expect(mockVenue.secrets.delete).not.toHaveBeenCalled();
       },
     );
@@ -240,7 +243,9 @@ describe("ConnectionsList", () => {
 
         await openConnectDialog(user, service.name);
         await screen.findByText(`Connect ${service.name}`);
-        await user.type(screen.getByPlaceholderText(service.placeholder), "bad-token");
+        for (const f of connectionSecrets(service)) {
+          await user.type(screen.getByPlaceholderText(f.placeholder ?? service.placeholder), `val-${f.name}`);
+        }
         await user.click(screen.getByRole("button", { name: /Test & connect/ }));
 
         expect(
