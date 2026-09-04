@@ -14,11 +14,11 @@ const mockVenue: any = {
   agents: {
     list: jest.fn(),
     info: jest.fn(),
+    listSessions: jest.fn(),
   },
   agent: jest.fn(),
   workspace: {
     read: jest.fn(),
-    slice: jest.fn(),
   },
   secrets: {
     list: jest.fn().mockResolvedValue(['ANTHROPIC_API_KEY']),
@@ -139,15 +139,14 @@ async function setupWithSession(conversation: any[]) {
   mockVenue.agents.list.mockResolvedValue({ agents: [agent] });
   mockVenue.agents.info.mockResolvedValue(agent);
   mockVenue.workspace.read.mockResolvedValue({ value: [] });
-  mockVenue.workspace.slice.mockResolvedValue({
-    values: [{
-      key: 'sess-1',
-      value: {
-        meta: { created: 1000, turns: conversation.length },
-        pending: [],
-        frames: [{ conversation }],
-      },
+  mockVenue.agents.listSessions.mockResolvedValue({
+    items: [{
+      id: 'sess-1',
+      metadata: { created: 1000, turns: conversation.length },
+      pending: [],
+      frames: [{ conversation }],
     }],
+    total: 1, offset: 0, limit: 50,
   });
   mockVenue.agent.mockReturnValue({ chatSession: (sid?: string) => ({ sessionId: sid }) });
   await renderExplorer();
@@ -161,7 +160,7 @@ describe('AgentExplorer with lean GET agent entries', () => {
     mockVenue.agents.list.mockResolvedValue({ agents: ['agent-1'] });
     mockVenue.agents.info.mockResolvedValue({ agentId: 'agent-1', status: 'SLEEPING', tasks: 0 });
     mockVenue.workspace.read.mockResolvedValue({ value: [] });
-    mockVenue.workspace.slice.mockResolvedValue({ values: [] });
+    mockVenue.agents.listSessions.mockResolvedValue({ items: [], total: 0, offset: 0, limit: 50 });
     mockVenue.agent.mockReturnValue({ chatSession: (sid?: string) => ({ sessionId: sid }) });
     await renderExplorer();
 
@@ -177,7 +176,7 @@ describe('AgentExplorer with lean GET agent entries', () => {
     mockVenue.agents.list.mockResolvedValue({ agents: ['agent-1'] });
     mockVenue.agents.info.mockRejectedValue(new Error('boom'));
     mockVenue.workspace.read.mockResolvedValue({ value: [] });
-    mockVenue.workspace.slice.mockResolvedValue({ values: [] });
+    mockVenue.agents.listSessions.mockResolvedValue({ items: [], total: 0, offset: 0, limit: 50 });
     mockVenue.agent.mockReturnValue({ chatSession: (sid?: string) => ({ sessionId: sid }) });
     await renderExplorer();
 
@@ -197,7 +196,7 @@ describe('AgentExplorer with lean GET agent entries', () => {
       agentId === 'agent-1' ? firstDetail.promise : secondDetail.promise,
     );
     mockVenue.workspace.read.mockResolvedValue({ value: [] });
-    mockVenue.workspace.slice.mockResolvedValue({ values: [] });
+    mockVenue.agents.listSessions.mockResolvedValue({ items: [], total: 0, offset: 0, limit: 50 });
     mockVenue.agent.mockImplementation((agentId: string) => ({
       agentId,
       chatSession: (sessionId?: string) => ({ sessionId }),
@@ -261,7 +260,7 @@ describe('AgentExplorer settings', () => {
     mockVenue.agents.list.mockResolvedValue({ agents: [agent] });
     mockVenue.agents.info.mockResolvedValue(agent);
     mockVenue.workspace.read.mockResolvedValue({ value: [] });
-    mockVenue.workspace.slice.mockResolvedValue({ values: [] });
+    mockVenue.agents.listSessions.mockResolvedValue({ items: [], total: 0, offset: 0, limit: 50 });
     mockVenue.agent.mockReturnValue(handle);
     await renderExplorer();
 
@@ -299,7 +298,7 @@ describe('AgentExplorer settings', () => {
     mockVenue.agents.list.mockResolvedValue({ agents: [agent] });
     mockVenue.agents.info.mockResolvedValue(agent);
     mockVenue.workspace.read.mockResolvedValue({ value: [] });
-    mockVenue.workspace.slice.mockResolvedValue({ values: [] });
+    mockVenue.agents.listSessions.mockResolvedValue({ items: [], total: 0, offset: 0, limit: 50 });
     mockVenue.agent.mockReturnValue(handle);
     await renderExplorer();
 
@@ -326,16 +325,15 @@ describe('AgentExplorer runtime controls', () => {
     mockVenue.agents.list.mockResolvedValue({ agents: [agent] });
     mockVenue.agents.info.mockResolvedValue(agent);
     mockVenue.workspace.read.mockResolvedValue({ value: [] });
-    mockVenue.workspace.slice.mockResolvedValue({
-      values: [{
-        key: 'sess-1',
-        value: {
-          wakeTime: 1750000000000,
-          pending: [{ message: { content: 'Waiting for review' } }],
-          meta: { created: 1000, turns: 0 },
-          frames: [{ conversation: [] }],
-        },
+    mockVenue.agents.listSessions.mockResolvedValue({
+      items: [{
+        id: 'sess-1',
+        wakeTime: 1750000000000,
+        pending: [{ message: { content: 'Waiting for review' } }],
+        metadata: { created: 1000, turns: 0 },
+        frames: [{ conversation: [] }],
       }],
+      total: 1, offset: 0, limit: 50,
     });
     mockVenue.agent.mockReturnValue(handle);
     await renderExplorer();
@@ -355,7 +353,7 @@ describe('AgentExplorer runtime controls', () => {
     mockVenue.agents.list.mockResolvedValue({ agents: [agent] });
     mockVenue.agents.info.mockResolvedValue(agent);
     mockVenue.workspace.read.mockResolvedValue({ value: [] });
-    mockVenue.workspace.slice.mockResolvedValue({ values: [] });
+    mockVenue.agents.listSessions.mockResolvedValue({ items: [], total: 0, offset: 0, limit: 50 });
     mockVenue.agent.mockReturnValue({ chatSession: () => null, trigger: jest.fn() });
     await renderExplorer();
 
@@ -370,15 +368,13 @@ describe('AgentExplorer runtime controls', () => {
   });
 });
 
-// One session entry as workspace.slice returns it.
-function sessionEntry(key: string, created: number, conversation: any[]) {
+// One session entry as venue.agents.listSessions returns it.
+function sessionEntry(id: string, created: number, conversation: any[]) {
   return {
-    key,
-    value: {
-      meta: { created, turns: conversation.length },
-      pending: [],
-      frames: [{ conversation }],
-    },
+    id,
+    metadata: { created, turns: conversation.length },
+    pending: [],
+    frames: [{ conversation }],
   };
 }
 
@@ -446,7 +442,7 @@ describe('AgentExplorer with a chat in flight', () => {
     mockVenue.agents.list.mockResolvedValue({ agents: [agent] });
     mockVenue.agents.info.mockResolvedValue(agent);
     mockVenue.workspace.read.mockResolvedValue({ value: [] });
-    mockVenue.workspace.slice.mockResolvedValue({ values: [sessionEntry('sess-1', 1000, [])] });
+    mockVenue.agents.listSessions.mockResolvedValue({ items: [sessionEntry('sess-1', 1000, [])], total: 1, offset: 0, limit: 50 });
     // A send that never settles — the agent is still thinking.
     mockVenue.agent.mockReturnValue({
       chatSession: (sid?: string) => ({ sessionId: sid, send: () => new Promise(() => {}) }),
@@ -489,13 +485,13 @@ describe('AgentExplorer with a chat in flight', () => {
     mockVenue.agents.list.mockResolvedValue({ agents: [agent] });
     mockVenue.agents.info.mockResolvedValue(agent);
     mockVenue.workspace.read.mockResolvedValue({ value: [] });
-    mockVenue.workspace.slice.mockResolvedValue({ values: [older] });
+    mockVenue.agents.listSessions.mockResolvedValue({ items: [older], total: 1, offset: 0, limit: 50 });
     mockVenue.agent.mockReturnValue({ chatSession: (sid?: string) => ({ sessionId: sid }) });
     await renderExplorer();
 
     await screen.findByText('older-session-reply');
 
-    mockVenue.workspace.slice.mockResolvedValue({ values: [older, newer] });
+    mockVenue.agents.listSessions.mockResolvedValue({ items: [older, newer], total: 2, offset: 0, limit: 50 });
     await act(async () => { jest.advanceTimersByTime(3100); });
 
     expect(screen.getByText('older-session-reply')).toBeInTheDocument();
@@ -540,18 +536,20 @@ describe('AgentExplorer cross-agent send race', () => {
     mockVenue.agents.info.mockImplementation((id: string) =>
       Promise.resolve(id === 'agent-1' ? agentA : agentB));
     mockVenue.workspace.read.mockResolvedValue({ value: [] });
-    mockVenue.workspace.slice.mockImplementation((path: string) => {
-      if (path.startsWith('g/agent-1/sessions')) {
+    mockVenue.agents.listSessions.mockImplementation((agentId: string) => {
+      if (agentId === 'agent-1') {
         return Promise.resolve({
-          values: [sessionEntry('sess-1', 1000, [{ role: 'assistant', content: 'agent-1-reply', ts: 1 }])],
+          items: [sessionEntry('sess-1', 1000, [{ role: 'assistant', content: 'agent-1-reply', ts: 1 }])],
+          total: 1, offset: 0, limit: 50,
         });
       }
-      if (path.startsWith('g/agent-2/sessions')) {
+      if (agentId === 'agent-2') {
         return Promise.resolve({
-          values: [sessionEntry('sess-2', 2000, [{ role: 'assistant', content: 'agent-2-reply', ts: 2 }])],
+          items: [sessionEntry('sess-2', 2000, [{ role: 'assistant', content: 'agent-2-reply', ts: 2 }])],
+          total: 1, offset: 0, limit: 50,
         });
       }
-      return Promise.resolve({ values: [] });
+      return Promise.resolve({ items: [], total: 0, offset: 0, limit: 50 });
     });
 
     // agent-1's send never settles until the test says so.

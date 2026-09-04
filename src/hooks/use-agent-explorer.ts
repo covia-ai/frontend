@@ -21,7 +21,7 @@ import {
 } from "@/hooks/use-pending-chats";
 import { normalizeAgentEntries } from "@/lib/agent-list";
 import { messageContentToString } from "@/lib/agent-turns";
-import { sessionEntriesToSessions } from "@/lib/agent-sessions";
+import { agentSessionsToSessions } from "@/lib/agent-sessions";
 import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { agentConfigsEqual, type AgentConfigSaveOutcome } from "@/lib/agent-settings";
 import { gtmEvent } from "@/lib/utils";
@@ -157,15 +157,15 @@ export function useAgentExplorer(initialAgentId?: string) {
     (agentId: string | null) => {
       if (!venue || !agentId) return Promise.resolve();
       const requestId = ++sessionRequest.current;
-      return venue.workspace
-        .slice(`g/${agentId}/sessions`, 0, SESSION_LIMIT)
+      return venue.agents
+        .listSessions(agentId, { offset: 0, limit: SESSION_LIMIT })
         .then((result) => {
           if (
             requestId === sessionRequest.current &&
             venueRef.current === venue &&
             selectedAgentIdRef.current === agentId
           ) {
-            setSessions(sessionEntriesToSessions(result?.values));
+            setSessions(agentSessionsToSessions(result?.items));
           }
         })
         .catch(() => {
