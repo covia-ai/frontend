@@ -370,9 +370,11 @@ export function JobList({ venueId }: JobListProps = {}) {
   }, [fetchPage, currentPage, hasFilters, refreshTick]);
 
   // Headline stats: one recent-window read per venue, refreshed on the poll.
+  // Gated on a known count so it reuses the page load's count probe (via
+  // countRef) rather than firing a second list() of its own.
   useEffect(() => {
-    fetchStats();
-  }, [fetchStats, refreshTick]);
+    if (totalCount > 0) fetchStats();
+  }, [fetchStats, refreshTick, totalCount]);
 
   // Filter mode only: the 100-record window is a heavy read (full job
   // records, several hundred KB on busy venues), so it is fetched when
