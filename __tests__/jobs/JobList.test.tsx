@@ -70,8 +70,10 @@ describe('JobList windowed fetching', () => {
     await waitFor(() => {
       expect(mockVenue.workspace.slice).toHaveBeenCalledWith('j', TOTAL - 10, 10);
     });
-    expect(await screen.findByText('job-997')).toBeInTheDocument();
-    expect(screen.getByText('job-988')).toBeInTheDocument();
+    // Job names now render in both the desktop table and the mobile card
+    // list (CSS hides one; jsdom keeps both in the DOM), so match all.
+    expect((await screen.findAllByText('job-997')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('job-988').length).toBeGreaterThan(0);
     expect(screen.getByText(/Showing 10 of 998/)).toBeInTheDocument();
 
     expect(mockVenue.jobs.list).not.toHaveBeenCalled();
@@ -85,7 +87,7 @@ describe('JobList windowed fetching', () => {
   it('search fetches one filter window instead of per-job GETs', async () => {
     const user = userEvent.setup();
     render(<JobList />);
-    await screen.findByText('job-997');
+    await screen.findAllByText('job-997');
 
     // Search now lives inside the Filters sheet — open it, type, and commit
     // via "Apply Filters" (edits are staged until then).
@@ -135,8 +137,8 @@ describe('JobList windowed fetching', () => {
     // 988..997 (corrected) and 980..989 (stale) overlap at 988-989, so
     // assert on ranks unique to each: 997 only in the corrected window,
     // 980 only in the stale one.
-    expect(await screen.findByText('job-997')).toBeInTheDocument();
-    expect(screen.queryByText('job-980')).not.toBeInTheDocument();
+    expect((await screen.findAllByText('job-997')).length).toBeGreaterThan(0);
+    expect(screen.queryAllByText('job-980')).toHaveLength(0);
     expect(screen.getByText(/Showing 10 of 998/)).toBeInTheDocument();
   });
 });
@@ -147,22 +149,40 @@ describe('JobList trend sparklines (#225)', () => {
     mockVenue.workspace.slice.mockClear();
   });
 
-  it('shows a trend sparkline on Success Rate and Avg Duration, not Total Jobs', async () => {
+  it('shows a trend sparkline on Success Rate and Latency, not Total Jobs', async () => {
     render(<JobList />);
-    await screen.findByText('job-997');
+    await screen.findAllByText('job-997');
 
-    expect(screen.getByRole('img', { name: 'Success Rate trend' })).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'Avg Duration trend' })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('img', { name: 'Success Rate trend' })).toBeInTheDocument();
+    });
+    expect(screen.getByRole('img', { name: 'Latency (p50) trend' })).toBeInTheDocument();
     expect(screen.queryByRole('img', { name: 'Total Jobs trend' })).not.toBeInTheDocument();
   });
 
-  it('keeps the headline Success Rate number sourced from pageRecords, unaffected by the trend memo', async () => {
+  it('sources the headline stats from the recent venue window, labelled honestly', async () => {
     render(<JobList />);
-    await screen.findByText('job-997');
+    await screen.findAllByText('job-997');
 
-    // All 10 page records are COMPLETE — the headline reads 100%, same
-    // contract as before the trend sparkline was added.
-    expect(screen.getByText('100%')).toBeInTheDocument();
-    expect(screen.getAllByText('of 10 jobs on this page').length).toBeGreaterThan(0);
+    // The stats window is all COMPLETE → 100%, captioned "last N jobs"
+    // (venue-wide), not the misleading page-scoped "of 10 jobs on this page".
+    await waitFor(() => {
+      expect(screen.getByText('100%')).toBeInTheDocument();
+    });
+    expect(screen.getAllByText(/last \d+ jobs/).length).toBeGreaterThan(0);
+    expect(screen.queryByText('of 10 jobs on this page')).not.toBeInTheDocument();
+  });
+
+  it('renders both the desktop table row and the mobile card for a job, and the new tiles', async () => {
+    render(<JobList />);
+    await screen.findAllByText('job-997');
+
+    // Dual layout: each job appears in the (md+) table and the mobile card list.
+    expect(screen.getAllByText('job-997').length).toBeGreaterThanOrEqual(2);
+    // The redesigned stat band adds Latency and Failures tiles.
+    await waitFor(() => {
+      expect(screen.getByText('Latency (p50)')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Failures')).toBeInTheDocument();
   });
 });
