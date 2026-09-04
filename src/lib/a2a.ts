@@ -9,6 +9,37 @@
 export const IMPORT_AGENT_OP = "v/ops/a2a/import-agent";
 export const A2A_SEND_OP = "v/ops/a2a/send";
 
+/** The workspace directory of connected-agent bindings, one per local alias. */
+export const A2A_AGENTS_DIR = "w/a2a/agents";
+
+/** Display view of one `w/a2a/agents/<name>` binding. */
+export interface ConnectedAgent {
+  /** Local alias (the binding key). */
+  name: string;
+  /** The remote agent's advertised card name, if known. */
+  cardName?: string;
+  /** The remote agent's description, if advertised. */
+  description?: string;
+  /** The imported endpoint URL (external A2A). */
+  url?: string;
+  /** The Covia grid agent address, when imported from another Covia agent. */
+  coviaAgent?: string;
+}
+
+/** Read the display fields out of a binding value (see `a2a:import-agent`). */
+export function connectedAgentFromBinding(name: string, value: unknown): ConnectedAgent {
+  const a2a = (value as { a2a?: Record<string, unknown> } | undefined)?.a2a;
+  const card = a2a?.card as { name?: string; description?: string } | undefined;
+  const target = a2a?.target as { url?: string; coviaAgent?: string } | undefined;
+  return {
+    name,
+    cardName: card?.name,
+    description: card?.description,
+    url: target?.url ?? (a2a?.cardUrl as string | undefined),
+    coviaAgent: target?.coviaAgent,
+  };
+}
+
 /** `[a-z0-9-]{1,64}` — the local alias that becomes `w/a2a/agents/<name>`. */
 export const A2A_NAME_PATTERN = /^[a-z0-9-]{1,64}$/;
 

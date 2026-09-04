@@ -1,4 +1,5 @@
 import { ConnectedAgentTalk } from "@/components/agent-connect/ConnectedAgentTalk";
+import { ConnectedAgentsList } from "@/components/agent-connect/ConnectedAgentsList";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
 
@@ -12,7 +13,7 @@ export default async function ConnectedAgentPage({
   return (
     <ContentLayout>
       <TopBar />
-      <ConnectedAgentTalk agentName={agent} />
+      {agent ? <ConnectedAgentTalk agentName={agent} /> : <ConnectedAgentsList />}
     </ContentLayout>
   );
 }

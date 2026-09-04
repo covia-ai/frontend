@@ -89,6 +89,26 @@ describe("ConnectAgentDialog", () => {
     });
   });
 
+  it("imports a Covia agent by grid address when that source is chosen", async () => {
+    renderOpen();
+    await userEvent.type(screen.getByTestId("connect-agent-name"), "Team Bot");
+    await userEvent.click(screen.getByTestId("connect-source-covia"));
+    await userEvent.type(screen.getByTestId("connect-agent-covia"), "g/team-bot");
+    await userEvent.type(
+      screen.getByTestId("connect-agent-covia-venue"),
+      "https://venue.example.com",
+    );
+    await userEvent.click(screen.getByTestId("connect-agent-submit"));
+
+    await waitFor(() => expect(runMock).toHaveBeenCalledTimes(1));
+    expect(runMock).toHaveBeenCalledWith("v/ops/a2a/import-agent", {
+      name: "team-bot",
+      coviaAgent: "g/team-bot",
+      venue: "https://venue.example.com",
+    });
+    expect(pushMock).toHaveBeenCalledWith("/agents/connected?agent=team-bot");
+  });
+
   it("warns instead of importing when authentication is on but no secret is chosen", async () => {
     renderOpen();
     await userEvent.type(screen.getByTestId("connect-agent-name"), "Private Bot");
