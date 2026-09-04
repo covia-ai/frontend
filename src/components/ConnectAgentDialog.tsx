@@ -57,7 +57,10 @@ export function ConnectAgentDialog({ trigger, open, onOpenChange }: ConnectAgent
   const setOpen = onOpenChange ?? setInternalOpen;
 
   const [name, setName] = useState("");
+  const [source, setSource] = useState<"url" | "covia">("url");
   const [url, setUrl] = useState("");
+  const [coviaAgent, setCoviaAgent] = useState("");
+  const [coviaVenue, setCoviaVenue] = useState("");
   const [needsAuth, setNeedsAuth] = useState(false);
   const [secretName, setSecretName] = useState(NO_SECRET);
   const [scheme, setScheme] = useState("");
@@ -66,6 +69,7 @@ export function ConnectAgentDialog({ trigger, open, onOpenChange }: ConnectAgent
 
   const resolvedName = slugifyAgentName(name);
   const nameValid = A2A_NAME_PATTERN.test(resolvedName);
+  const targetProvided = source === "url" ? !!url.trim() : !!coviaAgent.trim();
 
   // Load stored secret names so an authenticated endpoint can bind to one.
   useEffect(() => {
@@ -80,7 +84,10 @@ export function ConnectAgentDialog({ trigger, open, onOpenChange }: ConnectAgent
 
   const reset = () => {
     setName("");
+    setSource("url");
     setUrl("");
+    setCoviaAgent("");
+    setCoviaVenue("");
     setNeedsAuth(false);
     setSecretName(NO_SECRET);
     setScheme("");
@@ -95,8 +102,12 @@ export function ConnectAgentDialog({ trigger, open, onOpenChange }: ConnectAgent
       notifyWarning("Enter a name using lowercase letters, numbers, and hyphens");
       return;
     }
-    if (!url.trim()) {
+    if (source === "url" && !url.trim()) {
       notifyWarning("Enter the agent's endpoint URL");
+      return;
+    }
+    if (source === "covia" && !coviaAgent.trim()) {
+      notifyWarning("Enter the Covia agent address");
       return;
     }
     if (needsAuth && secretName === NO_SECRET) {
@@ -110,9 +121,17 @@ export function ConnectAgentDialog({ trigger, open, onOpenChange }: ConnectAgent
         ? { secret: `s/${secretName}`, ...(scheme.trim() && { scheme: scheme.trim() }) }
         : undefined;
 
+      const target =
+        source === "url"
+          ? { url: url.trim() }
+          : {
+              coviaAgent: coviaAgent.trim(),
+              ...(coviaVenue.trim() && { venue: coviaVenue.trim() }),
+            };
+
       await venue.operations.run<ImportAgentResult>(IMPORT_AGENT_OP, {
         name: resolvedName,
-        url: url.trim(),
+        ...target,
         ...(auth && { auth }),
       });
 
@@ -181,23 +200,89 @@ export function ConnectAgentDialog({ trigger, open, onOpenChange }: ConnectAgent
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="connect-url">Endpoint URL</Label>
-            <div className="flex items-center gap-2 rounded-md border px-3 focus-within:ring-1 focus-within:ring-ring">
-              <Link2 size={15} className="shrink-0 text-muted-foreground" />
-              <Input
-                id="connect-url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://agent.example.com"
-                className="border-0 px-0 focus-visible:ring-0"
-                data-testid="connect-agent-url"
-              />
+            <Label>Source</Label>
+            <div className="inline-flex rounded-md border p-0.5" role="tablist">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={source === "url"}
+                onClick={() => setSource("url")}
+                className={`rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+                  source === "url" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+                data-testid="connect-source-url"
+              >
+                External A2A endpoint
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={source === "covia"}
+                onClick={() => setSource("covia")}
+                className={`rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+                  source === "covia" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+                data-testid="connect-source-covia"
+              >
+                Covia agent
+              </button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              The base URL of a standard A2A agent. Covia reads its agent card from{" "}
-              <span className="font-mono">/.well-known/agent-card.json</span>.
-            </p>
           </div>
+
+          {source === "url" ? (
+            <div className="space-y-2">
+              <Label htmlFor="connect-url">Endpoint URL</Label>
+              <div className="flex items-center gap-2 rounded-md border px-3 focus-within:ring-1 focus-within:ring-ring">
+                <Link2 size={15} className="shrink-0 text-muted-foreground" />
+                <Input
+                  id="connect-url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://agent.example.com"
+                  className="border-0 px-0 focus-visible:ring-0"
+                  data-testid="connect-agent-url"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                The base URL of a standard A2A agent. Covia reads its agent card from{" "}
+                <span className="font-mono">/.well-known/agent-card.json</span>.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="connect-covia-agent">Covia agent address</Label>
+                <Input
+                  id="connect-covia-agent"
+                  value={coviaAgent}
+                  onChange={(e) => setCoviaAgent(e.target.value)}
+                  placeholder="g/support-bot"
+                  className="font-mono"
+                  data-testid="connect-agent-covia"
+                />
+                <p className="text-xs text-muted-foreground">
+                  A grid agent: <span className="font-mono">g/&lt;agentId&gt;</span> on the venue below,
+                  or a full <span className="font-mono">&lt;ownerDID&gt;/g/&lt;agentId&gt;</span>.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="connect-covia-venue">
+                  Venue URL <span className="font-normal text-muted-foreground">optional</span>
+                </Label>
+                <Input
+                  id="connect-covia-venue"
+                  value={coviaVenue}
+                  onChange={(e) => setCoviaVenue(e.target.value)}
+                  placeholder="https://venue.example.com"
+                  data-testid="connect-agent-covia-venue"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Where the agent is hosted. Required for a remote or full address; a local{" "}
+                  <span className="font-mono">g/&lt;agentId&gt;</span> defaults to this venue.
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-3 rounded-md border p-3">
             <label className="flex items-center gap-2 text-sm font-medium">
@@ -258,7 +343,7 @@ export function ConnectAgentDialog({ trigger, open, onOpenChange }: ConnectAgent
           </Button>
           <Button
             onClick={handleConnect}
-            disabled={connecting || !nameValid || !url.trim()}
+            disabled={connecting || !nameValid || !targetProvided}
             className="gap-2"
             data-testid="connect-agent-submit"
           >

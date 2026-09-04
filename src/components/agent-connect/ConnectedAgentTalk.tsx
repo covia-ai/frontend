@@ -85,7 +85,7 @@ export function ConnectedAgentTalk({ agentName }: ConnectedAgentTalkProps) {
   return (
     <div className="mx-auto flex h-[calc(100vh-8rem)] w-full max-w-3xl flex-col px-4 py-6">
       <div className="mb-4 flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => router.push("/agents/create")} aria-label="Back">
+        <Button variant="ghost" size="icon" onClick={() => router.push("/agents/connected")} aria-label="Back to connected agents">
           <ArrowLeft size={18} />
         </Button>
         <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
