@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Cable, Loader2, Lock, MessageSquareText, Plug, Unplug } from "lucide-react";
+import { Cable, Loader2, Lock, MessageSquareText, Plug, Unplug, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ConnectAgentDialog } from "@/components/ConnectAgentDialog";
+import { PortAgentDialog } from "@/components/PortAgentDialog";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { notifyError, notifySuccess } from "@/lib/notify";
@@ -28,6 +29,8 @@ export function ConnectedAgentsList() {
   const [agents, setAgents] = useState<ConnectedAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [removing, setRemoving] = useState<string | null>(null);
+  // Seeds the Port dialog when converting a connected agent to native.
+  const [convertSeed, setConvertSeed] = useState<{ name: string; prompt: string } | null>(null);
 
   const load = useCallback(async () => {
     if (!venue) return;
@@ -153,11 +156,20 @@ export function ConnectedAgentsList() {
                     {agent.url || agent.coviaAgent}
                   </p>
                 )}
-                <div className="mt-auto flex gap-2 pt-1">
+                <div className="mt-auto flex flex-wrap gap-2 pt-1">
                   <Button asChild variant="outline" size="sm" className="gap-2">
                     <Link href={`/agents/connected?agent=${encodeURIComponent(agent.name)}`}>
                       <MessageSquareText size={14} /> Talk
                     </Link>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => setConvertSeed({ name: agent.name, prompt: convertPrompt(agent) })}
+                    data-testid={`connected-convert-${agent.name}`}
+                  >
+                    <Wand2 size={14} /> Convert to native
                   </Button>
                   <Button
                     variant="ghost"
@@ -180,6 +192,26 @@ export function ConnectedAgentsList() {
           ))}
         </ul>
       )}
+
+      {convertSeed && (
+        <PortAgentDialog
+          open
+          onOpenChange={(o) => !o && setConvertSeed(null)}
+          initialName={convertSeed.name}
+          initialSystemPrompt={convertSeed.prompt}
+        />
+      )}
     </div>
   );
+}
+
+/**
+ * A starting system prompt for a native agent modelled on a connected one.
+ * A remote A2A agent's skills have no importable SKILL.md bodies, so Convert
+ * seeds identity and description — the user adds the skills in the Port dialog.
+ */
+function convertPrompt(agent: ConnectedAgent): string {
+  const who = agent.cardName || agent.name;
+  const desc = agent.description ? ` ${agent.description}` : "";
+  return `You are ${who}, recreated as a native Covia agent.${desc}\n\nAdd below the skills this agent should follow.`;
 }
