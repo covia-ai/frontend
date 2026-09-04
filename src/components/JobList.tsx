@@ -334,6 +334,15 @@ export function JobList({ venueId }: JobListProps = {}) {
     ? `last ${venueStats.sampleSize} jobs`
     : undefined;
 
+  // Sort once, shared by the desktop table and the mobile card list.
+  const sortedRecords = useMemo(() => [...pageRecords].sort((a, b) => {
+    let cmp = 0;
+    if (sort.col === "date") cmp = new Date(a.created ?? "").getTime() - new Date(b.created ?? "").getTime();
+    else if (sort.col === "operation") cmp = (a.name ?? "").localeCompare(b.name ?? "");
+    else if (sort.col === "status") cmp = (a.status ?? "").localeCompare(b.status ?? "");
+    return sort.dir === "asc" ? cmp : -cmp;
+  }), [pageRecords, sort]);
+
   const loading = hasFilters ? recentLoading : pageLoading;
   const loadError = hasFilters ? recentError : pageError ?? recentError;
 
@@ -456,7 +465,8 @@ export function JobList({ venueId }: JobListProps = {}) {
             <Spinner variant="ellipsis" className="text-primary" size={40} />
           </div>
         ) : (
-        <Table>
+        <>
+        <Table className="hidden md:table">
           <TableHeader >
             <TableRow className="bg-secondary hover:bg-secondary rounded-full text-secondary-foreground ">
               <TableCell className="text-left">
@@ -488,14 +498,7 @@ export function JobList({ venueId }: JobListProps = {}) {
                   No jobs found
                 </TableCell>
               </TableRow>
-            ) : [...pageRecords]
-              .sort((a, b) => {
-                let cmp = 0;
-                if (sort.col === "date") cmp = new Date(a.created ?? "").getTime() - new Date(b.created ?? "").getTime();
-                else if (sort.col === "operation") cmp = (a.name ?? "").localeCompare(b.name ?? "");
-                else if (sort.col === "status") cmp = (a.status ?? "").localeCompare(b.status ?? "");
-                return sort.dir === "asc" ? cmp : -cmp;
-              })
+            ) : sortedRecords
               .map((job) => {
                 const isTerminal = TERMINAL_STATUSES.has(job.status as RunStatus);
                 const tone = toneForRunStatus(job.status);
@@ -537,6 +540,42 @@ export function JobList({ venueId }: JobListProps = {}) {
               })}
           </TableBody>
         </Table>
+        {/* Mobile: stacked cards so nothing hides behind a horizontal scroll. */}
+        <div className="divide-y divide-border md:hidden">
+          {sortedRecords.length === 0 ? (
+            <div className="flex h-[38vh] items-center justify-center text-muted-foreground">No jobs found</div>
+          ) : sortedRecords.map((job) => {
+            const isTerminal = TERMINAL_STATUSES.has(job.status as RunStatus);
+            const tone = toneForRunStatus(job.status);
+            const rowTint = tone === "failure" ? "bg-destructive/5" : tone === "attention" ? "bg-amber-500/5" : "";
+            const { Icon, className: opClass } = operationVisual(job);
+            return (
+              <button
+                key={job.id}
+                type="button"
+                onClick={() => router.push(encodedPath(job.id ?? ""))}
+                className={cn("flex w-full items-start gap-3 p-3 text-left transition-colors hover:bg-muted/50", rowTint)}
+              >
+                <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", opClass)}>
+                  <Icon size={17} />
+                </span>
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate font-medium text-foreground">{job.name ?? "Operation"}</span>
+                    <span className="ml-auto shrink-0"><StatusBadge status={job.status} kind="job" /></span>
+                  </div>
+                  <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
+                    <span>{abbreviateJobId(job.id)}</span>
+                    <span aria-hidden>·</span>
+                    <span className="truncate">{job.created ? formatDateTime(job.created) : "--"}</span>
+                  </div>
+                  <DurationCell job={job} maxMs={pageMaxMs} isTerminal={isTerminal} />
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        </>
         )}
         </div>
         <PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={loading}></PaginationHeader>
