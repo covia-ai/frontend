@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   ArrowDownToLine,
   Bot,
+  Cable,
   CopyPlus,
   Loader2,
   Lock,
@@ -16,6 +17,7 @@ import {
 
 import { AddNewAgent } from "@/components/AddNewAgent";
 import { PortAgentDialog } from "@/components/PortAgentDialog";
+import { ConnectAgentDialog } from "@/components/ConnectAgentDialog";
 import { AgentTemplates } from "@/components/AgentTemplates";
 import { PageHeading } from "@/components/PageHeading";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
@@ -178,7 +180,7 @@ export function AgentCreate() {
 
         <section className="px-4 pb-8 pt-2 sm:px-10">
           <h2 className="mb-4 text-lg font-semibold">Other options</h2>
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Card className="flex flex-col gap-4 p-6">
               <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <ArrowDownToLine size={20} />
@@ -201,6 +203,33 @@ export function AgentCreate() {
                 ) : (
                   <Button disabled className="gap-2">
                     <Lock size={14} /> Sign in to port
+                  </Button>
+                )}
+              </div>
+            </Card>
+
+            <Card className="flex flex-col gap-4 p-6">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Cable size={20} />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold">Connect an agent</h2>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  Register a remote A2A agent and task it from here. It keeps running where it lives.
+                </p>
+              </div>
+              <div className="mt-auto pt-2">
+                {isAuthenticated ? (
+                  <ConnectAgentDialog
+                    trigger={
+                      <Button variant="outline" data-testid="connect-agent-trigger">
+                        Connect an agent
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <Button disabled className="gap-2">
+                    <Lock size={14} /> Sign in to connect
                   </Button>
                 )}
               </div>
