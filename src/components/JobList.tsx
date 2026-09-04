@@ -450,7 +450,7 @@ export function JobList({ venueId }: JobListProps = {}) {
             refreshes keep the previous rows visible (stale-while-refresh) —
             the spinner only appears when there is nothing to show yet — so
             pagination and the poll never collapse or shift the layout. */}
-        <div className="w-full min-h-[45vh] border border-border rounded-lg shadow-md overflow-hidden">
+        <div className="w-full min-h-[45vh] border border-border rounded-lg shadow-md overflow-x-auto">
         {loading && pageRecords.length === 0 ? (
           <div className="flex items-center justify-center min-h-[45vh] w-full">
             <Spinner variant="ellipsis" className="text-primary" size={40} />

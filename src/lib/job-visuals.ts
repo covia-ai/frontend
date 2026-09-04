@@ -96,13 +96,24 @@ const NAME_KEYWORDS: [RegExp, string][] = [
   [/schedule/i, "scheduler"],
 ];
 
-/** The adapter segment of an operation path such as `v/ops/<adapter>/<op>`. */
+/**
+ * The adapter segment of an operation path, handling both catalog shapes:
+ * `v/ops/<adapter>/<op>` (adapter follows "ops") and `v/<adapter>/ops/<op>`
+ * such as `v/test/ops/echo` (adapter precedes "ops"). Also maps model ops
+ * (`v/models/<provider>/<id>`) and bare `adapter:op` shorthand.
+ */
 function adapterFromOperation(operation?: string): string | undefined {
   if (!operation) return undefined;
   const parts = operation.split("/").filter(Boolean);
   const opsIdx = parts.indexOf("ops");
-  if (opsIdx >= 0 && parts[opsIdx + 1]) return parts[opsIdx + 1];
-  // Bare adapter shorthand like "agent:create".
+  if (opsIdx >= 0) {
+    const before = parts[opsIdx - 1];
+    // v/<adapter>/ops/<op> — the adapter is the segment before "ops".
+    if (before && before !== "v" && before !== "o") return before;
+    // v/ops/<adapter>/<op> — the adapter is the segment after "ops".
+    if (parts[opsIdx + 1]) return parts[opsIdx + 1];
+  }
+  if (parts.includes("models")) return "langchain";
   if (operation.includes(":")) return operation.split(":")[0];
   return undefined;
 }

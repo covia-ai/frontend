@@ -2,6 +2,7 @@
 
 import { useEffect, type ReactNode } from "react";
 import {
+  CalendarClock,
   Clock,
   Copy,
   FileInput,
@@ -9,12 +10,14 @@ import {
   Fingerprint,
   Hash,
   Layers,
+  Link2,
   MessageSquare,
   Send,
   ShieldCheck,
   Timer,
   type LucideIcon,
 } from "lucide-react";
+import { didUrl, Namespace } from "@covia/covia-sdk";
 import { RunStatus, isJobFinished } from "@covia/covia-sdk";
 import { AssetLoadState } from "@/components/AssetLoadState";
 import { DidDisplay } from "@/components/DidDisplay";
@@ -119,31 +122,33 @@ export function ExecutionViewer({
         <div className="mx-auto w-full max-w-5xl space-y-4 py-4">
           {/* Hero */}
           <div className={cn("rounded-xl border bg-card p-5 shadow-sm", failed && "border-destructive/40")}>
-            <div className="flex items-start gap-4">
-              <span className={cn("flex size-12 shrink-0 items-center justify-center rounded-xl", op.className)}>
-                <op.Icon size={24} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="truncate text-xl font-semibold">{job.name ?? "Operation"}</h1>
-                  <StatusBadge status={job.status} kind="job" />
-                  {execution.streaming && (
-                    <span className="flex items-center gap-1.5 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-950 dark:text-green-300">
-                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" /> Streaming
-                    </span>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              <div className="flex min-w-0 flex-1 items-start gap-4">
+                <span className={cn("flex size-12 shrink-0 items-center justify-center rounded-xl", op.className)}>
+                  <op.Icon size={24} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <h1 className="truncate text-xl font-semibold">{job.name ?? "Operation"}</h1>
+                    <StatusBadge status={job.status} kind="job" />
+                    {execution.streaming && (
+                      <span className="flex items-center gap-1.5 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-950 dark:text-green-300">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" /> Streaming
+                      </span>
+                    )}
+                  </div>
+                  {job.operation && (
+                    <div className="mt-1 truncate font-mono text-xs text-muted-foreground">{job.operation}</div>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => copyDataToClipBoard(jobId, "Job ID copied")}
+                    className="group mt-2 inline-flex items-center gap-1 rounded font-mono text-[11px] text-muted-foreground transition-colors hover:text-primary"
+                  >
+                    {abbreviateJobId(jobId)}
+                    <Copy size={11} className="opacity-0 transition-opacity group-hover:opacity-100" />
+                  </button>
                 </div>
-                {job.operation && (
-                  <div className="mt-1 truncate font-mono text-xs text-muted-foreground">{job.operation}</div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => copyDataToClipBoard(jobId, "Job ID copied")}
-                  className="group mt-2 inline-flex items-center gap-1 rounded font-mono text-[11px] text-muted-foreground transition-colors hover:text-primary"
-                >
-                  {abbreviateJobId(jobId)}
-                  <Copy size={11} className="opacity-0 transition-opacity group-hover:opacity-100" />
-                </button>
               </div>
               <ExecutionToolbar jobData={job} venue={venue} />
             </div>
@@ -167,7 +172,7 @@ export function ExecutionViewer({
               )}
             </MetaTile>
             <MetaTile icon={Clock} label="Started">{job.created ? formatDateTime(job.created) : "—"}</MetaTile>
-            <MetaTile icon={Layers} label="Kind"><span className="capitalize">{op.kind}</span></MetaTile>
+            <MetaTile icon={CalendarClock} label="Updated">{job.updated ? formatDateTime(job.updated) : "—"}</MetaTile>
           </div>
 
           {/* Awaiting input */}
@@ -241,11 +246,24 @@ export function ExecutionViewer({
                   <TooltipContent>Copy job ID</TooltipContent>
                 </Tooltip>
               </div>
+              <div className="flex items-start gap-3">
+                <Link2 size={15} className="mt-0.5 shrink-0 text-muted-foreground" />
+                <span className="w-24 shrink-0 text-muted-foreground">Reference</span>
+                <span className="min-w-0 flex-1 break-all font-mono text-xs">{didUrl(resolvedVenueId || null, Namespace.JOB, jobId)}</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" aria-label="copy job reference" onClick={() => copyDataToClipBoard(didUrl(resolvedVenueId || null, Namespace.JOB, jobId), "Reference copied")} className="shrink-0 text-muted-foreground hover:text-foreground">
+                      <Copy size={13} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Copy reference</TooltipContent>
+                </Tooltip>
+              </div>
               {job.operation && (
-                <div className="flex items-center gap-3">
-                  <Layers size={15} className="shrink-0 text-muted-foreground" />
+                <div className="flex items-start gap-3">
+                  <Layers size={15} className="mt-0.5 shrink-0 text-muted-foreground" />
                   <span className="w-24 shrink-0 text-muted-foreground">Operation</span>
-                  <span className="break-all font-mono text-xs text-primary">{job.operation}</span>
+                  <span className="min-w-0 flex-1 break-all font-mono text-xs text-primary">{job.operation}</span>
                 </div>
               )}
               <p className="pt-1 text-xs text-muted-foreground">
