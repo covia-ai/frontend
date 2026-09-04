@@ -42,6 +42,7 @@ function makeVenue(venueId: string, agentIds: string[], configs: Record<string, 
           forkedFrom: input.sourceId,
         });
       }),
+      listSessions: jest.fn().mockResolvedValue({ items: [], total: 0, offset: 0, limit: 50 }),
     },
     agent: jest.fn().mockImplementation(() => ({
       chatSession: jest.fn(),
@@ -51,7 +52,6 @@ function makeVenue(venueId: string, agentIds: string[], configs: Record<string, 
     })),
     workspace: {
       read: jest.fn().mockResolvedValue({ exists: false, value: null }),
-      slice: jest.fn().mockResolvedValue({ values: [] }),
     },
   };
 }

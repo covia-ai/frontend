@@ -1,30 +1,26 @@
 import {
+  agentSessionsToSessions,
   defaultSessionTitle,
   formatSessionLabel,
-  sessionEntriesToSessions,
 } from "@/lib/agent-sessions";
 
 describe("agent session normalization", () => {
   it("flattens frame conversations and sorts newest sessions first", () => {
-    const sessions = sessionEntriesToSessions([
+    const sessions = agentSessionsToSessions([
       {
-        key: "older-session",
-        value: {
-          meta: { created: 100, turns: 1 },
-          frames: [{ conversation: [{ role: "user", content: "old" }] }],
-        },
+        id: "older-session",
+        metadata: { created: 100, turns: 1 },
+        frames: [{ conversation: [{ role: "user", content: "old" }] }],
       },
       {
-        key: "newer-session",
-        value: {
-          meta: { created: 200, turns: 2, parties: ["user", "agent"] },
-          pending: ["work"],
-          wakeTime: 1750000000000,
-          frames: [
-            { conversation: [{ role: "user", content: "hello" }] },
-            { conversation: [{ role: "assistant", content: "hi" }] },
-          ],
-        },
+        id: "newer-session",
+        metadata: { created: 200, turns: 2, parties: ["user", "agent"] },
+        pending: ["work"],
+        wakeTime: 1750000000000,
+        frames: [
+          { conversation: [{ role: "user", content: "hello" }] },
+          { conversation: [{ role: "assistant", content: "hi" }] },
+        ],
       },
     ]);
 
@@ -45,8 +41,8 @@ describe("agent session normalization", () => {
   });
 
   it("returns an empty list for malformed workspace values", () => {
-    expect(sessionEntriesToSessions(undefined)).toEqual([]);
-    expect(sessionEntriesToSessions({ values: [] })).toEqual([]);
+    expect(agentSessionsToSessions(undefined)).toEqual([]);
+    expect(agentSessionsToSessions({ items: [] })).toEqual([]);
   });
 
   it("formats a stable fallback label when creation time is absent", () => {
@@ -60,23 +56,35 @@ describe("agent session normalization", () => {
   });
 
   it("surfaces the venue-persisted meta.title", () => {
-    const sessions = sessionEntriesToSessions([
+    const sessions = agentSessionsToSessions([
       {
-        key: "titled-session",
-        value: {
-          meta: { created: 100, turns: 1, title: "Planning the launch" },
-          frames: [{ conversation: [{ role: "user", content: "hi" }] }],
-        },
+        id: "titled-session",
+        metadata: { created: 100, turns: 1, title: "Planning the launch" },
+        frames: [{ conversation: [{ role: "user", content: "hi" }] }],
       },
     ]);
     expect(sessions[0].title).toBe("Planning the launch");
   });
 
   it("leaves title undefined when meta carries none", () => {
-    const sessions = sessionEntriesToSessions([
-      { key: "untitled-session", value: { meta: { created: 100, turns: 1 } } },
+    const sessions = agentSessionsToSessions([
+      { id: "untitled-session", metadata: { created: 100, turns: 1 } },
     ]);
     expect(sessions[0].title).toBeUndefined();
+  });
+
+  it("falls back to metadata.turnCount when turns is absent", () => {
+    const sessions = agentSessionsToSessions([
+      { id: "s1", metadata: { created: 100, turnCount: 3 } },
+    ]);
+    expect(sessions[0].turns).toBe(3);
+  });
+
+  it("prefers metadata.turns over turnCount when both are present", () => {
+    const sessions = agentSessionsToSessions([
+      { id: "s1", metadata: { created: 100, turns: 2, turnCount: 5 } },
+    ]);
+    expect(sessions[0].turns).toBe(2);
   });
 });
 
