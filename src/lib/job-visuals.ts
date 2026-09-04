@@ -1,20 +1,38 @@
 import {
+  AlertCircle,
+  Archive,
+  Ban,
+  BookOpen,
   Bot,
   Boxes,
   Braces,
-  BookOpen,
+  Brain,
   Cable,
+  CheckCircle2,
   Clock,
+  Cpu,
   Database,
+  FlaskConical,
   FolderOpen,
   Globe,
+  HelpCircle,
   KeyRound,
+  Loader,
   Network,
+  Package,
+  PauseCircle,
+  Plug,
+  Radio,
   ShieldCheck,
+  Sparkles,
+  UserPlus,
+  Workflow,
+  XCircle,
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import type { JobMetadata } from "@covia/covia-sdk";
+import { RunStatus, type JobMetadata } from "@covia/covia-sdk";
+import { toneForRunStatus, TONE_STYLES, type StatusTone } from "@/lib/status";
 
 /**
  * Visual identity for a job's operation: an icon and a colour, keyed by the
@@ -47,6 +65,17 @@ const ADAPTER_VISUALS: Record<string, OperationVisual> = {
   convex:      { Icon: Database,   className: "text-blue-600 dark:text-blue-400 bg-blue-500/10",        kind: "convex" },
   scheduler:   { Icon: Clock,      className: "text-orange-600 dark:text-orange-400 bg-orange-500/10",  kind: "scheduler" },
   ucan:        { Icon: ShieldCheck,className: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10", kind: "ucan" },
+  memory:      { Icon: Brain,      className: "text-pink-600 dark:text-pink-400 bg-pink-500/10",        kind: "memory" },
+  a2a:         { Icon: Radio,      className: "text-teal-600 dark:text-teal-400 bg-teal-500/10",        kind: "a2a" },
+  hitl:        { Icon: HelpCircle, className: "text-amber-600 dark:text-amber-400 bg-amber-500/10",     kind: "human" },
+  orchestrator:{ Icon: Workflow,   className: "text-indigo-600 dark:text-indigo-400 bg-indigo-500/10",  kind: "orchestrator" },
+  asset:       { Icon: Package,    className: "text-blue-600 dark:text-blue-400 bg-blue-500/10",        kind: "asset" },
+  jvm:         { Icon: Cpu,        className: "text-slate-600 dark:text-slate-400 bg-slate-500/10",     kind: "jvm" },
+  langchain:   { Icon: Sparkles,   className: "text-primary bg-primary/10",                             kind: "model" },
+  oauth:       { Icon: Plug,       className: "text-violet-600 dark:text-violet-400 bg-violet-500/10",  kind: "oauth" },
+  user:        { Icon: UserPlus,   className: "text-cyan-600 dark:text-cyan-400 bg-cyan-500/10",        kind: "user" },
+  archive:     { Icon: Archive,    className: "text-blue-600 dark:text-blue-400 bg-blue-500/10",        kind: "archive" },
+  test:        { Icon: FlaskConical,className: "text-muted-foreground bg-muted",                        kind: "test" },
 };
 
 const GENERIC_VISUAL: OperationVisual = {
@@ -121,4 +150,40 @@ export function durationFillClass(ms: number): string {
   if (ms < 2000) return "bg-cyan-500 dark:bg-cyan-400";
   if (ms < 8000) return "bg-amber-500 dark:bg-amber-400";
   return "bg-destructive";
+}
+
+const STATUS_ICONS: Partial<Record<RunStatus, { Icon: LucideIcon; spin?: boolean }>> = {
+  [RunStatus.COMPLETE]: { Icon: CheckCircle2 },
+  [RunStatus.FAILED]: { Icon: XCircle },
+  [RunStatus.REJECTED]: { Icon: XCircle },
+  [RunStatus.TIMEOUT]: { Icon: Clock },
+  [RunStatus.CANCELLED]: { Icon: Ban },
+  [RunStatus.PENDING]: { Icon: Loader, spin: true },
+  [RunStatus.STARTED]: { Icon: Loader, spin: true },
+  [RunStatus.PAUSED]: { Icon: PauseCircle },
+  [RunStatus.INPUT_REQUIRED]: { Icon: AlertCircle },
+  [RunStatus.AUTH_REQUIRED]: { Icon: AlertCircle },
+};
+
+export interface StatusVisual {
+  Icon: LucideIcon;
+  /** Whether the icon should spin (running/pending). */
+  spin: boolean;
+  tone: StatusTone;
+  /** Tailwind text-colour class for the tone. */
+  textClass: string;
+  label: string;
+}
+
+/** Icon + tone + colour for a job status, distinct per state (complete, failed, running…). */
+export function statusVisual(status?: string): StatusVisual {
+  const tone = toneForRunStatus(status);
+  const entry = (status && STATUS_ICONS[status as RunStatus]) || { Icon: HelpCircle };
+  return {
+    Icon: entry.Icon,
+    spin: entry.spin ?? false,
+    tone,
+    textClass: TONE_STYLES[tone].text,
+    label: status ?? "unknown",
+  };
 }
