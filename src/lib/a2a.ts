@@ -133,3 +133,27 @@ export function taskReplyText(task: A2ATask | undefined): string {
 export function isTaskComplete(state?: string): boolean {
   return (state ?? "").toUpperCase().includes("COMPLETED");
 }
+
+/** A human label for a Job status while an A2A turn is in flight. */
+export function jobStatusLabel(status?: string): string {
+  switch ((status ?? "").toUpperCase()) {
+    case "PENDING":
+      return "Sending…";
+    case "STARTED":
+      return "Working…";
+    case "INPUT_REQUIRED":
+      return "Waiting for your input";
+    case "AUTH_REQUIRED":
+      return "Authentication required";
+    case "PAUSED":
+      return "Paused";
+    case "COMPLETE":
+      return "Done";
+    case "FAILED":
+      return "Failed";
+    case "CANCELLED":
+      return "Cancelled";
+    default:
+      return status ? status : "Working…";
+  }
+}

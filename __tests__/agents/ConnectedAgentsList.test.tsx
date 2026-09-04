@@ -34,6 +34,13 @@ jest.mock("@/hooks/use-authenticated-venue", () => ({
   useAuthenticatedVenue: () => mockVenue,
 }));
 
+// Stub the heavy Port dialog: assert it opens with the converted seed.
+jest.mock("@/components/PortAgentDialog", () => ({
+  PortAgentDialog: ({ initialName, initialSystemPrompt }: { initialName?: string; initialSystemPrompt?: string }) => (
+    <div data-testid="port-dialog-stub" data-name={initialName} data-prompt={initialSystemPrompt} />
+  ),
+}));
+
 import { ConnectedAgentsList } from "@/components/agent-connect/ConnectedAgentsList";
 import { notifySuccess } from "@/lib/notify";
 
@@ -92,6 +99,21 @@ describe("ConnectedAgentsList", () => {
     await waitFor(() => expect(deleteMock).toHaveBeenCalledWith("w/a2a/agents/alpha"));
     expect(notifySuccess).toHaveBeenCalled();
     await waitFor(() => expect(screen.queryByText("alpha card")).not.toBeInTheDocument());
+  });
+
+  it("converts a connected agent to native by seeding the Port dialog", async () => {
+    listMock.mockResolvedValue({ exists: true, type: "Map", keys: ["alpha"] });
+    readMock.mockResolvedValue(bindingFor("alpha"));
+
+    render(<ConnectedAgentsList />);
+    await waitFor(() => expect(screen.getByTestId("connected-list")).toBeInTheDocument());
+
+    expect(screen.queryByTestId("port-dialog-stub")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByTestId("connected-convert-alpha"));
+
+    const dialog = await screen.findByTestId("port-dialog-stub");
+    expect(dialog).toHaveAttribute("data-name", "alpha");
+    expect(dialog.getAttribute("data-prompt")).toContain("alpha card");
   });
 
   it("prompts to sign in when unauthenticated", async () => {

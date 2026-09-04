@@ -40,7 +40,8 @@ import {
   resolvedModelId,
 } from "@/components/agent-config/AgentConfigEditor";
 
-const MIGRATE_DOCS_URL = "https://docs.covia.ai/docs/user-guide/agents/migrate-an-agent";
+// TODO: point back to /agents/migrate-an-agent once covia-docs#60 publishes it.
+const MIGRATE_DOCS_URL = "https://docs.covia.ai/docs/user-guide/agents";
 const SKILLS_DOCS_URL = "https://docs.covia.ai/docs/user-guide/agents/tools-and-context";
 const COMMUNITY_URL = "https://discord.gg/fywdrKd8QT";
 
@@ -68,6 +69,10 @@ interface PortAgentDialogProps {
   trigger?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Seed the name field when the dialog opens (e.g. converting a connected agent). */
+  initialName?: string;
+  /** Seed the system prompt when the dialog opens. */
+  initialSystemPrompt?: string;
 }
 
 /**
@@ -77,13 +82,20 @@ interface PortAgentDialogProps {
  * `v/ops/agent/from-skills` imports each skill and creates the agent that
  * indexes them. Tools and memory are not migrated here.
  */
-export function PortAgentDialog({ trigger, open, onOpenChange }: PortAgentDialogProps) {
+export function PortAgentDialog({
+  trigger,
+  open,
+  onOpenChange,
+  initialName,
+  initialSystemPrompt,
+}: PortAgentDialogProps) {
   const router = useRouter();
   const venue = useAuthenticatedVenue();
 
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = open ?? internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
+  const wasOpen = useRef(false);
 
   const [agentName, setAgentName] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
@@ -119,6 +131,16 @@ export function PortAgentDialog({ trigger, open, onOpenChange }: PortAgentDialog
       .catch(() => { if (active) setAvailableKeys([]); });
     return () => { active = false; };
   }, [isOpen, venue]);
+
+  // Seed name/prompt on the transition into open (e.g. converting a connected
+  // agent), without clobbering edits while the dialog stays open.
+  useEffect(() => {
+    if (isOpen && !wasOpen.current) {
+      if (initialName !== undefined) setAgentName(initialName);
+      if (initialSystemPrompt !== undefined) setSystemPrompt(initialSystemPrompt);
+    }
+    wasOpen.current = isOpen;
+  }, [isOpen, initialName, initialSystemPrompt]);
 
   const reset = () => {
     setAgentName("");
