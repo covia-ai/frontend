@@ -1,4 +1,3 @@
-import { useRouter } from "next/navigation";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
@@ -14,6 +13,7 @@ import { FiltersSheet } from "@/components/FiltersSheet";
 import { ListToolbar } from "@/components/ListToolbar";
 import { StatTile } from "@/components/StatTile";
 import { JobRowActions } from "@/components/jobs/JobRowActions";
+import { JobDetailDrawer } from "@/components/jobs/JobDetailDrawer";
 import { TONE_STYLES, toneForRunStatus } from "@/lib/status";
 import { operationVisual, abbreviateJobId, jobDurationMs, percentile, durationFillClass } from "@/lib/job-visuals";
 import { Activity, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2, Copy, Gauge, Layers } from "lucide-react";
@@ -77,6 +77,7 @@ export function JobList({ venueId }: JobListProps = {}) {
   const toggleSort = (col: "operation" | "date" | "status") =>
     setSort(prev => prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" });
   const [refreshTick, setRefreshTick] = useState(0);
+  const [drawerJob, setDrawerJob] = useState<JobMetadata | null>(null);
   const {
     data: pageData,
     loading: pageLoading,
@@ -99,7 +100,6 @@ export function JobList({ venueId }: JobListProps = {}) {
   const resolvedVenue = useResolvedVenueContext(venueId);
   const { descriptor: venueObj, venue, auth, isAuthenticated } = resolvedVenue;
   const venueStatus = resolvedVenue.status ?? (venue ? "ready" : "absent");
-  const router = useRouter();
   const prevVenueId = useRef<string | undefined>(undefined);
   const venueKey = venueObj?.venueId ?? "";
   // Last authoritative job count per venue: slice responses carry the live
@@ -512,7 +512,7 @@ export function JobList({ venueId }: JobListProps = {}) {
                   : "";
                 const { Icon, className: opClass } = operationVisual(job);
                 return (
-              <TableRow key={job.id} className={cn("cursor-pointer", rowTint)} onClick={() => router.push(encodedPath(job.id ?? ""))}>
+              <TableRow key={job.id} className={cn("cursor-pointer", rowTint)} onClick={() => setDrawerJob(job)}>
                 <TableCell>
                   <div className="flex min-w-0 items-center gap-3">
                     <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", opClass)}>
@@ -556,14 +556,14 @@ export function JobList({ venueId }: JobListProps = {}) {
             const tone = toneForRunStatus(job.status);
             const rowTint = tone === "failure" ? "bg-destructive/5" : tone === "attention" ? "bg-amber-500/5" : "";
             const { Icon, className: opClass } = operationVisual(job);
-            const goToJob = () => router.push(encodedPath(job.id ?? ""));
+            const openJob = () => setDrawerJob(job);
             return (
               <div
                 key={job.id}
                 role="button"
                 tabIndex={0}
-                onClick={goToJob}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goToJob(); } }}
+                onClick={openJob}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openJob(); } }}
                 className={cn("flex w-full cursor-pointer items-start gap-3 p-3 text-left transition-colors hover:bg-muted/50", rowTint)}
               >
                 <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", opClass)}>
@@ -630,6 +630,13 @@ export function JobList({ venueId }: JobListProps = {}) {
       </div>
         </TabsContent>
       </Tabs>
+      <JobDetailDrawer
+        job={drawerJob}
+        venueId={venueId}
+        fullHref={drawerJob ? encodedPath(drawerJob.id ?? "") : undefined}
+        onOpenChange={(open) => { if (!open) setDrawerJob(null); }}
+        onChanged={() => setRefreshTick(t => t + 1)}
+      />
     </ContentLayout>
 );
 }
