@@ -13,6 +13,7 @@ import { PaginationHeader } from "@/components/PaginationHeader";
 import { FiltersSheet } from "@/components/FiltersSheet";
 import { ListToolbar } from "@/components/ListToolbar";
 import { StatTile } from "@/components/StatTile";
+import { JobRowActions } from "@/components/jobs/JobRowActions";
 import { TONE_STYLES, toneForRunStatus } from "@/lib/status";
 import { operationVisual, abbreviateJobId, jobDurationMs, percentile, durationFillClass } from "@/lib/job-visuals";
 import { Activity, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2, Copy, Gauge, Layers } from "lucide-react";
@@ -490,13 +491,14 @@ export function JobList({ venueId }: JobListProps = {}) {
                   {sort.col === "status" ? (sort.dir === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />) : <ArrowUpDown size={14} />}
                 </button>
               </TableCell>
+              <TableCell className="w-10 text-right"><span className="sr-only">Actions</span></TableCell>
             </TableRow>
           </TableHeader>
 
           <TableBody className="[&_tr:last-child]:border-b!">
             {pageRecords.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={4} className="h-[38vh] text-center text-muted-foreground">
+                <TableCell colSpan={5} className="h-[38vh] text-center text-muted-foreground">
                   No jobs found
                 </TableCell>
               </TableRow>
@@ -537,6 +539,9 @@ export function JobList({ venueId }: JobListProps = {}) {
                   <DurationCell job={job} maxMs={pageMaxMs} isTerminal={isTerminal} />
                 </TableCell>
                 <TableCell><StatusBadge status={job.status} kind="job" /></TableCell>
+                <TableCell className="text-right">
+                  <JobRowActions job={job} onChanged={() => setRefreshTick(t => t + 1)} />
+                </TableCell>
               </TableRow>
                 );
               })}
@@ -551,12 +556,15 @@ export function JobList({ venueId }: JobListProps = {}) {
             const tone = toneForRunStatus(job.status);
             const rowTint = tone === "failure" ? "bg-destructive/5" : tone === "attention" ? "bg-amber-500/5" : "";
             const { Icon, className: opClass } = operationVisual(job);
+            const goToJob = () => router.push(encodedPath(job.id ?? ""));
             return (
-              <button
+              <div
                 key={job.id}
-                type="button"
-                onClick={() => router.push(encodedPath(job.id ?? ""))}
-                className={cn("flex w-full items-start gap-3 p-3 text-left transition-colors hover:bg-muted/50", rowTint)}
+                role="button"
+                tabIndex={0}
+                onClick={goToJob}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goToJob(); } }}
+                className={cn("flex w-full cursor-pointer items-start gap-3 p-3 text-left transition-colors hover:bg-muted/50", rowTint)}
               >
                 <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", opClass)}>
                   <Icon size={17} />
@@ -565,6 +573,7 @@ export function JobList({ venueId }: JobListProps = {}) {
                   <div className="flex items-center gap-2">
                     <span className="truncate font-medium text-foreground">{job.name ?? "Operation"}</span>
                     <span className="ml-auto shrink-0"><StatusBadge status={job.status} kind="job" /></span>
+                    <JobRowActions job={job} onChanged={() => setRefreshTick(t => t + 1)} />
                   </div>
                   <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
                     <span>{abbreviateJobId(job.id)}</span>
@@ -573,7 +582,7 @@ export function JobList({ venueId }: JobListProps = {}) {
                   </div>
                   <DurationCell job={job} maxMs={pageMaxMs} isTerminal={isTerminal} />
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
