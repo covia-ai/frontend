@@ -3,6 +3,7 @@ import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { useCallback, useEffect, useMemo, useRef, useState }from "react";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
+import { useActiveJobsLive } from "@/hooks/use-active-jobs-live";
 import { JobMetadata, RunStatus }from "@covia/covia-sdk";
 import { cn, formatDateTime, getExecutionTime } from "@/lib/utils";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -344,6 +345,14 @@ export function JobList({ venueId }: JobListProps = {}) {
     return sort.dir === "asc" ? cmp : -cmp;
   }), [pageRecords, sort]);
 
+  // Live-stream the active rows on this page so their status flips instantly
+  // (the detail view already streams; this brings the list up to parity).
+  const activeIds = useMemo(
+    () => sortedRecords.filter(j => ACTIVE_STATUSES.has(j.status as RunStatus)).map(j => j.id ?? "").filter(Boolean),
+    [sortedRecords],
+  );
+  const liveJobs = useActiveJobsLive(venue, activeIds);
+
   const loading = hasFilters ? recentLoading : pageLoading;
   const loadError = hasFilters ? recentError : pageError ?? recentError;
 
@@ -504,8 +513,10 @@ export function JobList({ venueId }: JobListProps = {}) {
               </TableRow>
             ) : sortedRecords
               .map((job) => {
-                const isTerminal = TERMINAL_STATUSES.has(job.status as RunStatus);
-                const tone = toneForRunStatus(job.status);
+                const eff = liveJobs[job.id ?? ""] ? { ...job, ...liveJobs[job.id ?? ""] } : job;
+                const isTerminal = TERMINAL_STATUSES.has(eff.status as RunStatus);
+                const tone = toneForRunStatus(eff.status);
+                const isLive = !!liveJobs[job.id ?? ""] && ACTIVE_STATUSES.has(eff.status as RunStatus);
                 const rowTint =
                   tone === "failure" ? "bg-destructive/5 hover:bg-destructive/10"
                   : tone === "attention" ? "bg-amber-500/5 hover:bg-amber-500/10"
@@ -536,9 +547,14 @@ export function JobList({ venueId }: JobListProps = {}) {
                   {job.created ? formatDateTime(job.created) : "--"}
                 </TableCell>
                 <TableCell>
-                  <DurationCell job={job} maxMs={pageMaxMs} isTerminal={isTerminal} />
+                  <DurationCell job={eff} maxMs={pageMaxMs} isTerminal={isTerminal} />
                 </TableCell>
-                <TableCell><StatusBadge status={job.status} kind="job" /></TableCell>
+                <TableCell>
+                  <span className="inline-flex items-center gap-1.5">
+                    {isLive && <span className="size-1.5 shrink-0 animate-pulse rounded-full bg-emerald-500" title="Live" />}
+                    <StatusBadge status={eff.status} kind="job" />
+                  </span>
+                </TableCell>
                 <TableCell className="text-right">
                   <JobRowActions job={job} onChanged={() => setRefreshTick(t => t + 1)} />
                 </TableCell>
@@ -552,8 +568,10 @@ export function JobList({ venueId }: JobListProps = {}) {
           {sortedRecords.length === 0 ? (
             <div className="flex h-[38vh] items-center justify-center text-muted-foreground">No jobs found</div>
           ) : sortedRecords.map((job) => {
-            const isTerminal = TERMINAL_STATUSES.has(job.status as RunStatus);
-            const tone = toneForRunStatus(job.status);
+            const eff = liveJobs[job.id ?? ""] ? { ...job, ...liveJobs[job.id ?? ""] } : job;
+            const isTerminal = TERMINAL_STATUSES.has(eff.status as RunStatus);
+            const tone = toneForRunStatus(eff.status);
+            const isLive = !!liveJobs[job.id ?? ""] && ACTIVE_STATUSES.has(eff.status as RunStatus);
             const rowTint = tone === "failure" ? "bg-destructive/5" : tone === "attention" ? "bg-amber-500/5" : "";
             const { Icon, className: opClass } = operationVisual(job);
             const openJob = () => setDrawerJob(job);
@@ -572,7 +590,10 @@ export function JobList({ venueId }: JobListProps = {}) {
                 <div className="min-w-0 flex-1 space-y-1.5">
                   <div className="flex items-center gap-2">
                     <span className="truncate font-medium text-foreground">{job.name ?? "Operation"}</span>
-                    <span className="ml-auto shrink-0"><StatusBadge status={job.status} kind="job" /></span>
+                    <span className="ml-auto inline-flex shrink-0 items-center gap-1.5">
+                      {isLive && <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" title="Live" />}
+                      <StatusBadge status={eff.status} kind="job" />
+                    </span>
                     <JobRowActions job={job} onChanged={() => setRefreshTick(t => t + 1)} />
                   </div>
                   <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
@@ -580,7 +601,7 @@ export function JobList({ venueId }: JobListProps = {}) {
                     <span aria-hidden>·</span>
                     <span className="truncate">{job.created ? formatDateTime(job.created) : "--"}</span>
                   </div>
-                  <DurationCell job={job} maxMs={pageMaxMs} isTerminal={isTerminal} />
+                  <DurationCell job={eff} maxMs={pageMaxMs} isTerminal={isTerminal} />
                 </div>
               </div>
             );
