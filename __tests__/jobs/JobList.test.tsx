@@ -84,6 +84,23 @@ describe('JobList windowed fetching', () => {
     expect(mockVenue.workspace.list).toHaveBeenCalledTimes(1);
   });
 
+  it('grows the window (infinite scroll) when "Load older jobs" is used', async () => {
+    const user = userEvent.setup();
+    render(<JobList />);
+    await waitFor(() =>
+      expect(mockVenue.workspace.slice).toHaveBeenCalledWith('j', TOTAL - 10, 10),
+    );
+    expect(screen.getByText(/Showing 10 of 998/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /load older jobs/i }));
+
+    // The window grows by one page and re-reads the newest 20 from the end.
+    await waitFor(() =>
+      expect(mockVenue.workspace.slice).toHaveBeenCalledWith('j', TOTAL - 20, 20),
+    );
+    expect(screen.getByText(/Showing 20 of 998/)).toBeInTheDocument();
+  });
+
   it('search fetches one filter window instead of per-job GETs', async () => {
     const user = userEvent.setup();
     render(<JobList />);
