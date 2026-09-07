@@ -198,3 +198,31 @@ export function statusVisual(status?: string): StatusVisual {
     label: status ?? "unknown",
   };
 }
+
+/** One transition in a job's lifecycle. */
+export interface JobStateStep {
+  status: string;
+  /** Epoch ms or ISO string — pass to `formatDateTime`. */
+  at?: string | number;
+  /** The caller/actor DID recorded for this transition, if any. */
+  actor?: string;
+}
+
+/**
+ * A job's state history, reconstructed from its `prev` chain — each stored
+ * record snapshots one transition (PENDING → STARTED → COMPLETE/FAILED …).
+ * Returned oldest-first for a natural top-to-bottom timeline. A `seen` guard
+ * keeps a malformed cyclic chain from looping.
+ */
+export function stateHistory(job?: JobMetadata | null): JobStateStep[] {
+  const steps: JobStateStep[] = [];
+  const seen = new Set<unknown>();
+  let node: unknown = job;
+  while (node && typeof node === "object" && !seen.has(node)) {
+    seen.add(node);
+    const n = node as { status?: string; updated?: string | number; created?: string | number; caller?: string; prev?: unknown };
+    if (n.status) steps.push({ status: n.status, at: n.updated ?? n.created, actor: n.caller });
+    node = n.prev;
+  }
+  return steps.reverse();
+}

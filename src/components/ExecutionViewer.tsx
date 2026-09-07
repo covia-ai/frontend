@@ -15,8 +15,10 @@ import {
   Send,
   ShieldCheck,
   Timer,
+  History,
   type LucideIcon,
 } from "lucide-react";
+import { JobStateTimeline } from "@/components/jobs/JobStateTimeline";
 import { didUrl, Namespace } from "@covia/covia-sdk";
 import { RunStatus, isJobFinished } from "@covia/covia-sdk";
 import { AssetLoadState } from "@/components/AssetLoadState";
@@ -224,6 +226,11 @@ export function ExecutionViewer({
               </Panel>
             )}
           </div>
+
+          {/* State history — reconstructed from the job's prev chain */}
+          <Panel icon={History} title="State history">
+            <JobStateTimeline job={job} />
+          </Panel>
 
           {/* Provenance — Covia jobs are governed, identified records */}
           <Panel icon={ShieldCheck} title="Provenance">

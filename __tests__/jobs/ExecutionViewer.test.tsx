@@ -56,7 +56,7 @@ describe("ExecutionViewer — rich job detail", () => {
 
     // Hero: operation name + status + actions.
     expect(screen.getByRole("heading", { name: "Set Secret" })).toBeInTheDocument();
-    expect(screen.getByText("COMPLETE")).toBeInTheDocument();
+    expect(screen.getAllByText("COMPLETE").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
     // Operation path is shown (hero + provenance).
     expect(screen.getAllByText("v/ops/secret/set").length).toBeGreaterThan(0);
@@ -75,7 +75,7 @@ describe("ExecutionViewer — rich job detail", () => {
 
     // Provenance: caller DID + reference.
     expect(screen.getByText("Provenance")).toBeInTheDocument();
-    expect(screen.getByText("did:key:z6MktjExampleCallerDid")).toBeInTheDocument();
+    expect(screen.getAllByText("did:key:z6MktjExampleCallerDid").length).toBeGreaterThan(0);
     expect(screen.getByText("Reference")).toBeInTheDocument();
   });
 
@@ -83,7 +83,7 @@ describe("ExecutionViewer — rich job detail", () => {
     setExecution({ ...baseJob, status: "FAILED", error: "boom" });
     render(<ExecutionViewer jobId={baseJob.id} venueId="did:key:z6MkVenue" />);
 
-    expect(screen.getByText("FAILED")).toBeInTheDocument();
+    expect(screen.getAllByText("FAILED").length).toBeGreaterThan(0);
     expect(screen.getByText("Error")).toBeInTheDocument();
     expect(screen.getByTestId("error-display")).toBeInTheDocument();
     // No Output panel for a failed job.

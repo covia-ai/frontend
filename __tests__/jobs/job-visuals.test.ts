@@ -6,6 +6,7 @@ import {
   percentile,
   durationFillClass,
   statusVisual,
+  stateHistory,
 } from "@/lib/job-visuals";
 
 describe("operationVisual — operation → icon identity", () => {
@@ -99,5 +100,35 @@ describe("statusVisual — status → tone/icon", () => {
     expect(statusVisual(RunStatus.COMPLETE).spin).toBe(false);
     expect(statusVisual(RunStatus.FAILED).label).toBe(RunStatus.FAILED);
     expect(statusVisual(undefined).tone).toBe("neutral");
+  });
+});
+
+describe("stateHistory — timeline from the prev chain", () => {
+  const job = {
+    status: "COMPLETE", updated: 300, caller: "did:key:zA",
+    prev: {
+      status: "STARTED", updated: 200, caller: "did:key:zA",
+      prev: { status: "PENDING", updated: 100, caller: "did:key:zA" },
+    },
+  } as unknown as Parameters<typeof stateHistory>[0];
+
+  it("returns steps oldest-first with status, timestamp, and actor", () => {
+    const steps = stateHistory(job);
+    expect(steps.map((s) => s.status)).toEqual(["PENDING", "STARTED", "COMPLETE"]);
+    expect(steps[0]).toEqual({ status: "PENDING", at: 100, actor: "did:key:zA" });
+    expect(steps[2].at).toBe(300);
+  });
+
+  it("is empty for a missing job", () => {
+    expect(stateHistory(undefined)).toEqual([]);
+    expect(stateHistory(null)).toEqual([]);
+  });
+
+  it("does not loop on a cyclic prev chain", () => {
+    const a: Record<string, unknown> = { status: "STARTED", updated: 2 };
+    const b: Record<string, unknown> = { status: "PENDING", updated: 1, prev: a };
+    a.prev = b; // cycle
+    const steps = stateHistory(a as unknown as Parameters<typeof stateHistory>[0]);
+    expect(steps.length).toBe(2);
   });
 });
