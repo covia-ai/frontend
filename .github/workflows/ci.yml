@@ -1,9 +1,10 @@
 name: CI
 
 # Build-and-test quality gate. Runs on every pull request and on pushes to
-# the long-lived branches. Pair this with a required-status-check branch
-# protection rule on develop/main — the workflow alone reports status but
-# does not block a merge on its own.
+# the long-lived branches. Pair this with required-status-check branch
+# protection rules on develop/main for the "lint", "build", and "test" jobs
+# below — the workflow alone reports status but does not block a merge on
+# its own.
 
 on:
   pull_request:
@@ -17,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,8 +37,38 @@ jobs:
       - name: Lint
         run: pnpm run lint
 
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Build (also type-checks)
         run: pnpm run build
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Test
         run: pnpm test
