@@ -6,7 +6,7 @@ import {
   useAuthenticatedVenue,
 } from "@/hooks/use-authenticated-venue";
 import { useIsAuthenticated } from "@/hooks/use-auth";
-import { cn } from "@/lib/utils";
+import { cn, formatRelativeTime } from "@/lib/utils";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import {
   CONNECTIONS,
@@ -22,17 +22,20 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
 import {
+  AlertTriangle,
   Check,
   CheckCircle2,
   ExternalLink,
   Loader2,
   Lock,
   Plus,
+  RefreshCw,
   Search,
   ShieldCheck,
   Trash2,
   XCircle,
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -59,11 +62,21 @@ type TestState =
   | { phase: "ok"; message: string }
   | { phase: "error"; message: string };
 
+// Per-connected-service health, keyed by secretName. On-demand only (the Test
+// button) — a check on page load would persist a job per service per visit,
+// which the reads-must-not-create-jobs rule forbids until the venue exposes a
+// job-free verify (covia#489). Not persisted: a fresh page load starts idle.
+type HealthState =
+  | { phase: "checking" }
+  | { phase: "ok"; message: string; checkedAt: string }
+  | { phase: "attention"; message: string; checkedAt: string };
+
 export function ConnectionsList() {
   const venue = useAuthenticatedVenue();
   const isAuthenticated = useIsAuthenticated();
 
   const [connected, setConnected] = useState<Set<string>>(new Set());
+  const [health, setHealth] = useState<Record<string, HealthState>>({});
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   // Category filter chip; null = All. Complements search (search wins).
@@ -125,6 +138,13 @@ export function ConnectionsList() {
     const svc = active;
     const svcFields = connectionSecrets(svc);
     setTest({ phase: "testing" });
+    // A fresh save (including a Fix-triggered reconnect) supersedes whatever
+    // an earlier health check said — clear it rather than show a stale
+    // "Needs attention" next to a token that was just re-verified.
+    setHealth((prev) => {
+      const { [svc.secretName]: _drop, ...rest } = prev;
+      return rest;
+    });
     // Discard everything we stored if verification fails — never leave a
     // half-configured connection behind.
     const cleanup = () => Promise.all(svcFields.map((f) => venue.secrets.delete(f.name).catch(() => {})));
@@ -177,6 +197,26 @@ export function ConnectionsList() {
     setTest({ phase: "idle" });
   };
 
+  /** On-demand health check for an already-connected service (frontend#290). */
+  const checkHealth = async (service: ConnectionService) => {
+    if (!venue) return;
+    setHealth((prev) => ({ ...prev, [service.secretName]: { phase: "checking" } }));
+    const checkedAt = new Date().toISOString();
+    try {
+      const message = await runVerify(service);
+      setHealth((prev) => ({ ...prev, [service.secretName]: { phase: "ok", message, checkedAt } }));
+    } catch (err: unknown) {
+      setHealth((prev) => ({
+        ...prev,
+        [service.secretName]: {
+          phase: "attention",
+          message: err instanceof Error ? err.message : String(err),
+          checkedAt,
+        },
+      }));
+    }
+  };
+
   const disconnect = (service: ConnectionService) => {
     if (!venue) return;
     // Remove every value the connection stored, not just the primary.
@@ -186,6 +226,10 @@ export function ConnectionsList() {
           const next = new Set(prev);
           next.delete(service.secretName);
           return next;
+        });
+        setHealth((prev) => {
+          const { [service.secretName]: _drop, ...rest } = prev;
+          return rest;
         });
         notifySuccess(`${service.name} disconnected`);
       })
@@ -227,6 +271,8 @@ export function ConnectionsList() {
 
   const Card = ({ service }: { service: ConnectionService }) => {
     const on = isConnected(service);
+    const svcHealth = health[service.secretName];
+    const attention = on && svcHealth?.phase === "attention";
     return (
       <div className="flex flex-col rounded-xl border bg-card p-4">
         <div className="flex items-start gap-3">
@@ -244,41 +290,93 @@ export function ConnectionsList() {
             )}
           </div>
         </div>
-        <div className="mt-4 flex items-center justify-between">
-          {loading ? (
-            <Loader2 className="animate-spin text-muted-foreground" size={16} />
-          ) : on ? (
-            <Badge variant="outline" className="gap-1 border-green-600/30 bg-green-600/10 text-green-700 dark:text-green-400">
-              <Check size={12} /> Connected
-            </Badge>
-          ) : (
-            <span className="text-xs text-muted-foreground">Not connected</span>
-          )}
-          {on ? (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 px-2 text-muted-foreground">
-                  <Trash2 size={14} />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Disconnect {service.name}?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Removes the stored secret <code className="rounded bg-muted px-1 font-mono text-xs">{service.secretName}</code>. Agents using the {service.id} skill lose access until you reconnect.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => disconnect(service)}>Disconnect</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          ) : (
-            <Button variant="outline" size="sm" className="h-7" onClick={() => openAdd(service)}>
-              <Plus size={14} /> Connect
-            </Button>
-          )}
+        <div className="mt-4 flex items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            {loading ? (
+              <Loader2 className="animate-spin text-muted-foreground" size={16} />
+            ) : attention ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge
+                    variant="outline"
+                    className="w-fit gap-1 border-amber-600/30 bg-amber-600/10 text-amber-700 dark:text-amber-400"
+                  >
+                    <AlertTriangle size={12} /> Needs attention
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-64">{svcHealth.message}</TooltipContent>
+              </Tooltip>
+            ) : on ? (
+              <Badge variant="outline" className="w-fit gap-1 border-green-600/30 bg-green-600/10 text-green-700 dark:text-green-400">
+                <Check size={12} /> Connected
+              </Badge>
+            ) : (
+              <span className="text-xs text-muted-foreground">Not connected</span>
+            )}
+            {on && svcHealth && svcHealth.phase !== "checking" && (
+              <span className="text-[10px] text-muted-foreground">
+                Checked {formatRelativeTime(svcHealth.checkedAt)}
+              </span>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {on && service.verify && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-muted-foreground"
+                    aria-label={`Test ${service.name} connection`}
+                    disabled={svcHealth?.phase === "checking"}
+                    onClick={() => checkHealth(service)}
+                  >
+                    {svcHealth?.phase === "checking" ? (
+                      <Loader2 className="animate-spin" size={14} />
+                    ) : (
+                      <RefreshCw size={14} />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Test connection</TooltipContent>
+              </Tooltip>
+            )}
+            {attention && (
+              <Button variant="outline" size="sm" className="h-7" onClick={() => openAdd(service)}>
+                Fix
+              </Button>
+            )}
+            {on ? (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-muted-foreground"
+                    aria-label={`Disconnect ${service.name}`}
+                  >
+                    <Trash2 size={14} />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Disconnect {service.name}?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Removes the stored secret <code className="rounded bg-muted px-1 font-mono text-xs">{service.secretName}</code>. Agents using the {service.id} skill lose access until you reconnect.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => disconnect(service)}>Disconnect</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : (
+              <Button variant="outline" size="sm" className="h-7" onClick={() => openAdd(service)}>
+                <Plus size={14} /> Connect
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     );

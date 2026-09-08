@@ -190,13 +190,63 @@ describe("ConnectionsList", () => {
 
     // The disconnect trigger is the icon-only trash button on the connected card.
     const githubCard = screen.getByText("GitHub").closest("div.rounded-xl") as HTMLElement;
-    await user.click(within(githubCard).getByRole("button"));
+    await user.click(within(githubCard).getByRole("button", { name: "Disconnect GitHub" }));
 
     await user.click(await screen.findByRole("button", { name: "Disconnect" }));
 
     expect(mockVenue.secrets.delete).toHaveBeenCalledWith("GITHUB_TOKEN");
     expect(mockNotifySuccess).toHaveBeenCalledWith("GitHub disconnected");
     await waitFor(() => expect(screen.queryByText("Connected · 1")).not.toBeInTheDocument());
+  });
+
+  describe("per-service health check (frontend#290)", () => {
+    it("tests a connected service on demand and reports when it last checked out", async () => {
+      const user = userEvent.setup();
+      mockVenue = makeVenue(["GITHUB_TOKEN"]);
+      mockVenue.operations.run.mockResolvedValue({ status: 200, body: '{"login":"octocat"}' });
+      render(<ConnectionsList />);
+      await screen.findByText("Connected · 1");
+
+      // Card is a fresh component instance each render (React remounts it on
+      // every state change), so a node captured before the click detaches
+      // from the live tree once state updates — re-find the card after
+      // acting on it rather than reusing a pre-click reference.
+      const findGithubCard = () => screen.getByText("GitHub").closest("div.rounded-xl") as HTMLElement;
+      expect(within(findGithubCard()).queryByText(/Checked/)).not.toBeInTheDocument();
+
+      await user.click(within(findGithubCard()).getByRole("button", { name: "Test GitHub connection" }));
+
+      expect(mockVenue.operations.run).toHaveBeenCalled();
+      await waitFor(() => expect(within(findGithubCard()).getByText(/Checked/)).toBeInTheDocument());
+      // Still reports Connected — a successful test doesn't change the badge.
+      expect(within(findGithubCard()).getByText("Connected")).toBeInTheDocument();
+    });
+
+    it("flips to Needs attention with the reason when the token no longer verifies, and Fix reopens the add dialog", async () => {
+      const user = userEvent.setup();
+      mockVenue = makeVenue(["GITHUB_TOKEN"]);
+      mockVenue.operations.run.mockResolvedValue({
+        status: 401,
+        body: '{"message":"Bad credentials"}',
+      });
+      render(<ConnectionsList />);
+      await screen.findByText("Connected · 1");
+
+      const findGithubCard = () => screen.getByText("GitHub").closest("div.rounded-xl") as HTMLElement;
+      await user.click(within(findGithubCard()).getByRole("button", { name: "Test GitHub connection" }));
+
+      await waitFor(() => expect(within(findGithubCard()).getByText("Needs attention")).toBeInTheDocument());
+
+      await user.click(within(findGithubCard()).getByRole("button", { name: "Fix" }));
+      expect(await screen.findByText("Connect GitHub")).toBeInTheDocument();
+    });
+
+    it("never runs a health check on page load — on-demand only", async () => {
+      mockVenue = makeVenue(["GITHUB_TOKEN"]);
+      render(<ConnectionsList />);
+      await screen.findByText("Connected · 1");
+      expect(mockVenue.operations.run).not.toHaveBeenCalled();
+    });
   });
 
   // End-to-end connect flow for every connector: open the dialog, paste a
