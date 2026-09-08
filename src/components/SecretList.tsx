@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { revalidateVenueOnFailure, useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { Button } from "./ui/button";
@@ -33,6 +33,24 @@ import {
 /** Secret name → the connection that stores it, so the Secrets page can show
  *  which secrets are a connection's credential rather than a bare LLM/API key. */
 const CONNECTION_BY_SECRET = new Map(CONNECTIONS.map((s) => [s.secretName, s]));
+
+/** Buckets a flat secret-name list into provider groups for display — a
+ *  connection's credential, a known LLM key, or unclassified (frontend#166). */
+export function groupSecretsByProvider(secrets: string[]): { label: string; names: string[] }[] {
+  const connections: string[] = [];
+  const llmKeys: string[] = [];
+  const other: string[] = [];
+  for (const name of secrets) {
+    if (CONNECTION_BY_SECRET.has(name)) connections.push(name);
+    else if (KNOWN_LLM_KEYS[name]) llmKeys.push(name);
+    else other.push(name);
+  }
+  return [
+    { label: "Connections", names: connections },
+    { label: "LLM providers", names: llmKeys },
+    { label: "Other", names: other },
+  ].filter((g) => g.names.length > 0);
+}
 
 export function SecretList() {
   const [secrets, setSecrets] = useState<string[]>([]);
@@ -238,7 +256,16 @@ export function SecretList() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {secrets.map((name) => (
+              {groupSecretsByProvider(secrets).map((group) => (
+              <Fragment key={group.label}>
+                {group.names.length > 0 && (
+                  <TableRow className="bg-muted/50 hover:bg-muted/50">
+                    <TableCell colSpan={3} className="text-[10px] uppercase tracking-wide text-muted-foreground py-1.5">
+                      {group.label}
+                    </TableCell>
+                  </TableRow>
+                )}
+                {group.names.map((name) => (
                 <TableRow key={name}>
                   <TableCell className="font-mono text-sm">
                     <span className="flex flex-wrap items-center gap-2">
@@ -294,6 +321,8 @@ export function SecretList() {
                     )}
                   </TableCell>
                 </TableRow>
+                ))}
+              </Fragment>
               ))}
             </TableBody>
           </Table>

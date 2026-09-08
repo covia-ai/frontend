@@ -17,6 +17,21 @@ import { Button } from "./ui/button";
 import { gtmEvent } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
+const PRIVATE_HOST_RE = /^(localhost|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|\[?::1\]?|.*\.local)$/i;
+
+/** Whether `value` names a loopback/private-network host — Chrome's Private
+ *  Network Access can silently block an https page from reaching one, with
+ *  no CORS error, just a failed fetch (frontend#166). */
+export function isPrivateNetworkTarget(value: string): boolean {
+  let host: string;
+  try {
+    host = value.includes("://") ? new URL(value).hostname : value.split(/[/:]/)[0];
+  } catch {
+    return false;
+  }
+  return PRIVATE_HOST_RE.test(host);
+}
+
 export const AddNewVenueModal = () => {
     const [open, setOpen] = useState(false)
     const { addVenue, venues } = useVenues();
@@ -94,6 +109,15 @@ export const AddNewVenueModal = () => {
                           disabled={loading}
                         />
                       </div>
+                      {typeof window !== "undefined" &&
+                        window.location.protocol === "https:" &&
+                        isPrivateNetworkTarget(venueDidOrUrl.trim()) && (
+                          <p className="text-xs text-muted-foreground w-full" data-testid="pna-hint">
+                            This looks like a local/private venue. Chrome&apos;s Private Network
+                            Access policy can silently block this https page from reaching it —
+                            allow the request if prompted, or open this app over http instead.
+                          </p>
+                        )}
                       {error && <p className="text-sm text-destructive w-full">{error}</p>}
                       <div className="flex w-full justify-end">
                         <Button

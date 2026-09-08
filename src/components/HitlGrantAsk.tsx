@@ -22,7 +22,25 @@ const LIFETIMES = [
   { value: "900", label: "15 minutes" },
   { value: "3600", label: "1 hour" },
   { value: "86400", label: "24 hours" },
+  { value: "604800", label: "7 days" },
 ];
+
+/** Plain duration label for a lifetime the presets above don't cover. */
+function lifetimeLabel(seconds: number): string {
+  if (seconds >= 86400 && seconds % 86400 === 0) {
+    const days = seconds / 86400;
+    return `${days} day${days === 1 ? "" : "s"}`;
+  }
+  if (seconds >= 3600 && seconds % 3600 === 0) {
+    const hours = seconds / 3600;
+    return `${hours} hour${hours === 1 ? "" : "s"}`;
+  }
+  if (seconds >= 60 && seconds % 60 === 0) {
+    const minutes = seconds / 60;
+    return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+  }
+  return `${seconds}s`;
+}
 
 interface HitlGrantAskProps {
   request: HitlRequest;
@@ -60,7 +78,17 @@ export function HitlGrantAsk({ request, ask, kind, venue, signingKeyHex, onDone,
   const [rows, setRows] = useState<CapRow[]>(
     (kind === "token" ? spec?.caps ?? [] : offered).map((c) => ({ ...c, included: true })),
   );
-  const [lifetime, setLifetime] = useState<string>(String(spec?.exp && LIFETIMES.some(l => l.value === String(spec.exp)) ? spec.exp : 3600));
+  // Signing has no venue-side lifetime ceiling (self-sovereign UCAN, the
+  // venue only transports it) — default to exactly what was requested, not
+  // just whichever preset happens to already cover it (frontend#337).
+  const [lifetime, setLifetime] = useState<string>(String(spec?.exp ?? 3600));
+  // Always offer the requested lifetime as a selectable option, even off-preset.
+  const lifetimeOptions = useMemo(() => {
+    const requested = spec?.exp;
+    if (!requested || LIFETIMES.some((l) => Number(l.value) === requested)) return LIFETIMES;
+    return [...LIFETIMES, { value: String(requested), label: lifetimeLabel(requested) }]
+      .sort((a, b) => Number(a.value) - Number(b.value));
+  }, [spec?.exp]);
   const [submitting, setSubmitting] = useState(false);
 
   const canSignToken = kind !== "token" || !!signingKeyHex;
@@ -157,7 +185,7 @@ export function HitlGrantAsk({ request, ask, kind, venue, signingKeyHex, onDone,
           <Select value={lifetime} onValueChange={setLifetime}>
             <SelectTrigger className="h-8 w-36" data-testid="token-lifetime"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {LIFETIMES.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
+              {lifetimeOptions.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
