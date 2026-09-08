@@ -15,6 +15,9 @@ const mockVenue: any = {
     list: jest.fn(),
     info: jest.fn(),
     listSessions: jest.fn(),
+    // Empty by default — an immediately-closed stream keeps the live-events
+    // hook non-live, so this file's poll-driven expectations are unaffected.
+    events: jest.fn().mockImplementation(async function* () {}),
   },
   agent: jest.fn(),
   workspace: {

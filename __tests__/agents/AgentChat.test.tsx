@@ -46,6 +46,7 @@ function controller(overrides: Record<string, unknown> = {}) {
     setMessageText: jest.fn(),
     pendingChat: null,
     sending: false,
+    activity: null,
     canSend: true,
     echoAlreadyRecorded: false,
     suspend: jest.fn(),
