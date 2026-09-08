@@ -53,7 +53,8 @@ export async function runBeat1(
   return op.invoke({
     agentId: addresses.sentinelAgent,
     input: { task: sentinelTask(addresses) },
-    wait: true,
+    // No `wait` option on invoke() — BeatCard polls the returned job to
+    // isFinished/isPaused itself, so this is fine as a bare invoke.
   });
 }
 
@@ -91,7 +92,8 @@ export async function runAssessorBeat(
   return op.invoke({
     agentId: addresses.assessorAgent,
     input: { task: assessorTask(addresses, applicant, amount, device) },
-    wait: true,
+    // No `wait` option on invoke() — BeatCard polls the returned job to
+    // isFinished/isPaused itself, so this is fine as a bare invoke.
   });
 }
 
