@@ -247,6 +247,25 @@ describe("ConnectionsList", () => {
       await screen.findByText("Connected · 1");
       expect(mockVenue.operations.run).not.toHaveBeenCalled();
     });
+
+    it("does not remount an unrelated card when another card's health state changes (frontend#344)", async () => {
+      const user = userEvent.setup();
+      mockVenue = makeVenue(["GITHUB_TOKEN", "NOTION_TOKEN"]);
+      mockVenue.operations.run.mockResolvedValue({ status: 200, body: '{"login":"octocat"}' });
+      render(<ConnectionsList />);
+      await screen.findByText("Connected · 2");
+
+      // A remount replaces the DOM node — capture Notion's card node before
+      // touching GitHub's, and assert it's the exact same node afterward.
+      const notionCardBefore = screen.getByText("Notion").closest("div.rounded-xl");
+
+      const githubCard = screen.getByText("GitHub").closest("div.rounded-xl") as HTMLElement;
+      await user.click(within(githubCard).getByRole("button", { name: "Test GitHub connection" }));
+      await waitFor(() => expect(within(githubCard).getByText(/Checked/)).toBeInTheDocument());
+
+      const notionCardAfter = screen.getByText("Notion").closest("div.rounded-xl");
+      expect(notionCardAfter).toBe(notionCardBefore);
+    });
   });
 
   // End-to-end connect flow for every connector: open the dialog, paste a
