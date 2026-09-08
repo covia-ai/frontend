@@ -71,6 +71,144 @@ type HealthState =
   | { phase: "ok"; message: string; checkedAt: string }
   | { phase: "attention"; message: string; checkedAt: string };
 
+type ConnectionCardProps = {
+  service: ConnectionService;
+  connected: boolean;
+  health: HealthState | undefined;
+  loading: boolean;
+  onTest: (service: ConnectionService) => void;
+  onOpenAdd: (service: ConnectionService) => void;
+  onDisconnect: (service: ConnectionService) => void;
+};
+
+// Hoisted to module scope (frontend#344) — a component defined inside
+// another component's render body is a new function, hence a new component
+// *type*, on every render. React keys reconciliation on type identity, so
+// that pattern remounts every card from scratch (losing DOM state, replaying
+// mount animations, tearing down open tooltips) on any parent state change —
+// including typing a single character into the search box. Passing explicit
+// props instead of closing over ConnectionsList's state keeps this a stable
+// type across renders, so React diffs and updates in place like normal.
+function ConnectionCard({
+  service,
+  connected,
+  health,
+  loading,
+  onTest,
+  onOpenAdd,
+  onDisconnect,
+}: ConnectionCardProps) {
+  const on = connected;
+  const attention = on && health?.phase === "attention";
+  return (
+    <div className="flex flex-col rounded-xl border bg-card p-4">
+      <div className="flex items-start gap-3">
+        <Logo service={service} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate font-semibold">{service.name}</span>
+            <span className="font-mono text-[10px] uppercase text-muted-foreground">{service.method}</span>
+          </div>
+          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{service.blurb}</p>
+          {on && CONNECTION_CAPABILITIES[service.id]?.examples[0] && (
+            <p className="mt-1 line-clamp-1 text-xs italic text-muted-foreground/80">
+              Try: &ldquo;{CONNECTION_CAPABILITIES[service.id].examples[0]}&rdquo;
+            </p>
+          )}
+        </div>
+      </div>
+      <div className="mt-4 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          {loading ? (
+            <Loader2 className="animate-spin text-muted-foreground" size={16} />
+          ) : attention ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge
+                  variant="outline"
+                  className="w-fit gap-1 border-amber-600/30 bg-amber-600/10 text-amber-700 dark:text-amber-400"
+                >
+                  <AlertTriangle size={12} /> Needs attention
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-64">{health.message}</TooltipContent>
+            </Tooltip>
+          ) : on ? (
+            <Badge variant="outline" className="w-fit gap-1 border-green-600/30 bg-green-600/10 text-green-700 dark:text-green-400">
+              <Check size={12} /> Connected
+            </Badge>
+          ) : (
+            <span className="text-xs text-muted-foreground">Not connected</span>
+          )}
+          {on && health && health.phase !== "checking" && (
+            <span className="text-[10px] text-muted-foreground">
+              Checked {formatRelativeTime(health.checkedAt)}
+            </span>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          {on && service.verify && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-muted-foreground"
+                  aria-label={`Test ${service.name} connection`}
+                  disabled={health?.phase === "checking"}
+                  onClick={() => onTest(service)}
+                >
+                  {health?.phase === "checking" ? (
+                    <Loader2 className="animate-spin" size={14} />
+                  ) : (
+                    <RefreshCw size={14} />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Test connection</TooltipContent>
+            </Tooltip>
+          )}
+          {attention && (
+            <Button variant="outline" size="sm" className="h-7" onClick={() => onOpenAdd(service)}>
+              Fix
+            </Button>
+          )}
+          {on ? (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-muted-foreground"
+                  aria-label={`Disconnect ${service.name}`}
+                >
+                  <Trash2 size={14} />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Disconnect {service.name}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Removes the stored secret <code className="rounded bg-muted px-1 font-mono text-xs">{service.secretName}</code>. Agents using the {service.id} skill lose access until you reconnect.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => onDisconnect(service)}>Disconnect</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          ) : (
+            <Button variant="outline" size="sm" className="h-7" onClick={() => onOpenAdd(service)}>
+              <Plus size={14} /> Connect
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ConnectionsList() {
   const venue = useAuthenticatedVenue();
   const isAuthenticated = useIsAuthenticated();
@@ -269,119 +407,6 @@ export function ConnectionsList() {
     );
   }
 
-  const Card = ({ service }: { service: ConnectionService }) => {
-    const on = isConnected(service);
-    const svcHealth = health[service.secretName];
-    const attention = on && svcHealth?.phase === "attention";
-    return (
-      <div className="flex flex-col rounded-xl border bg-card p-4">
-        <div className="flex items-start gap-3">
-          <Logo service={service} />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between gap-2">
-              <span className="truncate font-semibold">{service.name}</span>
-              <span className="font-mono text-[10px] uppercase text-muted-foreground">{service.method}</span>
-            </div>
-            <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{service.blurb}</p>
-            {on && CONNECTION_CAPABILITIES[service.id]?.examples[0] && (
-              <p className="mt-1 line-clamp-1 text-xs italic text-muted-foreground/80">
-                Try: &ldquo;{CONNECTION_CAPABILITIES[service.id].examples[0]}&rdquo;
-              </p>
-            )}
-          </div>
-        </div>
-        <div className="mt-4 flex items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-col gap-0.5">
-            {loading ? (
-              <Loader2 className="animate-spin text-muted-foreground" size={16} />
-            ) : attention ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge
-                    variant="outline"
-                    className="w-fit gap-1 border-amber-600/30 bg-amber-600/10 text-amber-700 dark:text-amber-400"
-                  >
-                    <AlertTriangle size={12} /> Needs attention
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-64">{svcHealth.message}</TooltipContent>
-              </Tooltip>
-            ) : on ? (
-              <Badge variant="outline" className="w-fit gap-1 border-green-600/30 bg-green-600/10 text-green-700 dark:text-green-400">
-                <Check size={12} /> Connected
-              </Badge>
-            ) : (
-              <span className="text-xs text-muted-foreground">Not connected</span>
-            )}
-            {on && svcHealth && svcHealth.phase !== "checking" && (
-              <span className="text-[10px] text-muted-foreground">
-                Checked {formatRelativeTime(svcHealth.checkedAt)}
-              </span>
-            )}
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
-            {on && service.verify && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-muted-foreground"
-                    aria-label={`Test ${service.name} connection`}
-                    disabled={svcHealth?.phase === "checking"}
-                    onClick={() => checkHealth(service)}
-                  >
-                    {svcHealth?.phase === "checking" ? (
-                      <Loader2 className="animate-spin" size={14} />
-                    ) : (
-                      <RefreshCw size={14} />
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Test connection</TooltipContent>
-              </Tooltip>
-            )}
-            {attention && (
-              <Button variant="outline" size="sm" className="h-7" onClick={() => openAdd(service)}>
-                Fix
-              </Button>
-            )}
-            {on ? (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-muted-foreground"
-                    aria-label={`Disconnect ${service.name}`}
-                  >
-                    <Trash2 size={14} />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Disconnect {service.name}?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Removes the stored secret <code className="rounded bg-muted px-1 font-mono text-xs">{service.secretName}</code>. Agents using the {service.id} skill lose access until you reconnect.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => disconnect(service)}>Disconnect</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            ) : (
-              <Button variant="outline" size="sm" className="h-7" onClick={() => openAdd(service)}>
-                <Plus size={14} /> Connect
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-6">
       {/* Trust cue — Covia's differentiator, stated up front. */}
@@ -455,7 +480,18 @@ export function ConnectionsList() {
             <p className="text-sm text-muted-foreground">No service matches “{query}”. Try a token, or add a custom connection from Secrets.</p>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((s) => <Card key={s.id} service={s} />)}
+              {filtered.map((s) => (
+                <ConnectionCard
+                  key={s.id}
+                  service={s}
+                  connected={isConnected(s)}
+                  health={health[s.secretName]}
+                  loading={loading}
+                  onTest={checkHealth}
+                  onOpenAdd={openAdd}
+                  onDisconnect={disconnect}
+                />
+              ))}
             </div>
           )}
         </section>
@@ -468,7 +504,18 @@ export function ConnectionsList() {
                 Connected · {shownConnected.length}
               </h3>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {shownConnected.map((s) => <Card key={s.id} service={s} />)}
+                {shownConnected.map((s) => (
+                  <ConnectionCard
+                    key={s.id}
+                    service={s}
+                    connected={isConnected(s)}
+                    health={health[s.secretName]}
+                    loading={loading}
+                    onTest={checkHealth}
+                    onOpenAdd={openAdd}
+                    onDisconnect={disconnect}
+                  />
+                ))}
               </div>
             </section>
           )}
@@ -477,7 +524,18 @@ export function ConnectionsList() {
             <section key={category}>
               <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{category}</h3>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {services.map((s) => <Card key={s.id} service={s} />)}
+                {services.map((s) => (
+                  <ConnectionCard
+                    key={s.id}
+                    service={s}
+                    connected={isConnected(s)}
+                    health={health[s.secretName]}
+                    loading={loading}
+                    onTest={checkHealth}
+                    onOpenAdd={openAdd}
+                    onDisconnect={disconnect}
+                  />
+                ))}
               </div>
             </section>
           ))}
