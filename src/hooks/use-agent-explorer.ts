@@ -27,6 +27,7 @@ import { agentConfigsEqual, type AgentConfigSaveOutcome } from "@/lib/agent-sett
 import { gtmEvent } from "@/lib/utils";
 import { dispatchAgentMessage } from "@/lib/agent-chat";
 import { useAgentForkProvenance } from "@/hooks/use-agent-fork-provenance";
+import { useAgentLiveEvents } from "@/hooks/use-agent-live-events";
 
 const POLL_INTERVAL_MS = 3000;
 const SESSION_LIMIT = 50;
@@ -56,6 +57,8 @@ export function useAgentExplorer(initialAgentId?: string) {
   const selectedAgentIdRef = useRef(selectedAgentId);
   venueRef.current = venue;
   selectedAgentIdRef.current = selectedAgentId;
+
+  const { live, detailVersion, activity } = useAgentLiveEvents(venue, selectedAgentId);
 
   const pendingChats = usePendingChats((state) => state.pendingChats);
   const startPendingChat = usePendingChats((state) => state.startPendingChat);
@@ -263,21 +266,34 @@ export function useAgentExplorer(initialAgentId?: string) {
     newChatRequested,
   ]);
 
+  // The agent list has no live-update path — the venue's per-agent SSE
+  // stream reports one agent's run loop, not "which agents exist" — so it
+  // always polls.
   useEffect(() => {
     if (!venue) return;
     const timer = setInterval(() => {
       void refreshAgentList();
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [venue, refreshAgentList]);
+
+  // The selected agent's detail + sessions poll only as a fallback for
+  // venues/connections where the live event stream isn't working; once
+  // `live` is true, the effect below reacts to event boundaries instead.
+  useEffect(() => {
+    if (!venue || live) return;
+    const timer = setInterval(() => {
       void refreshAgentDetail(selectedAgentId);
       void refreshSessions(selectedAgentId);
     }, POLL_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [
-    venue,
-    selectedAgentId,
-    refreshAgentList,
-    refreshAgentDetail,
-    refreshSessions,
-  ]);
+  }, [venue, selectedAgentId, live, refreshAgentDetail, refreshSessions]);
+
+  useEffect(() => {
+    if (!venue || !selectedAgentId || detailVersion === 0) return;
+    void refreshAgentDetail(selectedAgentId);
+    void refreshSessions(selectedAgentId);
+  }, [detailVersion, venue, selectedAgentId, refreshAgentDetail, refreshSessions]);
 
   const selectedSessionId = chatSession?.sessionId ?? null;
   const currentSession = useMemo(
@@ -597,6 +613,7 @@ export function useAgentExplorer(initialAgentId?: string) {
     setMessageText,
     pendingChat,
     sending,
+    activity,
     canSend,
     echoAlreadyRecorded,
     suspend,

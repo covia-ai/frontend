@@ -55,6 +55,7 @@ import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useAgentForkProvenance } from "@/hooks/use-agent-fork-provenance";
 import type { Session } from "@/config/types";
 import { defaultSessionTitle, formatSessionLabel } from "@/lib/agent-sessions";
+import { agentSendingPlaceholder } from "@/lib/agent-chat";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
 import { cn, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
 
@@ -76,6 +77,7 @@ export function AgentChatPanel({
     setMessageText,
     pendingChat,
     sending,
+    activity,
     canSend,
     echoAlreadyRecorded,
     suspend,
@@ -493,7 +495,7 @@ export function AgentChatPanel({
                 data-testid="composer-input"
                 placeholder={
                   sending
-                    ? "Waiting for the agent's reply…"
+                    ? agentSendingPlaceholder(activity)
                     : canSend
                       ? `Message ${selectedAgentDetail.agentId}…`
                       : `${selectedAgentDetail.status} — cannot send`

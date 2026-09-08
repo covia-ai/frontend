@@ -2,6 +2,7 @@ import { AgentStatus } from "@covia/covia-sdk";
 import { errorMessage } from "@/lib/errors";
 import { jobFailure, notifyError, notifyWarning } from "@/lib/notify";
 import { gtmEvent } from "@/lib/utils";
+import type { AgentLiveActivity } from "@/hooks/use-agent-live-events";
 
 export const AGENT_CHAT_SLOW_AFTER_MS = 30_000;
 
@@ -9,6 +10,15 @@ export type AgentChatResult = {
   sessionId?: string;
   response?: unknown;
 };
+
+/** Composer placeholder while a send is pending — reports the agent's live
+ *  run-loop activity (from the venue's SSE tap) when available, falling
+ *  back to a generic message on venues where it isn't. */
+export function agentSendingPlaceholder(activity: AgentLiveActivity | null): string {
+  if (activity?.kind === "tool") return `Using tool ${activity.label ?? "…"}…`;
+  if (activity?.kind === "inference") return "Thinking…";
+  return "Waiting for the agent's reply…";
+}
 
 type DispatchAgentMessageOptions = {
   agentId: string;

@@ -17,6 +17,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useAgentExplorer } from "@/hooks/use-agent-explorer";
 import { defaultSessionTitle, formatSessionLabel } from "@/lib/agent-sessions";
+import { agentSendingPlaceholder } from "@/lib/agent-chat";
 import { cn, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
 
 type AgentChatProps = {
@@ -45,6 +46,7 @@ export function AgentChat({ initialAgentId, fixedAgent = false }: AgentChatProps
     setMessageText,
     pendingChat,
     sending,
+    activity,
     canSend,
     echoAlreadyRecorded,
     resume,
@@ -178,7 +180,7 @@ export function AgentChat({ initialAgentId, fixedAgent = false }: AgentChatProps
             aria-label={`Message ${selectedAgentId}`}
             placeholder={
               sending
-                ? "Waiting for the agent's reply…"
+                ? agentSendingPlaceholder(activity)
                 : canSend
                   ? `Message ${selectedAgentId}…`
                   : "This agent cannot receive messages"

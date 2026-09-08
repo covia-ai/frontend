@@ -43,6 +43,10 @@ function makeVenue(venueId: string, agentIds: string[], configs: Record<string, 
         });
       }),
       listSessions: jest.fn().mockResolvedValue({ items: [], total: 0, offset: 0, limit: 50 }),
+      // Empty by default — the live-events hook sees an immediately-closed
+      // stream, stays non-live, and the existing poll-based tests below are
+      // unaffected. Individual tests override with a scripted generator.
+      events: jest.fn().mockImplementation(async function* () {}),
     },
     agent: jest.fn().mockImplementation(() => ({
       chatSession: jest.fn(),
@@ -231,5 +235,45 @@ describe("useAgentExplorer — forkAgent (#251)", () => {
     expect(outcome).toEqual({ status: "failed" });
     expect(notifyError).toHaveBeenCalled();
     expect(result.current.selectedAgentId).toBe("agent-a");
+  });
+});
+
+describe("useAgentExplorer — live event stream (frontend#242)", () => {
+  it("refreshes agent detail immediately on a live status frame, without waiting for the poll", async () => {
+    mockVenue = makeVenue("venue-a", ["agent-a"]);
+    let infoCalls = 0;
+    mockVenue.agents.info.mockImplementation((agentId: string) => {
+      infoCalls += 1;
+      return Promise.resolve({
+        agentId,
+        status: infoCalls === 1 ? "SLEEPING" : "RUNNING",
+        config: {},
+      });
+    });
+
+    let emitSecondFrame!: () => void;
+    const secondFrameGate = new Promise<void>((resolve) => {
+      emitSecondFrame = resolve;
+    });
+    // The first frame is always the venue's initial status snapshot and
+    // must NOT itself trigger a refetch (see use-agent-live-events.ts) — a
+    // second, later frame is what should drive the live refresh.
+    mockVenue.agents.events = jest.fn().mockImplementation(async function* () {
+      yield { type: "status", status: "SLEEPING", seq: 0, ts: 0, agentId: "agent-a", address: "x" };
+      await secondFrameGate;
+      yield { type: "status", status: "RUNNING", seq: 1, ts: 1, agentId: "agent-a", address: "x" };
+    });
+
+    const { result } = renderHook(() => useAgentExplorer("agent-a"));
+    await waitFor(() => expect(result.current.selectedAgentDetail?.status).toBe("SLEEPING"));
+    expect(infoCalls).toBe(1);
+
+    await act(async () => {
+      emitSecondFrame();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(result.current.selectedAgentDetail?.status).toBe("RUNNING"));
   });
 });
