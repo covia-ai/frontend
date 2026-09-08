@@ -109,7 +109,7 @@ describe("ConnectionsList — multi-value connector", () => {
 
     // Trash icon on the connected card, then confirm in the alert dialog.
     const card = screen.getByText("Zendesk").closest("div.rounded-xl") as HTMLElement;
-    await user.click(within(card).getByRole("button"));
+    await user.click(within(card).getByRole("button", { name: "Disconnect Zendesk" }));
     await user.click(await screen.findByRole("button", { name: "Disconnect" }));
 
     await waitFor(() => {
