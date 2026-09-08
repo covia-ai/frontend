@@ -2,6 +2,7 @@
 
 import { Sidebar } from "@/components/admin-panel/sidebar";
 import { GlobalDropAssetDialog } from "@/components/GlobalDropAssetDialog";
+import { CommandPalette } from "@/components/CommandPalette";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { useStore } from "@/hooks/use-store";
 import { useHitlOpenCountPoll } from "@/hooks/use-hitl";
@@ -23,6 +24,7 @@ export default function AdminPanelLayout({
   return (
     <>
       <GlobalDropAssetDialog />
+      <CommandPalette />
       <Sidebar />
       <main
         className={cn(
