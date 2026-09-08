@@ -7,7 +7,11 @@ import '@testing-library/jest-dom';
 
 // Stub the SDK's Operation so resolveOperationByAddress can construct one
 // without pulling in SDK internals (Venue/CatalogOp are type-only, erased).
+// Keeps the real didUrl/Namespace/assetHash — those are plain string
+// helpers, not SDK internals, and resolveOperationByAddress needs them to
+// qualify a bare "a/<hash>" address (frontend#341).
 jest.mock('@covia/covia-sdk', () => ({
+  ...jest.requireActual('@covia/covia-sdk'),
   Operation: class {
     constructor(
       public id: string,
@@ -42,7 +46,10 @@ const venueWithTree = (tree: Record<string, unknown>) => {
   );
   const run = jest.fn();
   const getAsset = jest.fn();
-  return { venue: { workspace: { read }, operations: { run }, getAsset } as any, read, run, getAsset };
+  return {
+    venue: { venueId: 'did:key:z6MkVenue', workspace: { read }, operations: { run }, getAsset } as any,
+    read, run, getAsset,
+  };
 };
 
 describe('listCatalogOperations', () => {
@@ -153,13 +160,15 @@ describe('resolveOperationByAddress', () => {
     expect(run).not.toHaveBeenCalled();
   });
 
-  it('resolves an a/<hash> address via getAsset, not a read', async () => {
+  it('resolves an a/<hash> address via getAsset, qualified with the venue DID, not a read', async () => {
     const { venue, read, getAsset } = venueWithTree({});
     const asset = { id: 'the-asset' };
     getAsset.mockResolvedValue(asset);
 
     await expect(resolveOperationByAddress(venue, 'a/abc123')).resolves.toBe(asset);
-    expect(getAsset).toHaveBeenCalledWith('abc123');
+    // GET /api/v1/assets/<id> 404s on live venues for a bare hash or a bare
+    // "a/<hash>" — only the fully DID-qualified form resolves (frontend#341).
+    expect(getAsset).toHaveBeenCalledWith('did:key:z6MkVenue/a/abc123');
     expect(read).not.toHaveBeenCalled();
   });
 
