@@ -1,40 +1,28 @@
+import type { AgentSession } from "@covia/covia-sdk";
 import type { Session, SessionMessage } from "@/config/types";
 import { messageContentToString } from "@/lib/agent-turns";
 
-export function sessionEntriesToSessions(entries: unknown): Session[] {
-  if (!Array.isArray(entries)) return [];
+export function agentSessionsToSessions(items: unknown): Session[] {
+  if (!Array.isArray(items)) return [];
 
-  return entries
-    .map((entry): Session => {
-      const record = entry as {
-        key?: unknown;
-        value?: {
-          wakeTime?: number;
-          meta?: {
-            created?: number;
-            parties?: Session["parties"];
-            turns?: number;
-            title?: string;
-          };
-          pending?: unknown[];
-          frames?: Array<{ conversation?: SessionMessage[] }>;
-        };
-      };
-      const value = record.value ?? {};
-      const meta = value.meta ?? {};
-      const frames = Array.isArray(value.frames) ? value.frames : [];
-      const conversation = frames.flatMap((frame) =>
-        Array.isArray(frame?.conversation) ? frame.conversation : [],
-      );
+  return items
+    .map((item): Session => {
+      const session = item as AgentSession;
+      const metadata = session.metadata ?? {};
+      const frames = Array.isArray(session.frames) ? session.frames : [];
+      const conversation = frames.flatMap((frame) => {
+        const f = frame as { conversation?: SessionMessage[] } | undefined;
+        return Array.isArray(f?.conversation) ? f.conversation : [];
+      });
 
       return {
-        sessionId: String(record.key ?? ""),
-        created: meta.created,
-        parties: meta.parties,
-        turns: meta.turns,
-        title: meta.title,
-        pending: Array.isArray(value.pending) ? value.pending : [],
-        wakeTime: typeof value.wakeTime === "number" ? value.wakeTime : undefined,
+        sessionId: String(session.id ?? ""),
+        created: metadata.created,
+        parties: metadata.parties,
+        turns: metadata.turns ?? metadata.turnCount,
+        title: metadata.title,
+        pending: Array.isArray(session.pending) ? session.pending : [],
+        wakeTime: typeof session.wakeTime === "number" ? session.wakeTime : undefined,
         conversation,
       };
     })

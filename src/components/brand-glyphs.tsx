@@ -1,0 +1,27 @@
+import type { IconBaseProps } from "react-icons";
+
+/**
+ * Brand marks that no react-icons set carries. SendGrid was removed from Simple
+ * Icons on a trademark request; this is its geometric mark in its own palette,
+ * used nominatively as the connector's icon. Multi-colour, so {@link
+ * ConnectionLogo} renders it on a light tile rather than white-on-brand.
+ */
+export function SendGridGlyph({ size = "1em", ...rest }: IconBaseProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 64 64"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+      {...rest}
+    >
+      <path d="M0 21.25h21.374v21.374H0z" fill="#99e1f4" />
+      <path d="M21.374 42.626h21.25v21.25h-21.25z" fill="#99e1f4" />
+      <path d="M0 63.877h21.374V64H0zm0-21.25h21.374v21.25H0z" fill="#1a82e2" />
+      <path d="M42.626 0H64v21.25H42.626z" fill="#1a82e2" />
+      <path d="M21.374 0h21.25v21.25h-21.25zm21.252 21.374H64v21.25H42.626z" fill="#00b3e3" />
+      <path d="M21.374 42.626h21.25V21.25h-21.25z" fill="#009dd9" />
+    </svg>
+  );
+}

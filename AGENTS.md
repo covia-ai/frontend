@@ -90,6 +90,11 @@ operations|secrets|status`), the values API (`GET /api/v1/values/*`), the native
 `/mcp` JSON-RPC endpoint, and `/.well-known/*`. Treat a non-user-driven
 `operations.run`/`invoke` as a defect.
 
+Catalog listings use `listAssets({ expand: "metadata" })` so a page is one
+GET; don't reintroduce a list-then-`getAsset`-each hydration pass. DLFS drives
+and directories read job-free through the SDK's `venue.dlfs` (1.12+), never
+via `dlfs:*` operations.
+
 ### Notifications
 
 All user-facing notifications go through `src/lib/notify.ts` — never bare

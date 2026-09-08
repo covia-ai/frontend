@@ -1,6 +1,7 @@
 "use client";
 
 import { Sidebar } from "@/components/admin-panel/sidebar";
+import { GlobalDropAssetDialog } from "@/components/GlobalDropAssetDialog";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { useStore } from "@/hooks/use-store";
 import { useHitlOpenCountPoll } from "@/hooks/use-hitl";
@@ -21,6 +22,7 @@ export default function AdminPanelLayout({
   const { getOpenState, settings } = sidebar;
   return (
     <>
+      <GlobalDropAssetDialog />
       <Sidebar />
       <main
         className={cn(

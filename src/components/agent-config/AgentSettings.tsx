@@ -12,6 +12,7 @@ import {
 } from "@/components/agent-config/AgentConfigEditor";
 import { ToolSkillPicker } from "@/components/agent-config/ToolSkillPicker";
 import { AgentCapsEditor } from "@/components/agent-config/AgentCapsEditor";
+import { AgentConnectionsPicker } from "@/components/agent-config/AgentConnectionsPicker";
 import { ConfigFields } from "@/components/agent-explorer/ConfigFields";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -147,8 +148,8 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
 
   return (
     <div data-testid="agent-settings" className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-start gap-3 border-b px-6 py-4">
-        <Button variant="ghost" size="sm" className="mt-0.5 gap-2" onClick={onBack}>
+      <div className="border-b px-6 py-4">
+        <Button variant="ghost" size="sm" className="mb-4 gap-2" onClick={onBack}>
           <ArrowLeft size={15} /> Chat
         </Button>
         <div>
@@ -238,6 +239,11 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
                 }
               />
             </div>
+            <AgentConnectionsPicker
+              venue={venue}
+              attachedSkills={attachedSkills}
+              onToggleSkill={handleToggleSkill}
+            />
             <div className="grid gap-6 lg:grid-cols-2">
               <AgentJsonConfigField
                 id="agent-tools-json"

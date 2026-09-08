@@ -7,7 +7,9 @@ import { AssetLoadState } from "@/components/AssetLoadState";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { MetadataViewer } from "@/components/MetadataViewer";
+import { OperationCodeSnippets } from "@/components/OperationCodeSnippets";
 import { OperationInputForm } from "@/components/OperationInputForm";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOperationAsset } from "@/hooks/use-operation-asset";
 import { useOperationInput } from "@/hooks/use-operation-input";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
@@ -119,28 +121,44 @@ export function OperationViewer({
         {asset && <AssetHeader asset={asset} />}
         {asset && <MetadataViewer asset={asset} venue={venue} isAuthenticated={isAuthenticated} />}
         {asset?.metadata?.operation && (
-          <>
-            {inputController.ready ? (
-              <OperationInputForm
-                schema={schema}
-                outputSchema={asset.metadata.operation.output}
-                controller={inputController}
-                errorMessage={invocationError}
-                loading={loading}
-                confirmationRequired={confirmationRequired}
-                isAuthenticated={isAuthenticated}
-                onRun={requestRun}
-                scheduleTarget={
-                  venue ? { venue, operation: asset.id, input: inputController.input } : undefined
-                }
-              />
-            ) : (
-              <div className="my-2 h-32 w-full animate-pulse rounded-md bg-muted" />
-            )}
-            {asset.metadata.operation.steps && (
-              <DiagramViewer metadata={asset.metadata} />
-            )}
-          </>
+          <Tabs defaultValue="run" className="w-full">
+            <TabsList>
+              <TabsTrigger value="run">Run</TabsTrigger>
+              <TabsTrigger value="code" data-testid="operation-code-tab">Code</TabsTrigger>
+            </TabsList>
+            <TabsContent value="run">
+              {inputController.ready ? (
+                <OperationInputForm
+                  schema={schema}
+                  outputSchema={asset.metadata.operation.output}
+                  controller={inputController}
+                  errorMessage={invocationError}
+                  loading={loading}
+                  confirmationRequired={confirmationRequired}
+                  isAuthenticated={isAuthenticated}
+                  onRun={requestRun}
+                  scheduleTarget={
+                    venue ? { venue, operation: asset.id, input: inputController.input } : undefined
+                  }
+                />
+              ) : (
+                <div className="my-2 h-32 w-full animate-pulse rounded-md bg-muted" />
+              )}
+              {asset.metadata.operation.steps && (
+                <DiagramViewer metadata={asset.metadata} />
+              )}
+            </TabsContent>
+            <TabsContent value="code">
+              {venue && (
+                <OperationCodeSnippets
+                  baseUrl={venue.baseUrl}
+                  assetId={asset.id}
+                  schema={schema}
+                  liveInput={inputController.input}
+                />
+              )}
+            </TabsContent>
+          </Tabs>
         )}
         {asset && !asset.metadata?.operation && (
           <div className="text-center p-4">

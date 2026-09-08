@@ -21,6 +21,7 @@ jest.mock('@/lib/notify', () => ({
 describe('CreateAssetComponent', () => {
   beforeEach(() => {
     pushMock.mockClear();
+    (notifyError as jest.Mock).mockClear();
     // jsdom's File/Blob polyfill has neither SubtleCrypto nor
     // Blob.arrayBuffer() — uploadContent() needs both to hash the file
     // before advancing past step 1.
@@ -87,5 +88,89 @@ describe('CreateAssetComponent', () => {
       'https://venue-test.covia.ai',
     );
     expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects a disallowed file extension picked via the manual file input', async () => {
+    // The native `accept` attribute already filters the OS picker, so this
+    // exercises the "All Files" bypass the JS-level check exists for.
+    const user = userEvent.setup({ applyAccept: false });
+    const venue = {
+      venueId: 'did:web:venue-test.covia.ai',
+      assets: { register: jest.fn() },
+    } as any;
+
+    render(<CreateAssetComponent venue={venue} />);
+    await user.click(screen.getByTestId('create-asset-trigger'));
+    const file = new File(['#!/bin/sh'], 'script.sh', { type: 'application/x-sh' });
+    await user.upload(document.querySelector('input[type="file"]') as HTMLInputElement, file);
+
+    expect(notifyError).toHaveBeenCalledWith(
+      'Unsupported file type',
+      '"script.sh" isn\'t an accepted file type for assets.',
+    );
+    // Never advanced past step 1 — no "upload" click needed to prove
+    // rejection, since the metadata form only exists after step 1.
+    expect(screen.queryByRole('button', { name: 'create asset' })).not.toBeInTheDocument();
+  });
+
+  it('rejects an oversized file picked via the manual file input', async () => {
+    const user = userEvent.setup();
+    const venue = {
+      venueId: 'did:web:venue-test.covia.ai',
+      assets: { register: jest.fn() },
+    } as any;
+
+    render(<CreateAssetComponent venue={venue} />);
+    await user.click(screen.getByTestId('create-asset-trigger'));
+    const file = new File(['x'], 'big.pdf', { type: 'application/pdf' });
+    Object.defineProperty(file, 'size', { value: 26 * 1024 * 1024 });
+    await user.upload(document.querySelector('input[type="file"]') as HTMLInputElement, file);
+
+    expect(notifyError).toHaveBeenCalledWith(
+      'File too large',
+      '"big.pdf" is over the 25MB upload limit.',
+    );
+  });
+
+  it('fast path (initialFile) skips straight to a one-click register screen', async () => {
+    const user = userEvent.setup();
+    const putContent = jest.fn().mockResolvedValue(undefined);
+    const register = jest.fn().mockResolvedValue({ id: 'dropped123', putContent });
+    const venue = {
+      venueId: 'did:web:venue-test.covia.ai',
+      assets: { register },
+    } as any;
+    const onOpenChange = jest.fn();
+    const file = new File(['hello world'], 'dropped.pdf', { type: 'application/pdf' });
+
+    render(<CreateAssetComponent venue={venue} open onOpenChange={onOpenChange} initialFile={file} />);
+
+    // No trigger button in controlled mode, and the manual type-choice
+    // screen never shows for a fast-path instance.
+    expect(screen.queryByTestId('create-asset-trigger')).not.toBeInTheDocument();
+    expect(screen.getByText('Register as Asset')).toBeInTheDocument();
+    expect(screen.getByText('dropped.pdf')).toBeInTheDocument();
+
+    await user.click(await screen.findByRole('button', { name: 'register asset' }));
+
+    expect(register).toHaveBeenCalledWith(expect.objectContaining({ name: 'dropped.pdf' }));
+    expect(putContent).toHaveBeenCalledWith(file);
+    expect(pushMock).toHaveBeenCalledWith(
+      `/venues/${encodeURIComponent('did:web:venue-test.covia.ai')}/assets/dropped123`,
+    );
+  });
+
+  it('fast path "Edit details" reaches the full metadata form', async () => {
+    const user = userEvent.setup();
+    const venue = {
+      venueId: 'did:web:venue-test.covia.ai',
+      assets: { register: jest.fn() },
+    } as any;
+    const file = new File(['hello world'], 'dropped.md', { type: 'text/markdown' });
+
+    render(<CreateAssetComponent venue={venue} open onOpenChange={jest.fn()} initialFile={file} />);
+    await user.click(await screen.findByRole('button', { name: 'edit details' }));
+
+    expect(screen.getByText('Provide Metadata')).toBeInTheDocument();
   });
 });

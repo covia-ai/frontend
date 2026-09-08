@@ -13,13 +13,15 @@ interface CopyFieldProps {
   value: string;
   /** When set, the value renders as an external link to this href. */
   href?: string;
+  /** Optional freeform blurb rendered below the value (e.g. mount instructions). */
+  description?: string;
   className?: string;
 }
 
 // Label above, then the value and its copy control side by side — the copy
 // button sits next to the VALUE it copies, never up beside the label. A brief
 // checkmark confirms the copy without a toast.
-export function CopyField({ label, value, href, className }: CopyFieldProps) {
+export function CopyField({ label, value, href, description, className }: CopyFieldProps) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     try {
@@ -59,6 +61,7 @@ export function CopyField({ label, value, href, className }: CopyFieldProps) {
           <TooltipContent>{copied ? "Copied!" : `Copy ${label}`}</TooltipContent>
         </Tooltip>
       </div>
+      {description && <p className="mt-1.5 text-xs text-muted-foreground">{description}</p>}
     </div>
   );
 }

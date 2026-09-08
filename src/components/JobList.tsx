@@ -1,26 +1,28 @@
-import { useRouter } from "next/navigation";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
-import { useCallback, useEffect, useMemo, useRef, useState }from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type UIEvent } from "react";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
+import { useActiveJobsLive } from "@/hooks/use-active-jobs-live";
 import { JobMetadata, RunStatus }from "@covia/covia-sdk";
-import { formatDateTime, getExecutionTime } from "@/lib/utils";
+import { cn, formatDateTime, getExecutionTime } from "@/lib/utils";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScheduledList } from "@/components/ScheduledList";
-import { PaginationHeader } from "@/components/PaginationHeader";
 import { FiltersSheet } from "@/components/FiltersSheet";
 import { ListToolbar } from "@/components/ListToolbar";
 import { StatTile } from "@/components/StatTile";
-import { TONE_STYLES } from "@/lib/status";
-import { Activity, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2, Clock, Layers } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { JobRowActions } from "@/components/jobs/JobRowActions";
+import { JobDetailDrawer } from "@/components/jobs/JobDetailDrawer";
+import { TONE_STYLES, toneForRunStatus } from "@/lib/status";
+import { operationVisual, abbreviateJobId, jobDurationMs, percentile, durationFillClass } from "@/lib/job-visuals";
+import { Activity, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2, Copy, Gauge, Layers } from "lucide-react";
 import { TopBar } from "./admin-panel/TopBar";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { useLatestQuery } from "@/hooks/use-latest-query";
 import { revalidateVenueOnFailure } from "@/hooks/use-authenticated-venue";
-import { usePageNumber } from "@/hooks/use-pagination";
 import { VenueResolutionState } from "@/components/VenueResolutionState";
 import {
   jobRecordsFromSlice,
@@ -44,6 +46,10 @@ const DATE_OPTIONS = [
 
 const ITEMS_PER_PAGE = 10;
 const FILTER_WINDOW = 100;
+// Headline stats summarise the most recent STATS_WINDOW jobs (venue-wide, not
+// the current page) so the success rate and latency are stable and honest as
+// you paginate. A bounded window keeps it one cheap job-free slice.
+const STATS_WINDOW = 50;
 const EMPTY_JOB_QUERY = { records: [] as JobMetadata[], totalCount: 0 };
 
 interface JobListProps {
@@ -66,11 +72,22 @@ export function JobList({ venueId }: JobListProps = {}) {
   const [dateFilter, setDateFilter] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [sort, setSort] = useState<{ col: "id" | "date" | "status"; dir: "asc" | "desc" }>({ col: "date", dir: "desc" });
+  const [sort, setSort] = useState<{ col: "operation" | "date" | "status"; dir: "asc" | "desc" }>({ col: "date", dir: "desc" });
 
-  const toggleSort = (col: "id" | "date" | "status") =>
+  const toggleSort = (col: "operation" | "date" | "status") =>
     setSort(prev => prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" });
   const [refreshTick, setRefreshTick] = useState(0);
+  const [drawerJob, setDrawerJob] = useState<JobMetadata | null>(null);
+  // Infinite scroll: how many of the newest jobs are currently shown. Grows in
+  // ITEMS_PER_PAGE steps as the user scrolls the list; the unfiltered fetch
+  // reads the newest `visibleCount` from the lattice, filter mode slices its
+  // window client-side to the same count.
+  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const scrollBoxRef = useRef<HTMLDivElement | null>(null);
+  // Set the moment a grow is requested; cleared when the next fetch settles, so
+  // a burst of scroll events can't stack multiple windows at once.
+  const growingRef = useRef(false);
   const {
     data: pageData,
     loading: pageLoading,
@@ -85,10 +102,14 @@ export function JobList({ venueId }: JobListProps = {}) {
     run: runRecentQuery,
     reset: resetRecentQuery,
   } = useLatestQuery(EMPTY_JOB_QUERY);
+  const {
+    data: statsData,
+    run: runStatsQuery,
+    reset: resetStatsQuery,
+  } = useLatestQuery(EMPTY_JOB_QUERY);
   const resolvedVenue = useResolvedVenueContext(venueId);
   const { descriptor: venueObj, venue, auth, isAuthenticated } = resolvedVenue;
   const venueStatus = resolvedVenue.status ?? (venue ? "ready" : "absent");
-  const router = useRouter();
   const prevVenueId = useRef<string | undefined>(undefined);
   const venueKey = venueObj?.venueId ?? "";
   // Last authoritative job count per venue: slice responses carry the live
@@ -137,7 +158,7 @@ export function JobList({ venueId }: JobListProps = {}) {
   // handleSlice computes `total` from the same live value it pages), so it's
   // authoritative for that specific read — if it disagrees with the count used
   // to pick the window, recompute against it and slice once more.
-  const fetchPage = useCallback(async (page: number) => {
+  const fetchFeed = useCallback(async () => {
     if (!venue || venueStatus !== "ready") {
       resetPageQuery();
       return;
@@ -149,16 +170,15 @@ export function JobList({ venueId }: JobListProps = {}) {
           const guessCount = cached?.venueId === venueKey
             ? cached.count
             : (await venue.workspace.list("j", 1)).count ?? 0;
-          const windowFor = (count: number) => {
-            const end = Math.max(
-              0,
-              count - (page - 1) * ITEMS_PER_PAGE,
-            );
-            return {
-              start: Math.max(0, end - ITEMS_PER_PAGE),
-              end,
-            };
-          };
+          // Infinite scroll reads the newest `visibleCount` from the end of the
+          // index and grows it on scroll. Reading a fresh window from the end
+          // each time (rather than appending offset pages) keeps the #193
+          // offset-race from ever mattering: there is no drifting anchor, and a
+          // job completing mid-scroll simply appears in the next read.
+          const windowFor = (count: number) => ({
+            start: Math.max(0, count - visibleCount),
+            end: count,
+          });
           const { count, values } = await sliceJobWindow(
             venue,
             windowFor,
@@ -175,7 +195,7 @@ export function JobList({ venueId }: JobListProps = {}) {
         }
       },
     );
-  }, [venue, venueKey, venueStatus, resetPageQuery, runPageQuery]);
+  }, [venue, venueKey, venueStatus, visibleCount, resetPageQuery, runPageQuery]);
 
   // Filter mode: one slice of the newest FILTER_WINDOW records, filtered and
   // paged client-side. Filters only ever see this recent window — same
@@ -214,6 +234,37 @@ export function JobList({ venueId }: JobListProps = {}) {
     );
   }, [venue, venueKey, venueStatus, resetRecentQuery, runRecentQuery]);
 
+  // Headline stats window: the newest STATS_WINDOW records, venue-wide, read
+  // once per venue/refresh and independent of the table's page or filters, so
+  // the success rate and latency describe recent venue activity rather than
+  // whatever ten rows happen to be on screen.
+  const fetchStats = useCallback(async () => {
+    if (!venue || venueStatus !== "ready") {
+      resetStatsQuery();
+      return;
+    }
+    await runStatsQuery(
+      async () => {
+        try {
+          const cached = countRef.current;
+          const guessCount = cached?.venueId === venueKey
+            ? cached.count
+            : (await venue.workspace.list("j", 1)).count ?? 0;
+          const windowFor = (count: number) => ({
+            start: Math.max(0, count - STATS_WINDOW),
+            end: count,
+          });
+          const { count, values } = await sliceJobWindow(venue, windowFor, guessCount);
+          countRef.current = { venueId: venueKey, count };
+          return { totalCount: count, records: jobRecordsFromSlice(values) };
+        } catch (error) {
+          revalidateVenueOnFailure(venue, authRef.current, error);
+          throw error;
+        }
+      },
+    );
+  }, [venue, venueKey, venueStatus, resetStatsQuery, runStatsQuery]);
+
   // Debounce free-text search so typing doesn't fire a fresh window fetch
   // on every keystroke.
   useEffect(() => {
@@ -240,48 +291,105 @@ export function JobList({ venueId }: JobListProps = {}) {
     ? recentData.totalCount
     : pageData.totalCount || recentData.totalCount;
   const matchTotal = filteredRecords ? filteredRecords.length : totalCount;
-  const {
-    currentPage,
-    setCurrentPage,
-    totalPages,
-  } = usePageNumber({
-    totalItems: matchTotal,
-    pageSize: ITEMS_PER_PAGE,
-    resetKey: `${venueObj?.venueId ?? ""}\u0000${statusFilter.join(
-      "\u0000",
-    )}\u0000${dateFilter.join("\u0000")}\u0000${debouncedQuery}`,
-  });
-  const pageRecords = filteredRecords
-    ? filteredRecords.slice(
-        (currentPage - 1) * ITEMS_PER_PAGE,
-        currentPage * ITEMS_PER_PAGE,
-      )
-    : pageData.records;
+  const resetKey = `${venueObj?.venueId ?? ""} ${statusFilter.join(" ")} ${dateFilter.join(" ")} ${debouncedQuery}`;
+  // Reset the window to the first page whenever the venue or filters change.
+  useEffect(() => { setVisibleCount(ITEMS_PER_PAGE); }, [resetKey]);
 
-  // Headline stats for the tile row — scoped to just the records shown on
-  // the current page, so the numbers always match the table below instead
-  // of summarizing a separate FILTER_WINDOW behind the scenes.
-  const jobStats = useMemo(() => {
-    const terminal = pageRecords.filter(j => TERMINAL_STATUSES.has(j.status as RunStatus));
+  const pageRecords = filteredRecords
+    ? filteredRecords.slice(0, visibleCount)
+    : pageData.records;
+  // More to load? Unfiltered: older jobs remain beyond what we've read.
+  // Filtered: more rows remain in the fetched (FILTER_WINDOW) snapshot.
+  const hasMore = filteredRecords
+    ? visibleCount < filteredRecords.length
+    : (pageData.records?.length ?? 0) < totalCount;
+  // Filter mode only ever sees the newest FILTER_WINDOW jobs; note that at the end.
+  const filterWindowCapped = !!filteredRecords && !hasMore && totalCount > FILTER_WINDOW;
+
+  // Headline stats over the recent venue-wide window (STATS_WINDOW), not the
+  // current page, so success rate and latency stay stable as you paginate.
+  // CANCELLED is user-initiated, not a failure, so it counts as neither.
+  const venueStats = useMemo(() => {
+    const terminal = statsData.records.filter(j => TERMINAL_STATUSES.has(j.status as RunStatus));
     const completed = terminal.filter(j => j.status === RunStatus.COMPLETE);
+    const failed = terminal.filter(j =>
+      j.status !== RunStatus.COMPLETE && j.status !== RunStatus.CANCELLED);
     const successRate = terminal.length > 0 ? (completed.length / terminal.length) * 100 : null;
-    const durationsMs = terminal
-      .filter(j => j.created && j.updated)
-      .map(j => new Date(j.updated as string).getTime() - new Date(j.created as string).getTime());
-    const avgDurationMs = durationsMs.length > 0
-      ? durationsMs.reduce((sum, ms) => sum + ms, 0) / durationsMs.length
-      : null;
-    return { successRate, avgDurationMs, sampleSize: pageRecords.length };
+    const durations = terminal
+      .map(jobDurationMs)
+      .filter((ms): ms is number => ms != null);
+    return {
+      successRate,
+      failures: failed.length,
+      p50Ms: percentile(durations, 50),
+      p95Ms: percentile(durations, 95),
+      sampleSize: terminal.length,
+    };
+  }, [statsData.records]);
+
+  // Trend sparklines (covia-ai/frontend#225) from the same stats window.
+  const jobTrend = useMemo(() => jobTrendFromRecords(statsData.records), [statsData.records]);
+
+  // Longest duration on the visible page, so the latency bars are comparable
+  // within a page (a relative scale reads better than an absolute one here).
+  const pageMaxMs = useMemo(() => {
+    const ds = pageRecords.map(jobDurationMs).filter((ms): ms is number => ms != null);
+    return ds.length ? Math.max(...ds) : 0;
   }, [pageRecords]);
 
-  // Trend sparklines (covia-ai/frontend#225) — sourced from the same
-  // pageRecords as jobStats above (no new fetch), just re-aggregated
-  // chronologically. Falls back to no sparkline below jobTrendFromRecords'
-  // minimum sample size.
-  const jobTrend = useMemo(() => jobTrendFromRecords(pageRecords), [pageRecords]);
+  const statsWindowCaption = venueStats.sampleSize > 0
+    ? `last ${venueStats.sampleSize} jobs`
+    : undefined;
+
+  // Sort once, shared by the desktop table and the mobile card list.
+  const sortedRecords = useMemo(() => [...pageRecords].sort((a, b) => {
+    let cmp = 0;
+    if (sort.col === "date") cmp = new Date(a.created ?? "").getTime() - new Date(b.created ?? "").getTime();
+    else if (sort.col === "operation") cmp = (a.name ?? "").localeCompare(b.name ?? "");
+    else if (sort.col === "status") cmp = (a.status ?? "").localeCompare(b.status ?? "");
+    return sort.dir === "asc" ? cmp : -cmp;
+  }), [pageRecords, sort]);
+
+  // Live-stream the active rows on this page so their status flips instantly
+  // (the detail view already streams; this brings the list up to parity).
+  const activeIds = useMemo(
+    () => sortedRecords.filter(j => ACTIVE_STATUSES.has(j.status as RunStatus)).map(j => j.id ?? "").filter(Boolean),
+    [sortedRecords],
+  );
+  const liveJobs = useActiveJobsLive(venue, activeIds);
 
   const loading = hasFilters ? recentLoading : pageLoading;
   const loadError = hasFilters ? recentError : pageError ?? recentError;
+
+  // Grow the window by one page. Guarded so scroll bursts don't stack windows.
+  const maybeLoadMore = useCallback(() => {
+    if (!hasMore || loading || growingRef.current) return;
+    growingRef.current = true;
+    setVisibleCount((v) => v + ITEMS_PER_PAGE);
+  }, [hasMore, loading]);
+
+  // Clear the grow guard once a fetch settles (unfiltered) or immediately
+  // (filtered has no fetch), so the next scroll can load again.
+  useEffect(() => { if (!pageLoading) growingRef.current = false; }, [pageLoading, pageData]);
+
+  const onBoxScroll = useCallback((e: UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 250) maybeLoadMore();
+  }, [maybeLoadMore]);
+
+  // Also grow when the sentinel scrolls into view within the list box (covers a
+  // tall viewport where the initial window doesn't fill the scroll area).
+  useEffect(() => {
+    const el = sentinelRef.current;
+    const root = scrollBoxRef.current;
+    if (!el || !root || !hasMore || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      (entries) => { if (entries[0]?.isIntersecting) maybeLoadMore(); },
+      { root, rootMargin: "200px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, maybeLoadMore, pageRecords.length]);
 
   // On venue change, reset view state and cached data BEFORE the fetch
   // effects below run (effect order matters: fetches keep stale data visible
@@ -296,14 +404,22 @@ export function JobList({ venueId }: JobListProps = {}) {
       countRef.current = null;
       resetPageQuery();
       resetRecentQuery();
+      resetStatsQuery();
       prevVenueId.current = venueObj.venueId;
     }
-  }, [venueObj, resetPageQuery, resetRecentQuery]);
+  }, [venueObj, resetPageQuery, resetRecentQuery, resetStatsQuery]);
 
   // Default mode: one windowed slice per page.
   useEffect(() => {
-    if (!hasFilters) fetchPage(currentPage);
-  }, [fetchPage, currentPage, hasFilters, refreshTick]);
+    if (!hasFilters) fetchFeed();
+  }, [fetchFeed, hasFilters, refreshTick]);
+
+  // Headline stats: one recent-window read per venue, refreshed on the poll.
+  // Gated on a known count so it reuses the page load's count probe (via
+  // countRef) rather than firing a second list() of its own.
+  useEffect(() => {
+    if (totalCount > 0) fetchStats();
+  }, [fetchStats, refreshTick, totalCount]);
 
   // Filter mode only: the 100-record window is a heavy read (full job
   // records, several hundred KB on busy venues), so it is fetched when
@@ -361,7 +477,7 @@ export function JobList({ venueId }: JobListProps = {}) {
           mt-auto: they hold position across pagination/refresh (short pages
           and the loading state leave slack instead of pulling them up) and
           scroll off naturally when the table outgrows the viewport. */}
-      <div className="flex min-h-[calc(100vh-6rem)] flex-col items-center mt-2 bg-background">
+      <div className="flex h-[calc(100vh-6rem)] flex-col items-center mt-2 bg-background">
         <ListToolbar
           className="mt-4"
           actions={
@@ -375,14 +491,11 @@ export function JobList({ venueId }: JobListProps = {}) {
           }
           summary={
             <>
-              Page {currentPage} : Showing {pageRecords.length} of {matchTotal}
+              Showing {pageRecords.length} of {matchTotal}
               {hasFilters && matchTotal === 0 && !loading && (
                 <span className="ml-2 text-muted-foreground">— no jobs match this filter</span>
               )}
             </>
-          }
-          pagination={
-            <PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={loading}></PaginationHeader>
           }
         />
         {loadError && <ErrorDisplay error={loadError} className="mb-4 w-full" />}
@@ -390,25 +503,29 @@ export function JobList({ venueId }: JobListProps = {}) {
             refreshes keep the previous rows visible (stale-while-refresh) —
             the spinner only appears when there is nothing to show yet — so
             pagination and the poll never collapse or shift the layout. */}
-        <div className="w-full min-h-[45vh] border border-border rounded-lg shadow-md overflow-hidden">
+        <div
+          ref={scrollBoxRef}
+          onScroll={onBoxScroll}
+          className="w-full flex-1 min-h-[45vh] border border-border rounded-lg shadow-md overflow-auto"
+        >
         {loading && pageRecords.length === 0 ? (
           <div className="flex items-center justify-center min-h-[45vh] w-full">
             <Spinner variant="ellipsis" className="text-primary" size={40} />
           </div>
         ) : (
-        <Table>
+        <>
+        <Table className="hidden md:table">
           <TableHeader >
             <TableRow className="bg-secondary hover:bg-secondary rounded-full text-secondary-foreground ">
               <TableCell className="text-left">
-                <button onClick={() => toggleSort("id")} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
-                  Job Id
-                  {sort.col === "id" ? (sort.dir === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />) : <ArrowUpDown size={14} />}
+                <button onClick={() => toggleSort("operation")} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                  Operation
+                  {sort.col === "operation" ? (sort.dir === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />) : <ArrowUpDown size={14} />}
                 </button>
               </TableCell>
-              <TableCell className="text-left">Name</TableCell>
               <TableCell className="text-left">
                 <button onClick={() => toggleSort("date")} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
-                  Start Time
+                  Started
                   {sort.col === "date" ? (sort.dir === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />) : <ArrowUpDown size={14} />}
                 </button>
               </TableCell>
@@ -419,6 +536,7 @@ export function JobList({ venueId }: JobListProps = {}) {
                   {sort.col === "status" ? (sort.dir === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />) : <ArrowUpDown size={14} />}
                 </button>
               </TableCell>
+              <TableCell className="w-10 text-right"><span className="sr-only">Actions</span></TableCell>
             </TableRow>
           </TableHeader>
 
@@ -429,41 +547,123 @@ export function JobList({ venueId }: JobListProps = {}) {
                   No jobs found
                 </TableCell>
               </TableRow>
-            ) : [...pageRecords]
-              .sort((a, b) => {
-                let cmp = 0;
-                if (sort.col === "date") cmp = new Date(a.created ?? "").getTime() - new Date(b.created ?? "").getTime();
-                else if (sort.col === "id") cmp = (a.id ?? "").localeCompare(b.id ?? "");
-                else if (sort.col === "status") cmp = (a.status ?? "").localeCompare(b.status ?? "");
-                return sort.dir === "asc" ? cmp : -cmp;
-              })
+            ) : sortedRecords
               .map((job) => {
-                const isTerminal = TERMINAL_STATUSES.has(job.status as RunStatus);
+                const eff = liveJobs[job.id ?? ""] ? { ...job, ...liveJobs[job.id ?? ""] } : job;
+                const isTerminal = TERMINAL_STATUSES.has(eff.status as RunStatus);
+                const tone = toneForRunStatus(eff.status);
+                const isLive = !!liveJobs[job.id ?? ""] && ACTIVE_STATUSES.has(eff.status as RunStatus);
+                const rowTint =
+                  tone === "failure" ? "bg-destructive/5 hover:bg-destructive/10"
+                  : tone === "attention" ? "bg-amber-500/5 hover:bg-amber-500/10"
+                  : "";
+                const { Icon, className: opClass } = operationVisual(job);
                 return (
-              <TableRow key={job.id} className="cursor-pointer" onClick={() => router.push(encodedPath(job.id ?? ""))}>
-                <TableCell className="font-mono">{job.id}</TableCell>
-                <TableCell>{job.name}</TableCell>
+              <TableRow key={job.id} className={cn("cursor-pointer", rowTint)} onClick={() => setDrawerJob(job)}>
                 <TableCell>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", opClass)}>
+                      <Icon size={16} />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="truncate font-medium text-foreground">{job.name ?? "Operation"}</div>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); if (job.id) navigator.clipboard?.writeText(job.id); }}
+                        title={`${job.id ?? ""} — click to copy`}
+                        className="group mt-0.5 inline-flex items-center gap-1 rounded font-mono text-[11px] text-muted-foreground transition-colors hover:text-primary"
+                      >
+                        {abbreviateJobId(job.id)}
+                        <Copy size={11} className="opacity-0 transition-opacity group-hover:opacity-100" />
+                      </button>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell className="whitespace-nowrap text-muted-foreground">
                   {job.created ? formatDateTime(job.created) : "--"}
                 </TableCell>
                 <TableCell>
-                  {isTerminal && job.updated
-                    ? getExecutionTime(job.created ?? "", job.updated)
-                    : job.created
-                      ? <span className="text-muted-foreground italic">{getExecutionTime(job.created, new Date().toISOString())} so far</span>
-                      : "--"}
+                  <DurationCell job={eff} maxMs={pageMaxMs} isTerminal={isTerminal} />
                 </TableCell>
-                <TableCell><StatusBadge status={job.status} kind="job" /></TableCell>
+                <TableCell>
+                  <span className="inline-flex items-center gap-1.5">
+                    {isLive && <span className="size-1.5 shrink-0 animate-pulse rounded-full bg-emerald-500" title="Live" />}
+                    <StatusBadge status={eff.status} kind="job" />
+                  </span>
+                </TableCell>
+                <TableCell className="text-right">
+                  <JobRowActions job={job} onChanged={() => setRefreshTick(t => t + 1)} />
+                </TableCell>
               </TableRow>
                 );
               })}
           </TableBody>
         </Table>
+        {/* Mobile: stacked cards so nothing hides behind a horizontal scroll. */}
+        <div className="divide-y divide-border md:hidden">
+          {sortedRecords.length === 0 ? (
+            <div className="flex h-[38vh] items-center justify-center text-muted-foreground">No jobs found</div>
+          ) : sortedRecords.map((job) => {
+            const eff = liveJobs[job.id ?? ""] ? { ...job, ...liveJobs[job.id ?? ""] } : job;
+            const isTerminal = TERMINAL_STATUSES.has(eff.status as RunStatus);
+            const tone = toneForRunStatus(eff.status);
+            const isLive = !!liveJobs[job.id ?? ""] && ACTIVE_STATUSES.has(eff.status as RunStatus);
+            const rowTint = tone === "failure" ? "bg-destructive/5" : tone === "attention" ? "bg-amber-500/5" : "";
+            const { Icon, className: opClass } = operationVisual(job);
+            const openJob = () => setDrawerJob(job);
+            return (
+              <div
+                key={job.id}
+                role="button"
+                tabIndex={0}
+                onClick={openJob}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openJob(); } }}
+                className={cn("flex w-full cursor-pointer items-start gap-3 p-3 text-left transition-colors hover:bg-muted/50", rowTint)}
+              >
+                <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", opClass)}>
+                  <Icon size={17} />
+                </span>
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate font-medium text-foreground">{job.name ?? "Operation"}</span>
+                    <span className="ml-auto inline-flex shrink-0 items-center gap-1.5">
+                      {isLive && <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" title="Live" />}
+                      <StatusBadge status={eff.status} kind="job" />
+                    </span>
+                    <JobRowActions job={job} onChanged={() => setRefreshTick(t => t + 1)} />
+                  </div>
+                  <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
+                    <span>{abbreviateJobId(job.id)}</span>
+                    <span aria-hidden>·</span>
+                    <span className="truncate">{job.created ? formatDateTime(job.created) : "--"}</span>
+                  </div>
+                  <DurationCell job={eff} maxMs={pageMaxMs} isTerminal={isTerminal} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {/* Infinite scroll: reaching here loads the next window of older jobs. */}
+        <div className="flex items-center justify-center py-3">
+          {hasMore ? (
+            <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={maybeLoadMore} disabled={loading}>
+              {loading ? <Spinner variant="ellipsis" size={16} /> : null}
+              Load older jobs
+            </Button>
+          ) : filterWindowCapped ? (
+            <span className="text-xs text-muted-foreground">
+              Showing the most recent {FILTER_WINDOW} jobs — deeper filtering isn&apos;t supported yet.
+            </span>
+          ) : pageRecords.length > 0 ? (
+            <span className="text-xs text-muted-foreground">End of jobs</span>
+          ) : null}
+          <div ref={sentinelRef} className="h-px w-px" aria-hidden />
+        </div>
+        </>
         )}
         </div>
-        <PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={loading}></PaginationHeader>
 
-        <div className="grid grid-cols-3 gap-4 w-full mt-auto pt-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full shrink-0 pt-4">
           <StatTile
             icon={Layers}
             label="Total Jobs"
@@ -473,8 +673,8 @@ export function JobList({ venueId }: JobListProps = {}) {
           <StatTile
             icon={CheckCircle2}
             label="Success Rate"
-            value={jobStats.successRate != null ? `${Math.round(jobStats.successRate)}%` : "–"}
-            caption={jobStats.sampleSize > 0 ? `of ${jobStats.sampleSize} jobs on this page` : undefined}
+            value={venueStats.successRate != null ? `${Math.round(venueStats.successRate)}%` : "–"}
+            caption={statsWindowCaption}
             iconClassName={TONE_STYLES.success.text}
             trend={jobTrend ? {
               data: jobTrend.successRate,
@@ -482,21 +682,74 @@ export function JobList({ venueId }: JobListProps = {}) {
             } : undefined}
           />
           <StatTile
-            icon={Clock}
-            label="Avg Duration"
-            value={jobStats.avgDurationMs != null
-              ? getExecutionTime("1970-01-01T00:00:00.000Z", new Date(jobStats.avgDurationMs).toISOString())
-              : "–"}
-            caption={jobStats.sampleSize > 0 ? `of ${jobStats.sampleSize} jobs on this page` : undefined}
+            icon={Gauge}
+            label="Latency (p50)"
+            value={fmtDurationMs(venueStats.p50Ms)}
+            caption={venueStats.p95Ms != null ? `p95 ${fmtDurationMs(venueStats.p95Ms)}` : statsWindowCaption}
             trend={jobTrend ? {
               data: jobTrend.avgDurationMs,
-              formatValue: (v) => getExecutionTime("1970-01-01T00:00:00.000Z", new Date(v).toISOString()),
+              formatValue: (v) => fmtDurationMs(v),
             } : undefined}
+          />
+          <StatTile
+            icon={AlertTriangle}
+            label="Failures"
+            value={venueStats.failures.toLocaleString()}
+            caption={statsWindowCaption}
+            iconClassName={venueStats.failures > 0 ? TONE_STYLES.failure.text : TONE_STYLES.neutral.text}
           />
         </div>
       </div>
         </TabsContent>
       </Tabs>
+      <JobDetailDrawer
+        job={drawerJob}
+        venueId={venueId}
+        fullHref={drawerJob ? encodedPath(drawerJob.id ?? "") : undefined}
+        onOpenChange={(open) => { if (!open) setDrawerJob(null); }}
+        onChanged={() => setRefreshTick(t => t + 1)}
+      />
     </ContentLayout>
 );
+}
+
+/** Format a millisecond duration using the same helper as the table cells. */
+function fmtDurationMs(ms: number | null): string {
+  if (ms == null) return "–";
+  return getExecutionTime("1970-01-01T00:00:00.000Z", new Date(ms).toISOString());
+}
+
+/**
+ * Latency as a bar plus a value. Terminal jobs show a colour-graded fill
+ * (green fast, amber/red slow) scaled to the page's longest run; a running
+ * job shows an indeterminate pulse and its elapsed time so far.
+ */
+function DurationCell({ job, maxMs, isTerminal }: { job: JobMetadata; maxMs: number; isTerminal: boolean }) {
+  if (!isTerminal) {
+    return job.created ? (
+      <div className="flex items-center gap-2">
+        <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
+          <div className="h-full w-1/3 animate-pulse rounded-full bg-blue-500 dark:bg-blue-400" />
+        </div>
+        <span className="text-xs italic text-muted-foreground">
+          {getExecutionTime(job.created, new Date().toISOString())} so far
+        </span>
+      </div>
+    ) : (
+      <span className="text-muted-foreground">--</span>
+    );
+  }
+  const ms = jobDurationMs(job);
+  if (ms == null) return <span className="text-muted-foreground">--</span>;
+  const pct = maxMs > 0 ? Math.max(6, Math.round((ms / maxMs) * 100)) : 100;
+  return (
+    <div className="flex items-center gap-2" title={`${ms} ms`}>
+      <div className="h-1.5 w-20 shrink-0 overflow-hidden rounded-full bg-muted">
+        <div className={cn("h-full rounded-full", durationFillClass(ms))} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+        {getExecutionTime(job.created ?? "", job.updated ?? "")}
+      </span>
+    </div>
+  );
 }

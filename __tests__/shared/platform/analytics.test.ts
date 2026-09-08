@@ -62,6 +62,15 @@ function freshAnalytics(): Analytics {
   return mod;
 }
 
+/**
+ * posthog-js now loads via dynamic `import()` (#323), so `posthog.init` lands
+ * a few microtask ticks after `initAnalytics()` returns rather than
+ * synchronously. Flush generously rather than pin the exact hop count.
+ */
+async function flushPostHogLoad(): Promise<void> {
+  for (let i = 0; i < 5; i++) await Promise.resolve();
+}
+
 describe('analytics', () => {
   let gtag: jest.Mock;
 
@@ -312,11 +321,12 @@ describe('analytics', () => {
      * default. Pinned in code so the behaviour cannot be changed from the
      * PostHog UI. Deleting any of these lines widens what leaves the app.
      */
-    function initConfig(): Record<string, unknown> {
+    async function initConfig(): Promise<Record<string, unknown>> {
       grantConsent(true);
       process.env.NEXT_PUBLIC_POSTHOG_KEY = 'phc_test';
       const { initAnalytics } = freshAnalytics();
       initAnalytics();
+      await flushPostHogLoad();
       const call = jest.mocked(posthog.init).mock.calls.at(-1);
       return (call?.[1] ?? {}) as Record<string, unknown>;
     }
@@ -332,24 +342,24 @@ describe('analytics', () => {
       ['capture_performance', false],
       ['disable_surveys', true],
       ['respect_dnt', true],
-    ])('pins %s to %s', (key, expected) => {
-      expect(initConfig()[key]).toBe(expected);
+    ])('pins %s to %s', async (key, expected) => {
+      expect((await initConfig())[key]).toBe(expected);
     });
 
-    it('keeps session recording disabled unless explicitly enabled', () => {
-      expect(initConfig().disable_session_recording).toBe(true);
+    it('keeps session recording disabled unless explicitly enabled', async () => {
+      expect((await initConfig()).disable_session_recording).toBe(true);
     });
 
-    it('creates person profiles only for identified users', () => {
-      expect(initConfig().person_profiles).toBe('identified_only');
+    it('creates person profiles only for identified users', async () => {
+      expect((await initConfig()).person_profiles).toBe('identified_only');
     });
 
-    it('sends to the EU host, matching what the privacy policy states', () => {
-      expect(initConfig().api_host).toBe('https://eu.i.posthog.com');
+    it('sends to the EU host, matching what the privacy policy states', async () => {
+      expect((await initConfig()).api_host).toBe('https://eu.i.posthog.com');
     });
 
-    it('scrubs credentials out of the URL properties PostHog attaches', () => {
-      const sanitize = initConfig().sanitize_properties as (
+    it('scrubs credentials out of the URL properties PostHog attaches', async () => {
+      const sanitize = (await initConfig()).sanitize_properties as (
         p: Record<string, unknown>,
       ) => Record<string, unknown>;
 
@@ -360,6 +370,48 @@ describe('analytics', () => {
 
       expect(JSON.stringify(out)).not.toContain('secret');
       expect(out.property).toBe('app.covia.ai');
+    });
+  });
+
+  describe('PostHog load failure (#323)', () => {
+    // The webpack vendor chunk for posthog-js can go missing after HMR /
+    // branch switches, which surfaces as the dynamic `import('posthog-js')`
+    // rejecting. That must degrade to "no product analytics" rather than
+    // throwing into whatever called track()/identify().
+    it('does not throw, and gtag keeps working, when the chunk fails to load', async () => {
+      jest.resetModules();
+      jest.doMock('posthog-js', () => {
+        throw new Error('Cannot find module vendor-chunks/posthog-js');
+      });
+
+      grantConsent(true);
+      // Read into a module-level const at require time, so it must be set
+      // before `require('@/lib/analytics')` below.
+      process.env.NEXT_PUBLIC_POSTHOG_KEY = 'phc_test';
+
+      let mod!: Analytics;
+      jest.isolateModules(() => {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        mod = require('@/lib/analytics');
+      });
+
+      const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      expect(() => mod.initAnalytics()).not.toThrow();
+      await flushPostHogLoad();
+      expect(() =>
+        mod.track('product_login', { method: 'keypair' }),
+      ).not.toThrow();
+
+      expect(gtag).toHaveBeenCalledWith('event', 'product_login', {
+        property: 'app.covia.ai',
+        method: 'keypair',
+      });
+      expect(errorSpy).toHaveBeenCalled();
+
+      errorSpy.mockRestore();
+      delete process.env.NEXT_PUBLIC_POSTHOG_KEY;
+      jest.dontMock('posthog-js');
     });
   });
 

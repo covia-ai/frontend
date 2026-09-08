@@ -1,4 +1,4 @@
-import { Operation, Venue } from "@covia/covia-sdk";
+import { didUrl, Namespace, Operation, Venue } from "@covia/covia-sdk";
 
 // An operation discovered in the venue catalog, identified by its resolvable
 // catalog path (e.g. "v/ops/agent/suspend"), not a content hash.
@@ -90,12 +90,19 @@ export async function listCatalogOperations(
 }
 
 // Resolve an operation from its namespace-explicit URL address:
-//  - "a/<hash>"  → content-addressed asset (getAsset; hash also resolvable directly)
+//  - "a/<hash>"  → content-addressed asset (getAsset)
 //  - "v/ops/...", "v/test/ops/...", "o/..."  → catalog/workspace path via covia:read
 // Returns an Operation whose id is the address it was resolved from.
 export async function resolveOperationByAddress(venue: Venue, address: string): Promise<Operation> {
   if (address.startsWith("a/")) {
-    return (await venue.getAsset(address.slice(2))) as Operation;
+    // GET /api/v1/assets/<id> only resolves the fully DID-qualified form —
+    // a bare hash or a bare "a/<hash>" both 404 on live venues (verified
+    // directly; the SDK docs describing bare-hash resolution as supported
+    // don't match server behaviour). Qualify with this venue's own DID
+    // before asking, same as the address AssetHeader would render back
+    // (frontend#341).
+    const qualified = didUrl(venue.venueId, Namespace.ASSET, address.slice(2));
+    return (await venue.getAsset(qualified)) as Operation;
   }
   let meta = operationMetadataCache.get(venue)?.get(address);
   if (!meta) {

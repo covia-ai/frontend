@@ -19,7 +19,7 @@ import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { TbCircleDashedNumber1, TbCircleDashedNumber3 }from "react-icons/tb";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { JsonEditor } from "json-edit-react";
 import { Button } from "./ui/button";
@@ -30,8 +30,24 @@ import { notifyError } from "@/lib/notify";
 import { FORM_DIALOG_CLASS, JSON_EDITOR_DIALOG_CLASS, JSON_EDITOR_MAX_WIDTH } from "@/lib/dialog-sizes";
 import { AssetMetadataForm } from "@/components/AssetMetadataForm";
 import { buildAssetMetadata, EMPTY_ASSET_METADATA_FIELDS } from "@/lib/asset-metadata-form";
+import { ACCEPT_ATTRIBUTE, formatMaxUploadSize, isAllowedUploadFile, MAX_UPLOAD_BYTES } from "@/lib/upload-constraints";
 
-export const CreateAssetComponent = ({venue: venueProp}: {venue?: Venue}) => {
+export const CreateAssetComponent = ({
+    venue: venueProp,
+    open: controlledOpen,
+    onOpenChange,
+    initialFile,
+}: {
+    venue?: Venue;
+    /** Controlled-mode escape hatch for the global drop-to-asset flow — when
+     *  provided (with `onOpenChange`), the dialog has no trigger button and
+     *  its open state is owned by the caller. Omit both for normal usage. */
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    /** A file already validated by the caller (type/size) — jumps straight
+     *  to the one-click fast path instead of the manual file picker. */
+    initialFile?: File;
+}) => {
     const router = useRouter();
     const [step, setStep] = useState(0);
     const [jsonData, setJsonData] = useState<any>({});
@@ -43,11 +59,17 @@ export const CreateAssetComponent = ({venue: venueProp}: {venue?: Venue}) => {
     const [hash, setHash] = useState("");
     const [baseData, setBaseData] = useState<AssetMetadata>({});
     const [metadataUpdated, setMetadataUpdated] = useState(false);
-    const [open, setOpen] = useState(false)
+    const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+    const isControlled = controlledOpen !== undefined;
+    const open = isControlled ? controlledOpen : uncontrolledOpen;
+    const setOpen = useCallback((next: boolean) => {
+      if (isControlled) onOpenChange?.(next);
+      else setUncontrolledOpen(next);
+    }, [isControlled, onOpenChange]);
     const [creating, setCreating] = useState(false);
     const fallbackVenue = useAuthenticatedVenue();
     const venue = venueProp ?? fallbackVenue;
-    
+
     async function createNewAsset(jsonData: AssetMetadata) {
         if (!venue) return;
 
@@ -104,6 +126,19 @@ export const CreateAssetComponent = ({venue: venueProp}: {venue?: Venue}) => {
     function handleFileChange (event: React.ChangeEvent<HTMLInputElement>) {
      const file = event.target.files?.[0];
      if (!file) return;
+     // `accept` on the input is advisory only — a user can still pick "All
+     // Files" — so the allowlist/size cap are enforced here too, not just
+     // via the attribute.
+     if (!isAllowedUploadFile(file)) {
+       notifyError("Unsupported file type", `"${file.name}" isn't an accepted file type for assets.`);
+       event.target.value = "";
+       return;
+     }
+     if (file.size > MAX_UPLOAD_BYTES) {
+       notifyError("File too large", `"${file.name}" is over the ${formatMaxUploadSize()} upload limit.`);
+       event.target.value = "";
+       return;
+     }
      const [contentType, encoding] = getContentTypeForFile(file.name);
      setFields((current) => ({
        ...current,
@@ -111,10 +146,38 @@ export const CreateAssetComponent = ({venue: venueProp}: {venue?: Venue}) => {
        contentType,
        encoding,
      }));
-     
+
      setAssetFileData(file);
     }
-    
+
+    // Fast path: an already-validated file arrived via `initialFile` (the
+    // global drop listener already checked type/size) — compute its hash in
+    // the background while the register screen below is already showing
+    // (its "computing…" placeholder covers the gap), instead of making the
+    // user step through the manual type-choice screen. Runs once per
+    // mounted instance; the caller remounts this component (via `key`) for
+    // each new drop rather than changing `initialFile` under an existing
+    // instance.
+    useEffect(() => {
+      if (!initialFile) return;
+      let cancelled = false;
+      (async () => {
+        try {
+          const [contentType, encoding] = getContentTypeForFile(initialFile.name);
+          setFields((current) => ({ ...current, name: initialFile.name, contentType, encoding }));
+          setAssetType("file");
+          setAssetFileData(initialFile);
+          const computedHash = await getSHA256Hash(await initialFile.arrayBuffer());
+          if (cancelled) return;
+          setHash(computedHash);
+        } catch (error: unknown) {
+          notifyError("Unable to read file", error);
+        }
+      })();
+      return () => { cancelled = true; };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     function createMetadata(nextStep: number){
 
       const metadata = buildAssetMetadata(fields, { sha256: hash });
@@ -139,7 +202,7 @@ export const CreateAssetComponent = ({venue: venueProp}: {venue?: Venue}) => {
   
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
+    }, [setOpen]);
     useEffect(() => {
           if(open == false)
               setStep(1)
@@ -147,12 +210,15 @@ export const CreateAssetComponent = ({venue: venueProp}: {venue?: Venue}) => {
     
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-                  <Button data-testid="create-asset-trigger" className="shrink-0 gap-2">
-                        <PlusCircledIcon />
-                        Create Asset
-                  </Button>
-          </DialogTrigger>
+          {!isControlled &&
+            <DialogTrigger asChild>
+                    <Button data-testid="create-asset-trigger" className="shrink-0 gap-2">
+                          <PlusCircledIcon />
+                          Create Asset
+                    </Button>
+            </DialogTrigger>
+          }
+          {!initialFile &&
           <DialogContent className={FORM_DIALOG_CLASS}>
                 <DialogTitle className="flex flex-row items-center space-x-2">
                         <TbCircleDashedNumber1 size={32}></TbCircleDashedNumber1>
@@ -176,7 +242,7 @@ export const CreateAssetComponent = ({venue: venueProp}: {venue?: Venue}) => {
                               </Select>
                           </div>
                             {assetType == "file" && <div className="w-full flex flex-row items-center justify-evenly">
-                              <Input type="file" required onChange={e => handleFileChange (e)} accept=".csv,.txt,.json"></Input>
+                              <Input type="file" required onChange={e => handleFileChange (e)} accept={ACCEPT_ATTRIBUTE}></Input>
                             </div> 
                             }
                             {assetType == "string" && <div className="w-full flex flex-row items-center justify-evenly">
@@ -197,9 +263,41 @@ export const CreateAssetComponent = ({venue: venueProp}: {venue?: Venue}) => {
                             </div> 
                             }
                               <Button aria-label="upload" role="button" type="button" onClick={(e) => uploadContent(e)}>Upload Content</Button>
-                        </div> 
-                                
+                        </div>
+
           </DialogContent>
+          }
+          {!!initialFile && step !== 2 && step !== 3 &&
+            <DialogContent className={FORM_DIALOG_CLASS}>
+                  <DialogTitle className="flex flex-row items-center space-x-2">
+                          <TbCircleDashedNumber1 size={32}></TbCircleDashedNumber1>
+                          <Label>Register as Asset</Label>
+                  </DialogTitle>
+                  <div className="flex flex-col space-y-3">
+                    <div className="text-sm space-y-1">
+                      <div><span className="text-muted-foreground">File: </span>{fields.name}</div>
+                      <div><span className="text-muted-foreground">Type: </span>{fields.contentType || "unknown"}</div>
+                      <div className="font-mono text-xs break-all">
+                        <span className="text-muted-foreground">SHA-256: </span>{hash || "computing…"}
+                      </div>
+                    </div>
+                    <div className="flex flex-row items-center justify-between">
+                      <Button aria-label="edit details" role="button" type="button" onClick={(_e) => setStep(2)}>
+                        Edit details
+                      </Button>
+                      <Button
+                        aria-label="register asset"
+                        role="button"
+                        type="button"
+                        disabled={creating || !hash}
+                        onClick={(_e) => createMetadata(0)}
+                      >
+                        {creating ? "Registering…" : "Register Asset"}
+                      </Button>
+                    </div>
+                  </div>
+            </DialogContent>
+          }
           {step == 2 &&
             <DialogContent className={FORM_DIALOG_CLASS}>
                   <DialogTitle>Provide Metadata</DialogTitle>

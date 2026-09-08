@@ -4,6 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { AssetInfoSheet } from "./AssetInfoSheet";
+import { Pin } from "lucide-react";
+import { usePinnedAssets } from "@/hooks/use-pinned-assets";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 interface AssetCardProps {
   asset: Asset;
@@ -21,6 +24,14 @@ export function AssetCard({ asset,type,compact,venue: venueProp,scoped = true }:
     const fallbackVenue = useAuthenticatedVenue();
     const venue = venueProp ?? fallbackVenue;
     const router = useRouter();
+
+    const pinned = usePinnedAssets((s) => (venue ? s.isPinned(venue.venueId, asset.id) : false));
+    const togglePin = usePinnedAssets((s) => s.togglePin);
+    const handlePinToggle = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!venue) return;
+      togglePin(venue.venueId, asset.id);
+    };
 
     const adapter = (asset.metadata?.operation?.adapter as string | undefined)?.split(':')[0] ?? null;
 
@@ -55,13 +66,31 @@ export function AssetCard({ asset,type,compact,venue: venueProp,scoped = true }:
         router.push(encodedUrl);
     };
     return (
-         <Card key={asset.id} className={`shadow-md border-2 h-full bg-card flex flex-col rounded-md border-muted hover:border-accent hover:border-2
+         <Card key={asset.id} className={`shadow-md border-2 h-full bg-card flex flex-col rounded-md hover:border-accent hover:border-2
+          ${ pinned ? 'border-primary' : 'border-muted' }
           ${ compact ? 'h-32 p-1' : 'h-48 p-2' }`}>
                 {/* Fixed-size header */}
-                <div className={` ${ compact ? 'h-10' : 'h-14' } p-2 flex flex-row items-center border-b bg-card-banner`}>
+                <div className={` ${ compact ? 'h-10' : 'h-14' } p-2 flex flex-row items-center gap-1 border-b bg-card-banner`}>
                     <div data-testid = "asset-header" className="truncate flex-1 mr-2 text-md text-foreground"
                     onClick={() => handleCardClick(asset.id)}>{asset.metadata.name || 'Unnamed Asset'}
                     </div>
+                    {type === "assets" && venue && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            data-testid="asset-pin-toggle"
+                            aria-label={pinned ? "Unpin asset" : "Pin asset"}
+                            aria-pressed={pinned}
+                            onClick={handlePinToggle}
+                            className={`shrink-0 ${pinned ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                          >
+                            <Pin size={16} className={pinned ? "fill-current" : undefined} />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>{pinned ? "Unpin" : "Pin for quick access"}</TooltipContent>
+                      </Tooltip>
+                    )}
                     {type == "operations" &&
                        <AssetInfoSheet asset={asset} venueId={venue?.venueId ?? ""}/>
                     }

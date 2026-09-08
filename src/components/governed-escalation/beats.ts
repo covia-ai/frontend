@@ -73,9 +73,20 @@ export async function runEscalation(
         `under ${paths.windows}. Compare the current window's deviceReuseRate to the week-1 ` +
         `baseline and report both numbers and the ratio in one short paragraph.`,
     },
-    wait: true,
   });
-  await analysis.refresh();
+  // `invoke()` has no `wait` option — it returns as soon as the job is
+  // created, still PENDING/STARTED. The finding gets quoted verbatim into
+  // the ask's immutable record below, so this has to actually block for the
+  // real result instead of reading whatever status happens to be current a
+  // moment later — a one-shot `refresh()` here raced the ~6s analysis job
+  // and lost every time (covia-ai/frontend#338).
+  try {
+    await analysis.wait({ timeout: 60_000 });
+  } catch {
+    // CoviaTimeoutError — analysis.isComplete stays false below, and the
+    // fallback message takes over. Genuinely rare now: only an analysis
+    // that actually takes over a minute hits this path.
+  }
 
   const finding = analysis.isComplete
     ? monitorFinding(analysis.output)

@@ -1,7 +1,8 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
+import { usePinnedAssets } from '@/hooks/use-pinned-assets';
 
 // Mock heavy child components so this test stays focused on AssetList's own
 // fetch-once / client-side-filter / clear-button logic (issue #184).
@@ -57,6 +58,7 @@ describe('AssetList', () => {
     jest.clearAllMocks();
     mockSearchParam = null;
     mockAuthenticated = true;
+    act(() => usePinnedAssets.setState({ pinned: [] }));
     mockVenue.listAssets.mockResolvedValue({
       items: [
         { id: 'a1', metadata: { name: 'Alpha Report' } },
@@ -162,5 +164,25 @@ describe('AssetList', () => {
     expect(screen.getByText('Beta Dataset')).toBeInTheDocument();
     expect(screen.queryByText('Skilled Template')).not.toBeInTheDocument();
     expect(screen.queryByText('Research Skill')).not.toBeInTheDocument();
+  });
+
+  it('surfaces a pinned asset ahead of unpinned ones, scoped to the current venue', async () => {
+    act(() => usePinnedAssets.getState().pin(mockVenue.venueId, 'a2'));
+
+    render(<AssetList />);
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
+
+    const names = screen.getAllByTestId('asset-card').map((el) => el.textContent);
+    expect(names).toEqual(['Beta Dataset', 'Alpha Report']);
+  });
+
+  it('ignores pins recorded against a different venue', async () => {
+    act(() => usePinnedAssets.getState().pin('some-other-venue', 'a2'));
+
+    render(<AssetList />);
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
+
+    const names = screen.getAllByTestId('asset-card').map((el) => el.textContent);
+    expect(names).toEqual(['Alpha Report', 'Beta Dataset']);
   });
 });

@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import {
   Bot,
   Check,
+  Eye,
+  GitFork,
   History,
   BellRing,
   Loader2,
@@ -44,12 +46,16 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { AgentConversation } from "@/components/AgentConversation";
 import { AgentSettings } from "@/components/agent-config/AgentSettings";
 import { AgentTimelineView } from "@/components/agent-explorer/AgentTimelineView";
+import { AgentContextView } from "@/components/agent-explorer/AgentContextView";
 import { AgentRuntimeSummary } from "@/components/agent-explorer/AgentRuntimeSummary";
+import { ForkAgentDialog } from "@/components/agent-explorer/ForkAgentDialog";
 import { SchedulePickerDialog } from "@/components/SchedulePickerDialog";
 import type { AgentExplorerController } from "@/hooks/use-agent-explorer";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useAgentForkProvenance } from "@/hooks/use-agent-fork-provenance";
 import type { Session } from "@/config/types";
 import { defaultSessionTitle, formatSessionLabel } from "@/lib/agent-sessions";
+import { agentSendingPlaceholder } from "@/lib/agent-chat";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
 import { cn, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
 
@@ -71,12 +77,15 @@ export function AgentChatPanel({
     setMessageText,
     pendingChat,
     sending,
+    activity,
     canSend,
     echoAlreadyRecorded,
     suspend,
     resume,
     triggerAgent,
     triggering,
+    forkAgent,
+    forking,
     deleteAgent,
     updateAgentConfig,
     renameSession,
@@ -86,10 +95,15 @@ export function AgentChatPanel({
   } = controller;
   const venue = useAuthenticatedVenue();
   const transcriptRef = useRef<HTMLDivElement | null>(null);
+  const forkedFrom = useAgentForkProvenance((s) =>
+    venue && selectedAgentDetail
+      ? s.forkedFromOf(venue.venueId, selectedAgentDetail.agentId)
+      : null,
+  );
 
   const [renaming, setRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
-  const [view, setView] = useState<"chat" | "timeline" | "settings">("chat");
+  const [view, setView] = useState<"chat" | "timeline" | "settings" | "context">("chat");
 
   useEffect(() => {
     // Timeline/settings are scoped to the selected agent. A switch must not
@@ -173,6 +187,22 @@ export function AgentChatPanel({
               kind="agent"
               as="pill"
             />
+            {forkedFrom && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    data-testid="agent-forked-from"
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => forkedFrom && controller.setSelectedAgentId(forkedFrom)}
+                  >
+                    <GitFork size={12} />
+                    forked from {forkedFrom}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Open source agent</TooltipContent>
+              </Tooltip>
+            )}
             {(selectedAgentDetail.tasks ?? 0) > 0 && (
               <Badge variant="outline">
                 {selectedAgentDetail.tasks} task
@@ -211,6 +241,19 @@ export function AgentChatPanel({
                 <TooltipContent>Timeline</TooltipContent>
               </Tooltip>
             )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  data-testid="agent-context-info"
+                  aria-label="Agent context"
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={() => setView("context")}
+                >
+                  <Eye size={16} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Context</TooltipContent>
+            </Tooltip>
             <div className="ml-auto flex flex-row gap-2">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -258,6 +301,11 @@ export function AgentChatPanel({
                   selectedAgentDetail.status === AgentStatus.SUSPENDED ||
                   selectedAgentDetail.status === AgentStatus.TERMINATED
                 }
+              />
+              <ForkAgentDialog
+                sourceAgentId={selectedAgentDetail.agentId}
+                forking={forking}
+                onFork={forkAgent}
               />
               {(selectedAgentDetail.status === AgentStatus.RUNNING ||
                 selectedAgentDetail.status === AgentStatus.SLEEPING) && (
@@ -312,6 +360,13 @@ export function AgentChatPanel({
           ) : view === "timeline" ? (
             <AgentTimelineView
               agentId={selectedAgentDetail.agentId}
+              onBack={() => setView("chat")}
+            />
+          ) : view === "context" ? (
+            <AgentContextView
+              agentId={selectedAgentDetail.agentId}
+              sessions={sessions}
+              initialSessionId={selectedSessionId}
               onBack={() => setView("chat")}
             />
           ) : (
@@ -440,7 +495,7 @@ export function AgentChatPanel({
                 data-testid="composer-input"
                 placeholder={
                   sending
-                    ? "Waiting for the agent's reply…"
+                    ? agentSendingPlaceholder(activity)
                     : canSend
                       ? `Message ${selectedAgentDetail.agentId}…`
                       : `${selectedAgentDetail.status} — cannot send`

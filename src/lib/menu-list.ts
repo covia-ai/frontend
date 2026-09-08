@@ -1,9 +1,11 @@
 import {
   BrainCircuit,
+  Cable,
   Database,
   FileStack,
   FlaskConical,
   FolderOpen,
+  HardDrive,
   Home,
   Inbox,
   KeyRound,
@@ -11,10 +13,12 @@ import {
   List,
   MapPinned,
   MessageSquareText,
+  Plug,
   BookOpenCheck,
   PlayCircle,
   Plus,
   ScrollText,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 
@@ -23,8 +27,9 @@ export type MenuItem = {
   label: string;
   icon: LucideIcon;
   requiresAuth?: boolean;
-  badge?: "inbox";
+  badge?: "inbox" | "connections";
   match?: "exact" | "prefix";
+  children?: MenuItem[];
 };
 
 export type MenuGroup = {
@@ -43,6 +48,7 @@ export const MENU_LIST: MenuGroup[] = [
       { href: "/agents/create", label: "Create", icon: Plus },
       { href: "/agents/view", label: "View", icon: List },
       { href: "/agents/chat", label: "Chat", icon: MessageSquareText },
+      { href: "/agents/connected", label: "Connected", icon: Cable },
       { href: "/agents/skills", label: "Skills", icon: BookOpenCheck },
     ],
   },
@@ -51,7 +57,14 @@ export const MENU_LIST: MenuGroup[] = [
     menus: [
       { href: "/publicartifacts", label: "Public Artifacts", icon: Database },
       { href: "/myartifacts", label: "My Artifacts", icon: FileStack, requiresAuth: true },
-      { href: "/operations", label: "Operations", icon: PlayCircle },
+      {
+        href: "/operations",
+        label: "Operations",
+        icon: PlayCircle,
+        children: [
+          { href: "/operations/playground", label: "Playground", icon: Wrench, requiresAuth: true },
+        ],
+      },
       { href: "/jobs", label: "Jobs", icon: ScrollText },
       { href: "/inbox", label: "Inbox", icon: Inbox, requiresAuth: true, badge: "inbox" },
     ],
@@ -63,9 +76,11 @@ export const MENU_LIST: MenuGroup[] = [
     groupLabel: "Data",
     menus: [
       { href: "/context", label: "Context", icon: BrainCircuit, requiresAuth: true },
+      { href: "/connections", label: "Connections", icon: Plug, requiresAuth: true, badge: "connections" },
       { href: "/secrets", label: "Secrets", icon: KeyRound, requiresAuth: true },
       { href: "/venues", label: "Venues", icon: MapPinned },
       { href: "/workspace", label: "Workspace", icon: FolderOpen, requiresAuth: true },
+      { href: "/files", label: "Files", icon: HardDrive, requiresAuth: true },
     ],
   },
   {

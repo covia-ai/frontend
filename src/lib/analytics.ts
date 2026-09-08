@@ -33,7 +33,7 @@
  * claim already, so adopting it is a venue-side change with no client work.
  */
 
-import posthog from 'posthog-js'
+import type { PostHog } from 'posthog-js'
 import {
   CONSENT_CHANGE_EVENT,
   CONSENT_KEY,
@@ -101,7 +101,9 @@ const SENSITIVE_QUERY_PARAMS = [
 const UNTRACKED_PATHS = new Set(['/auth/callback'])
 
 let gtagLoaded = false
-let posthogLoaded = false
+/** Set once the lazily-imported posthog-js module has finished initialising. */
+let posthogInstance: PostHog | null = null
+let posthogLoadPromise: Promise<void> | null = null
 let analyticsGranted = false
 let currentUserId: string | null = null
 
@@ -223,6 +225,15 @@ function ensureGtag(): void {
  * Boots PostHog. No-ops without a project key, so the integration is inert
  * until `NEXT_PUBLIC_POSTHOG_KEY` is configured.
  *
+ * posthog-js is loaded via dynamic `import()` rather than a static import, and
+ * every failure path here is caught rather than thrown (#323). A static
+ * top-level import pulls posthog-js into the bundle graph of every module
+ * that imports this file — including `lib/utils.ts`, which server components
+ * reach transitively — so a vendor chunk that goes missing after HMR takes
+ * down unrelated routes that never touch analytics. Loading it lazily keeps
+ * posthog-js out of those graphs entirely and confines a bad/missing chunk to
+ * "analytics silently doesn't load" instead of a render-tree crash.
+ *
  * Capture defaults are deliberately conservative for a product surface that
  * renders job outputs, agent transcripts and asset content:
  *   - `autocapture: false`   — element text would carry asset and agent names
@@ -230,43 +241,54 @@ function ensureGtag(): void {
  *     credential-stripped path from `buildAnalyticsPath`
  *   - session replay off unless explicitly enabled (see SESSION_RECORDING_ENABLED)
  */
-function ensurePostHog(): void {
-  if (posthogLoaded || !POSTHOG_KEY) return
-  posthogLoaded = true
+function ensurePostHog(): Promise<void> {
+  if (posthogLoadPromise) return posthogLoadPromise
+  if (!POSTHOG_KEY) return Promise.resolve()
 
-  posthog.init(POSTHOG_KEY, {
-    api_host: POSTHOG_HOST,
-    autocapture: false,
-    capture_pageview: false,
-    // Each of these is a separate capture path that `autocapture: false` does
-    // not cover, and each is enabled by PostHog's *server-side* remote config
-    // by default. Verified on preview 2026-08-29: the SDK downloads
-    // dead-clicks-autocapture, web-vitals-with-attribution and surveys purely
-    // because remote config asked for them. Pinning them here means the
-    // behaviour cannot change from the PostHog UI, the same two-gate posture
-    // used for session replay.
-    //
-    // `capture_dead_clicks` records the element a user clicked, which on this
-    // app carries asset names, agent names and DIDs. `capture_performance`
-    // attaches URLs to web-vitals events. Neither is disclosed in privacy
-    // policy v1.2, and surveys would render vendor UI inside the product.
-    capture_dead_clicks: false,
-    capture_performance: false,
-    disable_surveys: true,
-    persistence: 'localStorage+cookie',
-    person_profiles: 'identified_only',
-    respect_dnt: true,
-    disable_session_recording: !SESSION_RECORDING_ENABLED,
-    session_recording: {
-      maskAllInputs: true,
-    },
-    sanitize_properties: (properties) => ({
-      ...properties,
-      $current_url: sanitizeUrl(properties.$current_url),
-      $referrer: sanitizeUrl(properties.$referrer),
-      property: analyticsProperty(),
-    }),
-  })
+  posthogLoadPromise = import('posthog-js')
+    .then(({ default: posthog }) => {
+      posthog.init(POSTHOG_KEY, {
+        api_host: POSTHOG_HOST,
+        autocapture: false,
+        capture_pageview: false,
+        // Each of these is a separate capture path that `autocapture: false`
+        // does not cover, and each is enabled by PostHog's *server-side*
+        // remote config by default. Verified on preview 2026-08-29: the SDK
+        // downloads dead-clicks-autocapture, web-vitals-with-attribution and
+        // surveys purely because remote config asked for them. Pinning them
+        // here means the behaviour cannot change from the PostHog UI, the
+        // same two-gate posture used for session replay.
+        //
+        // `capture_dead_clicks` records the element a user clicked, which on
+        // this app carries asset names, agent names and DIDs.
+        // `capture_performance` attaches URLs to web-vitals events. Neither
+        // is disclosed in privacy policy v1.2, and surveys would render
+        // vendor UI inside the product.
+        capture_dead_clicks: false,
+        capture_performance: false,
+        disable_surveys: true,
+        persistence: 'localStorage+cookie',
+        person_profiles: 'identified_only',
+        respect_dnt: true,
+        disable_session_recording: !SESSION_RECORDING_ENABLED,
+        session_recording: {
+          maskAllInputs: true,
+        },
+        sanitize_properties: (properties) => ({
+          ...properties,
+          $current_url: sanitizeUrl(properties.$current_url),
+          $referrer: sanitizeUrl(properties.$referrer),
+          property: analyticsProperty(),
+        }),
+      })
+      posthogInstance = posthog
+    })
+    .catch((err) => {
+      // A missing/late vendor chunk (or any other load failure) degrades to
+      // "no product analytics this session" rather than crashing the caller.
+      console.error('[analytics] PostHog failed to load', err)
+    })
+  return posthogLoadPromise
 }
 
 /**
@@ -289,7 +311,7 @@ export function track(
   }
 
   window.gtag?.('event', event, common)
-  if (posthogLoaded) posthog.capture(event, common)
+  posthogInstance?.capture(event, common)
 }
 
 /**
@@ -389,13 +411,12 @@ export async function identify(
     linker: { domains: LINKER_DOMAINS, accept_incoming: true },
   })
 
-  if (posthogLoaded) {
-    posthog.identify(userId, {
-      first_seen_at: new Date().toISOString(),
-      signup_property: analyticsProperty(),
-      ...properties,
-    })
-  }
+  await ensurePostHog()
+  posthogInstance?.identify(userId, {
+    first_seen_at: new Date().toISOString(),
+    signup_property: analyticsProperty(),
+    ...properties,
+  })
 }
 
 /** Drops the identity association — call on sign-out. */
@@ -408,7 +429,7 @@ export function resetIdentity(): void {
     send_page_view: false,
     linker: { domains: LINKER_DOMAINS, accept_incoming: true },
   })
-  if (posthogLoaded) posthog.reset()
+  posthogInstance?.reset()
 }
 
 /** Applies a consent decision: loads or muzzles both vendors. */
@@ -420,7 +441,14 @@ function applyConsent(): void {
   if (granted) {
     const firstLoad = !gtagLoaded
     ensureGtag()
-    ensurePostHog()
+    // Fire-and-forget: a slow or failed posthog-js load must never block
+    // gtag, which is why the opt-in/identify calls that depend on the loaded
+    // instance live in this `.then()` rather than gating the code below.
+    void ensurePostHog().then(() => {
+      posthogInstance?.opt_in_capturing()
+      if (SESSION_RECORDING_ENABLED) posthogInstance?.startSessionRecording()
+      if (currentUserId) posthogInstance?.identify(currentUserId)
+    })
     // Consent Mode v2: `app/layout.tsx` queues a `denied` default before
     // anything loads, so storage has to be re-granted explicitly.
     window.gtag?.('consent', 'update', {
@@ -429,10 +457,6 @@ function applyConsent(): void {
       ad_user_data: 'denied',
       ad_personalization: 'denied',
     })
-    if (posthogLoaded) {
-      posthog.opt_in_capturing()
-      if (SESSION_RECORDING_ENABLED) posthog.startSessionRecording()
-    }
     if (firstLoad) {
       // `config` above emitted the GA4 page_view; pair it with the custom
       // event for the page the decision was made on.
@@ -450,7 +474,6 @@ function applyConsent(): void {
         send_page_view: false,
         linker: { domains: LINKER_DOMAINS, accept_incoming: true },
       })
-      if (posthogLoaded) posthog.identify(currentUserId)
     }
     return
   }
@@ -465,10 +488,8 @@ function applyConsent(): void {
       ad_personalization: 'denied',
     })
   }
-  if (posthogLoaded) {
-    posthog.stopSessionRecording()
-    posthog.opt_out_capturing()
-  }
+  posthogInstance?.stopSessionRecording()
+  posthogInstance?.opt_out_capturing()
 }
 
 /**

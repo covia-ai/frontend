@@ -5,6 +5,7 @@ import { DataAsset } from "@covia/covia-sdk";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { AssetCard } from "./AssetCard";
+import { usePinnedAssets } from "@/hooks/use-pinned-assets";
 import { PaginationHeader } from "./PaginationHeader";
 import { useGridPageSize } from "@/hooks/use-grid-page-size";
 import { useLatestQuery } from "@/hooks/use-latest-query";
@@ -60,13 +61,24 @@ export function MyAssetList() {
     return invalidateMyAssetsQuery;
   }, [fetchMyAssets, invalidateMyAssetsQuery]);
 
+  const pinnedRecords = usePinnedAssets((s) => s.pinned);
+  const pinnedIds = useMemo(() => {
+    if (!venueObj?.venueId) return new Set<string>();
+    const venueId = venueObj.venueId;
+    return new Set(pinnedRecords.filter((p) => p.venueId === venueId).map((p) => p.assetId));
+  }, [pinnedRecords, venueObj?.venueId]);
+
   const filteredAssets = useMemo(() => {
     const term = searchInput.trim().toLowerCase();
-    if (!term) return assets;
-    return assets.filter(
-      (a) => (a.metadata?.name ?? "").toLowerCase().includes(term) || (a.id ?? "").toLowerCase().includes(term),
-    );
-  }, [assets, searchInput]);
+    const filtered = term
+      ? assets.filter(
+          (a) => (a.metadata?.name ?? "").toLowerCase().includes(term) || (a.id ?? "").toLowerCase().includes(term),
+        )
+      : assets;
+    if (pinnedIds.size === 0) return filtered;
+    // Stable sort: pinned assets surface first, unpinned keep their relative order.
+    return [...filtered].sort((a, b) => Number(pinnedIds.has(b.id)) - Number(pinnedIds.has(a.id)));
+  }, [assets, searchInput, pinnedIds]);
 
   const {
     currentPage,

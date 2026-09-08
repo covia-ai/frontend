@@ -34,5 +34,11 @@ module.exports = async (...args) => {
   // modules actually loaded by a test rather than maintaining a fragile list
   // of dozens of transitive packages here.
   resolvedConfig.transformIgnorePatterns = ["^.+\\.module\\.(css|sass|scss)$"];
+  // Jest's default testMatch treats every file under __tests__ as a suite;
+  // shared fixture/data modules (…-fixtures.ts) are helpers, not tests.
+  resolvedConfig.testPathIgnorePatterns = [
+    ...(resolvedConfig.testPathIgnorePatterns || ["/node_modules/"]),
+    "[.-]fixtures\\.[jt]sx?$",
+  ];
   return resolvedConfig;
 };

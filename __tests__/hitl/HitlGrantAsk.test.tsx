@@ -50,6 +50,20 @@ describe('HitlGrantAsk — token (COG-19)', () => {
     expect(screen.getByText(/device-key/i)).toBeInTheDocument();
   });
 
+  it('defaults to the requested lifetime even when it is off the fixed presets (#337)', async () => {
+    const weekAsk: HitlAsk = {
+      id: 'w', type: 'token', prompt: 'Grant access for a week',
+      token: { caps: [{ with: 'w/reports/', can: 'crud/read' }], exp: 604800 }, // 7 days
+    };
+    render(<HitlGrantAsk request={baseReq(weekAsk)} ask={weekAsk} kind="token"
+      venue={venue} signingKeyHex="deadbeef" onDone={jest.fn()} onCancel={jest.fn()} />);
+
+    expect(screen.getByTestId('token-lifetime')).toHaveTextContent('7 days');
+
+    await userEvent.click(screen.getByTestId('hitl-grant-confirm'));
+    expect(signAccessToken).toHaveBeenCalledWith(expect.objectContaining({ lifetimeSeconds: 604800 }));
+  });
+
   it('lets the user edit caps up and down before signing', async () => {
     render(<HitlGrantAsk request={baseReq(tokenAsk)} ask={tokenAsk} kind="token"
       venue={venue} signingKeyHex="deadbeef" onDone={jest.fn()} onCancel={jest.fn()} />);

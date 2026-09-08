@@ -21,11 +21,13 @@ import {
 } from "@/hooks/use-pending-chats";
 import { normalizeAgentEntries } from "@/lib/agent-list";
 import { messageContentToString } from "@/lib/agent-turns";
-import { sessionEntriesToSessions } from "@/lib/agent-sessions";
+import { agentSessionsToSessions } from "@/lib/agent-sessions";
 import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { agentConfigsEqual, type AgentConfigSaveOutcome } from "@/lib/agent-settings";
 import { gtmEvent } from "@/lib/utils";
 import { dispatchAgentMessage } from "@/lib/agent-chat";
+import { useAgentForkProvenance } from "@/hooks/use-agent-fork-provenance";
+import { useAgentLiveEvents } from "@/hooks/use-agent-live-events";
 
 const POLL_INTERVAL_MS = 3000;
 const SESSION_LIMIT = 50;
@@ -47,6 +49,7 @@ export function useAgentExplorer(initialAgentId?: string) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [messageText, setMessageText] = useState("");
   const [triggering, setTriggering] = useState(false);
+  const [forking, setForking] = useState(false);
   const listRequest = useRef(0);
   const detailRequest = useRef(0);
   const sessionRequest = useRef(0);
@@ -55,10 +58,13 @@ export function useAgentExplorer(initialAgentId?: string) {
   venueRef.current = venue;
   selectedAgentIdRef.current = selectedAgentId;
 
+  const { live, detailVersion, activity } = useAgentLiveEvents(venue, selectedAgentId);
+
   const pendingChats = usePendingChats((state) => state.pendingChats);
   const startPendingChat = usePendingChats((state) => state.startPendingChat);
   const attachSessionId = usePendingChats((state) => state.attachSessionId);
   const clearPendingChat = usePendingChats((state) => state.clearPendingChat);
+  const recordForkProvenance = useAgentForkProvenance((state) => state.record);
 
   const awaitingNewSession =
     !!selectedAgentId &&
@@ -154,15 +160,15 @@ export function useAgentExplorer(initialAgentId?: string) {
     (agentId: string | null) => {
       if (!venue || !agentId) return Promise.resolve();
       const requestId = ++sessionRequest.current;
-      return venue.workspace
-        .slice(`g/${agentId}/sessions`, 0, SESSION_LIMIT)
+      return venue.agents
+        .listSessions(agentId, { offset: 0, limit: SESSION_LIMIT })
         .then((result) => {
           if (
             requestId === sessionRequest.current &&
             venueRef.current === venue &&
             selectedAgentIdRef.current === agentId
           ) {
-            setSessions(sessionEntriesToSessions(result?.values));
+            setSessions(agentSessionsToSessions(result?.items));
           }
         })
         .catch(() => {
@@ -260,21 +266,34 @@ export function useAgentExplorer(initialAgentId?: string) {
     newChatRequested,
   ]);
 
+  // The agent list has no live-update path — the venue's per-agent SSE
+  // stream reports one agent's run loop, not "which agents exist" — so it
+  // always polls.
   useEffect(() => {
     if (!venue) return;
     const timer = setInterval(() => {
       void refreshAgentList();
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [venue, refreshAgentList]);
+
+  // The selected agent's detail + sessions poll only as a fallback for
+  // venues/connections where the live event stream isn't working; once
+  // `live` is true, the effect below reacts to event boundaries instead.
+  useEffect(() => {
+    if (!venue || live) return;
+    const timer = setInterval(() => {
       void refreshAgentDetail(selectedAgentId);
       void refreshSessions(selectedAgentId);
     }, POLL_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [
-    venue,
-    selectedAgentId,
-    refreshAgentList,
-    refreshAgentDetail,
-    refreshSessions,
-  ]);
+  }, [venue, selectedAgentId, live, refreshAgentDetail, refreshSessions]);
+
+  useEffect(() => {
+    if (!venue || !selectedAgentId || detailVersion === 0) return;
+    void refreshAgentDetail(selectedAgentId);
+    void refreshSessions(selectedAgentId);
+  }, [detailVersion, venue, selectedAgentId, refreshAgentDetail, refreshSessions]);
 
   const selectedSessionId = chatSession?.sessionId ?? null;
   const currentSession = useMemo(
@@ -376,6 +395,39 @@ export function useAgentExplorer(initialAgentId?: string) {
       .finally(() => {
         if (selectedAgentIdRef.current === agentId) setTriggering(false);
       });
+  };
+
+  const forkAgent = async (options: {
+    agentId: string;
+    includeTimeline: boolean;
+    config?: Record<string, unknown>;
+  }): Promise<{ status: "created" | "failed"; agentId?: string }> => {
+    if (!venue || !selectedAgentId || forking) return { status: "failed" };
+    const sourceId = selectedAgentId;
+    setForking(true);
+    try {
+      const result = await venue.agents.fork({
+        sourceId,
+        agentId: options.agentId,
+        includeTimeline: options.includeTimeline,
+        ...(options.config && Object.keys(options.config).length > 0
+          ? { config: options.config }
+          : {}),
+      });
+      gtmEvent.forkAgent(sourceId, result.agentId);
+      recordForkProvenance(venue.venueId, result.agentId, result.forkedFrom);
+      notifySuccess(`Forked "${result.agentId}" from "${result.forkedFrom}"`);
+      await refreshAgentList();
+      setSelectedAgentId(result.agentId);
+      return { status: "created", agentId: result.agentId };
+    } catch (error) {
+      gtmEvent.forkAgentFailed(sourceId, error instanceof Error ? error.message : undefined);
+      const { reason, jobHref } = jobFailure(error, venue?.venueId);
+      notifyError("Unable to fork agent", reason, venue?.baseUrl, jobHref);
+      return { status: "failed" };
+    } finally {
+      setForking(false);
+    }
   };
 
   const updateAgentConfig = useCallback(
@@ -561,12 +613,15 @@ export function useAgentExplorer(initialAgentId?: string) {
     setMessageText,
     pendingChat,
     sending,
+    activity,
     canSend,
     echoAlreadyRecorded,
     suspend,
     resume,
     triggerAgent,
     triggering,
+    forkAgent,
+    forking,
     deleteAgent,
     updateAgentConfig,
     renameSession,

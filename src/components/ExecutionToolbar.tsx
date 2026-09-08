@@ -68,7 +68,7 @@ export const ExecutionToolbar = ({ jobData, venue }: ExecutionToolBarProps) => {
       }
 
   return (
-     <div className="flex flex-row items-center space-x-4 py-2 w-1/2">     
+     <div className="flex flex-row flex-wrap items-center justify-end gap-2 shrink-0">
      {!isFinished && 
             <>
             {/* One real <button> per action (the shadcn Button) — both triggers

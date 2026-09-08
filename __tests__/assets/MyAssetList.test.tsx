@@ -1,7 +1,8 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
+import { usePinnedAssets } from '@/hooks/use-pinned-assets';
 
 // Mock heavy child components so this test stays focused on MyAssetList's
 // own fetch / client-side-filter logic, mirroring AssetList.test.tsx.
@@ -41,6 +42,7 @@ import { MyAssetList } from '@/components/MyAssetList';
 describe('MyAssetList', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    act(() => usePinnedAssets.setState({ pinned: [] }));
     mockVenue.assets.listMine.mockResolvedValue({
       items: [
         { id: 'm1', name: 'My First Doc', type: 'document', description: 'x' },
@@ -91,5 +93,25 @@ describe('MyAssetList', () => {
     await waitFor(() =>
       expect(screen.getByText('No artifacts match this search.')).toBeInTheDocument(),
     );
+  });
+
+  it('surfaces a pinned asset ahead of unpinned ones, scoped to the current venue', async () => {
+    act(() => usePinnedAssets.getState().pin(mockVenue.venueId, 'm2'));
+
+    render(<MyAssetList />);
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
+
+    const names = screen.getAllByTestId('asset-card').map((el) => el.textContent);
+    expect(names).toEqual(['My Second Doc', 'My First Doc']);
+  });
+
+  it('ignores pins recorded against a different venue', async () => {
+    act(() => usePinnedAssets.getState().pin('some-other-venue', 'm2'));
+
+    render(<MyAssetList />);
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
+
+    const names = screen.getAllByTestId('asset-card').map((el) => el.textContent);
+    expect(names).toEqual(['My First Doc', 'My Second Doc']);
   });
 });

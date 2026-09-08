@@ -1,8 +1,10 @@
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { AssetCard } from '@/components/AssetCard';
+import { usePinnedAssets } from '@/hooks/use-pinned-assets';
 import { Asset, DataAsset, Operation, Venue } from '@covia/covia-sdk';
 
 // Mock dependencies
@@ -207,4 +209,35 @@ describe('AssetCard with operation', () => {
       expect(screen.queryByTestId('asset-keywords')).not.toBeInTheDocument();
     });
 
+});
+
+describe('AssetCard pin toggle', () => {
+  beforeEach(() => {
+    act(() => usePinnedAssets.setState({ pinned: [] }));
+  });
+
+  it('does not render a pin toggle when no venue is resolvable', () => {
+    render(<AssetCard asset={mockAsset} type="assets" compact={false} />);
+    expect(screen.queryByTestId('asset-pin-toggle')).not.toBeInTheDocument();
+  });
+
+  it('does not render a pin toggle for operation cards', () => {
+    render(<AssetCard asset={mockOperation} type="operations" compact={false} venue={mockVenue} />);
+    expect(screen.queryByTestId('asset-pin-toggle')).not.toBeInTheDocument();
+  });
+
+  it('pins and unpins an asset via the card toggle, without navigating', async () => {
+    const user = userEvent.setup();
+    render(<AssetCard asset={mockAsset} type="assets" compact={false} venue={mockVenue} />);
+
+    const toggle = screen.getByTestId('asset-pin-toggle');
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(toggle);
+    expect(usePinnedAssets.getState().isPinned(mockVenue.venueId, mockAsset.id)).toBe(true);
+    expect(screen.getByTestId('asset-pin-toggle')).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(screen.getByTestId('asset-pin-toggle'));
+    expect(usePinnedAssets.getState().isPinned(mockVenue.venueId, mockAsset.id)).toBe(false);
+  });
 });

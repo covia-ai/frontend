@@ -19,14 +19,34 @@ function makeVenue(venueId: string, agentIds: string[], configs: Record<string, 
   return {
     venueId,
     agents: {
-      list: jest.fn().mockResolvedValue({
-        agents: agentIds.map((agentId) => ({ agentId, status: "SLEEPING", tasks: 0 })),
-      }),
+      // Mutated in place by the fork mock below, so this must re-read
+      // agentIds at call time rather than snapshot it once via
+      // mockResolvedValue.
+      list: jest.fn().mockImplementation(() =>
+        Promise.resolve({
+          agents: agentIds.map((agentId) => ({ agentId, status: "SLEEPING", tasks: 0 })),
+        }),
+      ),
       info: jest.fn().mockImplementation((agentId: string) =>
         agentIds.includes(agentId)
           ? Promise.resolve({ agentId, status: "SLEEPING", config: configs[agentId] ?? {} })
           : Promise.reject(new NotFoundError(`Agent not found: ${agentId}`)),
       ),
+      fork: jest.fn().mockImplementation((input: { sourceId: string; agentId: string; config?: unknown }) => {
+        agentIds.push(input.agentId);
+        configs[input.agentId] = input.config ?? {};
+        return Promise.resolve({
+          agentId: input.agentId,
+          status: "SLEEPING",
+          created: true,
+          forkedFrom: input.sourceId,
+        });
+      }),
+      listSessions: jest.fn().mockResolvedValue({ items: [], total: 0, offset: 0, limit: 50 }),
+      // Empty by default — the live-events hook sees an immediately-closed
+      // stream, stays non-live, and the existing poll-based tests below are
+      // unaffected. Individual tests override with a scripted generator.
+      events: jest.fn().mockImplementation(async function* () {}),
     },
     agent: jest.fn().mockImplementation(() => ({
       chatSession: jest.fn(),
@@ -36,7 +56,6 @@ function makeVenue(venueId: string, agentIds: string[], configs: Record<string, 
     })),
     workspace: {
       read: jest.fn().mockResolvedValue({ exists: false, value: null }),
-      slice: jest.fn().mockResolvedValue({ values: [] }),
     },
   };
 }
@@ -125,5 +144,136 @@ describe("useAgentExplorer — updateAgentConfig re-fetch-before-save guard (#16
     expect(outcome).toEqual({ status: "saved" });
     expect(agentHandle.update).toHaveBeenCalledWith({ config: { systemPrompt: "my edit" } });
     expect(notifyWarning).not.toHaveBeenCalled();
+  });
+});
+
+describe("useAgentExplorer — forkAgent (#251)", () => {
+  beforeEach(() => {
+    (notifyError as jest.Mock).mockReset();
+  });
+
+  it("forks the selected agent, selects the new one, and refreshes the list", async () => {
+    mockVenue = makeVenue("venue-a", ["agent-a"]);
+    const { result } = renderHook(() => useAgentExplorer("agent-a"));
+    await waitFor(() => expect(result.current.selectedAgentDetail).not.toBeNull());
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await result.current.forkAgent({
+        agentId: "agent-a-fork",
+        includeTimeline: true,
+      });
+    });
+
+    expect(outcome).toEqual({ status: "created", agentId: "agent-a-fork" });
+    expect(mockVenue.agents.fork).toHaveBeenCalledWith({
+      sourceId: "agent-a",
+      agentId: "agent-a-fork",
+      includeTimeline: true,
+    });
+    await waitFor(() => expect(result.current.selectedAgentId).toBe("agent-a-fork"));
+    await waitFor(() =>
+      expect(result.current.agentList.map((a) => a.agentId)).toContain("agent-a-fork"),
+    );
+  });
+
+  it("includes a non-empty config override in the fork request", async () => {
+    mockVenue = makeVenue("venue-a", ["agent-a"]);
+    const { result } = renderHook(() => useAgentExplorer("agent-a"));
+    await waitFor(() => expect(result.current.selectedAgentDetail).not.toBeNull());
+
+    await act(async () => {
+      await result.current.forkAgent({
+        agentId: "agent-a-fork",
+        includeTimeline: false,
+        config: { systemPrompt: "override" },
+      });
+    });
+
+    expect(mockVenue.agents.fork).toHaveBeenCalledWith({
+      sourceId: "agent-a",
+      agentId: "agent-a-fork",
+      includeTimeline: false,
+      config: { systemPrompt: "override" },
+    });
+  });
+
+  it("omits an empty config override rather than sending {}", async () => {
+    mockVenue = makeVenue("venue-a", ["agent-a"]);
+    const { result } = renderHook(() => useAgentExplorer("agent-a"));
+    await waitFor(() => expect(result.current.selectedAgentDetail).not.toBeNull());
+
+    await act(async () => {
+      await result.current.forkAgent({
+        agentId: "agent-a-fork",
+        includeTimeline: false,
+        config: {},
+      });
+    });
+
+    expect(mockVenue.agents.fork).toHaveBeenCalledWith({
+      sourceId: "agent-a",
+      agentId: "agent-a-fork",
+      includeTimeline: false,
+    });
+  });
+
+  it("surfaces an error toast and leaves selection unchanged when the venue rejects the fork", async () => {
+    mockVenue = makeVenue("venue-a", ["agent-a"]);
+    mockVenue.agents.fork.mockRejectedValueOnce(new Error("Target agent already exists"));
+    const { result } = renderHook(() => useAgentExplorer("agent-a"));
+    await waitFor(() => expect(result.current.selectedAgentDetail).not.toBeNull());
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await result.current.forkAgent({
+        agentId: "agent-a",
+        includeTimeline: false,
+      });
+    });
+
+    expect(outcome).toEqual({ status: "failed" });
+    expect(notifyError).toHaveBeenCalled();
+    expect(result.current.selectedAgentId).toBe("agent-a");
+  });
+});
+
+describe("useAgentExplorer — live event stream (frontend#242)", () => {
+  it("refreshes agent detail immediately on a live status frame, without waiting for the poll", async () => {
+    mockVenue = makeVenue("venue-a", ["agent-a"]);
+    let infoCalls = 0;
+    mockVenue.agents.info.mockImplementation((agentId: string) => {
+      infoCalls += 1;
+      return Promise.resolve({
+        agentId,
+        status: infoCalls === 1 ? "SLEEPING" : "RUNNING",
+        config: {},
+      });
+    });
+
+    let emitSecondFrame!: () => void;
+    const secondFrameGate = new Promise<void>((resolve) => {
+      emitSecondFrame = resolve;
+    });
+    // The first frame is always the venue's initial status snapshot and
+    // must NOT itself trigger a refetch (see use-agent-live-events.ts) — a
+    // second, later frame is what should drive the live refresh.
+    mockVenue.agents.events = jest.fn().mockImplementation(async function* () {
+      yield { type: "status", status: "SLEEPING", seq: 0, ts: 0, agentId: "agent-a", address: "x" };
+      await secondFrameGate;
+      yield { type: "status", status: "RUNNING", seq: 1, ts: 1, agentId: "agent-a", address: "x" };
+    });
+
+    const { result } = renderHook(() => useAgentExplorer("agent-a"));
+    await waitFor(() => expect(result.current.selectedAgentDetail?.status).toBe("SLEEPING"));
+    expect(infoCalls).toBe(1);
+
+    await act(async () => {
+      emitSecondFrame();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(result.current.selectedAgentDetail?.status).toBe("RUNNING"));
   });
 });

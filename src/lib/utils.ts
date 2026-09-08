@@ -21,11 +21,14 @@ export function getLicenseUrl(licenseName : string) {
   if(licenseName.trim() ==  "CC BY 4.0")
     return "https://creativecommons.org/licenses/by/4.0/"
 }
-export function getContentTypeForFile(filename: string) {
- 
+export function getContentTypeForFile(filename: string): [string, string] {
+
     const mimeType =  mime.contentType(filename) || "";
     const contentType = mimeType.split(';')[0];
-    const charset  = mimeType.split(';')[1]?.split("=")[1];
+    // Binary types (pdf, images, zip, …) have no charset segment — fields
+    // like AssetMetadataFields.encoding are always-string, so this must
+    // never come back as undefined.
+    const charset  = mimeType.split(';')[1]?.split("=")[1] ?? "";
     return [contentType,charset];
 }
 export function getExecutionTime(date1:string, date2:string) {
@@ -364,6 +367,15 @@ export const gtmEvent = {
 
   resumeAgentFailed: (agentId: string, reason?: string) => {
     track('resume_agent_failed', { agent_id: agentId, reason })
+  },
+
+  forkAgent: (sourceId: string, agentId: string) => {
+    track('fork_agent', { source_id: sourceId, agent_id: agentId })
+    feature('fork_agent')
+  },
+
+  forkAgentFailed: (sourceId: string, reason?: string) => {
+    track('fork_agent_failed', { source_id: sourceId, reason })
   },
 
   sendAgentMessage: (agentId: string) => {

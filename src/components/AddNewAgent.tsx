@@ -32,6 +32,7 @@ import {
 } from "@/components/agent-config/AgentConfigEditor";
 import { ToolSkillPicker } from "@/components/agent-config/ToolSkillPicker";
 import { AgentCapsEditor } from "@/components/agent-config/AgentCapsEditor";
+import { AgentConnectionsPicker } from "@/components/agent-config/AgentConnectionsPicker";
 import { withToolToggled, type CatalogOp } from "@/lib/operations-catalog";
 import { withSkillToggled, type SkillSummary } from "@/lib/skills";
 import { cleanCaps, emptyCap, isAgentCap, type AgentCap } from "@/lib/agent-caps";
@@ -451,6 +452,12 @@ export function AddNewAgent({
                 setCaps(next);
                 setTouchedCaps(true);
               }}
+            />
+
+            <AgentConnectionsPicker
+              venue={venue}
+              attachedSkills={stagedSkills}
+              onToggleSkill={handleToggleSkill}
             />
 
             <AgentRuntimeFields
