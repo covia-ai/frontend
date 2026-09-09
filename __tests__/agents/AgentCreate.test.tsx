@@ -10,9 +10,13 @@ const mockLogout = jest.fn();
 const mockPush = jest.fn();
 const mockAuth = { type: "bearer", did: "did:key:test", token: "token" };
 let mockAccessState: { state: string; detail?: string } = { state: "accepted" };
+// The adapter registry backing the Port capability check (#350). Defaults to a
+// venue that publishes agent:from-skills; tests override per case.
+const mockAdapterList = jest.fn();
 const mockVenue = {
   venueId: "venue-1",
   baseUrl: "https://venue.example",
+  adapters: { list: mockAdapterList },
   agents: {
     list: mockList,
     info: mockInfo,
@@ -63,6 +67,9 @@ describe("AgentCreate", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockAccessState = { state: "accepted" };
+    mockAdapterList.mockResolvedValue([
+      { name: "agent", operations: ["v/ops/agent/create", "v/ops/agent/from-skills"] },
+    ]);
     mockList.mockResolvedValue({
       agents: [{ agentId: "writer", status: "SLEEPING" }],
     });
@@ -122,5 +129,39 @@ describe("AgentCreate", () => {
     expect(
       screen.getByPlaceholderText("Describe the agent's role, behaviour, and boundaries."),
     ).toHaveValue("You are a careful writer.");
+  });
+
+  describe("Port capability detection (#350)", () => {
+    it("offers Port when the venue publishes agent:from-skills", async () => {
+      render(<AgentCreate />);
+      await waitFor(() => expect(mockAdapterList).toHaveBeenCalled());
+      expect(await screen.findByTestId("port-agent-trigger")).toBeEnabled();
+      expect(screen.queryByTestId("port-unsupported-notice")).not.toBeInTheDocument();
+    });
+
+    it("disables Port and names the missing operation when the venue lacks it", async () => {
+      mockAdapterList.mockResolvedValue([
+        { name: "agent", operations: ["v/ops/agent/create"] },
+      ]);
+      render(<AgentCreate />);
+
+      await waitFor(() =>
+        expect(screen.getByTestId("port-agent-trigger")).toBeDisabled(),
+      );
+      expect(screen.getByTestId("port-unsupported-notice")).toHaveTextContent(
+        "v/ops/agent/from-skills",
+      );
+    });
+
+    it("keeps Port offered when the adapter registry can't be read", async () => {
+      // An unreadable registry is not evidence of absence — a venue that can
+      // port must not lose the control because one job-free read failed.
+      mockAdapterList.mockRejectedValue(new Error("values API unavailable"));
+      render(<AgentCreate />);
+
+      await waitFor(() => expect(mockAdapterList).toHaveBeenCalled());
+      expect(await screen.findByTestId("port-agent-trigger")).toBeEnabled();
+      expect(screen.queryByTestId("port-unsupported-notice")).not.toBeInTheDocument();
+    });
   });
 });

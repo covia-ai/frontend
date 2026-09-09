@@ -6,9 +6,10 @@ import { Cable, Loader2, Lock, MessageSquareText, Plug, Unplug, Wand2 } from "lu
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ConnectAgentDialog } from "@/components/ConnectAgentDialog";
-import { PortAgentDialog } from "@/components/PortAgentDialog";
+import { FROM_SKILLS_OP, PortAgentDialog } from "@/components/PortAgentDialog";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useVenueHasOperation } from "@/hooks/use-venue-operation";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import {
   A2A_AGENTS_DIR,
@@ -31,6 +32,8 @@ export function ConnectedAgentsList() {
   const [removing, setRemoving] = useState<string | null>(null);
   // Seeds the Port dialog when converting a connected agent to native.
   const [convertSeed, setConvertSeed] = useState<{ name: string; prompt: string } | null>(null);
+  // Convert ports the agent, so it needs the same operation Port does (#350).
+  const canConvert = useVenueHasOperation(FROM_SKILLS_OP) !== false;
 
   const load = useCallback(async () => {
     if (!venue) return;
@@ -118,6 +121,16 @@ export function ConnectedAgentsList() {
     <div className="mx-auto w-full max-w-4xl px-4 py-6">
       {heading}
 
+      {/* Said once for the list rather than per row: a hover-only tooltip on a
+          disabled button is unreachable by keyboard and easy to miss (#350). */}
+      {!canConvert && agents.length > 0 && (
+        <p className="mb-4 text-sm text-amber-500" data-testid="convert-unsupported-notice">
+          Convert to native is unavailable — this venue doesn&apos;t publish{" "}
+          <span className="font-mono text-xs">{FROM_SKILLS_OP}</span>. Switch to a venue
+          running 0.9.9 or later.
+        </p>
+      )}
+
       {loading ? (
         <div className="flex min-h-40 items-center justify-center gap-2 text-muted-foreground" role="status">
           <Loader2 className="animate-spin text-primary" size={22} /> Loading connected agents…
@@ -166,6 +179,7 @@ export function ConnectedAgentsList() {
                     variant="ghost"
                     size="sm"
                     className="gap-2"
+                    disabled={!canConvert}
                     onClick={() => setConvertSeed({ name: agent.name, prompt: convertPrompt(agent) })}
                     data-testid={`connected-convert-${agent.name}`}
                   >

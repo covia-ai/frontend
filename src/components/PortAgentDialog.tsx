@@ -40,6 +40,9 @@ import {
   resolvedModelId,
 } from "@/components/agent-config/AgentConfigEditor";
 
+/** The venue operation Port depends on; absent on venues older than 0.9.9. */
+export const FROM_SKILLS_OP = "v/ops/agent/from-skills";
+
 const MIGRATE_DOCS_URL = "https://docs.covia.ai/docs/user-guide/agents/migrate-an-agent";
 const SKILLS_DOCS_URL = "https://docs.covia.ai/docs/user-guide/agents/tools-and-context";
 const COMMUNITY_URL = "https://discord.gg/fywdrKd8QT";
@@ -235,7 +238,7 @@ export function PortAgentDialog({
         await venue.secrets.set(provider.secretKey, apiKeyInput.trim());
       }
 
-      const result = await venue.operations.run<FromSkillsResult>("v/ops/agent/from-skills", {
+      const result = await venue.operations.run<FromSkillsResult>(FROM_SKILLS_OP, {
         agentId: resolvedAgentId,
         ...(systemPrompt.trim() && { systemPrompt: systemPrompt.trim() }),
         skills: skills.map((s) => ({ text: s.text })),
