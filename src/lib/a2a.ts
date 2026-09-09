@@ -1,13 +1,17 @@
 /**
  * BYOA (Bring Your Own Agent) helpers — the client side of the venue's A2A
- * adapter. `a2a:import-agent` registers a remote A2A endpoint (or another Covia
- * agent) as an immutable asset with a mutable `w/a2a/agents/<name>` binding;
- * `a2a:send` tasks it, the local Job mirroring the remote A2A Task. The SDK has
- * no typed manager for these yet, so callers invoke them by operation path.
+ * adapter. Imports register a remote A2A endpoint (or another Covia agent) as an
+ * immutable asset with a mutable `w/a2a/agents/<name>` binding; sends task it,
+ * the local Job mirroring the remote A2A Task. These go through the SDK's typed
+ * `venue.a2a` manager (`importAgent` / `send`, covia-sdk#43); the helpers here
+ * cover the display/derivation the manager doesn't.
  */
 
-export const IMPORT_AGENT_OP = "v/ops/a2a/import-agent";
-export const A2A_SEND_OP = "v/ops/a2a/send";
+import type { A2AMessage, A2APart, A2ATask } from "@covia/covia-sdk";
+
+// Re-export the SDK's A2A types so callers import them from one place.
+export type { A2ATask, A2AMessage, A2APart } from "@covia/covia-sdk";
+export type { A2AImportAgentResult } from "@covia/covia-sdk";
 
 /** The workspace directory of connected-agent bindings, one per local alias. */
 export const A2A_AGENTS_DIR = "w/a2a/agents";
@@ -26,7 +30,7 @@ export interface ConnectedAgent {
   coviaAgent?: string;
 }
 
-/** Read the display fields out of a binding value (see `a2a:import-agent`). */
+/** Read the display fields out of a binding value (see `venue.a2a.importAgent`). */
 export function connectedAgentFromBinding(name: string, value: unknown): ConnectedAgent {
   const a2a = (value as { a2a?: Record<string, unknown> } | undefined)?.a2a;
   const card = a2a?.card as { name?: string; description?: string } | undefined;
@@ -52,45 +56,10 @@ export const slugifyAgentName = (name: string): string =>
     .replace(/^-|-$/g, "")
     .slice(0, 64);
 
-/** Output of `a2a:import-agent`: the binding path plus the immutable identity. */
-export interface ImportAgentResult {
-  /** Mutable workspace binding, e.g. `w/a2a/agents/venue-b-bot`. */
-  path?: string;
-  /** Immutable agent-asset hash. */
-  a2aAgentAsset?: string;
-  /** Whether the binding was written. */
-  stored?: boolean;
-  /** Full immutable DID URL of the agent asset. */
-  id?: string;
-}
-
-/** A part of an A2A message/artifact, as the venue serves it (v1 wire format). */
-interface A2APart {
-  type?: string;
-  kind?: string;
-  text?: string;
-  data?: unknown;
-}
-
-interface A2AMessageLike {
-  role?: string;
-  parts?: A2APart[];
-}
-
-/** The remote A2A Task snapshot returned by `a2a:send`. */
-export interface A2ATask {
-  id?: string;
-  contextId?: string;
-  status?: { state?: string; timestamp?: string };
-  artifacts?: { artifactId?: string; parts?: A2APart[] }[];
-  history?: A2AMessageLike[];
-  [key: string]: unknown;
-}
-
 /** Pull plain text out of one part, following an echoed `data.message` if present. */
 function textFromPart(part: A2APart): string {
   if (typeof part?.text === "string" && part.text) return part.text;
-  const data = part?.data as { message?: A2AMessageLike } | undefined;
+  const data = part?.data as { message?: A2AMessage } | undefined;
   const nested = data?.message?.parts;
   if (Array.isArray(nested)) {
     return nested.map(textFromPart).filter(Boolean).join("\n");

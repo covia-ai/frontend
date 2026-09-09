@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { jobFailure, notifyError, notifyWarning } from "@/lib/notify";
-import { A2A_SEND_OP, A2ATask, jobStatusLabel, taskReplyText } from "@/lib/a2a";
+import { A2ATask, jobStatusLabel, taskReplyText } from "@/lib/a2a";
 
 type MessageTone = "normal" | "input" | "auth" | "error";
 
@@ -132,9 +132,7 @@ export function ConnectedAgentTalk({ agentName }: ConnectedAgentTalkProps) {
         await paused.sendMessage(message);
         job = paused;
       } else {
-        job = await venue.operations.invoke(A2A_SEND_OP, {
-          agent: agentPath,
-          message,
+        job = await venue.a2a.send(agentPath, message, {
           ...(taskId.current && { taskId: taskId.current }),
         });
       }
