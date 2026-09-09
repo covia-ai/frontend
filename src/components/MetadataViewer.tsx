@@ -285,10 +285,8 @@ export const MetadataViewer = ({ asset, venue, isAuthenticated = false, bare = f
   const hasKindFields = hasOperationFields || hasAgentTemplateFields;
   const hasLeftContent = hasKindFields || hasContentItems || genericFields !== null;
 
-  const body = (
-              <div className="text-sm p-2 items-center justify-between min-w-lg w-full">
-                <div className="flex flex-col md:flex-row lg:flex-row">
-                    <div className="flex flex-col flex-3 md:border-r-2 lg:border-r-2 border-border px-2 " data-testid="asset-fields">
+  const leftFields = (
+                    <div className="flex min-w-0 flex-col" data-testid="asset-fields">
                       {kind === "reference" && !hasLeftContent && (
                         <div className="my-2 text-muted-foreground" data-testid="reference-empty-note">
                           This asset has no content or schema of its own — it&apos;s a bare reference.
@@ -442,9 +440,12 @@ export const MetadataViewer = ({ asset, venue, isAuthenticated = false, bare = f
                         </div>
                       )}
                     </div>
-                  <div className="flex flex-col flex-2 px-2 ">
+  );
+
+  const rightActions = (
+                    <>
                     {contentURL && (
-                      <div className="flex flex-row flex-wrap items-center gap-2 my-2">
+                      <div className="flex flex-row flex-wrap items-center gap-2">
                         <Button
                           variant="outline"
                           size="sm"
@@ -462,7 +463,7 @@ export const MetadataViewer = ({ asset, venue, isAuthenticated = false, bare = f
                         )}
                       </div>
                     )}
-                    <div className="flex flex-row items-center gap-2 mt-1">
+                    <div className="flex flex-row flex-wrap items-center gap-2">
                       <Dialog>
                         <DialogTrigger asChild>
                           <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground">
@@ -481,18 +482,33 @@ export const MetadataViewer = ({ asset, venue, isAuthenticated = false, bare = f
                       </Dialog>
                       <CopyAssetDialog asset={asset} venue={venue} isAuthenticated={isAuthenticated} />
                     </div>
-                  </div>
-                </div>
-              </div>
+                    </>
   );
 
-  if (bare) return <div className="w-full">{body}</div>;
+  // Bare (e.g. the operation detail "Details" tab): the caller already owns the
+  // disclosure, so show everything directly — actions as a top-right bar, then
+  // the fields full-width. No accordion, and no cramped side column to overflow.
+  if (bare) {
+    return (
+      <div className="w-full text-sm">
+        <div className="mb-3 flex flex-wrap items-center justify-end gap-2">{rightActions}</div>
+        {leftFields}
+      </div>
+    );
+  }
 
   return (
     <Accordion type="single" collapsible className=" w-full " defaultValue={defaultValue}>
       <AccordionItem value="metadata">
         <AccordionTrigger className="py-1 px-2 bg-card rounded-none">Asset Metadata</AccordionTrigger>
-        <AccordionContent>{body}</AccordionContent>
+        <AccordionContent>
+          <div className="text-sm p-2 w-full">
+            <div className="flex flex-col gap-3 md:flex-row">
+              <div className="min-w-0 flex-3 px-2 md:border-r-2 border-border">{leftFields}</div>
+              <div className="flex min-w-0 flex-2 flex-col gap-2 px-2">{rightActions}</div>
+            </div>
+          </div>
+        </AccordionContent>
       </AccordionItem>
     </Accordion>
   );

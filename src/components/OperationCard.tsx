@@ -6,7 +6,7 @@ import { Asset, Venue } from "@covia/covia-sdk";
 import { useRouter } from "next/navigation";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { AssetInfoSheet } from "./AssetInfoSheet";
-import { Play, Workflow } from "lucide-react";
+import { ArrowUpRight, Workflow } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { adapterLook, adapterOfMetadata, OperationSignature } from "./operation-display";
 
@@ -75,8 +75,8 @@ export function OperationCard({ asset, venue: venueProp, scoped = true }: Operat
 
         <OperationSignature operation={op} max={4} />
 
-        {(adapter || stepCount > 0 || visibleKeywords.length > 0) && (
-          <div data-testid="asset-tags" className="flex flex-wrap items-center gap-1">
+        <div className="mt-auto flex items-center gap-2 pt-1">
+          <div data-testid="asset-tags" className="flex flex-1 flex-wrap items-center gap-1">
             {adapter && (
               <Badge
                 variant="outline"
@@ -120,27 +120,13 @@ export function OperationCard({ asset, venue: venueProp, scoped = true }: Operat
               </div>
             )}
           </div>
-        )}
-
-        {/* Footer: the operation's call surfaces + the primary action. */}
-        <div className="mt-auto flex items-center gap-2 border-t pt-2.5">
-          <div className="flex items-center gap-1" title="Callable over REST, MCP and the native SDK">
-            {["REST", "MCP", "SDK"].map((c) => (
-              <span
-                key={c}
-                className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground"
-              >
-                {c}
-              </span>
-            ))}
-          </div>
           <button
             type="button"
-            data-testid="operation-run"
+            data-testid="operation-open"
             onClick={handleClick}
-            className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-[filter] hover:brightness-110"
+            className="inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-accent hover:text-foreground"
           >
-            <Play size={13} strokeWidth={2.2} /> Run
+            Open <ArrowUpRight size={13} />
           </button>
         </div>
       </div>
