@@ -7,8 +7,9 @@ import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "./admin-panel/TopBar";
 import { Spinner } from '@/components/ui/shadcn-io/spinner';
-import { AssetCard } from "./AssetCard";
+import { OperationCard } from "./OperationCard";
 import { PaginationHeader } from "./PaginationHeader";
+import { cn } from "@/lib/utils";
 import { PlayCircle, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { listCatalogOperations } from "@/lib/operations-catalog";
@@ -104,6 +105,26 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
     ...keywordOptions.map((k) => ({ value: k, label: k, groupTag: "Keyword" })),
   ], [adapterOptions, keywordOptions]);
 
+  // Venue-wide, catalog-derived counts — a header that frames the whole set
+  // instead of the page-scoped "showing x of y". Composite = ops built from
+  // steps; Yours = the signed-in user's own w/ops.
+  const stats = useMemo(() => ({
+    total: assetsMetadata.length,
+    adapters: adapterOptions.length,
+    composite: assetsMetadata.filter((a) => {
+      const steps = (a.metadata?.operation as { steps?: unknown } | undefined)?.steps;
+      return Array.isArray(steps) && steps.length > 0;
+    }).length,
+    yours: assetsMetadata.filter((a) => (a.id ?? "").startsWith("w/ops")).length,
+  }), [assetsMetadata, adapterOptions]);
+
+  const statTiles = [
+    { label: "Operations", value: stats.total },
+    { label: "Adapters", value: stats.adapters },
+    { label: "Composite", value: stats.composite },
+    ...(isAuthenticated ? [{ label: "Yours", value: stats.yours }] : []),
+  ];
+
   const filteredAssets = useMemo(() => {
     const term = searchInput.trim().toLowerCase();
     return assetsMetadata.filter(a => {
@@ -113,7 +134,9 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
         if (!selectedTags.some(tag => tag === adapter || keywords.includes(tag))) return false;
       }
       if (!term) return true;
-      return (a.metadata?.name ?? "").toLowerCase().includes(term) || (a.id ?? "").toLowerCase().includes(term);
+      return (a.metadata?.name ?? "").toLowerCase().includes(term)
+        || (a.id ?? "").toLowerCase().includes(term)
+        || (a.metadata?.description ?? "").toLowerCase().includes(term);
     });
   }, [assetsMetadata, selectedTags, searchInput]);
 
@@ -147,6 +170,24 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
     <ContentLayout>
       <TopBar venueId={venueId} venueName={venueObj?.metadata.name}/>
       <div className="flex flex-col items-center justify-center">
+        {!isLoading && assetsMetadata.length > 0 && (
+          <div
+            data-testid="operations-stats"
+            className={cn(
+              "mt-4 grid w-full grid-cols-2 gap-3",
+              statTiles.length === 4 ? "sm:grid-cols-4" : "sm:grid-cols-3",
+            )}
+          >
+            {statTiles.map((t) => (
+              <div key={t.label} className="rounded-md border bg-card px-4 py-2.5">
+                <div className="text-xs font-medium text-muted-foreground">{t.label}</div>
+                <div className="mt-0.5 text-2xl font-semibold tabular-nums text-foreground">
+                  {t.value}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         <ListToolbar
           className="mt-4"
           actions={
@@ -181,7 +222,7 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
           <div ref={gridRef} className={CARD_GRID_CLASS}>
             {
             pageItems.map((asset) => (
-              <AssetCard key={asset.id} asset={asset} type="operations" compact={true} venue={venue ?? undefined} scoped={!!venueId}/>
+              <OperationCard key={asset.id} asset={asset} venue={venue ?? undefined} scoped={!!venueId}/>
             ))}
           </div>
         )}
