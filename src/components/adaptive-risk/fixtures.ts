@@ -271,8 +271,22 @@ export function agentConfigs(addresses: AdaptiveRiskAddresses) {
           { with: "v/ops/covia/read", can: "invoke" },
           { with: "v/ops/covia/list", can: "invoke" },
           { with: "v/ops/covia/write", can: "invoke" },
+          // The limit gate is an orchestrator, and resolving a step's operation
+          // asset needs `asset/read` on that op — `invoke` does not imply it.
+          // Without this the gate dies at step 0 (v/ops/covia/read) before the
+          // policy check ever runs, for every applicant, so the demo can show
+          // neither the clean approval nor the policy refusal. Direct calls are
+          // unaffected, which is why rk-sentinel's beat 1 works with `invoke`
+          // alone. Whether that asymmetry is correct is a venue question,
+          // tracked separately; this is the grant the current runtime requires.
+          { with: "v/ops/covia/read", can: "asset/read" },
           { with: addresses.issueLimit, can: "invoke", nb: { gate: addresses.limitGate } },
           { with: addresses.policyAsset ? addresses.policyAsset : "a/", can: "invoke" },
+          // Step 1 of the gate needs the same treatment as step 0: resolving the
+          // policy operation asset requires `asset/read`, over and above the
+          // `invoke` above. The requirement is per orchestration step, not a
+          // one-off, so every op a gate orchestrates needs both grants.
+          { with: addresses.policyAsset ? addresses.policyAsset : "a/", can: "asset/read" },
         ],
       },
     },
