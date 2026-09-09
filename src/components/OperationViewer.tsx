@@ -200,7 +200,7 @@ export function OperationViewer({
                 )}
               </TabsContent>
               <TabsContent value="details">
-                <MetadataViewer asset={asset} venue={venue} isAuthenticated={isAuthenticated} />
+                <MetadataViewer asset={asset} venue={venue} isAuthenticated={isAuthenticated} bare />
               </TabsContent>
             </Tabs>
           </>

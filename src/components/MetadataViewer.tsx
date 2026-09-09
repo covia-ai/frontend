@@ -40,6 +40,11 @@ interface MetadataViewerProps {
   asset: Asset;
   venue?: Venue;
   isAuthenticated?: boolean;
+  // Render the metadata directly, without the collapsible "Asset Metadata"
+  // accordion. Used when the caller already owns the disclosure — e.g. the
+  // operation detail page's "Details" tab, where choosing the tab is the
+  // request and a second expand-click would be redundant.
+  bare?: boolean;
 }
 
 interface MetadataFieldConfig {
@@ -186,7 +191,7 @@ const renderSchemaProperties = (
   );
 };
 
-export const MetadataViewer = ({ asset, venue, isAuthenticated = false }: MetadataViewerProps) => {
+export const MetadataViewer = ({ asset, venue, isAuthenticated = false, bare = false }: MetadataViewerProps) => {
 
   // Skills and other inline assets carry their body in `content.inline`, with
   // no separate blob — the content endpoint 500s for them. Render the inline
@@ -280,16 +285,7 @@ export const MetadataViewer = ({ asset, venue, isAuthenticated = false }: Metada
   const hasKindFields = hasOperationFields || hasAgentTemplateFields;
   const hasLeftContent = hasKindFields || hasContentItems || genericFields !== null;
 
-  return (
-     <Accordion
-      type="single"
-      collapsible
-      className=" w-full "
-      defaultValue={defaultValue}
-    >
-       <AccordionItem value="metadata">
-         <AccordionTrigger className="py-1 px-2 bg-card rounded-none">Asset Metadata</AccordionTrigger>
-         <AccordionContent>
+  const body = (
               <div className="text-sm p-2 items-center justify-between min-w-lg w-full">
                 <div className="flex flex-col md:flex-row lg:flex-row">
                     <div className="flex flex-col flex-3 md:border-r-2 lg:border-r-2 border-border px-2 " data-testid="asset-fields">
@@ -488,9 +484,16 @@ export const MetadataViewer = ({ asset, venue, isAuthenticated = false }: Metada
                   </div>
                 </div>
               </div>
-         
-         </AccordionContent>
-    </AccordionItem>
+  );
+
+  if (bare) return <div className="w-full">{body}</div>;
+
+  return (
+    <Accordion type="single" collapsible className=" w-full " defaultValue={defaultValue}>
+      <AccordionItem value="metadata">
+        <AccordionTrigger className="py-1 px-2 bg-card rounded-none">Asset Metadata</AccordionTrigger>
+        <AccordionContent>{body}</AccordionContent>
+      </AccordionItem>
     </Accordion>
   );
 };
