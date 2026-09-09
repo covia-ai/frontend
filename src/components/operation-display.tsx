@@ -5,6 +5,7 @@ import {
   Bot,
   Boxes,
   Braces,
+  Brain,
   Database,
   FileText,
   FlaskConical,
@@ -12,7 +13,6 @@ import {
   KeyRound,
   type LucideIcon,
   Puzzle,
-  Sparkles,
   User,
 } from "lucide-react";
 
@@ -31,7 +31,7 @@ export function adapterLook(adapter: string | null): { Icon: LucideIcon; tile: s
     case "langchain":
     case "openai":
     case "llm":
-      return { Icon: Sparkles, tile: "bg-primary/15 text-primary" };
+      return { Icon: Brain, tile: "bg-primary/15 text-primary" };
     case "a2a":
     case "agent":
       return { Icon: Bot, tile: "bg-primary/15 text-primary" };
