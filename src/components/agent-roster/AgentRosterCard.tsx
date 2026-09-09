@@ -11,7 +11,6 @@ import {
   Pause,
   Play,
   ShieldCheck,
-  Sparkles,
   Zap,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -26,16 +25,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { notifyError, notifySuccess } from "@/lib/notify";
-import { DEFAULT_AGENT_ID } from "@/config/agents";
-import {
-  agentDisplay,
-  agentMonogram,
-  agentTileClass,
-  humanizeAgentId,
-  shortRefLabel,
-} from "@/lib/agent-display";
+import { agentDisplay, humanizeAgentId, shortRefLabel } from "@/lib/agent-display";
 import type { RosterAgent } from "@/hooks/use-agent-roster";
 import { AgentLiveActivity } from "./AgentLiveActivity";
+import { AgentIdenticon } from "./AgentIdenticon";
 
 export function AgentRosterCard({
   agent,
@@ -51,7 +44,6 @@ export function AgentRosterCard({
 
   const { agentId } = agent;
   const name = humanizeAgentId(agentId);
-  const isAssistant = agentId === DEFAULT_AGENT_ID;
   const status = (agent.status ?? "").toUpperCase();
   const isRunning = status === "RUNNING";
   const isSuspended = status === "SUSPENDED";
@@ -87,13 +79,7 @@ export function AgentRosterCard({
     >
       {/* Identity */}
       <div className="flex items-center gap-3 border-b bg-card-banner px-4 py-3">
-        <span
-          className={`flex size-10 shrink-0 items-center justify-center rounded-lg text-sm font-semibold ${agentTileClass(
-            agentId,
-          )}`}
-        >
-          {isAssistant ? <Sparkles size={18} /> : agentMonogram(agentId)}
-        </span>
+        <AgentIdenticon agentId={agentId} />
         <button type="button" onClick={goOpen} className="min-w-0 flex-1 text-left">
           <div className="truncate text-base font-semibold leading-tight text-foreground">{name}</div>
           <div className="truncate font-mono text-[11px] text-muted-foreground">{agentId}</div>
