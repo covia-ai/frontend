@@ -268,7 +268,7 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
             <Spinner variant="ellipsis" className="text-primary" size={64}/>
           </div>
         ) : (
-          <div ref={gridRef} className={OPS_GRID_CLASS}>
+          <div ref={gridRef} className={cn(OPS_GRID_CLASS, "mt-5")}>
             {
             pageItems.map((asset) => (
               <OperationCard key={asset.id} asset={asset} venue={venue ?? undefined} scoped={!!venueId}/>
