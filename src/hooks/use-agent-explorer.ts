@@ -350,14 +350,14 @@ export function useAgentExplorer(initialAgentId?: string) {
       });
   };
 
-  const deleteAgent = () => {
+  const deleteAgent = (remove: boolean) => {
     if (!agentHandle || !selectedAgentId) return;
     const agentId = selectedAgentId;
     agentHandle
-      .delete()
+      .delete(remove)
       .then(() => {
-        gtmEvent.deleteAgent(agentId);
-        notifySuccess("Agent deleted");
+        gtmEvent.deleteAgent(agentId, remove);
+        notifySuccess(remove ? "Agent removed" : "Agent terminated");
         if (selectedAgentIdRef.current === agentId) {
           setSelectedAgentId(null);
           setSelectedAgentDetail(null);
@@ -369,10 +369,16 @@ export function useAgentExplorer(initialAgentId?: string) {
       .catch((error: unknown) => {
         gtmEvent.deleteAgentFailed(
           agentId,
+          remove,
           error instanceof Error ? error.message : undefined,
         );
         const { reason, jobHref } = jobFailure(error, venue?.venueId);
-        notifyError("Unable to delete agent", reason, undefined, jobHref);
+        notifyError(
+          remove ? "Unable to remove agent" : "Unable to terminate agent",
+          reason,
+          undefined,
+          jobHref,
+        );
       });
   };
 
