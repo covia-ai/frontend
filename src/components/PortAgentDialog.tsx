@@ -40,7 +40,8 @@ import {
   resolvedModelId,
 } from "@/components/agent-config/AgentConfigEditor";
 
-const MIGRATE_DOCS_URL = "https://docs.covia.ai/docs/user-guide/agents/migrate-an-agent";
+// TODO: point back to /agents/migrate-an-agent once covia-docs#60 publishes it.
+const MIGRATE_DOCS_URL = "https://docs.covia.ai/docs/user-guide/agents";
 const SKILLS_DOCS_URL = "https://docs.covia.ai/docs/user-guide/agents/tools-and-context";
 const COMMUNITY_URL = "https://discord.gg/fywdrKd8QT";
 
