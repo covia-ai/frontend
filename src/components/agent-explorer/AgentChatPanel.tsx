@@ -16,7 +16,6 @@ import {
   Plus,
   Send,
   Settings,
-  Trash2,
   X,
 } from "lucide-react";
 import { AgentStatus } from "@covia/covia-sdk";
@@ -49,6 +48,7 @@ import { AgentTimelineView } from "@/components/agent-explorer/AgentTimelineView
 import { AgentContextView } from "@/components/agent-explorer/AgentContextView";
 import { AgentRuntimeSummary } from "@/components/agent-explorer/AgentRuntimeSummary";
 import { ForkAgentDialog } from "@/components/agent-explorer/ForkAgentDialog";
+import { DeleteAgentDialog } from "@/components/agent-explorer/DeleteAgentDialog";
 import { SchedulePickerDialog } from "@/components/SchedulePickerDialog";
 import type { AgentExplorerController } from "@/hooks/use-agent-explorer";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
@@ -318,33 +318,10 @@ export function AgentChatPanel({
                   <Play size={14} className="mr-1" /> Resume
                 </Button>
               )}
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 size={14} className="mr-1" /> Delete
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      Delete agent &quot;{selectedAgentDetail.agentId}&quot;?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={deleteAgent}>
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <DeleteAgentDialog
+                agentId={selectedAgentDetail.agentId}
+                onDelete={deleteAgent}
+              />
             </div>
           </div>
 

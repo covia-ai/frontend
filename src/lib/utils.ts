@@ -345,12 +345,12 @@ export const gtmEvent = {
     track('create_agent_failed', { agent_id: agentId, reason })
   },
 
-  deleteAgent: (agentId: string) => {
-    track('delete_agent', { agent_id: agentId })
+  deleteAgent: (agentId: string, remove: boolean) => {
+    track('delete_agent', { agent_id: agentId, remove })
   },
 
-  deleteAgentFailed: (agentId: string, reason?: string) => {
-    track('delete_agent_failed', { agent_id: agentId, reason })
+  deleteAgentFailed: (agentId: string, remove: boolean, reason?: string) => {
+    track('delete_agent_failed', { agent_id: agentId, remove, reason })
   },
 
   suspendAgent: (agentId: string) => {
