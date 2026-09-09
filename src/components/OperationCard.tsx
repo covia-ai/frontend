@@ -8,15 +8,19 @@ import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { AssetInfoSheet } from "./AssetInfoSheet";
 import {
   ArrowRight,
+  ArrowUpRight,
   Bot,
+  Boxes,
   Braces,
   Database,
+  FileText,
   FlaskConical,
   Globe,
   KeyRound,
   type LucideIcon,
   Puzzle,
   Sparkles,
+  User,
   Workflow,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -50,8 +54,8 @@ function abbrevType(t: unknown): string {
 // The adapter's visual identity — icon + brand-token classes. Keyed on the
 // first segment of `operation.adapter` (e.g. "http", "langchain"). Unknown
 // adapters fall back to a neutral puzzle tile so a new adapter never renders
-// blank.
-function adapterLook(adapter: string | null): { Icon: LucideIcon; tile: string } {
+// blank. Exported so the catalogue's facet chips can share the iconography.
+export function adapterLook(adapter: string | null): { Icon: LucideIcon; tile: string } {
   switch (adapter) {
     case "http":
       return { Icon: Globe, tile: "bg-secondary/15 text-secondary" };
@@ -63,6 +67,7 @@ function adapterLook(adapter: string | null): { Icon: LucideIcon; tile: string }
     case "agent":
       return { Icon: Bot, tile: "bg-primary/15 text-primary" };
     case "secret":
+    case "vault":
       return { Icon: KeyRound, tile: "bg-accent/25 text-accent-foreground" };
     case "schema":
     case "json":
@@ -70,6 +75,12 @@ function adapterLook(adapter: string | null): { Icon: LucideIcon; tile: string }
     case "data":
     case "dlfs":
       return { Icon: Database, tile: "bg-chart-3/20 text-chart-3" };
+    case "file":
+      return { Icon: FileText, tile: "bg-chart-1/20 text-chart-1" };
+    case "mcp":
+      return { Icon: Boxes, tile: "bg-chart-5/20 text-chart-5" };
+    case "user":
+      return { Icon: User, tile: "bg-chart-1/20 text-chart-1" };
     case "test":
       return { Icon: FlaskConical, tile: "bg-muted text-muted-foreground" };
     default:
@@ -94,15 +105,15 @@ function fieldsFrom(schema: any): SchemaField[] {
 }
 
 function FieldChips({ fields, tone }: { fields: SchemaField[]; tone: "in" | "out" }) {
-  const shown = fields.slice(0, 3);
+  const shown = fields.slice(0, 4);
   const hidden = fields.length - shown.length;
   const bg = tone === "in" ? "bg-input-color" : "bg-output-color";
   return (
-    <div className="flex flex-wrap items-center gap-1">
+    <>
       {shown.map((f) => (
         <span
           key={f.key}
-          className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px] leading-none text-io-foreground ${bg}`}
+          className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[11px] leading-none text-io-foreground ${bg}`}
         >
           <span className="font-medium">{f.key}</span>
           {f.required && <span className="text-red-500">*</span>}
@@ -110,9 +121,9 @@ function FieldChips({ fields, tone }: { fields: SchemaField[]; tone: "in" | "out
         </span>
       ))}
       {hidden > 0 && (
-        <span className="font-mono text-[10px] text-muted-foreground">+{hidden}</span>
+        <span className="font-mono text-[11px] text-muted-foreground">+{hidden}</span>
       )}
-    </div>
+    </>
   );
 }
 
@@ -132,7 +143,7 @@ export function OperationCard({ asset, venue: venueProp, scoped = true }: Operat
   const stepCount = Array.isArray(op?.steps) ? op.steps.length : 0;
 
   const keywords: string[] = Array.isArray(asset.metadata?.keywords) ? asset.metadata.keywords : [];
-  const visibleKeywords = keywords.slice(0, 3);
+  const visibleKeywords = keywords.slice(0, 4);
   const hiddenKeywordCount = keywords.length - visibleKeywords.length;
 
   // Preserve AssetCard's exact navigation: unscoped lists route to the
@@ -147,11 +158,11 @@ export function OperationCard({ asset, venue: venueProp, scoped = true }: Operat
   };
 
   return (
-    <Card className="group flex h-full flex-col gap-0 overflow-hidden rounded-md border-2 border-muted bg-card p-0 shadow-md transition-colors hover:border-accent">
+    <Card className="group flex h-full flex-col gap-0 overflow-hidden rounded-lg border bg-card p-0 shadow-sm transition-all hover:border-accent hover:shadow-md">
       {/* Header: adapter identity + name + info sheet */}
-      <div className="flex flex-row items-center gap-2 border-b bg-card-banner p-2.5">
-        <span className={`flex size-8 shrink-0 items-center justify-center rounded-md ${tile}`}>
-          <Icon size={16} strokeWidth={1.9} />
+      <div className="flex flex-row items-center gap-3 border-b bg-card-banner px-4 py-3">
+        <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${tile}`}>
+          <Icon size={18} strokeWidth={1.9} />
         </span>
         <button
           type="button"
@@ -159,19 +170,20 @@ export function OperationCard({ asset, venue: venueProp, scoped = true }: Operat
           onClick={handleClick}
           className="min-w-0 flex-1 text-left"
         >
-          <div className="truncate text-sm font-semibold text-foreground">
+          <div className="truncate text-base font-semibold leading-tight text-foreground">
             {asset.metadata.name || "Unnamed Asset"}
           </div>
-          <div className="truncate font-mono text-[10px] text-muted-foreground">{asset.id}</div>
+          <div className="truncate font-mono text-[11px] text-muted-foreground">{asset.id}</div>
         </button>
         {venue && <AssetInfoSheet asset={asset} venueId={venue.venueId} />}
       </div>
 
       {/* Body: description, signature, tags */}
-      <div className="flex flex-1 cursor-pointer flex-col gap-2 p-2.5" onClick={handleClick}>
+      <div className="flex flex-1 flex-col gap-3 px-4 py-3">
         <div
           data-testid="asset-description"
-          className="line-clamp-2 text-xs text-card-foreground"
+          className="line-clamp-2 cursor-pointer text-sm text-card-foreground"
+          onClick={handleClick}
         >
           {asset.metadata.description || "No description available"}
         </div>
@@ -179,71 +191,83 @@ export function OperationCard({ asset, venue: venueProp, scoped = true }: Operat
         {hasSignature && (
           <div
             data-testid="operation-signature"
-            className="flex flex-wrap items-center gap-x-1.5 gap-y-1"
+            className="rounded-md border bg-muted/40 px-3 py-2"
           >
-            <span className="font-mono text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-              in
-            </span>
-            {inputFields.length > 0 ? (
-              <FieldChips fields={inputFields} tone="in" />
-            ) : (
-              <span className="font-mono text-[10px] text-muted-foreground">—</span>
-            )}
-            <ArrowRight size={12} className="text-primary" strokeWidth={2.4} />
-            <span className="font-mono text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-              out
-            </span>
-            {outputFields.length > 0 ? (
-              <FieldChips fields={outputFields} tone="out" />
-            ) : (
-              <span className="font-mono text-[10px] text-muted-foreground">—</span>
-            )}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+              <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                in
+              </span>
+              {inputFields.length > 0 ? (
+                <FieldChips fields={inputFields} tone="in" />
+              ) : (
+                <span className="font-mono text-xs text-muted-foreground">—</span>
+              )}
+              <ArrowRight size={14} className="mx-0.5 text-primary" strokeWidth={2.4} />
+              <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                out
+              </span>
+              {outputFields.length > 0 ? (
+                <FieldChips fields={outputFields} tone="out" />
+              ) : (
+                <span className="font-mono text-xs text-muted-foreground">—</span>
+              )}
+            </div>
           </div>
         )}
 
-        <div data-testid="asset-tags" className="mt-auto flex flex-wrap items-center gap-1 pt-0.5">
-          {adapter && (
-            <Badge
-              variant="outline"
-              className="w-fit px-1.5 py-0 font-mono text-[10px] text-muted-foreground"
-            >
-              {adapter}
-            </Badge>
-          )}
-          {stepCount > 0 && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Badge
-                  variant="outline"
-                  className="flex w-fit items-center gap-1 border-chart-4/40 px-1.5 py-0 text-[10px] text-chart-4"
-                >
-                  <Workflow size={10} /> {stepCount} steps
-                </Badge>
-              </TooltipTrigger>
-              <TooltipContent>Composite operation — {stepCount} steps</TooltipContent>
-            </Tooltip>
-          )}
-          {visibleKeywords.length > 0 && (
-            <div data-testid="asset-keywords" className="flex flex-wrap items-center gap-1">
-              {visibleKeywords.map((keyword) => (
-                <Badge
-                  key={keyword}
-                  variant="secondary"
-                  className="w-fit px-1.5 py-0 text-[10px] text-secondary-foreground"
-                >
-                  {keyword}
-                </Badge>
-              ))}
-              {hiddenKeywordCount > 0 && (
-                <Badge
-                  variant="outline"
-                  className="w-fit px-1.5 py-0 text-[10px] text-muted-foreground"
-                >
-                  +{hiddenKeywordCount}
-                </Badge>
-              )}
-            </div>
-          )}
+        <div className="mt-auto flex items-center gap-2 pt-1">
+          <div data-testid="asset-tags" className="flex flex-1 flex-wrap items-center gap-1">
+            {adapter && (
+              <Badge
+                variant="outline"
+                className="w-fit px-1.5 py-0 font-mono text-[10px] text-muted-foreground"
+              >
+                {adapter}
+              </Badge>
+            )}
+            {stepCount > 0 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge
+                    variant="outline"
+                    className="flex w-fit items-center gap-1 border-chart-4/40 px-1.5 py-0 text-[10px] text-chart-4"
+                  >
+                    <Workflow size={10} /> {stepCount} steps
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>Composite operation — {stepCount} steps</TooltipContent>
+              </Tooltip>
+            )}
+            {visibleKeywords.length > 0 && (
+              <div data-testid="asset-keywords" className="flex flex-wrap items-center gap-1">
+                {visibleKeywords.map((keyword) => (
+                  <Badge
+                    key={keyword}
+                    variant="secondary"
+                    className="w-fit px-1.5 py-0 text-[10px] text-secondary-foreground"
+                  >
+                    {keyword}
+                  </Badge>
+                ))}
+                {hiddenKeywordCount > 0 && (
+                  <Badge
+                    variant="outline"
+                    className="w-fit px-1.5 py-0 text-[10px] text-muted-foreground"
+                  >
+                    +{hiddenKeywordCount}
+                  </Badge>
+                )}
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            data-testid="operation-open"
+            onClick={handleClick}
+            className="inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-accent hover:text-foreground"
+          >
+            Open <ArrowUpRight size={13} />
+          </button>
         </div>
       </div>
     </Card>

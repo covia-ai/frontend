@@ -7,7 +7,7 @@ import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "./admin-panel/TopBar";
 import { Spinner } from '@/components/ui/shadcn-io/spinner';
-import { OperationCard } from "./OperationCard";
+import { OperationCard, adapterLook } from "./OperationCard";
 import { PaginationHeader } from "./PaginationHeader";
 import { cn } from "@/lib/utils";
 import { PlayCircle, Search } from "lucide-react";
@@ -16,7 +16,10 @@ import { listCatalogOperations } from "@/lib/operations-catalog";
 import { useGridPageSize } from "@/hooks/use-grid-page-size";
 import { useLatestQuery } from "@/hooks/use-latest-query";
 import { useClientPagination } from "@/hooks/use-pagination";
-import { CARD_GRID_CLASS } from "@/lib/grid";
+// A roomier grid than the shared 14rem density: operation cards now carry a
+// signature block, so they need width to breathe (concept-fidelity catalogue).
+const OPS_GRID_CLASS =
+  "w-full grid grid-cols-[repeat(auto-fill,minmax(min(22rem,100%),1fr))] items-stretch gap-4";
 import { FiltersSheet } from "./FiltersSheet";
 import { ListToolbar } from "./ListToolbar";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -125,6 +128,31 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
     ...(isAuthenticated ? [{ label: "Yours", value: stats.yours }] : []),
   ];
 
+  // Adapter facet chips — the most common adapters as one-click filters,
+  // sharing the selectedTags state with the Filters sheet (which still holds
+  // the full adapter + keyword set). Capped so the row stays a glanceable band.
+  const adapterFacets = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const a of assetsMetadata) {
+      const ad = (a.metadata?.operation?.adapter as string | undefined)?.split(":")[0];
+      if (ad) counts.set(ad, (counts.get(ad) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((x, y) => y[1] - x[1]).slice(0, 12);
+  }, [assetsMetadata]);
+
+  const adapterSet = useMemo(() => new Set(adapterOptions), [adapterOptions]);
+  const anyAdapterActive = selectedTags.some((t) => adapterSet.has(t));
+  const toggleAdapter = (ad: string) =>
+    setSelectedTags((prev) => (prev.includes(ad) ? prev.filter((t) => t !== ad) : [...prev, ad]));
+  const clearAdapters = () => setSelectedTags((prev) => prev.filter((t) => !adapterSet.has(t)));
+  const facetCls = (on: boolean) =>
+    cn(
+      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+      on
+        ? "border-transparent bg-primary text-primary-foreground"
+        : "bg-card text-muted-foreground hover:border-accent hover:text-foreground",
+    );
+
   const filteredAssets = useMemo(() => {
     const term = searchInput.trim().toLowerCase();
     return assetsMetadata.filter(a => {
@@ -179,9 +207,9 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
             )}
           >
             {statTiles.map((t) => (
-              <div key={t.label} className="rounded-md border bg-card px-4 py-2.5">
+              <div key={t.label} className="rounded-lg border bg-card px-4 py-3 shadow-sm">
                 <div className="text-xs font-medium text-muted-foreground">{t.label}</div>
-                <div className="mt-0.5 text-2xl font-semibold tabular-nums text-foreground">
+                <div className="mt-1 text-3xl font-semibold tabular-nums text-foreground">
                   {t.value}
                 </div>
               </div>
@@ -212,6 +240,27 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
           pagination={<PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={isLoading}></PaginationHeader>}
         />
 
+        {!isLoading && adapterFacets.length > 0 && (
+          <div data-testid="operation-facets" className="mt-3 flex w-full flex-wrap items-center gap-2">
+            <button type="button" onClick={clearAdapters} className={facetCls(!anyAdapterActive)}>
+              All
+            </button>
+            {adapterFacets.map(([ad, count]) => {
+              const on = selectedTags.includes(ad);
+              const { Icon } = adapterLook(ad);
+              return (
+                <button key={ad} type="button" onClick={() => toggleAdapter(ad)} className={facetCls(on)}>
+                  <Icon size={13} strokeWidth={1.9} />
+                  {ad}
+                  <span className={cn("font-mono text-[10px]", on ? "opacity-80" : "text-muted-foreground")}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {loadError && <ErrorDisplay error={loadError} className="mb-4 w-full" />}
 
         {isLoading ? (
@@ -219,7 +268,7 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
             <Spinner variant="ellipsis" className="text-primary" size={64}/>
           </div>
         ) : (
-          <div ref={gridRef} className={CARD_GRID_CLASS}>
+          <div ref={gridRef} className={OPS_GRID_CLASS}>
             {
             pageItems.map((asset) => (
               <OperationCard key={asset.id} asset={asset} venue={venue ?? undefined} scoped={!!venueId}/>
