@@ -11,11 +11,11 @@ jest.mock("@/lib/notify", () => ({
 
 jest.mock("next/navigation", () => ({ useRouter: () => ({ push: jest.fn() }) }));
 
-const invokeMock = jest.fn();
+const sendMock = jest.fn();
 const mockVenue = {
   venueId: "venue-1",
   baseUrl: "https://venue.example",
-  operations: { invoke: invokeMock },
+  a2a: { send: sendMock },
 };
 jest.mock("@/hooks/use-authenticated-venue", () => ({
   useAuthenticatedVenue: () => mockVenue,
@@ -75,21 +75,22 @@ const completedTask = (text: string) => ({
 });
 
 describe("ConnectedAgentTalk", () => {
-  beforeEach(() => invokeMock.mockReset());
+  beforeEach(() => sendMock.mockReset());
 
   it("streams a turn and renders the agent's reply", async () => {
     const job = makeJob({ status: "PENDING", output: completedTask("Hello back") });
     job.script = ["STARTED", "COMPLETE"];
-    invokeMock.mockResolvedValue(job);
+    sendMock.mockResolvedValue(job);
 
     render(<ConnectedAgentTalk agentName="venue-b-bot" />);
     await userEvent.type(screen.getByTestId("connect-talk-input"), "hi");
     await userEvent.click(screen.getByTestId("connect-talk-send"));
 
     await waitFor(() => expect(screen.getByText("Hello back")).toBeInTheDocument());
-    expect(invokeMock).toHaveBeenCalledWith(
-      "v/ops/a2a/send",
-      expect.objectContaining({ agent: "w/a2a/agents/venue-b-bot" }),
+    expect(sendMock).toHaveBeenCalledWith(
+      "w/a2a/agents/venue-b-bot",
+      expect.objectContaining({ role: "user" }),
+      expect.anything(),
     );
   });
 
@@ -99,7 +100,7 @@ describe("ConnectedAgentTalk", () => {
       output: { id: "task-1", artifacts: [{ parts: [{ text: "Which order number?" }] }] },
     });
     job.script = ["STARTED", "INPUT_REQUIRED"];
-    invokeMock.mockResolvedValue(job);
+    sendMock.mockResolvedValue(job);
 
     render(<ConnectedAgentTalk agentName="venue-b-bot" />);
     await userEvent.type(screen.getByTestId("connect-talk-input"), "I want a refund");
@@ -116,14 +117,14 @@ describe("ConnectedAgentTalk", () => {
 
     await waitFor(() => expect(screen.getByText("Refund approved")).toBeInTheDocument());
     expect(job.sendMessage).toHaveBeenCalledTimes(1);
-    expect(invokeMock).toHaveBeenCalledTimes(1); // only the first turn invoked
+    expect(sendMock).toHaveBeenCalledTimes(1); // only the first turn invoked
   });
 
   it("shows a failed task as an error", async () => {
     const job = makeJob({ status: "PENDING" });
     job.metadata.error = "boom";
     job.script = ["STARTED", "FAILED"];
-    invokeMock.mockResolvedValue(job);
+    sendMock.mockResolvedValue(job);
 
     render(<ConnectedAgentTalk agentName="venue-b-bot" />);
     await userEvent.type(screen.getByTestId("connect-talk-input"), "hi");
