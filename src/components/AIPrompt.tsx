@@ -56,9 +56,17 @@ function makeWorkspaceAgentId(): string {
 type AIPromptProps = {
   fixedAgentId?: string;
   onChatStarted?: (agentId: string) => void;
+  /** Starter-prompt chips shown under the composer; clicking one fills the
+   *  prompt (never auto-sends) so the person can edit before running. Home
+   *  passes these to remove the blank-page problem; other callers omit them. */
+  starters?: string[];
+  /** "page" (default) fills the viewport and vertically centres the composer —
+   *  the standalone Home of old. "launchpad" tops the composer so the Home
+   *  launchpad can render Jump-back-in / Quick actions / Venue pulse beneath it. */
+  variant?: "page" | "launchpad";
 };
 
-export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) => {
+export const AIPrompt = ({ fixedAgentId, onChatStarted, starters, variant = "page" }: AIPromptProps = {}) => {
   const [prompt, setPrompt] = useState('')
   const [checking, setChecking] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -327,7 +335,13 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) =>
   const busy = checking || creating || savingKey;
 
   return (
-    <div data-testid="chat-container" className="flex min-h-[calc(100vh-9rem)] flex-col items-center justify-center px-4 py-10 sm:px-10">
+    <div
+      data-testid="chat-container"
+      className={cn(
+        "flex flex-col items-center px-4 sm:px-10",
+        variant === "launchpad" ? "pt-8 pb-4" : "min-h-[calc(100vh-9rem)] justify-center py-10",
+      )}
+    >
         <PageHeading
           text={fixedAgentId ? "How can I" : "Do anything on"}
           highlight={fixedAgentId ? "help?" : "the Grid"}
@@ -411,6 +425,23 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) =>
           <p className="text-xs text-muted-foreground animate-pulse mt-1">
             Creating agent…
           </p>
+        )}
+
+        {starters && starters.length > 0 && (
+          <div className="mt-4 flex w-full max-w-3xl flex-wrap items-center justify-center gap-2">
+            {starters.map((s) => (
+              <button
+                key={s}
+                type="button"
+                data-testid="home-starter"
+                onClick={() => setPrompt(s)}
+                disabled={busy}
+                className="rounded-full border bg-card px-3.5 py-1.5 text-sm text-muted-foreground transition-colors hover:border-accent hover:text-foreground disabled:opacity-50"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
         )}
 
         {/* Picker dialog — shown when multiple LLM keys are detected */}
