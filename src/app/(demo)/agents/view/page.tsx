@@ -1,24 +1,12 @@
-import { ContentLayout } from "@/components/admin-panel/content-layout";
-import AgentExplorer from "@/components/AgentExplorer";
-import { AgentRoster } from "@/components/AgentRoster";
+import { redirect } from "next/navigation";
 
-// Roster-first: with no agent selected this is the workforce roster; selecting
-// an agent (?agentId=) opens the full explorer workbench (chat, settings,
-// timeline, context and every per-agent action) as the drill-in.
-export default async function ViewAgentsPage({
+// Legacy route. The roster now lives at /agents and the drill-in at
+// /agents/agent/<id>; redirect so old links/bookmarks still land right.
+export default async function Page({
   searchParams,
 }: {
   searchParams: Promise<{ agentId?: string }>;
 }) {
   const { agentId } = await searchParams;
-
-  if (agentId) {
-    return (
-      <ContentLayout>
-        <AgentExplorer agentId={agentId} />
-      </ContentLayout>
-    );
-  }
-
-  return <AgentRoster />;
+  redirect(agentId ? `/agents/agent/${encodeURIComponent(agentId)}` : "/agents");
 }

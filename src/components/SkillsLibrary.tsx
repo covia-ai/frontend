@@ -49,7 +49,7 @@ function AgentsUsingSkill({ venue, skill }: { venue: Venue; skill: SkillSummary 
         <div className="mt-3 flex flex-wrap gap-2">
           {agents.map((agentId) => (
             <Button key={agentId} asChild variant="outline" size="sm">
-              <Link href={`/agents/view?agentId=${encodeURIComponent(agentId)}`}>
+              <Link href={`/agents/agent/${encodeURIComponent(agentId)}`}>
                 <Bot size={14} /> {agentId}
               </Link>
             </Button>

@@ -67,7 +67,7 @@ export function AgentRosterCard({
   };
 
   const goChat = () => router.push(`/agents/chat?agentId=${encodeURIComponent(agentId)}`);
-  const goOpen = () => router.push(`/agents/view?agentId=${encodeURIComponent(agentId)}`);
+  const goOpen = () => router.push(`/agents/agent/${encodeURIComponent(agentId)}`);
 
   const visibleSkills = skills.slice(0, 3);
   const hiddenSkills = skills.length - visibleSkills.length;

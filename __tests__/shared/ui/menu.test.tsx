@@ -28,12 +28,12 @@ describe('Menu — group headers', () => {
 
   it('renders the requested navigation groups and entries when signed in', () => {
     render(<Menu isOpen={true} />);
-    expect(screen.getByText('Agents')).toBeInTheDocument();
+    expect(screen.getAllByText('Agents').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Grid')).toBeInTheDocument();
     expect(screen.getByText('Data')).toBeInTheDocument();
     expect(screen.getByText('Learn')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /create/i })).toHaveAttribute('href', '/agents/create');
-    expect(screen.getByRole('link', { name: /roster/i })).toHaveAttribute('href', '/agents/view');
+    expect(screen.getByRole('link', { name: /^agents$/i })).toHaveAttribute('href', '/agents');
     expect(screen.getByRole('link', { name: /chat/i })).toHaveAttribute('href', '/agents/chat');
     expect(screen.getByRole('link', { name: /skills/i })).toHaveAttribute('href', '/agents/skills');
     expect(screen.getByRole('link', { name: /public artifacts/i })).toHaveAttribute('href', '/publicartifacts');
@@ -45,13 +45,13 @@ describe('Menu — group headers', () => {
     mockAuthenticated = false;
     render(<Menu isOpen={true} />);
     expect(screen.getByText('Create')).toBeInTheDocument();
-    expect(screen.getByText('Roster')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^agents$/i })).toBeInTheDocument();
     expect(screen.getByText('Chat')).toBeInTheDocument();
     expect(screen.queryByText('Secrets')).not.toBeInTheDocument();
     expect(screen.queryByText('Inbox')).not.toBeInTheDocument();
     expect(screen.queryByText('Workspace')).not.toBeInTheDocument();
     expect(screen.queryByText('Context')).not.toBeInTheDocument();
-    expect(screen.getByText('Agents')).toBeInTheDocument();
+    expect(screen.getAllByText('Agents').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Grid')).toBeInTheDocument();
     expect(screen.getByText('Data')).toBeInTheDocument();
     expect(screen.getByText('Venues')).toBeInTheDocument();
