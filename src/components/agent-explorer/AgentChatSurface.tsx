@@ -194,7 +194,7 @@ export function AgentChatSurface({ controller }: { controller: AgentExplorerCont
         echoAlreadyRecorded={echoAlreadyRecorded}
         transcriptRef={transcriptRef}
         agentBrief={agentDisplay(selectedAgentDetail.config).brief}
-        onStarter={(text) => setMessageText(text)}
+        onStarter={setMessageText}
       />
 
       <div className="px-6 py-3 border-t border-border bg-muted/20 flex flex-col gap-2">

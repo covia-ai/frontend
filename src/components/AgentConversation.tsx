@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import { memo, useMemo, type RefObject } from "react";
 import Link from "next/link";
 import { Copy, ExternalLink, Loader2 } from "lucide-react";
 
@@ -49,7 +49,12 @@ const STARTER_PROMPTS = [
 // explorer. Keeping turn rendering here prevents the two interfaces from
 // drifting in typography, tool grouping, pending-message behavior, or source
 // labelling while their surrounding controls remain intentionally different.
-export function AgentConversation({
+//
+// Memoised: the composer's draft text lives in the parent controller, so a
+// keystroke re-renders the chat surface. None of this transcript's inputs
+// change while typing, so `memo` keeps it inert until a message actually
+// arrives — as long as callers pass stable props (notably a stable `onStarter`).
+function AgentConversationBase({
   agentId,
   selectedSessionId,
   session,
@@ -61,6 +66,12 @@ export function AgentConversation({
 }: AgentConversationProps) {
   const hasConversation = Boolean(session?.conversation.length || pendingChat);
   const agentName = humanizeAgentId(agentId);
+  // Grouping walks the whole transcript; memoise so it recomputes only when the
+  // conversation itself changes, never on an unrelated parent re-render.
+  const groups = useMemo(
+    () => (session?.conversation ? groupTranscript(session.conversation) : []),
+    [session?.conversation],
+  );
 
   return (
     <div
@@ -100,8 +111,7 @@ export function AgentConversation({
           </div>
         )}
 
-        {session?.conversation &&
-          groupTranscript(session.conversation).map((item) => {
+        {groups.map((item) => {
             if (item.kind === "toolGroup") {
               return (
                 <div className="mb-6" key={item.index}>
@@ -228,3 +238,5 @@ export function AgentConversation({
     </div>
   );
 }
+
+export const AgentConversation = memo(AgentConversationBase);

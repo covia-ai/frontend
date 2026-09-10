@@ -193,7 +193,7 @@ export function AgentChat({ initialAgentId, fixedAgent = false }: AgentChatProps
         echoAlreadyRecorded={echoAlreadyRecorded}
         transcriptRef={transcriptRef}
         agentBrief={display.brief}
-        onStarter={(text) => setMessageText(text)}
+        onStarter={setMessageText}
       />
 
       <footer className="bg-gradient-to-t from-background via-background to-transparent px-3 pb-4 pt-2 sm:px-6 sm:pb-6">
