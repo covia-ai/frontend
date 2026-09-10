@@ -8,13 +8,15 @@ import { useVenues } from "@/hooks/use-venues";
 import { useVenueHealth } from "@/hooks/use-venue-health";
 import { useClientPagination } from "@/hooks/use-pagination";
 
-import { MapPinned, Search } from "lucide-react";
+import { LayoutGrid, MapPinned, Network, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { AddNewVenueModal } from "@/components/AddNewVenueModal";
 import { ListToolbar } from "@/components/ListToolbar";
+import { VenueNetworkMap } from "@/components/VenueNetworkMap";
 import { venueDisplayName } from "@/lib/venue-display";
+import { cn } from "@/lib/utils";
 
 export default function VenuesPage() {
   const { venues, selectedVenueId } = useVenues();
@@ -25,6 +27,9 @@ export default function VenuesPage() {
 
   const itemsPerPage = 12;
   const [searchInput, setSearchInput] = useState(searchParams.get("search") ?? "");
+  // Grid (default) vs the federation Map — an optional network view of the same
+  // venues; the grid stays the source of truth.
+  const [view, setView] = useState<"grid" | "map">("grid");
 
   const handleSearchChange = (value: string) => {
     setSearchInput(value);
@@ -126,13 +131,43 @@ export default function VenuesPage() {
               }
             />
 
-            <div className="my-4 grid w-full grid-cols-1 items-stretch justify-center gap-4 sm:grid-cols-2 lg:grid-cols-3 3xl:grid-cols-4 4xl:grid-cols-5">
-              {pageItems.map((venue) => (
-                <VenueCard key={venue.venueId} venue={venue} compact={true} />
-              ))}
+            {/* Grid / Map view toggle */}
+            <div className="mt-3 flex w-full justify-end">
+              <div className="inline-flex rounded-lg border bg-card p-0.5">
+                {([
+                  { key: "grid", label: "Grid", Icon: LayoutGrid },
+                  { key: "map", label: "Map", Icon: Network },
+                ] as const).map(({ key, label, Icon }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    data-testid={`venues-view-${key}`}
+                    aria-pressed={view === key}
+                    onClick={() => setView(key)}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                      view === key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    <Icon size={13} /> {label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+            {view === "map" ? (
+              <VenueNetworkMap venues={filteredVenues} selectedVenueId={selectedVenueId} />
+            ) : (
+              <>
+                <div className="my-4 grid w-full grid-cols-1 items-stretch justify-center gap-4 sm:grid-cols-2 lg:grid-cols-3 3xl:grid-cols-4 4xl:grid-cols-5">
+                  {pageItems.map((venue) => (
+                    <VenueCard key={venue.venueId} venue={venue} compact={true} />
+                  ))}
+                </div>
+
+                <PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+              </>
+            )}
           </>
         )}
       </div>
