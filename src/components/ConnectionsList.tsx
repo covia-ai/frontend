@@ -26,8 +26,11 @@ import {
   Check,
   CheckCircle2,
   ExternalLink,
+  GitPullRequest,
+  Lightbulb,
   Loader2,
   Lock,
+  MessageSquarePlus,
   Plus,
   RefreshCw,
   Search,
@@ -35,6 +38,7 @@ import {
   Trash2,
   XCircle,
 } from "lucide-react";
+import { FaDiscord } from "react-icons/fa";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import {
   Dialog,
@@ -56,6 +60,21 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { memo } from "react";
+
+// Where "suggest / contribute a connection" send people. Covia's connectors are
+// open-source skill manifests in the public covia-ai/covia repo (see the note
+// at the top of config/connections.ts), so a suggestion opens a PREFILLED —
+// never auto-submitted — issue there for the person to review and file, and
+// "contribute" links to the repo itself. The Discord invite is the same
+// community URL used elsewhere in the app (PortAgentDialog, learning page).
+const CONNECTORS_REPO_URL = "https://github.com/covia-ai/covia";
+const COMMUNITY_URL = "https://discord.gg/fywdrKd8QT";
+const suggestConnectionUrl = (service = "") => {
+  const name = service.trim();
+  const title = name ? `Connector request: ${name}` : "Connector request";
+  const body = `**Service:** ${name}\n\n**What would you use it for?**\n\n**API docs / auth type (if known):**\n\n_Requested from the Connections page._`;
+  return `${CONNECTORS_REPO_URL}/issues/new?labels=connector-request&title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+};
 
 type TestState =
   | { phase: "idle" }
@@ -565,7 +584,16 @@ export function ConnectionsList() {
             {filtered.length} result{filtered.length === 1 ? "" : "s"}
           </h3>
           {filtered.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No service matches “{query}”. Try a token, or add a custom connection from Secrets.</p>
+            <div className="rounded-lg border border-dashed p-6 text-center">
+              <p className="text-sm text-muted-foreground">
+                No service matches “{query}”. Try a token, or add a custom connection from Secrets.
+              </p>
+              <Button asChild variant="outline" size="sm" className="mt-3">
+                <a href={suggestConnectionUrl(query)} target="_blank" rel="noreferrer">
+                  <MessageSquarePlus size={14} className="mr-1.5" /> Suggest “{query}”
+                </a>
+              </Button>
+            </div>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {filtered.map((s) => (
@@ -629,6 +657,42 @@ export function ConnectionsList() {
           ))}
         </>
       )}
+
+      {/* Open-source CTA — turn a missing connector into a contribution. The
+          suggest/contribute links open GitHub/Discord in a new tab; nothing is
+          submitted on the user's behalf. */}
+      <div className="rounded-xl border border-dashed bg-muted/20 px-5 py-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Lightbulb size={18} />
+            </span>
+            <div className="min-w-0">
+              <p className="font-semibold">Don&rsquo;t see a service you need?</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Covia is open source — request a connector, add one yourself, or ask the community.
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <Button asChild variant="outline" size="sm">
+              <a href={suggestConnectionUrl()} target="_blank" rel="noreferrer">
+                <MessageSquarePlus size={14} className="mr-1.5" /> Suggest a connection
+              </a>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <a href={CONNECTORS_REPO_URL} target="_blank" rel="noreferrer">
+                <GitPullRequest size={14} className="mr-1.5" /> Contribute one
+              </a>
+            </Button>
+            <Button asChild variant="ghost" size="sm" className="text-[#5865F2] hover:text-[#5865F2]">
+              <a href={COMMUNITY_URL} target="_blank" rel="noreferrer">
+                <FaDiscord size={15} className="mr-1.5" /> Ask on Discord
+              </a>
+            </Button>
+          </div>
+        </div>
+      </div>
 
       {/* Guided add-connection dialog with live test */}
       <Dialog open={!!active} onOpenChange={(o) => !o && finishOk()}>
