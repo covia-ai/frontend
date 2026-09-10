@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Venue } from "@covia/covia-sdk";
 import {
   ArrowUpRight,
+  Clock,
   Cpu,
   MessageSquareText,
   MoreHorizontal,
@@ -25,7 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { notifyError, notifySuccess } from "@/lib/notify";
-import { agentDisplay, humanizeAgentId, shortRefLabel } from "@/lib/agent-display";
+import { agentDisplay, humanizeAgentId, relTime, shortRefLabel } from "@/lib/agent-display";
 import type { RosterAgent } from "@/hooks/use-agent-roster";
 import { AgentLiveActivity } from "./AgentLiveActivity";
 import { AgentIdenticon } from "./AgentIdenticon";
@@ -48,7 +49,7 @@ export function AgentRosterCard({
   const isRunning = status === "RUNNING";
   const isSuspended = status === "SUSPENDED";
   const isTerminated = status === "TERMINATED";
-  const { providerLabel, model, brief, skills, tools, hasCaps } = agentDisplay(agent.config);
+  const { providerLabel, model, brief, skills, hasCaps } = agentDisplay(agent.config);
   const modelLabel = model || providerLabel;
 
   const handle = venue.agent(agentId);
@@ -120,16 +121,23 @@ export function AgentRosterCard({
           )}
         </div>
 
-        <div className="mt-auto flex min-h-[18px] items-center gap-3 pt-0.5 text-xs text-muted-foreground">
-          {isRunning && <AgentLiveActivity venue={venue} agentId={agentId} />}
-          {typeof agent.tasks === "number" && agent.tasks > 0 && (
+        <div className="mt-auto flex min-h-[18px] flex-wrap items-center gap-x-3 gap-y-1 pt-0.5 text-xs text-muted-foreground">
+          {isRunning ? (
+            <AgentLiveActivity venue={venue} agentId={agentId} />
+          ) : agent.lastActive ? (
+            <span>active {relTime(agent.lastActive)}</span>
+          ) : null}
+          {typeof agent.runs === "number" && agent.runs > 0 && (
             <span>
-              {agent.tasks} task{agent.tasks === 1 ? "" : "s"}
+              {agent.runs} run{agent.runs === 1 ? "" : "s"}
             </span>
           )}
-          {tools.length > 0 && (
-            <span>
-              {tools.length} tool{tools.length === 1 ? "" : "s"}
+          {typeof agent.queued === "number" && agent.queued > 0 && (
+            <span className="font-medium text-amber-600 dark:text-amber-400">{agent.queued} queued</span>
+          )}
+          {!isRunning && agent.nextWake && (
+            <span className="inline-flex items-center gap-1">
+              <Clock size={11} /> wakes {relTime(agent.nextWake)}
             </span>
           )}
         </div>

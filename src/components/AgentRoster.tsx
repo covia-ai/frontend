@@ -12,7 +12,7 @@ import { VenueResolutionState } from "@/components/VenueResolutionState";
 import { AddNewAgent } from "@/components/AddNewAgent";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { useAgentRoster, type RosterAgent } from "@/hooks/use-agent-roster";
-import { agentDisplay, humanizeAgentId, shortRefLabel } from "@/lib/agent-display";
+import { agentDisplay, humanizeAgentId, relTime, shortRefLabel } from "@/lib/agent-display";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
 import { AgentRosterCard } from "@/components/agent-roster/AgentRosterCard";
 
@@ -160,6 +160,17 @@ export function AgentRoster({ venueId }: { venueId?: string } = {}) {
                   <h2 className="mb-2.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     {g.label}
                     <span className="font-mono text-muted-foreground/70">· {list.length}</span>
+                    {g.key === "SLEEPING" &&
+                      (() => {
+                        const soon = list
+                          .filter((a) => a.nextWake)
+                          .sort((a, b) => (a.nextWake ?? 0) - (b.nextWake ?? 0))[0];
+                        return soon ? (
+                          <span className="font-normal normal-case text-muted-foreground/70">
+                            · next wake {humanizeAgentId(soon.agentId)} {relTime(soon.nextWake)}
+                          </span>
+                        ) : null;
+                      })()}
                   </h2>
                   <div className={AGENTS_GRID_CLASS}>
                     {venue &&

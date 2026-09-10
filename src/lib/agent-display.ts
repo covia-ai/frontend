@@ -54,6 +54,28 @@ export function shortRefLabel(ref: string): string {
   return parts.length ? parts[parts.length - 1] : ref;
 }
 
+// Compact relative time for roster liveness: past → "4m ago", future → "in
+// 14m". Coarse units (s/m/h/d) keep it glanceable; empty for missing values.
+export function relTime(ms?: number, now: number = Date.now()): string {
+  if (typeof ms !== "number" || !Number.isFinite(ms)) return "";
+  const diff = ms - now;
+  const future = diff > 0;
+  const abs = Math.abs(diff);
+  const s = Math.round(abs / 1000);
+  let label: string;
+  if (s < 45) label = future ? "soon" : "just now";
+  else {
+    const m = Math.round(s / 60);
+    if (m < 60) label = `${m}m`;
+    else {
+      const h = Math.round(m / 60);
+      label = h < 24 ? `${h}h` : `${Math.round(h / 24)}d`;
+    }
+  }
+  if (label === "soon" || label === "just now") return label;
+  return future ? `in ${label}` : `${label} ago`;
+}
+
 export interface AgentDisplay {
   providerLabel: string;
   model: string;
