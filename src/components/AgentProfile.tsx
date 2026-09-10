@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { StatusBadge } from "@/components/StatusBadge";
+import { DidDisplay } from "@/components/DidDisplay";
 import { AgentIdenticon } from "@/components/agent-roster/AgentIdenticon";
 import { AgentChatSurface } from "@/components/agent-explorer/AgentChatSurface";
 import { AgentTimelineView } from "@/components/agent-explorer/AgentTimelineView";
@@ -31,6 +32,7 @@ import { ForkAgentDialog } from "@/components/agent-explorer/ForkAgentDialog";
 import { DeleteAgentDialog } from "@/components/agent-explorer/DeleteAgentDialog";
 import { SchedulePickerDialog } from "@/components/SchedulePickerDialog";
 import { useAgentExplorer } from "@/hooks/use-agent-explorer";
+import { useCurrentAuth } from "@/hooks/use-auth";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useAgentForkProvenance } from "@/hooks/use-agent-fork-provenance";
 import { agentDisplay, humanizeAgentId, shortRefLabel } from "@/lib/agent-display";
@@ -60,6 +62,7 @@ export function AgentProfile({ agentId }: { agentId: string }) {
     updateAgentConfig,
   } = controller;
   const venue = useAuthenticatedVenue();
+  const ownerDid = useCurrentAuth()?.did ?? null;
   const router = useRouter();
   const forkedFrom = useAgentForkProvenance((s) =>
     venue && selectedAgentDetail ? s.forkedFromOf(venue.venueId, selectedAgentDetail.agentId) : null,
@@ -146,6 +149,11 @@ export function AgentProfile({ agentId }: { agentId: string }) {
                   </button>
                 )}
               </div>
+              {ownerDid && (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                  acts as <DidDisplay value={ownerDid} identicon chars={10} />
+                </div>
+              )}
             </div>
 
             {/* Actions */}
