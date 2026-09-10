@@ -1,10 +1,10 @@
 import { ContentLayout } from "@/components/admin-panel/content-layout";
-import AgentExplorer from "@/components/AgentExplorer";
+import { AgentProfile } from "@/components/AgentProfile";
 
-// The per-agent drill-in: the explorer workbench (chat, sessions, timeline,
-// context, settings, and every per-agent action). Namespaced under
-// /agents/agent/ so an agent id can never collide with the sibling nav routes
-// (/agents/create, /agents/chat, …). Breadcrumb → Home › Agents › <name>.
+// The per-agent drill-in: a profile (identity header + Conversations / Timeline
+// / Context / Settings tabs). Namespaced under /agents/agent/ so an agent id
+// can never collide with the sibling nav routes. Breadcrumb → Home › Agents ›
+// <name>.
 export default async function AgentDetailPage({
   params,
 }: {
@@ -14,7 +14,7 @@ export default async function AgentDetailPage({
 
   return (
     <ContentLayout>
-      <AgentExplorer agentId={decodeURIComponent(agentId)} />
+      <AgentProfile agentId={decodeURIComponent(agentId)} />
     </ContentLayout>
   );
 }

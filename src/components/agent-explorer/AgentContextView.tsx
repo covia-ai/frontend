@@ -47,7 +47,7 @@ export function AgentContextView({
   agentId: string;
   sessions: Session[];
   initialSessionId: string | null;
-  onBack: () => void;
+  onBack?: () => void;
 }) {
   const venue = useAuthenticatedVenue();
   const [selectedSessionId, setSelectedSessionId] = useState(initialSessionId);
@@ -77,9 +77,11 @@ export function AgentContextView({
 
   return (
     <div className="flex-1 overflow-y-auto p-6 bg-background">
-      <Button variant="ghost" size="sm" className="mb-4 gap-2" onClick={onBack}>
-        <ArrowLeft size={15} /> Chat
-      </Button>
+      {onBack && (
+        <Button variant="ghost" size="sm" className="mb-4 gap-2" onClick={onBack}>
+          <ArrowLeft size={15} /> Chat
+        </Button>
+      )}
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Eye size={16} className="text-muted-foreground" />

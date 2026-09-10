@@ -36,7 +36,7 @@ function stringArray(value: unknown): string[] {
 
 type AgentSettingsProps = {
   agent: AgentDetail;
-  onBack: () => void;
+  onBack?: () => void;
   onSave: (config: Record<string, unknown>) => Promise<AgentConfigSaveOutcome>;
 };
 
@@ -149,9 +149,11 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
   return (
     <div data-testid="agent-settings" className="flex min-h-0 flex-1 flex-col">
       <div className="border-b px-6 py-4">
-        <Button variant="ghost" size="sm" className="mb-4 gap-2" onClick={onBack}>
-          <ArrowLeft size={15} /> Chat
-        </Button>
+        {onBack && (
+          <Button variant="ghost" size="sm" className="mb-4 gap-2" onClick={onBack}>
+            <ArrowLeft size={15} /> Chat
+          </Button>
+        )}
         <div>
           <h4 className="font-semibold">Agent settings</h4>
           <p className="mt-1 text-sm text-muted-foreground">
