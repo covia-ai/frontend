@@ -46,7 +46,7 @@ export const MENU_LIST: MenuGroup[] = [
     groupLabel: "Agents",
     menus: [
       { href: "/agents/create", label: "Create", icon: Plus },
-      { href: "/agents/view", label: "View", icon: List },
+      { href: "/agents/view", label: "Roster", icon: List },
       { href: "/agents/chat", label: "Chat", icon: MessageSquareText },
       { href: "/agents/connected", label: "Connected", icon: Cable },
       { href: "/agents/skills", label: "Skills", icon: BookOpenCheck },
