@@ -7,8 +7,9 @@
 // same mark, every venue its own.
 //
 // Deliberately distinct from the agent identicon (a rounded-SQUARE tile of
-// rounded-square cells): a venue reads as a network NODE — a round chip of
-// two-tone DOTS — so the two never get confused while staying one family.
+// rounded-square cells): a venue reads as a network NODE — a HEXAGON (the
+// honeycomb/mesh motif) filled with two-tone DOTS — so the two never get
+// confused while staying one generated-two-tone family.
 
 function hashId(s: string): number {
   let h = 2166136261;
@@ -48,6 +49,9 @@ function cellsFor(id: string): Cell[] {
   return cells;
 }
 
+// Flat-top hexagon (honeycomb orientation) spanning the 5×5 dot-grid viewBox.
+const HEX_POINTS = "1.25,0 3.75,0 5,2.5 3.75,5 1.25,5 0,2.5";
+
 export function VenueMark({
   venueId,
   className = "size-9",
@@ -56,24 +60,26 @@ export function VenueMark({
   className?: string;
 }) {
   const cells = cellsFor(venueId);
+  // Stable per-venue clip id so several marks on a page don't collide.
+  const clipId = `venue-hex-${hashId(venueId).toString(36)}`;
   return (
-    <span
-      className={`inline-flex ${className} shrink-0 items-center justify-center rounded-full border bg-muted/40`}
-      aria-hidden="true"
-    >
-      {/* 72% of the container (not padding — percentage padding is relative to
-          the parent's width, which would blow the mark up) leaves a clean ring
-          margin around the dots. */}
-      <svg viewBox="0 0 5 5" className="h-[72%] w-[72%]" shapeRendering="geometricPrecision">
-        {cells.map((c) => (
-          <circle
-            key={`${c.x}-${c.y}`}
-            cx={c.x + 0.5}
-            cy={c.y + 0.5}
-            r={0.42}
-            style={{ fill: c.color }}
-          />
-        ))}
+    <span className={`inline-flex ${className} shrink-0 items-center justify-center`} aria-hidden="true">
+      <svg viewBox="0 0 5 5" className="size-full" shapeRendering="geometricPrecision">
+        <defs>
+          <clipPath id={clipId}>
+            <polygon points={HEX_POINTS} />
+          </clipPath>
+        </defs>
+        {/* Hexagon fill (the node body). */}
+        <polygon points={HEX_POINTS} style={{ fill: "var(--muted)", fillOpacity: 0.4 }} />
+        {/* Two-tone identity dots, clipped to the hexagon. */}
+        <g clipPath={`url(#${clipId})`}>
+          {cells.map((c) => (
+            <circle key={`${c.x}-${c.y}`} cx={c.x + 0.5} cy={c.y + 0.5} r={0.42} style={{ fill: c.color }} />
+          ))}
+        </g>
+        {/* Hexagon outline on top. */}
+        <polygon points={HEX_POINTS} fill="none" style={{ stroke: "var(--border)" }} strokeWidth={0.14} />
       </svg>
     </span>
   );
