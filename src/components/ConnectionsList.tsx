@@ -55,6 +55,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { memo } from "react";
 
 type TestState =
   | { phase: "idle" }
@@ -89,7 +90,16 @@ type ConnectionCardProps = {
 // including typing a single character into the search box. Passing explicit
 // props instead of closing over ConnectionsList's state keeps this a stable
 // type across renders, so React diffs and updates in place like normal.
-function ConnectionCard({
+//
+// Wrapped in React.memo (perf): the catalogue filters search client-side, so a
+// keystroke re-renders ConnectionsList and remaps every visible card. With the
+// parent passing stable props (the three handlers are useCallback'd), a card
+// re-renders only when its own service/connected/health/loading actually
+// changes — so testing one service's health never re-renders the others.
+// The card root stays `div.rounded-xl` (the tests locate a card via
+// `.closest("div.rounded-xl")`); the banded header brings it into visual
+// parity with the operation and agent cards.
+const ConnectionCard = memo(function ConnectionCard({
   service,
   connected,
   health,
@@ -100,114 +110,122 @@ function ConnectionCard({
 }: ConnectionCardProps) {
   const on = connected;
   const attention = on && health?.phase === "attention";
+  const example = CONNECTION_CAPABILITIES[service.id]?.examples[0];
   return (
-    <div className="flex flex-col rounded-xl border bg-card p-4">
-      <div className="flex items-start gap-3">
+    <div className="group flex flex-col overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:border-accent hover:shadow-md">
+      {/* Header band: logo identity + name + auth method */}
+      <div className="flex items-start gap-3 border-b bg-card-banner px-4 py-3">
         <Logo service={service} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <span className="truncate font-semibold">{service.name}</span>
-            <span className="font-mono text-[10px] uppercase text-muted-foreground">{service.method}</span>
+            <span className="shrink-0 font-mono text-[10px] uppercase text-muted-foreground">
+              {service.method}
+            </span>
           </div>
           <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{service.blurb}</p>
-          {on && CONNECTION_CAPABILITIES[service.id]?.examples[0] && (
-            <p className="mt-1 line-clamp-1 text-xs italic text-muted-foreground/80">
-              Try: &ldquo;{CONNECTION_CAPABILITIES[service.id].examples[0]}&rdquo;
-            </p>
-          )}
         </div>
       </div>
-      <div className="mt-4 flex items-center justify-between gap-2">
-        <div className="flex min-w-0 flex-col gap-0.5">
-          {loading ? (
-            <Loader2 className="animate-spin text-muted-foreground" size={16} />
-          ) : attention ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Badge
-                  variant="outline"
-                  className="w-fit gap-1 border-amber-600/30 bg-amber-600/10 text-amber-700 dark:text-amber-400"
-                >
-                  <AlertTriangle size={12} /> Needs attention
-                </Badge>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-64">{health.message}</TooltipContent>
-            </Tooltip>
-          ) : on ? (
-            <Badge variant="outline" className="w-fit gap-1 border-green-600/30 bg-green-600/10 text-green-700 dark:text-green-400">
-              <Check size={12} /> Connected
-            </Badge>
-          ) : (
-            <span className="text-xs text-muted-foreground">Not connected</span>
-          )}
-          {on && health && health.phase !== "checking" && (
-            <span className="text-[10px] text-muted-foreground">
-              Checked {formatRelativeTime(health.checkedAt)}
-            </span>
-          )}
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-          {on && service.verify && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-muted-foreground"
-                  aria-label={`Test ${service.name} connection`}
-                  disabled={health?.phase === "checking"}
-                  onClick={() => onTest(service)}
-                >
-                  {health?.phase === "checking" ? (
-                    <Loader2 className="animate-spin" size={14} />
-                  ) : (
-                    <RefreshCw size={14} />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Test connection</TooltipContent>
-            </Tooltip>
-          )}
-          {attention && (
-            <Button variant="outline" size="sm" className="h-7" onClick={() => onOpenAdd(service)}>
-              Fix
-            </Button>
-          )}
-          {on ? (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-muted-foreground"
-                  aria-label={`Disconnect ${service.name}`}
-                >
-                  <Trash2 size={14} />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Disconnect {service.name}?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Removes the stored secret <code className="rounded bg-muted px-1 font-mono text-xs">{service.secretName}</code>. Agents using the {service.id} skill lose access until you reconnect.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => onDisconnect(service)}>Disconnect</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          ) : (
-            <Button variant="outline" size="sm" className="h-7" onClick={() => onOpenAdd(service)}>
-              <Plus size={14} /> Connect
-            </Button>
-          )}
+
+      {/* Body: capability hint (connected), status + actions */}
+      <div className="flex flex-1 flex-col gap-3 px-4 py-3">
+        {on && example && (
+          <p className="line-clamp-1 text-xs italic text-muted-foreground/80">
+            Try: &ldquo;{example}&rdquo;
+          </p>
+        )}
+        <div className="mt-auto flex items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            {loading ? (
+              <Loader2 className="animate-spin text-muted-foreground" size={16} />
+            ) : attention ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge
+                    variant="outline"
+                    className="w-fit gap-1 border-amber-600/30 bg-amber-600/10 text-amber-700 dark:text-amber-400"
+                  >
+                    <AlertTriangle size={12} /> Needs attention
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-64">{health.message}</TooltipContent>
+              </Tooltip>
+            ) : on ? (
+              <Badge variant="outline" className="w-fit gap-1 border-green-600/30 bg-green-600/10 text-green-700 dark:text-green-400">
+                <Check size={12} /> Connected
+              </Badge>
+            ) : (
+              <span className="text-xs text-muted-foreground">Not connected</span>
+            )}
+            {on && health && health.phase !== "checking" && (
+              <span className="text-[10px] text-muted-foreground">
+                Checked {formatRelativeTime(health.checkedAt)}
+              </span>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {on && service.verify && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-muted-foreground"
+                    aria-label={`Test ${service.name} connection`}
+                    disabled={health?.phase === "checking"}
+                    onClick={() => onTest(service)}
+                  >
+                    {health?.phase === "checking" ? (
+                      <Loader2 className="animate-spin" size={14} />
+                    ) : (
+                      <RefreshCw size={14} />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Test connection</TooltipContent>
+              </Tooltip>
+            )}
+            {attention && (
+              <Button variant="outline" size="sm" className="h-7" onClick={() => onOpenAdd(service)}>
+                Fix
+              </Button>
+            )}
+            {on ? (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-muted-foreground"
+                    aria-label={`Disconnect ${service.name}`}
+                  >
+                    <Trash2 size={14} />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Disconnect {service.name}?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Removes the stored secret <code className="rounded bg-muted px-1 font-mono text-xs">{service.secretName}</code>. Agents using the {service.id} skill lose access until you reconnect.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => onDisconnect(service)}>Disconnect</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : (
+              <Button variant="outline" size="sm" className="h-7" onClick={() => onOpenAdd(service)}>
+                <Plus size={14} /> Connect
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
-}
+});
 
 export function ConnectionsList() {
   const venue = useAuthenticatedVenue();
@@ -252,7 +270,10 @@ export function ConnectionsList() {
 
   useEffect(() => loadConnections(), [loadConnections]);
 
-  const openAdd = (service: ConnectionService, prefill = "") => {
+  // useCallback so the handlers passed to every ConnectionCard keep a stable
+  // identity across ConnectionsList re-renders (search keystrokes, health
+  // updates). Without this, React.memo on the card could never skip a render.
+  const openAdd = useCallback((service: ConnectionService, prefill = "") => {
     setActive(service);
     // Empty per field; a quick-connect prefill seeds the primary secret.
     setValues(
@@ -261,17 +282,20 @@ export function ConnectionsList() {
       ),
     );
     setTest({ phase: "idle" });
-  };
+  }, []);
 
   /** Run the service's verify call through the venue (secret already stored). */
-  const runVerify = async (service: ConnectionService): Promise<string> => {
-    const call = venue && buildVerifyCall(service);
-    if (!venue || !call) throw new Error("No verification available.");
-    const out = await venue.operations.run(call.op, call.input);
-    return interpretVerify(service, out);
-  };
+  const runVerify = useCallback(
+    async (service: ConnectionService): Promise<string> => {
+      const call = venue && buildVerifyCall(service);
+      if (!venue || !call) throw new Error("No verification available.");
+      const out = await venue.operations.run(call.op, call.input);
+      return interpretVerify(service, out);
+    },
+    [venue],
+  );
 
-  const connect = async () => {
+  const connect = useCallback(async () => {
     if (!venue || !active || !allFilled) return;
     const svc = active;
     const svcFields = connectionSecrets(svc);
@@ -322,7 +346,7 @@ export function ConnectionsList() {
       notifyError(`Unable to connect ${svc.name}`, err, venue?.baseUrl);
       setTest({ phase: "idle" });
     }
-  };
+  }, [venue, active, allFilled, values, runVerify]);
 
   const finishOk = () => {
     if (active && test.phase === "ok") {
@@ -336,65 +360,113 @@ export function ConnectionsList() {
   };
 
   /** On-demand health check for an already-connected service (frontend#290). */
-  const checkHealth = async (service: ConnectionService) => {
-    if (!venue) return;
-    setHealth((prev) => ({ ...prev, [service.secretName]: { phase: "checking" } }));
-    const checkedAt = new Date().toISOString();
-    try {
-      const message = await runVerify(service);
-      setHealth((prev) => ({ ...prev, [service.secretName]: { phase: "ok", message, checkedAt } }));
-    } catch (err: unknown) {
-      setHealth((prev) => ({
-        ...prev,
-        [service.secretName]: {
-          phase: "attention",
-          message: err instanceof Error ? err.message : String(err),
-          checkedAt,
-        },
-      }));
-    }
-  };
-
-  const disconnect = (service: ConnectionService) => {
-    if (!venue) return;
-    // Remove every value the connection stored, not just the primary.
-    Promise.all(connectionSecrets(service).map((f) => venue.secrets.delete(f.name)))
-      .then(() => {
-        setConnected((prev) => {
-          const next = new Set(prev);
-          next.delete(service.secretName);
-          return next;
-        });
-        setHealth((prev) => {
-          const { [service.secretName]: _drop, ...rest } = prev;
-          return rest;
-        });
-        notifySuccess(`${service.name} disconnected`);
-      })
-      .catch((err: unknown) =>
-        notifyError(`Unable to disconnect ${service.name}`, err, venue?.baseUrl),
-      );
-  };
-
-  const isConnected = (s: ConnectionService) => connected.has(s.secretName);
-  const connectedServices = CONNECTIONS.filter(isConnected);
-  const searching = query.trim().length > 0;
-  const filtered = CONNECTIONS.filter(
-    (s) =>
-      s.name.toLowerCase().includes(query.toLowerCase()) ||
-      s.category.toLowerCase().includes(query.toLowerCase()),
+  const checkHealth = useCallback(
+    async (service: ConnectionService) => {
+      if (!venue) return;
+      setHealth((prev) => ({ ...prev, [service.secretName]: { phase: "checking" } }));
+      const checkedAt = new Date().toISOString();
+      try {
+        const message = await runVerify(service);
+        setHealth((prev) => ({ ...prev, [service.secretName]: { phase: "ok", message, checkedAt } }));
+      } catch (err: unknown) {
+        setHealth((prev) => ({
+          ...prev,
+          [service.secretName]: {
+            phase: "attention",
+            message: err instanceof Error ? err.message : String(err),
+            checkedAt,
+          },
+        }));
+      }
+    },
+    [venue, runVerify],
   );
-  const catalogueByCategory = CONNECTION_CATEGORIES.map((cat) => ({
-    category: cat,
-    services: CONNECTIONS.filter((s) => s.category === cat && !isConnected(s)),
-  })).filter((g) => g.services.length > 0);
+
+  const disconnect = useCallback(
+    (service: ConnectionService) => {
+      if (!venue) return;
+      // Remove every value the connection stored, not just the primary.
+      Promise.all(connectionSecrets(service).map((f) => venue.secrets.delete(f.name)))
+        .then(() => {
+          setConnected((prev) => {
+            const next = new Set(prev);
+            next.delete(service.secretName);
+            return next;
+          });
+          setHealth((prev) => {
+            const { [service.secretName]: _drop, ...rest } = prev;
+            return rest;
+          });
+          notifySuccess(`${service.name} disconnected`);
+        })
+        .catch((err: unknown) =>
+          notifyError(`Unable to disconnect ${service.name}`, err, venue?.baseUrl),
+        );
+    },
+    [venue],
+  );
+
+  // Derivations memoised so a search keystroke or health update doesn't rescan
+  // the catalogue on every render. All keyed on the state they actually read.
+  const connectedServices = useMemo(
+    () => CONNECTIONS.filter((s) => connected.has(s.secretName)),
+    [connected],
+  );
+  const searching = query.trim().length > 0;
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase();
+    return CONNECTIONS.filter(
+      (s) => s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q),
+    );
+  }, [query]);
+  const catalogueByCategory = useMemo(
+    () =>
+      CONNECTION_CATEGORIES.map((cat) => ({
+        category: cat,
+        services: CONNECTIONS.filter((s) => s.category === cat && !connected.has(s.secretName)),
+      })).filter((g) => g.services.length > 0),
+    [connected],
+  );
   // Category chip narrows both the connected-first row and the catalogue.
-  const shownConnected = activeCategory
-    ? connectedServices.filter((s) => s.category === activeCategory)
-    : connectedServices;
-  const shownCatalogue = activeCategory
-    ? catalogueByCategory.filter((g) => g.category === activeCategory)
-    : catalogueByCategory;
+  const shownConnected = useMemo(
+    () => (activeCategory ? connectedServices.filter((s) => s.category === activeCategory) : connectedServices),
+    [connectedServices, activeCategory],
+  );
+  const shownCatalogue = useMemo(
+    () => (activeCategory ? catalogueByCategory.filter((g) => g.category === activeCategory) : catalogueByCategory),
+    [catalogueByCategory, activeCategory],
+  );
+
+  // Per-category available (not-yet-connected) counts for the filter chips, and
+  // the KPI tiles that frame the whole set — consistent with the Operations and
+  // Agents headers.
+  const categoryCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const g of catalogueByCategory) m.set(g.category, g.services.length);
+    return m;
+  }, [catalogueByCategory]);
+  const availableCount = useMemo(
+    () => catalogueByCategory.reduce((n, g) => n + g.services.length, 0),
+    [catalogueByCategory],
+  );
+  const needsAttention = useMemo(
+    () => Object.values(health).filter((h) => h.phase === "attention").length,
+    [health],
+  );
+  const statTiles = [
+    { label: "Connected", value: connectedServices.length },
+    { label: "Available", value: availableCount },
+    { label: "Categories", value: CONNECTION_CATEGORIES.length },
+    ...(needsAttention > 0 ? [{ label: "Needs attention", value: needsAttention }] : []),
+  ];
+
+  const chipCls = (on: boolean) =>
+    cn(
+      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+      on
+        ? "border-transparent bg-primary text-primary-foreground"
+        : "bg-card text-muted-foreground hover:border-accent hover:text-foreground",
+    );
 
   if (!isAuthenticated) {
     return (
@@ -409,6 +481,22 @@ export function ConnectionsList() {
 
   return (
     <div className="space-y-6">
+      {/* KPI header — frames the whole set, consistent with Operations/Agents. */}
+      <div
+        data-testid="connections-stats"
+        className={cn(
+          "grid grid-cols-2 gap-3",
+          statTiles.length === 4 ? "sm:grid-cols-4" : "sm:grid-cols-3",
+        )}
+      >
+        {statTiles.map((t) => (
+          <div key={t.label} className="rounded-lg border bg-card px-4 py-3 shadow-sm">
+            <div className="text-xs font-medium text-muted-foreground">{t.label}</div>
+            <div className="mt-1 text-3xl font-semibold tabular-nums text-foreground">{t.value}</div>
+          </div>
+        ))}
+      </div>
+
       {/* Trust cue — Covia's differentiator, stated up front. */}
       <div className="flex items-start gap-2.5 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
         <ShieldCheck className="mt-0.5 shrink-0 text-primary" size={17} />
@@ -449,21 +537,21 @@ export function ConnectionsList() {
       {/* Category filter chips (hidden while searching — search is its own filter) */}
       {!searching && (
         <div className="flex flex-wrap gap-2">
-          {[null, ...CONNECTION_CATEGORIES].map((cat) => {
-            const label = cat ?? "All";
+          <button onClick={() => setActiveCategory(null)} className={chipCls(activeCategory === null)}>
+            All
+            <span className={cn("font-mono text-[10px]", activeCategory === null ? "opacity-80" : "text-muted-foreground")}>
+              {availableCount}
+            </span>
+          </button>
+          {CONNECTION_CATEGORIES.map((cat) => {
             const on = activeCategory === cat;
+            const count = categoryCounts.get(cat) ?? 0;
             return (
-              <button
-                key={label}
-                onClick={() => setActiveCategory(cat)}
-                className={cn(
-                  "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                  on
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted",
-                )}
-              >
-                {label}
+              <button key={cat} onClick={() => setActiveCategory(cat)} className={chipCls(on)}>
+                {cat}
+                <span className={cn("font-mono text-[10px]", on ? "opacity-80" : "text-muted-foreground")}>
+                  {count}
+                </span>
               </button>
             );
           })}
@@ -484,7 +572,7 @@ export function ConnectionsList() {
                 <ConnectionCard
                   key={s.id}
                   service={s}
-                  connected={isConnected(s)}
+                  connected={connected.has(s.secretName)}
                   health={health[s.secretName]}
                   loading={loading}
                   onTest={checkHealth}
@@ -508,7 +596,7 @@ export function ConnectionsList() {
                   <ConnectionCard
                     key={s.id}
                     service={s}
-                    connected={isConnected(s)}
+                    connected={connected.has(s.secretName)}
                     health={health[s.secretName]}
                     loading={loading}
                     onTest={checkHealth}
@@ -528,7 +616,7 @@ export function ConnectionsList() {
                   <ConnectionCard
                     key={s.id}
                     service={s}
-                    connected={isConnected(s)}
+                    connected={connected.has(s.secretName)}
                     health={health[s.secretName]}
                     loading={loading}
                     onTest={checkHealth}
