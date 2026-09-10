@@ -6,10 +6,10 @@
 // app's brand tokens (purple + blue) so it reads in both themes. Same venue →
 // same mark, every venue its own.
 //
-// Deliberately distinct from the agent identicon (a rounded-SQUARE tile of
-// rounded-square cells): a venue reads as a network NODE — a HEXAGON (the
-// honeycomb/mesh motif) filled with two-tone DOTS — so the two never get
-// confused while staying one generated-two-tone family.
+// A rounded tile of SMALL, sharp two-tone squares with clear gaps — the Covia
+// logo's pixel motif. Deliberately distinct from the agent identicon, whose
+// cells are larger, rounded, and densely fill the grid: a venue reads as a
+// sparser pixel mark while staying one generated-two-tone family.
 
 function hashId(s: string): number {
   let h = 2166136261;
@@ -49,9 +49,6 @@ function cellsFor(id: string): Cell[] {
   return cells;
 }
 
-// Flat-top hexagon (honeycomb orientation) spanning the 5×5 dot-grid viewBox.
-const HEX_POINTS = "1.25,0 3.75,0 5,2.5 3.75,5 1.25,5 0,2.5";
-
 export function VenueMark({
   venueId,
   className = "size-9",
@@ -60,26 +57,25 @@ export function VenueMark({
   className?: string;
 }) {
   const cells = cellsFor(venueId);
-  // Stable per-venue clip id so several marks on a page don't collide.
-  const clipId = `venue-hex-${hashId(venueId).toString(36)}`;
   return (
-    <span className={`inline-flex ${className} shrink-0 items-center justify-center`} aria-hidden="true">
-      <svg viewBox="0 0 5 5" className="size-full" shapeRendering="geometricPrecision">
-        <defs>
-          <clipPath id={clipId}>
-            <polygon points={HEX_POINTS} />
-          </clipPath>
-        </defs>
-        {/* Hexagon fill (the node body). */}
-        <polygon points={HEX_POINTS} style={{ fill: "var(--muted)", fillOpacity: 0.4 }} />
-        {/* Two-tone identity dots, clipped to the hexagon. */}
-        <g clipPath={`url(#${clipId})`}>
-          {cells.map((c) => (
-            <circle key={`${c.x}-${c.y}`} cx={c.x + 0.5} cy={c.y + 0.5} r={0.42} style={{ fill: c.color }} />
-          ))}
-        </g>
-        {/* Hexagon outline on top. */}
-        <polygon points={HEX_POINTS} fill="none" style={{ stroke: "var(--border)" }} strokeWidth={0.14} />
+    <span
+      className={`inline-flex ${className} shrink-0 items-center justify-center rounded-lg border bg-muted/40`}
+      aria-hidden="true"
+    >
+      {/* svg sized off the definite container (percentage padding is relative to
+          the parent's width, which would blow the mark up). */}
+      <svg viewBox="0 0 5 5" className="h-[76%] w-[76%]" shapeRendering="geometricPrecision">
+        {cells.map((c) => (
+          <rect
+            key={`${c.x}-${c.y}`}
+            x={c.x + 0.25}
+            y={c.y + 0.25}
+            width={0.5}
+            height={0.5}
+            rx={0.05}
+            style={{ fill: c.color }}
+          />
+        ))}
       </svg>
     </span>
   );
