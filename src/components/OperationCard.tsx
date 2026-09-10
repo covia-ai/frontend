@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Asset, Venue } from "@covia/covia-sdk";
@@ -17,7 +18,12 @@ interface OperationCardProps {
   scoped?: boolean;
 }
 
-export function OperationCard({ asset, venue: venueProp, scoped = true }: OperationCardProps) {
+// Memoised: the catalogue filters search client-side, so a keystroke
+// re-renders OperationsList and remaps the visible page. The card's props
+// (asset, venue, scoped) are stable across those renders, so `memo` keeps each
+// card — and its per-render schema-signature parse — from re-running unless the
+// card actually changes.
+function OperationCardBase({ asset, venue: venueProp, scoped = true }: OperationCardProps) {
   const fallbackVenue = useAuthenticatedVenue();
   const venue = venueProp ?? fallbackVenue;
   const router = useRouter();
@@ -133,3 +139,5 @@ export function OperationCard({ asset, venue: venueProp, scoped = true }: Operat
     </Card>
   );
 }
+
+export const OperationCard = memo(OperationCardBase);
