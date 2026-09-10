@@ -10,7 +10,7 @@ import { useAuthStore } from "@/hooks/use-auth";
 import { RemoveVenueModal } from "./RemoveVenueModal";
 import { VenueTrustPill } from "./VenueTrustPill";
 import { VenueMark } from "./VenueMark";
-import { ArrowUpRight, Copy, Database, PlayCircle, Star } from "lucide-react";
+import { ArrowUpRight, Copy, Database, PlayCircle } from "lucide-react";
 import { cn, copyDataToClipBoard } from "@/lib/utils";
 import { venueDisplayName } from "@/lib/venue-display";
 import { getVenueStatus } from "@/lib/venue-registry";
@@ -74,7 +74,12 @@ export function VenueCard({ venue: venueProp, compact }: VenueCardProps) {
           >
             <span className="truncate">{venueDisplayName(venue)}</span>
             {isDefault && (
-              <Star size={12} className="shrink-0 fill-primary text-primary" aria-label="Your default venue" />
+              <span
+                className="shrink-0 rounded-full bg-primary/15 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-primary"
+                title="Your default venue"
+              >
+                Default
+              </span>
             )}
           </div>
           <div className="truncate font-mono text-[11px] text-muted-foreground">{host}</div>

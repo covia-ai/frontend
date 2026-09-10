@@ -2,10 +2,13 @@
 
 // A deterministic identity mark for a venue node. The Convex `Identicon` only
 // renders for did:key identities; venues are did:web, so we generate our own —
-// a horizontally-symmetric two-tone grid hashed from the venueId, in the app's
-// brand tokens (purple + blue) so it reads in both themes. Same venue → same
-// mark, every venue its own. Square-ish cells distinguish a venue node from the
-// rounded-cell agent identicon while staying in the same family.
+// a horizontally-symmetric two-tone pattern hashed from the venueId, in the
+// app's brand tokens (purple + blue) so it reads in both themes. Same venue →
+// same mark, every venue its own.
+//
+// Deliberately distinct from the agent identicon (a rounded-SQUARE tile of
+// rounded-square cells): a venue reads as a network NODE — a round chip of
+// two-tone DOTS — so the two never get confused while staying one family.
 
 function hashId(s: string): number {
   let h = 2166136261;
@@ -55,18 +58,19 @@ export function VenueMark({
   const cells = cellsFor(venueId);
   return (
     <span
-      className={`flex ${className} shrink-0 items-center justify-center rounded-lg border bg-muted/40 p-1.5`}
+      className={`inline-flex ${className} shrink-0 items-center justify-center rounded-full border bg-muted/40`}
       aria-hidden="true"
     >
-      <svg viewBox="0 0 5 5" className="size-full" shapeRendering="geometricPrecision">
+      {/* 72% of the container (not padding — percentage padding is relative to
+          the parent's width, which would blow the mark up) leaves a clean ring
+          margin around the dots. */}
+      <svg viewBox="0 0 5 5" className="h-[72%] w-[72%]" shapeRendering="geometricPrecision">
         {cells.map((c) => (
-          <rect
+          <circle
             key={`${c.x}-${c.y}`}
-            x={c.x + 0.08}
-            y={c.y + 0.08}
-            width={0.84}
-            height={0.84}
-            rx={0.1}
+            cx={c.x + 0.5}
+            cy={c.y + 0.5}
+            r={0.42}
             style={{ fill: c.color }}
           />
         ))}

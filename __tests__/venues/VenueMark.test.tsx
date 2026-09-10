@@ -4,7 +4,7 @@ import "@testing-library/jest-dom";
 import { VenueMark } from "@/components/VenueMark";
 
 const cols = (container: HTMLElement) =>
-  [...container.querySelectorAll("rect")].map((r) => Math.round(parseFloat(r.getAttribute("x") ?? "0") - 0.08));
+  [...container.querySelectorAll("circle")].map((c) => Math.round(parseFloat(c.getAttribute("cx") ?? "0") - 0.5));
 
 describe("VenueMark", () => {
   it("is deterministic — the same venueId always renders the same mark", () => {
@@ -16,7 +16,7 @@ describe("VenueMark", () => {
   it("differs between venues and is never blank", () => {
     const a = render(<VenueMark venueId="did:web:alpha.example" />);
     const b = render(<VenueMark venueId="did:web:bravo.example" />);
-    expect(a.container.querySelectorAll("rect").length).toBeGreaterThan(0);
+    expect(a.container.querySelectorAll("circle").length).toBeGreaterThan(0);
     expect(a.container.innerHTML).not.toBe(b.container.innerHTML);
   });
 

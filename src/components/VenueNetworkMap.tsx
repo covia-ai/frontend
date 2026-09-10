@@ -34,6 +34,11 @@ function VenueMapNode({ venue, pos, isDefault }: { venue: VenueDescriptor; pos: 
       <span className="max-w-full truncate text-xs font-medium text-foreground group-hover:text-primary">
         {venueDisplayName(venue)}
       </span>
+      {isDefault && (
+        <span className="rounded-full bg-primary/15 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-primary">
+          Default
+        </span>
+      )}
     </Link>
   );
 }
