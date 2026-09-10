@@ -95,7 +95,8 @@ describe("AgentChat", () => {
 
     render(<AgentChat initialAgentId="writer" fixedAgent />);
 
-    expect(screen.getByText("writer")).toBeInTheDocument();
+    // The header shows the humanised name (identicon + "Writer"), not the slug.
+    expect(screen.getByText("Writer")).toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: "Agent" })).not.toBeInTheDocument();
   });
 

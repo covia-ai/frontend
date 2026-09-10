@@ -18,6 +18,7 @@ import type { AgentExplorerController } from "@/hooks/use-agent-explorer";
 import type { Session } from "@/config/types";
 import { defaultSessionTitle, formatSessionLabel } from "@/lib/agent-sessions";
 import { agentSendingPlaceholder } from "@/lib/agent-chat";
+import { agentDisplay } from "@/lib/agent-display";
 import { cn, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
 
 /**
@@ -192,6 +193,8 @@ export function AgentChatSurface({ controller }: { controller: AgentExplorerCont
         pendingChat={pendingChat}
         echoAlreadyRecorded={echoAlreadyRecorded}
         transcriptRef={transcriptRef}
+        agentBrief={agentDisplay(selectedAgentDetail.config).brief}
+        onStarter={(text) => setMessageText(text)}
       />
 
       <div className="px-6 py-3 border-t border-border bg-muted/20 flex flex-col gap-2">
