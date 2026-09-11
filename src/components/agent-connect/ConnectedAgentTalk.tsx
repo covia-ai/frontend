@@ -8,7 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { jobFailure, notifyError, notifyWarning } from "@/lib/notify";
-import { A2A_SEND_OP, A2ATask, jobStatusLabel, taskReplyText } from "@/lib/a2a";
+import {
+  A2ATask,
+  jobStatusLabel,
+  POLL_INTERVAL_MS,
+  RESUME_TIMEOUT_MS,
+  SETTLE_TIMEOUT_MS,
+  taskReplyText,
+  taskStatusText,
+} from "@/lib/a2a";
 
 type MessageTone = "normal" | "input" | "auth" | "error";
 
@@ -17,6 +25,14 @@ interface TalkMessage {
   text: string;
   tone?: MessageTone;
 }
+
+/** What to do about an AUTH_REQUIRED interrupt, appended to the agent's own message. */
+const AUTH_HINT =
+  "This agent requires authentication to continue. Reconnect it with a stored secret (Connected → Connect an agent → This agent needs authentication).";
+
+/** Identity of the remote Task snapshot a Job is currently sitting on. */
+const taskFingerprint = (job: Job): string =>
+  `${job.metadata.status ?? ""}|${JSON.stringify(job.metadata.output ?? null)}`;
 
 interface ConnectedAgentTalkProps {
   /** The local alias registered at `w/a2a/agents/<name>`. */
@@ -51,49 +67,83 @@ export function ConnectedAgentTalk({ agentName }: ConnectedAgentTalkProps) {
    * Drive a Job to a settled state — terminal or a paused interrupt — mirroring
    * its status over SSE, with a polling fallback. Streaming closes only on a
    * terminal state, so we also break out when the job pauses (INPUT/AUTH).
+   *
+   * `resumedFrom` is the snapshot a continuation resumed from. A continued Job
+   * is *already* paused when we get here, so settling on `isPaused` alone would
+   * re-report the interrupt the user just answered: a pause only settles once
+   * the snapshot has actually moved. The stream is re-subscribed rather than
+   * read once, because the venue closes it as soon as the Job is settled on its
+   * side — which, mid-continuation, it still is.
    */
-  const settleJob = async (job: Job) => {
-    const settled = () => job.isFinished || job.isPaused;
-    try {
-      for await (const _ev of job.stream()) {
-        void _ev;
-        await job.refresh().catch(() => {});
-        setLiveStatus(job.metadata.status ?? null);
-        if (settled()) break;
+  const settleJob = async (job: Job, resumedFrom?: string) => {
+    const moved = () => resumedFrom === undefined || taskFingerprint(job) !== resumedFrom;
+    const settled = () => (job.isFinished || job.isPaused) && moved();
+    const deadline =
+      Date.now() + (resumedFrom === undefined ? SETTLE_TIMEOUT_MS : RESUME_TIMEOUT_MS);
+
+    const sync = async () => {
+      await job.refresh().catch(() => {});
+      // Until a continuation advances, the Job still reports the interrupt we
+      // resumed from; echoing "waiting for your input" back at someone who has
+      // just answered reads as a stall, so keep the pill on "Working…".
+      setLiveStatus(moved() ? (job.metadata.status ?? null) : "STARTED");
+    };
+
+    while (!settled() && Date.now() < deadline) {
+      try {
+        for await (const _ev of job.stream()) {
+          void _ev;
+          await sync();
+          if (settled()) break;
+        }
+      } catch {
+        // SSE unavailable — the poll below carries the turn instead.
       }
-    } catch {
-      // SSE unavailable — poll to a settled state.
-      for (let i = 0; i < 120 && !settled(); i++) {
-        await new Promise((r) => setTimeout(r, 1000));
-        await job.refresh().catch(() => {});
-        setLiveStatus(job.metadata.status ?? null);
-      }
+      if (settled()) break;
+      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+      await sync();
     }
     await job.refresh().catch(() => {});
-    handleSettled(job);
+    handleSettled(job, moved());
   };
 
-  const handleSettled = (job: Job) => {
+  const handleSettled = (job: Job, advanced: boolean) => {
     const status = (job.metadata.status ?? "").toUpperCase();
     const task = job.metadata.output as A2ATask | undefined;
     if (typeof task?.id === "string") taskId.current = task.id;
+
+    if (!advanced) {
+      // The reply was accepted locally but the remote Task never moved. Say so,
+      // rather than re-rendering the prompt the user has already answered.
+      pendingInputJob.current = job;
+      add({
+        role: "agent",
+        tone: "error",
+        text: "Your reply was accepted, but the agent hasn't responded — the task is still waiting for input. Try sending it again.",
+      });
+      return;
+    }
 
     if (job.needsInput) {
       pendingInputJob.current = job;
       add({
         role: "agent",
         tone: "input",
-        text: taskReplyText(task) || "The agent needs more information to continue. Reply to continue.",
+        // The question lives on the Task status; artifacts may only hold partial work.
+        text:
+          taskStatusText(task) ||
+          taskReplyText(task) ||
+          "The agent needs more information to continue. Reply to continue.",
       });
       return;
     }
     if (job.needsAuth) {
       pendingInputJob.current = null;
+      const detail = taskStatusText(task);
       add({
         role: "agent",
         tone: "auth",
-        text:
-          "This agent requires authentication to continue. Reconnect it with a stored secret (Connected → Connect an agent → This agent needs authentication).",
+        text: detail ? `${detail}\n\n${AUTH_HINT}` : AUTH_HINT,
       });
       return;
     }
@@ -125,20 +175,20 @@ export function ConnectedAgentTalk({ agentName }: ConnectedAgentTalkProps) {
     const message = { role: "user", parts: [{ type: "text", text }] };
     try {
       let job: Job;
+      let resumedFrom: string | undefined;
       if (pendingInputJob.current) {
         // Continue the interrupted remote Task by delivering to the same job.
         const paused = pendingInputJob.current;
         pendingInputJob.current = null;
+        resumedFrom = taskFingerprint(paused);
         await paused.sendMessage(message);
         job = paused;
       } else {
-        job = await venue.operations.invoke(A2A_SEND_OP, {
-          agent: agentPath,
-          message,
+        job = await venue.a2a.send(agentPath, message, {
           ...(taskId.current && { taskId: taskId.current }),
         });
       }
-      await settleJob(job);
+      await settleJob(job, resumedFrom);
     } catch (err) {
       const { reason, jobHref } = jobFailure(err, venue.venueId);
       notifyError("Unable to reach agent", reason, venue.baseUrl, jobHref);

@@ -24,12 +24,7 @@ import {
 import { ExternalLink, Info, KeyRound, Link2, Cable, Loader2 } from "lucide-react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
-import {
-  A2A_NAME_PATTERN,
-  IMPORT_AGENT_OP,
-  ImportAgentResult,
-  slugifyAgentName,
-} from "@/lib/a2a";
+import { A2A_NAME_PATTERN, slugifyAgentName } from "@/lib/a2a";
 
 const A2A_DOCS_URL = "https://docs.covia.ai/docs/user-guide/agents";
 const NO_SECRET = "__none__";
@@ -129,7 +124,7 @@ export function ConnectAgentDialog({ trigger, open, onOpenChange }: ConnectAgent
               ...(coviaVenue.trim() && { venue: coviaVenue.trim() }),
             };
 
-      await venue.operations.run<ImportAgentResult>(IMPORT_AGENT_OP, {
+      await venue.a2a.importAgent({
         name: resolvedName,
         ...target,
         ...(auth && { auth }),
