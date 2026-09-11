@@ -1,26 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { DLFSEntry } from "@covia/covia-sdk";
 import {
   ChevronRight,
   Database,
   Download,
   File,
-  Folder,
   FolderOpen,
-  HardDrive,
   Image as ImageIcon,
   Loader2,
+  Search,
 } from "lucide-react";
 import { useFilesExplorer } from "@/hooks/use-files-explorer";
 import { filePreviewKind, useFilePreview } from "@/hooks/use-file-preview";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { CopyField } from "@/components/CopyField";
 import { RawTextPanel } from "@/components/content-preview/RawTextPanel";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { TypeTile } from "@/components/TypeTile";
+import { DRIVE_LOOK, FOLDER_LOOK, fileTypeLook } from "@/lib/file-type-look";
 import { notifyError } from "@/lib/notify";
-import { cn } from "@/lib/utils";
+import { cn, formatRelativeTime } from "@/lib/utils";
 
 interface FilesExplorerProps {
   initialDrive?: string;
@@ -67,8 +69,18 @@ export function FilesExplorer({ initialDrive, initialPath }: FilesExplorerProps 
   const explorer = useFilesExplorer(initialDrive, initialPath);
   const webdav = useWebDavInfo(explorer.venue);
   const [downloading, setDownloading] = useState(false);
+  const [query, setQuery] = useState("");
+
+  // Directories-first, then filtered by the in-column search over the already
+  // loaded listing (client-side — no new read).
+  const shownEntries = useMemo(() => {
+    const sorted = entriesSorted(explorer.entries);
+    const q = query.trim().toLowerCase();
+    return q ? sorted.filter((entry) => entry.name.toLowerCase().includes(q)) : sorted;
+  }, [explorer.entries, query]);
 
   const kind = explorer.selectedEntry ? filePreviewKind(explorer.selectedEntry.name) : "other";
+  const selectedLook = explorer.selectedEntry ? fileTypeLook(explorer.selectedEntry.name) : null;
   const selectedPath = explorer.selectedEntry
     ? explorer.path
       ? `${explorer.path}/${explorer.selectedEntry.name}`
@@ -149,7 +161,7 @@ export function FilesExplorer({ initialDrive, initialPath }: FilesExplorerProps 
                     : "text-foreground hover:bg-accent",
                 )}
               >
-                <HardDrive size={14} className="shrink-0 text-muted-foreground" />
+                <TypeTile Icon={DRIVE_LOOK.Icon} tile={DRIVE_LOOK.tile} className="size-7" iconSize={15} />
                 <span className="flex-1 truncate">{name}</span>
               </button>
             ))}
@@ -184,6 +196,21 @@ export function FilesExplorer({ initialDrive, initialPath }: FilesExplorerProps 
             })}
           </div>
 
+          {explorer.drive && (
+            <div className="border-b border-border p-2">
+              <div className="relative">
+                <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Filter this folder…"
+                  aria-label="Filter files"
+                  className="h-7 pl-7 text-xs"
+                />
+              </div>
+            </div>
+          )}
+
           {explorer.entriesLoading && (
             <div className="flex items-center justify-center py-10">
               <Loader2 className="animate-spin text-primary" size={20} />
@@ -195,33 +222,37 @@ export function FilesExplorer({ initialDrive, initialPath }: FilesExplorerProps 
           {!explorer.entriesLoading && !explorer.entriesError && explorer.entries.length === 0 && (
             <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
               <FolderOpen size={28} />
-              <p className="mt-2 text-sm">Empty</p>
+              <p className="mt-2 text-sm">This folder is empty</p>
             </div>
           )}
           {!explorer.entriesLoading &&
             !explorer.entriesError &&
-            entriesSorted(explorer.entries).map((entry) => {
+            explorer.entries.length > 0 &&
+            shownEntries.length === 0 && (
+              <p className="px-3 py-6 text-center text-sm text-muted-foreground">No files match “{query}”.</p>
+            )}
+          {!explorer.entriesLoading &&
+            !explorer.entriesError &&
+            shownEntries.map((entry) => {
               const isSelected = explorer.selectedEntry?.name === entry.name;
+              const look = entry.type === "directory" ? FOLDER_LOOK : fileTypeLook(entry.name);
               return (
                 <button
                   key={entry.name}
                   onClick={() => explorer.selectEntry(entry)}
                   className={cn(
-                    "flex w-full items-center gap-2 border-b border-border px-3 py-2 text-left text-sm transition-colors last:border-0",
+                    "flex w-full items-center gap-2.5 border-b border-border px-3 py-2 text-left text-sm transition-colors last:border-0",
                     isSelected
                       ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
                       : "text-foreground hover:bg-accent",
                   )}
                 >
-                  {entry.type === "directory" ? (
-                    <Folder size={14} className="shrink-0 text-muted-foreground" />
-                  ) : (
-                    <File size={14} className="shrink-0 text-muted-foreground" />
-                  )}
+                  <TypeTile Icon={look.Icon} tile={look.tile} className="size-7" iconSize={15} />
                   <span className="flex-1 truncate">{entry.name}</span>
-                  {entry.type === "file" && (
-                    <span className="shrink-0 text-xs text-muted-foreground">{formatSize(entry.size)}</span>
-                  )}
+                  <span className="flex shrink-0 flex-col items-end gap-0.5 text-[10px] text-muted-foreground">
+                    {entry.type === "file" && <span>{formatSize(entry.size)}</span>}
+                    {entry.modified && <span>{formatRelativeTime(entry.modified)}</span>}
+                  </span>
                 </button>
               );
             })}
@@ -236,12 +267,15 @@ export function FilesExplorer({ initialDrive, initialPath }: FilesExplorerProps 
             </div>
           )}
 
-          {explorer.selectedEntry && kind === "other" && (
+          {explorer.selectedEntry && kind === "other" && selectedLook && (
             <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-              <File size={32} className="text-muted-foreground" />
+              <TypeTile Icon={selectedLook.Icon} tile={selectedLook.tile} className="size-12" iconSize={26} />
               <div>
                 <p className="text-sm font-medium">{explorer.selectedEntry.name}</p>
-                <p className="text-xs text-muted-foreground">{formatSize(explorer.selectedEntry.size)}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatSize(explorer.selectedEntry.size)}
+                  {explorer.selectedEntry.modified && ` · modified ${formatRelativeTime(explorer.selectedEntry.modified)}`}
+                </p>
               </div>
               <Button size="sm" onClick={() => void handleDownload()} disabled={downloading}>
                 {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
