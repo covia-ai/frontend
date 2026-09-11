@@ -164,7 +164,7 @@ async function fetchAgentItems(
   const venueName = descriptor.metadata.name ?? descriptor.venueId;
   return agents.map((agent) => {
     const chatHref = `/agents/chat?agentId=${encodeURIComponent(agent.agentId)}`;
-    const viewHref = `/agents/view?agentId=${encodeURIComponent(agent.agentId)}`;
+    const viewHref = `/agents/agent/${encodeURIComponent(agent.agentId)}`;
     return {
       kind: "agent" as const,
       id: agent.agentId,
