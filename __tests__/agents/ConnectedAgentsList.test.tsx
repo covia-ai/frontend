@@ -23,9 +23,13 @@ jest.mock("@/hooks/use-auth", () => ({
 const listMock = jest.fn();
 const readMock = jest.fn();
 const deleteMock = jest.fn().mockResolvedValue({ deleted: true });
+// Backs the Convert capability check (#350) — Convert ports, so it needs the
+// same operation Port does.
+const adapterListMock = jest.fn();
 const mockVenue = {
   venueId: "venue-1",
   baseUrl: "https://venue.example",
+  adapters: { list: adapterListMock },
   workspace: { list: listMock, read: readMock, delete: deleteMock },
   secrets: { list: jest.fn().mockResolvedValue([]) },
   operations: { run: jest.fn() },
@@ -34,8 +38,10 @@ jest.mock("@/hooks/use-authenticated-venue", () => ({
   useAuthenticatedVenue: () => mockVenue,
 }));
 
-// Stub the heavy Port dialog: assert it opens with the converted seed.
+// Stub the heavy Port dialog: assert it opens with the converted seed. The
+// real operation path is kept — Convert's capability check reads it.
 jest.mock("@/components/PortAgentDialog", () => ({
+  FROM_SKILLS_OP: "v/ops/agent/from-skills",
   PortAgentDialog: ({ initialName, initialSystemPrompt }: { initialName?: string; initialSystemPrompt?: string }) => (
     <div data-testid="port-dialog-stub" data-name={initialName} data-prompt={initialSystemPrompt} />
   ),
@@ -60,6 +66,10 @@ describe("ConnectedAgentsList", () => {
     listMock.mockReset();
     readMock.mockReset();
     deleteMock.mockClear();
+    adapterListMock.mockReset();
+    adapterListMock.mockResolvedValue([
+      { name: "agent", operations: ["v/ops/agent/create", "v/ops/agent/from-skills"] },
+    ]);
     (notifySuccess as jest.Mock).mockClear();
   });
 
@@ -114,6 +124,27 @@ describe("ConnectedAgentsList", () => {
     const dialog = await screen.findByTestId("port-dialog-stub");
     expect(dialog).toHaveAttribute("data-name", "alpha");
     expect(dialog.getAttribute("data-prompt")).toContain("alpha card");
+  });
+
+  it("disables Convert to native on a venue that can't port (#350)", async () => {
+    adapterListMock.mockResolvedValue([
+      { name: "agent", operations: ["v/ops/agent/create"] },
+    ]);
+    listMock.mockResolvedValue({ exists: true, type: "Map", keys: ["alpha"] });
+    readMock.mockResolvedValue(bindingFor("alpha"));
+
+    render(<ConnectedAgentsList />);
+    await waitFor(() => expect(screen.getByTestId("connected-list")).toBeInTheDocument());
+
+    await waitFor(() =>
+      expect(screen.getByTestId("connected-convert-alpha")).toBeDisabled(),
+    );
+    // The reason is visible text, not a hover-only tooltip.
+    expect(screen.getByTestId("convert-unsupported-notice")).toHaveTextContent(
+      "v/ops/agent/from-skills",
+    );
+    await userEvent.click(screen.getByTestId("connected-convert-alpha"));
+    expect(screen.queryByTestId("port-dialog-stub")).not.toBeInTheDocument();
   });
 
   it("prompts to sign in when unauthenticated", async () => {
