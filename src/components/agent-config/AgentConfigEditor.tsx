@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Info } from "lucide-react";
 import { LLM_PROVIDERS } from "@/config/llm-providers";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -189,6 +189,18 @@ export function AgentRuntimeFields({
               />
             )}
           </div>
+        )}
+        {providerId === DEFAULT_PROVIDER_OPTION && (
+          <p
+            className="flex items-center gap-1 text-sm text-muted-foreground"
+            data-testid="venue-default-key-notice"
+          >
+            <Info size={14} className="shrink-0" />
+            This venue&apos;s default model can&apos;t be checked from here. If it needs a
+            key you haven&apos;t stored, the agent is created but its first task fails —{" "}
+            <Link href="/secrets" className="underline">add a key in Secrets</Link> or pick a
+            specific provider above.
+          </p>
         )}
       </div>
 

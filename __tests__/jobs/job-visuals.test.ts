@@ -11,21 +11,36 @@ import {
 
 describe("operationVisual — operation → icon identity", () => {
   it("reads the v/ops/<adapter>/<op> form", () => {
-    expect(operationVisual({ operation: "v/ops/http/get" }).kind).toBe("http");
-    expect(operationVisual({ operation: "v/ops/secret/set" }).kind).toBe("secret");
-    expect(operationVisual({ operation: "v/ops/agent/create" }).kind).toBe("agent");
+    expect(operationVisual({ op: "v/ops/http/get" }).kind).toBe("http");
+    expect(operationVisual({ op: "v/ops/secret/set" }).kind).toBe("secret");
+    expect(operationVisual({ op: "v/ops/agent/create" }).kind).toBe("agent");
   });
 
   it("reads the v/<adapter>/ops/<op> form (e.g. test ops)", () => {
-    expect(operationVisual({ operation: "v/test/ops/echo" }).kind).toBe("test");
-    expect(operationVisual({ operation: "v/test/ops/error" }).kind).toBe("test");
+    expect(operationVisual({ op: "v/test/ops/echo" }).kind).toBe("test");
+    expect(operationVisual({ op: "v/test/ops/error" }).kind).toBe("test");
   });
 
   it("handles DID-scoped and model paths, and bare shorthand", () => {
-    expect(operationVisual({ operation: "did:key:z6Mk/v/test/ops/echo" }).kind).toBe("test");
-    expect(operationVisual({ operation: "did:key:z6Mk/v/ops/http/get" }).kind).toBe("http");
-    expect(operationVisual({ operation: "v/models/anthropic/claude-sonnet-5" }).kind).toBe("model");
-    expect(operationVisual({ operation: "agent:create" }).kind).toBe("agent");
+    expect(operationVisual({ op: "did:key:z6Mk/v/test/ops/echo" }).kind).toBe("test");
+    expect(operationVisual({ op: "did:key:z6Mk/v/ops/http/get" }).kind).toBe("http");
+    expect(operationVisual({ op: "v/models/anthropic/claude-sonnet-5" }).kind).toBe("model");
+    expect(operationVisual({ op: "agent:create" }).kind).toBe("agent");
+  });
+
+  it("reads the adapter off the resolved asset when op is a bare hash", () => {
+    const hash = "0x" + "a".repeat(64);
+    // Without the asset, a hash has no path to parse and the name decides.
+    expect(operationVisual({ op: hash, name: "Echo Operation" }).kind).toBe("operation");
+    // The venue's dispatch form is adapter:subop — only the adapter counts.
+    expect(operationVisual({ op: hash, name: "Echo Operation" }, "test:echo").kind).toBe("test");
+    expect(operationVisual({ op: hash }, "http:get").kind).toBe("http");
+    expect(operationVisual({ op: hash }, "secret").kind).toBe("secret");
+  });
+
+  it("prefers the operation path over the asset adapter, and ignores an unknown one", () => {
+    expect(operationVisual({ op: "v/ops/http/get" }, "secret:set").kind).toBe("http");
+    expect(operationVisual({ op: "0x" + "b".repeat(64), name: "Set Secret" }, "nosuch").kind).toBe("secret");
   });
 
   it("falls back to the job name when there is no operation path", () => {
@@ -40,7 +55,7 @@ describe("operationVisual — operation → icon identity", () => {
   });
 
   it("always returns an icon and a class", () => {
-    const v = operationVisual({ operation: "v/ops/http/get" });
+    const v = operationVisual({ op: "v/ops/http/get" });
     expect(v.Icon).toBeDefined();
     expect(typeof v.className).toBe("string");
   });

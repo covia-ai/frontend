@@ -127,7 +127,7 @@ async function fetchJobItems(
   return jobRecordsFromSlice(values).map((job) => ({
     kind: "job" as const,
     id: job.id as string,
-    title: (job.name as string | undefined) ?? (job.operation as string | undefined) ?? (job.id as string),
+    title: (job.name as string | undefined) ?? (job.op as string | undefined) ?? (job.id as string),
     subtitle: job.status as string | undefined,
     venueId: descriptor.venueId,
     venueName,

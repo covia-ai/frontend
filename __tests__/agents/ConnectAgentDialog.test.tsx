@@ -14,11 +14,11 @@ jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
 }));
 
-const runMock = jest.fn().mockResolvedValue({ path: "w/a2a/agents/support-bot", stored: true });
+const importMock = jest.fn().mockResolvedValue({ path: "w/a2a/agents/support-bot", stored: true });
 const mockVenue = {
   venueId: "venue-1",
   baseUrl: "https://venue.example",
-  operations: { run: runMock },
+  a2a: { importAgent: importMock },
   secrets: { list: jest.fn().mockResolvedValue(["REMOTE_TOKEN"]) },
 };
 jest.mock("@/hooks/use-authenticated-venue", () => ({
@@ -30,7 +30,7 @@ import { notifySuccess, notifyWarning } from "@/lib/notify";
 
 describe("ConnectAgentDialog", () => {
   beforeEach(() => {
-    runMock.mockClear();
+    importMock.mockClear();
     pushMock.mockClear();
     (notifySuccess as jest.Mock).mockClear();
     (notifyWarning as jest.Mock).mockClear();
@@ -60,8 +60,8 @@ describe("ConnectAgentDialog", () => {
     await userEvent.type(screen.getByTestId("connect-agent-url"), "https://agent.example.com");
     await userEvent.click(screen.getByTestId("connect-agent-submit"));
 
-    await waitFor(() => expect(runMock).toHaveBeenCalledTimes(1));
-    expect(runMock).toHaveBeenCalledWith("v/ops/a2a/import-agent", {
+    await waitFor(() => expect(importMock).toHaveBeenCalledTimes(1));
+    expect(importMock).toHaveBeenCalledWith({
       name: "support-bot",
       url: "https://agent.example.com",
     });
@@ -81,8 +81,8 @@ describe("ConnectAgentDialog", () => {
 
     await userEvent.click(screen.getByTestId("connect-agent-submit"));
 
-    await waitFor(() => expect(runMock).toHaveBeenCalledTimes(1));
-    expect(runMock).toHaveBeenCalledWith("v/ops/a2a/import-agent", {
+    await waitFor(() => expect(importMock).toHaveBeenCalledTimes(1));
+    expect(importMock).toHaveBeenCalledWith({
       name: "private-bot",
       url: "https://agent.example.com",
       auth: { secret: "s/REMOTE_TOKEN" },
@@ -100,8 +100,8 @@ describe("ConnectAgentDialog", () => {
     );
     await userEvent.click(screen.getByTestId("connect-agent-submit"));
 
-    await waitFor(() => expect(runMock).toHaveBeenCalledTimes(1));
-    expect(runMock).toHaveBeenCalledWith("v/ops/a2a/import-agent", {
+    await waitFor(() => expect(importMock).toHaveBeenCalledTimes(1));
+    expect(importMock).toHaveBeenCalledWith({
       name: "team-bot",
       coviaAgent: "g/team-bot",
       venue: "https://venue.example.com",
@@ -117,6 +117,6 @@ describe("ConnectAgentDialog", () => {
     await userEvent.click(screen.getByTestId("connect-agent-submit"));
 
     expect(notifyWarning).toHaveBeenCalled();
-    expect(runMock).not.toHaveBeenCalled();
+    expect(importMock).not.toHaveBeenCalled();
   });
 });

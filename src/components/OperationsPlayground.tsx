@@ -3,13 +3,11 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Lock } from "lucide-react";
-import { RunStatus } from "@covia/covia-sdk";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { PageHeading } from "@/components/PageHeading";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
-import { StatusBadge } from "@/components/StatusBadge";
-import { ExecutionDataTable } from "@/components/execution/ExecutionDataTable";
+import { OperationRunResult } from "@/components/execution/OperationRunResult";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -21,10 +19,8 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
-import { useExecutionLifecycle } from "@/hooks/use-execution-lifecycle";
 import { resolveOperationByAddress } from "@/lib/operations-catalog";
 import { notifyError } from "@/lib/notify";
 
@@ -221,7 +217,7 @@ export function OperationsPlayground() {
                 <Card className="min-h-[240px]">
                   <CardContent className="pt-6">
                     {jobId && venue ? (
-                      <PlaygroundResult jobId={jobId} venueId={venue.venueId} />
+                      <OperationRunResult jobId={jobId} venueId={venue.venueId} />
                     ) : (
                       <p className="text-sm text-muted-foreground">Run an operation to see the result here.</p>
                     )}
@@ -233,46 +229,5 @@ export function OperationsPlayground() {
         </Tabs>
       </div>
     </ContentLayout>
-  );
-}
-
-// A trimmed-down sibling of ExecutionViewer's job-detail rendering — reuses
-// the same lifecycle hook (polling/streaming) but skips ExecutionViewer's
-// own TopBar/ExecutionHeader chrome, which assumes it owns the whole page
-// rather than sitting inline in a split pane.
-function PlaygroundResult({ jobId, venueId }: { jobId: string; venueId: string }) {
-  const execution = useExecutionLifecycle({ jobId, venueId });
-  const { job, operationAsset, loading, error, streaming } = execution;
-
-  if (loading) {
-    return (
-      <div className="flex h-32 w-full items-center justify-center">
-        <Spinner variant="ellipsis" className="text-primary" size={32} />
-      </div>
-    );
-  }
-  if (error) return <ErrorDisplay error={error} />;
-  if (!job) return null;
-
-  const operationSchema = operationAsset?.metadata?.operation;
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <StatusBadge status={job.status} kind="job" />
-        {streaming && (
-          <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300 text-xs font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-            Streaming
-          </span>
-        )}
-      </div>
-
-      {job.status === RunStatus.FAILED && job.error ? (
-        <ErrorDisplay error={job.error} />
-      ) : (
-        <ExecutionDataTable value={job.output} schema={operationSchema?.output} direction="output" />
-      )}
-    </div>
   );
 }

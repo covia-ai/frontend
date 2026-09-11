@@ -15,6 +15,7 @@ import { useAgentRoster, type RosterAgent } from "@/hooks/use-agent-roster";
 import { agentDisplay, humanizeAgentId, relTime, shortRefLabel } from "@/lib/agent-display";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
 import { AgentRosterCard } from "@/components/agent-roster/AgentRosterCard";
+import { useLiveStreamSlots } from "@/hooks/use-live-stream-slots";
 
 const AGENTS_GRID_CLASS =
   "grid w-full grid-cols-[repeat(auto-fill,minmax(min(20rem,100%),1fr))] items-stretch gap-4";
@@ -64,6 +65,7 @@ export function AgentRoster({ venueId }: { venueId?: string } = {}) {
   const { roster, counts, loading, error, refresh } = useAgentRoster(
     venueStatus === "ready" ? venue : null,
   );
+  const liveSlots = useLiveStreamSlots(roster);
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -175,7 +177,13 @@ export function AgentRoster({ venueId }: { venueId?: string } = {}) {
                   <div className={AGENTS_GRID_CLASS}>
                     {venue &&
                       list.map((a) => (
-                        <AgentRosterCard key={a.agentId} agent={a} venue={venue} onChanged={refresh} />
+                        <AgentRosterCard
+                          key={a.agentId}
+                          agent={a}
+                          venue={venue}
+                          live={liveSlots.has(a.agentId)}
+                          onChanged={refresh}
+                        />
                       ))}
                   </div>
                 </section>

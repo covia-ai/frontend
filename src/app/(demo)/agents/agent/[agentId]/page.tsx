@@ -10,11 +10,15 @@ export default async function AgentDetailPage({
 }: {
   params: Promise<{ agentId: string }>;
 }) {
+  // Next already percent-decodes dynamic route params. Decoding a second time
+  // corrupts an id containing a literal "%20" and throws URIError on one
+  // containing a bare "%", which from a Server Component renders the error
+  // boundary instead of the agent.
   const { agentId } = await params;
 
   return (
     <ContentLayout>
-      <AgentProfile agentId={decodeURIComponent(agentId)} />
+      <AgentProfile agentId={agentId} />
     </ContentLayout>
   );
 }

@@ -40,7 +40,7 @@ export function WorkspaceExplorer({ initialPath }: WorkspaceExplorerProps = {}) 
         </div>
       )}
 
-      <div className="grid h-[600px] w-full grid-cols-[10.5rem_17rem_minmax(0,1fr)] overflow-hidden rounded-lg border border-border shadow-sm">
+      <div className="grid h-[calc(100vh-14rem)] min-h-[26rem] w-full grid-cols-[10rem_16rem_minmax(0,1fr)] overflow-hidden rounded-lg border border-border shadow-sm sm:grid-cols-[10.5rem_17rem_minmax(0,1fr)]">
         <div className="min-w-0 border-r border-border">
           <WorkspaceNamespacePane
             activeNamespace={activeNamespace}

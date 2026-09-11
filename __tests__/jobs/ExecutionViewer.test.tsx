@@ -18,7 +18,8 @@ const baseJob = {
   id: "0x01a06b196edf000084336cf650a762fb",
   name: "Set Secret",
   status: "COMPLETE",
-  operation: "v/ops/secret/set",
+  // The venue emits the invoked reference as `op` (covia#499).
+  op: "v/ops/secret/set",
   created: "2026-09-04T13:47:22.000Z",
   updated: "2026-09-04T13:47:22.008Z",
   input: { Name: "DEMO" },

@@ -14,6 +14,10 @@ import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { VenueResolutionState } from "@/components/VenueResolutionState";
 import { getVenueStatus } from "@/lib/venue-registry";
 import { McpConnectSection } from "@/components/venue/McpConnectSection";
+import { VenueMark } from "@/components/VenueMark";
+import { VenueTrustPill } from "@/components/VenueTrustPill";
+import { venueDisplayName } from "@/lib/venue-display";
+import { Star } from "lucide-react";
 
 interface VenuePageProps {
   params: Promise<{
@@ -82,6 +86,13 @@ export default function VenuePage({ params }: VenuePageProps) {
   }, [venue, status]);
 
   const isCurrentVenue = selectedVenueId === venue?.venueId;
+  const venueHost = (() => {
+    try {
+      return venue ? new URL(venue.baseUrl).host : "";
+    } catch {
+      return venue?.baseUrl ?? "";
+    }
+  })();
   if (status !== "ready" || !venue) {
     return (
       <ContentLayout>
@@ -105,21 +116,24 @@ export default function VenuePage({ params }: VenuePageProps) {
         {/* Venue Header */}
         <Card className="p-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="bg-primary-vlight  p-3 rounded-lg">
-                <Building2 size={32} className="text-primary  " />
-              </div>
-              <div>
-                <h1 className="text-2xl font-thin">{venueName}</h1>
-                <p className="text-muted-foreground">
-                  {venue.metadata.description || "A Covia venue for managing assets and operations"}
-                </p>
-                <div className="flex items-center space-x-2 mt-2">
-                  <Badge variant="default" className="bg-green-100 text-green-800">
-                    Active
-                  </Badge>
+            <div className="flex items-start gap-4">
+              <VenueMark venueId={venue.venueId} className="size-14" />
+              <div className="min-w-0">
+                <h1 className="text-2xl font-semibold">{venueName || venueDisplayName(venue)}</h1>
+                <p className="mt-0.5 font-mono text-xs text-muted-foreground">{venueHost}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {/* Real access state — replaces the old hard-coded "Active" badge. */}
+                  <VenueTrustPill baseUrl={venue.baseUrl} venueId={venue.venueId} />
+                  {isCurrentVenue && (
+                    <Badge variant="secondary" className="gap-1">
+                      <Star size={11} className="fill-primary text-primary" /> Your default
+                    </Badge>
+                  )}
                   <Badge variant="outline">covia</Badge>
                 </div>
+                <p className="mt-3 max-w-2xl text-muted-foreground">
+                  {venue.metadata.description || "A Covia venue for managing assets and operations"}
+                </p>
               </div>
             </div>
             <div className="flex flex-col space-y-2">
