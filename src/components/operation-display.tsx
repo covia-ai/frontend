@@ -1,57 +1,59 @@
 "use client";
 
-import {
-  ArrowRight,
-  Bot,
-  Boxes,
-  Braces,
-  Brain,
-  Database,
-  FileText,
-  FlaskConical,
-  Globe,
-  KeyRound,
-  type LucideIcon,
-  Puzzle,
-  User,
-} from "lucide-react";
+import { ArrowRight, Brain, Database, FileText, Globe, type LucideIcon, Puzzle } from "lucide-react";
+import { CONCEPT_ICONS, fieldLook, type Concept } from "@/lib/concept-icons";
 
 // Shared operation-display helpers — the adapter iconography and the typed
 // input→output signature — used by both the catalogue card (OperationCard)
 // and the operation detail page (OperationViewer), so the two never drift.
 
+type AdapterLook = { Icon: LucideIcon; tile: string };
+
+// Where an adapter maps onto a concept in the canonical icon directory
+// (lib/concept-icons.ts), reuse the directory's look so Operations can't drift
+// from the rest of the app. Only the Icon + tile are needed here (no label).
+function conceptAdapterLook(concept: Concept): AdapterLook {
+  const { Icon, tile } = CONCEPT_ICONS[concept];
+  return { Icon, tile };
+}
+
 // The adapter's visual identity — icon + brand-token classes. Keyed on the
-// first segment of `operation.adapter` (e.g. "http", "langchain"). Unknown
+// first segment of `operation.adapter` (e.g. "http", "langchain"). Concept-
+// backed adapters (agent, secret, operation, user, test, schema) come straight
+// from the directory; the rest are adapter-specific flavours the directory
+// doesn't model (a web endpoint, an LLM, a data store, a document). Unknown
 // adapters fall back to a neutral puzzle tile so a new adapter never renders
 // blank.
-export function adapterLook(adapter: string | null): { Icon: LucideIcon; tile: string } {
+export function adapterLook(adapter: string | null): AdapterLook {
   switch (adapter) {
     case "http":
-      return { Icon: Globe, tile: "bg-secondary/15 text-secondary" };
+      return { Icon: Globe, tile: "bg-secondary/15 text-secondary" }; // a web endpoint
     case "langchain":
     case "openai":
     case "llm":
-      return { Icon: Brain, tile: "bg-primary/15 text-primary" };
+      return { Icon: Brain, tile: "bg-primary/15 text-primary" }; // an LLM-backed op
     case "a2a":
     case "agent":
-      return { Icon: Bot, tile: "bg-primary/15 text-primary" };
+      return conceptAdapterLook("agent");
     case "secret":
     case "vault":
-      return { Icon: KeyRound, tile: "bg-accent/25 text-accent-foreground" };
+      return conceptAdapterLook("secret");
     case "schema":
-    case "json":
-      return { Icon: Braces, tile: "bg-chart-2/20 text-chart-2" };
+    case "json": {
+      const { Icon, tile } = fieldLook("schema")!;
+      return { Icon, tile };
+    }
     case "data":
     case "dlfs":
-      return { Icon: Database, tile: "bg-chart-3/20 text-chart-3" };
+      return { Icon: Database, tile: "bg-chart-3/20 text-chart-3" }; // a data store
     case "file":
-      return { Icon: FileText, tile: "bg-chart-1/20 text-chart-1" };
+      return { Icon: FileText, tile: "bg-chart-1/20 text-chart-1" }; // a document
     case "mcp":
-      return { Icon: Boxes, tile: "bg-chart-5/20 text-chart-5" };
+      return conceptAdapterLook("operation");
     case "user":
-      return { Icon: User, tile: "bg-chart-1/20 text-chart-1" };
+      return conceptAdapterLook("user");
     case "test":
-      return { Icon: FlaskConical, tile: "bg-muted text-muted-foreground" };
+      return conceptAdapterLook("test");
     default:
       return { Icon: Puzzle, tile: "bg-muted text-muted-foreground" };
   }
