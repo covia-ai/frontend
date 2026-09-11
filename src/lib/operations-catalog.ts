@@ -89,11 +89,19 @@ export async function listCatalogOperations(
   return operations;
 }
 
+// A job record's `op` is a bare hash when the caller pinned a definition, and
+// on every record written before venue 0.9.9 (covia#499). Both read as an
+// asset, so give them the "a/" namespace the asset branch below expects.
+const BARE_HASH = /^(0x)?[0-9a-fA-F]{64}$/;
+
 // Resolve an operation from its namespace-explicit URL address:
-//  - "a/<hash>"  → content-addressed asset (getAsset)
+//  - "a/<hash>", or a bare hash  → content-addressed asset (getAsset)
 //  - "v/ops/...", "v/test/ops/...", "o/..."  → catalog/workspace path via covia:read
 // Returns an Operation whose id is the address it was resolved from.
 export async function resolveOperationByAddress(venue: Venue, address: string): Promise<Operation> {
+  if (BARE_HASH.test(address)) {
+    address = `a/${address.replace(/^0x/, "")}`;
+  }
   if (address.startsWith("a/")) {
     // GET /api/v1/assets/<id> only resolves the fully DID-qualified form —
     // a bare hash or a bare "a/<hash>" both 404 on live venues (verified
