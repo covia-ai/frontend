@@ -1,15 +1,11 @@
 import { LLM_PROVIDERS } from "@/config/llm-providers";
-import {
-  CUSTOM_PROVIDER_OPTION,
-  DEFAULT_PROVIDER_OPTION,
-  providerForOperation,
-} from "@/lib/agent-config";
 
 // Display helpers for the agent workforce roster. Native agents carry no
 // name/description — the id is the identity and everything else lives in
 // `config` — so these turn a raw agentId + config into something a person can
-// read: a humanised name, a monogram avatar, a provider/model label, and short
-// skill/tool labels. Shared by the roster card and (later) the profile view.
+// read: a humanised name, a provider/model label, and short skill/tool labels.
+// Shared by the roster card and (later) the profile view. The avatar itself is
+// AgentIdenticon, which derives its own art from the id.
 
 /** "refund-bot-7f3a" → "Refund Bot 7f3a". The raw id is always shown too. */
 export function humanizeAgentId(id: string): string {
@@ -23,30 +19,6 @@ export function humanizeAgentId(id: string): string {
     .join(" ");
 }
 
-/** 1–2 letter monogram for the avatar tile, from the humanised name. */
-export function agentMonogram(id: string): string {
-  const words = humanizeAgentId(id).split(/\s+/).filter(Boolean);
-  if (words.length === 0) return "?";
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return (words[0][0] + words[1][0]).toUpperCase();
-}
-
-// Deterministic avatar tint from the id, drawn from the app's brand + chart
-// tokens so two agents are told apart at a glance and the same agent always
-// looks the same. Pure token classes — works in both themes.
-const AVATAR_TILES = [
-  "bg-primary/15 text-primary",
-  "bg-secondary/15 text-secondary",
-  "bg-chart-2/20 text-chart-2",
-  "bg-chart-3/20 text-chart-3",
-  "bg-chart-4/25 text-chart-4",
-  "bg-chart-5/20 text-chart-5",
-];
-export function agentTileClass(id: string): string {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return AVATAR_TILES[h % AVATAR_TILES.length];
-}
 
 /** The last path segment of a skill/tool address, for a compact chip. */
 export function shortRefLabel(ref: string): string {
@@ -88,13 +60,16 @@ export interface AgentDisplay {
   hasCaps: boolean;
 }
 
+// `providerForOperation` is deliberately not used here: it falls back to
+// "anthropic" for any operation it doesn't recognise, which is the right
+// default when seeding the create form's provider dropdown but wrong as a
+// label — it would caption a venue-local or custom LLM operation
+// "Anthropic (Claude)". Match the operation exactly, or say it's custom.
 function providerLabelFor(config: Record<string, any> | undefined): string {
   const op = config?.llmOperation as string | undefined;
   if (!op) return "Venue default";
-  const key = providerForOperation(op);
-  if (key === DEFAULT_PROVIDER_OPTION) return "Venue default";
-  if (key === CUSTOM_PROVIDER_OPTION) return "Custom model";
-  return LLM_PROVIDERS[key]?.label ?? "Custom model";
+  const known = Object.values(LLM_PROVIDERS).find((p) => p.operation === op);
+  return known?.label ?? "Custom model";
 }
 
 /** Derive everything the roster shows about an agent from its `config`. */
