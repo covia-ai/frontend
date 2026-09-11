@@ -3,6 +3,7 @@ import {
   isTaskComplete,
   slugifyAgentName,
   taskReplyText,
+  taskStatusText,
   type A2ATask,
 } from "@/lib/a2a";
 
@@ -69,8 +70,58 @@ describe("taskReplyText", () => {
     expect(taskReplyText(task)).toBe("answer");
   });
 
+  it("names a file part instead of dropping it", () => {
+    const task: A2ATask = {
+      artifacts: [
+        { parts: [{ kind: "file", file: { name: "report.pdf", mimeType: "application/pdf" } }] },
+      ],
+    };
+    expect(taskReplyText(task)).toBe("[report.pdf (application/pdf)]");
+  });
+
+  it("falls back to the filename alone when a file part has no MIME type", () => {
+    const task: A2ATask = {
+      artifacts: [{ parts: [{ kind: "file", file: { name: "notes.txt" } }] }],
+    };
+    expect(taskReplyText(task)).toBe("[notes.txt]");
+  });
+
+  it("renders a structured data part as JSON", () => {
+    const task: A2ATask = {
+      artifacts: [{ parts: [{ kind: "data", data: { total: 42 } }] }],
+    };
+    expect(taskReplyText(task)).toBe('{\n  "total": 42\n}');
+  });
+
+  it("reads the message on an interrupted task's status", () => {
+    const task: A2ATask = {
+      status: {
+        state: "TASK_STATE_INPUT_REQUIRED",
+        message: { role: "agent", parts: [{ text: "Which order number?" }] },
+      },
+    };
+    expect(taskReplyText(task)).toBe("Which order number?");
+  });
+
   it("returns empty string for an empty or missing task", () => {
     expect(taskReplyText(undefined)).toBe("");
     expect(taskReplyText({})).toBe("");
+  });
+});
+
+describe("taskStatusText", () => {
+  it("reads the parts of a status message", () => {
+    const task: A2ATask = {
+      status: {
+        state: "TASK_STATE_AUTH_REQUIRED",
+        message: { role: "agent", parts: [{ text: "Sign in first." }] },
+      },
+    };
+    expect(taskStatusText(task)).toBe("Sign in first.");
+  });
+
+  it("is empty when the status carries no message", () => {
+    expect(taskStatusText({ status: { state: "TASK_STATE_COMPLETED" } })).toBe("");
+    expect(taskStatusText(undefined)).toBe("");
   });
 });
