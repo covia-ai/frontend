@@ -98,7 +98,7 @@ export function ExecutionViewer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [execution.notFound]);
 
-  const op = job ? operationVisual(job) : null;
+  const op = job ? operationVisual(job, operationSchema?.adapter) : null;
   const sv = job ? statusVisual(job.status) : null;
   const ms = job ? jobDurationMs(job) : null;
   const failed = job?.status === RunStatus.FAILED;

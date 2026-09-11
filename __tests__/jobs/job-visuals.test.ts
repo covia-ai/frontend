@@ -28,6 +28,21 @@ describe("operationVisual — operation → icon identity", () => {
     expect(operationVisual({ op: "agent:create" }).kind).toBe("agent");
   });
 
+  it("reads the adapter off the resolved asset when op is a bare hash", () => {
+    const hash = "0x" + "a".repeat(64);
+    // Without the asset, a hash has no path to parse and the name decides.
+    expect(operationVisual({ op: hash, name: "Echo Operation" }).kind).toBe("operation");
+    // The venue's dispatch form is adapter:subop — only the adapter counts.
+    expect(operationVisual({ op: hash, name: "Echo Operation" }, "test:echo").kind).toBe("test");
+    expect(operationVisual({ op: hash }, "http:get").kind).toBe("http");
+    expect(operationVisual({ op: hash }, "secret").kind).toBe("secret");
+  });
+
+  it("prefers the operation path over the asset adapter, and ignores an unknown one", () => {
+    expect(operationVisual({ op: "v/ops/http/get" }, "secret:set").kind).toBe("http");
+    expect(operationVisual({ op: "0x" + "b".repeat(64), name: "Set Secret" }, "nosuch").kind).toBe("secret");
+  });
+
   it("falls back to the job name when there is no operation path", () => {
     expect(operationVisual({ name: "Set Secret" }).kind).toBe("secret");
     expect(operationVisual({ name: "HTTP GET Operation" }).kind).toBe("http");
