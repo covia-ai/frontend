@@ -6,6 +6,34 @@ import { normalizeAgentEntries } from "@/lib/agent-list";
 import { errorMessage } from "@/lib/errors";
 
 const POLL_INTERVAL_MS = 3000;
+/** Sessions fetched per request when scanning an agent's liveness. */
+const SESSION_PAGE_SIZE = 50;
+/** Hard stop on how many of one agent's sessions the roster will scan. The
+ *  venue guarantees no ordering, so a partial scan would pick an arbitrary
+ *  window — we take whole pages until the page count is covered, and give up
+ *  past this many rather than pulling an unbounded history onto the roster. */
+const SESSION_SCAN_CAP = 200;
+/** Session reads carry every frame of every session, so they are expensive.
+ *  Run at most this many at once instead of one per agent in parallel. */
+const SESSION_CONCURRENCY = 3;
+
+/** Map with a fixed worker count, preserving input order. */
+async function mapLimit<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < items.length) {
+      const index = cursor++;
+      results[index] = await fn(items[index]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
 
 export interface RosterAgent {
   agentId: string;
@@ -53,6 +81,11 @@ function toMs(v: unknown): number | undefined {
  * both job-free — refreshed only when the set of agents changes or on manual
  * refresh, since N agents = N reads and this data moves slowly. Relative-time
  * labels re-render on the 3s poll, so countdowns stay live without refetching.
+ *
+ * Session reads are the expensive part: the SDK's session record carries every
+ * frame of the conversation, and there is no lighter liveness surface, so they
+ * run at a fixed concurrency and stop at `SESSION_SCAN_CAP` per agent. A
+ * venue-side session summary would let the roster drop this scan entirely.
  */
 export function useAgentRoster(venue: Venue | null | undefined) {
   const [entries, setEntries] = useState<{ agentId: string; status?: string; tasks?: number }[]>([]);
@@ -63,6 +96,21 @@ export function useAgentRoster(venue: Venue | null | undefined) {
   const [refreshKey, setRefreshKey] = useState(0);
   const infoGen = useRef(0);
   const sessionGen = useRef(0);
+
+  // A venue switch must not leave the previous venue's agents on screen: their
+  // cards build their action handle from the *new* venue, so Trigger / Suspend
+  // / Delete would fire against the wrong venue with a stale agent id. This
+  // also restores `loading`, which the no-venue branch below clears on first
+  // mount while the venue store is still rehydrating — without it the roster
+  // shows its "no agents yet" empty state for the whole first list round-trip.
+  // Keyed on `venue` alone, so a manual refresh does not blank the roster.
+  useEffect(() => {
+    setEntries([]);
+    setInfos({});
+    setSessions({});
+    setError(null);
+    setLoading(!!venue);
+  }, [venue]);
 
   // Membership + status: poll the lean list.
   useEffect(() => {
@@ -114,9 +162,20 @@ export function useAgentRoster(venue: Venue | null | undefined) {
         }),
       );
       if (!active || gen !== infoGen.current) return;
-      const next: Record<string, InfoSnapshot> = {};
-      for (const [id, info] of pairs) if (info) next[id] = info;
-      setInfos(next);
+      // Merge rather than replace, and drop only agents that have left the
+      // roster. A rejected `info` call contributes no key, so replacing would
+      // blank that card — no model chip, no skills, "No instructions set." —
+      // until the agent set changes or the user refreshes by hand, which one
+      // transient network failure should not cause.
+      const present = new Set(entries.map((e) => e.agentId));
+      setInfos((previous) => {
+        const next: Record<string, InfoSnapshot> = {};
+        for (const [id, info] of Object.entries(previous)) {
+          if (present.has(id)) next[id] = info;
+        }
+        for (const [id, info] of pairs) if (info) next[id] = info;
+        return next;
+      });
     })();
     return () => {
       active = false;
@@ -131,15 +190,24 @@ export function useAgentRoster(venue: Venue | null | undefined) {
     let active = true;
     const targets = entries.filter((e) => (e.status ?? "").toUpperCase() !== "TERMINATED");
     void (async () => {
-      const pairs = await Promise.all(
-        targets.map(async (e) => {
-          try {
-            const page = await venue.agents.listSessions(e.agentId, { offset: 0, limit: 50 });
+      const pairs = await mapLimit(targets, SESSION_CONCURRENCY, async (e) => {
+        try {
+          const now = Date.now();
+          let lastActive: number | undefined;
+          let queued = 0;
+          let nextWake: number | undefined;
+          let offset = 0;
+          // Page until the agent's sessions are covered. Taking only the first
+          // page would read an arbitrary subset — the venue promises no
+          // ordering — so an agent active a minute ago could show "3d ago" and
+          // queued work could read zero.
+          for (;;) {
+            const page = await venue.agents.listSessions(e.agentId, {
+              offset,
+              limit: SESSION_PAGE_SIZE,
+            });
+            if (!active || gen !== sessionGen.current) return [e.agentId, undefined] as const;
             const items: any[] = Array.isArray(page?.items) ? page.items : [];
-            const now = Date.now();
-            let lastActive: number | undefined;
-            let queued = 0;
-            let nextWake: number | undefined;
             for (const s of items) {
               const la = toMs(s?.metadata?.lastActivity ?? s?.metadata?.started ?? s?.metadata?.created);
               if (la !== undefined) lastActive = Math.max(lastActive ?? 0, la);
@@ -147,16 +215,27 @@ export function useAgentRoster(venue: Venue | null | undefined) {
               const w = toMs(s?.wakeTime);
               if (w !== undefined && w > now) nextWake = nextWake === undefined ? w : Math.min(nextWake, w);
             }
-            return [e.agentId, { lastActive, queued, nextWake }] as const;
-          } catch {
-            return [e.agentId, undefined] as const;
+            offset += items.length;
+            const total = typeof page?.total === "number" ? page.total : offset;
+            if (items.length === 0 || offset >= total || offset >= SESSION_SCAN_CAP) break;
           }
-        }),
-      );
+          return [e.agentId, { lastActive, queued, nextWake }] as const;
+        } catch {
+          return [e.agentId, undefined] as const;
+        }
+      });
       if (!active || gen !== sessionGen.current) return;
-      const next: Record<string, SessionSnapshot> = {};
-      for (const [id, snap] of pairs) if (snap) next[id] = snap;
-      setSessions(next);
+      // Same merge-don't-replace rule as `infos` above: a failed read must not
+      // silently erase an agent's liveness meta until the next id-set change.
+      const present = new Set(targets.map((e) => e.agentId));
+      setSessions((previous) => {
+        const next: Record<string, SessionSnapshot> = {};
+        for (const [id, snap] of Object.entries(previous)) {
+          if (present.has(id)) next[id] = snap;
+        }
+        for (const [id, snap] of pairs) if (snap) next[id] = snap;
+        return next;
+      });
     })();
     return () => {
       active = false;

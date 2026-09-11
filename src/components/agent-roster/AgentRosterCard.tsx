@@ -34,10 +34,15 @@ import { AgentIdenticon } from "./AgentIdenticon";
 export function AgentRosterCard({
   agent,
   venue,
+  live = false,
   onChanged,
 }: {
   agent: RosterAgent;
   venue: Venue;
+  /** Whether this card holds one of the roster's capped live-stream slots.
+   *  See `useLiveStreamSlots` — the roster grants them, the card never opens
+   *  a stream on its own. */
+  live?: boolean;
   onChanged: () => void;
 }) {
   const router = useRouter();
@@ -122,9 +127,12 @@ export function AgentRosterCard({
         </div>
 
         <div className="mt-auto flex min-h-[18px] flex-wrap items-center gap-x-3 gap-y-1 pt-0.5 text-xs text-muted-foreground">
-          {isRunning ? (
-            <AgentLiveActivity venue={venue} agentId={agentId} />
-          ) : agent.lastActive ? (
+          {/* Kept mounted across a RUNNING→SLEEPING flip: the slot, not the
+              current status, decides, so a busy agent's stream is not torn
+              down and reopened every few seconds. Renders nothing when the
+              agent has no activity in flight. */}
+          {live && <AgentLiveActivity venue={venue} agentId={agentId} />}
+          {!isRunning && agent.lastActive ? (
             <span>active {relTime(agent.lastActive)}</span>
           ) : null}
           {typeof agent.runs === "number" && agent.runs > 0 && (

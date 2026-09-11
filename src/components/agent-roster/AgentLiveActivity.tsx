@@ -6,9 +6,10 @@ import { useAgentLiveEvents } from "@/hooks/use-agent-live-events";
 
 /**
  * The live run-loop line for a single agent, driven by the per-agent SSE the
- * app already receives (`useAgentLiveEvents`). Mounted only for RUNNING agents
- * so the number of open streams is bounded to the working set, not the whole
- * roster. Renders nothing until the stream reports what the agent is doing.
+ * app already receives (`useAgentLiveEvents`). The roster decides which cards
+ * mount this, granting a capped number of slots (`useLiveStreamSlots`) so the
+ * open streams never crowd out the venue's other requests. Renders nothing
+ * until the stream reports what the agent is doing.
  */
 export function AgentLiveActivity({ venue, agentId }: { venue: Venue | null; agentId: string }) {
   const { activity } = useAgentLiveEvents(venue, agentId);
