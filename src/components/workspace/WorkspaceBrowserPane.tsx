@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { TypeTile } from "@/components/TypeTile";
 import { Identicon } from "@/components/Identicon";
-import { namespaceLook } from "@/lib/workspace-look";
+import { keyLook, namespaceLook } from "@/lib/workspace-look";
 
 // Root-level lattice namespace keys (see covia/venue Namespace.java) have
 // fixed meanings — only the top segment, nested keys under it (job ids,
@@ -145,10 +145,11 @@ export function WorkspaceBrowserPane({
               : `${currentPath}/${entry.key}`;
           const isSelected = selectedPath === fullPath;
           const label = currentPath === "/" ? labelForSegment(entry.key, 0) : entry.key;
-          // Tint the row by its root namespace (all secrets keys read as keys,
-          // all jobs as jobs…); a content-addressed asset carries a DID
-          // identicon instead, since it alone has a key.
-          const look = namespaceLook(fullPath);
+          // Root level lists namespaces (each its own icon); inside a namespace,
+          // each key gets its concept icon — a well-known sub-key (ops, adapters,
+          // skills…) its own, an instance key its namespace's concept. A
+          // content-addressed asset carries a DID identicon instead.
+          const look = currentPath === "/" ? namespaceLook(entry.key) : keyLook(fullPath);
           const isAsset = fullPath.split("/")[0] === "a" && entry.key.startsWith("did:key:");
 
           return (

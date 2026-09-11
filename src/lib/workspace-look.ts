@@ -1,36 +1,85 @@
-import { Bot, Boxes, FolderOpen, Globe, Inbox, KeyRound, Package, ScrollText, Tags } from "lucide-react";
+import { FolderOpen } from "lucide-react";
 import type { TypeLook } from "@/lib/file-type-look";
+import { CONCEPT_ICONS, type Concept } from "@/lib/concept-icons";
 
-// Per-namespace icon + tint for the Workspace lattice, and value-type badges for
-// its rows — same house pattern as file-type-look. Each of the nine root
-// namespaces gets an icon that matches the concept it holds (Bot for agents,
-// KeyRound for secrets, ScrollText for jobs…), so the namespace pane reads at a
-// glance instead of nine identical folders.
+// Maps the Workspace lattice onto the canonical concept-icon directory, so a
+// namespace and its keys wear the same icons the rest of the app uses for those
+// concepts (agents look like agents, secrets like secrets, operations like
+// operations) — never nine identical folders, and never every key under a
+// namespace sharing one glyph.
 
-const NAMESPACES: Record<string, TypeLook> = {
-  v: { Icon: Globe, tile: "bg-secondary/15 text-secondary", label: "Venue" },
-  w: { Icon: FolderOpen, tile: "bg-primary/15 text-primary", label: "Workspace" },
-  o: { Icon: Boxes, tile: "bg-chart-5/20 text-chart-5", label: "Operations" },
-  a: { Icon: Package, tile: "bg-chart-3/20 text-chart-3", label: "Assets" },
-  g: { Icon: Bot, tile: "bg-primary/15 text-primary", label: "Agents" },
-  j: { Icon: ScrollText, tile: "bg-chart-1/20 text-chart-1", label: "Jobs" },
-  h: { Icon: Inbox, tile: "bg-chart-4/25 text-chart-4", label: "Inbox" },
-  s: { Icon: KeyRound, tile: "bg-accent/25 text-accent-foreground", label: "Secrets" },
-  meta: { Icon: Tags, tile: "bg-muted text-muted-foreground", label: "Metadata" },
+// The nine root namespaces → their concept.
+const NAMESPACE_CONCEPT: Record<string, Concept> = {
+  v: "venue",
+  w: "workspace",
+  o: "operation",
+  a: "asset",
+  g: "agent",
+  j: "job",
+  h: "inbox",
+  s: "secret",
+  meta: "metadata",
+};
+
+// Well-known sub-namespace keys (e.g. under `v`: ops, adapters, skills, …) →
+// their concept, so they each get their OWN icon rather than the parent's.
+const KEY_CONCEPT: Record<string, Concept> = {
+  ops: "operation",
+  operations: "operation",
+  adapters: "adapter",
+  adapter: "adapter",
+  skills: "skill",
+  skill: "skill",
+  agents: "agent",
+  agent: "agent",
+  models: "model",
+  model: "model",
+  info: "info",
+  test: "test",
+  tests: "test",
+  assets: "asset",
+  jobs: "job",
+  secrets: "secret",
+  templates: "skill",
+  memory: "context",
+  context: "context",
+  users: "user",
+  connections: "connection",
+  meta: "metadata",
+  metadata: "metadata",
 };
 
 const NAMESPACE_FALLBACK: TypeLook = { Icon: FolderOpen, tile: "bg-muted text-muted-foreground", label: "Namespace" };
+const KEY_FALLBACK: TypeLook = { Icon: FolderOpen, tile: "bg-muted text-muted-foreground", label: "Key" };
 
-/** Icon + tile for a namespace, keyed on the root segment of a path (so both
- *  "v" and "v/skills/x" resolve to the Venue look). */
+/** Icon + tile for a root namespace, keyed on the root segment of a path. */
 export function namespaceLook(pathOrKey: string): TypeLook {
   const root = pathOrKey.split("/")[0];
-  return NAMESPACES[root] ?? NAMESPACE_FALLBACK;
+  const concept = NAMESPACE_CONCEPT[root];
+  return concept ? CONCEPT_ICONS[concept] : NAMESPACE_FALLBACK;
+}
+
+/** Icon + tile for a single key inside a namespace. A well-known sub-namespace
+ *  key (ops, adapters, skills…) gets its own concept icon; an instance key
+ *  (an agent id, a secret name) inherits its namespace's concept (a secret name
+ *  reads as a secret); anything else gets a neutral key glyph. */
+export function keyLook(fullPath: string): TypeLook {
+  const segments = fullPath.split("/").filter(Boolean);
+  const leaf = (segments[segments.length - 1] ?? "").toLowerCase();
+  const root = segments[0];
+
+  const keyConcept = KEY_CONCEPT[leaf];
+  if (keyConcept) return CONCEPT_ICONS[keyConcept];
+
+  const nsConcept = segments.length > 1 ? NAMESPACE_CONCEPT[root] : undefined;
+  if (nsConcept) return CONCEPT_ICONS[nsConcept];
+
+  return KEY_FALLBACK;
 }
 
 export type ValueTypeName = "object" | "array" | "string" | "number" | "boolean" | "null";
 
-/** The JSON shape of a workspace value, for the row badge. */
+/** The JSON shape of a workspace value, for the row/inspector badge. */
 export function valueTypeOf(value: unknown): ValueTypeName {
   if (value === null || value === undefined) return "null";
   if (Array.isArray(value)) return "array";
