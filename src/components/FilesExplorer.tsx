@@ -132,7 +132,7 @@ export function FilesExplorer({ initialDrive, initialPath }: FilesExplorerProps 
 
   return (
     <div className="mt-4 flex flex-col gap-3">
-      <div className="grid h-[600px] w-full grid-cols-[11rem_17rem_minmax(0,1fr)] overflow-hidden rounded-lg border border-border shadow-sm">
+      <div className="grid h-[calc(100vh-14rem)] min-h-[26rem] w-full grid-cols-[10rem_16rem_minmax(0,1fr)] overflow-hidden rounded-lg border border-border shadow-sm sm:grid-cols-[11rem_17rem_minmax(0,1fr)]">
         {/* Drives */}
         <div className="flex min-w-0 flex-col overflow-y-auto border-r border-border">
           <div className="border-b border-border p-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
