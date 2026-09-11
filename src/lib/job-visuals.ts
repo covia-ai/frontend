@@ -118,8 +118,8 @@ function adapterFromOperation(operation?: string): string | undefined {
   return undefined;
 }
 
-export function operationVisual(job: Pick<JobMetadata, "operation" | "name">): OperationVisual {
-  const adapter = adapterFromOperation(job.operation);
+export function operationVisual(job: Pick<JobMetadata, "op" | "name">): OperationVisual {
+  const adapter = adapterFromOperation(job.op);
   if (adapter && ADAPTER_VISUALS[adapter]) return ADAPTER_VISUALS[adapter];
   const name = job.name ?? "";
   for (const [re, key] of NAME_KEYWORDS) {

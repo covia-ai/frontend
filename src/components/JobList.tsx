@@ -282,7 +282,7 @@ export function JobList({ venueId }: JobListProps = {}) {
     return windowRecords
       .filter(m => statusFilter.length === 0 || statusFilter.includes(m.status ?? ""))
       .filter(m => dateFilter.length === 0 || isInRange(m.created ?? "", dateFilter))
-      .filter(m => !q || [m.id, m.operation, m.name].some(v => v?.toLowerCase().includes(q)));
+      .filter(m => !q || [m.id, m.op, m.name].some(v => v?.toLowerCase().includes(q)));
   }, [hasFilters, windowRecords, statusFilter, dateFilter, debouncedQuery, isInRange]);
 
   // What the table renders: the server-paged window, or a client-side page
