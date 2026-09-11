@@ -1,38 +1,19 @@
 import {
   AlertCircle,
-  Archive,
   Ban,
-  BookOpen,
-  Bot,
-  Boxes,
-  Braces,
-  Brain,
-  Cable,
   CheckCircle2,
   Clock,
-  Cpu,
-  Database,
-  FlaskConical,
-  FolderOpen,
-  Globe,
   HelpCircle,
-  KeyRound,
   Loader,
-  Network,
-  Package,
   PauseCircle,
-  Plug,
-  Radio,
-  ShieldCheck,
-  Sparkles,
-  UserPlus,
-  Workflow,
   XCircle,
   Zap,
   type LucideIcon,
 } from "lucide-react";
 import { RunStatus, type JobMetadata } from "@covia/covia-sdk";
 import { toneForRunStatus, TONE_STYLES, type StatusTone } from "@/lib/status";
+import { adapterLookup } from "@/lib/adapter-icons";
+import type { IconCmp } from "@/lib/file-type-look";
 
 /**
  * Visual identity for a job's operation: an icon and a colour, keyed by the
@@ -41,46 +22,41 @@ import { toneForRunStatus, TONE_STYLES, type StatusTone } from "@/lib/status";
  * carries success/failure), so the two never fight for the same meaning.
  */
 export interface OperationVisual {
-  Icon: LucideIcon;
+  Icon: IconCmp;
   /** Tailwind classes for the icon tile (text + subtle background). */
   className: string;
   /** The adapter family, e.g. "http", "secret", "agent". */
   kind: string;
 }
 
-const ADAPTER_VISUALS: Record<string, OperationVisual> = {
-  http:        { Icon: Globe,      className: "text-cyan-600 dark:text-cyan-400 bg-cyan-500/10",       kind: "http" },
-  secret:      { Icon: KeyRound,   className: "text-amber-600 dark:text-amber-400 bg-amber-500/10",    kind: "secret" },
-  agent:       { Icon: Bot,        className: "text-primary bg-primary/10",                             kind: "agent" },
-  llmagent:    { Icon: Bot,        className: "text-primary bg-primary/10",                             kind: "agent" },
-  goaltree:    { Icon: Bot,        className: "text-primary bg-primary/10",                             kind: "agent" },
-  connections: { Icon: Cable,      className: "text-violet-600 dark:text-violet-400 bg-violet-500/10",  kind: "connections" },
-  skills:      { Icon: BookOpen,   className: "text-fuchsia-600 dark:text-fuchsia-400 bg-fuchsia-500/10", kind: "skills" },
-  dlfs:        { Icon: FolderOpen, className: "text-blue-600 dark:text-blue-400 bg-blue-500/10",        kind: "files" },
-  file:        { Icon: FolderOpen, className: "text-blue-600 dark:text-blue-400 bg-blue-500/10",        kind: "files" },
-  vault:       { Icon: FolderOpen, className: "text-blue-600 dark:text-blue-400 bg-blue-500/10",        kind: "files" },
-  grid:        { Icon: Network,    className: "text-teal-600 dark:text-teal-400 bg-teal-500/10",        kind: "grid" },
-  mcp:         { Icon: Boxes,      className: "text-indigo-600 dark:text-indigo-400 bg-indigo-500/10",  kind: "mcp" },
-  schema:      { Icon: Braces,     className: "text-sky-600 dark:text-sky-400 bg-sky-500/10",           kind: "schema" },
-  convex:      { Icon: Database,   className: "text-blue-600 dark:text-blue-400 bg-blue-500/10",        kind: "convex" },
-  scheduler:   { Icon: Clock,      className: "text-orange-600 dark:text-orange-400 bg-orange-500/10",  kind: "scheduler" },
-  ucan:        { Icon: ShieldCheck,className: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10", kind: "ucan" },
-  memory:      { Icon: Brain,      className: "text-pink-600 dark:text-pink-400 bg-pink-500/10",        kind: "memory" },
-  a2a:         { Icon: Radio,      className: "text-teal-600 dark:text-teal-400 bg-teal-500/10",        kind: "a2a" },
-  hitl:        { Icon: HelpCircle, className: "text-amber-600 dark:text-amber-400 bg-amber-500/10",     kind: "human" },
-  orchestrator:{ Icon: Workflow,   className: "text-indigo-600 dark:text-indigo-400 bg-indigo-500/10",  kind: "orchestrator" },
-  asset:       { Icon: Package,    className: "text-blue-600 dark:text-blue-400 bg-blue-500/10",        kind: "asset" },
-  jvm:         { Icon: Cpu,        className: "text-slate-600 dark:text-slate-400 bg-slate-500/10",     kind: "jvm" },
-  langchain:   { Icon: Sparkles,   className: "text-primary bg-primary/10",                             kind: "model" },
-  oauth:       { Icon: Plug,       className: "text-violet-600 dark:text-violet-400 bg-violet-500/10",  kind: "oauth" },
-  user:        { Icon: UserPlus,   className: "text-cyan-600 dark:text-cyan-400 bg-cyan-500/10",        kind: "user" },
-  archive:     { Icon: Archive,    className: "text-blue-600 dark:text-blue-400 bg-blue-500/10",        kind: "archive" },
-  test:        { Icon: FlaskConical,className: "text-muted-foreground bg-muted",                        kind: "test" },
+// The adapter family (`kind`) each adapter reports — a stable grouping key
+// (asserted by the tests, and used by the name-keyword fallback). The icon +
+// tint no longer live here: they come from the single adapter directory
+// (lib/adapter-icons.ts), the same source the Operations catalogue uses, so the
+// two surfaces can never drift. Only the family label is job-specific.
+const ADAPTER_KIND: Record<string, string> = {
+  http: "http", secret: "secret", vault: "files",
+  agent: "agent", llmagent: "agent", goaltree: "agent",
+  connections: "connections", skills: "skills",
+  dlfs: "files", file: "files",
+  grid: "grid", mcp: "mcp", schema: "schema", convex: "convex",
+  scheduler: "scheduler", ucan: "ucan", memory: "memory", a2a: "a2a",
+  hitl: "human", orchestrator: "orchestrator", asset: "asset", jvm: "jvm",
+  langchain: "model", oauth: "oauth", user: "user", archive: "archive", test: "test",
 };
+
+// Built once at module load — a static merged map, so lookup stays O(1) with no
+// per-render work.
+const ADAPTER_VISUALS: Record<string, OperationVisual> = Object.fromEntries(
+  Object.entries(ADAPTER_KIND).map(([key, kind]) => {
+    const { Icon, tile } = adapterLookup(key);
+    return [key, { Icon, className: tile, kind }];
+  }),
+);
 
 const GENERIC_VISUAL: OperationVisual = {
   Icon: Zap,
-  className: "text-muted-foreground bg-muted",
+  className: "bg-muted text-muted-foreground",
   kind: "operation",
 };
 
