@@ -3,9 +3,12 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { AgentStatus } from "@covia/covia-sdk";
-import { Bot, Loader2, MessageSquarePlus, RotateCcw, Send } from "lucide-react";
+import { ArrowUpRight, Bot, Cpu, Loader2, MessageSquarePlus, RotateCcw, Send } from "lucide-react";
 
 import { AgentConversation } from "@/components/AgentConversation";
+import { AgentIdenticon } from "@/components/agent-roster/AgentIdenticon";
+import { StatusBadge } from "@/components/StatusBadge";
+import { agentDisplay, humanizeAgentId } from "@/lib/agent-display";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -94,33 +97,51 @@ export function AgentChat({ initialAgentId, fixedAgent = false }: AgentChatProps
   }
 
   const isSuspended = selectedAgentDetail.status === AgentStatus.SUSPENDED;
+  const display = agentDisplay(selectedAgentDetail.config);
+  const agentName = humanizeAgentId(selectedAgentId);
 
   return (
     <div className="mx-auto flex h-[calc(100vh-8rem)] min-h-[36rem] w-full max-w-6xl flex-col overflow-hidden rounded-xl border bg-background shadow-sm">
       <header className="flex min-h-14 flex-wrap items-center gap-2 border-b px-3 py-2 sm:px-5">
         {fixedAgent ? (
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="flex size-7 shrink-0 items-center justify-center rounded-full border bg-card">
-              <Bot size={15} className="text-primary" />
-            </div>
-            <span className="truncate text-sm font-medium">{selectedAgentId}</span>
+          <div className="flex min-w-0 items-center gap-2.5">
+            <AgentIdenticon agentId={selectedAgentId} className="size-8" />
+            <span className="truncate text-sm font-semibold">{agentName}</span>
           </div>
         ) : (
           <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
-            <SelectTrigger className="h-9 w-[11rem] border-0 bg-transparent shadow-none sm:w-[14rem]">
-              <SelectValue aria-label="Agent" />
+            <SelectTrigger
+              aria-label="Agent"
+              className="h-10 w-auto gap-2 border-0 bg-transparent px-1.5 shadow-none"
+            >
+              <div className="flex min-w-0 items-center gap-2.5">
+                <AgentIdenticon agentId={selectedAgentId} className="size-8" />
+                <span className="truncate text-sm font-semibold">{agentName}</span>
+              </div>
             </SelectTrigger>
             <SelectContent>
               {agentList.map((agent) => (
                 <SelectItem key={agent.agentId} value={agent.agentId}>
-                  {agent.agentId}
+                  <span className="flex items-center gap-2">
+                    <AgentIdenticon agentId={agent.agentId} className="size-5" />
+                    {humanizeAgentId(agent.agentId)}
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         )}
+        <StatusBadge status={selectedAgentDetail.status} kind="agent" as="pill" />
+        <span className="hidden items-center gap-1 rounded-md border bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground sm:inline-flex">
+          <Cpu size={11} /> {display.model || display.providerLabel}
+        </span>
 
         <div className="ml-auto flex min-w-0 items-center gap-1.5">
+          <Button asChild variant="ghost" size="sm" className="gap-1 text-muted-foreground">
+            <Link href={`/agents/agent/${encodeURIComponent(selectedAgentId)}`}>
+              Profile <ArrowUpRight size={13} />
+            </Link>
+          </Button>
           <Select
             value={selectedSessionId ?? NEW_SESSION_VALUE}
             onValueChange={(value) =>
@@ -171,6 +192,8 @@ export function AgentChat({ initialAgentId, fixedAgent = false }: AgentChatProps
         pendingChat={pendingChat}
         echoAlreadyRecorded={echoAlreadyRecorded}
         transcriptRef={transcriptRef}
+        agentBrief={display.brief}
+        onStarter={setMessageText}
       />
 
       <footer className="bg-gradient-to-t from-background via-background to-transparent px-3 pb-4 pt-2 sm:px-6 sm:pb-6">

@@ -79,14 +79,22 @@ export function AgentRosterCard({
 
   return (
     <Card
-      className={`group flex h-full flex-col gap-0 overflow-hidden rounded-lg border bg-card p-0 shadow-sm transition-all hover:border-accent hover:shadow-md ${
+      onClick={goOpen}
+      className={`group flex h-full cursor-pointer flex-col gap-0 overflow-hidden rounded-lg border bg-card p-0 shadow-sm transition-all hover:border-accent hover:shadow-md ${
         isRunning ? "border-primary/40" : ""
       } ${isTerminated ? "opacity-70" : ""}`}
     >
       {/* Identity */}
       <div className="flex items-center gap-3 border-b bg-card-banner px-4 py-3">
         <AgentIdenticon agentId={agentId} />
-        <button type="button" onClick={goOpen} className="min-w-0 flex-1 text-left">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            goOpen();
+          }}
+          className="min-w-0 flex-1 text-left"
+        >
           <div className="truncate text-base font-semibold leading-tight text-foreground">{name}</div>
           <div className="truncate font-mono text-[11px] text-muted-foreground">{agentId}</div>
         </button>
@@ -156,7 +164,10 @@ export function AgentRosterCard({
         <button
           type="button"
           data-testid="roster-chat"
-          onClick={goChat}
+          onClick={(e) => {
+            e.stopPropagation();
+            goChat();
+          }}
           disabled={isTerminated}
           className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-[filter] hover:brightness-110 disabled:opacity-40"
         >
@@ -165,7 +176,10 @@ export function AgentRosterCard({
         <button
           type="button"
           data-testid="roster-open"
-          onClick={goOpen}
+          onClick={(e) => {
+            e.stopPropagation();
+            goOpen();
+          }}
           className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-accent hover:text-foreground"
         >
           Open <ArrowUpRight size={13} />
@@ -178,6 +192,7 @@ export function AgentRosterCard({
                 type="button"
                 data-testid="roster-actions"
                 disabled={busy}
+                onClick={(e) => e.stopPropagation()}
                 className="flex size-8 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:border-accent hover:text-foreground disabled:opacity-40"
                 aria-label="Agent actions"
               >
@@ -212,16 +227,19 @@ export function AgentRosterCard({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <DeleteAgentDialog
-            agentId={agentId}
-            onDelete={(remove) =>
-              run(
-                () => handle.delete(remove),
-                remove ? `Removed ${name}` : `Terminated ${name}`,
-                "Unable to delete agent",
-              )
-            }
-          />
+          {/* Stop the card's open-on-click from firing when using Delete. */}
+          <span onClick={(e) => e.stopPropagation()}>
+            <DeleteAgentDialog
+              agentId={agentId}
+              onDelete={(remove) =>
+                run(
+                  () => handle.delete(remove),
+                  remove ? `Removed ${name}` : `Terminated ${name}`,
+                  "Unable to delete agent",
+                )
+              }
+            />
+          </span>
         </div>
       </div>
     </Card>

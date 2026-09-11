@@ -188,7 +188,7 @@ export function AgentTimelineView({
   onBack,
 }: {
   agentId: string;
-  onBack: () => void;
+  onBack?: () => void;
 }) {
   const venue = useAuthenticatedVenue();
   const [loading, setLoading] = useState(true);
@@ -222,9 +222,11 @@ export function AgentTimelineView({
 
   return (
     <div className="flex-1 overflow-y-auto p-6 bg-background">
-      <Button variant="ghost" size="sm" className="mb-4 gap-2" onClick={onBack}>
-        <ArrowLeft size={15} /> Chat
-      </Button>
+      {onBack && (
+        <Button variant="ghost" size="sm" className="mb-4 gap-2" onClick={onBack}>
+          <ArrowLeft size={15} /> Chat
+        </Button>
+      )}
 
       {loading && (
         <div className="flex items-center justify-center py-16">

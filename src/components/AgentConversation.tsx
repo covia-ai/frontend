@@ -1,9 +1,11 @@
-import type { RefObject } from "react";
+import { memo, useMemo, type RefObject } from "react";
 import Link from "next/link";
-import { Bot, Copy, ExternalLink, Loader2, MessageSquareText } from "lucide-react";
+import { Copy, ExternalLink, Loader2 } from "lucide-react";
 
 import { AgentToolTurnGroup } from "@/components/AgentToolTurn";
+import { AgentIdenticon } from "@/components/agent-roster/AgentIdenticon";
 import { MarkdownMessage } from "@/components/MarkdownMessage";
+import { humanizeAgentId } from "@/lib/agent-display";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,21 +29,49 @@ type AgentConversationProps = {
   pendingChat: PendingChat | null;
   echoAlreadyRecorded: boolean;
   transcriptRef: RefObject<HTMLDivElement | null>;
+  /** The agent's brief (system-prompt snippet) shown in the new-chat empty
+   *  state for context. Optional — the legacy explorer omits it. */
+  agentBrief?: string;
+  /** When set, the new-chat empty state offers starter-prompt chips that
+   *  populate the composer. Optional. */
+  onStarter?: (text: string) => void;
 };
+
+// Generic conversation starters — populate the composer so the person can
+// tweak before sending. Agent-specific suggestions can come later.
+const STARTER_PROMPTS = [
+  "What can you do?",
+  "Help me get started",
+  "Summarise your recent activity",
+];
 
 // The shared conversation surface for both the focused chat and the legacy
 // explorer. Keeping turn rendering here prevents the two interfaces from
 // drifting in typography, tool grouping, pending-message behavior, or source
 // labelling while their surrounding controls remain intentionally different.
-export function AgentConversation({
+//
+// Memoised: the composer's draft text lives in the parent controller, so a
+// keystroke re-renders the chat surface. None of this transcript's inputs
+// change while typing, so `memo` keeps it inert until a message actually
+// arrives — as long as callers pass stable props (notably a stable `onStarter`).
+function AgentConversationBase({
   agentId,
   selectedSessionId,
   session,
   pendingChat,
   echoAlreadyRecorded,
   transcriptRef,
+  agentBrief,
+  onStarter,
 }: AgentConversationProps) {
   const hasConversation = Boolean(session?.conversation.length || pendingChat);
+  const agentName = humanizeAgentId(agentId);
+  // Grouping walks the whole transcript; memoise so it recomputes only when the
+  // conversation itself changes, never on an unrelated parent re-render.
+  const groups = useMemo(
+    () => (session?.conversation ? groupTranscript(session.conversation) : []),
+    [session?.conversation],
+  );
 
   return (
     <div
@@ -52,22 +82,36 @@ export function AgentConversation({
       <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col px-4 py-8 sm:px-6">
         {!hasConversation && (
           <div className="flex flex-1 flex-col items-center justify-center pb-16 text-center">
-            <div className="mb-5 flex size-12 items-center justify-center rounded-2xl border bg-card shadow-sm">
-              <MessageSquareText className="text-primary" size={23} />
-            </div>
+            <AgentIdenticon agentId={agentId} className="mb-5 size-16" />
             <h2 className="text-2xl font-semibold tracking-tight">
-              {selectedSessionId ? "No messages yet" : "How can I help?"}
+              {selectedSessionId ? "No messages yet" : `Chat with ${agentName}`}
             </h2>
             <p className="mt-2 max-w-md text-[15px] leading-6 text-muted-foreground">
               {selectedSessionId
                 ? "This session does not contain any messages."
-                : `Start a conversation with ${agentId}.`}
+                : agentBrief
+                  ? <span className="line-clamp-3">{agentBrief}</span>
+                  : `Send a message to start working with ${agentName}.`}
             </p>
+            {!selectedSessionId && onStarter && (
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+                {STARTER_PROMPTS.map((prompt) => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    data-testid="chat-starter"
+                    onClick={() => onStarter(prompt)}
+                    className="rounded-full border bg-card px-3.5 py-1.5 text-sm text-muted-foreground transition-colors hover:border-accent hover:text-foreground"
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {session?.conversation &&
-          groupTranscript(session.conversation).map((item) => {
+        {groups.map((item) => {
             if (item.kind === "toolGroup") {
               return (
                 <div className="mb-6" key={item.index}>
@@ -164,9 +208,7 @@ export function AgentConversation({
               </div>
             ) : (
               <div className="mb-8 flex gap-3" key={index}>
-                <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border bg-card">
-                  <Bot size={15} className="text-primary" />
-                </div>
+                <AgentIdenticon agentId={agentId} className="mt-0.5 size-7 shrink-0" />
                 <div
                   title={title}
                   className="min-w-0 flex-1 break-words text-[15px] leading-6"
@@ -187,9 +229,7 @@ export function AgentConversation({
 
         {pendingChat && (
           <div data-testid="agent-thinking" className="mb-8 flex items-center gap-3 text-muted-foreground">
-            <div className="flex size-7 shrink-0 items-center justify-center rounded-full border bg-card">
-              <Bot size={15} className="text-primary" />
-            </div>
+            <AgentIdenticon agentId={agentId} className="size-7 shrink-0" />
             <Loader2 size={15} className="animate-spin" />
             <span className="text-[15px] leading-6">Thinking…</span>
           </div>
@@ -198,3 +238,5 @@ export function AgentConversation({
     </div>
   );
 }
+
+export const AgentConversation = memo(AgentConversationBase);
