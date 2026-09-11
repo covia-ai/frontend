@@ -1,19 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { Plus, Boxes, Plug, ScrollText, type LucideIcon } from "lucide-react";
+import { type LucideIcon } from "lucide-react";
+import { CONCEPT_ICONS } from "@/lib/concept-icons";
 
 // Discovery doorway the flat composer never had — one tap into the surfaces a
 // person actually works in. Static links (no data, no reads); the destinations
 // gate their own auth. Kept in the shared card vocabulary of the redesigned
-// Operations / Connections pages.
+// Operations / Connections pages. Each glyph comes from the canonical icon
+// directory (lib/concept-icons.ts) so a doorway wears the same icon as its
+// destination; the tile stays a uniform primary wash (a Home-row treatment).
 type Action = { href: string; label: string; blurb: string; Icon: LucideIcon };
 
 const ACTIONS: Action[] = [
-  { href: "/agents/create", label: "New agent", blurb: "Spin one up from a skill or template.", Icon: Plus },
-  { href: "/operations", label: "Browse operations", blurb: "Run something from the catalogue.", Icon: Boxes },
-  { href: "/connections", label: "Connect a service", blurb: "Wire up a tool your agents can use.", Icon: Plug },
-  { href: "/jobs", label: "View jobs", blurb: "Follow what your agents have run.", Icon: ScrollText },
+  { href: "/agents/create", label: "New agent", blurb: "Spin one up from a skill or template.", Icon: CONCEPT_ICONS.create.Icon },
+  { href: "/operations", label: "Browse operations", blurb: "Run something from the catalogue.", Icon: CONCEPT_ICONS.operation.Icon },
+  { href: "/connections", label: "Connect a service", blurb: "Wire up a tool your agents can use.", Icon: CONCEPT_ICONS.connection.Icon },
+  { href: "/jobs", label: "View jobs", blurb: "Follow what your agents have run.", Icon: CONCEPT_ICONS.job.Icon },
 ];
 
 export function QuickActions() {
