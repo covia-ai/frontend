@@ -7,13 +7,10 @@
 // same mark, every venue its own.
 //
 // A rounded tile of SMALL, sharp two-tone squares with clear gaps — the Covia
-// logo's pixel motif. Deliberately distinct from the agent identicon on two
-// axes: agents render larger rounded cells in the purple+blue brand pair, while
-// a venue is a sparser pixel grid in its own TEAL+CYAN palette — so at a glance
-// agents read violet and venues read aqua, even though both share the same
-// deterministic hash family.
-const VENUE_TONE_A = "#0D9488"; // teal
-const VENUE_TONE_B = "#06B6D4"; // cyan
+// logo's pixel motif, in the brand purple+blue. Distinct from the agent
+// identicon on two axes that BOTH stay on-brand: the cells are smaller, sharper
+// and sparser (vs the agents' larger rounded blocks), and the tile carries a
+// subtle brand-tinted background (vs the agents' neutral tile).
 
 function hashId(s: string): number {
   let h = 2166136261;
@@ -40,7 +37,7 @@ function cellsFor(id: string): Cell[] {
     for (let x = 0; x < 3; x++) {
       const bit = y * 3 + x;
       if ((shape >> bit) & 1) {
-        const color = (tone >> bit) & 1 ? VENUE_TONE_A : VENUE_TONE_B;
+        const color = (tone >> bit) & 1 ? "var(--primary)" : "var(--secondary)";
         cells.push({ x, y, color });
         if (x < 2) cells.push({ x: 4 - x, y, color });
       }
@@ -48,7 +45,7 @@ function cellsFor(id: string): Cell[] {
   }
   // Never a blank mark.
   if (cells.length === 0) {
-    cells.push({ x: 2, y: 1, color: VENUE_TONE_A }, { x: 2, y: 3, color: VENUE_TONE_B });
+    cells.push({ x: 2, y: 1, color: "var(--primary)" }, { x: 2, y: 3, color: "var(--secondary)" });
   }
   return cells;
 }
@@ -63,7 +60,7 @@ export function VenueMark({
   const cells = cellsFor(venueId);
   return (
     <span
-      className={`inline-flex ${className} shrink-0 items-center justify-center rounded-lg border bg-muted/40`}
+      className={`inline-flex ${className} shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10`}
       aria-hidden="true"
     >
       {/* svg sized off the definite container (percentage padding is relative to
