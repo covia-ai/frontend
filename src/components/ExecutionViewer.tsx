@@ -98,7 +98,7 @@ export function ExecutionViewer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [execution.notFound]);
 
-  const op = job ? operationVisual(job) : null;
+  const op = job ? operationVisual(job, operationSchema?.adapter) : null;
   const sv = job ? statusVisual(job.status) : null;
   const ms = job ? jobDurationMs(job) : null;
   const failed = job?.status === RunStatus.FAILED;
@@ -139,8 +139,8 @@ export function ExecutionViewer({
                       </span>
                     )}
                   </div>
-                  {job.operation && (
-                    <div className="mt-1 truncate font-mono text-xs text-muted-foreground">{job.operation}</div>
+                  {job.op && (
+                    <div className="mt-1 truncate font-mono text-xs text-muted-foreground">{job.op}</div>
                   )}
                   <button
                     type="button"
@@ -266,11 +266,11 @@ export function ExecutionViewer({
                   <TooltipContent>Copy reference</TooltipContent>
                 </Tooltip>
               </div>
-              {job.operation && (
+              {job.op && (
                 <div className="flex items-start gap-3">
                   <Layers size={15} className="mt-0.5 shrink-0 text-muted-foreground" />
                   <span className="w-24 shrink-0 text-muted-foreground">Operation</span>
-                  <span className="min-w-0 flex-1 break-all font-mono text-xs text-primary">{job.operation}</span>
+                  <span className="min-w-0 flex-1 break-all font-mono text-xs text-primary">{job.op}</span>
                 </div>
               )}
               <p className="pt-1 text-xs text-muted-foreground">

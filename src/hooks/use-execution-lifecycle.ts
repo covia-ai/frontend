@@ -172,14 +172,14 @@ export function useExecutionLifecycle({
     const generation = ++assetRequests.current;
     let active = true;
     setOperationAsset(undefined);
-    if (!venue || !job?.operation) {
+    if (!venue || !job?.op) {
       return () => {
         active = false;
         ++assetRequests.current;
       };
     }
 
-    void resolveOperationByAddress(venue, job.operation)
+    void resolveOperationByAddress(venue, job.op)
       .then((asset) => {
         if (
           active &&
@@ -196,7 +196,7 @@ export function useExecutionLifecycle({
       active = false;
       ++assetRequests.current;
     };
-  }, [job?.operation, venue]);
+  }, [job?.op, venue]);
 
   useEffect(
     () => () => {
