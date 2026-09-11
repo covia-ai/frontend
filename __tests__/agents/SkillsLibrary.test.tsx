@@ -65,7 +65,7 @@ describe("SkillsLibrary", () => {
     fireEvent.click(screen.getByRole("button", { name: "Find agents" }));
     expect(await screen.findByRole("link", { name: /manager/i })).toHaveAttribute(
       "href",
-      "/agents/view?agentId=manager",
+      "/agents/agent/manager",
     );
     await waitFor(() => expect(mockVenue.agents.info).toHaveBeenCalledWith("manager"));
     expect(mockVenue.operations.run).not.toHaveBeenCalled();

@@ -123,7 +123,7 @@ describe("fetchVenueItems", () => {
     expect(agent).toMatchObject({
       id: "agent-1",
       title: "agent-1",
-      href: "/agents/view?agentId=agent-1",
+      href: "/agents/agent/agent-1",
       requiresVenueSwitch: true,
     });
     expect(agent.quickActions).toEqual([

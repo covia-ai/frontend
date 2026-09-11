@@ -1,5 +1,7 @@
 "use client";
 
+import { useCallback } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { GripVertical } from "lucide-react";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { AgentChatPanel } from "@/components/agent-explorer/AgentChatPanel";
@@ -14,6 +16,24 @@ type AgentExplorerProps = {
 export default function AgentExplorer({ agentId }: AgentExplorerProps) {
   const controller = useAgentExplorer(agentId);
   const { width, containerRef, startResizing } = usePaneResize(200);
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // On the drill-in route the URL names the agent, and the breadcrumb reads
+  // the agent from it. Picking a different agent in the left panel therefore
+  // has to move the URL too, or the crumb — and any link the user copies —
+  // keeps naming the agent they arrived at. Other mounts of this component
+  // have no agent in their path and just change the selection.
+  const { setSelectedAgentId } = controller;
+  const handleSelect = useCallback(
+    (nextAgentId: string) => {
+      setSelectedAgentId(nextAgentId);
+      if (pathname?.startsWith("/agents/agent/")) {
+        router.replace(`/agents/agent/${encodeURIComponent(nextAgentId)}`);
+      }
+    },
+    [pathname, router, setSelectedAgentId],
+  );
 
   return (
     <>
@@ -27,7 +47,7 @@ export default function AgentExplorer({ agentId }: AgentExplorerProps) {
           loading={controller.loading}
           selectedAgentId={controller.selectedAgentId}
           width={width}
-          onSelect={controller.setSelectedAgentId}
+          onSelect={handleSelect}
         />
 
         <div

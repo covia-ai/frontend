@@ -25,7 +25,10 @@ const RUN_STATUS_TONE: Partial<Record<RunStatus, StatusTone>> = {
 
 const AGENT_STATUS_TONE: Partial<Record<AgentStatus, StatusTone>> = {
   [AgentStatus.RUNNING]: "active",
-  [AgentStatus.SLEEPING]: "success",
+  // Idle, not "good": green read as active/healthy and stole emphasis from the
+  // agents actually RUNNING (active/blue). Sleeping is a calm, neutral resting
+  // state; green stays reserved for genuinely-positive terminal states.
+  [AgentStatus.SLEEPING]: "neutral",
   [AgentStatus.SUSPENDED]: "attention",
   [AgentStatus.TERMINATED]: "neutral",
 };
