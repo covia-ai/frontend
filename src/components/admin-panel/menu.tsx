@@ -24,10 +24,18 @@ interface MenuProps {
   isOpen: boolean | undefined;
 }
 
-function isItemActive(item: Pick<MenuItem, "href" | "match">, pathname: string): boolean {
-  return item.match === "exact"
-    ? pathname === item.href
-    : pathname === item.href || pathname.startsWith(`${item.href}/`);
+function isItemActive(
+  item: Pick<MenuItem, "href" | "match" | "activePrefixes">,
+  pathname: string,
+): boolean {
+  const base =
+    item.match === "exact"
+      ? pathname === item.href
+      : pathname === item.href || pathname.startsWith(`${item.href}/`);
+  if (base) return true;
+  return (
+    item.activePrefixes?.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ?? false
+  );
 }
 
 function MenuItemRow({

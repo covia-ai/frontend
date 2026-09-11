@@ -7,15 +7,20 @@ import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "./admin-panel/TopBar";
 import { Spinner } from '@/components/ui/shadcn-io/spinner';
-import { AssetCard } from "./AssetCard";
+import { OperationCard } from "./OperationCard";
+import { adapterLook } from "./operation-display";
 import { PaginationHeader } from "./PaginationHeader";
+import { cn } from "@/lib/utils";
 import { PlayCircle, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { listCatalogOperations } from "@/lib/operations-catalog";
 import { useGridPageSize } from "@/hooks/use-grid-page-size";
 import { useLatestQuery } from "@/hooks/use-latest-query";
 import { useClientPagination } from "@/hooks/use-pagination";
-import { CARD_GRID_CLASS } from "@/lib/grid";
+// A roomier grid than the shared 14rem density: operation cards now carry a
+// signature block, so they need width to breathe (concept-fidelity catalogue).
+const OPS_GRID_CLASS =
+  "w-full grid grid-cols-[repeat(auto-fill,minmax(min(22rem,100%),1fr))] items-stretch gap-4";
 import { FiltersSheet } from "./FiltersSheet";
 import { ListToolbar } from "./ListToolbar";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -104,6 +109,51 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
     ...keywordOptions.map((k) => ({ value: k, label: k, groupTag: "Keyword" })),
   ], [adapterOptions, keywordOptions]);
 
+  // Venue-wide, catalog-derived counts — a header that frames the whole set
+  // instead of the page-scoped "showing x of y". Composite = ops built from
+  // steps; Yours = the signed-in user's own w/ops.
+  const stats = useMemo(() => ({
+    total: assetsMetadata.length,
+    adapters: adapterOptions.length,
+    composite: assetsMetadata.filter((a) => {
+      const steps = (a.metadata?.operation as { steps?: unknown } | undefined)?.steps;
+      return Array.isArray(steps) && steps.length > 0;
+    }).length,
+    yours: assetsMetadata.filter((a) => (a.id ?? "").startsWith("w/ops")).length,
+  }), [assetsMetadata, adapterOptions]);
+
+  const statTiles = [
+    { label: "Operations", value: stats.total },
+    { label: "Adapters", value: stats.adapters },
+    { label: "Composite", value: stats.composite },
+    ...(isAuthenticated ? [{ label: "Yours", value: stats.yours }] : []),
+  ];
+
+  // Adapter facet chips — the most common adapters as one-click filters,
+  // sharing the selectedTags state with the Filters sheet (which still holds
+  // the full adapter + keyword set). Capped so the row stays a glanceable band.
+  const adapterFacets = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const a of assetsMetadata) {
+      const ad = (a.metadata?.operation?.adapter as string | undefined)?.split(":")[0];
+      if (ad) counts.set(ad, (counts.get(ad) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((x, y) => y[1] - x[1]).slice(0, 12);
+  }, [assetsMetadata]);
+
+  const adapterSet = useMemo(() => new Set(adapterOptions), [adapterOptions]);
+  const anyAdapterActive = selectedTags.some((t) => adapterSet.has(t));
+  const toggleAdapter = (ad: string) =>
+    setSelectedTags((prev) => (prev.includes(ad) ? prev.filter((t) => t !== ad) : [...prev, ad]));
+  const clearAdapters = () => setSelectedTags((prev) => prev.filter((t) => !adapterSet.has(t)));
+  const facetCls = (on: boolean) =>
+    cn(
+      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+      on
+        ? "border-transparent bg-primary text-primary-foreground"
+        : "bg-card text-muted-foreground hover:border-accent hover:text-foreground",
+    );
+
   const filteredAssets = useMemo(() => {
     const term = searchInput.trim().toLowerCase();
     return assetsMetadata.filter(a => {
@@ -113,7 +163,9 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
         if (!selectedTags.some(tag => tag === adapter || keywords.includes(tag))) return false;
       }
       if (!term) return true;
-      return (a.metadata?.name ?? "").toLowerCase().includes(term) || (a.id ?? "").toLowerCase().includes(term);
+      return (a.metadata?.name ?? "").toLowerCase().includes(term)
+        || (a.id ?? "").toLowerCase().includes(term)
+        || (a.metadata?.description ?? "").toLowerCase().includes(term);
     });
   }, [assetsMetadata, selectedTags, searchInput]);
 
@@ -147,6 +199,24 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
     <ContentLayout>
       <TopBar venueId={venueId} venueName={venueObj?.metadata.name}/>
       <div className="flex flex-col items-center justify-center">
+        {!isLoading && assetsMetadata.length > 0 && (
+          <div
+            data-testid="operations-stats"
+            className={cn(
+              "mt-4 grid w-full grid-cols-2 gap-3",
+              statTiles.length === 4 ? "sm:grid-cols-4" : "sm:grid-cols-3",
+            )}
+          >
+            {statTiles.map((t) => (
+              <div key={t.label} className="rounded-lg border bg-card px-4 py-3 shadow-sm">
+                <div className="text-xs font-medium text-muted-foreground">{t.label}</div>
+                <div className="mt-1 text-3xl font-semibold tabular-nums text-foreground">
+                  {t.value}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         <ListToolbar
           className="mt-4"
           actions={
@@ -171,6 +241,27 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
           pagination={<PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={isLoading}></PaginationHeader>}
         />
 
+        {!isLoading && adapterFacets.length > 0 && (
+          <div data-testid="operation-facets" className="mt-3 flex w-full flex-wrap items-center gap-2">
+            <button type="button" onClick={clearAdapters} className={facetCls(!anyAdapterActive)}>
+              All
+            </button>
+            {adapterFacets.map(([ad, count]) => {
+              const on = selectedTags.includes(ad);
+              const { Icon } = adapterLook(ad);
+              return (
+                <button key={ad} type="button" onClick={() => toggleAdapter(ad)} className={facetCls(on)}>
+                  <Icon size={13} strokeWidth={1.9} />
+                  {ad}
+                  <span className={cn("font-mono text-[10px]", on ? "opacity-80" : "text-muted-foreground")}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {loadError && <ErrorDisplay error={loadError} className="mb-4 w-full" />}
 
         {isLoading ? (
@@ -178,10 +269,10 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
             <Spinner variant="ellipsis" className="text-primary" size={64}/>
           </div>
         ) : (
-          <div ref={gridRef} className={CARD_GRID_CLASS}>
+          <div ref={gridRef} className={cn(OPS_GRID_CLASS, "mt-5")}>
             {
             pageItems.map((asset) => (
-              <AssetCard key={asset.id} asset={asset} type="operations" compact={true} venue={venue ?? undefined} scoped={!!venueId}/>
+              <OperationCard key={asset.id} asset={asset} venue={venue ?? undefined} scoped={!!venueId}/>
             ))}
           </div>
         )}

@@ -5,8 +5,10 @@ import '@testing-library/jest-dom';
 
 // Mock heavy child components so this test stays focused on OperationsList's
 // own fetch-once / client-side-filter / clear-button logic (issue #184).
-jest.mock('@/components/AssetCard', () => ({
-  AssetCard: ({ asset }: any) => (
+// The list renders OperationCard (the operations-specific capability card);
+// stub it to the same lightweight marker the assertions look for.
+jest.mock('@/components/OperationCard', () => ({
+  OperationCard: ({ asset }: any) => (
     <div data-testid="asset-card">{asset.metadata?.name ?? asset.id}</div>
   ),
 }));

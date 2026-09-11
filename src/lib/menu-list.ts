@@ -16,6 +16,10 @@ export type MenuItem = {
   requiresAuth?: boolean;
   badge?: "inbox" | "connections";
   match?: "exact" | "prefix";
+  // Extra path prefixes that should also light up this item — e.g. "Agents"
+  // (/agents, exact) stays active on the agent drill-in (/agents/agent/…)
+  // without also matching sibling routes like /agents/create.
+  activePrefixes?: string[];
   children?: MenuItem[];
 };
 
@@ -32,11 +36,11 @@ export const MENU_LIST: MenuGroup[] = [
   {
     groupLabel: "Agents",
     menus: [
+      { href: "/agents", label: "Agents", icon: I.agent.Icon, match: "exact", activePrefixes: ["/agents/agent"] },
       { href: "/agents/create", label: "Create", icon: I.create.Icon },
-      { href: "/agents/view", label: "View", icon: I.agent.Icon },
       { href: "/agents/chat", label: "Chat", icon: I.chat.Icon },
-      { href: "/agents/connected", label: "Connected", icon: I.connected.Icon },
       { href: "/agents/skills", label: "Skills", icon: I.skill.Icon },
+      { href: "/agents/connected", label: "Connected", icon: I.connected.Icon },
     ],
   },
   {
