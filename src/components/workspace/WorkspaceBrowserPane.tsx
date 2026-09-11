@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   ChevronRight,
-  Folder,
   FolderOpen,
   Loader2,
   Plus,
@@ -18,6 +17,9 @@ import { ROOT_NAMESPACE_LABELS } from "@/lib/workspace-namespaces";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { TypeTile } from "@/components/TypeTile";
+import { Identicon } from "@/components/Identicon";
+import { namespaceLook } from "@/lib/workspace-look";
 
 // Root-level lattice namespace keys (see covia/venue Namespace.java) have
 // fixed meanings — only the top segment, nested keys under it (job ids,
@@ -143,18 +145,27 @@ export function WorkspaceBrowserPane({
               : `${currentPath}/${entry.key}`;
           const isSelected = selectedPath === fullPath;
           const label = currentPath === "/" ? labelForSegment(entry.key, 0) : entry.key;
+          // Tint the row by its root namespace (all secrets keys read as keys,
+          // all jobs as jobs…); a content-addressed asset carries a DID
+          // identicon instead, since it alone has a key.
+          const look = namespaceLook(fullPath);
+          const isAsset = fullPath.split("/")[0] === "a" && entry.key.startsWith("did:key:");
 
           return (
             <div
               key={entry.key}
-              className={`flex w-full cursor-pointer items-center gap-2 border-b border-border px-3 py-2 text-left text-sm transition-colors last:border-0 ${
+              className={`flex w-full cursor-pointer items-center gap-2.5 border-b border-border px-3 py-2 text-left text-sm transition-colors last:border-0 ${
                 isSelected
                   ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
                   : "text-foreground hover:bg-accent"
               }`}
               onClick={() => onSelect(fullPath)}
             >
-              <Folder size={14} className="shrink-0 text-muted-foreground" />
+              {isAsset ? (
+                <Identicon did={entry.key} size={26} className="shrink-0" title={entry.key} />
+              ) : (
+                <TypeTile Icon={look.Icon} tile={look.tile} className="size-7" iconSize={15} />
+              )}
               <span className="flex-1 truncate">{label}</span>
               <Tooltip>
                 <TooltipTrigger asChild>
