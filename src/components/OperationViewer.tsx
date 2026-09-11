@@ -19,6 +19,8 @@ import {
 } from "@/lib/operation-input";
 import { gtmEvent } from "@/lib/utils";
 import { useJobExecution } from "@/hooks/use-job-execution";
+import { OperationRunResult } from "@/components/execution/OperationRunResult";
+import { adapterLook, adapterOfMetadata, OperationSignature } from "@/components/operation-display";
 
 const DiagramViewer = dynamic(
   () =>
@@ -69,6 +71,24 @@ export function OperationViewer({
   const [invocationError, setInvocationError] = useState("");
   const { execute: executeJob, running: loading } = useJobExecution(venue);
   const [confirmationRequired, setConfirmationRequired] = useState(false);
+  // Run-in-place: the last job this page kicked off, streamed inline below the
+  // form instead of navigating away. A link out to the full job stays offered.
+  const [jobId, setJobId] = useState<string | null>(null);
+
+  // Every operation shares one route, so jumping between operations (the
+  // command palette, a catalogue link) reuses this component instance. Without
+  // this the previous operation's result panel and validation state survive
+  // under the new operation's form. `inputController` is already keyed on the
+  // asset; the run state has to be reset by hand.
+  useEffect(() => {
+    setJobId(null);
+    setInvocationError("");
+    setConfirmationRequired(false);
+  }, [assetId, venue?.venueId]);
+
+  const operation = asset?.metadata?.operation as any;
+  const adapter = adapterOfMetadata(operation);
+  const { Icon: AdapterIcon, tile: adapterTile } = adapterLook(adapter);
 
   const runOperation = async () => {
     if (!asset || !venue) {
@@ -77,10 +97,13 @@ export function OperationViewer({
     }
 
     setConfirmationRequired(false);
+    setJobId(null);
     await executeJob({
       action: () => asset.invoke(inputController.input),
       failureTitle: "Unable to run operation",
       onError: setInvocationError,
+      navigate: false,
+      onSuccess: setJobId,
     });
   };
 
@@ -119,53 +142,89 @@ export function OperationViewer({
         />
 
         {asset && <AssetHeader asset={asset} />}
-        {asset && <MetadataViewer asset={asset} venue={venue} isAuthenticated={isAuthenticated} />}
+
         {asset?.metadata?.operation && (
-          <Tabs defaultValue="run" className="w-full">
-            <TabsList>
-              <TabsTrigger value="run">Run</TabsTrigger>
-              <TabsTrigger value="code" data-testid="operation-code-tab">Code</TabsTrigger>
-            </TabsList>
-            <TabsContent value="run">
-              {inputController.ready ? (
-                <OperationInputForm
-                  schema={schema}
-                  outputSchema={asset.metadata.operation.output}
-                  controller={inputController}
-                  errorMessage={invocationError}
-                  loading={loading}
-                  confirmationRequired={confirmationRequired}
-                  isAuthenticated={isAuthenticated}
-                  onRun={requestRun}
-                  scheduleTarget={
-                    venue ? { venue, operation: asset.id, input: inputController.input } : undefined
-                  }
-                />
-              ) : (
-                <div className="my-2 h-32 w-full animate-pulse rounded-md bg-muted" />
-              )}
-              {asset.metadata.operation.steps && (
-                <DiagramViewer metadata={asset.metadata} />
-              )}
-            </TabsContent>
-            <TabsContent value="code">
-              {venue && (
-                <OperationCodeSnippets
-                  baseUrl={venue.baseUrl}
-                  assetId={asset.id}
-                  schema={schema}
-                  liveInput={inputController.input}
-                />
-              )}
-            </TabsContent>
-          </Tabs>
+          <>
+            {/* Signature hero — the operation's shape (in → out) at a glance. */}
+            <div className="mb-3 flex w-full flex-col gap-3 rounded-md border bg-card p-3 sm:flex-row sm:items-center">
+              <div className="flex items-center gap-3">
+                <span className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${adapterTile}`}>
+                  <AdapterIcon size={20} strokeWidth={1.9} />
+                </span>
+                {adapter && (
+                  <span className="font-mono text-xs text-muted-foreground">{adapter} adapter</span>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <OperationSignature operation={operation} max={8} />
+              </div>
+            </div>
+
+            <Tabs defaultValue="run" className="w-full">
+              <TabsList>
+                <TabsTrigger value="run">Run</TabsTrigger>
+                <TabsTrigger value="code" data-testid="operation-code-tab">Code</TabsTrigger>
+                <TabsTrigger value="details">Details</TabsTrigger>
+              </TabsList>
+              <TabsContent value="run">
+                {inputController.ready ? (
+                  <OperationInputForm
+                    schema={schema}
+                    outputSchema={asset.metadata.operation.output}
+                    controller={inputController}
+                    errorMessage={invocationError}
+                    loading={loading}
+                    confirmationRequired={confirmationRequired}
+                    isAuthenticated={isAuthenticated}
+                    onRun={requestRun}
+                    scheduleTarget={
+                      venue ? { venue, operation: asset.id, input: inputController.input } : undefined
+                    }
+                  />
+                ) : (
+                  <div className="my-2 h-32 w-full animate-pulse rounded-md bg-muted" />
+                )}
+                {asset.metadata.operation.steps && (
+                  <DiagramViewer metadata={asset.metadata} />
+                )}
+                {jobId && venue && (
+                  <div
+                    className="mt-4 rounded-md border bg-card p-4"
+                    data-testid="operation-inline-result"
+                  >
+                    <OperationRunResult
+                      jobId={jobId}
+                      venueId={venue.venueId}
+                      jobHref={`/venues/${encodeURIComponent(venue.venueId)}/jobs/${jobId}`}
+                    />
+                  </div>
+                )}
+              </TabsContent>
+              <TabsContent value="code">
+                {venue && (
+                  <OperationCodeSnippets
+                    baseUrl={venue.baseUrl}
+                    assetId={asset.id}
+                    schema={schema}
+                    liveInput={inputController.input}
+                  />
+                )}
+              </TabsContent>
+              <TabsContent value="details">
+                <MetadataViewer asset={asset} venue={venue} isAuthenticated={isAuthenticated} bare />
+              </TabsContent>
+            </Tabs>
+          </>
         )}
         {asset && !asset.metadata?.operation && (
-          <div className="text-center p-4">
-            <p className="text-destructive">
-              This asset is not an operation and cannot be executed.
-            </p>
-          </div>
+          <>
+            <MetadataViewer asset={asset} venue={venue} isAuthenticated={isAuthenticated} />
+            <div className="text-center p-4">
+              <p className="text-destructive">
+                This asset is not an operation and cannot be executed.
+              </p>
+            </div>
+          </>
         )}
       </div>
     </ContentLayout>

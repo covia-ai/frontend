@@ -1,14 +1,12 @@
+import { redirect } from "next/navigation";
 
-import { ContentLayout } from "@/components/admin-panel/content-layout";
-import AgentExplorer from "@/components/AgentExplorer";
-
-export default async function Page({ searchParams }: { searchParams: Promise<{ agentId?: string }> }) {
+// Legacy duplicate route. Folded into /agents (roster) + /agents/agent/<id>
+// (drill-in); redirect so old links still land right.
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ agentId?: string }>;
+}) {
   const { agentId } = await searchParams;
-
-  return (
-      <ContentLayout>
-      <AgentExplorer agentId={agentId} />
-
-      </ContentLayout>
-  )
+  redirect(agentId ? `/agents/agent/${encodeURIComponent(agentId)}` : "/agents");
 }

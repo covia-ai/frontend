@@ -15,6 +15,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
+import { humanizeAgentId } from "@/lib/agent-display";
+
+// usePathname returns the encoded path, so a segment needs one decode — but an
+// id containing a bare "%" makes decodeURIComponent throw, which would take the
+// whole breadcrumb down with it. Fall back to the raw segment.
+function safeDecode(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
 
 const SHOW_START = 2;
 const SHOW_END = 1;
@@ -76,6 +88,19 @@ export function SmartBreadcrumb({
         { label: venueLabel, href: `/venues/${slug}` },
         { label: 'Operations', href: `/venues/${slug}/operations` },
         { label: operationLabel(segments), href: pathname },
+      ];
+    }
+
+    // The agent drill-in lives at /agents/agent/<id> — "agent" is a routing
+    // namespace, not a page of its own. Collapse it to Home › Agents › <name>.
+    if (segments[0] === 'agents' && segments[1] === 'agent' && segments.length > 2) {
+      return [
+        ...breadcrumbs,
+        { label: 'Agents', href: '/agents' },
+        {
+          label: humanizeAgentId(safeDecode(segments[segments.length - 1])),
+          href: pathname,
+        },
       ];
     }
 

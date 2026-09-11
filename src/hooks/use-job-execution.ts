@@ -15,6 +15,10 @@ type ExecuteJobOptions = {
   missingJobMessage?: string;
   onError?: (message: string) => void;
   onSuccess?: (jobId: string) => void;
+  // Default true: on success, navigate to the job's detail page. Pass false
+  // for a run-in-place caller that renders the result inline and only offers
+  // an opt-in link to the full job (the job is still watched either way).
+  navigate?: boolean;
 };
 
 export function useJobExecution(venue?: Venue | null) {
@@ -27,6 +31,7 @@ export function useJobExecution(venue?: Venue | null) {
     missingJobMessage = "The operation completed without returning a job ID",
     onError,
     onSuccess,
+    navigate = true,
   }: ExecuteJobOptions): Promise<string | null> => {
     if (!venue) return null;
     setRunning(true);
@@ -42,7 +47,9 @@ export function useJobExecution(venue?: Venue | null) {
       // #241: ambient completion notification even if the user navigates
       // away before this job finishes — see use-watched-jobs.ts.
       useWatchedJobs.getState().watch(venue.venueId, result.id);
-      router.push(`/venues/${encodeURIComponent(venue.venueId)}/jobs/${result.id}`);
+      if (navigate) {
+        router.push(`/venues/${encodeURIComponent(venue.venueId)}/jobs/${result.id}`);
+      }
       return result.id;
     } catch (error: unknown) {
       const { reason, jobHref } = jobFailure(error, venue.venueId);
