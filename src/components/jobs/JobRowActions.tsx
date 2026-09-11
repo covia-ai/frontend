@@ -53,10 +53,10 @@ export function JobRowActions({ job, onChanged }: JobRowActionsProps) {
     try {
       // The list record is a summary; fetch the full job for its operation + input.
       const full = await venue.jobs.get(jobId);
-      // Job records carry the operation as a content hash under `op` (see #322);
-      // fall back to `operation` for any record that surfaces the path instead.
-      const meta = full.metadata as Record<string, unknown>;
-      const operation = (meta.op ?? meta.operation) as string | undefined;
+      // `op` is the reference that was invoked (covia#499). A path is a mutable
+      // binding, so re-running it runs whatever sits there now — which is what
+      // "re-run" should mean. A pinned record carries a hash and re-runs that.
+      const operation = full.metadata.op;
       if (!operation) throw new Error("This job has no operation reference to re-run.");
       const newJob = await venue.operations.invoke(operation, full.metadata.input);
       notifySuccess("Re-running operation", {
@@ -93,10 +93,10 @@ export function JobRowActions({ job, onChanged }: JobRowActionsProps) {
     setBusy("receipt");
     try {
       const full = await venue.jobs.get(jobId);
-      const m = full.metadata as Record<string, unknown> & typeof full.metadata;
+      const m = full.metadata;
       const receipt = {
         id: m.id ?? jobId,
-        operation: (m.op ?? m.operation ?? null) as string | null,
+        operation: m.op ?? null,
         name: m.name ?? null,
         caller: m.caller ?? null,
         status: m.status ?? null,

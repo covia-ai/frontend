@@ -118,9 +118,19 @@ function adapterFromOperation(operation?: string): string | undefined {
   return undefined;
 }
 
-export function operationVisual(job: Pick<JobMetadata, "operation" | "name">): OperationVisual {
-  const adapter = adapterFromOperation(job.operation);
-  if (adapter && ADAPTER_VISUALS[adapter]) return ADAPTER_VISUALS[adapter];
+export function operationVisual(
+  job: Pick<JobMetadata, "op" | "name">,
+  /** `operation.adapter` off the resolved operation asset, in the venue's
+   *  `adapter:subop` dispatch form. A job invoked by hash — a pinned
+   *  definition, or any record written before venue 0.9.9 — has no path in
+   *  `op` to parse, and the asset carries the adapter that the hash cannot
+   *  (#322). Callers holding the asset should pass it; the list does not. */
+  assetAdapter?: string,
+): OperationVisual {
+  const candidates = [adapterFromOperation(job.op), assetAdapter?.split(":")[0]];
+  for (const adapter of candidates) {
+    if (adapter && ADAPTER_VISUALS[adapter]) return ADAPTER_VISUALS[adapter];
+  }
   const name = job.name ?? "";
   for (const [re, key] of NAME_KEYWORDS) {
     if (re.test(name) && ADAPTER_VISUALS[key]) return ADAPTER_VISUALS[key];
