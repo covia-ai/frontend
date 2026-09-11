@@ -1,6 +1,6 @@
 import { FolderOpen } from "lucide-react";
 import type { TypeLook } from "@/lib/file-type-look";
-import { CONCEPT_ICONS, type Concept } from "@/lib/concept-icons";
+import { CONCEPT_ICONS, fieldLook, type Concept } from "@/lib/concept-icons";
 
 // Maps the Workspace lattice onto the canonical concept-icon directory, so a
 // namespace and its keys wear the same icons the rest of the app uses for those
@@ -59,16 +59,24 @@ export function namespaceLook(pathOrKey: string): TypeLook {
   return concept ? CONCEPT_ICONS[concept] : NAMESPACE_FALLBACK;
 }
 
-/** Icon + tile for a single key inside a namespace. A well-known sub-namespace
- *  key (ops, adapters, skills…) gets its own concept icon; an instance key
- *  (an agent id, a secret name) inherits its namespace's concept (a secret name
- *  reads as a secret); anything else gets a neutral key glyph. */
+/** Icon + tile for a single key inside a namespace. Resolved in order:
+ *  1. a well-known data-field key (created, updated, name, id, version…) gets
+ *     its own attribute icon, so sibling fields under one namespace (e.g.
+ *     meta/created and meta/updated) never share a glyph;
+ *  2. a well-known sub-namespace key (ops, adapters, skills…) gets its concept
+ *     icon;
+ *  3. an instance key (an agent id, a secret name) inherits its namespace's
+ *     concept (a secret name reads as a secret);
+ *  4. anything else gets a neutral key glyph. */
 export function keyLook(fullPath: string): TypeLook {
   const segments = fullPath.split("/").filter(Boolean);
-  const leaf = (segments[segments.length - 1] ?? "").toLowerCase();
+  const leaf = segments[segments.length - 1] ?? "";
   const root = segments[0];
 
-  const keyConcept = KEY_CONCEPT[leaf];
+  const field = fieldLook(leaf);
+  if (field) return field;
+
+  const keyConcept = KEY_CONCEPT[leaf.toLowerCase()];
   if (keyConcept) return CONCEPT_ICONS[keyConcept];
 
   const nsConcept = segments.length > 1 ? NAMESPACE_CONCEPT[root] : undefined;
