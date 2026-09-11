@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "ops-redesign",
+      "name": "frontend",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["dev", "--", "-p", "3017"],
-      "port": 3017
+      "runtimeArgs": ["dev"],
+      "port": 3000
     }
   ]
 }

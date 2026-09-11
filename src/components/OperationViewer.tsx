@@ -75,6 +75,17 @@ export function OperationViewer({
   // form instead of navigating away. A link out to the full job stays offered.
   const [jobId, setJobId] = useState<string | null>(null);
 
+  // Every operation shares one route, so jumping between operations (the
+  // command palette, a catalogue link) reuses this component instance. Without
+  // this the previous operation's result panel and validation state survive
+  // under the new operation's form. `inputController` is already keyed on the
+  // asset; the run state has to be reset by hand.
+  useEffect(() => {
+    setJobId(null);
+    setInvocationError("");
+    setConfirmationRequired(false);
+  }, [assetId, venue?.venueId]);
+
   const operation = asset?.metadata?.operation as any;
   const adapter = adapterOfMetadata(operation);
   const { Icon: AdapterIcon, tile: adapterTile } = adapterLook(adapter);

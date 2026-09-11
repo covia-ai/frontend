@@ -25,7 +25,7 @@ interface OperationRunResultProps {
  * out to the full job (its receipt and timeline) for callers that have one.
  */
 export function OperationRunResult({ jobId, venueId, jobHref }: OperationRunResultProps) {
-  const { job, operationAsset, loading, error, streaming } = useExecutionLifecycle({
+  const { job, operationAsset, loading, error, notFound, streaming } = useExecutionLifecycle({
     jobId,
     venueId,
   });
@@ -38,6 +38,16 @@ export function OperationRunResult({ jobId, venueId, jobHref }: OperationRunResu
     );
   }
   if (error) return <ErrorDisplay error={error} />;
+  // The lifecycle hook nulls `error` for a missing job and reports `notFound`
+  // instead. Falling through to `!job` would leave the caller's always-rendered
+  // result panel empty, with no status and no explanation.
+  if (notFound) {
+    return (
+      <p className="text-sm text-muted-foreground" data-testid="operation-run-not-found">
+        This job is no longer available on the venue.
+      </p>
+    );
+  }
   if (!job) return null;
 
   const operationSchema = operationAsset?.metadata?.operation;

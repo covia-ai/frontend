@@ -83,14 +83,23 @@ function abbrevType(t: unknown): string {
 }
 
 interface SchemaField {
+  /** Empty for a top-level (unnamed) value — the chip then shows type only. */
   key: string;
   type: string;
   required: boolean;
 }
 function fieldsFrom(schema: any): SchemaField[] {
-  const props = schema?.properties;
-  if (!props || typeof props !== "object") return [];
-  const required: string[] = Array.isArray(schema?.required) ? schema.required : [];
+  if (!schema || typeof schema !== "object") return [];
+  const props = schema.properties;
+  // A schema without `properties` is a single top-level value, not an empty
+  // one: OperationInputForm renders exactly one editor for it under
+  // TOP_LEVEL_INPUT_KEY. Reporting no fields here would show "in —" beside a
+  // Run tab that asks for a value, and would blank the signature entirely for
+  // an operation whose input and output are both top-level.
+  if (!props || typeof props !== "object") {
+    return [{ key: "", type: abbrevType(schema.type ?? "any"), required: false }];
+  }
+  const required: string[] = Array.isArray(schema.required) ? schema.required : [];
   return Object.keys(props).map((key) => ({
     key,
     type: abbrevType(props[key]?.type),
@@ -104,14 +113,14 @@ function FieldChips({ fields, tone, max }: { fields: SchemaField[]; tone: "in" |
   const bg = tone === "in" ? "bg-input-color" : "bg-output-color";
   return (
     <>
-      {shown.map((f) => (
+      {shown.map((f, index) => (
         <span
-          key={f.key}
+          key={f.key || `top-${index}`}
           className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[11px] leading-none text-io-foreground ${bg}`}
         >
-          <span className="font-medium">{f.key}</span>
+          {f.key && <span className="font-medium">{f.key}</span>}
           {f.required && <span className="text-red-500">*</span>}
-          <span className="opacity-60">{f.type}</span>
+          <span className={f.key ? "opacity-60" : "font-medium"}>{f.type}</span>
         </span>
       ))}
       {hidden > 0 && <span className="font-mono text-[11px] text-muted-foreground">+{hidden}</span>}
@@ -121,8 +130,9 @@ function FieldChips({ fields, tone, max }: { fields: SchemaField[]; tone: "in" |
 
 /**
  * The typed input→output signature of an operation, rendered as a bordered
- * block of field chips. Returns null when the operation declares neither
- * inputs nor outputs, so callers can include it unconditionally.
+ * block of field chips. Returns null when the operation declares neither an
+ * input nor an output schema at all, so callers can include it
+ * unconditionally.
  *
  * `max` caps chips per side (cards stay tight; the detail page shows more).
  */
