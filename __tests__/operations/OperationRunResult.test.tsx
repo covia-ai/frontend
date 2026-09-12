@@ -39,6 +39,23 @@ describe('OperationRunResult', () => {
   // The hook reports a missing job as `notFound` with `error` nulled. Without
   // an explicit branch this fell through to `!job` and rendered nothing, so the
   // caller's bordered result panel sat empty with no explanation.
+  it('shows the Streaming pill in the active (blue) tone while streaming', () => {
+    mockLifecycle.mockReturnValue({
+      ...base,
+      streaming: true,
+      job: { status: 'STARTED' },
+    });
+
+    render(<OperationRunResult jobId="job-1" venueId="venue-1" />);
+
+    // The live/streaming indicator routes through the `active` tone
+    // (TONE_STYLES.active) — blue, not a hand-rolled green/emerald.
+    const pill = screen.getByText('Streaming');
+    expect(pill.className).toEqual(expect.stringContaining('bg-blue-100'));
+    expect(pill.className).not.toEqual(expect.stringContaining('green'));
+    expect(pill.className).not.toEqual(expect.stringContaining('emerald'));
+  });
+
   it('explains a job that no longer exists instead of rendering nothing', () => {
     mockLifecycle.mockReturnValue({ ...base, notFound: true });
 
