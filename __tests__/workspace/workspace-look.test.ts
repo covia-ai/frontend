@@ -53,6 +53,15 @@ describe("keyLook", () => {
   it("falls back to a neutral key glyph for anything else", () => {
     expect(keyLook("zzz/thing").label).toBe("Key");
   });
+
+  it("maps skill-library names to their concept (auth/admin/a2a/building)", () => {
+    expect(keyLook("auth").label).toBe("Secret");
+    expect(keyLook("admin").label).toBe("User");
+    expect(keyLook("a2a").label).toBe("Connection");
+    expect(keyLook("building").label).toBe("Create");
+    // An unmapped single-segment key still gets the neutral fallback, never blank.
+    expect(keyLook("zzz-unmapped").label).toBe("Key");
+  });
 });
 
 describe("fieldLook", () => {

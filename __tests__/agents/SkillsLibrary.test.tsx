@@ -24,6 +24,24 @@ const mockVenue: any = {
             content: { inline: "## Agent workflow\nUse explicit tools." },
             skill: { tools: ["v/ops/agent/list"] },
           },
+        },
+        {
+          // A name keyLook maps to its own concept (building → create).
+          id: "v/skills/building",
+          metadata: {
+            name: "Building agents",
+            description: "Assemble agents from operations.",
+            content: { inline: "## Build\nCompose operations." },
+          },
+        },
+        {
+          // A name keyLook does NOT map → neutral fallback tile (never blank).
+          id: "v/skills/zzz-unmapped",
+          metadata: {
+            name: "Zulu miscellany",
+            description: "An unmapped skill name.",
+            content: { inline: "## Misc" },
+          },
         }]
       : [])),
   },
@@ -69,5 +87,27 @@ describe("SkillsLibrary", () => {
     );
     await waitFor(() => expect(mockVenue.agents.info).toHaveBeenCalledWith("manager"));
     expect(mockVenue.operations.run).not.toHaveBeenCalled();
+  });
+
+  it("renders an icon tile on every skill row, including unmapped names", async () => {
+    render(<SkillsLibrary />);
+
+    // Wait for the list to populate.
+    await screen.findByText("Agent skills");
+
+    // Each skill row is a button carrying the skill name; assert each one
+    // renders an icon (an <svg> inside its tile) so no row is text-only/blank.
+    for (const name of ["Agent skills", "Building agents", "Zulu miscellany"]) {
+      const row = screen.getByText(name).closest("button");
+      expect(row).not.toBeNull();
+      expect(row!.querySelector("svg")).toBeInTheDocument();
+    }
+
+    // Distinct concepts → distinct glyphs (agents vs building are not the same
+    // icon), proving the lookup discriminates rather than stamping one glyph.
+    const agentsIcon = screen.getByText("Agent skills").closest("button")!.querySelector("svg")?.innerHTML;
+    const buildingIcon = screen.getByText("Building agents").closest("button")!.querySelector("svg")?.innerHTML;
+    expect(agentsIcon).toBeTruthy();
+    expect(agentsIcon).not.toBe(buildingIcon);
   });
 });
