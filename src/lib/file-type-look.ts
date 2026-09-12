@@ -9,8 +9,8 @@ import {
   Folder,
   HardDrive,
   KeyRound,
-  type LucideIcon,
 } from "lucide-react";
+import type { ComponentType } from "react";
 
 // The house "type → icon + tinted tile" pattern (the same one the Operations
 // catalogue uses for adapters): a lucide icon in a `size-9 rounded-lg ${tile}`
@@ -20,8 +20,12 @@ import {
 // Consolidates the extension knowledge that already lived in filePreviewKind /
 // DocumentViewer so every Files/Workspace row can show what a thing IS.
 
+/** Any icon component that takes the props a lucide icon does — a lucide icon,
+ *  a react-icons brand logo, or one of our custom SVG glyphs. */
+export type IconCmp = ComponentType<{ size?: number; className?: string; strokeWidth?: number }>;
+
 export interface TypeLook {
-  Icon: LucideIcon;
+  Icon: IconCmp;
   /** Tailwind bg + text classes for the tile. */
   tile: string;
   label: string;
@@ -40,17 +44,17 @@ const KEY = new Set(["pem", "key", "crt", "cert", "cer", "pub", "p12", "pfx", "a
 
 const LOOKS = {
   image: { Icon: FileImage, tile: "bg-secondary/15 text-secondary", label: "Image" },
-  code: { Icon: FileCode, tile: "bg-chart-2/20 text-chart-2", label: "Code" },
-  config: { Icon: FileJson, tile: "bg-chart-2/20 text-chart-2", label: "Data" },
-  sheet: { Icon: FileSpreadsheet, tile: "bg-chart-3/20 text-chart-3", label: "Spreadsheet" },
-  doc: { Icon: FileText, tile: "bg-chart-1/20 text-chart-1", label: "Document" },
-  archive: { Icon: FileArchive, tile: "bg-chart-5/20 text-chart-5", label: "Archive" },
+  code: { Icon: FileCode, tile: "bg-icon-violet/15 text-icon-violet", label: "Code" },
+  config: { Icon: FileJson, tile: "bg-icon-violet/15 text-icon-violet", label: "Data" },
+  sheet: { Icon: FileSpreadsheet, tile: "bg-icon-indigo/15 text-icon-indigo", label: "Spreadsheet" },
+  doc: { Icon: FileText, tile: "bg-icon-indigo/15 text-icon-indigo", label: "Document" },
+  archive: { Icon: FileArchive, tile: "bg-icon-indigo/15 text-icon-indigo", label: "Archive" },
   key: { Icon: KeyRound, tile: "bg-accent/25 text-accent-foreground", label: "Key" },
   unknown: { Icon: File, tile: "bg-muted text-muted-foreground", label: "File" },
 } satisfies Record<string, TypeLook>;
 
 /** A directory / folder. */
-export const FOLDER_LOOK: TypeLook = { Icon: Folder, tile: "bg-chart-4/25 text-chart-4", label: "Folder" };
+export const FOLDER_LOOK: TypeLook = { Icon: Folder, tile: "bg-primary/15 text-primary", label: "Folder" };
 /** A DLFS drive. */
 export const DRIVE_LOOK: TypeLook = { Icon: HardDrive, tile: "bg-primary/15 text-primary", label: "Drive" };
 

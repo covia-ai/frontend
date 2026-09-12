@@ -1,62 +1,20 @@
 "use client";
 
-import { ArrowRight, Brain, Database, FileText, Globe, type LucideIcon, Puzzle } from "lucide-react";
-import { CONCEPT_ICONS, fieldLook, type Concept } from "@/lib/concept-icons";
+import { ArrowRight } from "lucide-react";
+import { adapterLookup, type AdapterLook } from "@/lib/adapter-icons";
 
 // Shared operation-display helpers — the adapter iconography and the typed
 // input→output signature — used by both the catalogue card (OperationCard)
 // and the operation detail page (OperationViewer), so the two never drift.
 
-type AdapterLook = { Icon: LucideIcon; tile: string };
-
-// Where an adapter maps onto a concept in the canonical icon directory
-// (lib/concept-icons.ts), reuse the directory's look so Operations can't drift
-// from the rest of the app. Only the Icon + tile are needed here (no label).
-function conceptAdapterLook(concept: Concept): AdapterLook {
-  const { Icon, tile } = CONCEPT_ICONS[concept];
-  return { Icon, tile };
-}
+export type { AdapterLook };
 
 // The adapter's visual identity — icon + brand-token classes. Keyed on the
-// first segment of `operation.adapter` (e.g. "http", "langchain"). Concept-
-// backed adapters (agent, secret, operation, user, test, schema) come straight
-// from the directory; the rest are adapter-specific flavours the directory
-// doesn't model (a web endpoint, an LLM, a data store, a document). Unknown
-// adapters fall back to a neutral puzzle tile so a new adapter never renders
-// blank.
+// first segment of `operation.adapter` (e.g. "http", "langchain"). Sourced from
+// the single adapter directory (lib/adapter-icons.ts), the same source the Jobs
+// list uses, so Operations can never drift from it.
 export function adapterLook(adapter: string | null): AdapterLook {
-  switch (adapter) {
-    case "http":
-      return { Icon: Globe, tile: "bg-secondary/15 text-secondary" }; // a web endpoint
-    case "langchain":
-    case "openai":
-    case "llm":
-      return { Icon: Brain, tile: "bg-primary/15 text-primary" }; // an LLM-backed op
-    case "a2a":
-    case "agent":
-      return conceptAdapterLook("agent");
-    case "secret":
-    case "vault":
-      return conceptAdapterLook("secret");
-    case "schema":
-    case "json": {
-      const { Icon, tile } = fieldLook("schema")!;
-      return { Icon, tile };
-    }
-    case "data":
-    case "dlfs":
-      return { Icon: Database, tile: "bg-chart-3/20 text-chart-3" }; // a data store
-    case "file":
-      return { Icon: FileText, tile: "bg-chart-1/20 text-chart-1" }; // a document
-    case "mcp":
-      return conceptAdapterLook("operation");
-    case "user":
-      return conceptAdapterLook("user");
-    case "test":
-      return conceptAdapterLook("test");
-    default:
-      return { Icon: Puzzle, tile: "bg-muted text-muted-foreground" };
-  }
+  return adapterLookup(adapter);
 }
 
 export function adapterOfMetadata(operation: any): string | null {

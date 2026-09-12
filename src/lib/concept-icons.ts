@@ -62,10 +62,18 @@ const PRI = "bg-primary/15 text-primary";
 const SEC = "bg-secondary/15 text-secondary";
 const ACC = "bg-accent/25 text-accent-foreground";
 const NEU = "bg-muted text-muted-foreground";
+// Brand-arc tints (Option A — the app-wide icon palette). Concepts + adapters +
+// file types are tinted only from the brand palette: the purple↔cerulean arc
+// (purple → violet → cerulean → indigo → navy) + amber (keys, reserved) +
+// neutral. No shadcn chart colours. VIOLET/INDIGO/NAVY are theme-aware tokens
+// added in globals.css.
+const VIOLET = "bg-icon-violet/15 text-icon-violet";
+const INDIGO = "bg-icon-indigo/15 text-icon-indigo";
+const NAVY = "bg-icon-navy/20 text-icon-navy";
+// chart tokens retained only for the field-attribute icons (fieldLook), a
+// separate category left on its current tints for now.
 const C1 = "bg-chart-1/20 text-chart-1";
 const C2 = "bg-chart-2/20 text-chart-2";
-const C3 = "bg-chart-3/20 text-chart-3";
-const C4 = "bg-chart-4/25 text-chart-4";
 const C5 = "bg-chart-5/20 text-chart-5";
 
 export type Concept =
@@ -76,34 +84,39 @@ export type Concept =
   | "demo" | "playground";
 
 export const CONCEPT_ICONS: Record<Concept, TypeLook> = {
+  // Purple (primary) — agents & your own surfaces.
   home: { Icon: Home, tile: PRI, label: "Home" },
   agent: { Icon: Bot, tile: PRI, label: "Agent" },
   create: { Icon: Plus, tile: PRI, label: "Create" },
-  chat: { Icon: MessageSquareText, tile: SEC, label: "Chat" },
-  connected: { Icon: Cable, tile: C3, label: "Connected" },
-  skill: { Icon: BookOpenCheck, tile: C2, label: "Skill" },
-  operation: { Icon: Boxes, tile: C5, label: "Operation" },
-  adapter: { Icon: Puzzle, tile: C5, label: "Adapter" },
-  model: { Icon: Cpu, tile: C2, label: "Model" },
-  job: { Icon: ScrollText, tile: C1, label: "Job" },
-  inbox: { Icon: Inbox, tile: C4, label: "Inbox" },
-  context: { Icon: BrainCircuit, tile: C2, label: "Context" },
-  connection: { Icon: Plug, tile: C3, label: "Connection" },
-  secret: { Icon: KeyRound, tile: ACC, label: "Secret" },
-  // A venue is a node/place in the coordination grid — a pinned location, not a
-  // globe. Cerulean (the coordination/neutrality signal) carries it.
-  venue: { Icon: MapPinned, tile: SEC, label: "Venue" },
   workspace: { Icon: FolderOpen, tile: PRI, label: "Workspace" },
   files: { Icon: HardDrive, tile: PRI, label: "Files" },
-  asset: { Icon: Package, tile: C3, label: "Asset" },
-  artifacts: { Icon: FileStack, tile: C3, label: "Artifacts" },
-  test: { Icon: FlaskConical, tile: NEU, label: "Test" },
+  // Cerulean (secondary) — coordination / network / comms.
+  chat: { Icon: MessageSquareText, tile: SEC, label: "Chat" },
+  connected: { Icon: Cable, tile: SEC, label: "Connected" },
+  connection: { Icon: Plug, tile: SEC, label: "Connection" },
+  venue: { Icon: MapPinned, tile: SEC, label: "Venue" },
   info: { Icon: Info, tile: SEC, label: "Info" },
-  metadata: { Icon: Tags, tile: NEU, label: "Metadata" },
-  user: { Icon: User, tile: C1, label: "User" },
-  resources: { Icon: LibraryBig, tile: C1, label: "Resources" },
-  demo: { Icon: Sparkles, tile: C5, label: "Demo" },
-  playground: { Icon: Wrench, tile: C4, label: "Playground" },
+  inbox: { Icon: Inbox, tile: SEC, label: "Inbox" },
+  // Violet — capability & intelligence.
+  skill: { Icon: BookOpenCheck, tile: VIOLET, label: "Skill" },
+  model: { Icon: Cpu, tile: VIOLET, label: "Model" },
+  context: { Icon: BrainCircuit, tile: VIOLET, label: "Context" },
+  // Indigo — data & records.
+  asset: { Icon: Package, tile: INDIGO, label: "Asset" },
+  artifacts: { Icon: FileStack, tile: INDIGO, label: "Artifacts" },
+  metadata: { Icon: Tags, tile: INDIGO, label: "Metadata" },
+  // Navy — operations & execution machinery.
+  operation: { Icon: Boxes, tile: NAVY, label: "Operation" },
+  adapter: { Icon: Puzzle, tile: NAVY, label: "Adapter" },
+  job: { Icon: ScrollText, tile: NAVY, label: "Job" },
+  playground: { Icon: Wrench, tile: NAVY, label: "Playground" },
+  // Amber (accent) — keys, reserved.
+  secret: { Icon: KeyRound, tile: ACC, label: "Secret" },
+  // Neutral — system & misc.
+  test: { Icon: FlaskConical, tile: NEU, label: "Test" },
+  user: { Icon: User, tile: NEU, label: "User" },
+  resources: { Icon: LibraryBig, tile: NEU, label: "Resources" },
+  demo: { Icon: Sparkles, tile: NEU, label: "Demo" },
 };
 
 export function conceptLook(concept: Concept): TypeLook {

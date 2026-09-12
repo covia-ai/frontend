@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { type LucideIcon } from "lucide-react";
 import { CONCEPT_ICONS } from "@/lib/concept-icons";
+import type { IconCmp } from "@/lib/file-type-look";
 
 // Discovery doorway the flat composer never had — one tap into the surfaces a
 // person actually works in. Static links (no data, no reads); the destinations
@@ -10,7 +10,7 @@ import { CONCEPT_ICONS } from "@/lib/concept-icons";
 // Operations / Connections pages. Each glyph comes from the canonical icon
 // directory (lib/concept-icons.ts) so a doorway wears the same icon as its
 // destination; the tile stays a uniform primary wash (a Home-row treatment).
-type Action = { href: string; label: string; blurb: string; Icon: LucideIcon };
+type Action = { href: string; label: string; blurb: string; Icon: IconCmp };
 
 const ACTIONS: Action[] = [
   { href: "/agents/create", label: "New agent", blurb: "Spin one up from a skill or template.", Icon: CONCEPT_ICONS.create.Icon },
