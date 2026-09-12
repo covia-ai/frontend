@@ -81,7 +81,7 @@ export const AssetHeader = ({ asset }: AssetHeaderProps) => {
   }, [description]);
 
   return (
-    <div className="flex flex-col w-full mb-2 mt-2 border border-slate-200 bg-card text-bg-card-foreground rounded-md p-2">
+    <div className="flex flex-col w-full mb-2 mt-2 border border-border bg-card text-card-foreground rounded-xl p-2">
       <div className="flex flex-col items-start justify-between w-full ">
 
              <div className="flex flex-row items-center gap-2">
