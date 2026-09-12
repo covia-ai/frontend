@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Filter, Search, X } from "lucide-react";
+import type { IconCmp } from "@/lib/file-type-look";
 
 interface FilterOption {
   value: string;
@@ -22,6 +23,10 @@ interface FilterOption {
   /** Optional sub-heading (e.g. "Adapter" vs "Keyword") for options that
    * share one selection array but read better split into labeled sections. */
   groupTag?: string;
+  /** Optional glyph rendered before the label — opt-in per option, so a caller
+   * can show icons for concept-backed rows (e.g. adapters) and leave free-form
+   * rows (keywords) icon-less. Inherits currentColor to match the facet pills. */
+  icon?: IconCmp;
 }
 
 interface FilterGroup {
@@ -144,9 +149,11 @@ export function FiltersSheet({
                       {tag && <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{tag}</span>}
                       {options.map((option) => {
                         const checked = draftGroups[i]?.includes(option.value) ?? false;
+                        const Icon = option.icon;
                         return (
                           <label key={option.value} className="flex items-center gap-2 text-sm cursor-pointer">
                             <Checkbox checked={checked} onCheckedChange={() => toggleDraft(i, option.value)} />
+                            {Icon && <Icon size={15} strokeWidth={1.9} className="shrink-0 text-muted-foreground" />}
                             {option.label}
                           </label>
                         );
