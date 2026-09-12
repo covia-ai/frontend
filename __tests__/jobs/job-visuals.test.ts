@@ -59,6 +59,37 @@ describe("operationVisual — operation → icon identity", () => {
     expect(v.Icon).toBeDefined();
     expect(typeof v.className).toBe("string");
   });
+
+  it("renders real icons for adapters outside ADAPTER_KIND via the shared directory", () => {
+    const hash = "0x" + "c".repeat(64);
+    // covia / venue carry their own marks in adapter-icons but aren't curated
+    // job families; the adapter still resolves to a real (non-generic) icon,
+    // with the family name standing in as the kind.
+    const covia = operationVisual({ op: hash }, "covia:read");
+    expect(covia.kind).toBe("covia");
+    expect(covia.className).not.toBe(operationVisual({}).className);
+    expect(operationVisual({ op: hash }, "venue:status").kind).toBe("venue");
+    // `json` is an alias of schema in the directory — it resolves to an icon
+    // (kind is the raw family) rather than falling through to generic.
+    expect(operationVisual({ op: hash }, "json:merge").kind).toBe("json");
+    expect(operationVisual({ op: hash }, "lattice:read").kind).toBe("lattice");
+  });
+});
+
+describe("operationVisual — richer name fallback", () => {
+  // Fallback only: no operation path and no resolved asset adapter.
+  it("maps descriptive names to their family", () => {
+    expect(operationVisual({ name: "Validate Value" }).kind).toBe("schema");
+    expect(operationVisual({ name: "Store Asset" }).kind).toBe("asset");
+    expect(operationVisual({ name: "Read/List Lattice Value" }).kind).toBe("convex");
+    expect(operationVisual({ name: "Delay Operation" }).kind).toBe("test");
+    expect(operationVisual({ name: "Random Data Generator" }).kind).toBe("test");
+  });
+
+  it("keeps weak signals generic", () => {
+    // A bare "echo"/"operation" is too ambiguous to key an icon off the name.
+    expect(operationVisual({ name: "Echo Operation" }).kind).toBe("operation");
+  });
 });
 
 describe("abbreviateJobId", () => {
