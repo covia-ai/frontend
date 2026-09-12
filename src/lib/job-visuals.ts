@@ -11,7 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { RunStatus, type JobMetadata } from "@covia/covia-sdk";
-import { toneForRunStatus, TONE_STYLES, type StatusTone } from "@/lib/status";
+import { toneForRunStatus, TONE_STYLES, MAGNITUDE_FILL, type StatusTone } from "@/lib/status";
 import { adapterLookup, ADAPTER_FALLBACK } from "@/lib/adapter-icons";
 import type { IconCmp } from "@/lib/file-type-look";
 
@@ -180,12 +180,14 @@ export function percentile(values: number[], p: number): number | null {
   return sorted[lo] + (sorted[hi] - sorted[lo]) * (rank - lo);
 }
 
-/** Absolute latency band → a fill colour, so a slow outlier reads at a glance. */
+/** Absolute latency band → a magnitude fill, so a slow outlier reads at a
+ *  glance. A band index into the shared `MAGNITUDE_FILL` ramp (not a status
+ *  tone — magnitude, not success/failure). */
 export function durationFillClass(ms: number): string {
-  if (ms < 500) return "bg-green-500 dark:bg-green-400";
-  if (ms < 2000) return "bg-cyan-500 dark:bg-cyan-400";
-  if (ms < 8000) return "bg-amber-500 dark:bg-amber-400";
-  return "bg-destructive";
+  if (ms < 500) return MAGNITUDE_FILL[0];
+  if (ms < 2000) return MAGNITUDE_FILL[1];
+  if (ms < 8000) return MAGNITUDE_FILL[2];
+  return MAGNITUDE_FILL[3];
 }
 
 const STATUS_ICONS: Partial<Record<RunStatus, { Icon: LucideIcon; spin?: boolean }>> = {

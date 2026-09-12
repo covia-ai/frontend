@@ -293,7 +293,7 @@ export function SecretList() {
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+                              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive/80">
                                 <Trash2 size={14} />
                               </Button>
                             </AlertDialogTrigger>

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { jobFailure, notifyError, notifyWarning } from "@/lib/notify";
+import { TONE_STYLES } from "@/lib/status";
 import {
   A2ATask,
   jobStatusLabel,
@@ -211,9 +212,9 @@ export function ConnectedAgentTalk({ agentName }: ConnectedAgentTalkProps) {
       return "max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary px-4 py-2 text-sm text-primary-foreground";
     }
     const base = "max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-bl-sm px-4 py-2 text-sm";
-    if (m.tone === "input") return `${base} border border-amber-500/40 bg-amber-500/10`;
-    if (m.tone === "auth") return `${base} border border-amber-500/40 bg-amber-500/10`;
-    if (m.tone === "error") return `${base} border border-destructive/40 bg-destructive/10`;
+    if (m.tone === "input") return `${base} border ${TONE_STYLES.attention.tint}`;
+    if (m.tone === "auth") return `${base} border ${TONE_STYLES.attention.tint}`;
+    if (m.tone === "error") return `${base} border ${TONE_STYLES.failure.tint}`;
     return `${base} border bg-background`;
   };
 
@@ -248,12 +249,12 @@ export function ConnectedAgentTalk({ agentName }: ConnectedAgentTalkProps) {
           <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
             <div className={bubbleClass(m)}>
               {m.tone === "input" && (
-                <span className="mb-1 flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                <span className={`mb-1 flex items-center gap-1 text-xs font-medium ${TONE_STYLES.attention.text}`}>
                   <MessagesSquare size={12} /> Needs your input
                 </span>
               )}
               {m.tone === "auth" && (
-                <span className="mb-1 flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                <span className={`mb-1 flex items-center gap-1 text-xs font-medium ${TONE_STYLES.attention.text}`}>
                   <KeyRound size={12} /> Authentication required
                 </span>
               )}

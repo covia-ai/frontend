@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
+import { TONE_STYLES } from "@/lib/status";
 import {
   CUSTOM_MODEL_OPTION,
   CUSTOM_PROVIDER_OPTION,
@@ -169,7 +170,7 @@ export function AgentRuntimeFields({
         )}
         {!providerReady && provider?.requiresKey && (
           <div className="space-y-2">
-            <p className="flex items-center gap-1 text-sm text-amber-500">
+            <p className={cn("flex items-center gap-1 text-sm", TONE_STYLES.attention.text)}>
               <AlertTriangle size={14} />
               No {provider.label} key. {onApiKeyChange ? "Paste one below or " : ""}
               <Link href="/secrets" className="underline">add it in Secrets</Link>.

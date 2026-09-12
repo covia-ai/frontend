@@ -11,6 +11,7 @@ import { useIsAuthenticated } from "@/hooks/use-auth";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useVenueHasOperation } from "@/hooks/use-venue-operation";
 import { notifyError, notifySuccess } from "@/lib/notify";
+import { TONE_STYLES } from "@/lib/status";
 import {
   A2A_AGENTS_DIR,
   ConnectedAgent,
@@ -124,7 +125,7 @@ export function ConnectedAgentsList() {
       {/* Said once for the list rather than per row: a hover-only tooltip on a
           disabled button is unreachable by keyboard and easy to miss (#350). */}
       {!canConvert && agents.length > 0 && (
-        <p className="mb-4 text-sm text-amber-500" data-testid="convert-unsupported-notice">
+        <p className={`mb-4 text-sm ${TONE_STYLES.attention.text}`} data-testid="convert-unsupported-notice">
           Convert to native is unavailable — this venue doesn&apos;t publish{" "}
           <span className="font-mono text-xs">{FROM_SKILLS_OP}</span>. Switch to a venue
           running 0.9.9 or later.

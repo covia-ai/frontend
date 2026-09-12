@@ -50,6 +50,7 @@ import {
   isAuthenticationRejectedError,
 } from "@/lib/errors";
 import { notifyError } from "@/lib/notify";
+import { TONE_STYLES } from "@/lib/status";
 
 export function AgentCreate() {
   const router = useRouter();
@@ -214,7 +215,7 @@ export function AgentCreate() {
                       Port an agent
                     </Button>
                     <p
-                      className="text-sm text-amber-500"
+                      className={`text-sm ${TONE_STYLES.attention.text}`}
                       data-testid="port-unsupported-notice"
                     >
                       This venue can&apos;t port agents — it doesn&apos;t publish{" "}

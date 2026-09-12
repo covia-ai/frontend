@@ -18,6 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ThemedJsonEditor } from "@/components/ThemedJsonEditor";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
 import { SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
+import { TONE_STYLES } from "@/lib/status";
 
 export type ForkAgentOptions = {
   agentId: string;
@@ -101,7 +102,7 @@ export function ForkAgentDialog({
               onChange={(e) => setAgentId(e.target.value)}
             />
             {isReserved && (
-              <p className="text-sm text-amber-500">
+              <p className={`text-sm ${TONE_STYLES.attention.text}`}>
                 &quot;{DEFAULT_AGENT_ID}&quot; is reserved. Choose another ID.
               </p>
             )}

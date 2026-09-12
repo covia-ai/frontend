@@ -2,14 +2,16 @@
 
 import { useNotificationLog, type NotificationKind } from "@/hooks/use-notification-log";
 import { Button } from "@/components/ui/button";
+import { TONE_STYLES } from "@/lib/status";
 import { Bell, CheckCircle2, CircleAlert, Info, TriangleAlert } from "lucide-react";
 
 // Shared with NotificationBell.tsx (#241) so the two surfaces read the same.
+// Severity → the matching status tone (success/failure/attention/active).
 export const KIND_ICONS: Record<NotificationKind, React.ReactNode> = {
-  success: <CheckCircle2 size={14} className="text-green-500 shrink-0 mt-0.5" />,
-  error: <CircleAlert size={14} className="text-destructive shrink-0 mt-0.5" />,
-  warning: <TriangleAlert size={14} className="text-amber-500 shrink-0 mt-0.5" />,
-  info: <Info size={14} className="text-blue-500 shrink-0 mt-0.5" />,
+  success: <CheckCircle2 size={14} className={`${TONE_STYLES.success.text} shrink-0 mt-0.5`} />,
+  error: <CircleAlert size={14} className={`${TONE_STYLES.failure.text} shrink-0 mt-0.5`} />,
+  warning: <TriangleAlert size={14} className={`${TONE_STYLES.attention.text} shrink-0 mt-0.5`} />,
+  info: <Info size={14} className={`${TONE_STYLES.active.text} shrink-0 mt-0.5`} />,
 };
 
 // The full notification history (Profile page) — entries come from the

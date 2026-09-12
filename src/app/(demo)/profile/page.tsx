@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
+import { TONE_STYLES } from "@/lib/status";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
@@ -59,7 +60,7 @@ function SecretCopyField({ label, value }: { label: string; value: string }) {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="outline" size="icon" onClick={copy} aria-label="Copy private key" className="shrink-0">
-              {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+              {copied ? <Check className={`h-4 w-4 ${TONE_STYLES.success.text}`} /> : <Copy className="h-4 w-4" />}
             </Button>
           </TooltipTrigger>
           <TooltipContent>{copied ? "Copied!" : "Copy private key"}</TooltipContent>
