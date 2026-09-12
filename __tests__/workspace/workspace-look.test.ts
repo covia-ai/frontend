@@ -89,16 +89,18 @@ describe("skillLook", () => {
     // generic skill glyph.
     expect(skillLook("orchestration").Icon).toBe(ADAPTER_LOOK.orchestrator.Icon);
     expect(skillLook("scheduling").Icon).toBe(ADAPTER_LOOK.scheduler.Icon);
+    expect(skillLook("caps-permissions").Icon).toBe(ADAPTER_LOOK.ucan.Icon);
     // Concept fits: ops tooling → operation, the audit/job-record skill → job.
     expect(skillLook("ops-tools").label).toBe(CONCEPT_ICONS.operation.label);
     expect(skillLook("provenance").label).toBe(CONCEPT_ICONS.job.label);
   });
 
   it("falls back to the skill glyph for unmapped names — never a folder", () => {
-    expect(skillLook("caps-permissions").Icon).toBe(CONCEPT_ICONS.skill.Icon);
+    // discovery/tasks/root have no fitting icon → the uniform skill glyph.
+    expect(skillLook("discovery").Icon).toBe(CONCEPT_ICONS.skill.Icon);
     expect(skillLook("zzz-whatever").Icon).toBe(CONCEPT_ICONS.skill.Icon);
     // Explicitly not the neutral key/folder fallback keyLook would return.
-    expect(skillLook("caps-permissions").label).not.toBe("Key");
+    expect(skillLook("discovery").label).not.toBe("Key");
   });
 });
 

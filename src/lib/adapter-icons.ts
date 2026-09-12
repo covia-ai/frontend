@@ -107,6 +107,7 @@ const ALIASES: Record<string, string> = {
   data: "dlfs",
   orchestration: "orchestrator",
   scheduling: "scheduler",
+  "caps-permissions": "ucan",
 };
 
 /** Neutral fallback so a new/unknown adapter never renders blank. */
