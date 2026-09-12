@@ -11,17 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TypeTile } from "@/components/TypeTile";
-import { keyLook } from "@/lib/workspace-look";
+import { skillLook } from "@/lib/workspace-look";
 import { useSkillsLibrary } from "@/hooks/use-skills-library";
 import { agentUsesSkill, type SkillSummary } from "@/lib/skills";
-
-// Skill rows reuse the app-wide concept-icon directory via keyLook, keyed on
-// the skill's own identifier (its path leaf). A name keyLook knows (agents,
-// adapters, assets, auth, admin, building, …) wears that concept's icon; any
-// other gets keyLook's neutral key tile, so a row is never blank.
-function skillLook(skill: SkillSummary) {
-  return keyLook(skill.key || skill.name);
-}
 
 function AgentsUsingSkill({ venue, skill }: { venue: Venue; skill: SkillSummary }) {
   const [agents, setAgents] = useState<string[] | null>(null);
@@ -136,7 +128,7 @@ export function SkillsLibrary() {
                 >
                   <div className="flex items-start gap-3">
                     {(() => {
-                      const look = skillLook(skill);
+                      const look = skillLook(skill.key || skill.name);
                       return (
                         <TypeTile
                           Icon={look.Icon}

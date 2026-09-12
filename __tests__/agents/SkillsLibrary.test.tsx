@@ -35,7 +35,7 @@ const mockVenue: any = {
           },
         },
         {
-          // A name keyLook does NOT map → neutral fallback tile (never blank).
+          // An unmapped name → the skill-glyph fallback tile (never blank).
           id: "v/skills/zzz-unmapped",
           metadata: {
             name: "Zulu miscellany",

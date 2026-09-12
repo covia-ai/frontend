@@ -1,5 +1,6 @@
-import { keyLook, namespaceLook, valueTypeOf, isAssetRef } from "@/lib/workspace-look";
-import { fieldLook } from "@/lib/concept-icons";
+import { keyLook, skillLook, namespaceLook, valueTypeOf, isAssetRef } from "@/lib/workspace-look";
+import { CONCEPT_ICONS, fieldLook } from "@/lib/concept-icons";
+import { ADAPTER_LOOK } from "@/lib/adapter-icons";
 import {
   BookOpenCheck,
   Bot,
@@ -61,6 +62,32 @@ describe("keyLook", () => {
     expect(keyLook("building").label).toBe("Create");
     // An unmapped single-segment key still gets the neutral fallback, never blank.
     expect(keyLook("zzz-unmapped").label).toBe("Key");
+  });
+});
+
+describe("skillLook", () => {
+  it("wears the brand adapter mark for adapter-named skills (matches Operations)", () => {
+    // covia/convex/mcp carry real marks; skillLook uses that exact icon, not a
+    // generic concept or folder.
+    expect(skillLook("covia").Icon).toBe(ADAPTER_LOOK.covia.Icon);
+    expect(skillLook("convex").Icon).toBe(ADAPTER_LOOK.convex.Icon);
+    expect(skillLook("mcp").Icon).toBe(ADAPTER_LOOK.mcp.Icon);
+    // a2a is a known adapter → its Operations mark (Radio), not the plain
+    // connection concept keyLook would give.
+    expect(skillLook("a2a").Icon).toBe(ADAPTER_LOOK.a2a.Icon);
+  });
+
+  it("wears the concept icon for concept-named skills", () => {
+    expect(skillLook("auth").label).toBe("Secret");
+    expect(skillLook("admin").label).toBe("User");
+    expect(skillLook("building").label).toBe("Create");
+  });
+
+  it("falls back to the skill glyph for unmapped names — never a folder", () => {
+    expect(skillLook("caps-permissions").Icon).toBe(CONCEPT_ICONS.skill.Icon);
+    expect(skillLook("zzz-whatever").Icon).toBe(CONCEPT_ICONS.skill.Icon);
+    // Explicitly not the neutral key/folder fallback keyLook would return.
+    expect(skillLook("caps-permissions").label).not.toBe("Key");
   });
 });
 
