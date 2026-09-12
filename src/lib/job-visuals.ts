@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { RunStatus, type JobMetadata } from "@covia/covia-sdk";
 import { toneForRunStatus, TONE_STYLES, type StatusTone } from "@/lib/status";
-import { adapterLookup } from "@/lib/adapter-icons";
+import { adapterLookup, ADAPTER_FALLBACK } from "@/lib/adapter-icons";
 import type { IconCmp } from "@/lib/file-type-look";
 
 /**
@@ -60,16 +60,51 @@ const GENERIC_VISUAL: OperationVisual = {
   kind: "operation",
 };
 
-/** Keyword fallback when a job has a display name but no resolvable operation path. */
+// The visual for an adapter dispatch string (`http:get`) or bare family
+// (`http`). Curated families (ADAPTER_KIND) keep their asserted `kind` and
+// brand tile; any other family the shared directory recognises — aliases like
+// `json`→schema, and marks like `covia`/`venue`/`lattice`/`connector` that
+// aren't in ADAPTER_KIND — still renders its real icon, with the family name
+// standing in as the `kind`. Unknown families return undefined so the caller
+// can try its next candidate.
+function visualForAdapter(adapter?: string): OperationVisual | undefined {
+  if (!adapter) return undefined;
+  const family = adapter.split(":")[0];
+  const known = ADAPTER_VISUALS[family];
+  if (known) return known;
+  const look = adapterLookup(family);
+  if (look !== ADAPTER_FALLBACK) {
+    return { Icon: look.Icon, className: look.tile, kind: family };
+  }
+  return undefined;
+}
+
+// Keyword fallback when a job has a display name but no resolvable operation
+// adapter (an inline definition never registered in the catalogue). Ordered
+// most-specific first; each value is an adapter family resolved through
+// visualForAdapter. Intentionally conservative — "echo"/"operation" stay
+// generic, as a bare "echo" is too weak a signal on its own.
 const NAME_KEYWORDS: [RegExp, string][] = [
-  [/http|fetch|url|get|post/i, "http"],
-  [/secret|credential|token|key/i, "secret"],
-  [/agent|chat/i, "agent"],
+  [/http|fetch|\burl\b|rest|webhook/i, "http"],
+  [/secret|credential|token|api[\s-]?key|password/i, "secret"],
+  [/\bagent\b|assistant|\bchat\b/i, "agent"],
   [/connect/i, "connections"],
   [/skill/i, "skills"],
-  [/file|dlfs|vault|upload/i, "dlfs"],
-  [/schema/i, "schema"],
-  [/schedule/i, "scheduler"],
+  [/\bfile\b|dlfs|upload|download|directory|\bdrive\b/i, "dlfs"],
+  [/vault/i, "vault"],
+  [/schema|validat|\binfer\b/i, "schema"],
+  [/\bstore\b|register|\basset\b|\bpin\b/i, "asset"],
+  // Lattice always wears its own grid mark, never the Convex hexagon.
+  [/lattice/i, "lattice"],
+  [/convex|append|slice|aggregate|inspect/i, "convex"],
+  [/memory|recall|remember/i, "memory"],
+  [/schedul|\bcron\b|timer/i, "scheduler"],
+  [/\bmcp\b/i, "mcp"],
+  [/orchestrat|workflow|pipeline/i, "orchestrator"],
+  [/archive/i, "archive"],
+  [/delay|random|generat|sample|\bnoop\b|\bsleep\b/i, "test"],
+  [/\bmodel\b|\bllm\b|completion|embedding|\bprompt\b/i, "langchain"],
+  [/\bgrid\b/i, "grid"],
 ];
 
 /**
@@ -103,13 +138,17 @@ export function operationVisual(
    *  (#322). Callers holding the asset should pass it; the list does not. */
   assetAdapter?: string,
 ): OperationVisual {
-  const candidates = [adapterFromOperation(job.op), assetAdapter?.split(":")[0]];
+  const candidates = [adapterFromOperation(job.op), assetAdapter];
   for (const adapter of candidates) {
-    if (adapter && ADAPTER_VISUALS[adapter]) return ADAPTER_VISUALS[adapter];
+    const visual = visualForAdapter(adapter);
+    if (visual) return visual;
   }
   const name = job.name ?? "";
   for (const [re, key] of NAME_KEYWORDS) {
-    if (re.test(name) && ADAPTER_VISUALS[key]) return ADAPTER_VISUALS[key];
+    if (re.test(name)) {
+      const visual = visualForAdapter(key);
+      if (visual) return visual;
+    }
   }
   return GENERIC_VISUAL;
 }

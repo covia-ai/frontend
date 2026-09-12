@@ -1,4 +1,4 @@
-import { didUrl, Namespace, Operation, Venue } from "@covia/covia-sdk";
+import { assetHash, didUrl, Namespace, Operation, Venue } from "@covia/covia-sdk";
 
 // An operation discovered in the venue catalog, identified by its resolvable
 // catalog path (e.g. "v/ops/agent/suspend"), not a content hash.
@@ -125,4 +125,70 @@ export async function resolveOperationByAddress(venue: Venue, address: string): 
     throw new Error(`No operation found at ${address}`);
   }
   return new Operation(address, venue, meta);
+}
+
+// A job record's `op` is usually a content hash, not a catalog path (covia#322,
+// covia#499) — a bare hash carries no adapter the way `v/ops/<adapter>/<op>`
+// does, so the Jobs list used to fall back to the generic tile for most rows.
+// This index resolves a job's adapter *without* a per-row asset fetch, from two
+// job-free reads the app already does:
+//   • the asset list (`listAssets`, one GET) keys each operation asset's content
+//     hash → its `operation.adapter` (dispatch form, e.g. `jvm:stringConcat`);
+//   • the op catalogue (`listCatalogOperations`) keys each op path the same way,
+//     covering jobs whose `op` is a path (incl. `w/ops/…` / `o/…` user ops a
+//     bare path parse can't classify).
+// It is built once per venue and cached by the caller (see use-operation-adapters).
+export type OperationAdapterIndex = {
+  /** Normalised content hash → `operation.adapter`. */
+  byHash: Map<string, string>;
+  /** Catalog path → `operation.adapter`. */
+  byPath: Map<string, string>;
+};
+
+// Mirrors the SDK's own hash normalisation so `0x`-prefixed / upper-case refs
+// key the same entry as the bare lower-case hash a job record carries.
+const normaliseHash = (hash: string): string =>
+  (hash.startsWith("0x") ? hash.slice(2) : hash).toLowerCase();
+
+export async function buildOperationAdapterIndex(
+  venue: Venue,
+  options: { includeUserOps?: boolean } = {},
+): Promise<OperationAdapterIndex> {
+  // Independent, both job-free; one failing (e.g. a venue that rejects the
+  // read) must not blank out the other's contribution.
+  const [ops, assets] = await Promise.all([
+    listCatalogOperations(venue, options).catch(() => [] as CatalogOp[]),
+    venue.listAssets({ expand: "metadata" }).catch(() => null),
+  ]);
+
+  const byPath = new Map<string, string>();
+  for (const op of ops) {
+    const adapter = op.metadata?.operation?.adapter;
+    if (typeof adapter === "string" && adapter) byPath.set(op.path, adapter);
+  }
+
+  const byHash = new Map<string, string>();
+  for (const item of assets?.items ?? []) {
+    const adapter = item.metadata?.operation?.adapter;
+    if (typeof adapter !== "string" || !adapter) continue;
+    const hash = assetHash(item.id);
+    if (hash) byHash.set(normaliseHash(hash), adapter);
+  }
+
+  return { byHash, byPath };
+}
+
+// The `operation.adapter` (dispatch form, e.g. `http:get`) for a job's `op`
+// reference, resolved from the cached index: by content hash when `op` is a
+// hash (the common case), else by catalog path. Undefined when the op isn't in
+// the catalogue (e.g. an inline, never-registered definition); the caller's
+// name fallback then applies.
+export function adapterForOp(
+  index: OperationAdapterIndex | null | undefined,
+  op?: string,
+): string | undefined {
+  if (!index || !op) return undefined;
+  const hash = assetHash(op);
+  if (hash) return index.byHash.get(normaliseHash(hash));
+  return index.byPath.get(op);
 }
