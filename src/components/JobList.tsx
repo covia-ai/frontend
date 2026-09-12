@@ -17,6 +17,7 @@ import { JobRowActions } from "@/components/jobs/JobRowActions";
 import { JobDetailDrawer } from "@/components/jobs/JobDetailDrawer";
 import { TONE_STYLES, toneForRunStatus } from "@/lib/status";
 import { operationVisual, abbreviateJobId, jobDurationMs, percentile, durationFillClass } from "@/lib/job-visuals";
+import { useOperationAdapters } from "@/hooks/use-operation-adapters";
 import { Activity, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2, Copy, Gauge, Layers } from "lucide-react";
 import { TopBar } from "./admin-panel/TopBar";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
@@ -109,6 +110,10 @@ export function JobList({ venueId }: JobListProps = {}) {
   } = useLatestQuery(EMPTY_JOB_QUERY);
   const resolvedVenue = useResolvedVenueContext(venueId);
   const { descriptor: venueObj, venue, auth, isAuthenticated } = resolvedVenue;
+  // Resolves each row's true operation adapter from a catalogue index read once
+  // per venue (job-free), so a job whose `op` is a content hash (most of them —
+  // covia#322) still shows its real adapter icon instead of the generic tile.
+  const operationAdapters = useOperationAdapters(venue, isAuthenticated);
   const venueStatus = resolvedVenue.status ?? (venue ? "ready" : "absent");
   const prevVenueId = useRef<string | undefined>(undefined);
   const venueKey = venueObj?.venueId ?? "";
@@ -557,7 +562,7 @@ export function JobList({ venueId }: JobListProps = {}) {
                   tone === "failure" ? "bg-destructive/5 hover:bg-destructive/10"
                   : tone === "attention" ? "bg-amber-500/5 hover:bg-amber-500/10"
                   : "";
-                const { Icon, className: opClass } = operationVisual(job);
+                const { Icon, className: opClass } = operationVisual(job, operationAdapters.adapterFor(job.op));
                 return (
               <TableRow key={job.id} className={cn("cursor-pointer", rowTint)} onClick={() => setDrawerJob(job)}>
                 <TableCell>

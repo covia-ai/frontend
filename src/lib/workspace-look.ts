@@ -1,6 +1,7 @@
 import { FolderOpen } from "lucide-react";
 import type { TypeLook } from "@/lib/file-type-look";
 import { CONCEPT_ICONS, fieldLook, type Concept } from "@/lib/concept-icons";
+import { adapterLookup, ADAPTER_FALLBACK } from "@/lib/adapter-icons";
 
 // Maps the Workspace lattice onto the canonical concept-icon directory, so a
 // namespace and its keys wear the same icons the rest of the app uses for those
@@ -26,6 +27,8 @@ const NAMESPACE_CONCEPT: Record<string, Concept> = {
 const KEY_CONCEPT: Record<string, Concept> = {
   ops: "operation",
   operations: "operation",
+  "ops-tools": "operation",
+  provenance: "job",
   adapters: "adapter",
   adapter: "adapter",
   skills: "skill",
@@ -38,13 +41,38 @@ const KEY_CONCEPT: Record<string, Concept> = {
   test: "test",
   tests: "test",
   assets: "asset",
+  asset: "asset",
   jobs: "job",
+  job: "job",
   secrets: "secret",
+  secret: "secret",
+  auth: "secret",
   templates: "skill",
   memory: "context",
   context: "context",
   users: "user",
+  user: "user",
+  admin: "user",
   connections: "connection",
+  connection: "connection",
+  connected: "connected",
+  a2a: "connection",
+  building: "create",
+  create: "create",
+  venue: "venue",
+  venues: "venue",
+  workspace: "workspace",
+  workspaces: "workspace",
+  files: "files",
+  inbox: "inbox",
+  chat: "chat",
+  home: "home",
+  playground: "playground",
+  resources: "resources",
+  docs: "resources",
+  documentation: "resources",
+  demo: "demo",
+  demos: "demo",
   meta: "metadata",
   metadata: "metadata",
 };
@@ -83,6 +111,27 @@ export function keyLook(fullPath: string): TypeLook {
   if (nsConcept) return CONCEPT_ICONS[nsConcept];
 
   return KEY_FALLBACK;
+}
+
+/** Icon + tile for a skill row, resolved so a skill reads consistently with the
+ *  rest of the app:
+ *  1. a name that matches a brand-marked adapter family (covia, convex, mcp,
+ *     langchain, a2a, vault…) wears the SAME mark it wears on Operations, so a
+ *     concept looks identical across pages;
+ *  2. a name that maps to a concept (auth→secret, admin→user, building→create)
+ *     wears that concept's icon;
+ *  3. anything else gets the skill glyph — a uniform, meaningful default, never
+ *     a bare folder, so an arbitrarily-named skill still reads as a skill. */
+export function skillLook(nameOrKey: string): TypeLook {
+  const leaf = (nameOrKey.split("/").filter(Boolean).pop() ?? "").toLowerCase();
+
+  const adapter = adapterLookup(leaf);
+  if (adapter !== ADAPTER_FALLBACK) return { ...adapter, label: leaf };
+
+  const keyConcept = KEY_CONCEPT[leaf];
+  if (keyConcept) return CONCEPT_ICONS[keyConcept];
+
+  return CONCEPT_ICONS.skill;
 }
 
 export type ValueTypeName = "object" | "array" | "string" | "number" | "boolean" | "null";
