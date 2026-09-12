@@ -1,5 +1,6 @@
-import { keyLook, namespaceLook, valueTypeOf, isAssetRef } from "@/lib/workspace-look";
-import { fieldLook } from "@/lib/concept-icons";
+import { keyLook, skillLook, namespaceLook, valueTypeOf, isAssetRef } from "@/lib/workspace-look";
+import { CONCEPT_ICONS, fieldLook } from "@/lib/concept-icons";
+import { ADAPTER_LOOK } from "@/lib/adapter-icons";
 import {
   BookOpenCheck,
   Bot,
@@ -52,6 +53,54 @@ describe("keyLook", () => {
 
   it("falls back to a neutral key glyph for anything else", () => {
     expect(keyLook("zzz/thing").label).toBe("Key");
+  });
+
+  it("maps skill-library names to their concept (auth/admin/a2a/building)", () => {
+    expect(keyLook("auth").label).toBe("Secret");
+    expect(keyLook("admin").label).toBe("User");
+    expect(keyLook("a2a").label).toBe("Connection");
+    expect(keyLook("building").label).toBe("Create");
+    // An unmapped single-segment key still gets the neutral fallback, never blank.
+    expect(keyLook("zzz-unmapped").label).toBe("Key");
+  });
+});
+
+describe("skillLook", () => {
+  it("wears the brand adapter mark for adapter-named skills (matches Operations)", () => {
+    // covia/convex/mcp carry real marks; skillLook uses that exact icon, not a
+    // generic concept or folder.
+    expect(skillLook("covia").Icon).toBe(ADAPTER_LOOK.covia.Icon);
+    expect(skillLook("convex").Icon).toBe(ADAPTER_LOOK.convex.Icon);
+    expect(skillLook("mcp").Icon).toBe(ADAPTER_LOOK.mcp.Icon);
+    // a2a is a known adapter → its Operations mark (Radio), not the plain
+    // connection concept keyLook would give.
+    expect(skillLook("a2a").Icon).toBe(ADAPTER_LOOK.a2a.Icon);
+  });
+
+  it("wears the concept icon for concept-named skills", () => {
+    expect(skillLook("auth").label).toBe("Secret");
+    expect(skillLook("admin").label).toBe("User");
+    expect(skillLook("building").label).toBe("Create");
+  });
+
+  it("matches word-form variants to the icon we already have", () => {
+    // We have `orchestrator`/`scheduler` marks; the venue's skills are named
+    // `orchestration`/`scheduling` — resolve them to the same icon, not the
+    // generic skill glyph.
+    expect(skillLook("orchestration").Icon).toBe(ADAPTER_LOOK.orchestrator.Icon);
+    expect(skillLook("scheduling").Icon).toBe(ADAPTER_LOOK.scheduler.Icon);
+    expect(skillLook("caps-permissions").Icon).toBe(ADAPTER_LOOK.ucan.Icon);
+    // Concept fits: ops tooling → operation, the audit/job-record skill → job.
+    expect(skillLook("ops-tools").label).toBe(CONCEPT_ICONS.operation.label);
+    expect(skillLook("provenance").label).toBe(CONCEPT_ICONS.job.label);
+  });
+
+  it("falls back to the skill glyph for unmapped names — never a folder", () => {
+    // discovery/tasks/root have no fitting icon → the uniform skill glyph.
+    expect(skillLook("discovery").Icon).toBe(CONCEPT_ICONS.skill.Icon);
+    expect(skillLook("zzz-whatever").Icon).toBe(CONCEPT_ICONS.skill.Icon);
+    // Explicitly not the neutral key/folder fallback keyLook would return.
+    expect(skillLook("discovery").label).not.toBe("Key");
   });
 });
 

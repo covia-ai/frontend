@@ -10,6 +10,8 @@ import { MarkdownMessage } from "@/components/MarkdownMessage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TypeTile } from "@/components/TypeTile";
+import { skillLook } from "@/lib/workspace-look";
 import { useSkillsLibrary } from "@/hooks/use-skills-library";
 import { agentUsesSkill, type SkillSummary } from "@/lib/skills";
 
@@ -124,15 +126,31 @@ export function SkillsLibrary() {
                   }`}
                   onClick={() => library.setSelectedPath(skill.path)}
                 >
-                  <div className="flex items-start gap-2">
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium">{skill.name}</span>
-                    <Badge variant="outline" className="shrink-0 text-[10px] capitalize">
-                      {skill.source}
-                    </Badge>
+                  <div className="flex items-start gap-3">
+                    {(() => {
+                      const look = skillLook(skill.key || skill.name);
+                      return (
+                        <TypeTile
+                          Icon={look.Icon}
+                          tile={look.tile}
+                          className="size-7"
+                          iconSize={15}
+                          title={look.label}
+                        />
+                      );
+                    })()}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start gap-2">
+                        <span className="min-w-0 flex-1 truncate text-sm font-medium">{skill.name}</span>
+                        <Badge variant="outline" className="shrink-0 text-[10px] capitalize">
+                          {skill.source}
+                        </Badge>
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                        {skill.description}
+                      </p>
+                    </div>
                   </div>
-                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
-                    {skill.description}
-                  </p>
                 </button>
               ))}
               {filtered.length === 0 && (
