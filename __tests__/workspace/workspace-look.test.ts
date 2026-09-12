@@ -83,6 +83,17 @@ describe("skillLook", () => {
     expect(skillLook("building").label).toBe("Create");
   });
 
+  it("matches word-form variants to the icon we already have", () => {
+    // We have `orchestrator`/`scheduler` marks; the venue's skills are named
+    // `orchestration`/`scheduling` — resolve them to the same icon, not the
+    // generic skill glyph.
+    expect(skillLook("orchestration").Icon).toBe(ADAPTER_LOOK.orchestrator.Icon);
+    expect(skillLook("scheduling").Icon).toBe(ADAPTER_LOOK.scheduler.Icon);
+    // Concept fits: ops tooling → operation, the audit/job-record skill → job.
+    expect(skillLook("ops-tools").label).toBe(CONCEPT_ICONS.operation.label);
+    expect(skillLook("provenance").label).toBe(CONCEPT_ICONS.job.label);
+  });
+
   it("falls back to the skill glyph for unmapped names — never a folder", () => {
     expect(skillLook("caps-permissions").Icon).toBe(CONCEPT_ICONS.skill.Icon);
     expect(skillLook("zzz-whatever").Icon).toBe(CONCEPT_ICONS.skill.Icon);

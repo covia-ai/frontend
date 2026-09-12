@@ -27,6 +27,8 @@ const NAMESPACE_CONCEPT: Record<string, Concept> = {
 const KEY_CONCEPT: Record<string, Concept> = {
   ops: "operation",
   operations: "operation",
+  "ops-tools": "operation",
+  provenance: "job",
   adapters: "adapter",
   adapter: "adapter",
   skills: "skill",
