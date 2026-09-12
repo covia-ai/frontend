@@ -1,6 +1,7 @@
 "use client";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { TONE_STYLES } from "@/lib/status";
 import { useVenueHealth } from "@/hooks/use-venue-health";
 import { useVenueAccess } from "@/hooks/use-venue-access";
 import { useValidateVenueById } from "@/hooks/use-authenticated-venue";
@@ -13,10 +14,10 @@ export function VenueHealthDot({ baseUrl, venueId }: { baseUrl?: string; venueId
   const health = useVenueHealth((x) => (baseUrl ? x.byUrl[baseUrl] : undefined));
   const { state, detail } = useVenueAccess(baseUrl, venueId);
   const color =
-    state === "connected" || state === "public" ? "bg-green-500"
-    : state === "connecting" || state === "auth-checking" ? "bg-amber-400 animate-pulse"
-    : state === "signed-out" || state === "auth-unverified" ? "bg-amber-400"
-    : state === "auth-rejected" ? "bg-red-500"
+    state === "connected" || state === "public" ? TONE_STYLES.success.dot
+    : state === "connecting" || state === "auth-checking" ? `${TONE_STYLES.attention.dot} animate-pulse`
+    : state === "signed-out" || state === "auth-unverified" ? TONE_STYLES.attention.dot
+    : state === "auth-rejected" ? TONE_STYLES.failure.dot
     : "bg-muted-foreground/40";
   const label =
     state === "connected" ? `Connected and signed in${health?.state === "connected" && health.version ? ` — venue ${health.version}` : ""}`

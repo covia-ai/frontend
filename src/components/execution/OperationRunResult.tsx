@@ -8,6 +8,8 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ExecutionDataTable } from "@/components/execution/ExecutionDataTable";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { useExecutionLifecycle } from "@/hooks/use-execution-lifecycle";
+import { TONE_STYLES } from "@/lib/status";
+import { cn } from "@/lib/utils";
 
 interface OperationRunResultProps {
   jobId: string;
@@ -57,8 +59,8 @@ export function OperationRunResult({ jobId, venueId, jobHref }: OperationRunResu
       <div className="flex items-center gap-3">
         <StatusBadge status={job.status} kind="job" />
         {streaming && (
-          <span className="flex items-center gap-1.5 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-950 dark:text-green-300">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
+          <span className={cn("flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium", TONE_STYLES.active.pill)}>
+            <span className={cn("h-1.5 w-1.5 animate-pulse rounded-full", TONE_STYLES.active.dot)} />
             Streaming
           </span>
         )}

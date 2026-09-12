@@ -68,30 +68,64 @@ export function toneForHitlStatus(status?: string): StatusTone {
   return (status && HITL_STATUS_TONE[status]) || "neutral";
 }
 
-export const TONE_STYLES: Record<StatusTone, { text: string; dot: string; pill: string }> = {
+// Each tone carries: `text` (foreground), `dot` (status dot), `pill` (badge),
+// `surface` (subtle row/hover tint), and `banner` (bordered callout box). All
+// state colour in the app routes through here — no surface hand-rolls its own
+// green/amber/red. `active` doubles as the "live / streaming" treatment (a
+// streaming job is a running job).
+export const TONE_STYLES: Record<
+  StatusTone,
+  { text: string; dot: string; pill: string; surface: string; banner: string; tint: string }
+> = {
   active: {
     text: "text-blue-600 dark:text-blue-400",
     dot: "bg-blue-600 dark:bg-blue-400",
     pill: "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300",
+    surface: "bg-blue-500/5 hover:bg-blue-500/10",
+    banner: "border border-blue-300 bg-blue-50 dark:border-blue-800 dark:bg-blue-950",
+    tint: "border-blue-500/40 bg-blue-500/10",
   },
   success: {
     text: "text-green-600 dark:text-green-400",
     dot: "bg-green-600 dark:bg-green-400",
     pill: "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300",
+    surface: "bg-green-500/5 hover:bg-green-500/10",
+    banner: "border border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-950",
+    tint: "border-green-500/40 bg-green-500/10",
   },
   attention: {
     text: "text-amber-600 dark:text-amber-400",
     dot: "bg-amber-600 dark:bg-amber-400",
     pill: "bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300",
+    surface: "bg-amber-500/5 hover:bg-amber-500/10",
+    banner: "border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950",
+    tint: "border-amber-500/40 bg-amber-500/10",
   },
   failure: {
     text: "text-destructive",
     dot: "bg-destructive",
     pill: "bg-destructive/10 dark:bg-destructive/20 text-destructive",
+    surface: "bg-destructive/5 hover:bg-destructive/10",
+    banner: "border border-destructive/40 bg-destructive/5",
+    tint: "border-destructive/40 bg-destructive/10",
   },
   neutral: {
     text: "text-muted-foreground",
     dot: "bg-muted-foreground",
     pill: "bg-muted text-muted-foreground",
+    surface: "bg-muted/40 hover:bg-muted/60",
+    banner: "border border-border bg-muted/30",
+    tint: "border-border bg-muted/30",
   },
 };
+
+// A magnitude/latency band fill (fast → slow) — deliberately NOT a status tone
+// (a slow-but-successful job is not a "failure"). The last band reuses the
+// destructive token; the rest are a green→cyan→amber ramp. Consumed by
+// `durationFillClass`.
+export const MAGNITUDE_FILL = [
+  "bg-green-500 dark:bg-green-400",
+  "bg-cyan-500 dark:bg-cyan-400",
+  "bg-amber-500 dark:bg-amber-400",
+  "bg-destructive",
+] as const;

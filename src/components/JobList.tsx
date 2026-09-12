@@ -559,8 +559,8 @@ export function JobList({ venueId }: JobListProps = {}) {
                 const tone = toneForRunStatus(eff.status);
                 const isLive = !!liveJobs[job.id ?? ""] && ACTIVE_STATUSES.has(eff.status as RunStatus);
                 const rowTint =
-                  tone === "failure" ? "bg-destructive/5 hover:bg-destructive/10"
-                  : tone === "attention" ? "bg-amber-500/5 hover:bg-amber-500/10"
+                  tone === "failure" ? TONE_STYLES.failure.surface
+                  : tone === "attention" ? TONE_STYLES.attention.surface
                   : "";
                 const { Icon, className: opClass } = operationVisual(job, operationAdapters.adapterFor(job.op));
                 return (
@@ -592,7 +592,7 @@ export function JobList({ venueId }: JobListProps = {}) {
                 </TableCell>
                 <TableCell>
                   <span className="inline-flex items-center gap-1.5">
-                    {isLive && <span className="size-1.5 shrink-0 animate-pulse rounded-full bg-emerald-500" title="Live" />}
+                    {isLive && <span className={cn("size-1.5 shrink-0 animate-pulse rounded-full", TONE_STYLES.active.dot)} title="Live" />}
                     <StatusBadge status={eff.status} kind="job" />
                   </span>
                 </TableCell>
@@ -613,7 +613,7 @@ export function JobList({ venueId }: JobListProps = {}) {
             const isTerminal = TERMINAL_STATUSES.has(eff.status as RunStatus);
             const tone = toneForRunStatus(eff.status);
             const isLive = !!liveJobs[job.id ?? ""] && ACTIVE_STATUSES.has(eff.status as RunStatus);
-            const rowTint = tone === "failure" ? "bg-destructive/5" : tone === "attention" ? "bg-amber-500/5" : "";
+            const rowTint = tone === "failure" ? TONE_STYLES.failure.surface : tone === "attention" ? TONE_STYLES.attention.surface : "";
             const { Icon, className: opClass } = operationVisual(job);
             const openJob = () => setDrawerJob(job);
             return (
@@ -632,7 +632,7 @@ export function JobList({ venueId }: JobListProps = {}) {
                   <div className="flex items-center gap-2">
                     <span className="truncate font-medium text-foreground">{job.name ?? "Operation"}</span>
                     <span className="ml-auto inline-flex shrink-0 items-center gap-1.5">
-                      {isLive && <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" title="Live" />}
+                      {isLive && <span className={cn("size-1.5 animate-pulse rounded-full", TONE_STYLES.active.dot)} title="Live" />}
                       <StatusBadge status={eff.status} kind="job" />
                     </span>
                     <JobRowActions job={job} onChanged={() => setRefreshTick(t => t + 1)} />
@@ -734,7 +734,7 @@ function DurationCell({ job, maxMs, isTerminal }: { job: JobMetadata; maxMs: num
     return job.created ? (
       <div className="flex items-center gap-2">
         <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
-          <div className="h-full w-1/3 animate-pulse rounded-full bg-blue-500 dark:bg-blue-400" />
+          <div className={cn("h-full w-1/3 animate-pulse rounded-full", TONE_STYLES.active.dot)} />
         </div>
         <span className="text-xs italic text-muted-foreground">
           {getExecutionTime(job.created, new Date().toISOString())} so far

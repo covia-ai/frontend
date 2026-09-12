@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { DidDisplay } from "@/components/DidDisplay";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { notifyError } from "@/lib/notify";
+import { TONE_STYLES } from "@/lib/status";
 
 type TimelineMessage = {
   message?: unknown;
@@ -79,7 +80,7 @@ function TimelineCard({ entry }: { entry: TimelineEntry }) {
     <div className="relative pl-10">
       <span
         className={`absolute left-2.5 top-1.5 size-3 rounded-full border-2 border-background ${
-          failed ? "bg-red-500" : "bg-primary"
+          failed ? TONE_STYLES.failure.dot : "bg-primary"
         }`}
       />
       <div className="rounded-lg border border-border bg-card p-4 mb-6">
@@ -141,7 +142,7 @@ function TimelineCard({ entry }: { entry: TimelineEntry }) {
           </div>
           <p
             className={`text-xs whitespace-pre-wrap break-words ${
-              failed ? "text-red-500 dark:text-red-400" : ""
+              failed ? TONE_STYLES.failure.text : ""
             }`}
           >
             {resultText(entry.result)}
@@ -153,7 +154,7 @@ function TimelineCard({ entry }: { entry: TimelineEntry }) {
             {entry.toolFailures.map((tf, i) => (
               <div
                 key={i}
-                className="text-xs text-red-500 dark:text-red-400 flex items-start gap-1"
+                className={`text-xs ${TONE_STYLES.failure.text} flex items-start gap-1`}
               >
                 <TriangleAlert size={12} className="mt-0.5 shrink-0" />
                 <span>

@@ -7,6 +7,7 @@ import {
 } from "@/hooks/use-authenticated-venue";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { cn, formatRelativeTime } from "@/lib/utils";
+import { TONE_STYLES } from "@/lib/status";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import {
   CONNECTIONS,
@@ -162,7 +163,7 @@ const ConnectionCard = memo(function ConnectionCard({
                 <TooltipTrigger asChild>
                   <Badge
                     variant="outline"
-                    className="w-fit gap-1 border-amber-600/30 bg-amber-600/10 text-amber-700 dark:text-amber-400"
+                    className={cn("w-fit gap-1", TONE_STYLES.attention.tint, TONE_STYLES.attention.text)}
                   >
                     <AlertTriangle size={12} /> Needs attention
                   </Badge>
@@ -170,7 +171,7 @@ const ConnectionCard = memo(function ConnectionCard({
                 <TooltipContent className="max-w-64">{health.message}</TooltipContent>
               </Tooltip>
             ) : on ? (
-              <Badge variant="outline" className="w-fit gap-1 border-green-600/30 bg-green-600/10 text-green-700 dark:text-green-400">
+              <Badge variant="outline" className={cn("w-fit gap-1", TONE_STYLES.success.tint, TONE_STYLES.success.text)}>
                 <Check size={12} /> Connected
               </Badge>
             ) : (
@@ -715,7 +716,7 @@ export function ConnectionsList() {
                   <ul className="mt-1.5 space-y-1">
                     {CONNECTION_CAPABILITIES[active.id].does.map((d, i) => (
                       <li key={i} className="flex gap-1.5 text-xs text-muted-foreground">
-                        <Check size={13} className="mt-0.5 shrink-0 text-green-600 dark:text-green-400" />
+                        <Check size={13} className={cn("mt-0.5 shrink-0", TONE_STYLES.success.text)} />
                         {d}
                       </li>
                     ))}
@@ -765,11 +766,11 @@ export function ConnectionsList() {
                   ))}
                 </div>
                 {test.phase === "ok" ? (
-                  <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-green-700 dark:text-green-400">
+                  <p className={cn("mt-2 flex items-center gap-1.5 text-xs font-medium", TONE_STYLES.success.text)}>
                     <CheckCircle2 size={14} /> {test.message}
                   </p>
                 ) : test.phase === "error" ? (
-                  <p className="mt-2 flex items-start gap-1.5 text-xs text-red-600 dark:text-red-400">
+                  <p className={cn("mt-2 flex items-start gap-1.5 text-xs", TONE_STYLES.failure.text)}>
                     <XCircle size={14} className="mt-0.5 shrink-0" /> {test.message}
                   </p>
                 ) : (

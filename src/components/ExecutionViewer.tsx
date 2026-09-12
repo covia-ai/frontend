@@ -36,6 +36,7 @@ import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { useExecutionLifecycle } from "@/hooks/use-execution-lifecycle";
 import { cn, copyDataToClipBoard, formatDateTime, getExecutionTime } from "@/lib/utils";
+import { TONE_STYLES } from "@/lib/status";
 import {
   operationVisual,
   statusVisual,
@@ -134,8 +135,8 @@ export function ExecutionViewer({
                     <h1 className="truncate text-xl font-semibold">{job.name ?? "Operation"}</h1>
                     <StatusBadge status={job.status} kind="job" />
                     {execution.streaming && (
-                      <span className="flex items-center gap-1.5 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-950 dark:text-green-300">
-                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" /> Streaming
+                      <span className={cn("flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium", TONE_STYLES.active.pill)}>
+                        <span className={cn("h-1.5 w-1.5 animate-pulse rounded-full", TONE_STYLES.active.dot)} /> Streaming
                       </span>
                     )}
                   </div>
@@ -179,8 +180,8 @@ export function ExecutionViewer({
 
           {/* Awaiting input */}
           {job.status === RunStatus.INPUT_REQUIRED && (
-            <div className="flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-700 dark:bg-amber-950">
-              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
+            <div className={cn("flex flex-col gap-3 rounded-xl px-4 py-3", TONE_STYLES.attention.banner)}>
+              <div className={cn("flex items-center gap-2", TONE_STYLES.attention.text)}>
                 <MessageSquare size={18} />
                 <span className="text-sm font-semibold">This job is waiting on you to continue</span>
               </div>
