@@ -107,7 +107,10 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
   }, [assetsMetadata]);
 
   const tagOptions = useMemo(() => [
-    ...adapterOptions.map((a) => ({ value: a, label: a, groupTag: "Adapter" })),
+    // Adapter rows carry the same glyph the adapter wears as a facet pill, so a
+    // pill and its sheet row read 1:1. Keywords are free-form (no concept
+    // backing), so they stay icon-less rather than fall back to a generic mark.
+    ...adapterOptions.map((a) => ({ value: a, label: a, groupTag: "Adapter", icon: adapterLook(a).Icon })),
     ...keywordOptions.map((k) => ({ value: k, label: k, groupTag: "Keyword" })),
   ], [adapterOptions, keywordOptions]);
 
@@ -281,6 +284,9 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
           <div data-testid="operation-facets" className="mt-3 flex w-full flex-wrap items-center gap-2">
             <button type="button" onClick={clearAdapters} className={facetCls(!anyAdapterActive)}>
               All
+              <span className={cn("font-mono text-[10px]", !anyAdapterActive ? "opacity-80" : "text-muted-foreground")}>
+                {stats.total}
+              </span>
             </button>
             {adapterFacets.map(([ad, count]) => {
               const on = selectedTags.includes(ad);
