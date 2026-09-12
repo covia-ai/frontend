@@ -21,6 +21,7 @@ import { CONCEPT_ICONS, type Concept } from "@/lib/concept-icons";
 import type { IconCmp } from "@/lib/file-type-look";
 import {
   ConvexGlyph,
+  CoviaGlyph,
   JavaGlyph,
   LangchainGlyph,
   LatticeGlyph,
@@ -58,6 +59,10 @@ export const ADAPTER_LOOK: Record<string, AdapterLook> = {
   agent: fromConcept("agent"),
   llmagent: { Icon: BotMessageSquare, tile: PRI },
   goaltree: { Icon: GitBranch, tile: PRI },
+  // The native Covia adapter — the Covia mark, on the brand purple.
+  covia: { Icon: CoviaGlyph, tile: PRI },
+  // A venue op — the venue concept mark (cerulean pin).
+  venue: fromConcept("venue"),
   // Network & connectivity — cerulean.
   http: { Icon: Globe, tile: SEC },
   a2a: { Icon: Radio, tile: SEC },
