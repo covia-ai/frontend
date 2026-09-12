@@ -12,9 +12,6 @@ jest.mock('@/components/OperationCard', () => ({
     <div data-testid="asset-card">{asset.metadata?.name ?? asset.id}</div>
   ),
 }));
-jest.mock('@/components/PaginationHeader', () => ({
-  PaginationHeader: () => <div data-testid="pagination-header" />,
-}));
 jest.mock('@/components/admin-panel/TopBar', () => ({
   TopBar: () => <div data-testid="top-bar" />,
 }));
@@ -113,5 +110,35 @@ describe('OperationsList', () => {
     mockSearchParam = 'beta';
     render(<OperationsList />);
     expect(await screen.findByPlaceholderText('Type keyword to search…')).toHaveValue('beta');
+  });
+
+  // Infinite scroll replaced the page-fit pagination: the first batch (24) is
+  // shown up front, "Load more operations" appends the next batch, and "End of
+  // results" marks the bottom once everything is visible. (IntersectionObserver
+  // is unavailable under jsdom, so the manual button fallback is what drives
+  // the grow here — exactly the path that keeps the list reachable without JS
+  // observer support.)
+  it('reveals operations a batch at a time via infinite scroll', async () => {
+    const user = userEvent.setup();
+    const many = Array.from({ length: 30 }, (_, i) => ({
+      path: `v/ops/demo/op${i}`,
+      metadata: { name: `Op ${String(i).padStart(2, '0')}` },
+    }));
+    mockListCatalogOperations.mockResolvedValue(many);
+
+    render(<OperationsList />);
+    // First batch of 24 is shown; the rest wait behind "Load more".
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(24));
+    expect(screen.getByRole('button', { name: /load more operations/i })).toBeInTheDocument();
+    expect(screen.queryByText('End of results')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /load more operations/i }));
+
+    // All 30 now shown, the button is gone, and the end marker appears.
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(30));
+    expect(screen.queryByRole('button', { name: /load more operations/i })).not.toBeInTheDocument();
+    expect(screen.getByText('End of results')).toBeInTheDocument();
+    // Revealing more cards must never refetch the catalogue.
+    expect(mockListCatalogOperations).toHaveBeenCalledTimes(1);
   });
 });
