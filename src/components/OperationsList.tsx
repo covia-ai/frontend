@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Asset, Operation }from "@covia/covia-sdk";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
@@ -9,14 +9,12 @@ import { TopBar } from "./admin-panel/TopBar";
 import { Spinner } from '@/components/ui/shadcn-io/spinner';
 import { OperationCard } from "./OperationCard";
 import { adapterLook } from "./operation-display";
-import { PaginationHeader } from "./PaginationHeader";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { PlayCircle, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { listCatalogOperations } from "@/lib/operations-catalog";
-import { useGridPageSize } from "@/hooks/use-grid-page-size";
 import { useLatestQuery } from "@/hooks/use-latest-query";
-import { useClientPagination } from "@/hooks/use-pagination";
 // A roomier grid than the shared 14rem density: operation cards now carry a
 // signature block, so they need width to breathe (concept-fidelity catalogue).
 const OPS_GRID_CLASS =
@@ -25,6 +23,14 @@ import { FiltersSheet } from "./FiltersSheet";
 import { ListToolbar } from "./ListToolbar";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { VenueResolutionState } from "@/components/VenueResolutionState";
+
+// How many cards to reveal per infinite-scroll step. Operation cards are tall
+// (they carry the full IN→OUT signature), so the old viewport-fit pagination
+// (useGridPageSize) showed only ~2 per page on a 185-op venue. Infinite scroll
+// appends a batch at a time as the sentinel scrolls into view, mirroring the
+// Jobs list, so the whole catalogue is reachable by scrolling rather than
+// clicking through dozens of pages.
+const BATCH_SIZE = 24;
 
 interface OperationsListProps {
   venueId?: string;
@@ -42,10 +48,6 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
   } = useLatestQuery<Asset[]>([], { initialLoading: true });
   const router = useRouter();
 
-  // A fixed 12 wasted whatever the window actually offered — three rows on a
-  // wide screen, two on a very wide one, and no more on a tall one. Size the
-  // page from the grid itself: columns it renders, times rows that fit below.
-  const { ref: gridRef, pageSize: itemsPerPage } = useGridPageSize();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchInput, setSearchInput] = useState(searchParams.get('search') ?? "");
   const pathname = usePathname();
@@ -169,16 +171,51 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
     });
   }, [assetsMetadata, selectedTags, searchInput]);
 
-  const {
-    currentPage,
-    setCurrentPage,
-    totalPages,
-    pageItems,
-  } = useClientPagination({
-    items: filteredAssets,
-    pageSize: itemsPerPage,
-    resetKey: `${searchInput}\u0000${selectedTags.join("\u0000")}`,
-  });
+  // Infinite scroll: how many of the (filtered) catalogue cards are currently
+  // shown. The full catalogue is already in memory (one catalog read per
+  // venue), so growing the window is a pure client-side slice — no refetch, and
+  // search/filter always apply to the complete list, not just a loaded window.
+  const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  // Set the moment a grow is requested; cleared once the new slice renders, so
+  // a burst of intersection events can't stack multiple batches at once.
+  const growingRef = useRef(false);
+
+  // Reset the window to the first batch whenever the filtered set changes
+  // (search text or selected tags), so a narrowed list starts from the top.
+  const resetKey = `${searchInput} ${selectedTags.join(" ")}`;
+  useEffect(() => { setVisibleCount(BATCH_SIZE); }, [resetKey]);
+
+  const visibleItems = useMemo(
+    () => filteredAssets.slice(0, visibleCount),
+    [filteredAssets, visibleCount],
+  );
+  const hasMore = visibleCount < filteredAssets.length;
+
+  // Grow the window by one batch. Guarded so scroll bursts don't stack batches.
+  const maybeLoadMore = useCallback(() => {
+    if (growingRef.current) return;
+    growingRef.current = true;
+    setVisibleCount((v) => v + BATCH_SIZE);
+  }, []);
+
+  // Clear the grow guard once the new slice has rendered.
+  useEffect(() => { growingRef.current = false; }, [visibleItems.length]);
+
+  // Grow when the sentinel scrolls into view (viewport root). Guarded on
+  // hasMore, and re-armed on every slice change so each batch can trigger the
+  // next. Falls back to the manual "Load more" button when IntersectionObserver
+  // is unavailable (e.g. jsdom under test).
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      (entries) => { if (entries[0]?.isIntersecting) maybeLoadMore(); },
+      { rootMargin: "400px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, maybeLoadMore, visibleItems.length]);
 
   if (venueStatus !== "ready") {
      return (
@@ -237,8 +274,7 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
               />
             </>
           }
-          summary={!isLoading && `Page ${currentPage} : Showing ${pageItems.length} of ${filteredAssets.length}`}
-          pagination={<PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={isLoading}></PaginationHeader>}
+          summary={!isLoading && `Showing ${visibleItems.length} of ${filteredAssets.length}`}
         />
 
         {!isLoading && adapterFacets.length > 0 && (
@@ -269,17 +305,35 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
             <Spinner variant="ellipsis" className="text-primary" size={64}/>
           </div>
         ) : (
-          <div ref={gridRef} className={cn(OPS_GRID_CLASS, "mt-5")}>
-            {
-            pageItems.map((asset) => (
-              <OperationCard key={asset.id} asset={asset} venue={venue ?? undefined} scoped={!!venueId}/>
-            ))}
-          </div>
-        )}
+          <>
+            <div className={cn(OPS_GRID_CLASS, "mt-5")}>
+              {visibleItems.map((asset) => (
+                <OperationCard key={asset.id} asset={asset} venue={venue ?? undefined} scoped={!!venueId}/>
+              ))}
+            </div>
 
-        <PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={isLoading}></PaginationHeader>
+            {/* Infinite scroll: reaching here reveals the next batch of cards.
+                The sentinel drives it automatically; the button is a manual
+                fallback (and covers environments without IntersectionObserver). */}
+            <div className="flex w-full items-center justify-center py-6">
+              {hasMore ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-2 text-muted-foreground"
+                  onClick={maybeLoadMore}
+                >
+                  Load more operations
+                </Button>
+              ) : filteredAssets.length > 0 ? (
+                <span className="text-xs text-muted-foreground">End of results</span>
+              ) : null}
+              <div ref={sentinelRef} className="h-px w-px" aria-hidden />
+            </div>
+          </>
+        )}
       </div>
-      
+
     </ContentLayout>
   );
 }
