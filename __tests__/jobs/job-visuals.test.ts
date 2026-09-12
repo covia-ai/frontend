@@ -81,7 +81,7 @@ describe("operationVisual — richer name fallback", () => {
   it("maps descriptive names to their family", () => {
     expect(operationVisual({ name: "Validate Value" }).kind).toBe("schema");
     expect(operationVisual({ name: "Store Asset" }).kind).toBe("asset");
-    expect(operationVisual({ name: "Read/List Lattice Value" }).kind).toBe("convex");
+    expect(operationVisual({ name: "Read/List Lattice Value" }).kind).toBe("lattice");
     expect(operationVisual({ name: "Delay Operation" }).kind).toBe("test");
     expect(operationVisual({ name: "Random Data Generator" }).kind).toBe("test");
   });

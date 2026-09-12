@@ -94,7 +94,9 @@ const NAME_KEYWORDS: [RegExp, string][] = [
   [/vault/i, "vault"],
   [/schema|validat|\binfer\b/i, "schema"],
   [/\bstore\b|register|\basset\b|\bpin\b/i, "asset"],
-  [/lattice|convex|append|slice|aggregate|inspect/i, "convex"],
+  // Lattice always wears its own grid mark, never the Convex hexagon.
+  [/lattice/i, "lattice"],
+  [/convex|append|slice|aggregate|inspect/i, "convex"],
   [/memory|recall|remember/i, "memory"],
   [/schedul|\bcron\b|timer/i, "scheduler"],
   [/\bmcp\b/i, "mcp"],
