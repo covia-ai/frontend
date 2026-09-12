@@ -1,12 +1,12 @@
-import type { LucideIcon } from "lucide-react";
 import { MENU_LIST } from "@/lib/menu-list";
+import type { IconCmp } from "@/lib/file-type-look";
 import type { VenueDescriptor } from "@/hooks/use-venues";
 
 export type PaletteNavAction = {
   id: string;
   label: string;
   href: string;
-  icon: LucideIcon;
+  icon: IconCmp;
   requiresAuth?: boolean;
 };
 

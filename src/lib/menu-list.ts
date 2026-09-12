@@ -1,5 +1,6 @@
-import { Database, type LucideIcon } from "lucide-react";
+import { Database } from "lucide-react";
 import { CONCEPT_ICONS } from "@/lib/concept-icons";
+import type { IconCmp } from "@/lib/file-type-look";
 
 // Nav icons come from the canonical icon directory (lib/concept-icons.ts) so a
 // destination in the sidebar wears the SAME glyph the concept wears everywhere
@@ -12,7 +13,7 @@ const I = CONCEPT_ICONS;
 export type MenuItem = {
   href: string;
   label: string;
-  icon: LucideIcon;
+  icon: IconCmp;
   requiresAuth?: boolean;
   badge?: "inbox" | "connections";
   match?: "exact" | "prefix";
