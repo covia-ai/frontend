@@ -98,12 +98,16 @@ export const ADAPTER_LOOK: Record<string, AdapterLook> = {
   test: fromConcept("test"),
 };
 
-// Adapter-name aliases that resolve to a family above.
+// Adapter-name aliases that resolve to a family above — including word-form
+// variants (verb/noun) so a family is matched however it's spelled.
 const ALIASES: Record<string, string> = {
   openai: "langchain",
   llm: "langchain",
   json: "schema",
   data: "dlfs",
+  orchestration: "orchestrator",
+  scheduling: "scheduler",
+  "caps-permissions": "ucan",
 };
 
 /** Neutral fallback so a new/unknown adapter never renders blank. */
