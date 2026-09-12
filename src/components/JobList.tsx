@@ -5,20 +5,19 @@ import { useCallback, useEffect, useMemo, useRef, useState, type UIEvent } from 
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { useActiveJobsLive } from "@/hooks/use-active-jobs-live";
 import { JobMetadata, RunStatus }from "@covia/covia-sdk";
-import { cn, formatDateTime, getExecutionTime } from "@/lib/utils";
-import { StatusBadge } from "@/components/StatusBadge";
+import { getExecutionTime } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScheduledList } from "@/components/ScheduledList";
 import { FiltersSheet } from "@/components/FiltersSheet";
 import { ListToolbar } from "@/components/ListToolbar";
 import { StatTile } from "@/components/StatTile";
 import { Button } from "@/components/ui/button";
-import { JobRowActions } from "@/components/jobs/JobRowActions";
+import { JobRow } from "@/components/jobs/JobRow";
 import { JobDetailDrawer } from "@/components/jobs/JobDetailDrawer";
-import { TONE_STYLES, toneForRunStatus } from "@/lib/status";
-import { operationVisual, abbreviateJobId, jobDurationMs, percentile, durationFillClass } from "@/lib/job-visuals";
+import { TONE_STYLES } from "@/lib/status";
+import { jobDurationMs, percentile } from "@/lib/job-visuals";
 import { useOperationAdapters } from "@/hooks/use-operation-adapters";
-import { Activity, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2, Copy, Gauge, Layers } from "lucide-react";
+import { Activity, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2, Gauge, Layers } from "lucide-react";
 import { TopBar } from "./admin-panel/TopBar";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -163,102 +162,31 @@ export function JobList({ venueId }: JobListProps = {}) {
   // handleSlice computes `total` from the same live value it pages), so it's
   // authoritative for that specific read — if it disagrees with the count used
   // to pick the window, recompute against it and slice once more.
-  const fetchFeed = useCallback(async () => {
-    if (!venue || venueStatus !== "ready") {
-      resetPageQuery();
-      return;
-    }
-    await runPageQuery(
-      async () => {
+  // One windowed-slice read, parametrised by size + which query slot it feeds.
+  // The three fetches below differ ONLY in those two things; everything else
+  // (count guess, end-anchored window, #193 self-correcting slice, revalidate-
+  // on-failure) is identical, so it lives here once.
+  const fetchSlice = useCallback(
+    async (
+      size: number,
+      runQuery: typeof runPageQuery,
+      resetQuery: typeof resetPageQuery,
+    ) => {
+      if (!venue || venueStatus !== "ready") {
+        resetQuery();
+        return;
+      }
+      await runQuery(async () => {
         try {
           const cached = countRef.current;
           const guessCount = cached?.venueId === venueKey
             ? cached.count
             : (await venue.workspace.list("j", 1)).count ?? 0;
-          // Infinite scroll reads the newest `visibleCount` from the end of the
-          // index and grows it on scroll. Reading a fresh window from the end
-          // each time (rather than appending offset pages) keeps the #193
-          // offset-race from ever mattering: there is no drifting anchor, and a
-          // job completing mid-scroll simply appears in the next read.
-          const windowFor = (count: number) => ({
-            start: Math.max(0, count - visibleCount),
-            end: count,
-          });
-          const { count, values } = await sliceJobWindow(
-            venue,
-            windowFor,
-            guessCount,
-          );
-          countRef.current = { venueId: venueKey, count };
-          return {
-            totalCount: count,
-            records: jobRecordsFromSlice(values),
-          };
-        } catch (error) {
-          revalidateVenueOnFailure(venue, authRef.current, error);
-          throw error;
-        }
-      },
-    );
-  }, [venue, venueKey, venueStatus, visibleCount, resetPageQuery, runPageQuery]);
-
-  // Filter mode: one slice of the newest FILTER_WINDOW records, filtered and
-  // paged client-side. Filters only ever see this recent window — same
-  // semantics as before, when the window was 100 individual per-job GETs.
-  const fetchWindow = useCallback(async () => {
-    if (!venue || venueStatus !== "ready") {
-      resetRecentQuery();
-      return;
-    }
-    await runRecentQuery(
-      async () => {
-        try {
-          const cached = countRef.current;
-          const guessCount = cached?.venueId === venueKey
-            ? cached.count
-            : (await venue.workspace.list("j", 1)).count ?? 0;
-          const windowFor = (count: number) => ({
-            start: Math.max(0, count - FILTER_WINDOW),
-            end: count,
-          });
-          const { count, values } = await sliceJobWindow(
-            venue,
-            windowFor,
-            guessCount,
-          );
-          countRef.current = { venueId: venueKey, count };
-          return {
-            totalCount: count,
-            records: jobRecordsFromSlice(values),
-          };
-        } catch (error) {
-          revalidateVenueOnFailure(venue, authRef.current, error);
-          throw error;
-        }
-      },
-    );
-  }, [venue, venueKey, venueStatus, resetRecentQuery, runRecentQuery]);
-
-  // Headline stats window: the newest STATS_WINDOW records, venue-wide, read
-  // once per venue/refresh and independent of the table's page or filters, so
-  // the success rate and latency describe recent venue activity rather than
-  // whatever ten rows happen to be on screen.
-  const fetchStats = useCallback(async () => {
-    if (!venue || venueStatus !== "ready") {
-      resetStatsQuery();
-      return;
-    }
-    await runStatsQuery(
-      async () => {
-        try {
-          const cached = countRef.current;
-          const guessCount = cached?.venueId === venueKey
-            ? cached.count
-            : (await venue.workspace.list("j", 1)).count ?? 0;
-          const windowFor = (count: number) => ({
-            start: Math.max(0, count - STATS_WINDOW),
-            end: count,
-          });
+          // A fresh window from the END of the index each time (rather than
+          // appending offset pages) keeps the #193 count-race from mattering:
+          // no drifting anchor, and a job completing mid-scroll simply appears
+          // in the next read.
+          const windowFor = (count: number) => ({ start: Math.max(0, count - size), end: count });
           const { count, values } = await sliceJobWindow(venue, windowFor, guessCount);
           countRef.current = { venueId: venueKey, count };
           return { totalCount: count, records: jobRecordsFromSlice(values) };
@@ -266,9 +194,26 @@ export function JobList({ venueId }: JobListProps = {}) {
           revalidateVenueOnFailure(venue, authRef.current, error);
           throw error;
         }
-      },
-    );
-  }, [venue, venueKey, venueStatus, resetStatsQuery, runStatsQuery]);
+      });
+    },
+    [venue, venueKey, venueStatus],
+  );
+
+  // Feed: the newest `visibleCount` (infinite scroll). Filter: the newest
+  // FILTER_WINDOW, filtered/paged client-side. Stats: the newest STATS_WINDOW
+  // venue-wide, so success rate + latency stay stable as you paginate.
+  const fetchFeed = useCallback(
+    () => fetchSlice(visibleCount, runPageQuery, resetPageQuery),
+    [fetchSlice, visibleCount, runPageQuery, resetPageQuery],
+  );
+  const fetchWindow = useCallback(
+    () => fetchSlice(FILTER_WINDOW, runRecentQuery, resetRecentQuery),
+    [fetchSlice, runRecentQuery, resetRecentQuery],
+  );
+  const fetchStats = useCallback(
+    () => fetchSlice(STATS_WINDOW, runStatsQuery, resetStatsQuery),
+    [fetchSlice, runStatsQuery, resetStatsQuery],
+  );
 
   // Debounce free-text search so typing doesn't fire a fresh window fetch
   // on every keystroke.
@@ -381,6 +326,10 @@ export function JobList({ venueId }: JobListProps = {}) {
     const el = e.currentTarget;
     if (el.scrollHeight - el.scrollTop - el.clientHeight < 250) maybeLoadMore();
   }, [maybeLoadMore]);
+
+  // Stable so a memoised JobRow only re-renders when its own job/live changes.
+  const handleOpenJob = useCallback((job: JobMetadata) => setDrawerJob(job), []);
+  const handleJobChanged = useCallback(() => setRefreshTick((t) => t + 1), []);
 
   // Also grow when the sentinel scrolls into view within the list box (covers a
   // tall viewport where the initial window doesn't fill the scroll area).
@@ -495,12 +444,25 @@ export function JobList({ venueId }: JobListProps = {}) {
             />
           }
           summary={
-            <>
-              Showing {pageRecords.length} of {matchTotal}
-              {hasFilters && matchTotal === 0 && !loading && (
-                <span className="ml-2 text-muted-foreground">— no jobs match this filter</span>
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span>Showing {pageRecords.length} of {matchTotal}</span>
+              {/* One honest place for the read scopes: filters only ever see the
+                  newest FILTER_WINDOW, and the headline stats are over the recent
+                  STATS_WINDOW — surfaced up-front rather than scattered. */}
+              {hasFilters && (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                  filtering newest {FILTER_WINDOW}
+                </span>
               )}
-            </>
+              {venueStats.sampleSize > 0 && (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                  stats over last {venueStats.sampleSize}
+                </span>
+              )}
+              {hasFilters && matchTotal === 0 && !loading && (
+                <span className="text-muted-foreground">— no jobs match this filter</span>
+              )}
+            </span>
           }
         />
         {loadError && <ErrorDisplay error={loadError} className="mb-4 w-full" />}
@@ -552,101 +514,36 @@ export function JobList({ venueId }: JobListProps = {}) {
                   No jobs found
                 </TableCell>
               </TableRow>
-            ) : sortedRecords
-              .map((job) => {
-                const eff = liveJobs[job.id ?? ""] ? { ...job, ...liveJobs[job.id ?? ""] } : job;
-                const isTerminal = TERMINAL_STATUSES.has(eff.status as RunStatus);
-                const tone = toneForRunStatus(eff.status);
-                const isLive = !!liveJobs[job.id ?? ""] && ACTIVE_STATUSES.has(eff.status as RunStatus);
-                const rowTint =
-                  tone === "failure" ? TONE_STYLES.failure.surface
-                  : tone === "attention" ? TONE_STYLES.attention.surface
-                  : "";
-                const { Icon, className: opClass } = operationVisual(job, operationAdapters.adapterFor(job.op));
-                return (
-              <TableRow key={job.id} className={cn("cursor-pointer", rowTint)} onClick={() => setDrawerJob(job)}>
-                <TableCell>
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", opClass)}>
-                      <Icon size={16} />
-                    </span>
-                    <div className="min-w-0">
-                      <div className="truncate font-medium text-foreground">{job.name ?? "Operation"}</div>
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); if (job.id) navigator.clipboard?.writeText(job.id); }}
-                        title={`${job.id ?? ""} — click to copy`}
-                        className="group mt-0.5 inline-flex items-center gap-1 rounded font-mono text-[11px] text-muted-foreground transition-colors hover:text-primary"
-                      >
-                        {abbreviateJobId(job.id)}
-                        <Copy size={11} className="opacity-0 transition-opacity group-hover:opacity-100" />
-                      </button>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell className="whitespace-nowrap text-muted-foreground">
-                  {job.created ? formatDateTime(job.created) : "--"}
-                </TableCell>
-                <TableCell>
-                  <DurationCell job={eff} maxMs={pageMaxMs} isTerminal={isTerminal} />
-                </TableCell>
-                <TableCell>
-                  <span className="inline-flex items-center gap-1.5">
-                    {isLive && <span className={cn("size-1.5 shrink-0 animate-pulse rounded-full", TONE_STYLES.active.dot)} title="Live" />}
-                    <StatusBadge status={eff.status} kind="job" />
-                  </span>
-                </TableCell>
-                <TableCell className="text-right">
-                  <JobRowActions job={job} onChanged={() => setRefreshTick(t => t + 1)} />
-                </TableCell>
-              </TableRow>
-                );
-              })}
+            ) : sortedRecords.map((job) => (
+              <JobRow
+                key={job.id}
+                variant="table"
+                job={job}
+                live={liveJobs[job.id ?? ""]}
+                adapter={operationAdapters.adapterFor(job.op)}
+                maxMs={pageMaxMs}
+                onOpen={handleOpenJob}
+                onChanged={handleJobChanged}
+              />
+            ))}
           </TableBody>
         </Table>
         {/* Mobile: stacked cards so nothing hides behind a horizontal scroll. */}
         <div className="divide-y divide-border md:hidden">
           {sortedRecords.length === 0 ? (
             <div className="flex h-[38vh] items-center justify-center text-muted-foreground">No jobs found</div>
-          ) : sortedRecords.map((job) => {
-            const eff = liveJobs[job.id ?? ""] ? { ...job, ...liveJobs[job.id ?? ""] } : job;
-            const isTerminal = TERMINAL_STATUSES.has(eff.status as RunStatus);
-            const tone = toneForRunStatus(eff.status);
-            const isLive = !!liveJobs[job.id ?? ""] && ACTIVE_STATUSES.has(eff.status as RunStatus);
-            const rowTint = tone === "failure" ? TONE_STYLES.failure.surface : tone === "attention" ? TONE_STYLES.attention.surface : "";
-            const { Icon, className: opClass } = operationVisual(job);
-            const openJob = () => setDrawerJob(job);
-            return (
-              <div
-                key={job.id}
-                role="button"
-                tabIndex={0}
-                onClick={openJob}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openJob(); } }}
-                className={cn("flex w-full cursor-pointer items-start gap-3 p-3 text-left transition-colors hover:bg-muted/50", rowTint)}
-              >
-                <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", opClass)}>
-                  <Icon size={17} />
-                </span>
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate font-medium text-foreground">{job.name ?? "Operation"}</span>
-                    <span className="ml-auto inline-flex shrink-0 items-center gap-1.5">
-                      {isLive && <span className={cn("size-1.5 animate-pulse rounded-full", TONE_STYLES.active.dot)} title="Live" />}
-                      <StatusBadge status={eff.status} kind="job" />
-                    </span>
-                    <JobRowActions job={job} onChanged={() => setRefreshTick(t => t + 1)} />
-                  </div>
-                  <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
-                    <span>{abbreviateJobId(job.id)}</span>
-                    <span aria-hidden>·</span>
-                    <span className="truncate">{job.created ? formatDateTime(job.created) : "--"}</span>
-                  </div>
-                  <DurationCell job={eff} maxMs={pageMaxMs} isTerminal={isTerminal} />
-                </div>
-              </div>
-            );
-          })}
+          ) : sortedRecords.map((job) => (
+            <JobRow
+              key={job.id}
+              variant="card"
+              job={job}
+              live={liveJobs[job.id ?? ""]}
+              adapter={operationAdapters.adapterFor(job.op)}
+              maxMs={pageMaxMs}
+              onOpen={handleOpenJob}
+              onChanged={handleJobChanged}
+            />
+          ))}
         </div>
         {/* Infinite scroll: reaching here loads the next window of older jobs. */}
         <div className="flex items-center justify-center py-3">
@@ -724,37 +621,3 @@ function fmtDurationMs(ms: number | null): string {
   return getExecutionTime("1970-01-01T00:00:00.000Z", new Date(ms).toISOString());
 }
 
-/**
- * Latency as a bar plus a value. Terminal jobs show a colour-graded fill
- * (green fast, amber/red slow) scaled to the page's longest run; a running
- * job shows an indeterminate pulse and its elapsed time so far.
- */
-function DurationCell({ job, maxMs, isTerminal }: { job: JobMetadata; maxMs: number; isTerminal: boolean }) {
-  if (!isTerminal) {
-    return job.created ? (
-      <div className="flex items-center gap-2">
-        <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
-          <div className={cn("h-full w-1/3 animate-pulse rounded-full", TONE_STYLES.active.dot)} />
-        </div>
-        <span className="text-xs italic text-muted-foreground">
-          {getExecutionTime(job.created, new Date().toISOString())} so far
-        </span>
-      </div>
-    ) : (
-      <span className="text-muted-foreground">--</span>
-    );
-  }
-  const ms = jobDurationMs(job);
-  if (ms == null) return <span className="text-muted-foreground">--</span>;
-  const pct = maxMs > 0 ? Math.max(6, Math.round((ms / maxMs) * 100)) : 100;
-  return (
-    <div className="flex items-center gap-2" title={`${ms} ms`}>
-      <div className="h-1.5 w-20 shrink-0 overflow-hidden rounded-full bg-muted">
-        <div className={cn("h-full rounded-full", durationFillClass(ms))} style={{ width: `${pct}%` }} />
-      </div>
-      <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
-        {getExecutionTime(job.created ?? "", job.updated ?? "")}
-      </span>
-    </div>
-  );
-}
