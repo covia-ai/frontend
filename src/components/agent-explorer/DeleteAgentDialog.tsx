@@ -38,7 +38,7 @@ export function DeleteAgentDialog({ agentId, onDelete }: DeleteAgentDialogProps)
         <Button
           variant="outline"
           size="sm"
-          className="text-red-600 hover:text-red-700"
+          className="text-destructive hover:text-destructive/80"
           data-testid="delete-agent-trigger"
         >
           <Trash2 size={14} className="mr-1" /> Delete

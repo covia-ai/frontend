@@ -179,7 +179,7 @@ const renderSchemaProperties = (
           <TableRow key={key}>
             <TableCell className="whitespace-nowrap align-top">
               {formatLabel(key)}
-              {required.includes(key) && <span className="text-red-400"> *</span>}
+              {required.includes(key) && <span className="text-destructive"> *</span>}
             </TableCell>
             <TableCell className="text-muted-foreground">
               {properties?.[key]?.description ?? properties?.[key]?.type ?? ""}

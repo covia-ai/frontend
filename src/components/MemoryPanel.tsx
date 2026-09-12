@@ -276,7 +276,7 @@ export function MemoryPanel() {
                                     variant="ghost"
                                     size="sm"
                                     aria-label={`Forget item ${index + 1}`}
-                                    className="text-red-600 hover:text-red-700"
+                                    className="text-destructive hover:text-destructive/80"
                                     disabled={isDeleting}
                                   >
                                     <Trash2 size={14} />

@@ -2,6 +2,7 @@
 
 import { AlertTriangle, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TONE_STYLES } from "@/lib/status";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,7 +45,7 @@ export function AgentCapsEditor({ enabled, onEnabledChange, caps, onCapsChange }
       {enabled && (
         <div className="space-y-2">
           {caps.length === 0 && (
-            <p className="flex items-center gap-1 text-sm text-amber-500">
+            <p className={`flex items-center gap-1 text-sm ${TONE_STYLES.attention.text}`}>
               <AlertTriangle size={14} />
               No capabilities added — this denies every tool call.
             </p>

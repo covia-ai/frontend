@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { notifyError, notifySuccess } from "@/lib/notify";
+import { TONE_STYLES } from "@/lib/status";
 import { agentDisplay, humanizeAgentId, relTime, shortRefLabel } from "@/lib/agent-display";
 import type { RosterAgent } from "@/hooks/use-agent-roster";
 import { AgentLiveActivity } from "./AgentLiveActivity";
@@ -149,7 +150,7 @@ export function AgentRosterCard({
             </span>
           )}
           {typeof agent.queued === "number" && agent.queued > 0 && (
-            <span className="font-medium text-amber-600 dark:text-amber-400">{agent.queued} queued</span>
+            <span className={`font-medium ${TONE_STYLES.attention.text}`}>{agent.queued} queued</span>
           )}
           {!isRunning && agent.nextWake && (
             <span className="inline-flex items-center gap-1">

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AgentStatus } from "@covia/covia-sdk";
+import { TONE_STYLES } from "@/lib/status";
 import { AlertTriangle, ArrowLeft, Loader2, RotateCcw, Save, Wrench } from "lucide-react";
 import type { AgentDetail } from "@/config/types";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
@@ -365,7 +366,7 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
           {result.error ? (
             <p className="text-sm text-destructive">{result.error}</p>
           ) : running ? (
-            <p className="text-sm text-amber-600 dark:text-amber-400">
+            <p className={`text-sm ${TONE_STYLES.attention.text}`}>
               Saving will suspend the running agent, apply the change, and resume it.
             </p>
           ) : (

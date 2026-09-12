@@ -137,7 +137,7 @@ export function WorkspaceValuePane({
                       <Button
                         variant="outline"
                         size="icon"
-                        className="text-red-600 hover:text-red-700"
+                        className="text-destructive hover:text-destructive/80"
                         aria-label="Delete"
                       >
                         <Trash2 size={14} />

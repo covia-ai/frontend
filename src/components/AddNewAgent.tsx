@@ -16,6 +16,7 @@ import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
+import { TONE_STYLES } from "@/lib/status";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
@@ -383,7 +384,7 @@ export function AddNewAgent({
                 }}
               />
               {isReservedAgentId ? (
-                <p className="flex items-center gap-1 text-sm text-amber-500">
+                <p className={`flex items-center gap-1 text-sm ${TONE_STYLES.attention.text}`}>
                   <AlertTriangle size={14} />
                   &quot;{DEFAULT_AGENT_ID}&quot; is reserved. Choose another ID.
                 </p>
@@ -489,7 +490,7 @@ export function AddNewAgent({
             </div>
 
             {!venue && (
-              <p className="flex items-center gap-1 text-sm text-amber-500">
+              <p className={`flex items-center gap-1 text-sm ${TONE_STYLES.attention.text}`}>
                 <AlertTriangle size={14} /> No venue connected.{" "}
                 <Link href="/venues" className="underline">Connect one in Venues</Link>.
               </p>

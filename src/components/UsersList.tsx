@@ -296,7 +296,7 @@ export function UsersList({ venueId }: UsersListProps) {
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                className="h-6 px-2 text-red-600 hover:text-red-700"
+                                                className="h-6 px-2 text-destructive hover:text-destructive/80"
                                                 onClick={(e) => e.stopPropagation()}
                                               >
                                                 Revoke

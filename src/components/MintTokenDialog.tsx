@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { VenueAuth } from "@/hooks/use-auth";
 import { identityTokenFor } from "@/lib/identity-token";
 import { notifyError, notifySuccess } from "@/lib/notify";
+import { TONE_STYLES } from "@/lib/status";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -127,7 +128,7 @@ export function MintTokenDialog({ venueId, account, open, onOpenChange }: MintTo
               </Select>
             </div>
             {longLived && (
-              <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
+              <p className={`text-xs ${TONE_STYLES.attention.text} mt-1`}>
                 Long-lived token: anyone holding it can act as you until it
                 expires. Treat it like a password.
               </p>

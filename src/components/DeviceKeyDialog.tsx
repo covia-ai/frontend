@@ -170,7 +170,7 @@ export function DeviceKeyDialog({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button variant="outline" size="icon" onClick={onCopy} aria-label="Copy device key" className="shrink-0">
-                          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                          {copied ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" /> : <Copy className="h-4 w-4" />}
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>{copied ? "Copied!" : "Copy device key"}</TooltipContent>

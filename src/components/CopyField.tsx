@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Check, Copy } from "lucide-react";
 import { cn, writeTextToClipboard } from "@/lib/utils";
+import { TONE_STYLES } from "@/lib/status";
 import { notifyError } from "@/lib/notify";
 
 interface CopyFieldProps {
@@ -55,7 +56,7 @@ export function CopyField({ label, value, href, description, className }: CopyFi
               aria-label={`Copy ${label}`}
               className="shrink-0"
             >
-              {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+              {copied ? <Check className={cn("h-4 w-4", TONE_STYLES.success.text)} /> : <Copy className="h-4 w-4" />}
             </Button>
           </TooltipTrigger>
           <TooltipContent>{copied ? "Copied!" : `Copy ${label}`}</TooltipContent>

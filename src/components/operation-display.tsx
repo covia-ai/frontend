@@ -77,7 +77,7 @@ function FieldChips({ fields, tone, max }: { fields: SchemaField[]; tone: "in" |
           className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[11px] leading-none text-io-foreground ${bg}`}
         >
           {f.key && <span className="font-medium">{f.key}</span>}
-          {f.required && <span className="text-red-500">*</span>}
+          {f.required && <span className="text-destructive">*</span>}
           <span className={f.key ? "opacity-60" : "font-medium"}>{f.type}</span>
         </span>
       ))}
