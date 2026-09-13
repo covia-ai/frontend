@@ -50,7 +50,7 @@ export function TopBar(props: TopBarProps) {
           <div className="flex flex-1 items-center gap-3 min-w-0">
             <SmartBreadcrumb onNavigate={(href) => router.push(href)} pathname={pathname} assetOrJobName= {props.assetOrJobName} venueName={props.venueName}/>
           </div>
-          <div className="flex items-center justify-end space-x-4">
+          <div className="flex shrink-0 items-center justify-end space-x-4">
               {docsHref && (
                 <Tooltip>
                   <TooltipTrigger asChild>

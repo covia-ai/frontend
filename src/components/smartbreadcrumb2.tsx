@@ -16,6 +16,7 @@ import {
 import { ChevronDown } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { humanizeAgentId } from "@/lib/agent-display";
+import { cn } from "@/lib/utils";
 
 // usePathname returns the encoded path, so a segment needs one decode — but an
 // id containing a bare "%" makes decodeURIComponent throw, which would take the
@@ -245,10 +246,17 @@ export function SmartBreadcrumb({
     // re-check whenever the trail itself changes, not just on resize.
   }, [pathname, assetOrJobName, venueName]);
 
-  // Collapsing only makes sense if there's something to hide behind the "…".
-  const collapsed = overflows && breadcrumbs.length > SHOW_START + SHOW_END;
-  const startCrumbs = collapsed ? breadcrumbs.slice(0, SHOW_START) : [];
-  const hiddenCrumbs = collapsed ? breadcrumbs.slice(SHOW_START, breadcrumbs.length - SHOW_END) : [];
+  // When the trail overflows, collapse the ancestors behind a "…". On a short
+  // trail (e.g. 3-crumb Home › Operations › <long name>) keep zero leading
+  // crumbs so everything ancestor folds into the "…" and the current-page name
+  // gets the room — "… › <name>" — instead of the name being squeezed to an
+  // ellipsis by a leading "Home". Longer trails keep up to SHOW_START leading
+  // crumbs for context. The trailing crumb still truncates as a final safety.
+  const rawStart = breadcrumbs.length - SHOW_END - 1;
+  const startCount = rawStart <= 1 ? 0 : Math.min(SHOW_START, rawStart);
+  const collapsed = overflows && breadcrumbs.length > startCount + SHOW_END;
+  const startCrumbs = collapsed ? breadcrumbs.slice(0, startCount) : [];
+  const hiddenCrumbs = collapsed ? breadcrumbs.slice(startCount, breadcrumbs.length - SHOW_END) : [];
   const endCrumbs = collapsed ? breadcrumbs.slice(breadcrumbs.length - SHOW_END) : [];
 
   return (
@@ -274,41 +282,48 @@ export function SmartBreadcrumb({
       </div>
 
       <Breadcrumb>
-        <BreadcrumbList className="flex-nowrap">
+        <BreadcrumbList className="min-w-0 flex-nowrap">
           {/* Separators are <li>s themselves — they must be siblings of
               BreadcrumbItem (also an <li>), never children: li-in-li is invalid
               HTML and breaks hydration. */}
-          {!collapsed && breadcrumbs.map((item, index) => (
-            <Fragment key={index}>
-              <BreadcrumbItem>
-                <BreadcrumbLink
-                  onClick={() => item.href && handleBreadcrumbClick(item.href)}
-                  className="cursor-pointer hover:underline"
-                >
-                  {item.label}
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              {index < breadcrumbs.length - 1 && <BreadcrumbSeparator />}
-            </Fragment>
-          ))}
+          {!collapsed && breadcrumbs.map((item, index) => {
+            // The trailing crumb (current page) can be a long asset/operation
+            // name — it truncates with an ellipsis so it never wraps into a
+            // second line or overruns the topbar controls; the short leading
+            // crumbs keep their full width.
+            const isLast = index === breadcrumbs.length - 1;
+            return (
+              <Fragment key={index}>
+                <BreadcrumbItem className={isLast ? "min-w-0" : "shrink-0"}>
+                  <BreadcrumbLink
+                    onClick={() => item.href && handleBreadcrumbClick(item.href)}
+                    className={cn("cursor-pointer hover:underline", isLast ? "block min-w-0 truncate" : "whitespace-nowrap")}
+                  >
+                    {item.label}
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                {index < breadcrumbs.length - 1 && <BreadcrumbSeparator className="shrink-0" />}
+              </Fragment>
+            );
+          })}
 
           {collapsed && (
             <>
               {startCrumbs.map((item, index) => (
                 <Fragment key={`s-${index}`}>
-                  <BreadcrumbItem>
+                  <BreadcrumbItem className="shrink-0">
                     <BreadcrumbLink
                       onClick={() => item.href && handleBreadcrumbClick(item.href)}
-                      className="cursor-pointer hover:underline"
+                      className="cursor-pointer whitespace-nowrap hover:underline"
                     >
                       {item.label}
                     </BreadcrumbLink>
                   </BreadcrumbItem>
-                  <BreadcrumbSeparator />
+                  <BreadcrumbSeparator className="shrink-0" />
                 </Fragment>
               ))}
 
-              <BreadcrumbItem>
+              <BreadcrumbItem className="shrink-0">
                 <DropdownMenu>
                   <DropdownMenuTrigger className="flex items-center gap-1 cursor-pointer text-muted-foreground hover:text-foreground">
                     <span>…</span>
@@ -327,13 +342,13 @@ export function SmartBreadcrumb({
                   </DropdownMenuContent>
                 </DropdownMenu>
               </BreadcrumbItem>
-              <BreadcrumbSeparator />
+              <BreadcrumbSeparator className="shrink-0" />
 
               {endCrumbs.map((item, index) => (
-                <BreadcrumbItem key={`e-${index}`}>
+                <BreadcrumbItem key={`e-${index}`} className="min-w-0">
                   <BreadcrumbLink
                     onClick={() => item.href && handleBreadcrumbClick(item.href)}
-                    className="cursor-pointer hover:underline"
+                    className="block min-w-0 cursor-pointer truncate hover:underline"
                   >
                     {item.label}
                   </BreadcrumbLink>
