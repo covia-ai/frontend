@@ -69,13 +69,15 @@ export function VenueSelector({ venueId }: { venueId?: string }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button aria-label="venue" variant="outline" className="hover:bg-primary-vlight hover:text-foreground">
+        <Button aria-label="venue" variant="outline" className="px-2 gap-1 sm:px-4 sm:gap-2 hover:bg-primary-vlight hover:text-foreground">
           {selectedVenue && <VenueHealthDot baseUrl={selectedVenue.baseUrl} venueId={selectedVenue.venueId} />}
           <Building2 size={14} />
           <span className="hidden md:block lg:block">
             {selectedVenueLabel}
           </span>
-          <ChevronDown size={14} />
+          {/* Chevron is a dropdown affordance — dropped on mobile (tap still opens
+              it) so the tight topbar keeps room for the breadcrumb. */}
+          <ChevronDown size={14} className="hidden sm:block" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56 " align="start">

@@ -19,7 +19,7 @@ export default function OperationsPage() {
         <div id="" className=" ">
 
             
-             <div className="flex flex-col items-center justify-center py-10 px-10 my-4">
+             <div className="flex flex-col items-center justify-center py-10 px-4 sm:px-10 my-4">
               
                 <VideoThumbnails/>
 

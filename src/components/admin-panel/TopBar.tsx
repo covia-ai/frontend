@@ -46,7 +46,7 @@ export function TopBar(props: TopBarProps) {
         <div className="flex items-center space-x-4 lg:space-x-0">
           <SheetMenu />
         </div>
-        <div className="flex flex-1 items-center justify-between space-x-4 w-full ml-4">
+        <div className="flex flex-1 items-center justify-between space-x-4 ml-4 min-w-0">
           <div className="flex flex-1 items-center gap-3 min-w-0">
             <SmartBreadcrumb onNavigate={(href) => router.push(href)} pathname={pathname} assetOrJobName= {props.assetOrJobName} venueName={props.venueName}/>
           </div>

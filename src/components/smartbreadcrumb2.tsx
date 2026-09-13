@@ -289,7 +289,10 @@ export function SmartBreadcrumb({
   });
 
   return (
-    <div ref={containerRef} className="relative min-w-0 flex-1">
+    <div ref={containerRef} className="relative min-w-0 flex-1 overflow-hidden">
+      {/* overflow-hidden clips the absolutely-positioned full-width measure copy
+          below so it can't inflate the page's horizontal scroll width; the
+          measurement reads that element's own scrollWidth, unaffected by the clip. */}
       {/* Hidden full-width render of the uncollapsed trail, purely to
           measure whether it would overflow — never shown, taken out of
           flow so it can't affect this container's own width. */}
