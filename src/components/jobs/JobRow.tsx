@@ -67,7 +67,21 @@ function JobRowInner({ job, live, adapter, maxMs, variant, onOpen, onChanged }: 
 
   if (variant === "table") {
     return (
-      <TableRow className={cn("cursor-pointer", rowTint)} onClick={() => onOpen(job)}>
+      <TableRow
+        className={cn("cursor-pointer", rowTint)}
+        role="button"
+        tabIndex={0}
+        aria-label={`Open job ${name}`}
+        onClick={() => onOpen(job)}
+        onKeyDown={(e) => {
+          // Only the row itself opens on Enter/Space — keystrokes inside the
+          // nested copy button or actions menu keep their own behaviour.
+          if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+            e.preventDefault();
+            onOpen(job);
+          }
+        }}
+      >
         <TableCell>
           <div className="flex min-w-0 items-center gap-3">
             <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", opClass)}>
