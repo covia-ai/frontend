@@ -35,15 +35,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { useExecutionLifecycle } from "@/hooks/use-execution-lifecycle";
-import { cn, copyDataToClipBoard, formatDateTime, getExecutionTime } from "@/lib/utils";
+import { cn, copyDataToClipBoard, formatDateTime } from "@/lib/utils";
 import { TONE_STYLES } from "@/lib/status";
 import {
   operationVisual,
   statusVisual,
   abbreviateJobId,
-  jobDurationMs,
-  durationFillClass,
 } from "@/lib/job-visuals";
+import { JobDuration } from "@/components/jobs/JobDuration";
 
 /** A small labelled fact tile for the at-a-glance strip. */
 function MetaTile({ icon: Icon, label, children, spin }: {
@@ -101,7 +100,6 @@ export function ExecutionViewer({
 
   const op = job ? operationVisual(job, operationSchema?.adapter) : null;
   const sv = job ? statusVisual(job.status) : null;
-  const ms = job ? jobDurationMs(job) : null;
   const failed = job?.status === RunStatus.FAILED;
   const finished = job?.status ? isJobFinished(job.status) : false;
 
@@ -163,16 +161,7 @@ export function ExecutionViewer({
               <span className={cn("capitalize", sv.textClass)}>{(job.status ?? "unknown").toLowerCase()}</span>
             </MetaTile>
             <MetaTile icon={Timer} label="Duration">
-              {ms != null ? (
-                <span className="flex items-center gap-2">
-                  <span className={cn("inline-block size-2 rounded-full", durationFillClass(ms))} />
-                  {getExecutionTime(job.created ?? "", job.updated ?? "")}
-                </span>
-              ) : finished ? "—" : (
-                <span className="italic text-muted-foreground">
-                  {job.created ? `${getExecutionTime(job.created, new Date().toISOString())} so far` : "running"}
-                </span>
-              )}
+              <JobDuration job={job} maxMs={0} isTerminal={finished} compact />
             </MetaTile>
             <MetaTile icon={Clock} label="Started">{job.created ? formatDateTime(job.created) : "—"}</MetaTile>
             <MetaTile icon={CalendarClock} label="Updated">{job.updated ? formatDateTime(job.updated) : "—"}</MetaTile>
