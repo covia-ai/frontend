@@ -152,6 +152,23 @@ describe('AssetCard with asset', () => {
       expect(screen.queryByTestId('asset-keywords')).not.toBeInTheDocument();
     });
 
+    // W3: cards carry identity — the kind label (this asset has `content`, so
+    // it's a Content Artifact) and a provenance footer (creator + date).
+    it('shows the asset kind label and a provenance footer', () => {
+      render(<AssetCard asset={mockAsset} type="assets" compact={true} venue={mockVenue} />);
+      expect(screen.getByText('Content Artifact')).toBeInTheDocument();
+      expect(screen.getByTestId('asset-provenance')).toBeInTheDocument();
+    });
+
+    it('omits the provenance footer when the asset has no creator or date', () => {
+      const bare = {
+        ...mockAsset,
+        metadata: { name: 'Bare', description: 'No provenance.' },
+      } as Asset;
+      render(<AssetCard asset={bare} type="assets" compact={true} venue={mockVenue} />);
+      expect(screen.queryByTestId('asset-provenance')).not.toBeInTheDocument();
+    });
+
 });
 
 describe('AssetCard with operation', () => {

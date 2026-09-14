@@ -1,15 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { DataAsset } from "@covia/covia-sdk";
-import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
+import { useCallback } from "react";
+import { DataAsset, type Venue } from "@covia/covia-sdk";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { AssetCard } from "./AssetCard";
-import { usePinnedAssets } from "@/hooks/use-pinned-assets";
 import { PaginationHeader } from "./PaginationHeader";
-import { useGridPageSize } from "@/hooks/use-grid-page-size";
-import { useLatestQuery } from "@/hooks/use-latest-query";
-import { useClientPagination } from "@/hooks/use-pagination";
+import { useAssetCatalog } from "@/hooks/use-asset-catalog";
 import { CARD_GRID_CLASS } from "@/lib/grid";
 import { FileStack, Search } from "lucide-react";
 import { ListToolbar } from "./ListToolbar";
@@ -18,78 +14,44 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { VenueResolutionState } from "@/components/VenueResolutionState";
 
 export function MyAssetList() {
-  const {
-    data: assets,
-    loading: isLoading,
-    error: loadError,
-    run: runMyAssetsQuery,
-    reset: resetMyAssetsQuery,
-    invalidate: invalidateMyAssetsQuery,
-  } = useLatestQuery<DataAsset[]>([], { initialLoading: true });
-
-  const { ref: gridRef, pageSize: itemsPerPage } = useGridPageSize();
-  const [searchInput, setSearchInput] = useState("");
-
-  const resolvedVenue = useResolvedVenueContext();
-  const { descriptor: venueObj, venue } = resolvedVenue;
-  const venueStatus = resolvedVenue.status ?? (venue ? "ready" : "absent");
-
   // The a/ namespace is small (a user's own artifacts, not a venue catalog),
-  // so one page-free fetch (server-capped at 1000) plus client-side
-  // search/pagination keeps this consistent with AssetList's approach
-  // without needing a second server-pagination code path.
-  const fetchMyAssets = useCallback(() => {
-    if (!venue || venueStatus !== "ready") {
-      resetMyAssetsQuery();
-      return Promise.resolve();
-    }
-    return runMyAssetsQuery(async () => {
-      const result = await venue.assets.listMine();
-      return result.items.map(
-        (item) =>
-          new DataAsset(item.id, venue, {
-            name: item.name,
-            description: item.description,
-            type: item.type,
-          }),
-      );
-    }, { clear: true });
-  }, [venue, venueStatus, resetMyAssetsQuery, runMyAssetsQuery]);
-
-  useEffect(() => {
-    void fetchMyAssets();
-    return invalidateMyAssetsQuery;
-  }, [fetchMyAssets, invalidateMyAssetsQuery]);
-
-  const pinnedRecords = usePinnedAssets((s) => s.pinned);
-  const pinnedIds = useMemo(() => {
-    if (!venueObj?.venueId) return new Set<string>();
-    const venueId = venueObj.venueId;
-    return new Set(pinnedRecords.filter((p) => p.venueId === venueId).map((p) => p.assetId));
-  }, [pinnedRecords, venueObj?.venueId]);
-
-  const filteredAssets = useMemo(() => {
-    const term = searchInput.trim().toLowerCase();
-    const filtered = term
-      ? assets.filter(
-          (a) => (a.metadata?.name ?? "").toLowerCase().includes(term) || (a.id ?? "").toLowerCase().includes(term),
-        )
-      : assets;
-    if (pinnedIds.size === 0) return filtered;
-    // Stable sort: pinned assets surface first, unpinned keep their relative order.
-    return [...filtered].sort((a, b) => Number(pinnedIds.has(b.id)) - Number(pinnedIds.has(a.id)));
-  }, [assets, searchInput, pinnedIds]);
+  // so one page-free fetch (server-capped at 1000) plus the shared client-side
+  // search/pagination in useAssetCatalog keeps this consistent with AssetList
+  // without a second server-pagination code path. listMine() returns
+  // AssetSummary (id/name/description/type) — no keywords, so My Artifacts cards
+  // carry none by design (hydrating each would be an N+1 against the one-GET rule).
+  const fetchMine = useCallback(
+    (venue: Venue) =>
+      venue.assets.listMine().then((result) =>
+        result.items.map(
+          (item) =>
+            new DataAsset(item.id, venue, {
+              name: item.name,
+              description: item.description,
+              type: item.type,
+            }),
+        ),
+      ),
+    [],
+  );
 
   const {
+    assets,
+    isLoading,
+    loadError,
+    resolvedVenue,
+    venue,
+    venueObj,
+    venueStatus,
+    searchInput,
+    setSearchInput,
+    filteredAssets,
+    pageItems,
     currentPage,
     setCurrentPage,
     totalPages,
-    pageItems,
-  } = useClientPagination({
-    items: filteredAssets,
-    pageSize: itemsPerPage,
-    resetKey: searchInput,
-  });
+    gridRef,
+  } = useAssetCatalog({ fetchAssets: fetchMine });
 
   if (venueStatus !== "ready") {
     return <VenueResolutionState status={venueStatus} error={resolvedVenue.error} icon={FileStack} subject="Your artifacts" venueId={venueObj?.venueId} />;

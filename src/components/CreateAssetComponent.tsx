@@ -190,19 +190,6 @@ export const CreateAssetComponent = ({
       
     }
   
-     useEffect(() => {
-      const handleKeyDown = (e: KeyboardEvent) => {
-       
-        // Ctrl/Cmd + K: Search
-      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
-        e.preventDefault();
-        setOpen(true)
-      }
-      }
-  
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [setOpen]);
     useEffect(() => {
           if(open == false)
               setStep(1)

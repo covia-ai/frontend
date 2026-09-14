@@ -1,4 +1,7 @@
+import { Waypoints } from "lucide-react";
 import { isAgentTemplateMetadata } from "@/lib/agent-templates";
+import { conceptLook } from "@/lib/concept-icons";
+import type { TypeLook } from "@/lib/file-type-look";
 
 export type AssetKind = "operation" | "agent-template" | "skill" | "artifact" | "reference";
 
@@ -9,6 +12,21 @@ export const ASSET_KIND_LABELS: Record<AssetKind, string> = {
   artifact: "Content Artifact",
   reference: "Reference",
 };
+
+// One TypeTile look per asset kind, reusing the canonical concept glyphs so an
+// asset's kind wears the SAME mark on its catalogue card and in its detail
+// header (W3). A reference has no concept of its own (it's a bare pointer), so
+// it gets a neutral link glyph. Label always comes from ASSET_KIND_LABELS.
+const REFERENCE_TILE = "bg-muted text-muted-foreground";
+export function assetKindLook(kind: AssetKind): TypeLook {
+  const base: TypeLook =
+    kind === "operation" ? conceptLook("operation")
+    : kind === "agent-template" ? conceptLook("agent")
+    : kind === "skill" ? conceptLook("skill")
+    : kind === "artifact" ? conceptLook("asset")
+    : { Icon: Waypoints, tile: REFERENCE_TILE, label: ASSET_KIND_LABELS.reference };
+  return { ...base, label: ASSET_KIND_LABELS[kind] };
+}
 
 // Root CLAUDE.md's asset taxonomy (operation / artifact / reference), plus two
 // kinds this app renders distinctly: agent templates (v/agents/templates/*,
