@@ -4,9 +4,14 @@ import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { AssetInfoSheet } from "./AssetInfoSheet";
+import { DidDisplay } from "./DidDisplay";
+import { TypeTile } from "./TypeTile";
 import { Pin } from "lucide-react";
 import { usePinnedAssets } from "@/hooks/use-pinned-assets";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { assetKindLook, getAssetKind } from "@/lib/asset-kind";
+import { formatDateTime } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 interface AssetCardProps {
   asset: Asset;
@@ -66,6 +71,18 @@ export function AssetCard({ asset,type,compact,venue: venueProp,scoped = true }:
     const visibleKeywords = keywords.slice(0, maxKeywords);
     const hiddenKeywordCount = keywords.length - visibleKeywords.length;
 
+    // Kind identity: the canonical glyph+tile for this asset's kind (W3), the
+    // same mark the detail header wears.
+    const kindLook = assetKindLook(getAssetKind(asset.metadata));
+    // The asset's own mark + address: a content hash renders a hash-derived
+    // identicon via DidDisplay; a catalogue-path id (operations) elides as text.
+    const addressValue = assetHash(asset.id) ?? asset.id;
+
+    // Provenance for scanning a catalogue: who made it and when. Both optional —
+    // the footer is omitted when the asset carries neither.
+    const creator = typeof asset.metadata?.creator === "string" ? asset.metadata.creator : null;
+    const dateValue = (asset.metadata?.dateModified ?? asset.metadata?.dateCreated) as string | undefined;
+    const dateLabel = dateValue ? formatDateTime(dateValue) : null;
 
     const handleCardClick = (assetId:string) => {
         if (!scoped) {
@@ -91,13 +108,23 @@ export function AssetCard({ asset,type,compact,venue: venueProp,scoped = true }:
         router.push(scopedHref(venue.venueId, type, assetId));
     };
     return (
-         <Card key={asset.id} className={`shadow-md border-2 h-full bg-card flex flex-col rounded-md hover:border-accent hover:border-2
-          ${ pinned ? 'border-primary' : 'border-muted' }
-          ${ compact ? 'h-32 p-1' : 'h-48 p-2' }`}>
-                {/* Fixed-size header */}
-                <div className={` ${ compact ? 'h-10' : 'h-14' } p-2 flex flex-row items-center gap-1 border-b bg-card-banner`}>
-                    <div data-testid = "asset-header" className="truncate flex-1 mr-2 text-md text-foreground"
-                    onClick={() => handleCardClick(asset.id)}>{asset.metadata.name || 'Unnamed Asset'}
+         <Card
+           key={asset.id}
+           className={cn(
+             "group flex h-full flex-col gap-2 rounded-xl border bg-card p-3 transition-colors hover:border-accent",
+             pinned ? "border-primary" : "border-border",
+           )}
+         >
+                {/* Identity row: kind tile + name/kind, with pin / info at the end */}
+                <div className="flex items-start gap-2.5">
+                    <TypeTile Icon={kindLook.Icon} tile={kindLook.tile} className="size-9" iconSize={18} title={kindLook.label} />
+                    <div
+                      data-testid="asset-header"
+                      className="min-w-0 flex-1 cursor-pointer"
+                      onClick={() => handleCardClick(asset.id)}
+                    >
+                        <div className="truncate text-sm font-semibold text-foreground">{asset.metadata.name || 'Unnamed Asset'}</div>
+                        <div className="truncate text-xs text-muted-foreground">{kindLook.label}</div>
                     </div>
                     {type === "assets" && venue && (
                       <Tooltip>
@@ -121,35 +148,56 @@ export function AssetCard({ asset,type,compact,venue: venueProp,scoped = true }:
                     }
                 </div>
 
-                {/* Flexible middle section */}
-                <div className="flex-1 p-2 flex flex-col justify-between text-sm" onClick={() => handleCardClick(asset.id)}>
-                    <div data-testid="asset-description" className={` ${ compact ? 'line-clamp-2' : 'line-clamp-3' } text-xs text-card-foreground `}>{asset.metadata.description || 'No description available'}</div>
-                    {(type === "operations" && adapter) || keywords.length > 0 ? (
-                      <div data-testid="asset-tags" className="flex flex-wrap items-center gap-1 mt-1">
-                        {type === "operations" && adapter && (
-                          <Badge variant="outline" className="w-fit font-mono text-[10px] px-1.5 py-0 text-muted-foreground">
-                            {adapter}
-                          </Badge>
-                        )}
-                        {keywords.length > 0 && (
-                          <div data-testid="asset-keywords" className="flex flex-wrap items-center gap-1">
-                            {visibleKeywords.map((keyword) => (
-                              <Badge key={keyword} variant="secondary" className="w-fit text-[10px] px-1.5 py-0 text-secondary-foreground">
-                                {keyword}
-                              </Badge>
-                            ))}
-                            {hiddenKeywordCount > 0 && (
-                              <Badge variant="outline" className="w-fit text-[10px] px-1.5 py-0 text-muted-foreground">
-                                +{hiddenKeywordCount}
-                              </Badge>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ) : null}
+                {/* The asset's own mark + address (content hash → identicon) */}
+                <div data-testid="asset-address" className="min-w-0 text-xs text-muted-foreground">
+                    <DidDisplay value={addressValue} chars={8} iconSize={14} />
                 </div>
 
+                {/* Description */}
+                <div
+                  data-testid="asset-description"
+                  className={cn(compact ? 'line-clamp-2' : 'line-clamp-3', "flex-1 cursor-pointer text-xs text-card-foreground")}
+                  onClick={() => handleCardClick(asset.id)}
+                >
+                    {asset.metadata.description || 'No description available'}
+                </div>
 
+                {/* Adapter + keywords */}
+                {(type === "operations" && adapter) || keywords.length > 0 ? (
+                  <div data-testid="asset-tags" className="flex flex-wrap items-center gap-1">
+                    {type === "operations" && adapter && (
+                      <Badge variant="outline" className="w-fit font-mono text-[10px] px-1.5 py-0 text-muted-foreground">
+                        {adapter}
+                      </Badge>
+                    )}
+                    {keywords.length > 0 && (
+                      <div data-testid="asset-keywords" className="flex flex-wrap items-center gap-1">
+                        {visibleKeywords.map((keyword) => (
+                          <Badge key={keyword} variant="secondary" className="w-fit text-[10px] px-1.5 py-0 text-secondary-foreground">
+                            {keyword}
+                          </Badge>
+                        ))}
+                        {hiddenKeywordCount > 0 && (
+                          <Badge variant="outline" className="w-fit text-[10px] px-1.5 py-0 text-muted-foreground">
+                            +{hiddenKeywordCount}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+
+                {/* Provenance: creator mark + date, for scanning a catalogue */}
+                {(creator || dateLabel) && (
+                  <div data-testid="asset-provenance" className="flex items-center gap-2 border-t border-border pt-2 text-[11px] text-muted-foreground">
+                    {creator ? (
+                      <span className="min-w-0 flex-1"><DidDisplay value={creator} chars={6} iconSize={13} /></span>
+                    ) : <span className="flex-1" />}
+                    {dateLabel && (
+                      <time className="shrink-0 whitespace-nowrap" title={dateLabel}>{dateLabel}</time>
+                    )}
+                  </div>
+                )}
         </Card>
     )
 }
