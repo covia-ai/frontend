@@ -8,7 +8,7 @@ import { useVenues } from "@/hooks/use-venues";
 import { useVenueHealth } from "@/hooks/use-venue-health";
 import { useClientPagination } from "@/hooks/use-pagination";
 
-import { LayoutGrid, MapPinned, Network, Search } from "lucide-react";
+import { Building2, LayoutGrid, Network, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { TopBar } from "@/components/admin-panel/TopBar";
@@ -72,7 +72,7 @@ export default function VenuesPage() {
         {venues.length === 0 ? (
           <div className="mt-16 flex max-w-md flex-col items-center gap-3 rounded-xl border border-dashed p-10 text-center">
             <span className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <MapPinned size={22} />
+              <Building2 size={22} />
             </span>
             <h2 className="text-lg font-semibold">No venues connected</h2>
             <p className="text-sm text-muted-foreground">

@@ -1,5 +1,5 @@
 import { CONCEPT_ICONS, conceptLook, fieldLook } from "@/lib/concept-icons";
-import { Bot, CalendarClock, CalendarPlus, MapPinned } from "lucide-react";
+import { Bot, Building2, CalendarClock, CalendarPlus } from "lucide-react";
 
 describe("CONCEPT_ICONS", () => {
   it("gives every concept an icon, a tile, and a label", () => {
@@ -12,8 +12,8 @@ describe("CONCEPT_ICONS", () => {
     }
   });
 
-  it("uses a pinned map for a venue (a located node, not the whole globe)", () => {
-    expect(CONCEPT_ICONS.venue.Icon).toBe(MapPinned);
+  it("uses a building for a venue (an organisation's node, not the whole globe)", () => {
+    expect(CONCEPT_ICONS.venue.Icon).toBe(Building2);
     expect(CONCEPT_ICONS.venue.tile).toContain("secondary");
   });
 

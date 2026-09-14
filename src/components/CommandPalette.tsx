@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   BookOpenCheck,
+  Building2,
   Database,
   Inbox,
-  MapPinned,
   MessageSquareText,
   PlayCircle,
   ScrollText,
@@ -181,7 +181,7 @@ export function CommandPalette() {
               value={`switch venue ${action.label}`}
               onSelect={() => handleSwitchVenue(action.venueId)}
             >
-              <MapPinned className="size-4" />
+              <Building2 className="size-4" />
               <span>Switch to {action.label}</span>
             </CommandItem>
           ))}

@@ -5,13 +5,13 @@ import { TopBar } from "@/components/admin-panel/TopBar";
 import { ContextTiers } from "@/components/ContextTiers";
 import { MemoryPanel } from "@/components/MemoryPanel";
 import { PageHeading } from "@/components/PageHeading";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Brain } from "lucide-react";
 
 // #228: explains Covia's context tiers (always visible, answers "what does
-// my agent know and where does it come from" without a click — AC1) and
-// hosts the Memory panel (#163) as the first, default-open tab (AC3). The
-// rest of #228 — scope badges beyond this page, more tabs per tier — can
-// grow here later; this covers the filed acceptance criteria.
+// my agent know and where does it come from" without a click — AC1) and hosts
+// the Memory panel (#163), which renders directly by default (AC3). The single
+// "Memory" tab shell was dropped — a tab bar that can't switch reads as broken;
+// when a second tier surface exists, reintroduce Tabs here.
 export default function ContextPage() {
   return (
     <ContentLayout>
@@ -25,15 +25,12 @@ export default function ContextPage() {
 
         <ContextTiers />
 
-        <Tabs defaultValue="memory" className="mt-8">
-          <TabsList className="mb-4">
-            <TabsTrigger value="memory" data-testid="context-tab-memory">Memory</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="memory">
-            <MemoryPanel />
-          </TabsContent>
-        </Tabs>
+        <section className="mt-8" data-testid="context-memory-section">
+          <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-foreground">
+            <Brain size={18} className="text-primary" /> Memory
+          </h2>
+          <MemoryPanel />
+        </section>
       </div>
     </ContentLayout>
   );
