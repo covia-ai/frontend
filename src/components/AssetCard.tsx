@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { Asset, Venue, assetHash } from "@covia/covia-sdk";
+import { Asset, Venue, assetHash, parseDidUrl } from "@covia/covia-sdk";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
@@ -18,6 +18,32 @@ interface AssetCardProps {
   // route instead of /venues/{venueId}/{type}/{id}. Defaults true so every
   // other caller keeps today's venue-scoped links.
   scoped?: boolean;
+}
+
+// The venue-scoped detail routes take the address *after* the venue DID, not
+// the whole DID URL: listAssets() ids arrive fully qualified
+// ("did:key:z6…/a/<hash>", see CoviaAPI.getAssets), and pushing one raw split
+// into extra path segments that the single-segment assets/[id] route could
+// never match — a 404 on every card click (frontend#382).
+//
+// assets/[id] is one segment, so an asset resolves to its bare hash (the same
+// link AssetHeader generates); anything not hash-addressed is encoded whole to
+// stay one segment. operations/[...id] is a catch-all taking a
+// namespace-explicit address as separate segments ("v/ops/…", "a/<hash>"),
+// each encoded individually — the shape AdaptersList and PolicyLinks build.
+function scopedHref(venueId: string, type: string, assetId: string): string {
+    const base = "/venues/" + encodeURIComponent(venueId) + "/" + type;
+    const { namespace, path } = parseDidUrl(assetId);
+    // Strip only the DID; a namespace-relative id ("v/ops/…") is already the
+    // address. A bare DID has no namespace and nothing sensible to link to.
+    const address = assetId.startsWith("did:")
+        ? [namespace, path].filter(Boolean).join("/")
+        : assetId;
+    if (!address) return base;
+    if (type !== "assets") {
+        return base + "/" + address.split("/").map(encodeURIComponent).join("/");
+    }
+    return base + "/" + (assetHash(assetId) ?? encodeURIComponent(address));
 }
 
 export function AssetCard({ asset,type,compact,venue: venueProp,scoped = true }: AssetCardProps) {
@@ -62,8 +88,7 @@ export function AssetCard({ asset,type,compact,venue: venueProp,scoped = true }:
           }
         }
         if (!venue) return;
-        const encodedUrl = "/venues/"+encodeURIComponent(venue.venueId)+"/"+type+"/"+assetId;
-        router.push(encodedUrl);
+        router.push(scopedHref(venue.venueId, type, assetId));
     };
     return (
          <Card key={asset.id} className={`shadow-md border-2 h-full bg-card flex flex-col rounded-md hover:border-accent hover:border-2

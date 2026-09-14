@@ -8,8 +8,9 @@ import { usePinnedAssets } from '@/hooks/use-pinned-assets';
 import { Asset, DataAsset, Operation, Venue } from '@covia/covia-sdk';
 
 // Mock dependencies
+const mockPush = jest.fn();
 jest.mock('next/navigation', () => ({
-  useRouter: () => ({ push: jest.fn() }),
+  useRouter: () => ({ push: mockPush }),
 }));
 jest.mock('@/hooks/use-authenticated-venue', () => ({
   useAuthenticatedVenue: () => null,
@@ -239,5 +240,61 @@ describe('AssetCard pin toggle', () => {
 
     await user.click(screen.getByTestId('asset-pin-toggle'));
     expect(usePinnedAssets.getState().isPinned(mockVenue.venueId, mockAsset.id)).toBe(false);
+  });
+});
+
+// listAssets() returns fully DID-qualified ids (CoviaAPI.getAssets), which the
+// single-segment assets/[id] route can't match if pushed raw — frontend#382.
+describe('AssetCard venue-scoped navigation', () => {
+  const hash = '0af1e1b2c20286b97ff19fdc6917e03aa1e9ccf2432c120b011a8e40443affa9';
+  const venueSegment = encodeURIComponent(mockVenue.venueId);
+
+  beforeEach(() => mockPush.mockClear());
+
+  it('links a DID-qualified asset to its bare hash, not the raw DID URL', async () => {
+    const user = userEvent.setup();
+    const asset = new DataAsset(`${mockVenue.venueId}/a/${hash}`, mockVenue, mockMetadata);
+    render(<AssetCard asset={asset} type="assets" compact={false} venue={mockVenue} />);
+
+    await user.click(screen.getByTestId('asset-header'));
+    expect(mockPush).toHaveBeenCalledWith(`/venues/${venueSegment}/assets/${hash}`);
+  });
+
+  it('links a bare-hash asset to the same single-segment route', async () => {
+    const user = userEvent.setup();
+    const asset = new DataAsset(hash, mockVenue, mockMetadata);
+    render(<AssetCard asset={asset} type="assets" compact={false} venue={mockVenue} />);
+
+    await user.click(screen.getByTestId('asset-header'));
+    expect(mockPush).toHaveBeenCalledWith(`/venues/${venueSegment}/assets/${hash}`);
+  });
+
+  it('keeps a non-hash lattice address in one segment by encoding it', async () => {
+    const user = userEvent.setup();
+    const asset = new DataAsset(`${mockVenue.venueId}/w/my-assets/foo`, mockVenue, mockMetadata);
+    render(<AssetCard asset={asset} type="assets" compact={false} venue={mockVenue} />);
+
+    await user.click(screen.getByTestId('asset-header'));
+    expect(mockPush).toHaveBeenCalledWith(
+      `/venues/${venueSegment}/assets/${encodeURIComponent('w/my-assets/foo')}`,
+    );
+  });
+
+  it('keeps an operation catalog path as separate segments for the catch-all route', async () => {
+    const user = userEvent.setup();
+    const op = new Operation('v/ops/agent/suspend', mockVenue, mockOpData);
+    render(<AssetCard asset={op} type="operations" compact={false} venue={mockVenue} />);
+
+    await user.click(screen.getByTestId('asset-header'));
+    expect(mockPush).toHaveBeenCalledWith(`/venues/${venueSegment}/operations/v/ops/agent/suspend`);
+  });
+
+  it('strips the DID from a qualified operation id, keeping the namespace segment', async () => {
+    const user = userEvent.setup();
+    const op = new Operation(`${mockVenue.venueId}/v/ops/agent/suspend`, mockVenue, mockOpData);
+    render(<AssetCard asset={op} type="operations" compact={false} venue={mockVenue} />);
+
+    await user.click(screen.getByTestId('asset-header'));
+    expect(mockPush).toHaveBeenCalledWith(`/venues/${venueSegment}/operations/v/ops/agent/suspend`);
   });
 });
