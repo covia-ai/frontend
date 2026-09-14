@@ -319,7 +319,7 @@ export function OperationInputForm({
   }
 
   return (
-    <Card className="bg-background border-muted w-full my-2 rounded-md">
+    <Card className="bg-background border-muted w-full my-2">
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-[min-content_1fr_1fr] md:gap-4 py-2">
           {Object.entries(properties).map(([key, property]) => (
