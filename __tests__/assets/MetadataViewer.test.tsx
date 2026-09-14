@@ -279,12 +279,10 @@ describe('MetadataViewer operation fields', () => {
     },
   };
 
-  // Operation assets start with the accordion collapsed (existing behavior —
-  // OperationViewer shows the run form below it by default), and Radix
-  // unmounts collapsed content, so these open it first.
+  // W3 3B: content is lifted out of the old "Asset Metadata" accordion — the
+  // per-kind sections render directly, so these assert without expanding.
   test('shows the adapter, input schema, output schema and step count', () => {
     render(<MetadataViewer asset={asset(OPERATION)} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Asset Metadata' }));
     expect(screen.getByTestId('operation-fields')).toHaveTextContent('http:image');
     expect(screen.getByTestId('operation-input')).toHaveTextContent('Width');
     expect(screen.getByTestId('operation-input')).toHaveTextContent('Target width in pixels');
@@ -294,7 +292,6 @@ describe('MetadataViewer operation fields', () => {
 
   test('marks required input fields', () => {
     render(<MetadataViewer asset={asset(OPERATION)} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Asset Metadata' }));
     const inputSection = screen.getByTestId('operation-input');
     expect(inputSection).toHaveTextContent('Width *');
     expect(inputSection).not.toHaveTextContent('Height *');
@@ -307,7 +304,6 @@ describe('MetadataViewer operation fields', () => {
 
   test('de-emphasizes generic fields with a divider once kind-specific fields are shown', () => {
     render(<MetadataViewer asset={asset({ ...OPERATION, keywords: ['image', 'resize'] })} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Asset Metadata' }));
     const keywordsLabel = screen.getByTestId('keywords_label');
     // The muted wrapper is the parent of the grid renderMetadataFields returns.
     expect(keywordsLabel.closest('.opacity-70')).not.toBeNull();
