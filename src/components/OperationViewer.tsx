@@ -20,6 +20,7 @@ import {
 import { gtmEvent } from "@/lib/utils";
 import { useJobExecution } from "@/hooks/use-job-execution";
 import { OperationRunResult } from "@/components/execution/OperationRunResult";
+import { TypeTile } from "@/components/TypeTile";
 import { adapterLook, adapterOfMetadata, OperationSignature } from "@/components/operation-display";
 
 const DiagramViewer = dynamic(
@@ -30,7 +31,7 @@ const DiagramViewer = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-100 animate-pulse rounded-md bg-muted" />
+      <div className="w-full h-100 animate-pulse rounded-xl bg-muted" />
     ),
   },
 );
@@ -146,11 +147,9 @@ export function OperationViewer({
         {asset?.metadata?.operation && (
           <>
             {/* Signature hero — the operation's shape (in → out) at a glance. */}
-            <div className="mb-3 flex w-full flex-col gap-3 rounded-md border bg-card p-3 sm:flex-row sm:items-center">
+            <div className="mb-3 flex w-full flex-col gap-3 rounded-xl border bg-card p-3 sm:flex-row sm:items-center">
               <div className="flex items-center gap-3">
-                <span className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${adapterTile}`}>
-                  <AdapterIcon size={20} strokeWidth={1.9} />
-                </span>
+                <TypeTile Icon={AdapterIcon} tile={adapterTile} className="size-10" iconSize={20} />
                 {adapter && (
                   <span className="font-mono text-xs text-muted-foreground">{adapter} adapter</span>
                 )}
@@ -182,14 +181,14 @@ export function OperationViewer({
                     }
                   />
                 ) : (
-                  <div className="my-2 h-32 w-full animate-pulse rounded-md bg-muted" />
+                  <div className="my-2 h-32 w-full animate-pulse rounded-xl bg-muted" />
                 )}
                 {asset.metadata.operation.steps && (
                   <DiagramViewer metadata={asset.metadata} />
                 )}
                 {jobId && venue && (
                   <div
-                    className="mt-4 rounded-md border bg-card p-4"
+                    className="mt-4 rounded-xl border bg-card p-4"
                     data-testid="operation-inline-result"
                   >
                     <OperationRunResult
