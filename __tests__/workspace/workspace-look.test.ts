@@ -5,17 +5,17 @@ import {
   BookOpenCheck,
   Bot,
   Boxes,
+  Building2,
   CalendarClock,
   CalendarPlus,
   KeyRound,
-  MapPinned,
 } from "lucide-react";
 
 describe("namespaceLook", () => {
   it("maps each root namespace to its own icon", () => {
     expect(namespaceLook("g").Icon).toBe(Bot);
     expect(namespaceLook("s").Icon).toBe(KeyRound);
-    expect(namespaceLook("v").Icon).toBe(MapPinned);
+    expect(namespaceLook("v").Icon).toBe(Building2);
   });
 
   it("resolves nested paths by their root segment", () => {

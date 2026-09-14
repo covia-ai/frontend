@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "./ui/alert-dialog";
-import { BrainCircuit, Check, Loader2, Lock, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { Brain, Check, Loader2, Lock, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 
 const MEMORY_PATH = "w/memory";
 const MEMORY_OP = "v/ops/memory";
@@ -153,7 +153,7 @@ export function MemoryPanel() {
   if (!venue) {
     return (
       <Card className="flex h-[200px] w-full items-center justify-center text-muted-foreground">
-        <BrainCircuit size={32} className="mr-2" />
+        <Brain size={32} className="mr-2" />
         <p className="text-sm">Select a venue to view memory</p>
       </Card>
     );
@@ -223,7 +223,7 @@ export function MemoryPanel() {
 
         {!loading && entries.length === 0 && (
           <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
-            <BrainCircuit size={32} />
+            <Brain size={32} />
             <p className="text-sm mt-2">No memory yet</p>
             <p className="text-xs mt-1 max-w-sm text-center">
               Add a fact above, or let an agent write one via the memory tool
