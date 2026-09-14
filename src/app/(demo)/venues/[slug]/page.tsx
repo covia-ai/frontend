@@ -173,7 +173,7 @@ export default function VenuePage({ params }: VenuePageProps) {
 
         {/* Venue Information */}
         <Card className="p-6">
-          <h2 className="text-xl font-thin mb-4">Venue Information {venue.metadata.name}</h2>
+          <h2 className="text-xl font-thin mb-4">Venue Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="flex items-start space-x-3">
               <div className="bg-primary-vlight p-2 rounded-lg">
@@ -200,7 +200,7 @@ export default function VenuePage({ params }: VenuePageProps) {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-         <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
+         <Card className="h-40 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
             <CardHeader className="flex-1 ">
               <div className="flex items-center space-x-3">
               <div className="bg-primary-vlight  p-2 rounded-lg">
@@ -225,7 +225,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               </CardContent>
         </Card>
           
-        <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
+        <Card className="h-40 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
             <CardHeader className="flex-1 ">
               <div className="flex items-center space-x-3">
               <div className="bg-primary-vlight  p-2 rounded-lg">
@@ -250,7 +250,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               </CardContent>
         </Card>
 
-        <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
+        <Card className="h-40 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
             <CardHeader className="flex-1 ">
               <div className="flex items-center space-x-3">
               <div className="bg-primary-vlight  p-2 rounded-lg">
@@ -275,7 +275,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               </CardContent>
         </Card>
 
-        <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
+        <Card className="h-40 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
             <CardHeader className="flex-1 ">
               <div className="flex items-center space-x-3">
               <div className="bg-primary-vlight  p-2 rounded-lg">
@@ -300,7 +300,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               </CardContent>
         </Card>
 
-        <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
+        <Card className="h-40 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
             <CardHeader className="flex-1 ">
               <div className="flex items-center space-x-3">
               <div className="bg-primary-vlight  p-2 rounded-lg">
