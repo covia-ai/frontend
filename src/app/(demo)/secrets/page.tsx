@@ -17,10 +17,10 @@ export default function SecretsPage() {
 
         <SecretList />
 
-        <Collapsible className="border border-blue-500/30 bg-blue-500/5 rounded-lg mt-6">
+        <Collapsible className="group border border-border bg-muted/40 rounded-xl mt-6">
           <CollapsibleTrigger className="flex items-center gap-2 w-full p-4 text-sm font-semibold text-foreground cursor-pointer">
-            <ChevronRight size={16} className="text-blue-500 transition-transform duration-200 [[data-state=open]>&]:rotate-90" />
-            <Info size={16} className="text-blue-500" />
+            <ChevronRight size={16} className="text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-90" />
+            <Info size={16} className="text-primary" />
             LLM API Key Naming Convention
           </CollapsibleTrigger>
           <CollapsibleContent>
