@@ -115,8 +115,8 @@ export default function VenuePage({ params }: VenuePageProps) {
       <div className="flex flex-col space-y-6">
         {/* Venue Header */}
         <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-start gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-4 min-w-0">
               <VenueMark venueId={venue.venueId} className="size-14" />
               <div className="min-w-0">
                 <h1 className="text-2xl font-semibold">{venueName || venueDisplayName(venue)}</h1>
@@ -136,12 +136,12 @@ export default function VenuePage({ params }: VenuePageProps) {
                 </p>
               </div>
             </div>
-            <div className="flex flex-col space-y-2">
+            <div className="flex w-full shrink-0 flex-col space-y-2 sm:w-auto">
               <Button
                 onClick={() => window.open(venue.baseUrl, '_blank')}
                 variant="outline"
                 aria-label="open venue" role="button"
-                className="flex items-center space-x-2"
+                className="flex items-center justify-center space-x-2"
               >
                 <ExternalLink size={16} />
                 <span>Open Venue</span>
@@ -151,7 +151,7 @@ export default function VenuePage({ params }: VenuePageProps) {
                 onClick={() => router.push(`/venues/${slug}/connect`)}
                 variant="outline"
                 aria-label="connect" role="button"
-                className="flex items-center space-x-2"
+                className="flex items-center justify-center space-x-2"
               >
                 <Plug size={16} />
                 <span>Connect</span>
@@ -161,7 +161,7 @@ export default function VenuePage({ params }: VenuePageProps) {
                 onClick={() => selectVenue(venue.venueId)}
                 variant={isCurrentVenue ? "default" : "secondary"}
                 aria-label="make default" role="button"
-                className="flex items-center space-x-2 bg-secondary text-secondary-foreground border border-muted"
+                className="flex items-center justify-center space-x-2 bg-secondary text-secondary-foreground border border-muted"
                 disabled={isCurrentVenue}
               >
                 <Settings size={16} />
@@ -173,7 +173,7 @@ export default function VenuePage({ params }: VenuePageProps) {
 
         {/* Venue Information */}
         <Card className="p-6">
-          <h2 className="text-xl font-thin mb-4">Venue Information {venue.metadata.name}</h2>
+          <h2 className="text-xl font-thin mb-4">Venue Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="flex items-start space-x-3">
               <div className="bg-primary-vlight p-2 rounded-lg">
@@ -200,7 +200,7 @@ export default function VenuePage({ params }: VenuePageProps) {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-         <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
+         <Card className="h-40 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
             <CardHeader className="flex-1 ">
               <div className="flex items-center space-x-3">
               <div className="bg-primary-vlight  p-2 rounded-lg">
@@ -225,7 +225,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               </CardContent>
         </Card>
           
-        <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
+        <Card className="h-40 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
             <CardHeader className="flex-1 ">
               <div className="flex items-center space-x-3">
               <div className="bg-primary-vlight  p-2 rounded-lg">
@@ -250,7 +250,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               </CardContent>
         </Card>
 
-        <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
+        <Card className="h-40 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
             <CardHeader className="flex-1 ">
               <div className="flex items-center space-x-3">
               <div className="bg-primary-vlight  p-2 rounded-lg">
@@ -275,7 +275,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               </CardContent>
         </Card>
 
-        <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
+        <Card className="h-40 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
             <CardHeader className="flex-1 ">
               <div className="flex items-center space-x-3">
               <div className="bg-primary-vlight  p-2 rounded-lg">
@@ -300,7 +300,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               </CardContent>
         </Card>
 
-        <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
+        <Card className="h-40 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
             <CardHeader className="flex-1 ">
               <div className="flex items-center space-x-3">
               <div className="bg-primary-vlight  p-2 rounded-lg">

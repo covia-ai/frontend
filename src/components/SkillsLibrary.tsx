@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { Venue } from "@covia/covia-sdk";
-import { Bot, BookOpenCheck, Loader2, Search } from "lucide-react";
+import { Bot, BookOpenCheck, ChevronLeft, Loader2, Search } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { MarkdownMessage } from "@/components/MarkdownMessage";
@@ -68,6 +69,11 @@ function AgentsUsingSkill({ venue, skill }: { venue: Venue; skill: SkillSummary 
 export function SkillsLibrary() {
   const library = useSkillsLibrary();
   const [query, setQuery] = useState("");
+  // The list + detail sit side-by-side from md up. Below md they don't both
+  // fit, so we drill down: the list picks a skill, which swaps to the detail
+  // (full width) with a back bar. The hook auto-selects the first skill, so this
+  // is its own view state rather than being derived from selectedPath.
+  const [mobileView, setMobileView] = useState<"list" | "detail">("list");
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return library.skills;
@@ -102,8 +108,8 @@ export function SkillsLibrary() {
           {library.error}
         </div>
       ) : (
-        <div className="grid min-h-[620px] grid-cols-[minmax(15rem,20rem)_minmax(0,1fr)] overflow-hidden rounded-xl border bg-background">
-          <aside className="flex min-w-0 flex-col border-r">
+        <div className="grid min-h-[620px] grid-cols-1 overflow-hidden rounded-xl border bg-background md:grid-cols-[minmax(15rem,20rem)_minmax(0,1fr)]">
+          <aside className={cn("min-w-0 flex-col border-r", mobileView === "list" ? "flex" : "hidden", "md:flex")}>
             <div className="border-b p-3">
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={15} />
@@ -124,7 +130,10 @@ export function SkillsLibrary() {
                   className={`w-full border-b px-4 py-3 text-left transition-colors ${
                     library.selectedPath === skill.path ? "bg-accent" : "hover:bg-muted/50"
                   }`}
-                  onClick={() => library.setSelectedPath(skill.path)}
+                  onClick={() => {
+                    library.setSelectedPath(skill.path);
+                    setMobileView("detail");
+                  }}
                 >
                   <div className="flex items-start gap-3">
                     {(() => {
@@ -164,7 +173,15 @@ export function SkillsLibrary() {
             )}
           </aside>
 
-          <main className="min-w-0 overflow-y-auto p-6 sm:p-8">
+          <main className={cn("min-w-0 flex-col overflow-y-auto p-6 sm:p-8", mobileView === "detail" ? "flex" : "hidden", "md:flex")}>
+            <button
+              type="button"
+              onClick={() => setMobileView("list")}
+              className="mb-4 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground md:hidden"
+            >
+              <ChevronLeft size={16} className="shrink-0" />
+              Back to skills
+            </button>
             {library.detailLoading ? (
               <div className="flex min-h-60 items-center justify-center" role="status">
                 <Loader2 className="animate-spin text-primary" size={24} />
