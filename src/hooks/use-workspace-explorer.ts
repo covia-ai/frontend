@@ -432,6 +432,7 @@ export function useWorkspaceExplorer(initialPath?: string) {
     setEditedData,
     navigateTo,
     selectPath,
+    clearSelection,
     refreshNamespace,
     save,
     create,
