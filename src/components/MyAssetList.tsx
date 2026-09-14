@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { DataAsset, type Venue } from "@covia/covia-sdk";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { AssetCard } from "./AssetCard";
-import { PaginationHeader } from "./PaginationHeader";
+import { Button } from "./ui/button";
 import { useAssetCatalog } from "@/hooks/use-asset-catalog";
 import { CARD_GRID_CLASS } from "@/lib/grid";
 import { FileStack, Search } from "lucide-react";
@@ -46,11 +46,10 @@ export function MyAssetList() {
     searchInput,
     setSearchInput,
     filteredAssets,
-    pageItems,
-    currentPage,
-    setCurrentPage,
-    totalPages,
-    gridRef,
+    visibleItems,
+    hasMore,
+    loadMore,
+    sentinelRef,
   } = useAssetCatalog({ fetchAssets: fetchMine });
 
   if (venueStatus !== "ready") {
@@ -71,8 +70,7 @@ export function MyAssetList() {
             />
           </div>
         }
-        summary={!isLoading && `Page ${currentPage} : Showing ${pageItems.length} of ${filteredAssets.length}`}
-        pagination={<PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={isLoading}></PaginationHeader>}
+        summary={!isLoading && `Showing ${visibleItems.length} of ${filteredAssets.length}`}
       />
 
       {loadError && <ErrorDisplay error={loadError} className="mb-4 w-full" />}
@@ -81,19 +79,32 @@ export function MyAssetList() {
         <div className="flex flex-row items-center justify-center w-full h-100">
           <Spinner variant="ellipsis" className="text-primary" size={64} />
         </div>
-      ) : pageItems.length === 0 ? (
+      ) : visibleItems.length === 0 ? (
         <p className="text-sm text-muted-foreground py-8 text-center">
           {assets.length === 0 ? "You haven't created or pinned any assets yet." : "No artifacts match this search."}
         </p>
       ) : (
-        <div ref={gridRef} className={CARD_GRID_CLASS}>
-          {pageItems.map((asset) => (
-            <AssetCard key={asset.id} asset={asset} type="assets" compact={true} venue={venue ?? undefined} scoped={true} />
-          ))}
-        </div>
-      )}
+        <>
+          <div className={CARD_GRID_CLASS}>
+            {visibleItems.map((asset) => (
+              <AssetCard key={asset.id} asset={asset} type="assets" compact={true} venue={venue ?? undefined} scoped={true} />
+            ))}
+          </div>
 
-      <PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={isLoading}></PaginationHeader>
+          {/* Infinite scroll: the sentinel reveals the next batch; the button is
+              a manual fallback (and covers no-IntersectionObserver envs). */}
+          <div className="flex w-full items-center justify-center py-6">
+            {hasMore ? (
+              <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={loadMore}>
+                Load more assets
+              </Button>
+            ) : (
+              <span className="text-xs text-muted-foreground">End of results</span>
+            )}
+            <div ref={sentinelRef} className="h-px w-px" aria-hidden />
+          </div>
+        </>
+      )}
     </div>
   );
 }

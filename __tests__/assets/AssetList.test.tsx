@@ -14,9 +14,6 @@ jest.mock('@/components/AssetCard', () => ({
 jest.mock('@/components/CreateAssetComponent', () => ({
   CreateAssetComponent: () => <div data-testid="create-asset" />,
 }));
-jest.mock('@/components/PaginationHeader', () => ({
-  PaginationHeader: () => <div data-testid="pagination-header" />,
-}));
 jest.mock('@/components/admin-panel/TopBar', () => ({
   TopBar: () => <div data-testid="top-bar" />,
 }));
@@ -72,6 +69,23 @@ describe('AssetList', () => {
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
     expect(mockVenue.listAssets).toHaveBeenCalledTimes(1);
     expect(mockVenue.listAssets).toHaveBeenCalledWith({ expand: 'metadata' });
+  });
+
+  it('reveals assets a batch at a time (infinite scroll); Load more grows the window', async () => {
+    const user = userEvent.setup();
+    // 30 > one batch (24); jsdom has no IntersectionObserver, so the manual
+    // "Load more" fallback drives the grow.
+    const items = Array.from({ length: 30 }, (_, i) => ({ id: `x${i}`, metadata: { name: `Asset ${i}` } }));
+    mockVenue.listAssets.mockResolvedValue({ items });
+
+    render(<AssetList />);
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(24));
+
+    await user.click(screen.getByRole('button', { name: /load more assets/i }));
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(30));
+
+    expect(screen.queryByRole('button', { name: /load more assets/i })).not.toBeInTheDocument();
+    expect(screen.getByText('End of results')).toBeInTheDocument();
   });
 
   it('shows the Create Asset button when signed in', async () => {

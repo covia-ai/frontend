@@ -9,7 +9,7 @@ import { DataAsset, type Venue }from "@covia/covia-sdk";
 import { getAssetKind } from "@/lib/asset-kind";
 import { Spinner } from '@/components/ui/shadcn-io/spinner';
 import { AssetCard } from "./AssetCard";
-import { PaginationHeader } from "./PaginationHeader";
+import { Button } from "./ui/button";
 import { useAssetCatalog } from "@/hooks/use-asset-catalog";
 import { CARD_GRID_CLASS } from "@/lib/grid";
 import { FileKey, Search }from "lucide-react";
@@ -65,11 +65,10 @@ export function AssetList({ venueId }: AssetListProps = {}) {
     searchInput,
     setSearchInput,
     filteredAssets,
-    pageItems,
-    currentPage,
-    setCurrentPage,
-    totalPages,
-    gridRef,
+    visibleItems,
+    hasMore,
+    loadMore,
+    sentinelRef,
   } = useAssetCatalog({
     venueId,
     fetchAssets: fetchCatalog,
@@ -135,8 +134,7 @@ export function AssetList({ venueId }: AssetListProps = {}) {
                 />
               </>
             }
-            summary={!isLoading && `Page ${currentPage} : Showing ${pageItems.length} of ${filteredAssets.length}`}
-            pagination={<PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={isLoading}></PaginationHeader>}
+            summary={!isLoading && `Showing ${visibleItems.length} of ${filteredAssets.length}`}
           />
 
           {loadError && <ErrorDisplay error={loadError} className="mb-4 w-full" />}
@@ -146,14 +144,27 @@ export function AssetList({ venueId }: AssetListProps = {}) {
               <Spinner variant="ellipsis" className="text-primary" size={64}/>
             </div>
           ) : (
-            <div ref={gridRef} className={CARD_GRID_CLASS}>
-              {pageItems.map((asset) =>
-                <AssetCard key={asset.id} asset={asset} type="assets" compact={true} venue={venue ?? undefined} scoped={!!venueId}/>
-              )}
-            </div>
-          )}
+            <>
+              <div className={CARD_GRID_CLASS}>
+                {visibleItems.map((asset) =>
+                  <AssetCard key={asset.id} asset={asset} type="assets" compact={true} venue={venue ?? undefined} scoped={!!venueId}/>
+                )}
+              </div>
 
-          <PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={isLoading}></PaginationHeader>
+              {/* Infinite scroll: the sentinel reveals the next batch; the button
+                  is a manual fallback (and covers no-IntersectionObserver envs). */}
+              <div className="flex w-full items-center justify-center py-6">
+                {hasMore ? (
+                  <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={loadMore}>
+                    Load more assets
+                  </Button>
+                ) : filteredAssets.length > 0 ? (
+                  <span className="text-xs text-muted-foreground">End of results</span>
+                ) : null}
+                <div ref={sentinelRef} className="h-px w-px" aria-hidden />
+              </div>
+            </>
+          )}
 
         </div>
       </ContentLayout>

@@ -1,12 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DataAsset, Venue } from "@covia/covia-sdk";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { usePinnedAssets } from "@/hooks/use-pinned-assets";
-import { useGridPageSize } from "@/hooks/use-grid-page-size";
 import { useLatestQuery } from "@/hooks/use-latest-query";
-import { useClientPagination } from "@/hooks/use-pagination";
+
+// How many cards to reveal per infinite-scroll step. The whole catalogue is
+// already in memory (one job-free read per venue), so growing the window is a
+// pure client-side slice — no refetch. Mirrors OperationsList / JobList so every
+// catalogue in the app scrolls the same way rather than paging.
+const BATCH_SIZE = 24;
 
 interface UseAssetCatalogArgs {
   /** Venue to resolve; omit to use the globally-selected venue (My Artifacts). */
@@ -21,10 +25,10 @@ interface UseAssetCatalogArgs {
 }
 
 // The shared state machine behind both artifact lists (AssetList / MyAssetList),
-// which were near-duplicates: one job-free fetch into `useLatestQuery`, grid-
-// derived page size, client-side search + optional tag filter, pinned-first
-// stable sort, and client pagination. The two list components now differ only
-// in their fetcher, chrome, and toolbar; everything else lives here (W3 R-3).
+// which were near-duplicates: one job-free fetch into `useLatestQuery`, client-
+// side search + optional tag filter, pinned-first stable sort, and infinite
+// scroll. The two list components now differ only in their fetcher, chrome, and
+// toolbar; everything else lives here (W3 R-3).
 export function useAssetCatalog({
   venueId,
   fetchAssets,
@@ -40,7 +44,6 @@ export function useAssetCatalog({
     invalidate,
   } = useLatestQuery<DataAsset[]>([], { initialLoading: true });
 
-  const { ref: gridRef, pageSize: itemsPerPage } = useGridPageSize();
   const [searchInput, setSearchInput] = useState(initialSearch);
 
   const resolvedVenue = useResolvedVenueContext(venueId);
@@ -68,7 +71,7 @@ export function useAssetCatalog({
   }, [pinnedRecords, venueObj?.venueId]);
 
   // A stable primitive key for the tag list (order-sensitive) so the memo and
-  // pagination reset only when the actual selection changes.
+  // the window reset only when the actual selection changes.
   const tagKey = JSON.stringify(selectedTags);
   const filteredAssets = useMemo(() => {
     const term = searchInput.trim().toLowerCase();
@@ -90,11 +93,49 @@ export function useAssetCatalog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assets, searchInput, tagKey, pinnedIds]);
 
-  const { currentPage, setCurrentPage, totalPages, pageItems } = useClientPagination({
-    items: filteredAssets,
-    pageSize: itemsPerPage,
-    resetKey: `${searchInput} ${tagKey}`,
-  });
+  // Infinite scroll: how many of the (filtered) cards are shown. Growing the
+  // window is a client-side slice; search/filter always apply to the full list.
+  const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  // Set the moment a grow is requested; cleared once the new slice renders, so a
+  // burst of intersection events can't stack multiple batches at once.
+  const growingRef = useRef(false);
+
+  // Reset to the first batch whenever the filtered set changes (search / tags),
+  // so a narrowed list starts from the top.
+  const resetKey = `${searchInput} ${tagKey}`;
+  useEffect(() => {
+    setVisibleCount(BATCH_SIZE);
+  }, [resetKey]);
+
+  const visibleItems = useMemo(() => filteredAssets.slice(0, visibleCount), [filteredAssets, visibleCount]);
+  const hasMore = visibleCount < filteredAssets.length;
+
+  const loadMore = useCallback(() => {
+    if (growingRef.current) return;
+    growingRef.current = true;
+    setVisibleCount((v) => v + BATCH_SIZE);
+  }, []);
+
+  useEffect(() => {
+    growingRef.current = false;
+  }, [visibleItems.length]);
+
+  // Grow when the sentinel scrolls into view. Guarded on hasMore and re-armed on
+  // every slice change so each batch triggers the next; the manual "Load more"
+  // button covers environments without IntersectionObserver (e.g. jsdom).
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMore();
+      },
+      { rootMargin: "400px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, loadMore, visibleItems.length]);
 
   return {
     assets,
@@ -107,10 +148,9 @@ export function useAssetCatalog({
     searchInput,
     setSearchInput,
     filteredAssets,
-    pageItems,
-    currentPage,
-    setCurrentPage,
-    totalPages,
-    gridRef,
+    visibleItems,
+    hasMore,
+    loadMore,
+    sentinelRef,
   };
 }

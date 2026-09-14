@@ -11,9 +11,6 @@ jest.mock('@/components/AssetCard', () => ({
     <div data-testid="asset-card">{asset.metadata?.name ?? asset.id}</div>
   ),
 }));
-jest.mock('@/components/PaginationHeader', () => ({
-  PaginationHeader: () => <div data-testid="pagination-header" />,
-}));
 
 const mockVenue: any = {
   venueId: 'venue-1',
