@@ -117,23 +117,23 @@ export const AssetHeader = ({ asset }: AssetHeaderProps) => {
         <div className="flex flex-row items-start justify-center w-full text-xs mt-2">
           <Tooltip>
             <TooltipTrigger asChild>
-              <div data-testid="idcopy_btn" className="p-1 flex flex-row items-center w-fit max-w-full border border-border text-muted-foreground rounded-md space-x-2">
+              <div data-testid="idcopy_btn" className="p-1 flex flex-row items-start w-fit max-w-full border border-border text-muted-foreground rounded-md space-x-2">
                 {didUrlInfo.href ? (
                   <>
-                    <Link2 size={10} className="shrink-0" />
+                    <Link2 size={10} className="mt-0.5 shrink-0" />
                     <Link
                       href={didUrlInfo.href}
-                      className="select-text text-[10px] hover:text-secondary hover:underline"
+                      className="min-w-0 break-all select-text text-[10px] hover:text-secondary hover:underline"
                     >
                       {didUrlInfo.text}
                     </Link>
                   </>
                 ) : (
-                  <div className="select-text text-[10px]">{didUrlInfo.text}</div>
+                  <div className="min-w-0 break-all select-text text-[10px]">{didUrlInfo.text}</div>
                 )}
                 <Copy
                   size={10}
-                  className="shrink-0 cursor-pointer"
+                  className="mt-0.5 shrink-0 cursor-pointer"
                   onClick={() =>
                     didUrlInfo.href
                       // A bare DID URL isn't something anyone else can open —

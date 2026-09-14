@@ -46,15 +46,18 @@ export function TopBar(props: TopBarProps) {
         <div className="flex items-center space-x-4 lg:space-x-0">
           <SheetMenu />
         </div>
-        <div className="flex flex-1 items-center justify-between space-x-4 w-full ml-4">
+        <div className="flex flex-1 items-center justify-between space-x-4 ml-4 min-w-0">
           <div className="flex flex-1 items-center gap-3 min-w-0">
             <SmartBreadcrumb onNavigate={(href) => router.push(href)} pathname={pathname} assetOrJobName= {props.assetOrJobName} venueName={props.venueName}/>
           </div>
-          <div className="flex items-center justify-end space-x-4">
+          <div className="flex shrink-0 items-center justify-end space-x-1 sm:space-x-4">
               {docsHref && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button asChild variant="ghost" size="icon" aria-label="Documentation">
+                    {/* Per-page docs shortcut: a convenience, not core nav —
+                        hidden on mobile so the tight topbar keeps room for the
+                        breadcrumb; it stays in the tooltip-less controls at sm+. */}
+                    <Button asChild variant="ghost" size="icon" aria-label="Documentation" className="hidden sm:inline-flex">
                       <a href={docsHref} target="_blank" rel="noopener noreferrer">
                         <BookOpen size={16} />
                       </a>

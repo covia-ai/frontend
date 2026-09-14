@@ -9,11 +9,11 @@ export const VideoThumbnails = () => {
     { id: 'qgfCdKwG4Rs', title: 'Covia.ai multi-agent coordination and agentic economics' },
   ];
     return (
-        <div className="flex flex-row items-center space-x-4">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap items-center justify-center gap-4">
           {videos.map((video, index) => (
             <div
               key={video.id}
-              className={` bg-card text-card-foreground  p-4 pb-8 rounded-md shadow-2xl cursor-pointer group transition-all duration-300 hover:scale-105 hover:shadow-3xl
+              className={` bg-card text-card-foreground  p-4 pb-8 rounded-md shadow-2xl cursor-pointer group transition-all duration-300 hover:scale-105 hover:shadow-3xl max-w-full
                 ${index === 1 ? 'w-80 md:w-80 h-68' : 'w-64 md:w-64 h-60 '}
               `}
               onClick={() => window.open(`https://www.youtube.com/watch?v=${video.id}`, "_blank", "noopener,noreferrer")}
