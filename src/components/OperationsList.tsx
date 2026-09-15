@@ -36,6 +36,10 @@ interface OperationsListProps {
   venueId?: string;
 }
 
+// Keeps the facet row a glanceable band rather than a wall of chips. Adapters
+// beyond this are reached through the Filters sheet, via the "+N more" chip.
+const ADAPTER_FACET_CAP = 12;
+
 export function OperationsList({ venueId }: OperationsListProps = {}) {
   const searchParams = useSearchParams()
   const {
@@ -49,6 +53,7 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
   const router = useRouter();
 
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [searchInput, setSearchInput] = useState(searchParams.get('search') ?? "");
   const pathname = usePathname();
 
@@ -143,8 +148,14 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
       const ad = (a.metadata?.operation?.adapter as string | undefined)?.split(":")[0];
       if (ad) counts.set(ad, (counts.get(ad) ?? 0) + 1);
     }
-    return [...counts.entries()].sort((x, y) => y[1] - x[1]).slice(0, 12);
+    return [...counts.entries()].sort((x, y) => y[1] - x[1]).slice(0, ADAPTER_FACET_CAP);
   }, [assetsMetadata]);
+
+  // The cap used to be silent: the row looked like the whole catalog, so the
+  // adapters it cut off were unreachable without knowing the sheet held them,
+  // and the sheet itself read as a redundant copy of the visible chips
+  // (frontend#398). Surfaced as a trailing "+N more" chip that opens the sheet.
+  const hiddenAdapterCount = Math.max(0, adapterOptions.length - adapterFacets.length);
 
   const adapterSet = useMemo(() => new Set(adapterOptions), [adapterOptions]);
   const anyAdapterActive = selectedTags.some((t) => adapterSet.has(t));
@@ -273,6 +284,9 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
               <FiltersSheet
                 title="Filter Operations"
                 description="Narrow down operations by tag."
+                triggerLabel="All filters"
+                open={filtersOpen}
+                onOpenChange={setFiltersOpen}
                 groups={tagOptions.length > 0 ? [{ label: "Tags", options: tagOptions, selected: selectedTags, onChange: setSelectedTags }] : []}
               />
             </>
@@ -301,7 +315,18 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
                 </button>
               );
             })}
-          </div>
+            {hiddenAdapterCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setFiltersOpen(true)}
+                data-testid="operation-facets-overflow"
+                aria-label={`Show all filters, including ${hiddenAdapterCount} more ${hiddenAdapterCount === 1 ? "adapter" : "adapters"}`}
+                className={cn(facetCls(false), "border-dashed")}
+              >
+                +{hiddenAdapterCount} more
+              </button>
+            )}
+</div>
         )}
 
         {loadError && <ErrorDisplay error={loadError} className="mb-4 w-full" />}

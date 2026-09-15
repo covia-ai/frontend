@@ -47,6 +47,15 @@ interface FiltersSheetProps {
   description?: string;
   search?: SearchFilter;
   groups: FilterGroup[];
+  /** Trigger label. Defaults to "Filters"; a page that also shows a facet row
+   * of its own should say "All filters", so the button reads as the superset
+   * of those chips rather than a parallel control (frontend#398). */
+  triggerLabel?: string;
+  /** Optional controlled open state, so something outside the sheet — an
+   * overflow chip at the end of a facet row — can open it. Omit both to keep
+   * the sheet self-managed. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 // Side-panel filter form (mirrors studio.lyzr.ai's "Filter Traces" sheet):
@@ -58,8 +67,16 @@ export function FiltersSheet({
   description = "Apply filters to narrow down your job results",
   search,
   groups,
+  triggerLabel = "Filters",
+  open: openProp,
+  onOpenChange,
 }: FiltersSheetProps) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = openProp ?? uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    if (openProp === undefined) setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  };
   const [draftSearch, setDraftSearch] = useState(search?.value ?? "");
   const [draftGroups, setDraftGroups] = useState<string[][]>(() => groups.map((g) => g.selected));
 
@@ -101,7 +118,7 @@ export function FiltersSheet({
       <SheetTrigger asChild>
         <Button variant="outline" className="shrink-0 gap-2" data-testid="filters-trigger">
           <Filter size={14} />
-          Filters
+          {triggerLabel}
           {activeCount > 0 && (
             <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{activeCount}</Badge>
           )}
