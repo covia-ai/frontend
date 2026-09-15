@@ -10,7 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
-import { Copy, Play } from "lucide-react";
+import { ArrowRight, CheckCircle2, Copy, Play } from "lucide-react";
+import Link from "next/link";
 import { McpGlyph } from "@/components/adapter-glyphs";
 import { notifyError, notifyWarning } from "@/lib/notify";
 import { useJobExecution } from "@/hooks/use-job-execution";
@@ -25,13 +26,48 @@ interface McpToolsListProps {
   venueId: string;
 }
 
+// Seed a JSON-Schema property with a type-appropriate empty value, so the test
+// panel starts with args that are valid for the tool's schema instead of every
+// field being an empty string (W4 4D).
+function seedArgValue(prop: any): unknown {
+  const type = Array.isArray(prop?.type) ? prop.type[0] : prop?.type;
+  switch (type) {
+    case "number":
+    case "integer":
+      return 0;
+    case "boolean":
+      return false;
+    case "array":
+      return [];
+    case "object":
+      return {};
+    default:
+      return "";
+  }
+}
+
+function seedArgs(inputSchema: any): Record<string, unknown> {
+  const properties = inputSchema?.properties;
+  if (!properties) return {};
+  return Object.fromEntries(Object.keys(properties).map((key) => [key, seedArgValue(properties[key])]));
+}
+
 export function McpToolsList({ venueId }: McpToolsListProps) {
   const venue = useResolvedVenue(venueId);
   const [tools, setTools] = useState<McpTool[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTool, setSelectedTool] = useState<McpTool | null>(null);
   const [toolArgs, setToolArgs] = useState("{}");
+  // The most recent run, shown inline so you can invoke a tool and reach its
+  // result without leaving the catalogue (W4 4D — Run used to navigate away).
+  const [lastRun, setLastRun] = useState<{ tool: string; jobId: string } | null>(null);
   const { execute: executeJob, running } = useJobExecution(venue);
+
+  const selectTool = (tool: McpTool) => {
+    setSelectedTool(tool);
+    setToolArgs(JSON.stringify(seedArgs(tool.inputSchema), null, 2));
+    setLastRun(null);
+  };
 
   useEffect(() => {
     if (!venue) return;
@@ -54,7 +90,8 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
       notifyWarning("Arguments must be valid JSON");
       return;
     }
-    await executeJob({
+    setLastRun(null);
+    const jobId = await executeJob({
       action: () => venue.operations.run("v/ops/mcp/tools-call", {
         server: venue.baseUrl,
         toolName: selectedTool.name,
@@ -62,7 +99,11 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
       }),
       failureTitle: "Unable to run tool",
       missingJobMessage: "The tool completed without returning a job ID",
+      // Stay on the catalogue and surface the result inline + a job link,
+      // instead of navigating away (the job is watched either way).
+      navigate: false,
     });
+    if (jobId) setLastRun({ tool: selectedTool.name, jobId });
   };
 
   const mcpUrl = venue ? `${venue.baseUrl}/mcp` : "";
@@ -175,15 +216,7 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
                               size="sm"
                               variant="secondary"
                               className="w-fit"
-                              onClick={() => {
-                                setSelectedTool(tool);
-                                const defaults = tool.inputSchema?.properties
-                                  ? Object.fromEntries(
-                                      Object.keys(tool.inputSchema.properties).map((k) => [k, ""])
-                                    )
-                                  : {};
-                                setToolArgs(JSON.stringify(defaults, null, 2));
-                              }}
+                              onClick={() => selectTool(tool)}
                             >
                               <Play size={13} className="mr-1" /> Test Tool
                             </Button>
@@ -241,11 +274,31 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
                       </Button>
                       <Button
                         variant="ghost"
-                        onClick={() => { setSelectedTool(null); setToolArgs("{}"); }}
+                        onClick={() => { setSelectedTool(null); setToolArgs("{}"); setLastRun(null); }}
                       >
                         Clear
                       </Button>
                     </div>
+
+                    {/* Inline run result — stay on the catalogue; the job link
+                        opens the full output. */}
+                    {lastRun && venue && (
+                      <div className="rounded-lg border border-border bg-muted/40 p-3" data-testid="mcp-run-result">
+                        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                          <CheckCircle2 size={15} className="shrink-0 text-primary" /> Run started
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          <span className="font-mono">{lastRun.tool}</span> created job{" "}
+                          <span className="font-mono">{lastRun.jobId.slice(0, 12)}…</span>
+                        </p>
+                        <Link
+                          href={`/venues/${encodeURIComponent(venue.venueId)}/jobs/${lastRun.jobId}`}
+                          className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                        >
+                          View job <ArrowRight size={12} />
+                        </Link>
+                      </div>
+                    )}
                   </>
                 )}
               </CardContent>
