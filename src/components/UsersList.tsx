@@ -25,6 +25,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ChevronRight, Loader2, Lock, ShieldAlert, Search, Users as UsersIcon } from "lucide-react";
+import { PaginationHeader } from "@/components/PaginationHeader";
+import { useClientPagination } from "@/hooks/use-pagination";
+import { userLook } from "@/lib/concept-icons";
+import type { IconCmp } from "@/lib/file-type-look";
 import { getVenueStatus } from "@/lib/venue-registry";
 import { errorStatus } from "@/lib/errors";
 import { formatDateTime } from "@/lib/utils";
@@ -32,6 +36,26 @@ import { jobFailure, notifyError, notifySuccess } from "@/lib/notify";
 
 interface UsersListProps {
   venueId: string;
+}
+
+// Which account types the list is narrowed to.
+type TypeFilter = "all" | "managed" | "external";
+
+// Page size for the client-side pager — a large operator directory used to
+// render in full (W4 4E).
+const PAGE_SIZE = 20;
+
+// The account-type mark for a row: the same shield (managed) / user (external)
+// glyph the facet filter uses, as a tinted pill instead of a plain outline
+// badge, so the type reads at a glance.
+function AccountTypeChip({ managed }: { managed: boolean }) {
+  const look = userLook(managed);
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ${look.tile}`}>
+      <look.Icon size={14} strokeWidth={1.9} />
+      {look.label}
+    </span>
+  );
 }
 
 // Whether the signed-in caller can see the full users list: "checking" while
@@ -45,6 +69,7 @@ export function UsersList({ venueId }: UsersListProps) {
   const [users, setUsers] = useState<UserSummary[]>([]);
   const [listState, setListState] = useState<ListState>("checking");
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [status, setStatus] = useState<StatusData | undefined>(undefined);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [authenticators, setAuthenticators] = useState<Record<string, AuthenticationKeysMap>>({});
@@ -86,11 +111,38 @@ export function UsersList({ venueId }: UsersListProps) {
     return () => { ignore = true; };
   }, [venue, isAuthenticated, auth]);
 
-  const filteredUsers = useMemo(() => {
+  // Search (DID substring) then the account-type facet compose: the facet
+  // counts are taken over the search-filtered set, so Managed + External always
+  // sum to All for whatever the search currently shows.
+  const searchFiltered = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return users;
     return users.filter((u) => u.did.toLowerCase().includes(term));
   }, [users, search]);
+
+  const managedCount = useMemo(
+    () => searchFiltered.filter((u) => u.managed).length,
+    [searchFiltered],
+  );
+  const externalCount = searchFiltered.length - managedCount;
+
+  const typeFiltered = useMemo(() => {
+    if (typeFilter === "all") return searchFiltered;
+    const wantManaged = typeFilter === "managed";
+    return searchFiltered.filter((u) => Boolean(u.managed) === wantManaged);
+  }, [searchFiltered, typeFilter]);
+
+  const { currentPage, setCurrentPage, totalPages, pageItems } = useClientPagination({
+    items: typeFiltered,
+    pageSize: PAGE_SIZE,
+    resetKey: `${search}|${typeFilter}`,
+  });
+
+  const facets: { key: TypeFilter; label: string; Icon?: IconCmp; count: number }[] = [
+    { key: "all", label: "All", count: searchFiltered.length },
+    { key: "managed", label: "Managed", Icon: userLook(true).Icon, count: managedCount },
+    { key: "external", label: "External", Icon: userLook(false).Icon, count: externalCount },
+  ];
 
   function loadAuthenticators(did: string) {
     if (!venue || authenticators[did]) return;
@@ -217,14 +269,48 @@ export function UsersList({ venueId }: UsersListProps) {
         )}
 
         {venueStatus === "ready" && isAuthenticated && listState === "ready" && (
-          <Card>
+          <>
+            {users.length > 0 && (
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by account type">
+                {facets.map((f) => (
+                  <Button
+                    key={f.key}
+                    variant={typeFilter === f.key ? "default" : "outline"}
+                    size="sm"
+                    className="gap-1.5"
+                    aria-pressed={typeFilter === f.key}
+                    onClick={() => setTypeFilter(f.key)}
+                  >
+                    {f.Icon && <f.Icon size={14} strokeWidth={1.9} />}
+                    {f.label}
+                    <span className="tabular-nums opacity-70">{f.count}</span>
+                  </Button>
+                ))}
+              </div>
+            )}
+
+            <Card>
             <CardHeader className="px-2">
-              <CardTitle className="text-base font-medium">
-                {filteredUsers.length} user{filteredUsers.length !== 1 ? "s" : ""}
-              </CardTitle>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <CardTitle className="text-base font-medium">
+                  {typeFiltered.length} user{typeFiltered.length !== 1 ? "s" : ""}
+                </CardTitle>
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <PaginationHeader
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={setCurrentPage}
+                    />
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="p-0">
-              {filteredUsers.length === 0 ? (
+              {typeFiltered.length === 0 ? (
                 <p className="text-sm text-muted-foreground px-6 py-10 text-center">
                   {users.length === 0 ? "No registered users on this venue." : "No users match your filter."}
                 </p>
@@ -237,7 +323,7 @@ export function UsersList({ venueId }: UsersListProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredUsers.map((user) => {
+                    {pageItems.map((user) => {
                       const isExpanded = expanded === user.did;
                       const keys = authenticators[user.did];
                       return (
@@ -258,7 +344,7 @@ export function UsersList({ venueId }: UsersListProps) {
                               </span>
                             </TableCell>
                             <TableCell>
-                              <Badge variant="outline">{user.managed ? "Managed" : "External"}</Badge>
+                              <AccountTypeChip managed={Boolean(user.managed)} />
                             </TableCell>
                           </TableRow>
                           {isExpanded && (
@@ -332,8 +418,18 @@ export function UsersList({ venueId }: UsersListProps) {
                   </TableBody>
                 </Table>
               )}
+              {totalPages > 1 && (
+                <div className="flex justify-end border-t px-4 py-3">
+                  <PaginationHeader
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
+                </div>
+              )}
             </CardContent>
-          </Card>
+            </Card>
+          </>
         )}
       </div>
     </ContentLayout>
