@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, Building2, Cable, LayoutDashboard, Package, ScrollText, Users, Wrench, Zap, type LucideIcon } from "lucide-react";
+import { Boxes, Building2, LayoutDashboard, Package, Puzzle, ScrollText, Users, Zap } from "lucide-react";
+import { McpGlyph } from "@/components/adapter-glyphs";
 import { useVenues } from "@/hooks/use-venues";
 import { venueDisplayName } from "@/lib/venue-display";
 import { cn } from "@/lib/utils";
@@ -10,13 +11,16 @@ import { cn } from "@/lib/utils";
 // The venue sections, in nav order. `route` is the path segment after the slug
 // ("" = the landing/Overview). "Integrate" keeps the /connect route but reads
 // as its own thing in the IA, distinct from the top-level /connections vault.
-const SECTIONS: { key: string; label: string; route: string; Icon: LucideIcon }[] = [
+// Icons are the app's canonical marks: MCP is the real McpGlyph (not a wrench),
+// Adapters the `adapter` concept's Puzzle.
+type GlyphCmp = React.ComponentType<{ size?: number; className?: string }>;
+const SECTIONS: { key: string; label: string; route: string; Icon: GlyphCmp }[] = [
   { key: "overview", label: "Overview", route: "", Icon: LayoutDashboard },
   { key: "assets", label: "Assets", route: "assets", Icon: Package },
   { key: "operations", label: "Operations", route: "operations", Icon: Boxes },
   { key: "jobs", label: "Jobs", route: "jobs", Icon: ScrollText },
-  { key: "adapters", label: "Adapters", route: "adapters", Icon: Cable },
-  { key: "mcp", label: "MCP", route: "mcp", Icon: Wrench },
+  { key: "adapters", label: "Adapters", route: "adapters", Icon: Puzzle },
+  { key: "mcp", label: "MCP", route: "mcp", Icon: McpGlyph },
   { key: "users", label: "Users", route: "users", Icon: Users },
   { key: "connect", label: "Integrate", route: "connect", Icon: Zap },
 ];
