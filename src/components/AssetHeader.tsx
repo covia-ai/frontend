@@ -1,16 +1,33 @@
 'use client'
 
 import { useEffect, useRef, useState } from "react";
-import { Asset, Namespace, assetHash, didUrl, parseDidUrl } from "@covia/covia-sdk";
+import { Asset, Namespace, assetHash, didFromPublicKey, didUrl, parseDidUrl } from "@covia/covia-sdk";
 import { cn, copyDataToClipBoard } from "@/lib/utils";
-import { ASSET_KIND_LABELS, getAssetKind } from "@/lib/asset-kind";
+import { assetKindLook, getAssetKind } from "@/lib/asset-kind";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { TypeTile } from "./TypeTile";
+import { Identicon } from "./Identicon";
 import { Badge } from "./ui/badge";
 import { Copy, Link2 } from "lucide-react";
 import Link from "next/link";
 
 interface AssetHeaderProps {
   asset: Asset;
+}
+
+// An asset's own mark: a content hash (64 hex) maps to a did:key so the
+// identicon is unique per asset (the same mark its catalogue card shows). A
+// catalogue-path id (operations) has no key bytes, so no identicon.
+function assetIdenticonDid(asset: Asset): string | null {
+  const hash = assetHash(asset.id);
+  if (hash && /^[0-9a-fA-F]{64}$/.test(hash)) {
+    try {
+      return didFromPublicKey(Uint8Array.from(hash.match(/../g)!.map((h) => parseInt(h, 16))));
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 type ResolvedDidUrl = { text: string; href: string | null };
@@ -64,7 +81,8 @@ function assetDidUrl(asset: Asset): ResolvedDidUrl | null {
 
 export const AssetHeader = ({ asset }: AssetHeaderProps) => {
   const didUrlInfo = assetDidUrl(asset);
-  const kind = getAssetKind(asset?.metadata);
+  const kindLook = assetKindLook(getAssetKind(asset?.metadata));
+  const identiconDid = assetIdenticonDid(asset);
   const description = asset?.metadata?.description as string | undefined;
 
   const descriptionRef = useRef<HTMLParagraphElement>(null);
@@ -84,10 +102,11 @@ export const AssetHeader = ({ asset }: AssetHeaderProps) => {
     <div className="flex flex-col w-full mb-2 mt-2 border border-border bg-card text-card-foreground rounded-xl p-2">
       <div className="flex flex-col items-start justify-between w-full ">
 
-             <div className="flex flex-row items-center gap-2">
-               <span>{asset?.metadata?.name}</span>
+             <div className="flex flex-row items-center gap-2.5">
+               <TypeTile Icon={kindLook.Icon} tile={kindLook.tile} className="size-8" iconSize={16} title={kindLook.label} />
+               <span className="font-semibold">{asset?.metadata?.name}</span>
                <Badge variant="secondary" className="font-normal text-[10px] text-secondary-foreground" data-testid="asset-kind-badge">
-                 {ASSET_KIND_LABELS[kind]}
+                 {kindLook.label}
                </Badge>
              </div>
               <p
@@ -118,6 +137,7 @@ export const AssetHeader = ({ asset }: AssetHeaderProps) => {
           <Tooltip>
             <TooltipTrigger asChild>
               <div data-testid="idcopy_btn" className="p-1 flex flex-row items-start w-fit max-w-full border border-border text-muted-foreground rounded-md space-x-2">
+                {identiconDid && <Identicon did={identiconDid} size={12} className="mt-0.5" title="Asset identity" />}
                 {didUrlInfo.href ? (
                   <>
                     <Link2 size={10} className="mt-0.5 shrink-0" />
