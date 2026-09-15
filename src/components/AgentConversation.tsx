@@ -163,11 +163,28 @@ function AgentConversationBase({
             return isUser ? (
               <div className="mb-6 flex justify-end" key={index}>
                 <DropdownMenu>
+                  {/* Radix supplies this trigger's aria-haspopup and its
+                      Enter/Space/ArrowDown handling, but `asChild` over a plain
+                      div left it out of the tab order, so none of that keyboard
+                      behaviour could ever fire and the menu — Copy message, and
+                      Go to calling job — was mouse-only (frontend#243). The
+                      explicit tabIndex and role are what a real <button> would
+                      have given Radix; a button element can't be used here
+                      because the bubble renders block children.
+
+                      The ring is on `focus:`, not the `focus-visible:` every
+                      ui/ primitive uses — Chrome does not match :focus-visible
+                      on a div[tabindex] the way it does on a real button, so a
+                      focus-visible ring never renders here and a keyboard user
+                      gets no position cue. Ring tokens otherwise match
+                      ui/button.tsx. */}
                   <DropdownMenuTrigger asChild>
                     <div
                       title={title}
+                      role="button"
+                      tabIndex={0}
                       data-testid="user-turn-bubble"
-                      className="max-w-[85%] cursor-pointer rounded-3xl rounded-br-md bg-muted px-4 py-2.5 text-[15px] leading-6 whitespace-pre-wrap break-words"
+                      className="max-w-[85%] cursor-pointer rounded-3xl rounded-br-md bg-muted px-4 py-2.5 text-[15px] leading-6 whitespace-pre-wrap break-words outline-none focus:border-ring focus:ring-ring/50 focus:ring-[3px]"
                     >
                       {message.source === "request" && !sections && (
                         <div
