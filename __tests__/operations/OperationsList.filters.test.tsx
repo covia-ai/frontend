@@ -82,4 +82,66 @@ describe('OperationsList — facets & filter sheet', () => {
     const keywordRow = within(sheet).getByText('memory').closest('label')!;
     expect(keywordRow.querySelector('svg')).toBeFalsy();
   });
+
+  // The 12-cap used to be silent, so the sheet looked like a redundant copy of
+  // the visible chips while actually holding the adapters the row cut off —
+  // frontend#398.
+  describe('truncation is visible', () => {
+    // 15 adapters > the 12 cap, so exactly 3 are hidden.
+    const manyAdapters = Array.from({ length: 15 }, (_, i) => ({
+      path: `v/ops/ad${i}/run`,
+      metadata: { name: `Op ${i}`, operation: { adapter: `ad${i}:go` } },
+    }));
+
+    it('caps the facet row at 12 adapters and offers the rest behind a "+N more" chip', async () => {
+      mockListCatalogOperations.mockResolvedValue(manyAdapters);
+      render(<OperationsList />);
+      await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(15));
+
+      const facets = screen.getByTestId('operation-facets');
+      // 12 adapter pills + the "All" pill + the overflow chip.
+      expect(within(facets).getAllByRole('button')).toHaveLength(14);
+      expect(screen.getByTestId('operation-facets-overflow')).toHaveTextContent('+3 more');
+    });
+
+    it('opens the filter sheet from the overflow chip, showing a hidden adapter', async () => {
+      const user = userEvent.setup();
+      mockListCatalogOperations.mockResolvedValue(manyAdapters);
+      render(<OperationsList />);
+      await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(15));
+
+      // Every fixture adapter has the same op count, so which three the cap
+      // drops is not fixed — derive one from the rendered row rather than
+      // assuming an order.
+      // The adapter name is its own text node inside the pill (the count sits in
+      // a sibling span), so an exact queryByText tells us pill-by-pill which
+      // adapters the cap dropped — no prefix matching, so ad1 vs ad14 can't
+      // be confused.
+      const facets = screen.getByTestId('operation-facets');
+      const hidden = manyAdapters
+        .map((op) => op.metadata.operation.adapter.split(':')[0])
+        .filter((ad) => within(facets).queryByText(ad) === null);
+      expect(hidden).toHaveLength(3);
+
+      await user.click(screen.getByTestId('operation-facets-overflow'));
+      const sheet = await screen.findByTestId('filters-sheet');
+      for (const ad of hidden) {
+        expect(within(sheet).getByText(ad)).toBeInTheDocument();
+      }
+    });
+
+    it('omits the overflow chip when every adapter already has a pill', async () => {
+      render(<OperationsList />);
+      await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
+
+      expect(screen.queryByTestId('operation-facets-overflow')).not.toBeInTheDocument();
+    });
+  });
+
+  it('labels the trigger "All filters", so it reads as a superset of the chips', async () => {
+    render(<OperationsList />);
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
+
+    expect(screen.getByTestId('filters-trigger')).toHaveTextContent('All filters');
+  });
 });
