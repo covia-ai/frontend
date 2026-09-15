@@ -47,6 +47,10 @@ function renderSchemaProperties(
 ) {
   const keys = properties ? Object.keys(properties) : [];
   if (keys.length === 0) return null;
+  // shadcn Table already wraps itself in `w-full overflow-x-auto`; the fix for
+  // mobile is to let the description cell WRAP (TableCell defaults to
+  // whitespace-nowrap) so a long description reflows instead of forcing the
+  // table wide and scrolling.
   return (
     <Table>
       <TableBody>
@@ -56,7 +60,7 @@ function renderSchemaProperties(
               {formatLabel(key)}
               {required.includes(key) && <span className="text-destructive"> *</span>}
             </TableCell>
-            <TableCell className="text-muted-foreground">
+            <TableCell className="whitespace-normal break-words align-top text-muted-foreground">
               {properties?.[key]?.description ?? properties?.[key]?.type ?? ""}
             </TableCell>
           </TableRow>
@@ -277,7 +281,7 @@ const METADATA_FIELDS: MetadataFieldConfig[] = [
   {
     key: "keywords", label: "Keywords:", icon: Tag, path: "metadata.keywords",
     renderValue: (value) => (
-      <div className="flex space-x-1">
+      <div className="flex flex-wrap gap-1">
         {value?.map((keyword: string) => (
           <Badge variant="secondary" className="text-secondary-foreground" key={keyword}>{keyword}</Badge>
         ))}
@@ -295,17 +299,17 @@ export function ProvenancePanel({ asset, deEmphasize }: { asset: Asset; deEmphas
   if (validFields.length === 0) return null;
   return (
     <div className={deEmphasize ? "pt-3 mt-1 border-t border-border/60 opacity-70" : undefined}>
-      <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
+      <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2">
         {validFields.map((field) => {
           const value = getNestedValue(asset, field.path);
           const IconComponent = field.icon;
           return (
             <React.Fragment key={field.key}>
               <div className="flex items-center space-x-2">
-                <IconComponent size={18} />
+                <IconComponent size={18} className="shrink-0" />
                 <span data-testid={field.key + "_label"} className="whitespace-nowrap text-md">{field.label}</span>
               </div>
-              <div className="text-card-foreground" data-testid={field.key + "_value"}>
+              <div className="min-w-0 break-words text-card-foreground" data-testid={field.key + "_value"}>
                 {field.renderValue ? field.renderValue(value) : (value as React.ReactNode)}
               </div>
             </React.Fragment>
