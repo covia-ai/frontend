@@ -10,7 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
-import { Copy, Play, Wrench } from "lucide-react";
+import { Copy, Play } from "lucide-react";
+import { McpGlyph } from "@/components/adapter-glyphs";
 import { notifyError, notifyWarning } from "@/lib/notify";
 import { useJobExecution } from "@/hooks/use-job-execution";
 
@@ -88,7 +89,7 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
               <div className="bg-primary-vlight p-3 rounded-lg">
-                <Wrench size={28} className="text-primary" />
+                <McpGlyph size={28} className="text-primary" />
               </div>
               <div>
                 <h1 className="text-2xl font-thin">MCP Tools</h1>
