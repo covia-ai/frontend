@@ -8,6 +8,7 @@ import { HitlIndicator } from "@/components/HitlIndicator";
 import { NotificationBell } from "@/components/NotificationBell";
 import { DarkLightToggle } from "../DarkLightToggle";
 import { SmartBreadcrumb } from "../smartbreadcrumb2";
+import { VenueSubnav } from "@/components/VenueSubnav";
 import { Separator } from "../ui/separator";
 import { usePathname, useRouter } from "next/navigation";
 import { BookOpen } from "lucide-react";
@@ -75,6 +76,9 @@ export function TopBar(props: TopBarProps) {
         </div>
       </div>
        <Separator/>
+       {/* Venue sub-nav — renders only on /venues/<slug>/* routes (self-hides
+           elsewhere), tying a venue's sections together (W4 4B). */}
+       <VenueSubnav />
     </header>
   );
 }
