@@ -17,6 +17,7 @@ jest.mock("@/lib/utils", () => ({
 
 import { McpConnectSection } from "@/components/venue/McpConnectSection";
 import { listMcpTools } from "@/lib/utils";
+import { resetMcpDiscoveryCache } from "@/hooks/use-mcp-discovery";
 
 const mockVenue: any = { baseUrl: "https://venue.example" };
 
@@ -25,6 +26,9 @@ describe("McpConnectSection", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // The MCP discovery memo is shared per baseUrl — clear it so each case's
+    // own fetch mock is what resolves (W4 4A).
+    resetMcpDiscoveryCache();
     (listMcpTools as jest.Mock).mockResolvedValue([]);
   });
 
