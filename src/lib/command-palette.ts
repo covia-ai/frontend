@@ -2,7 +2,7 @@ import type { Venue } from "@covia/covia-sdk";
 import { getAssetKind } from "@/lib/asset-kind";
 import { listCatalogOperations } from "@/lib/operations-catalog";
 import { sliceJobWindow, jobRecordsFromSlice } from "@/lib/job-history";
-import { skillsFromAssets } from "@/lib/skills";
+import { listAllSkills } from "@/lib/skills";
 import { listHitlRequests } from "@/lib/hitl";
 import type { VenueDescriptor } from "@/hooks/use-venues";
 
@@ -89,15 +89,8 @@ async function fetchSkillItems(
   venue: Venue,
   descriptor: VenueDescriptor,
 ): Promise<PaletteItem[]> {
-  const [venueSkills, userSkills] = await Promise.all([
-    venue.skills.list("v/skills"),
-    venue.skills.list("w/skills").catch(() => []),
-  ]);
+  const skills = await listAllSkills(venue);
   const venueName = descriptor.metadata.name ?? descriptor.venueId;
-  const skills = [
-    ...skillsFromAssets(venueSkills, "venue"),
-    ...skillsFromAssets(userSkills, "user"),
-  ];
   // Skill selection isn't URL-addressable (SkillsLibrary picks the first
   // skill and tracks selection in local state only) — every hit opens the
   // library itself rather than a fabricated deep link.

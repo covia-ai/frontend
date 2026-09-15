@@ -14,36 +14,48 @@ jest.mock("@/components/MarkdownMessage", () => ({
 const mockVenue: any = {
   venueId: "venue-1",
   baseUrl: "https://venue.example",
-  skills: {
-    list: jest.fn((path: string) => Promise.resolve(path === "v/skills"
-      ? [{
-          id: "v/skills/agents",
-          metadata: {
-            name: "Agent skills",
-            description: "Manage agents safely.",
-            content: { inline: "## Agent workflow\nUse explicit tools." },
-            skill: { tools: ["v/ops/agent/list"] },
+  workspace: {
+    // The venue returns the whole v/skills sub-tree in one job-free read; a
+    // node carrying the `skill` facet is a skill, anything else is a container
+    // to descend into (frontend#351).
+    read: jest.fn((path: string) => Promise.resolve(path === "v/skills"
+      ? {
+          exists: true,
+          value: {
+            agents: {
+              name: "Agent skills",
+              description: "Manage agents safely.",
+              content: { inline: "## Agent workflow\nUse explicit tools." },
+              skill: { tools: ["v/ops/agent/list"] },
+            },
+            // A name keyLook maps to its own concept (building → create).
+            building: {
+              name: "Building agents",
+              description: "Assemble agents from operations.",
+              content: { inline: "## Build\nCompose operations." },
+              skill: {},
+            },
+            // An unmapped name → the skill-glyph fallback tile (never blank).
+            "zzz-unmapped": {
+              name: "Zulu miscellany",
+              description: "An unmapped skill name.",
+              content: { inline: "## Misc" },
+              skill: {},
+            },
+            // A container, not a skill: no facet of its own, children one
+            // level down. The old direct-children listing showed this as a
+            // description-less skill and hid what was inside it.
+            connections: {
+              sentry: {
+                name: "Sentry",
+                description: "Read Sentry issues.",
+                content: { inline: "## Sentry" },
+                skill: { tools: ["v/ops/http/get"] },
+              },
+            },
           },
-        },
-        {
-          // A name keyLook maps to its own concept (building → create).
-          id: "v/skills/building",
-          metadata: {
-            name: "Building agents",
-            description: "Assemble agents from operations.",
-            content: { inline: "## Build\nCompose operations." },
-          },
-        },
-        {
-          // An unmapped name → the skill-glyph fallback tile (never blank).
-          id: "v/skills/zzz-unmapped",
-          metadata: {
-            name: "Zulu miscellany",
-            description: "An unmapped skill name.",
-            content: { inline: "## Misc" },
-          },
-        }]
-      : [])),
+        }
+      : { exists: false, value: null })),
   },
   assets: {
     get: jest.fn(),
@@ -75,8 +87,8 @@ describe("SkillsLibrary", () => {
     expect(await screen.findByRole("heading", { name: "Agent skills" })).toBeInTheDocument();
     expect(screen.getByTestId("safe-markdown")).toHaveTextContent("Agent workflow");
     expect(screen.getByText("No user skills yet", { exact: false })).toBeInTheDocument();
-    expect(mockVenue.skills.list).toHaveBeenCalledWith("v/skills");
-    expect(mockVenue.skills.list).toHaveBeenCalledWith("w/skills");
+    expect(mockVenue.workspace.read).toHaveBeenCalledWith("v/skills");
+    expect(mockVenue.workspace.read).toHaveBeenCalledWith("w/skills");
     expect(mockVenue.operations.run).not.toHaveBeenCalled();
     expect(mockVenue.operations.invoke).not.toHaveBeenCalled();
 

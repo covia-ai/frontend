@@ -6,7 +6,7 @@ jest.mock("@/lib/job-history", () => ({
   jobRecordsFromSlice: jest.fn(() => []),
 }));
 jest.mock("@/lib/skills", () => ({
-  skillsFromAssets: jest.fn(() => []),
+  listAllSkills: jest.fn().mockResolvedValue([]),
 }));
 jest.mock("@/lib/hitl", () => ({
   listHitlRequests: jest.fn().mockResolvedValue([]),
@@ -15,7 +15,7 @@ jest.mock("@/lib/hitl", () => ({
 import { fetchVenueItems } from "@/lib/command-palette";
 import { listCatalogOperations } from "@/lib/operations-catalog";
 import { sliceJobWindow, jobRecordsFromSlice } from "@/lib/job-history";
-import { skillsFromAssets } from "@/lib/skills";
+import { listAllSkills } from "@/lib/skills";
 import { listHitlRequests } from "@/lib/hitl";
 import type { VenueDescriptor } from "@/hooks/use-venues";
 
@@ -26,7 +26,7 @@ const mockSliceJobWindow = sliceJobWindow as jest.MockedFunction<typeof sliceJob
 const mockJobRecordsFromSlice = jobRecordsFromSlice as jest.MockedFunction<
   typeof jobRecordsFromSlice
 >;
-const mockSkillsFromAssets = skillsFromAssets as jest.MockedFunction<typeof skillsFromAssets>;
+const mockListAllSkills = listAllSkills as jest.MockedFunction<typeof listAllSkills>;
 const mockListHitlRequests = listHitlRequests as jest.MockedFunction<typeof listHitlRequests>;
 
 const descriptor: VenueDescriptor = {
@@ -50,7 +50,7 @@ beforeEach(() => {
   mockListCatalogOperations.mockResolvedValue([]);
   mockSliceJobWindow.mockResolvedValue({ count: 0, values: [] });
   mockJobRecordsFromSlice.mockReturnValue([]);
-  mockSkillsFromAssets.mockReturnValue([]);
+  mockListAllSkills.mockResolvedValue([]);
   mockListHitlRequests.mockResolvedValue([]);
 });
 
@@ -68,11 +68,10 @@ describe("fetchVenueItems", () => {
     mockJobRecordsFromSlice.mockReturnValue([
       { id: "job-1", name: "My Job", status: "COMPLETE" } as any,
     ]);
-    mockSkillsFromAssets.mockImplementation((_assets, source) =>
-      source === "venue"
-        ? [{ key: "s1", name: "My Skill", description: "a skill", path: "v/skills/s1", source: "venue", body: null, tools: [], reference: null, hasContent: false }]
-        : [],
-    );
+    // listAllSkills now returns both roots' skills in one resolved list.
+    mockListAllSkills.mockResolvedValue([
+      { key: "s1", name: "My Skill", description: "a skill", path: "v/skills/s1", source: "venue", body: null, tools: [], reference: null, hasContent: false },
+    ]);
     mockListHitlRequests.mockResolvedValue([
       { id: "r1", title: "Approve deploy", status: "open", asks: [] } as any,
     ]);

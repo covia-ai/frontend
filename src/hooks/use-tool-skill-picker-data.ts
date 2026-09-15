@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import type { Venue } from "@covia/covia-sdk";
 import { listCatalogOperations, type CatalogOp } from "@/lib/operations-catalog";
-import { skillsFromAssets, type SkillSummary } from "@/lib/skills";
+import { listAllSkills, type SkillSummary } from "@/lib/skills";
 import { notifyError } from "@/lib/notify";
 
 // Both reads are job-free (v/ops + v/test/ops + w/ops via listCatalogOperations,
-// v/skills + w/skills via venue.skills.list() — see operations-catalog.ts and
+// v/skills + w/skills via listAllSkills() — see operations-catalog.ts and
 // use-skills-library.ts). `enabled` defers the fetch until the picker is
 // actually opened, so mounting a trigger button doesn't cost a read.
 export function useToolSkillPickerData(
@@ -25,13 +25,7 @@ export function useToolSkillPickerData(
     setLoading(true);
     Promise.all([
       listCatalogOperations(venue, { includeUserOps }),
-      Promise.all([
-        venue.skills.list("v/skills"),
-        venue.skills.list("w/skills").catch(() => []),
-      ]).then(([venueAssets, userAssets]) => [
-        ...skillsFromAssets(venueAssets, "venue"),
-        ...skillsFromAssets(userAssets, "user"),
-      ]),
+      listAllSkills(venue),
     ])
       .then(([nextOps, nextSkills]) => {
         if (!active) return;

@@ -5,7 +5,7 @@ import type { Venue } from "@covia/covia-sdk";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { readTextStream } from "@/hooks/use-asset-text-content";
 import { notifyError } from "@/lib/notify";
-import { skillsFromAssets, type SkillSummary } from "@/lib/skills";
+import { listAllSkills, type SkillSummary } from "@/lib/skills";
 
 // Content is already inline in `skill.body` when the asset carries it that
 // way (covia-sdk#32's list() already fetched full metadata, and inline
@@ -40,16 +40,9 @@ export function useSkillsLibrary() {
     }
 
     setLoading(true);
-    void Promise.all([
-      venue.skills.list("v/skills"),
-      venue.skills.list("w/skills").catch(() => []),
-    ])
-      .then(([venueAssets, userAssets]) => {
+    void listAllSkills(venue)
+      .then((combined) => {
         if (!active) return;
-        const combined = [
-          ...skillsFromAssets(venueAssets, "venue"),
-          ...skillsFromAssets(userAssets, "user"),
-        ];
         combined.sort((left, right) =>
           (left.source === "venue" ? 0 : 1) - (right.source === "venue" ? 0 : 1) ||
           left.name.localeCompare(right.name),
