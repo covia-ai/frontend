@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useResolvedVenue } from "@/hooks/use-resolved-venue";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
@@ -62,11 +62,18 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
   // result without leaving the catalogue (W4 4D — Run used to navigate away).
   const [lastRun, setLastRun] = useState<{ tool: string; jobId: string } | null>(null);
   const { execute: executeJob, running } = useJobExecution(venue);
+  // The test panel lives in a separate column (below the catalog until lg), so
+  // scroll it into view when a tool is picked — otherwise "Test Tool" looks like
+  // it does nothing.
+  const testPanelRef = useRef<HTMLDivElement>(null);
 
   const selectTool = (tool: McpTool) => {
     setSelectedTool(tool);
     setToolArgs(JSON.stringify(seedArgs(tool.inputSchema), null, 2));
     setLastRun(null);
+    requestAnimationFrame(() =>
+      testPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
   };
 
   useEffect(() => {
@@ -231,7 +238,7 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
           </div>
 
           {/* Test panel */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 scroll-mt-20" ref={testPanelRef}>
             <Card className="sticky top-4">
               <CardHeader>
                 <CardTitle className="text-base font-medium flex items-center gap-2">
