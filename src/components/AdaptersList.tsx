@@ -14,6 +14,8 @@ import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, Plug, Search } from "lucide-react";
 import { notifyError } from "@/lib/notify";
 import { cn } from "@/lib/utils";
+import { TypeTile } from "@/components/TypeTile";
+import { adapterLookup } from "@/lib/adapter-icons";
 
 type SortCol = "name" | "ops";
 
@@ -164,6 +166,10 @@ export function AdaptersList({ venueId }: AdaptersListProps) {
                 <TableBody>
                   {filteredAdapters.map((adapter) => {
                     const isExpanded = expandedAdapter === adapter.name;
+                    // The adapter's canonical brand glyph (langchain/mcp/http/…),
+                    // so adapters are recognisable at a glance — the same mark the
+                    // Operations surface uses.
+                    const look = adapterLookup(adapter.name);
                     return (
                       <Fragment key={adapter.name}>
                         <TableRow
@@ -173,7 +179,7 @@ export function AdaptersList({ venueId }: AdaptersListProps) {
                           }
                         >
                           <TableCell className="font-mono font-semibold whitespace-nowrap">
-                            <span className="inline-flex items-center gap-1.5">
+                            <span className="inline-flex items-center gap-2">
                               <ChevronRight
                                 size={14}
                                 className={cn(
@@ -181,6 +187,7 @@ export function AdaptersList({ venueId }: AdaptersListProps) {
                                   isExpanded && "rotate-90",
                                 )}
                               />
+                              <TypeTile Icon={look.Icon} tile={look.tile} className="size-7 rounded-md" iconSize={15} title={adapter.name} />
                               {adapter.name}
                             </span>
                           </TableCell>
