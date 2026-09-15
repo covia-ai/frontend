@@ -22,6 +22,15 @@ import {
   messageContentToString,
 } from "@/lib/agent-turns";
 
+// Shared by both turn kinds so the two copy affordances can't drift in what
+// they put on the clipboard or how they report failure.
+function copyMessage(text: string) {
+  navigator.clipboard.writeText(text).then(
+    () => notifySuccess("Message copied"),
+    (err: unknown) => notifyError("Unable to copy message", err),
+  );
+}
+
 type AgentConversationProps = {
   agentId: string;
   selectedSessionId: string | null;
@@ -187,12 +196,7 @@ function AgentConversationBase({
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem
                       data-testid="turn-copy"
-                      onClick={() => {
-                        navigator.clipboard.writeText(copyText).then(
-                          () => notifySuccess("Message copied"),
-                          (err: unknown) => notifyError("Unable to copy message", err),
-                        );
-                      }}
+                      onClick={() => copyMessage(copyText)}
                     >
                       <Copy size={13} className="mr-1" /> Copy message
                     </DropdownMenuItem>
@@ -207,13 +211,27 @@ function AgentConversationBase({
                 </DropdownMenu>
               </div>
             ) : (
-              <div className="mb-8 flex gap-3" key={index}>
+              <div className="group mb-8 flex gap-3" key={index}>
                 <AgentIdenticon agentId={agentId} className="mt-0.5 size-7 shrink-0" />
                 <div
                   title={title}
                   className="min-w-0 flex-1 break-words text-[15px] leading-6"
                 >
                   <MarkdownMessage>{text}</MarkdownMessage>
+                  {/* The user bubble opens its menu on a click anywhere in the
+                      bubble, which would fight text selection and link clicks
+                      in rendered markdown — so the reply gets its own button
+                      under the text instead. Revealed on hover, and on
+                      keyboard focus so it is reachable without a pointer. */}
+                  <button
+                    type="button"
+                    data-testid="agent-turn-copy"
+                    aria-label="Copy reply"
+                    onClick={() => copyMessage(copyText)}
+                    className="mt-1.5 inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
+                  >
+                    <Copy size={13} /> Copy
+                  </button>
                 </div>
               </div>
             );
