@@ -82,4 +82,33 @@ describe("AgentConversation copy affordances", () => {
 
     expect(writeText).toHaveBeenCalledWith("What is a venue?");
   });
+
+  // Radix already supplied aria-haspopup and Enter/Space handling on this
+  // trigger, but `asChild` over a plain div kept it out of the tab order, so
+  // the menu was mouse-only (frontend#243).
+  describe("user-turn menu is keyboard-operable", () => {
+    it("exposes the bubble as a control that can be tabbed to", () => {
+      renderConversation();
+      const bubble = screen.getByTestId("user-turn-bubble");
+
+      expect(bubble).toHaveAttribute("role", "button");
+      expect(bubble).toHaveAttribute("tabindex", "0");
+      expect(bubble).toHaveAttribute("aria-haspopup", "menu");
+    });
+
+    it("opens the menu from the keyboard and copies without a pointer", async () => {
+      renderConversation();
+      const bubble = screen.getByTestId("user-turn-bubble");
+
+      bubble.focus();
+      expect(bubble).toHaveFocus();
+
+      // Enter is Radix's own trigger handling — previously unreachable, since
+      // the element could never hold focus to receive the keydown.
+      await userEvent.keyboard("{Enter}");
+      await userEvent.click(await screen.findByTestId("turn-copy"));
+
+      expect(writeText).toHaveBeenCalledWith("What is a venue?");
+    });
+  });
 });
