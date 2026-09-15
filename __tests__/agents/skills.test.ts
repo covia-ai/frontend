@@ -1,6 +1,7 @@
 import {
   agentUsesSkill,
   normalizeSkill,
+  skillsFromTree,
   parseSkillFrontmatter,
   skillsFromAssets,
 } from "@/lib/skills";
@@ -47,5 +48,63 @@ describe("skills library normalization", () => {
     expect(agentUsesSkill({ skills: ["w/skills/review"] }, skill)).toBe(true);
     expect(agentUsesSkill({ skills: ["a/abc"] }, skill)).toBe(true);
     expect(agentUsesSkill({ skills: ["other"] }, skill)).toBe(false);
+  });
+});
+
+// Skills sit at mixed depths: most directly under v/skills, but every
+// per-provider connection skill one level down. The old direct-children
+// listing dropped all of those and rendered their container as a skill
+// (frontend#351).
+describe("skillsFromTree", () => {
+  const tree = {
+    agents: { name: "agents", description: "Manage agents.", skill: { tools: ["v/ops/agent/list"] } },
+    http: { name: "http", description: "Call HTTP.", skill: {} },
+    // A container: no facet of its own, real skills one level down.
+    connections: {
+      sentry: { name: "sentry", description: "Read Sentry issues.", skill: {} },
+      github: { name: "github", description: "Read GitHub.", skill: {} },
+    },
+    // A category index that re-lists a skill already present at the top
+    // level, plus one that only exists here.
+    "ops-tools": {
+      http: { name: "http", description: "Call HTTP.", skill: {} },
+      lattice: { name: "lattice", description: "Lattice reads.", skill: {} },
+    },
+  };
+
+  it("finds skills nested below the top level", () => {
+    const names = skillsFromTree(tree, "venue", "v/skills").map((s) => s.name).sort();
+    expect(names).toEqual(["agents", "github", "http", "lattice", "sentry"]);
+  });
+
+  it("addresses a nested skill by its full path", () => {
+    const sentry = skillsFromTree(tree, "venue", "v/skills").find((s) => s.name === "sentry");
+    expect(sentry?.path).toBe("v/skills/connections/sentry");
+    expect(sentry?.description).toBe("Read Sentry issues.");
+  });
+
+  it("never emits a container as a skill of its own", () => {
+    // The pre-fix symptom: `connections` listed as a description-less,
+    // tool-less skill because its children were invisible.
+    const keys = skillsFromTree(tree, "venue", "v/skills").map((s) => s.key);
+    expect(keys).not.toContain("connections");
+  });
+
+  it("de-duplicates a skill re-listed under a category index, keeping the shallowest path", () => {
+    const skills = skillsFromTree(tree, "venue", "v/skills");
+    expect(skills.filter((s) => s.name === "http")).toHaveLength(1);
+    expect(skills.find((s) => s.name === "http")?.path).toBe("v/skills/http");
+    // One that exists only under the index is still reached, at its own path.
+    expect(skills.find((s) => s.name === "lattice")?.path).toBe("v/skills/ops-tools/lattice");
+  });
+
+  it("treats a bare-string leaf as a reference rather than descending into it", () => {
+    const skills = skillsFromTree({ alias: "a/abc" }, "user", "w/skills");
+    expect(skills).toHaveLength(1);
+    expect(skills[0]).toMatchObject({ key: "alias", reference: "a/abc", path: "w/skills/alias" });
+  });
+
+  it("returns nothing for an absent root", () => {
+    expect(skillsFromTree(null, "user", "w/skills")).toEqual([]);
   });
 });
