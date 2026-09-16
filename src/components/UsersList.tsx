@@ -7,7 +7,6 @@ import { revalidateVenueOnFailure } from "@/hooks/use-authenticated-venue";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
@@ -29,9 +28,10 @@ import { PaginationHeader } from "@/components/PaginationHeader";
 import { useClientPagination } from "@/hooks/use-pagination";
 import { userLook } from "@/lib/concept-icons";
 import type { IconCmp } from "@/lib/file-type-look";
+import { TONE_STYLES } from "@/lib/status";
 import { getVenueStatus } from "@/lib/venue-registry";
 import { errorStatus } from "@/lib/errors";
-import { formatDateTime } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
 import { jobFailure, notifyError, notifySuccess } from "@/lib/notify";
 
 interface UsersListProps {
@@ -338,8 +338,12 @@ export function UsersList({ venueId }: UsersListProps) {
                       return (
                         <Fragment key={user.did}>
                           <TableRow className="cursor-pointer" onClick={() => toggleExpand(user.did)}>
-                            <TableCell className="font-mono">
-                              <span className="inline-flex items-center gap-1.5">
+                            {/* max-w-0 w-full makes the DID the flexible column that
+                                shrinks (DidDisplay truncates its own text), so the
+                                Account type column stays visible at every width
+                                instead of the table overflowing on mobile. */}
+                            <TableCell className="font-mono max-w-0 w-full">
+                              <span className="flex items-center gap-1.5 min-w-0">
                                 <ChevronRight
                                   size={14}
                                   className={`shrink-0 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`}
@@ -347,8 +351,8 @@ export function UsersList({ venueId }: UsersListProps) {
                                 {/* DidDisplay is itself a dropdown trigger (Copy menu) — stop the
                                     click from also toggling row expand, so the two interactions
                                     (copy vs. expand) never fire together from one click. */}
-                                <span onClick={(e) => e.stopPropagation()}>
-                                  <DidDisplay value={user.did} chars={20} />
+                                <span onClick={(e) => e.stopPropagation()} className="min-w-0 flex-1">
+                                  <DidDisplay value={user.did} className="w-full" />
                                 </span>
                               </span>
                             </TableCell>
@@ -358,7 +362,7 @@ export function UsersList({ venueId }: UsersListProps) {
                           </TableRow>
                           {isExpanded && (
                             <TableRow className="hover:bg-transparent bg-muted/30">
-                              <TableCell colSpan={2} className="py-3">
+                              <TableCell colSpan={2} className="py-3 whitespace-normal break-words">
                                 {authLoading === user.did && (
                                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                     <Loader2 className="animate-spin" size={14} /> Loading authenticators…
@@ -376,9 +380,18 @@ export function UsersList({ venueId }: UsersListProps) {
                                     {Object.entries(keys).map(([key, entry]) => (
                                       <li key={key} className="flex flex-wrap items-center gap-2 text-xs">
                                         <DidDisplay value={key} chars={20} />
-                                        <Badge variant={entry.status === "active" ? "outline" : "secondary"}>
+                                        {/* Status tone, on the app's shared palette (lib/status):
+                                            an active key uses the "active" (live) tone; a revoked key
+                                            the neutral grey tone — never the cerulean brand colour,
+                                            which stays reserved for brand, not status. */}
+                                        <span
+                                          className={cn(
+                                            "rounded-full px-2 py-0.5 font-medium",
+                                            TONE_STYLES[entry.status === "active" ? "active" : "neutral"].pill,
+                                          )}
+                                        >
                                           {entry.status}
-                                        </Badge>
+                                        </span>
                                         <span className="text-muted-foreground">
                                           added {formatDateTime(entry.addedAt)}
                                           {entry.status === "revoked" && entry.revokedAt
