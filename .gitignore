@@ -53,3 +53,6 @@ DECISIONS.md
 
 # Claude Code — machine-local permissions (do not share)
 .claude/settings.local.json
+
+# Throwaway identities emitted by scripts/seed-venue-users.mjs
+scripts/seeded-users.json
