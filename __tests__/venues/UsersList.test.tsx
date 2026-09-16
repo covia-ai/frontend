@@ -142,6 +142,27 @@ describe("UsersList", () => {
     expect(await screen.findByText("revoked")).toBeInTheDocument();
   });
 
+  it("does not call listAuthenticators for an external user — shows the note, no error toast", async () => {
+    const user = userEvent.setup();
+    mockVenue.users.list.mockResolvedValue({
+      users: [{ did: "did:key:zExternal", registered: true, managed: false }],
+      total: 1,
+    });
+    render(<UsersList venueId="venue-1" />);
+
+    // Expand via the row's account-type cell (the DID cell stops propagation).
+    const rowDid = await screen.findByText("did:key:zExternal");
+    await user.click(within(rowDid.closest("tr")!).getByText("External"));
+
+    // The venue rejects authenticator lookups for external DIDs (HTTP 400), so
+    // we must not call it — and must not surface an error toast.
+    expect(mockVenue.users.listAuthenticators).not.toHaveBeenCalled();
+    expect(mockNotifyError).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText(/authenticators only apply to managed accounts/i),
+    ).toBeInTheDocument();
+  });
+
   it("confirms before revoking, then refetches that user's authenticators", async () => {
     const user = userEvent.setup();
     mockVenue.users.list.mockResolvedValue({
