@@ -146,6 +146,15 @@ export function UsersList({ venueId }: UsersListProps) {
 
   function loadAuthenticators(did: string) {
     if (!venue || authenticators[did]) return;
+    // Authenticators are a venue-managed-account concept: the venue rejects the
+    // lookup for a plain external DID (HTTP 400). Skip the call for those and
+    // record an empty map, so the row shows the "authenticators only apply to
+    // managed accounts" note instead of an error toast (W4 4E).
+    const user = users.find((u) => u.did === did);
+    if (user && !user.managed) {
+      setAuthenticators((prev) => ({ ...prev, [did]: {} }));
+      return;
+    }
     setAuthLoading(did);
     venue.users
       .listAuthenticators(did)
