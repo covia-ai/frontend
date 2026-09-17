@@ -1,11 +1,11 @@
 "use client";
 
-import { Zap, Contact, Globe, Code2 } from "lucide-react";
+import { Zap, Code2 } from "lucide-react";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { Card } from "@/components/ui/card";
 import { TypeTile } from "@/components/TypeTile";
-import { McpGlyph } from "@/components/adapter-glyphs";
+import { adapterLookup } from "@/lib/adapter-icons";
 import { VenueResolutionState } from "@/components/VenueResolutionState";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { McpConnectSection } from "@/components/venue/McpConnectSection";
@@ -18,12 +18,15 @@ interface ConnectPanelProps {
   venueId: string;
 }
 
-// One glyph + brand-arc tint per protocol, shared by the quick-nav chips and
-// each card's header tile, so the four handles read as distinct at a glance.
+// Each protocol wears its CANONICAL adapter mark from the shared adapter
+// directory (lib/adapter-icons — the same source Jobs/Operations use), so the
+// A2A broadcast glyph, the MCP mark and the HTTP globe match everywhere else in
+// the app. SDK is a client library, not an adapter, so it gets an original
+// code glyph on the violet (capability) arc.
 const PROTOCOLS: { id: string; label: string; sub: string; Icon: IconCmp; tile: string }[] = [
-  { id: "mcp", label: "MCP", sub: "Model Context", Icon: McpGlyph, tile: "bg-icon-indigo/15 text-icon-indigo" },
-  { id: "a2a", label: "A2A", sub: "Agent card", Icon: Contact, tile: "bg-primary/15 text-primary" },
-  { id: "rest", label: "REST", sub: "HTTP + docs", Icon: Globe, tile: "bg-secondary/15 text-secondary" },
+  { id: "mcp", label: "MCP", sub: "Model Context", ...adapterLookup("mcp") },
+  { id: "a2a", label: "A2A", sub: "Agent card", ...adapterLookup("a2a") },
+  { id: "rest", label: "REST", sub: "HTTP + docs", ...adapterLookup("http") },
   { id: "sdk", label: "SDK", sub: "TypeScript", Icon: Code2, tile: "bg-icon-violet/15 text-icon-violet" },
 ];
 
