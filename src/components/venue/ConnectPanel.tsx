@@ -1,6 +1,6 @@
 "use client";
 
-import { Zap, Bot, Globe, Code2 } from "lucide-react";
+import { Zap, Contact, Globe, Code2 } from "lucide-react";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { Card } from "@/components/ui/card";
@@ -22,7 +22,7 @@ interface ConnectPanelProps {
 // each card's header tile, so the four handles read as distinct at a glance.
 const PROTOCOLS: { id: string; label: string; sub: string; Icon: IconCmp; tile: string }[] = [
   { id: "mcp", label: "MCP", sub: "Model Context", Icon: McpGlyph, tile: "bg-icon-indigo/15 text-icon-indigo" },
-  { id: "a2a", label: "A2A", sub: "Agent card", Icon: Bot, tile: "bg-primary/15 text-primary" },
+  { id: "a2a", label: "A2A", sub: "Agent card", Icon: Contact, tile: "bg-primary/15 text-primary" },
   { id: "rest", label: "REST", sub: "HTTP + docs", Icon: Globe, tile: "bg-secondary/15 text-secondary" },
   { id: "sdk", label: "SDK", sub: "TypeScript", Icon: Code2, tile: "bg-icon-violet/15 text-icon-violet" },
 ];
