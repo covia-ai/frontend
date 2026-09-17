@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CopyField } from "@/components/CopyField";
 import { Globe, ExternalLink } from "lucide-react";
+import { TypeTile } from "@/components/TypeTile";
 
 interface RestApiSectionProps {
   baseUrl: string;
@@ -21,9 +22,7 @@ export function RestApiSection({ baseUrl }: RestApiSectionProps) {
   return (
     <Card className="p-6">
       <div className="flex items-center gap-3 mb-4">
-        <div className="bg-primary-vlight p-2 rounded-lg">
-          <Globe size={20} className="text-primary" />
-        </div>
+        <TypeTile Icon={Globe} tile="bg-secondary/15 text-secondary" className="size-10 rounded-lg" iconSize={20} />
         <div>
           <h2 className="text-lg font-medium">REST API</h2>
           <p className="text-sm text-muted-foreground">Base URL and generated API documentation</p>

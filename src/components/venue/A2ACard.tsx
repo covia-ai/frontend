@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CopyField } from "@/components/CopyField";
 import { Copy, ChevronDown, ChevronUp, Bot } from "lucide-react";
+import { TypeTile } from "@/components/TypeTile";
 import type { Venue, AgentCard as AgentCardData } from "@covia/covia-sdk";
 import { copyDataToClipBoard } from "@/lib/utils";
 
@@ -51,9 +52,7 @@ export function A2ACard({ venue }: A2ACardProps) {
   return (
     <Card className="p-6">
       <div className="flex items-center gap-3 mb-4">
-        <div className="bg-primary-vlight p-2 rounded-lg">
-          <Bot size={20} className="text-primary" />
-        </div>
+        <TypeTile Icon={Bot} tile="bg-primary/15 text-primary" className="size-10 rounded-lg" iconSize={20} />
         <div>
           <h2 className="text-lg font-medium">A2A Agent Card</h2>
           <p className="text-sm text-muted-foreground">

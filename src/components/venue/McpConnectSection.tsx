@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Copy, ChevronDown, ChevronUp, ArrowRight } from "lucide-react";
 import { McpGlyph } from "@/components/adapter-glyphs";
+import { TypeTile } from "@/components/TypeTile";
 import type { Venue } from "@covia/covia-sdk";
 import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
 import { useMcpDiscovery } from "@/hooks/use-mcp-discovery";
@@ -40,9 +41,7 @@ export function McpConnectSection({ venue, slug }: McpConnectSectionProps) {
   return (
     <Card className="p-6">
       <div className="flex items-center gap-3 mb-4">
-        <div className="bg-primary-vlight p-2 rounded-lg">
-          <McpGlyph size={20} className="text-primary" />
-        </div>
+        <TypeTile Icon={McpGlyph} tile="bg-icon-indigo/15 text-icon-indigo" className="size-10 rounded-lg" iconSize={20} />
         <div>
           <h2 className="text-lg font-medium">MCP Integration</h2>
           <p className="text-sm text-muted-foreground">
