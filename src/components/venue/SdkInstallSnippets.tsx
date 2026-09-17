@@ -1,7 +1,8 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
-import { Package, Copy } from "lucide-react";
+import { Code2, Copy } from "lucide-react";
+import { TypeTile } from "@/components/TypeTile";
 import { copyDataToClipBoard } from "@/lib/utils";
 
 interface SdkInstallSnippetsProps {
@@ -21,9 +22,7 @@ const status = await venue.status();`;
   return (
     <Card className="p-6">
       <div className="flex items-center gap-3 mb-4">
-        <div className="bg-primary-vlight p-2 rounded-lg">
-          <Package size={20} className="text-primary" />
-        </div>
+        <TypeTile Icon={Code2} tile="bg-icon-violet/15 text-icon-violet" className="size-10 rounded-lg" iconSize={20} />
         <div>
           <h2 className="text-lg font-medium">SDK</h2>
           <p className="text-sm text-muted-foreground">Install and connect with @covia/covia-sdk</p>

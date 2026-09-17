@@ -197,6 +197,9 @@ export function SmartBreadcrumb({
       'privateartifacts': 'Private Artifacts',
       'operations': 'Operations',
       'operation': 'Operations',
+      // The venue integration page keeps the /connect route but is labelled
+      // "Integrate" everywhere in the IA (Wave 4F) — match it here.
+      'connect': 'Integrate',
       'jobs': 'Jobs',
       // Matches PublicArtifactViewer/PublicOperationViewer: the venue-less
       // job detail route uses a singular path segment ("job") for the same

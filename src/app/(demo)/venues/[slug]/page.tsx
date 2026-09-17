@@ -4,7 +4,7 @@ import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Boxes, Building2, ExternalLink, Fingerprint, Globe, Link as LinkIcon, Package, Plug, Puzzle, ScrollText, Settings, Star, Users }from "lucide-react";
+import { Boxes, Building2, ExternalLink, Fingerprint, Globe, Link as LinkIcon, Package, Puzzle, ScrollText, Settings, Star, Users, Zap }from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useVenues } from "@/hooks/use-venues";
@@ -143,11 +143,11 @@ export default function VenuePage({ params }: VenuePageProps) {
               <Button
                 onClick={() => router.push(`/venues/${slug}/connect`)}
                 variant="outline"
-                aria-label="connect" role="button"
+                aria-label="integrate" role="button"
                 className="flex items-center justify-center space-x-2"
               >
-                <Plug size={16} />
-                <span>Connect</span>
+                <Zap size={16} />
+                <span>Integrate</span>
               </Button>
 
               <Button
