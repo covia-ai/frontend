@@ -1,23 +1,25 @@
 "use client";
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
-import { Card, CardContent, CardHeader }from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Building2, Database, Settings, Users, Globe, Activity, ArrowRight, ExternalLink, Link as LinkIcon, Fingerprint, Plug }from "lucide-react";
+import { Boxes, Building2, ExternalLink, Fingerprint, Globe, Link as LinkIcon, Package, Puzzle, ScrollText, Settings, Star, Users, Zap }from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useVenues } from "@/hooks/use-venues";
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useState, type ComponentType } from "react";
 import { CopyField } from "@/components/CopyField";
+import { StatTile } from "@/components/StatTile";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
+import { useMcpDiscovery } from "@/hooks/use-mcp-discovery";
 import { VenueResolutionState } from "@/components/VenueResolutionState";
 import { getVenueStatus } from "@/lib/venue-registry";
 import { McpConnectSection } from "@/components/venue/McpConnectSection";
 import { VenueMark } from "@/components/VenueMark";
 import { VenueTrustPill } from "@/components/VenueTrustPill";
 import { venueDisplayName } from "@/lib/venue-display";
-import { Star } from "lucide-react";
 
 interface VenuePageProps {
   params: Promise<{
@@ -34,7 +36,9 @@ export default function VenuePage({ params }: VenuePageProps) {
   const selectVenue = useVenues((state) => state.selectVenue);
   const [ venueDID, setVenueDID] = useState("");
   const [ venueName, setVenueName] = useState("");
-  const [ venueMCPUrl, setVenueMCPURL] = useState("Not Found")
+  // Shared /.well-known/mcp discovery — one request even though McpConnectSection
+  // below also consumes it (W4 4A; was fetched twice per load).
+  const venueMCPUrl = useMcpDiscovery(venue);
   const [ noOfAssets, setNoOfAssets] = useState(0)
   const [ noOfOps, setNoOfOps] = useState(0)
   const [ noOfAdapters, setNoOfAdapters] = useState(0)
@@ -42,16 +46,6 @@ export default function VenuePage({ params }: VenuePageProps) {
   const [ noOfUsers, setNoOfUsers] = useState(0)
   useEffect(() => {
        if (!venue || status !== "ready") return;
-       const fetchMCP = async () => {
-          try {
-            const response = await fetch(`${venue.baseUrl}/.well-known/mcp`);
-            if (!response.ok) throw new Error(`MCP discovery failed: ${response.status}`);
-            const body = await response.json();
-            setVenueMCPURL(body?.error ? "Not Available" : body?.server_url ?? "Not Available");
-          } catch {
-            setVenueMCPURL("Not Available");
-          }
-      }
        const fetchStats = async () => {
          try {
           const status = await getVenueStatus(venue);
@@ -80,7 +74,6 @@ export default function VenuePage({ params }: VenuePageProps) {
           if (venue) setNoOfAdapters((await venue.adapters.list()).length);
         } catch { /* non-fatal */ }
       }
-      fetchMCP();
       fetchStats();
       fetchAdapters();
   }, [venue, status]);
@@ -150,11 +143,11 @@ export default function VenuePage({ params }: VenuePageProps) {
               <Button
                 onClick={() => router.push(`/venues/${slug}/connect`)}
                 variant="outline"
-                aria-label="connect" role="button"
+                aria-label="integrate" role="button"
                 className="flex items-center justify-center space-x-2"
               >
-                <Plug size={16} />
-                <span>Connect</span>
+                <Zap size={16} />
+                <span>Integrate</span>
               </Button>
 
               <Button
@@ -198,132 +191,25 @@ export default function VenuePage({ params }: VenuePageProps) {
           </div>
         </Card>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-         <Card className="h-40 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
-            <CardHeader className="flex-1 ">
-              <div className="flex items-center space-x-3">
-              <div className="bg-primary-vlight  p-2 rounded-lg">
-                <Database size={20} className="text-primary" />
-              </div>
-              <div className="">
-                <p className="text-sm text-muted-foreground">Assets</p>
-                <p className="text-2xl font-thin">{noOfAssets}</p>
-              </div>
-            </div>
-            </CardHeader>
-            <CardContent>
-                <Button 
-                  onClick={() => router.push(`/venues/${slug}/assets`)}
-                  className="w-full"
-                  variant="outline"
-                  aria-label="view asset" role="button"
-                >
-                  View Assets
-                  <ArrowRight size={16} className="ml-2" />
-                </Button>
-              </CardContent>
-        </Card>
-          
-        <Card className="h-40 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
-            <CardHeader className="flex-1 ">
-              <div className="flex items-center space-x-3">
-              <div className="bg-primary-vlight  p-2 rounded-lg">
-                <Settings size={20} className="text-primary" />
-              </div>
-              <div className="">
-                <p className="text-sm text-muted-foreground">Operations</p>
-                <p className="text-2xl font-thin">{noOfOps}</p>
-              </div>
-            </div>
-            </CardHeader>
-            <CardContent>
-                <Button 
-                  onClick={() => router.push(`/venues/${slug}/operations`)}
-                  className="w-full"
-                  variant="outline"
-                  aria-label="view operation" role="button"
-                >
-                  View Operation
-                  <ArrowRight size={16} className="ml-2" />
-                </Button>
-              </CardContent>
-        </Card>
-
-        <Card className="h-40 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
-            <CardHeader className="flex-1 ">
-              <div className="flex items-center space-x-3">
-              <div className="bg-primary-vlight  p-2 rounded-lg">
-                <Plug size={20} className="text-primary" />
-              </div>
-              <div className="">
-                <p className="text-sm text-muted-foreground">Adapters</p>
-                <p className="text-2xl font-thin">{noOfAdapters}</p>
-              </div>
-            </div>
-            </CardHeader>
-            <CardContent>
-                <Button
-                  onClick={() => router.push(`/venues/${slug}/adapters`)}
-                  className="w-full"
-                  variant="outline"
-                  aria-label="view adapters" role="button"
-                >
-                  View Adapters
-                  <ArrowRight size={16} className="ml-2" />
-                </Button>
-              </CardContent>
-        </Card>
-
-        <Card className="h-40 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
-            <CardHeader className="flex-1 ">
-              <div className="flex items-center space-x-3">
-              <div className="bg-primary-vlight  p-2 rounded-lg">
-                <Users size={20} className="text-primary" />
-              </div>
-              <div className="">
-                <p className="text-sm text-muted-foreground">Users</p>
-                <p className="text-2xl font-thin">{noOfUsers}</p>
-              </div>
-            </div>
-            </CardHeader>
-            <CardContent>
-                <Button
-                  onClick={() => router.push(`/venues/${slug}/users`)}
-                  className="w-full"
-                  variant="outline"
-                    aria-label="view users" role="button"
-                >
-                  View Users
-                  <ArrowRight size={16} className="ml-2" />
-                </Button>
-              </CardContent>
-        </Card>
-
-        <Card className="h-40 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
-            <CardHeader className="flex-1 ">
-              <div className="flex items-center space-x-3">
-              <div className="bg-primary-vlight  p-2 rounded-lg">
-                <Activity size={20} className="text-primary" />
-              </div>
-              <div className="">
-                <p className="text-sm text-muted-foreground">Jobs</p>
-                <p className="text-2xl font-thin">{noOfRuns}</p>
-              </div>
-            </div>
-            </CardHeader>
-            <CardContent>
-                <Button 
-                  onClick={() => router.push(`/venues/${slug}/jobs`)}
-                  className="w-full"
-                  variant="outline"
-                  aria-label="view jobs" role="button"
-                >
-                  View Jobs
-                  <ArrowRight size={16} className="ml-2" />
-                </Button>
-              </CardContent>
-        </Card>
+        {/* Stats grid — the shared StatTile (icon + count), each tile a link to
+            its venue sub-page. */}
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
+          {([
+            { label: "Assets", value: noOfAssets, icon: Package as ComponentType<{ size?: number; className?: string }>, route: "assets" },
+            { label: "Operations", value: noOfOps, icon: Boxes, route: "operations" },
+            { label: "Adapters", value: noOfAdapters, icon: Puzzle, route: "adapters" },
+            { label: "Users", value: noOfUsers, icon: Users, route: "users" },
+            { label: "Jobs", value: noOfRuns, icon: ScrollText, route: "jobs" },
+          ]).map((stat) => (
+            <Link
+              key={stat.route}
+              href={`/venues/${slug}/${stat.route}`}
+              aria-label={`View ${stat.label}`}
+              className="block rounded-xl transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <StatTile icon={stat.icon} label={stat.label} value={String(stat.value)} caption="View →" />
+            </Link>
+          ))}
         </div>
 
         <McpConnectSection venue={venue} slug={slug} />

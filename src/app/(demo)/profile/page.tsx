@@ -15,6 +15,7 @@ import { useCurrentAuth, useAuthStore } from "@/hooks/use-auth";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { Ed25519Auth, type DIDDocument } from "@covia/covia-sdk";
 import { PageHeading } from "@/components/PageHeading";
+import { ShikiCodeBlock } from "@/components/ShikiCodeBlock";
 import { AccountsPanel } from "@/components/AccountsPanel";
 import { IdentityTokenButton } from "@/components/IdentityTokenButton";
 import { KeysPanel } from "@/components/KeysPanel";
@@ -207,9 +208,14 @@ export default function ProfilePage() {
                       DID Document
                     </CollapsibleTrigger>
                     <CollapsibleContent>
-                      <pre className="bg-muted mt-2 rounded-md p-3 text-xs font-mono overflow-x-auto">
-                        {JSON.stringify(didDocument, null, 2)}
-                      </pre>
+                      {/* A proper JSON viewer (Shiki highlight + copy) rather than
+                          a raw <pre> — the DID document is structured data (W5B). */}
+                      <ShikiCodeBlock
+                        code={JSON.stringify(didDocument, null, 2)}
+                        language="json"
+                        wrapLongLines
+                        className="mt-2"
+                      />
                     </CollapsibleContent>
                   </Collapsible>
                 )}

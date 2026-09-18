@@ -104,8 +104,54 @@ describe("UsersList", () => {
     render(<UsersList venueId="venue-1" />);
 
     expect(await screen.findByText("2 users")).toBeInTheDocument();
-    expect(screen.getByText("Managed")).toBeInTheDocument();
-    expect(screen.getByText("External")).toBeInTheDocument();
+    // "Managed"/"External" now appear both as facet filter chips and as the
+    // per-row account-type chip — scope to the table to assert the row chips.
+    const table = screen.getByRole("table");
+    expect(within(table).getByText("Managed")).toBeInTheDocument();
+    expect(within(table).getByText("External")).toBeInTheDocument();
+  });
+
+  it("filters by account type via the facet chips", async () => {
+    const user = userEvent.setup();
+    mockVenue.users.list.mockResolvedValue({
+      users: [
+        { did: "did:key:zAlice", registered: true, managed: true },
+        { did: "did:key:zBob", registered: true, managed: false },
+      ],
+      total: 2,
+    });
+    render(<UsersList venueId="venue-1" />);
+
+    await screen.findByText("did:key:zAlice");
+    // Narrow to External — the managed user drops out of the table.
+    await user.click(screen.getByRole("button", { name: /External/ }));
+
+    expect(screen.getByText("did:key:zBob")).toBeInTheDocument();
+    expect(screen.queryByText("did:key:zAlice")).not.toBeInTheDocument();
+    expect(screen.getByText("1 user")).toBeInTheDocument();
+  });
+
+  it("paginates a large directory and keeps the second page reachable", async () => {
+    const user = userEvent.setup();
+    // 25 users > PAGE_SIZE (20): page 1 shows 20, page 2 shows the rest.
+    const many = Array.from({ length: 25 }, (_, i) => ({
+      did: `did:key:zUser${String(i).padStart(2, "0")}`,
+      registered: true,
+      managed: false,
+    }));
+    mockVenue.users.list.mockResolvedValue({ users: many, total: 25 });
+    render(<UsersList venueId="venue-1" />);
+
+    await screen.findByText("did:key:zUser00");
+    expect(screen.getByText("25 users")).toBeInTheDocument();
+    expect(screen.getByText("Page 1 of 2")).toBeInTheDocument();
+    // Last user is on page 2, not yet rendered.
+    expect(screen.queryByText("did:key:zUser24")).not.toBeInTheDocument();
+
+    await user.click(screen.getAllByRole("link", { name: /next page/i })[0]);
+
+    expect(await screen.findByText("did:key:zUser24")).toBeInTheDocument();
+    expect(screen.queryByText("did:key:zUser00")).not.toBeInTheDocument();
   });
 
   it("lazy-loads authenticators on expand and keeps a revoked entry visible as a tombstone", async () => {
@@ -128,16 +174,38 @@ describe("UsersList", () => {
 
     // Click a neutral part of the row (not the DID itself, which is its own
     // dropdown trigger for Copy — see the stopPropagation comment in
-    // UsersList.tsx) to toggle expand.
-    await screen.findByText("did:key:zAlice");
-    const row = screen.getByText("Managed");
+    // UsersList.tsx) to toggle expand. Scope to the table so we click the row's
+    // account-type chip, not the "Managed" facet filter chip above it.
+    const rowDid = await screen.findByText("did:key:zAlice");
+    const row = rowDid.closest("tr")!;
     expect(mockVenue.users.listAuthenticators).not.toHaveBeenCalled();
 
-    await user.click(row);
+    await user.click(within(row).getByText("Managed"));
 
     await waitFor(() => expect(mockVenue.users.listAuthenticators).toHaveBeenCalledWith("did:key:zAlice"));
     expect(await screen.findByText("active")).toBeInTheDocument();
     expect(await screen.findByText("revoked")).toBeInTheDocument();
+  });
+
+  it("does not call listAuthenticators for an external user — shows the note, no error toast", async () => {
+    const user = userEvent.setup();
+    mockVenue.users.list.mockResolvedValue({
+      users: [{ did: "did:key:zExternal", registered: true, managed: false }],
+      total: 1,
+    });
+    render(<UsersList venueId="venue-1" />);
+
+    // Expand via the row's account-type chip (the DID cell stops propagation).
+    const rowDid = await screen.findByText("did:key:zExternal");
+    await user.click(within(rowDid.closest("tr")!).getByText("External"));
+
+    // The venue rejects authenticator lookups for external DIDs (HTTP 400), so
+    // we must not call it — and must not surface an error toast.
+    expect(mockVenue.users.listAuthenticators).not.toHaveBeenCalled();
+    expect(mockNotifyError).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText(/authenticators only apply to managed accounts/i),
+    ).toBeInTheDocument();
   });
 
   it("confirms before revoking, then refetches that user's authenticators", async () => {
@@ -155,8 +223,8 @@ describe("UsersList", () => {
     mockVenue.users.revokeAuthenticator.mockResolvedValue({ did: "did:key:zAlice", key: "did:key:zAuth1", revoked: true });
 
     render(<UsersList venueId="venue-1" />);
-    await screen.findByText("did:key:zAlice");
-    await user.click(screen.getByText("Managed"));
+    const rowDid = await screen.findByText("did:key:zAlice");
+    await user.click(within(rowDid.closest("tr")!).getByText("Managed"));
     await screen.findByText("active");
 
     await user.click(await screen.findByRole("button", { name: "Revoke" }));

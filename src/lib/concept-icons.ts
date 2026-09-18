@@ -39,6 +39,7 @@ import {
   ScrollText,
   Settings,
   Shapes,
+  ShieldCheck,
   Sparkles,
   Tags,
   ToggleRight,
@@ -121,6 +122,16 @@ export const CONCEPT_ICONS: Record<Concept, TypeLook> = {
 
 export function conceptLook(concept: Concept): TypeLook {
   return CONCEPT_ICONS[concept];
+}
+
+// A user row's account-type mark, on the same system as conceptLook so the
+// Users list never hand-picks an icon: a *managed* account (a venue-issued,
+// venue-vouched named identity) wears a shield in cerulean; an *external*
+// account (a plain self-registered DID) wears the neutral user mark.
+export function userLook(managed: boolean): TypeLook {
+  return managed
+    ? { Icon: ShieldCheck, tile: SEC, label: "Managed" }
+    : { Icon: User, tile: NEU, label: "External" };
 }
 
 // ---------------------------------------------------------------------------

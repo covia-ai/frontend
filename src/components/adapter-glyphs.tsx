@@ -1,12 +1,17 @@
-import { SiLangchain, SiModelcontextprotocol } from "react-icons/si";
+import { SiDiscord, SiLangchain, SiModelcontextprotocol } from "react-icons/si";
 import { FaJava } from "react-icons/fa";
 
-// Small marks for adapters the lucide set doesn't cover: two original geometric
-// glyphs (convex, lattice) and thin wrappers around the real product logos
-// (LangChain, MCP, Java) so they all take the same props a lucide icon does
+// Small marks the lucide set doesn't cover: two original geometric glyphs
+// (convex, lattice) and thin wrappers around the real product logos (LangChain,
+// MCP, Java, Discord) so they all take the same props a lucide icon does
 // (size / className) and drop into the same tiles.
 
 type GlyphProps = { size?: number; className?: string; strokeWidth?: number };
+
+/** Discord — the real brand mark (the Resources community card). */
+export function DiscordGlyph({ size = 18, className }: GlyphProps) {
+  return <SiDiscord size={size} className={className} aria-hidden="true" />;
+}
 
 /** LangChain — the real brand mark. */
 export function LangchainGlyph({ size = 18, className }: GlyphProps) {
