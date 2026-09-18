@@ -7,16 +7,14 @@ jest.mock("@/components/admin-panel/TopBar", () => ({
   TopBar: () => <div data-testid="top-bar" />,
 }));
 
-const mockNotifyError = jest.fn();
-const mockNotifySuccess = jest.fn();
-jest.mock("@/lib/notify", () => ({
-  notifyError: (...args: unknown[]) => mockNotifyError(...args),
-  notifySuccess: (...args: unknown[]) => mockNotifySuccess(...args),
-  jobFailure: (err: unknown) => ({ reason: err, jobHref: undefined }),
-}));
+jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
+import { notifyMock } from "@test/notify";
+const mockNotifyError = notifyMock.notifyError;
+const mockNotifySuccess = notifyMock.notifySuccess;
 
 const mockRevalidate = jest.fn();
 jest.mock("@/hooks/use-authenticated-venue", () => ({
+  ...require("@test/use-authenticated-venue").venueMock,
   revalidateVenueOnFailure: (...args: unknown[]) => mockRevalidate(...args),
 }));
 

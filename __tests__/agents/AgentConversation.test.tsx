@@ -13,12 +13,10 @@ beforeAll(() => {
   Object.assign(navigator, { clipboard: { writeText } });
 });
 
-const mockNotifySuccess = jest.fn();
-const mockNotifyError = jest.fn();
-jest.mock("@/lib/notify", () => ({
-  notifySuccess: (...args: unknown[]) => mockNotifySuccess(...args),
-  notifyError: (...args: unknown[]) => mockNotifyError(...args),
-}));
+jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
+import { notifyMock } from "@test/notify";
+const mockNotifySuccess = notifyMock.notifySuccess;
+const mockNotifyError = notifyMock.notifyError;
 
 import { AgentConversation } from "@/components/AgentConversation";
 import type { Session } from "@/config/types";

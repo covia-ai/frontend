@@ -40,7 +40,6 @@ describe('browserStorage', () => {
   it('falls back to a no-op when localStorage exists but has no methods', () => {
     withLocalStorage(methodlessStorage, () => {
       jest.isolateModules(() => {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const { browserStorage } = require('@/lib/persist-storage');
         const storage = browserStorage();
 
@@ -54,7 +53,6 @@ describe('browserStorage', () => {
   it('falls back to a no-op when there is no localStorage global at all', () => {
     withLocalStorage(undefined, () => {
       jest.isolateModules(() => {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const { browserStorage } = require('@/lib/persist-storage');
         expect(() => browserStorage().setItem('venues', '{}')).not.toThrow();
       });
@@ -65,7 +63,6 @@ describe('browserStorage', () => {
     const real = workingStorage();
     withLocalStorage(real, () => {
       jest.isolateModules(() => {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const { browserStorage } = require('@/lib/persist-storage');
         browserStorage().setItem('venues', '{"state":{}}');
         expect(real.getItem('venues')).toBe('{"state":{}}');
@@ -78,7 +75,6 @@ describe('persisted stores where localStorage is unusable', () => {
   it('does not throw when a store is written', () => {
     withLocalStorage(methodlessStorage, () => {
       jest.isolateModules(() => {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const { useSidebar } = require('@/hooks/use-sidebar');
         expect(() => useSidebar.getState().setIsOpen(false)).not.toThrow();
         expect(useSidebar.getState().isOpen).toBe(false);

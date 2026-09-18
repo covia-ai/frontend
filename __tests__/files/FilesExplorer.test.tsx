@@ -3,10 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 
-const mockNotifyError = jest.fn();
-jest.mock("@/lib/notify", () => ({
-  notifyError: (...args: unknown[]) => mockNotifyError(...args),
-}));
+jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
 
 const mockVenue: any = {
   baseUrl: "https://venue.example",
@@ -22,6 +19,7 @@ const mockVenue: any = {
 };
 
 jest.mock("@/hooks/use-authenticated-venue", () => ({
+  ...require("@test/use-authenticated-venue").venueMock,
   useAuthenticatedVenue: () => mockVenue,
 }));
 

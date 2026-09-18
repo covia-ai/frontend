@@ -8,22 +8,22 @@ import { VERIFY_FIXTURES } from "./connection-fixtures";
 
 let mockAuthenticated = true;
 jest.mock("@/hooks/use-auth", () => ({
+  ...require("@test/use-auth").authMock,
   useIsAuthenticated: () => mockAuthenticated,
 }));
 
 const mockRevalidate = jest.fn();
 let mockVenue: any;
 jest.mock("@/hooks/use-authenticated-venue", () => ({
+  ...require("@test/use-authenticated-venue").venueMock,
   useAuthenticatedVenue: () => mockVenue,
   revalidateVenueOnFailure: (...args: unknown[]) => mockRevalidate(...args),
 }));
 
-const mockNotifyError = jest.fn();
-const mockNotifySuccess = jest.fn();
-jest.mock("@/lib/notify", () => ({
-  notifyError: (...args: unknown[]) => mockNotifyError(...args),
-  notifySuccess: (...args: unknown[]) => mockNotifySuccess(...args),
-}));
+jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
+import { notifyMock } from "@test/notify";
+const mockNotifyError = notifyMock.notifyError;
+const mockNotifySuccess = notifyMock.notifySuccess;
 
 function makeVenue(secretNames: string[]) {
   return {

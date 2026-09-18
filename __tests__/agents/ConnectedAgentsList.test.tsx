@@ -1,13 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-jest.mock("@/lib/notify", () => ({
-  notifySuccess: jest.fn(),
-  notifyError: jest.fn(),
-  notifyWarning: jest.fn(),
-  notifyInfo: jest.fn(),
-  jobFailure: (err: unknown) => ({ reason: String(err), jobHref: undefined }),
-}));
+jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn() }),
@@ -15,6 +9,7 @@ jest.mock("next/navigation", () => ({
 
 let authed = true;
 jest.mock("@/hooks/use-auth", () => ({
+  ...require("@test/use-auth").authMock,
   useIsAuthenticated: () => authed,
   useAuthStore: () => jest.fn(),
   useCurrentAuth: () => ({ type: "keypair" }),
@@ -35,6 +30,7 @@ const mockVenue = {
   operations: { run: jest.fn() },
 };
 jest.mock("@/hooks/use-authenticated-venue", () => ({
+  ...require("@test/use-authenticated-venue").venueMock,
   useAuthenticatedVenue: () => mockVenue,
 }));
 

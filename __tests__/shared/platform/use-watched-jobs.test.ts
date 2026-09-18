@@ -4,16 +4,14 @@ import { RunStatus } from "@covia/covia-sdk";
 
 const mockJobsGet = jest.fn();
 const mockGetVenueFor = jest.fn((..._args: unknown[]) => ({ jobs: { get: mockJobsGet } }));
-const mockNotifySuccess = jest.fn((..._args: unknown[]) => {});
-const mockNotifyError = jest.fn((..._args: unknown[]) => {});
 
 jest.mock("@/lib/venue-registry", () => ({
   getVenueFor: (...args: unknown[]) => mockGetVenueFor(...args),
 }));
-jest.mock("@/lib/notify", () => ({
-  notifySuccess: (...args: unknown[]) => mockNotifySuccess(...args),
-  notifyError: (...args: unknown[]) => mockNotifyError(...args),
-}));
+jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
+import { notifyMock } from "@test/notify";
+const mockNotifySuccess = notifyMock.notifySuccess;
+const mockNotifyError = notifyMock.notifyError;
 jest.mock("@/hooks/use-venues", () => ({
   useVenues: {
     getState: () => ({
@@ -22,6 +20,7 @@ jest.mock("@/hooks/use-venues", () => ({
   },
 }));
 jest.mock("@/hooks/use-auth", () => ({
+  ...require("@test/use-auth").authMock,
   useAuthStore: { getState: () => ({ authMap: {} }) },
 }));
 

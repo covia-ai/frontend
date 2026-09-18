@@ -1,11 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
-jest.mock("@/lib/notify", () => ({
-  notifySuccess: jest.fn(),
-  notifyError: jest.fn(),
-}));
+jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
 jest.mock("@/hooks/use-auth", () => ({
+  ...require("@test/use-auth").authMock,
   useIsAuthenticated: () => true,
 }));
 jest.mock("@/components/admin-panel/signin-button", () => ({
@@ -17,6 +15,7 @@ const mockVenue: any = {
   operations: { run: jest.fn() },
 };
 jest.mock("@/hooks/use-authenticated-venue", () => ({
+  ...require("@test/use-authenticated-venue").venueMock,
   useAuthenticatedVenue: () => mockVenue,
 }));
 

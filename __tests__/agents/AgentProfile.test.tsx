@@ -27,10 +27,12 @@ const controller: Record<string, unknown> = {
 
 jest.mock("@/hooks/use-agent-explorer", () => ({ useAgentExplorer: () => controller }));
 jest.mock("@/hooks/use-authenticated-venue", () => ({
+  ...require("@test/use-authenticated-venue").venueMock,
   useAuthenticatedVenue: () => ({ venueId: "did:key:zVenue", baseUrl: "https://v.example" }),
 }));
 jest.mock("@/hooks/use-agent-fork-provenance", () => ({ useAgentForkProvenance: () => null }));
 jest.mock("@/hooks/use-auth", () => ({
+  ...require("@test/use-auth").authMock,
   useCurrentAuth: () => ({ type: "keypair", did: "did:key:z6MkOwner", privateKeyHex: "x" }),
 }));
 jest.mock("next/navigation", () => ({ useRouter: () => ({ push: jest.fn() }) }));

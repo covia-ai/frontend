@@ -28,8 +28,15 @@ const eslintConfig = [
       "@typescript-eslint/no-unused-vars" : ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "caughtErrors": "none" }],
       "react-hooks/rules-of-hooks" : "error"
     },
-   })
-  
+   }),
+  {
+    // `jest.mock` factories are hoisted above every import, so a shared double
+    // can only be reached from inside one with `require`. This is Jest's own
+    // documented idiom, not a lapse back to CommonJS — the same files use ESM
+    // imports everywhere else.
+    files: ["__tests__/**/*.{ts,tsx}"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
 ];
 
 export default eslintConfig;

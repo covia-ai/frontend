@@ -11,6 +11,9 @@ const config = {
   moduleNameMapper: {
     "\\.(css|less|scss|sass)$": "identity-obj-proxy",
     "^@/(.*)$": "<rootDir>/src/$1",
+    // Shared test doubles. `jest.mock` factories are hoisted above imports, so
+    // they reach these through require("@test/...") rather than a top import.
+    "^@test/(.*)$": "<rootDir>/__tests__/support/$1",
   },
   collectCoverage: false,
   collectCoverageFrom: [
@@ -21,6 +24,18 @@ const config = {
   ],
   coverageProvider: "v8",
   coveragePathIgnorePatterns: ["/node_modules/", "/.next/"],
+  // A ratchet, not a target: set just under the coverage the suite actually
+  // had when this landed (82.77 / 80.26 / 72.16), so an unrelated PR cannot
+  // quietly erode it. The small margin absorbs v8's run-to-run jitter. Raise
+  // these numbers as coverage climbs — never lower them to make a build pass.
+  coverageThreshold: {
+    global: {
+      statements: 80,
+      branches: 78,
+      functions: 70,
+      lines: 80,
+    },
+  },
 };
 
 const generatedConfig = createJestConfig(config);
@@ -52,6 +67,10 @@ module.exports = async (...args) => {
   resolvedConfig.testPathIgnorePatterns = [
     ...(resolvedConfig.testPathIgnorePatterns || ["/node_modules/"]),
     "[.-]fixtures\\.[jt]sx?$",
+    // Shared test doubles under __tests__/support/ are helpers, not suites;
+    // Jest's default testMatch would otherwise run each one and fail it for
+    // containing no tests.
+    "<rootDir>/__tests__/support/",
     worktrees,
   ];
   // Not redundant with the above: haste still maps every worktree's files, so

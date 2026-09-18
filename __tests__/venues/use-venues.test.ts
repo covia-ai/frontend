@@ -22,7 +22,6 @@ describe('use-venues rehydration', () => {
     );
 
     jest.isolateModules(() => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { useVenues } = require('@/hooks/use-venues');
       const ids = useVenues.getState().venues.map((v: any) => v.venueId);
       expect(ids).toEqual(['did:key:z6MkgpH3GNkq', 'did:web:venue-1.covia.ai']);
@@ -31,7 +30,6 @@ describe('use-venues rehydration', () => {
 });
 
 describe('reconcileVenues', () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { reconcileVenues } = require('@/hooks/use-venues');
   const v = (venueId: string, baseUrl: string, name?: string): any =>
     ({ venueId, baseUrl, metadata: { name } });
