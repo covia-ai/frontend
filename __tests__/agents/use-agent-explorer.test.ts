@@ -5,15 +5,10 @@ import { useAgentExplorer } from "@/hooks/use-agent-explorer";
 let mockVenue: any;
 
 jest.mock("@/hooks/use-authenticated-venue", () => ({
+  ...require("@test/use-authenticated-venue").venueMock,
   useAuthenticatedVenue: () => mockVenue,
 }));
-jest.mock("@/lib/notify", () => ({
-  notifySuccess: jest.fn(),
-  notifyError: jest.fn(),
-  notifyWarning: jest.fn(),
-  notifyInfo: jest.fn(),
-  jobFailure: (err: unknown) => ({ reason: err, jobHref: undefined }),
-}));
+jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
 
 function makeVenue(venueId: string, agentIds: string[], configs: Record<string, unknown> = {}) {
   return {

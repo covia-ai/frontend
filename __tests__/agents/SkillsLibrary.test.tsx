@@ -73,6 +73,7 @@ const mockVenue: any = {
 };
 
 jest.mock("@/hooks/use-authenticated-venue", () => ({
+  ...require("@test/use-authenticated-venue").venueMock,
   useAuthenticatedVenue: () => mockVenue,
 }));
 

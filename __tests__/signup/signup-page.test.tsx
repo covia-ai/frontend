@@ -9,6 +9,7 @@ jest.mock("@covia/covia-sdk", () => ({
 
 let mockAuth: { type: "keypair" | "bearer"; did: string } | null = null;
 jest.mock("@/hooks/use-auth", () => ({
+  ...require("@test/use-auth").authMock,
   useCurrentAuth: () => mockAuth,
 }));
 

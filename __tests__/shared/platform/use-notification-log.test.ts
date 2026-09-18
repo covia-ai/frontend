@@ -68,7 +68,6 @@ describe("useNotificationLog", () => {
     );
 
     jest.isolateModules(() => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { useNotificationLog: rehydrated } = require("@/hooks/use-notification-log");
       expect(rehydrated.getState().entries).toEqual([
         { id: 1, kind: "success", title: "Old entry", at: 0, read: true, venueId: "v1", receiptHref: "/venues/v1/jobs/j1" },

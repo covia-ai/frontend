@@ -34,9 +34,11 @@ const mockVenue = {
 };
 
 jest.mock("@/hooks/use-authenticated-venue", () => ({
+  ...require("@test/use-authenticated-venue").venueMock,
   useAuthenticatedVenue: () => mockVenue,
 }));
 jest.mock("@/hooks/use-auth", () => ({
+  ...require("@test/use-auth").authMock,
   useIsAuthenticated: () => true,
   useCurrentAuth: () => mockAuth,
   useAuthStore: (selector: (state: { logout: typeof mockLogout }) => unknown) =>
@@ -55,11 +57,7 @@ jest.mock("@/components/admin-panel/TopBar", () => ({
 jest.mock("@/components/AgentTemplates", () => ({
   AgentTemplates: () => <section data-testid="agent-templates">Templates</section>,
 }));
-jest.mock("@/lib/notify", () => ({
-  notifyError: jest.fn(),
-  notifyWarning: jest.fn(),
-  jobFailure: (error: unknown) => ({ reason: error }),
-}));
+jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
 
 import { AgentCreate } from "@/components/AgentCreate";
 

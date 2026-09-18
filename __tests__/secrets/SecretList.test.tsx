@@ -4,22 +4,19 @@ import "@testing-library/jest-dom";
 import { SecretList } from "@/components/SecretList";
 
 const mockToast = jest.fn();
-jest.mock("@/lib/notify", () => ({
-  notifySuccess: (...a: any[]) => mockToast("success", ...a),
-  notifyError: (...a: any[]) => mockToast("error", ...a),
-  notifyWarning: (...a: any[]) => mockToast("warning", ...a),
-  jobFailure: (err: unknown) => ({ reason: err, jobHref: undefined }),
-}));
+jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
 
 const mockUseAuthenticatedVenue = jest.fn();
 const mockRevalidate = jest.fn();
 jest.mock("@/hooks/use-authenticated-venue", () => ({
+  ...require("@test/use-authenticated-venue").venueMock,
   useAuthenticatedVenue: () => mockUseAuthenticatedVenue(),
   revalidateVenueOnFailure: (...a: any[]) => mockRevalidate(...a),
 }));
 
 const mockUseIsAuthenticated = jest.fn();
 jest.mock("@/hooks/use-auth", () => ({
+  ...require("@test/use-auth").authMock,
   useIsAuthenticated: () => mockUseIsAuthenticated(),
 }));
 

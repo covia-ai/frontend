@@ -18,18 +18,14 @@ let mockAuthenticated = false;
 let mockVenue: any;
 
 jest.mock("@/hooks/use-authenticated-venue", () => ({
+  ...require("@test/use-authenticated-venue").venueMock,
   useAuthenticatedVenue: () => mockVenue,
 }));
 jest.mock("@/hooks/use-auth", () => ({
+  ...require("@test/use-auth").authMock,
   useIsAuthenticated: () => mockAuthenticated,
 }));
-jest.mock("@/lib/notify", () => ({
-  notifySuccess: jest.fn(),
-  notifyError: jest.fn(),
-  notifyWarning: jest.fn(),
-  notifyInfo: jest.fn(),
-  jobFailure: (err: unknown) => ({ reason: err, jobHref: undefined }),
-}));
+jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
 
 function createVenue() {
   return {

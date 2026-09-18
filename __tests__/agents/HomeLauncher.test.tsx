@@ -33,8 +33,10 @@ jest.mock("@/components/home/VenuePulse", () => ({
 }));
 
 let mockAuthed = true;
-jest.mock("@/hooks/use-auth", () => ({ useIsAuthenticated: () => mockAuthed }));
+jest.mock("@/hooks/use-auth", () => ({
+  ...require("@test/use-auth").authMock, useIsAuthenticated: () => mockAuthed }));
 jest.mock("@/hooks/use-authenticated-venue", () => ({
+  ...require("@test/use-authenticated-venue").venueMock,
   useAuthenticatedVenue: () => ({ venueId: "v", baseUrl: "https://v" }),
 }));
 

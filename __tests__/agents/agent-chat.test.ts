@@ -1,8 +1,5 @@
-jest.mock("@/lib/notify", () => ({
-  notifyError: jest.fn(),
-  notifyWarning: jest.fn(),
-  jobFailure: jest.fn((error: unknown) => ({ reason: error, jobHref: "/jobs/failed" })),
-}));
+jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
+import { notifyMock } from "@test/notify";
 jest.mock("@/lib/utils", () => ({
   gtmEvent: {
     sendAgentMessage: jest.fn(),
@@ -23,7 +20,14 @@ const common = {
 };
 
 describe("dispatchAgentMessage", () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // This suite asserts the job link reaches notifyError.
+    notifyMock.jobFailure.mockImplementation((error: unknown) => ({
+      reason: error,
+      jobHref: "/jobs/failed",
+    }));
+  });
 
   it("trims messages and records successful dispatch", async () => {
     const send = jest.fn().mockResolvedValue({ sessionId: "session-1", response: "hello" });

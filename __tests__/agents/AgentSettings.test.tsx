@@ -7,6 +7,7 @@ jest.mock("@/hooks/use-venue-access", () => ({
   useVenueAccess: () => mockAccess,
 }));
 jest.mock("@/hooks/use-auth", () => ({
+  ...require("@test/use-auth").authMock,
   useIsAuthenticated: () => true,
 }));
 jest.mock("@/components/admin-panel/signin-button", () => ({
@@ -38,6 +39,7 @@ const mockVenue: any = {
   },
 };
 jest.mock("@/hooks/use-authenticated-venue", () => ({
+  ...require("@test/use-authenticated-venue").venueMock,
   useAuthenticatedVenue: () => mockVenue,
 }));
 

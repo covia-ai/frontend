@@ -4,12 +4,11 @@ import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { AIPrompt } from "@/components/AIPrompt";
 
-jest.mock("@/lib/notify", () => ({
-  notifySuccess: jest.fn(), notifyError: jest.fn(), notifyWarning: jest.fn(), notifyInfo: jest.fn(),
-  jobFailure: (err: unknown) => ({ reason: err, jobHref: undefined }),
-}));
-jest.mock("@/hooks/use-authenticated-venue", () => ({ useAuthenticatedVenue: () => null }));
-jest.mock("@/hooks/use-auth", () => ({ useIsAuthenticated: () => true }));
+jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
+jest.mock("@/hooks/use-authenticated-venue", () => ({
+  ...require("@test/use-authenticated-venue").venueMock, useAuthenticatedVenue: () => null }));
+jest.mock("@/hooks/use-auth", () => ({
+  ...require("@test/use-auth").authMock, useIsAuthenticated: () => true }));
 jest.mock("@/hooks/use-device-key-signin", () => ({
   useDeviceKeySignIn: () => ({
     dialogOpen: false, setDialogOpen: jest.fn(), openDialog: jest.fn(),

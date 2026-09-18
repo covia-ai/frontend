@@ -2,37 +2,32 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 
-jest.mock("@/lib/notify", () => ({
-  notifySuccess: jest.fn(),
-  notifyError: jest.fn(),
-}));
+jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
+jest.mock("@/hooks/use-auth", () => require("@test/use-auth").authMock);
+jest.mock("@/hooks/use-authenticated-venue", () =>
+  require("@test/use-authenticated-venue").venueMock);
 
-let mockAuthenticated = true;
-jest.mock("@/hooks/use-auth", () => ({
-  useIsAuthenticated: () => mockAuthenticated,
-}));
-
-const mockVenue: any = {
-  baseUrl: "https://venue.example",
-  workspace: { read: jest.fn() },
-  operations: { run: jest.fn() },
-};
-jest.mock("@/hooks/use-authenticated-venue", () => ({
-  useAuthenticatedVenue: () => mockVenue,
-}));
+import { sampleKeypairAuth, setCurrentAuth } from "@test/use-auth";
+import { setVenue } from "@test/use-authenticated-venue";
+import { resetSupportMocks } from "@test/reset";
 
 import { MemoryPanel } from "@/components/MemoryPanel";
 
+let mockVenue: any;
+
 describe("MemoryPanel", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockAuthenticated = true;
-    mockVenue.workspace.read.mockResolvedValue({ exists: false, value: null });
-    mockVenue.operations.run.mockResolvedValue({});
+    resetSupportMocks();
+    setCurrentAuth(sampleKeypairAuth);
+    mockVenue = setVenue({
+      baseUrl: "https://venue.example",
+      workspace: { read: jest.fn().mockResolvedValue({ exists: false, value: null }) },
+      operations: { run: jest.fn().mockResolvedValue({}) },
+    });
   });
 
   it("requires authentication", async () => {
-    mockAuthenticated = false;
+    setCurrentAuth(null);
     render(<MemoryPanel />);
     expect(await screen.findByText(/authentication required/i)).toBeInTheDocument();
     expect(mockVenue.workspace.read).not.toHaveBeenCalled();
