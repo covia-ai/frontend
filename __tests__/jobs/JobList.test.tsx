@@ -41,12 +41,13 @@ const mockVenue: any = {
   jobs: { list: jest.fn(), get: jest.fn() },
 };
 
+let mockAuthenticated = true;
 jest.mock('@/hooks/use-resolved-venue', () => ({
   useResolvedVenueContext: () => ({
     descriptor: mockVenue,
     venue: mockVenue,
     auth: { type: 'keypair' },
-    isAuthenticated: true,
+    isAuthenticated: mockAuthenticated,
   }),
 }));
 jest.mock('@/hooks/use-venues', () => ({
@@ -250,5 +251,31 @@ describe('JobList does not assert zeros before the count is known (#419)', () =>
 
     await waitFor(() =>
       expect(screen.getByText(/Showing 0 of 0/)).toBeInTheDocument());
+  });
+});
+
+// The count is always the caller's own jobs, never the venue's — venue-3 read
+// 311 under "across this venue" while the venue itself held ~35,000 (#422).
+describe('JobList scopes the Total Jobs caption to the caller', () => {
+  beforeEach(() => {
+    mockVenue.workspace.list.mockClear();
+    mockVenue.workspace.slice.mockClear();
+    mockAuthenticated = true;
+  });
+  afterAll(() => { mockAuthenticated = true; });
+
+  it('says "for this user" when signed in', async () => {
+    render(<JobList />);
+    await waitFor(() => expect(screen.getByText('for this user')).toBeInTheDocument());
+    expect(screen.queryByText(/across this venue/i)).not.toBeInTheDocument();
+  });
+
+  it('does not claim the venue-wide total when signed out', async () => {
+    mockAuthenticated = false;
+    render(<JobList />);
+
+    await waitFor(() =>
+      expect(screen.getByText('for signed-out callers')).toBeInTheDocument());
+    expect(screen.queryByText(/across this venue/i)).not.toBeInTheDocument();
   });
 });

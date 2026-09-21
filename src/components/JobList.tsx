@@ -583,7 +583,11 @@ export function JobList({ venueId }: JobListProps = {}) {
             icon={Layers}
             label="Total Jobs"
             value={countsKnown ? totalCount.toLocaleString() : "–"}
-            caption={isAuthenticated ? "for this user" : "across this venue"}
+            // Always the caller's own jobs, never the venue's. Signed out the
+            // caller is the venue's shared public identity, so the count is the
+            // jobs run without signing in — venue-3 reads 311 here while the
+            // venue itself holds ~35,000 (#422).
+            caption={isAuthenticated ? "for this user" : "for signed-out callers"}
           />
           <StatTile
             icon={CheckCircle2}
