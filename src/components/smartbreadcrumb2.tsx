@@ -206,6 +206,9 @@ export function SmartBreadcrumb({
       // concept as the "jobs" list route.
       'job': 'Jobs',
       'learning': 'Resources',
+      // The route keeps the protocol's name; the IA calls the concept
+      // "Capabilities" everywhere the user can see it.
+      'ucan': 'Capabilities',
       'workspace': 'Workspace',
       'myvenues': 'My Venues',
       'myassets': 'My Assets',

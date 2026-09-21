@@ -3,6 +3,7 @@ import {
   AlignLeft,
   ArrowLeft,
   ArrowRight,
+  BadgeCheck,
   BookOpenCheck,
   Bot,
   Boxes,
@@ -82,7 +83,7 @@ export type Concept =
   | "operation" | "adapter" | "model" | "job" | "inbox" | "context"
   | "connection" | "secret" | "venue" | "workspace" | "files" | "asset"
   | "artifacts" | "test" | "info" | "metadata" | "user" | "resources"
-  | "demo" | "playground";
+  | "demo" | "playground" | "capability";
 
 export const CONCEPT_ICONS: Record<Concept, TypeLook> = {
   // Purple (primary) — agents & your own surfaces.
@@ -102,6 +103,7 @@ export const CONCEPT_ICONS: Record<Concept, TypeLook> = {
   skill: { Icon: BookOpenCheck, tile: VIOLET, label: "Skill" },
   model: { Icon: Cpu, tile: VIOLET, label: "Model" },
   context: { Icon: BrainCircuit, tile: VIOLET, label: "Context" },
+  capability: { Icon: BadgeCheck, tile: VIOLET, label: "Capability" },
   // Indigo — data & records.
   asset: { Icon: Package, tile: INDIGO, label: "Asset" },
   artifacts: { Icon: FileStack, tile: INDIGO, label: "Artifacts" },

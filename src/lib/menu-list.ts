@@ -70,6 +70,9 @@ export const MENU_LIST: MenuGroup[] = [
       { href: "/context", label: "Context", icon: I.context.Icon, requiresAuth: true },
       { href: "/connections", label: "Connections", icon: I.connection.Icon, requiresAuth: true, badge: "connections" },
       { href: "/secrets", label: "Secrets", icon: I.secret.Icon, requiresAuth: true },
+      // Verification is the everyday use and works signed out (#254), so this
+      // is deliberately NOT requiresAuth — the issuance tab gates itself.
+      { href: "/ucan", label: "Capabilities", icon: I.capability.Icon },
       { href: "/venues", label: "Venues", icon: I.venue.Icon },
       { href: "/workspace", label: "Workspace", icon: I.workspace.Icon, requiresAuth: true },
       { href: "/files", label: "Files", icon: I.files.Icon, requiresAuth: true },
