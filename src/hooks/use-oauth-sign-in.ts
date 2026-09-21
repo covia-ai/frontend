@@ -9,22 +9,48 @@ import {
   type OAuthProvider,
 } from "@/lib/oauth";
 
-const providerRequests = new Map<string, Promise<OAuthProvider[]>>();
+/**
+ * How long an "this venue advertises no providers" answer is trusted before we
+ * ask again. A venue serves no `/login` at all until an operator configures a
+ * provider, so an empty answer is a statement about today's deployment, not a
+ * fact about the venue — see covia-ai/frontend#394.
+ */
+export const EMPTY_DISCOVERY_TTL_MS = 30_000;
+
+type DiscoveryEntry = {
+  request: Promise<OAuthProvider[]>;
+  /** Epoch ms the entry stops being trusted; Infinity once providers are found. */
+  expiresAt: number;
+};
+
+const providerRequests = new Map<string, DiscoveryEntry>();
+
+function probeProviders(normalized: string): Promise<OAuthProvider[]> {
+  return fetch(`${normalized}/login`, {
+    method: "GET",
+    headers: { Accept: "text/html" },
+    credentials: "omit",
+  })
+    .then((response) => response.ok ? response.text() : "")
+    .then(parseOAuthProviders)
+    .catch((): OAuthProvider[] => []);
+}
 
 export function discoverOAuthProviders(baseUrl: string): Promise<OAuthProvider[]> {
   const normalized = baseUrl.replace(/\/$/, "");
-  let request = providerRequests.get(normalized);
-  if (!request) {
-    request = fetch(`${normalized}/login`, {
-      method: "GET",
-      headers: { Accept: "text/html" },
-      credentials: "omit",
-    })
-      .then((response) => response.ok ? response.text() : "")
-      .then(parseOAuthProviders)
-      .catch(() => []);
-    providerRequests.set(normalized, request);
-  }
+  const cached = providerRequests.get(normalized);
+  if (cached && Date.now() < cached.expiresAt) return cached.request;
+
+  // Hold concurrent callers to one probe, then keep the answer only if the
+  // venue actually advertised something. Caching an empty answer for the life
+  // of the tab would hide SSO from anyone whose tab predates the operator
+  // turning it on.
+  const request = probeProviders(normalized);
+  const entry: DiscoveryEntry = { request, expiresAt: Number.POSITIVE_INFINITY };
+  providerRequests.set(normalized, entry);
+  void request.then((providers) => {
+    if (providers.length === 0) entry.expiresAt = Date.now() + EMPTY_DISCOVERY_TTL_MS;
+  });
   return request;
 }
 
