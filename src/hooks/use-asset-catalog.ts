@@ -6,18 +6,23 @@ import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { usePinnedAssets } from "@/hooks/use-pinned-assets";
 import { useLatestQuery } from "@/hooks/use-latest-query";
 
-// How many cards to reveal per infinite-scroll step. The whole catalogue is
-// already in memory (one job-free read per venue), so growing the window is a
-// pure client-side slice — no refetch. Mirrors OperationsList / JobList so every
-// catalogue in the app scrolls the same way rather than paging.
+// How many cards to reveal per infinite-scroll step. The fetched catalogue is
+// held in memory, so growing the window is a pure client-side slice — no
+// refetch. Mirrors OperationsList / JobList so every catalogue in the app
+// scrolls the same way rather than paging.
 const BATCH_SIZE = 24;
 
 interface UseAssetCatalogArgs {
   /** Venue to resolve; omit to use the globally-selected venue (My Artifacts). */
   venueId?: string;
   /** Fetch the asset list for a ready venue. MUST be a stable reference
-   *  (wrap in useCallback) or the load effect will loop. */
-  fetchAssets: (venue: Venue) => Promise<DataAsset[]>;
+   *  (wrap in useCallback) or the load effect will loop. A fetcher that reads
+   *  the catalogue in pages may call `publish` with what it has so far, so the
+   *  grid fills as pages land instead of after the last one. */
+  fetchAssets: (
+    venue: Venue,
+    publish: (assets: DataAsset[]) => void,
+  ) => Promise<DataAsset[]>;
   /** Seed the search box (e.g. from a `?search=` param). */
   initialSearch?: string;
   /** Extra tag/keyword AND-any filter (AssetList's FiltersSheet); [] = none. */
@@ -55,7 +60,7 @@ export function useAssetCatalog({
       reset();
       return Promise.resolve();
     }
-    return run(() => fetchAssets(venue), { clear: true });
+    return run((publish) => fetchAssets(venue, publish), { clear: true });
   }, [venue, venueStatus, reset, run, fetchAssets]);
 
   useEffect(() => {
