@@ -203,3 +203,52 @@ describe('JobList trend sparklines (#225)', () => {
     expect(screen.getByText('Failures')).toBeInTheDocument();
   });
 });
+
+describe('JobList does not assert zeros before the count is known (#419)', () => {
+  beforeEach(() => {
+    mockVenue.workspace.list.mockClear();
+    mockVenue.workspace.slice.mockClear();
+  });
+
+  it('holds the total and the summary until a read lands, then shows them', async () => {
+    // Nothing resolves yet: the component is in exactly the state a user sees
+    // in the first seconds of a cold load.
+    let releaseList: (v: any) => void = () => {};
+    let releaseSlice: (v: any) => void = () => {};
+    mockVenue.workspace.list.mockReturnValueOnce(
+      new Promise((resolve) => { releaseList = resolve; }));
+    mockVenue.workspace.slice.mockReturnValueOnce(
+      new Promise((resolve) => { releaseSlice = resolve; }));
+
+    render(<JobList />);
+
+    // The bug: "Showing 0 of 0" and a Total Jobs of 0 — a definite claim that
+    // this venue has no jobs, made before anything was read.
+    await screen.findByText(/Counting jobs/i);
+    expect(screen.queryByText(/Showing 0 of 0/)).not.toBeInTheDocument();
+
+    releaseList({ exists: true, count: TOTAL, keys: [] });
+    releaseSlice({
+      exists: true,
+      count: TOTAL,
+      values: Array.from({ length: 10 }, (_, i) => ({
+        key: String(988 + i).padStart(4, '0'),
+        value: record(988 + i),
+      })),
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(/Showing 10 of 998/)).toBeInTheDocument());
+    expect(screen.queryByText(/Counting jobs/i)).not.toBeInTheDocument();
+  });
+
+  it('still reports a genuinely empty venue as zero', async () => {
+    mockVenue.workspace.list.mockResolvedValueOnce({ exists: true, count: 0, keys: [] });
+    mockVenue.workspace.slice.mockResolvedValueOnce({ exists: true, count: 0, values: [] });
+
+    render(<JobList />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Showing 0 of 0/)).toBeInTheDocument());
+  });
+});
