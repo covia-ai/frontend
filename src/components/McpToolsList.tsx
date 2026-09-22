@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
-import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
+import { copyDataToClipBoard } from "@/lib/utils";
 import { ArrowRight, CheckCircle2, Copy, Play } from "lucide-react";
 import Link from "next/link";
 import { McpGlyph } from "@/components/adapter-glyphs";
@@ -81,8 +81,10 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
   useEffect(() => {
     if (!venue) return;
     setLoading(true);
-    listMcpTools(venue.baseUrl)
-      .then((tools) => setTools(tools))
+    // venue.mcp.listTools() is the SDK's job-free native read (covia-sdk#23);
+    // the invoke-based v/ops/mcp/tools-list would persist a job per page load.
+    venue.mcp.listTools()
+      .then((page) => setTools(page.tools))
       .catch((err) => {
         notifyError("Unable to load MCP tools", err, venue.baseUrl);
         setTools([]);
@@ -101,11 +103,10 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
     }
     setLastRun(null);
     const jobId = await executeJob({
-      action: () => venue.operations.run("v/ops/mcp/tools-call", {
-        server: venue.baseUrl,
-        toolName: selectedTool.name,
-        arguments: args,
-      }),
+      // Tracked on purpose: this is a user-driven run, and the Job is what the
+      // result link below points at. `server` defaults to this venue, so the
+      // caller no longer needs to know the catalog path or the loopback trick.
+      action: () => venue.mcp.callToolTracked(selectedTool.name, args),
       failureTitle: "Unable to run tool",
       missingJobMessage: "The tool completed without returning a job ID",
       // Stay on the catalogue and surface the result inline + a job link,

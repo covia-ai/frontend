@@ -17,19 +17,23 @@ jest.mock("@/hooks/use-watched-jobs", () => ({
   useWatchedJobs: { getState: () => ({ watch: jest.fn() }) },
 }));
 
-const listMcpToolsMock = jest.fn();
 jest.mock("@/lib/utils", () => ({
   ...jest.requireActual("@/lib/utils"),
-  listMcpTools: (...args: unknown[]) => listMcpToolsMock(...args),
   copyDataToClipBoard: jest.fn(),
 }));
 
+// Both halves of this page now go through the SDK's MCP manager
+// (covia-sdk#23): the job-free `listTools()` read, and `callToolTracked()`
+// for a user-driven run, which returns the Job the result link points at.
+const listToolsMock = jest.fn();
+const callToolTrackedMock = jest.fn();
 const runMock = jest.fn();
 const mockVenue = {
   venueId: "did:web:venue.example",
   baseUrl: "https://venue.example",
   metadata: { name: "Test Venue" },
   operations: { run: runMock },
+  mcp: { listTools: listToolsMock, callToolTracked: callToolTrackedMock },
 };
 jest.mock("@/hooks/use-resolved-venue", () => ({
   useResolvedVenue: () => mockVenue,
@@ -59,8 +63,8 @@ async function selectEchoTool(user: ReturnType<typeof userEvent.setup>) {
 describe("McpToolsList (4D)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    listMcpToolsMock.mockResolvedValue([TOOL]);
-    runMock.mockResolvedValue({ id: "job-abc-123" });
+    listToolsMock.mockResolvedValue({ tools: [TOOL] });
+    callToolTrackedMock.mockResolvedValue({ id: "job-abc-123" });
   });
 
   it("seeds the test args by type, not empty strings", async () => {
@@ -81,7 +85,7 @@ describe("McpToolsList (4D)", () => {
     await user.click(screen.getByRole("button", { name: /^run$/i }));
 
     await waitFor(() =>
-      expect(runMock).toHaveBeenCalledWith("v/ops/mcp/tools-call", expect.objectContaining({ toolName: "echo" })),
+      expect(callToolTrackedMock).toHaveBeenCalledWith("echo", expect.any(Object)),
     );
     // Inline result appears…
     expect(await screen.findByTestId("mcp-run-result")).toHaveTextContent("Run started");
@@ -105,6 +109,7 @@ describe("McpToolsList (4D)", () => {
     await user.click(screen.getByRole("button", { name: /^run$/i }));
 
     expect(notifyWarning).toHaveBeenCalledWith("Arguments must be valid JSON");
-    expect(runMock).not.toHaveBeenCalled();
+    expect(callToolTrackedMock).not.toHaveBeenCalled();
+    expect(runMock).not.toHaveBeenCalled();   // nor the old op path
   });
 });

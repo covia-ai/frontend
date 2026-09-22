@@ -25,7 +25,7 @@ import {
   listCatalogOperations,
   resolveOperationByAddress,
 } from '@/lib/operations-catalog';
-import { listMcpTools } from '@/lib/utils';
+import { Venue } from '@covia/covia-sdk';
 
 const BASE = 'http://venue.example.com';
 
@@ -180,27 +180,29 @@ describe('resolveOperationByAddress', () => {
   });
 });
 
-describe('listMcpTools', () => {
-  it('POSTs JSON-RPC tools/list to the native /mcp endpoint', async () => {
+describe('MCP tool listing stays job-free', () => {
+  // The hand-rolled JSON-RPC helper this file used to cover moved into the SDK
+  // as `venue.mcp.listTools()` (covia-sdk#23), which owns the protocol tests.
+  // What matters here is the rule this suite exists for: listing tools for
+  // display reads the native endpoint and never invokes an operation.
+  it('reads /mcp directly and mints no job', async () => {
     const tools = [{ name: 'covia_read' }, { name: 'covia_write' }];
     const fetchMock = mockFetch(jest.fn()
       .mockResolvedValue(jsonResponse({ jsonrpc: '2.0', id: 1, result: { tools } })));
+    const venue = new Venue({ baseUrl: BASE, venueId: 'did:web:venue.example.com' });
 
-    await expect(listMcpTools(BASE)).resolves.toEqual(tools);
+    await expect(venue.mcp.listTools()).resolves.toEqual({ tools });
 
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe(`${BASE}/mcp`);
-    expect(init?.method).toBe('POST');
-    expect(JSON.parse(init?.body as string)).toMatchObject({ jsonrpc: '2.0', method: 'tools/list' });
-  });
+    // `/.well-known/mcp` (discovery) also ends in /mcp — match the endpoint exactly.
+    const mcpCall = fetchMock.mock.calls.find(([url]) => String(url) === `${BASE}/mcp`);
+    expect(mcpCall).toBeDefined();
+    expect(mcpCall?.[1]?.method).toBe('POST');
+    expect(JSON.parse(mcpCall?.[1]?.body as string)).toMatchObject({ jsonrpc: '2.0', method: 'tools/list' });
 
-  it('returns [] when the response has no tools array', async () => {
-    mockFetch(jest.fn().mockResolvedValue(jsonResponse({ jsonrpc: '2.0', id: 1, result: {} })));
-    await expect(listMcpTools(BASE)).resolves.toEqual([]);
-  });
-
-  it('throws on a non-OK response so callers surface the error state', async () => {
-    mockFetch(jest.fn().mockResolvedValue(jsonResponse({}, false, 500)));
-    await expect(listMcpTools(BASE)).rejects.toThrow('MCP tools/list failed: 500');
+    // Job-free at the wire: nothing was posted to the invoke/jobs surface,
+    // which is what v/ops/mcp/tools-list would have gone through.
+    const urls = fetchMock.mock.calls.map(([url]) => String(url));
+    expect(urls.some((u) => u.includes('/api/v1/jobs'))).toBe(false);
+    expect(urls.some((u) => u.includes('v/ops'))).toBe(false);
   });
 });
