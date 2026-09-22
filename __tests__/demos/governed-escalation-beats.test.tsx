@@ -6,6 +6,18 @@ jest.mock('@/lib/operations-catalog', () => ({
 import { runEscalation } from '@/components/governed-escalation/beats';
 import { DEFAULT_ADDRESSES } from '@/components/governed-escalation/fixtures';
 
+// The slice of Job the escalation flow touches, as a fake the test mutates
+// mid-wait. Naming the type up front is what lets `wait` be typed against it:
+// a `this: typeof analysis` inside the object's own initializer is circular.
+type FakeAnalysisJob = {
+  id: string;
+  metadata: { status: string };
+  output?: { summary: string };
+  isFinished: boolean;
+  isComplete: boolean;
+  wait: jest.Mock;
+};
+
 beforeEach(() => jest.clearAllMocks());
 
 describe('runEscalation — analysis wait (frontend#338)', () => {
@@ -13,13 +25,13 @@ describe('runEscalation — analysis wait (frontend#338)', () => {
     // Still PENDING when invoke() resolves, and only reaches COMPLETE after
     // wait() has polled a couple of times — the exact race that produced the
     // false "did not complete" quote.
-    const analysis = {
+    const analysis: FakeAnalysisJob = {
       id: 'analysis-1',
       metadata: { status: 'PENDING' },
       output: undefined,
       isFinished: false,
       isComplete: false,
-      wait: jest.fn(async function (this: typeof analysis) {
+      wait: jest.fn(async function (this: FakeAnalysisJob) {
         this.metadata = { status: 'COMPLETE' };
         this.output = { summary: 'deviceReuseRate 0.41 vs baseline 0.12, ratio 3.4x' };
         this.isFinished = true;
@@ -43,7 +55,7 @@ describe('runEscalation — analysis wait (frontend#338)', () => {
   });
 
   it('falls back to the honest placeholder when the analysis genuinely times out', async () => {
-    const analysis = {
+    const analysis: FakeAnalysisJob = {
       id: 'analysis-2',
       metadata: { status: 'STARTED' },
       output: undefined,
