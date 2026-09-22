@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useResolvedVenue } from "@/hooks/use-resolved-venue";
+import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
+import { VenueResolutionState } from "@/components/VenueResolutionState";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +12,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { copyDataToClipBoard } from "@/lib/utils";
-import { ArrowRight, CheckCircle2, Copy, Play } from "lucide-react";
+import { ArrowRight, CheckCircle2, Copy, Play, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { McpGlyph } from "@/components/adapter-glyphs";
 import { notifyError, notifyWarning } from "@/lib/notify";
@@ -54,7 +55,10 @@ function seedArgs(inputSchema: any): Record<string, unknown> {
 }
 
 export function McpToolsList({ venueId }: McpToolsListProps) {
-  const venue = useResolvedVenue(venueId);
+  // Take the whole resolution, not just the Venue: a definitive failure must
+  // be shown, not swallowed into an endless "Loading…" (#428).
+  const resolution = useResolvedVenueContext(venueId);
+  const venue = resolution.venue;
   const [tools, setTools] = useState<McpTool[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTool, setSelectedTool] = useState<McpTool | null>(null);
@@ -128,6 +132,20 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
       },
       null,
       2
+    );
+
+  if (resolution.status !== "ready")
+    return (
+      <ContentLayout>
+        <TopBar venueId={venueId} venueName={resolution.descriptor?.metadata.name} />
+        <VenueResolutionState
+          status={resolution.status}
+          error={resolution.error}
+          icon={McpGlyph as unknown as LucideIcon}
+          subject="MCP Tools"
+          venueId={venueId}
+        />
+      </ContentLayout>
     );
 
   return (

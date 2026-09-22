@@ -2,7 +2,8 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { AdapterInfo } from "@covia/covia-sdk";
-import { useResolvedVenue } from "@/hooks/use-resolved-venue";
+import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
+import { VenueResolutionState } from "@/components/VenueResolutionState";
 import { useRouter } from "next/navigation";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
@@ -24,7 +25,10 @@ interface AdaptersListProps {
 }
 
 export function AdaptersList({ venueId }: AdaptersListProps) {
-  const venue = useResolvedVenue(venueId);
+  // Take the whole resolution, not just the Venue: a definitive failure must
+  // be shown, not swallowed into an endless spinner (#428).
+  const resolution = useResolvedVenueContext(venueId);
+  const venue = resolution.venue;
   const [adapters, setAdapters] = useState<AdapterInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -79,6 +83,20 @@ export function AdaptersList({ venueId }: AdaptersListProps) {
     const segments = path.split("/").map(encodeURIComponent).join("/");
     router.push(`/venues/${encodeURIComponent(venue.venueId)}/operations/${segments}`);
   };
+
+  if (resolution.status !== "ready")
+    return (
+      <ContentLayout>
+        <TopBar venueId={venueId} venueName={resolution.descriptor?.metadata.name} />
+        <VenueResolutionState
+          status={resolution.status}
+          error={resolution.error}
+          icon={Plug}
+          subject="Adapters"
+          venueId={venueId}
+        />
+      </ContentLayout>
+    );
 
   return (
     <ContentLayout>
