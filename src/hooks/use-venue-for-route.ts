@@ -10,6 +10,7 @@ import { useAuthStore } from "@/hooks/use-auth";
 import { connectVenue } from "@/lib/venue-registry";
 import { reportVenueHealth } from "@/hooks/use-venue-health";
 import { notifyError } from "@/lib/notify";
+import { CoviaError } from "@covia/covia-sdk";
 
 // Resolves the venue a page should read from. When `routeVenueId` is given
 // (e.g. the [slug] segment of /venues/[slug]/assets), that venue is always
@@ -42,8 +43,18 @@ export function useVenueForRoute(routeVenueId?: string): VenueResolution {
     key: string;
     error: string;
   } | null>(null);
+  // A venue answers to several identifiers — its canonical did:key, its
+  // did:web, its URL — but the store is only ever keyed by the canonical one
+  // that connectVenue resolves. Remember which route id mapped to which
+  // canonical id, so a route addressed by an alias finds the entry that was
+  // actually added instead of waiting forever for one under the name it
+  // asked for (#428).
+  const [alias, setAlias] = useState<{ route: string; venueId: string } | null>(null);
 
-  const found = routeVenueId ? venues.find((v) => v.venueId === routeVenueId) : undefined;
+  const aliasId = routeVenueId && alias?.route === routeVenueId ? alias.venueId : undefined;
+  const found = routeVenueId
+    ? venues.find((v) => v.venueId === routeVenueId || (!!aliasId && v.venueId === aliasId))
+    : undefined;
   const authData = routeVenueId ? authMap[routeVenueId] : undefined;
   const attemptKey = `${routeVenueId ?? ""}:${JSON.stringify(authData ?? null)}`;
 
@@ -56,12 +67,27 @@ export function useVenueForRoute(routeVenueId?: string): VenueResolution {
     reportVenueHealth(identifier, { state: "connecting" });
     connectVenue(identifier, auth, 10_000)
       .then((v) => {
+        const descriptor = toVenueDescriptor(v);
+        // A connect that resolves no identity cannot be stored or matched, so
+        // it must end as an error. Otherwise the success path has no terminal
+        // state and the caller waits on "connecting" forever (#428).
+        if (!descriptor.venueId) {
+          throw new CoviaError(
+            `Connected to ${identifier} but it reported no venue identity`,
+          );
+        }
         reportVenueHealth(v.baseUrl, {
           state: "connected",
           version: v.lastKnownStatus?.version,
           publicAccess: authData ? undefined : v.lastKnownStatus !== undefined,
         });
-        addVenue(toVenueDescriptor(v));
+        addVenue(descriptor);
+        // The canonical id may differ from the one the route used (a did:web
+        // or a URL resolves to a did:key). Record the mapping, or the lookup
+        // above can never match what was just added.
+        if (descriptor.venueId !== routeVenueId) {
+          setAlias({ route: routeVenueId, venueId: descriptor.venueId });
+        }
       })
       .catch((err: unknown) => {
         failed.current.add(attemptKey);

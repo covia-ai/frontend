@@ -5,6 +5,9 @@ import "@testing-library/jest-dom";
 const mockPush = jest.fn();
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
+  // The venue failure states render a sign-in gate, which reads the path.
+  usePathname: () => "/venues/did:key:zVenue/adapters",
+  useSearchParams: () => new URLSearchParams(),
 }));
 jest.mock("@/components/admin-panel/TopBar", () => ({
   TopBar: () => <div data-testid="top-bar" />,
@@ -18,8 +21,11 @@ const mockVenue = {
   metadata: { name: "Test Venue" },
   adapters: { list: listMock },
 };
+// The page takes the whole resolution now, so a definitive failure renders a
+// venue error instead of an endless spinner (#428).
+let mockResolution: Record<string, unknown>;
 jest.mock("@/hooks/use-resolved-venue", () => ({
-  useResolvedVenue: () => mockVenue,
+  useResolvedVenueContext: () => mockResolution,
 }));
 
 import { AdaptersList } from "@/components/AdaptersList";
@@ -27,6 +33,14 @@ import { AdaptersList } from "@/components/AdaptersList";
 describe("AdaptersList", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockResolution = {
+      descriptor: { venueId: mockVenue.venueId, baseUrl: mockVenue.baseUrl, metadata: mockVenue.metadata },
+      venue: mockVenue,
+      auth: null,
+      isAuthenticated: false,
+      status: "ready",
+      error: null,
+    };
     listMock.mockResolvedValue([
       { name: "langchain", description: "LangChain adapter", operations: ["v/ops/langchain/models", "v/ops/langchain/chat"] },
       { name: "http", description: "HTTP fetch", operations: ["v/ops/http/get"] },
@@ -64,5 +78,17 @@ describe("AdaptersList", () => {
     expect(mockPush).toHaveBeenCalledWith(
       expect.stringContaining("/operations/v/ops/langchain/chat"),
     );
+  });
+
+  it("renders the venue error instead of spinning forever when resolution fails (#428)", async () => {
+    mockResolution = {
+      descriptor: null, venue: undefined, auth: null, isAuthenticated: false,
+      status: "unreachable", error: "Venue identity changed at https://venue-3.covia.ai",
+    };
+
+    render(<AdaptersList venueId="did:web:venue-3.covia.ai" />);
+
+    expect(await screen.findByText(/Something went wrong/i)).toBeInTheDocument();
+    expect(listMock).not.toHaveBeenCalled();
   });
 });

@@ -5,6 +5,10 @@ import "@testing-library/jest-dom";
 const mockPush = jest.fn();
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
+  // The venue failure states render a sign-in gate, which reads the path to
+  // build its return-to URL.
+  usePathname: () => "/venues/did:key:zVenue/mcp",
+  useSearchParams: () => new URLSearchParams(),
 }));
 jest.mock("@/components/admin-panel/TopBar", () => ({
   TopBar: () => <div data-testid="top-bar" />,
@@ -35,8 +39,11 @@ const mockVenue = {
   operations: { run: runMock },
   mcp: { listTools: listToolsMock, callToolTracked: callToolTrackedMock },
 };
+// The page takes the whole resolution now, so it can render a failure state
+// instead of an endless "Loading…" (#428).
+let mockResolution: Record<string, unknown>;
 jest.mock("@/hooks/use-resolved-venue", () => ({
-  useResolvedVenue: () => mockVenue,
+  useResolvedVenueContext: () => mockResolution,
 }));
 
 import { notifyWarning } from "@/lib/notify";
@@ -63,6 +70,14 @@ async function selectEchoTool(user: ReturnType<typeof userEvent.setup>) {
 describe("McpToolsList (4D)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockResolution = {
+      descriptor: { venueId: mockVenue.venueId, baseUrl: mockVenue.baseUrl, metadata: mockVenue.metadata },
+      venue: mockVenue,
+      auth: null,
+      isAuthenticated: false,
+      status: "ready",
+      error: null,
+    };
     listToolsMock.mockResolvedValue({ tools: [TOOL] });
     callToolTrackedMock.mockResolvedValue({ id: "job-abc-123" });
   });
@@ -111,5 +126,47 @@ describe("McpToolsList (4D)", () => {
     expect(notifyWarning).toHaveBeenCalledWith("Arguments must be valid JSON");
     expect(callToolTrackedMock).not.toHaveBeenCalled();
     expect(runMock).not.toHaveBeenCalled();   // nor the old op path
+  });
+
+  // #428: a definitive resolution failure used to be swallowed — the page
+  // took only the Venue, saw undefined, and sat on "Loading…" forever with
+  // no way to tell a slow venue from a dead one.
+  it("renders the venue error instead of a permanent Loading… when resolution fails", async () => {
+    mockResolution = {
+      descriptor: null,
+      venue: undefined,
+      auth: null,
+      isAuthenticated: false,
+      status: "unreachable",
+      error: "Venue identity changed at https://venue-3.covia.ai",
+    };
+
+    const user = userEvent.setup();
+    render(<McpToolsList venueId="did:web:venue-3.covia.ai" />);
+
+    // ErrorDisplay leads with a summary and keeps the raw message one click
+    // away, so assert both halves rather than the shape of either alone.
+    expect(await screen.findByText(/Something went wrong/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /details/i }));
+    expect(screen.getByText(/Venue identity changed/)).toBeInTheDocument();
+
+    expect(screen.queryByText(/Loading…/)).not.toBeInTheDocument();
+    expect(listToolsMock).not.toHaveBeenCalled();
+  });
+
+  it("offers a sign-in gate when the venue requires auth", async () => {
+    mockResolution = {
+      descriptor: null,
+      venue: undefined,
+      auth: null,
+      isAuthenticated: false,
+      status: "auth-required",
+      error: null,
+    };
+
+    render(<McpToolsList venueId="did:key:zVenue" />);
+
+    expect(await screen.findByTestId("venue-auth-required")).toBeInTheDocument();
+    expect(listToolsMock).not.toHaveBeenCalled();
   });
 });
