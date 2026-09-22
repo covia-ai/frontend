@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { WorkspaceReadResult } from '@covia/covia-sdk';
 
 jest.mock('@/lib/notify', () => ({
   notifySuccess: jest.fn(),
@@ -19,7 +20,7 @@ jest.mock('next/navigation', () => ({
 // `mockResolvedValue` would either starve the picker or fake out every
 // template as pre-existing. Individual tests can still override with
 // `.mockResolvedValue`/`.mockImplementation` for their own scope.
-function defaultWorkspaceRead(path: string) {
+function defaultWorkspaceRead(path: string): Promise<WorkspaceReadResult> {
   if (path === 'v/ops') {
     return Promise.resolve({
       exists: true,

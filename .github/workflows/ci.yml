@@ -37,6 +37,11 @@ jobs:
       - name: Lint
         run: pnpm run lint
 
+      # `next build` only type-checks the app graph, so nothing was checking
+      # __tests__/ — which is how three type errors accumulated there unseen.
+      - name: Type-check
+        run: pnpm run typecheck
+
   build:
     runs-on: ubuntu-latest
     steps:

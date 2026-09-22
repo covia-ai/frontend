@@ -8,6 +8,7 @@
     "start": "next start",
     "analyze": "ANALYZE=true next build",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "test": "jest --coverage=false",
     "test:coverage": "jest --coverage",
     "jest:clear": "jest --clearCache"
