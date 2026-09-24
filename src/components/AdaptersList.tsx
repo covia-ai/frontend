@@ -26,7 +26,9 @@ interface AdaptersListProps {
 }
 
 export function AdaptersList({ venueId }: AdaptersListProps) {
-  const { venue, auth, status: venueStatus, error: venueError } = useResolvedVenueContext(venueId);
+  // Take the whole resolution, not just the Venue: a definitive failure must
+  // be shown, not swallowed into an endless spinner (#428).
+  const { venue, auth, descriptor, status: venueStatus, error: venueError } = useResolvedVenueContext(venueId);
   // Job-free: reads straight from the lattice (v/info/adapters), so it
   // includes adapters with zero catalog operations — unlike inferring
   // adapter names from metadata.operation.adapter on the operations list.
@@ -73,7 +75,7 @@ export function AdaptersList({ venueId }: AdaptersListProps) {
   if (venueStatus !== "ready")
     return (
       <ContentLayout>
-        <TopBar venueId={venueId} venueName={venue?.metadata.name} />
+        <TopBar venueId={venueId} venueName={descriptor?.metadata.name} />
         <VenueResolutionState
           status={venueStatus}
           error={venueError}

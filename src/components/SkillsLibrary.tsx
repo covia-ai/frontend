@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { Venue } from "@covia/covia-sdk";
-import { Bot, BookOpenCheck, ChevronLeft, Loader2, Search } from "lucide-react";
+import { Bot, BookOpenCheck, ChevronLeft, Copy, Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
@@ -13,8 +13,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TypeTile } from "@/components/TypeTile";
 import { skillLook } from "@/lib/workspace-look";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { SkillEditorDialog, type SkillEditorMode } from "@/components/SkillEditorDialog";
 import { useSkillsLibrary } from "@/hooks/use-skills-library";
-import { agentUsesSkill, type SkillSummary } from "@/lib/skills";
+import { deleteSkill } from "@/lib/skill-authoring";
+import { notifyError, notifySuccess } from "@/lib/notify";
+import {
+  agentUsesSkill,
+  isEditableSkill,
+  NEW_SKILL_TEMPLATE,
+  skillToMarkdown,
+  type SkillSummary,
+} from "@/lib/skills";
 
 function AgentsUsingSkill({ venue, skill }: { venue: Venue; skill: SkillSummary }) {
   const [agents, setAgents] = useState<string[] | null>(null);
@@ -74,6 +93,11 @@ export function SkillsLibrary() {
   // (full width) with a back bar. The hook auto-selects the first skill, so this
   // is its own view state rather than being derived from selectedPath.
   const [mobileView, setMobileView] = useState<"list" | "detail">("list");
+  // One dialog serves create/edit/duplicate; `seed` is the SKILL.md it opens
+  // with, so the three differ only in their starting text and wording.
+  const [editor, setEditor] = useState<{ mode: SkillEditorMode; seed: string } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<SkillSummary | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return library.skills;
@@ -83,14 +107,36 @@ export function SkillsLibrary() {
   }, [library.skills, query]);
   const userSkills = library.skills.filter((skill) => skill.source === "user");
 
+  const confirmDelete = async () => {
+    if (!library.venue || !pendingDelete) return;
+    setDeleting(true);
+    try {
+      await deleteSkill(library.venue, pendingDelete.path);
+      notifySuccess(`Deleted ${pendingDelete.name}`);
+      setPendingDelete(null);
+      library.reload();
+    } catch (cause) {
+      notifyError("Unable to delete skill", cause, library.venue.baseUrl);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <ContentLayout>
       <TopBar />
-      <div className="py-5">
-        <h1 className="text-2xl font-semibold">Skills</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Browse the instructions and tools agents can load from this venue and your workspace.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3 py-5">
+        <div>
+          <h1 className="text-2xl font-semibold">Skills</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Browse the instructions and tools agents can load from this venue and your workspace.
+          </p>
+        </div>
+        {library.venue && (
+          <Button onClick={() => setEditor({ mode: "create", seed: NEW_SKILL_TEMPLATE })}>
+            <Plus size={15} className="mr-1.5" /> New skill
+          </Button>
+        )}
       </div>
 
       {!library.venue ? (
@@ -168,7 +214,14 @@ export function SkillsLibrary() {
             </div>
             {userSkills.length === 0 && (
               <div className="border-t bg-muted/20 p-3 text-xs leading-5 text-muted-foreground">
-                No user skills yet. Skills placed in <code className="font-mono">w/skills</code> appear here and can override venue defaults in agent configurations.
+                No user skills yet. Skills in <code className="font-mono">w/skills</code> appear here and can override venue defaults in agent configurations.
+                <button
+                  type="button"
+                  className="mt-1 block font-medium text-foreground underline underline-offset-2"
+                  onClick={() => setEditor({ mode: "create", seed: NEW_SKILL_TEMPLATE })}
+                >
+                  Write your first skill
+                </button>
               </div>
             )}
           </aside>
@@ -199,7 +252,40 @@ export function SkillsLibrary() {
                       {library.detail.path}
                     </p>
                   </div>
-                  <Badge variant="secondary" className="capitalize">{library.detail.source}</Badge>
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <Badge variant="secondary" className="capitalize">{library.detail.source}</Badge>
+                    {isEditableSkill(library.detail) ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setEditor({ mode: "edit", seed: skillToMarkdown(library.detail!) })
+                          }
+                        >
+                          <Pencil size={14} className="mr-1.5" /> Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setPendingDelete(library.detail)}
+                        >
+                          <Trash2 size={14} className="mr-1.5" /> Delete
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setEditor({ mode: "duplicate", seed: skillToMarkdown(library.detail!) })
+                        }
+                      >
+                        <Copy size={14} className="mr-1.5" /> Duplicate to workspace
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 {library.detail.tools.length > 0 && (
@@ -233,6 +319,47 @@ export function SkillsLibrary() {
           </main>
         </div>
       )}
+
+      {library.venue && editor && (
+        <SkillEditorDialog
+          venue={library.venue}
+          mode={editor.mode}
+          initialMarkdown={editor.seed}
+          open
+          onOpenChange={(next) => !next && setEditor(null)}
+          onSaved={(path) => library.reload(path)}
+        />
+      )}
+
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(next) => !next && !deleting && setPendingDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete &ldquo;{pendingDelete?.name}&rdquo;?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes <code className="font-mono">{pendingDelete?.path}</code> from your
+              workspace. Agents configured to load it will no longer find it, and a venue skill of
+              the same name it was shadowing becomes visible again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={(event) => {
+                // Keep the dialog up while the delete runs; it closes on success.
+                event.preventDefault();
+                void confirmDelete();
+              }}
+            >
+              {deleting && <Loader2 size={14} className="mr-1.5 animate-spin" />}
+              Delete skill
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </ContentLayout>
   );
 }

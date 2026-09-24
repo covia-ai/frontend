@@ -1,10 +1,14 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 
 const mockPush = jest.fn();
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
+  // The venue failure states render a sign-in gate, which reads the path to
+  // build its return-to URL.
+  usePathname: () => "/venues/did:key:zVenue/mcp",
+  useSearchParams: () => new URLSearchParams(),
 }));
 jest.mock("@/components/admin-panel/TopBar", () => ({
   TopBar: () => <div data-testid="top-bar" />,
@@ -16,16 +20,18 @@ jest.mock("@/hooks/use-watched-jobs", () => ({
   useWatchedJobs: { getState: () => ({ watch: jest.fn() }) },
 }));
 
-const listMcpToolsMock = jest.fn();
 jest.mock("@/lib/utils", () => ({
   ...jest.requireActual("@/lib/utils"),
-  listMcpTools: (...args: unknown[]) => listMcpToolsMock(...args),
   copyDataToClipBoard: jest.fn(),
 }));
 
-// Mirrors the SDK: `invoke` resolves to the started Job, `run` waits and
-// resolves to the operation's *result* — which carries no job id. Keeping both
-// honest is what catches a Run button wired to the wrong one.
+// Both halves of this page go through the SDK's MCP manager (covia-sdk#23):
+// the job-free `listTools()` read, and `callToolTracked()` for a user-driven
+// run, which returns the Job the result link points at. The operation
+// surfaces are mocked too, so a Run button wired back to the old
+// v/ops/mcp/tools-call path fails here instead of minting an untracked job.
+const listToolsMock = jest.fn();
+const callToolTrackedMock = jest.fn();
 const invokeMock = jest.fn();
 const runMock = jest.fn();
 const mockVenue = {
@@ -33,10 +39,13 @@ const mockVenue = {
   baseUrl: "https://venue.example",
   metadata: { name: "Test Venue" },
   operations: { invoke: invokeMock, run: runMock },
+  mcp: { listTools: listToolsMock, callToolTracked: callToolTrackedMock },
 };
-const mockResolved = { venue: mockVenue as unknown, auth: null, status: "ready", error: null };
+// The page takes the whole resolution, so it can render a failure state
+// instead of an endless "Loading…" (#428).
+let mockResolution: Record<string, unknown>;
 jest.mock("@/hooks/use-resolved-venue", () => ({
-  useResolvedVenueContext: () => mockResolved,
+  useResolvedVenueContext: () => mockResolution,
 }));
 
 import { notifyWarning } from "@/lib/notify";
@@ -63,10 +72,16 @@ async function selectEchoTool(user: ReturnType<typeof userEvent.setup>) {
 describe("McpToolsList (4D)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    Object.assign(mockResolved, { venue: mockVenue, status: "ready" });
-    listMcpToolsMock.mockResolvedValue([TOOL]);
-    invokeMock.mockResolvedValue({ id: "job-abc-123" });
-    runMock.mockResolvedValue({ content: [{ type: "text", text: "hi" }] });
+    mockResolution = {
+      descriptor: { venueId: mockVenue.venueId, baseUrl: mockVenue.baseUrl, metadata: mockVenue.metadata },
+      venue: mockVenue,
+      auth: null,
+      isAuthenticated: false,
+      status: "ready",
+      error: null,
+    };
+    listToolsMock.mockResolvedValue({ tools: [TOOL] });
+    callToolTrackedMock.mockResolvedValue({ id: "job-abc-123" });
   });
 
   it("seeds the test args by type, not empty strings", async () => {
@@ -87,8 +102,11 @@ describe("McpToolsList (4D)", () => {
     await user.click(screen.getByRole("button", { name: /^run$/i }));
 
     await waitFor(() =>
-      expect(invokeMock).toHaveBeenCalledWith("v/ops/mcp/tools-call", expect.objectContaining({ toolName: "echo" })),
+      expect(callToolTrackedMock).toHaveBeenCalledWith("echo", expect.any(Object)),
     );
+    // The tracked call is the only surface a run goes through.
+    expect(invokeMock).not.toHaveBeenCalled();
+    expect(runMock).not.toHaveBeenCalled();
     // Inline result appears…
     expect(await screen.findByTestId("mcp-run-result")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /view job/i })).toHaveAttribute(
@@ -111,21 +129,57 @@ describe("McpToolsList (4D)", () => {
     await user.click(screen.getByRole("button", { name: /^run$/i }));
 
     expect(notifyWarning).toHaveBeenCalledWith("Arguments must be valid JSON");
+    expect(callToolTrackedMock).not.toHaveBeenCalled();
     expect(invokeMock).not.toHaveBeenCalled();
+    expect(runMock).not.toHaveBeenCalled();
   });
 
   it("shows a load error — not the empty state — when the tools read fails", async () => {
-    listMcpToolsMock.mockRejectedValue(new Error("HTTP 503"));
+    listToolsMock.mockRejectedValue(new Error("HTTP 503"));
     render(<McpToolsList venueId="did:web:venue.example" />);
 
     expect(await screen.findByTestId("mcp-tools-load-error")).toBeInTheDocument();
   });
 
-  it("hands over to the venue resolution state instead of spinning when the venue never resolves", () => {
-    Object.assign(mockResolved, { venue: undefined, status: "unreachable" });
-    render(<McpToolsList venueId="did:web:gone.example" />);
+  // #428: a definitive resolution failure used to be swallowed — the page
+  // took only the Venue, saw undefined, and sat on "Loading…" forever with
+  // no way to tell a slow venue from a dead one.
+  it("renders the venue error instead of a permanent Loading… when resolution fails", async () => {
+    mockResolution = {
+      descriptor: null,
+      venue: undefined,
+      auth: null,
+      isAuthenticated: false,
+      status: "unreachable",
+      error: "Venue identity changed at https://venue-3.covia.ai",
+    };
+
+    const user = userEvent.setup();
+    render(<McpToolsList venueId="did:web:venue-3.covia.ai" />);
+
+    // ErrorDisplay leads with a summary and keeps the raw message one click
+    // away, so the message itself is checked after expanding it.
+    const display = await screen.findByTestId("error-display");
+    await user.click(within(display).getByTestId("error-detail-toggle"));
+    expect(display).toHaveTextContent("Venue identity changed at https://venue-3.covia.ai");
 
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
-    expect(listMcpToolsMock).not.toHaveBeenCalled();
+    expect(listToolsMock).not.toHaveBeenCalled();
+  });
+
+  it("offers a sign-in gate when the venue requires auth", async () => {
+    mockResolution = {
+      descriptor: null,
+      venue: undefined,
+      auth: null,
+      isAuthenticated: false,
+      status: "auth-required",
+      error: null,
+    };
+
+    render(<McpToolsList venueId="did:key:zVenue" />);
+
+    expect(await screen.findByTestId("venue-auth-required")).toBeInTheDocument();
+    expect(listToolsMock).not.toHaveBeenCalled();
   });
 });

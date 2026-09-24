@@ -89,6 +89,7 @@ export function JobList({ venueId }: JobListProps = {}) {
   const {
     data: pageData,
     loading: pageLoading,
+    settled: pageSettled,
     error: pageError,
     run: runPageQuery,
     reset: resetPageQuery,
@@ -96,12 +97,14 @@ export function JobList({ venueId }: JobListProps = {}) {
   const {
     data: recentData,
     loading: recentLoading,
+    settled: recentSettled,
     error: recentError,
     run: runRecentQuery,
     reset: resetRecentQuery,
   } = useLatestQuery(EMPTY_JOB_QUERY);
   const {
     data: statsData,
+    settled: statsSettled,
     run: runStatsQuery,
     reset: resetStatsQuery,
   } = useLatestQuery(EMPTY_JOB_QUERY);
@@ -239,6 +242,10 @@ export function JobList({ venueId }: JobListProps = {}) {
     ? recentData.totalCount
     : pageData.totalCount || recentData.totalCount;
   const matchTotal = filteredRecords ? filteredRecords.length : totalCount;
+  // Until a read has landed, `totalCount` is the placeholder zero, not an
+  // answer. Rendering it says "this venue has no jobs" to anyone who looks
+  // during the first seconds of a cold load (#419).
+  const countsKnown = hasFilters ? recentSettled : pageSettled || recentSettled;
   const resetKey = `${venueObj?.venueId ?? ""} ${statusFilter.join(" ")} ${dateFilter.join(" ")} ${debouncedQuery}`;
   // Reset the window to the first page whenever the venue or filters change.
   useEffect(() => { setVisibleCount(ITEMS_PER_PAGE); }, [resetKey]);
@@ -288,6 +295,10 @@ export function JobList({ venueId }: JobListProps = {}) {
   const statsWindowCaption = venueStats.sampleSize > 0
     ? `last ${venueStats.sampleSize} jobs`
     : undefined;
+  // The stats read is skipped entirely when there are no jobs, so "no jobs"
+  // is itself a complete answer for the stats tiles — but only once the count
+  // that decided it is known.
+  const statsKnown = statsSettled || (countsKnown && totalCount === 0);
 
   // Sort once, shared by the desktop table and the mobile card list.
   const sortedRecords = useMemo(() => [...pageRecords].sort((a, b) => {
@@ -443,7 +454,9 @@ export function JobList({ venueId }: JobListProps = {}) {
           }
           summary={
             <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span>Showing {pageRecords.length} of {matchTotal}</span>
+              {countsKnown
+                ? <span>Showing {pageRecords.length} of {matchTotal}</span>
+                : <span className="text-muted-foreground">Counting jobs…</span>}
               {/* One honest place for the read scopes: filters only ever see the
                   newest FILTER_WINDOW, and the headline stats are over the recent
                   STATS_WINDOW — surfaced up-front rather than scattered. */}
@@ -569,8 +582,12 @@ export function JobList({ venueId }: JobListProps = {}) {
           <StatTile
             icon={Layers}
             label="Total Jobs"
-            value={totalCount.toLocaleString()}
-            caption={isAuthenticated ? "for this user" : "across this venue"}
+            value={countsKnown ? totalCount.toLocaleString() : "–"}
+            // Always the caller's own jobs, never the venue's. Signed out the
+            // caller is the venue's shared public identity, so the count is the
+            // jobs run without signing in — venue-3 reads 311 here while the
+            // venue itself holds ~35,000 (#422).
+            caption={isAuthenticated ? "for this user" : "for signed-out callers"}
           />
           <StatTile
             icon={CheckCircle2}
@@ -596,9 +613,11 @@ export function JobList({ venueId }: JobListProps = {}) {
           <StatTile
             icon={AlertTriangle}
             label="Failures"
-            value={venueStats.failures.toLocaleString()}
+            value={statsKnown ? venueStats.failures.toLocaleString() : "–"}
             caption={statsWindowCaption}
-            iconClassName={venueStats.failures > 0 ? TONE_STYLES.failure.text : TONE_STYLES.neutral.text}
+            iconClassName={statsKnown && venueStats.failures > 0
+              ? TONE_STYLES.failure.text
+              : TONE_STYLES.neutral.text}
           />
         </div>
       </div>

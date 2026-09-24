@@ -61,6 +61,9 @@ describe('AssetList', () => {
         { id: 'a1', metadata: { name: 'Alpha Report' } },
         { id: 'a2', metadata: { name: 'Beta Dataset' } },
       ],
+      total: 2,
+      offset: 0,
+      limit: 1000,
     });
   });
 
@@ -68,7 +71,7 @@ describe('AssetList', () => {
     render(<AssetList />);
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
     expect(mockVenue.listAssets).toHaveBeenCalledTimes(1);
-    expect(mockVenue.listAssets).toHaveBeenCalledWith({ expand: 'metadata' });
+    expect(mockVenue.listAssets).toHaveBeenCalledWith({ expand: 'metadata', offset: 0, limit: 1000 });
   });
 
   it('reveals assets a batch at a time (infinite scroll); Load more grows the window', async () => {
@@ -76,7 +79,7 @@ describe('AssetList', () => {
     // 30 > one batch (24); jsdom has no IntersectionObserver, so the manual
     // "Load more" fallback drives the grow.
     const items = Array.from({ length: 30 }, (_, i) => ({ id: `x${i}`, metadata: { name: `Asset ${i}` } }));
-    mockVenue.listAssets.mockResolvedValue({ items });
+    mockVenue.listAssets.mockResolvedValue({ items, total: items.length, offset: 0, limit: 1000 });
 
     render(<AssetList />);
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(24));
@@ -170,6 +173,9 @@ describe('AssetList', () => {
         { id: 'a3', metadata: { name: 'Skilled Template', agent: { config: {} } } },
         { id: 'a4', metadata: { name: 'Research Skill', skill: { tools: ['search'] } } },
       ],
+      total: 4,
+      offset: 0,
+      limit: 1000,
     });
 
     render(<AssetList />);
@@ -198,5 +204,82 @@ describe('AssetList', () => {
 
     const names = screen.getAllByTestId('asset-card').map((el) => el.textContent);
     expect(names).toEqual(['Alpha Report', 'Beta Dataset']);
+  });
+});
+
+// The venue caps a limit-less listing at 1000 and reports the true size in
+// `total`. Reading once meant a larger catalogue was silently truncated and the
+// grid declared "End of results" over assets it had never asked for (#420).
+describe('AssetList catalogue paging', () => {
+  const page = (from: number, count: number, total: number) => ({
+    items: Array.from({ length: count }, (_, i) => ({
+      id: `x${from + i}`,
+      metadata: { name: `Asset ${from + i}` },
+    })),
+    total,
+    offset: from,
+    limit: 1000,
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSearchParam = null;
+    mockAuthenticated = true;
+    act(() => usePinnedAssets.setState({ pinned: [] }));
+  });
+
+  it('reads a catalogue that fits in one page with exactly one request', async () => {
+    mockVenue.listAssets.mockResolvedValue(page(0, 2, 2));
+
+    render(<AssetList />);
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
+
+    expect(mockVenue.listAssets).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps paging past the server cap instead of stopping at the first page', async () => {
+    mockVenue.listAssets
+      .mockResolvedValueOnce(page(0, 1000, 1200))
+      .mockResolvedValueOnce(page(1000, 200, 1200));
+
+    render(<AssetList />);
+
+    await waitFor(() => expect(mockVenue.listAssets).toHaveBeenCalledTimes(2));
+    expect(mockVenue.listAssets).toHaveBeenNthCalledWith(1, { expand: 'metadata', offset: 0, limit: 1000 });
+    expect(mockVenue.listAssets).toHaveBeenNthCalledWith(2, { expand: 'metadata', offset: 1000, limit: 1000 });
+
+    // An asset from beyond the cap is reachable, which is the whole point.
+    await waitFor(() => expect(screen.getByText(/Showing 24 of 1200/)).toBeInTheDocument());
+  });
+
+  it('does not claim "End of results" while later pages are still coming', async () => {
+    // A short first page: every card it yields is already on screen, so the
+    // grid has nothing left to reveal — but the catalogue is not exhausted.
+    // That is exactly when "End of results" would be a lie.
+    let releaseSecond: (v: unknown) => void = () => {};
+    mockVenue.listAssets
+      .mockResolvedValueOnce(page(0, 5, 1200))
+      .mockReturnValueOnce(new Promise((resolve) => { releaseSecond = resolve; }));
+
+    render(<AssetList />);
+
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(5));
+    expect(screen.queryByText('End of results')).not.toBeInTheDocument();
+    expect(screen.getByText(/Loading more assets/i)).toBeInTheDocument();
+
+    await act(async () => { releaseSecond(page(5, 3, 8)); });
+    await waitFor(() => expect(screen.queryByText(/Loading more assets/i)).not.toBeInTheDocument());
+    expect(screen.getByText('End of results')).toBeInTheDocument();
+  });
+
+  it('stops on an empty page rather than spinning on a bad total', async () => {
+    mockVenue.listAssets
+      .mockResolvedValueOnce(page(0, 2, 99))
+      .mockResolvedValueOnce({ items: [], total: 99, offset: 2, limit: 1000 });
+
+    render(<AssetList />);
+
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
+    expect(mockVenue.listAssets).toHaveBeenCalledTimes(2);
   });
 });

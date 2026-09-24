@@ -9,7 +9,7 @@ import { McpGlyph } from "@/components/adapter-glyphs";
 import { TypeTile } from "@/components/TypeTile";
 import { adapterLookup } from "@/lib/adapter-icons";
 import type { Venue } from "@covia/covia-sdk";
-import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
+import { copyDataToClipBoard } from "@/lib/utils";
 import { useMcpDiscovery } from "@/hooks/use-mcp-discovery";
 
 interface McpConnectSectionProps {
@@ -31,7 +31,8 @@ export function McpConnectSection({ venue, slug }: McpConnectSectionProps) {
   useEffect(() => {
     const fetchMcpTools = async () => {
       try {
-        setMcpTools(await listMcpTools(venue.baseUrl));
+        // Job-free native read via the SDK (covia-sdk#23).
+        setMcpTools((await venue.mcp.listTools()).tools);
       } catch {
         /* non-fatal */
       }

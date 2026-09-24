@@ -26,6 +26,11 @@ interface AssetListProps {
   venueId?: string;
 }
 
+// The venue rejects a limit above 1000 and silently caps a limit-less listing
+// at the same number, so this is the largest page it will serve. Asking for the
+// cap means a catalogue that still fits costs exactly one request, as before.
+const CATALOG_PAGE = 1000;
+
 export function AssetList({ venueId }: AssetListProps = {}) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -38,19 +43,41 @@ export function AssetList({ venueId }: AssetListProps = {}) {
   // own pinned asset (covia#390). Operations, agent templates, and skills are
   // catalog content with their own path-first views, so they're excluded here;
   // what's left is genuinely CAS-only content, correctly hash-addressed.
-  // expand: 'metadata' inlines every item's metadata into the one listing call,
-  // so there's no per-id hydration pass.
+  // expand: 'metadata' inlines every item's metadata into the listing call, so
+  // there's no per-id hydration pass.
   const fetchCatalog = useCallback(
-    (venue: Venue) =>
-      venue.listAssets({ expand: "metadata" }).then((assetList) =>
-        assetList.items
-          .filter((e) => {
-            if (e.metadata.name == undefined) return false;
-            const kind = getAssetKind(e.metadata);
-            return kind !== "operation" && kind !== "agent-template" && kind !== "skill";
-          })
-          .map((e) => new DataAsset(e.id, venue, e.metadata)),
-      ),
+    async (venue: Venue, publish: (assets: DataAsset[]) => void) => {
+      const artifacts: DataAsset[] = [];
+      let offset = 0;
+      let total = Number.POSITIVE_INFINITY;
+      // The catalogue is read in pages. A single unbounded read looks like it
+      // works — every venue here still fits — but the venue caps a limit-less
+      // listing at CATALOG_PAGE and reports the real count in `total`, so a
+      // catalogue past the cap would be silently truncated and the grid would
+      // say "End of results" over assets it never asked for. Paging to `total`
+      // is what makes the list complete rather than merely plausible.
+      while (offset < total) {
+        const page = await venue.listAssets({
+          expand: "metadata",
+          offset,
+          limit: CATALOG_PAGE,
+        });
+        total = page.total;
+        // Defensive: a page that returns nothing would otherwise spin forever.
+        if (page.items.length === 0) break;
+        for (const entry of page.items) {
+          if (entry.metadata.name == undefined) continue;
+          const kind = getAssetKind(entry.metadata);
+          if (kind === "operation" || kind === "agent-template" || kind === "skill") continue;
+          artifacts.push(new DataAsset(entry.id, venue, entry.metadata));
+        }
+        offset += page.items.length;
+        // Show what has arrived rather than holding the grid blank until the
+        // last page; on a one-page catalogue this is a single publish.
+        if (offset < total) publish([...artifacts]);
+      }
+      return artifacts;
+    },
     [],
   );
 
@@ -139,7 +166,10 @@ export function AssetList({ venueId }: AssetListProps = {}) {
 
           {loadError && <ErrorDisplay error={loadError} className="mb-4 w-full" />}
 
-          {isLoading ? (
+          {/* Spinner only until the first page lands. A multi-page catalogue
+              then fills in as the rest arrive; the summary above stays hidden
+              until the read settles, because a running total is not the total. */}
+          {isLoading && assets.length === 0 ? (
             <div className="flex flex-row items-center justify-center w-full h-100">
               <Spinner variant="ellipsis" className="text-primary" size={64}/>
             </div>
@@ -158,6 +188,8 @@ export function AssetList({ venueId }: AssetListProps = {}) {
                   <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={loadMore}>
                     Load more assets
                   </Button>
+                ) : isLoading ? (
+                  <span className="text-xs text-muted-foreground">Loading more assets…</span>
                 ) : filteredAssets.length > 0 ? (
                   <span className="text-xs text-muted-foreground">End of results</span>
                 ) : null}

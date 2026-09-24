@@ -27,6 +27,13 @@ export function useSkillsLibrary() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
+  // Bumped after an authoring write so the list re-reads. A counter rather than
+  // a callback that refetches directly: the effect below already owns the
+  // active/cancel bookkeeping, and re-entering it keeps that in one place.
+  const [reloadToken, setReloadToken] = useState(0);
+  // Survives the reload: the list effect resets selection to the first skill,
+  // which would otherwise drop the person somewhere else right after they saved.
+  const [pendingPath, setPendingPath] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -48,7 +55,12 @@ export function useSkillsLibrary() {
           left.name.localeCompare(right.name),
         );
         setSkills(combined);
-        setSelectedPath(combined[0]?.path ?? null);
+        setSelectedPath((current) => {
+          const wanted = pendingPath ?? current;
+          if (wanted && combined.some((skill) => skill.path === wanted)) return wanted;
+          return combined[0]?.path ?? null;
+        });
+        setPendingPath(null);
       })
       .catch((cause: unknown) => {
         if (!active) return;
@@ -58,7 +70,10 @@ export function useSkillsLibrary() {
       .finally(() => { if (active) setLoading(false); });
 
     return () => { active = false; };
-  }, [venue]);
+    // pendingPath is read inside but must not re-trigger the load: it is set
+    // alongside the token bump, which is what schedules the reload.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [venue, reloadToken]);
 
   const selected = useMemo(
     () => skills.find((skill) => skill.path === selectedPath) ?? null,
@@ -85,8 +100,16 @@ export function useSkillsLibrary() {
     return () => { active = false; };
   }, [selected, venue]);
 
+  // `select` names the skill to land on once the reload completes — the path
+  // the venue just wrote, which may not have existed before this call.
+  const reload = (select?: string) => {
+    if (select) setPendingPath(select);
+    setReloadToken((n) => n + 1);
+  };
+
   return {
     venue,
+    reload,
     skills,
     selectedPath,
     setSelectedPath,

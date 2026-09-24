@@ -50,6 +50,12 @@ describe("buildBreadcrumbs", () => {
     expect(labels("/some-new-route")).toEqual(["Home", "Some New Route"]);
   });
 
+  // The route keeps the protocol's name; the IA calls the concept
+  // "Capabilities" everywhere the user can see it.
+  it("labels the UCAN route as Capabilities", () => {
+    expect(labels("/ucan")).toEqual(["Home", "Capabilities"]);
+  });
+
   it("collapses the agent routing namespace", () => {
     expect(hrefs("/agents/agent/helper")).toEqual(["/", "/agents", "/agents/agent/helper"]);
   });

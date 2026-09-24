@@ -5,6 +5,10 @@ import {
   readOAuthCallback,
   safeReturnTo,
 } from "@/lib/oauth";
+import {
+  discoverOAuthProviders,
+  EMPTY_DISCOVERY_TTL_MS,
+} from "@/hooks/use-oauth-sign-in";
 
 const VENUE = "did:web:venue.example";
 const USER = "did:key:z6MkUser";
@@ -122,5 +126,95 @@ describe("OAuth venue sign-in", () => {
       const result = readOAuthCallback(callbackParams({ returnTo: "https://evil.example" }), knownVenue);
       expect(result).toMatchObject({ status: "accepted", returnTo: "/" });
     });
+  });
+});
+
+describe("OAuth provider discovery cache", () => {
+  const GOOGLE_LOGIN_PAGE = `<a href="/auth/google">Google</a>`;
+  const realFetch = global.fetch;
+  let fetchMock: jest.Mock;
+
+  const served = (body: string) => ({ ok: true, text: () => Promise.resolve(body) });
+  const notFound = () => ({ ok: false, text: () => Promise.resolve("") });
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    fetchMock = jest.fn();
+    global.fetch = fetchMock as unknown as typeof fetch;
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    global.fetch = realFetch;
+  });
+
+  it("probes a venue once however many callers ask at the same time", async () => {
+    fetchMock.mockResolvedValue(served(GOOGLE_LOGIN_PAGE));
+    const venue = "https://concurrent.example";
+
+    const [first, second] = await Promise.all([
+      discoverOAuthProviders(venue),
+      discoverOAuthProviders(`${venue}/`),
+    ]);
+
+    expect(first).toEqual(["google"]);
+    expect(second).toEqual(["google"]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps an answer that found providers without asking again", async () => {
+    fetchMock.mockResolvedValue(served(GOOGLE_LOGIN_PAGE));
+    const venue = "https://configured.example";
+
+    expect(await discoverOAuthProviders(venue)).toEqual(["google"]);
+    jest.setSystemTime(Date.now() + EMPTY_DISCOVERY_TTL_MS * 10);
+    expect(await discoverOAuthProviders(venue)).toEqual(["google"]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-probes a venue that advertised none, so SSO appears once an operator enables it", async () => {
+    fetchMock.mockResolvedValueOnce(notFound());
+    const venue = "https://unconfigured.example";
+
+    expect(await discoverOAuthProviders(venue)).toEqual([]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // Still trusted inside the TTL, so a render storm cannot hammer the venue.
+    expect(await discoverOAuthProviders(venue)).toEqual([]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // The operator configures a provider; the next probe past the TTL sees it.
+    jest.setSystemTime(Date.now() + EMPTY_DISCOVERY_TTL_MS + 1);
+    fetchMock.mockResolvedValueOnce(served(GOOGLE_LOGIN_PAGE));
+
+    expect(await discoverOAuthProviders(venue)).toEqual(["google"]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("treats an unreachable venue as advertising none, and retries it later", async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const venue = "https://offline.example";
+
+    expect(await discoverOAuthProviders(venue)).toEqual([]);
+
+    jest.setSystemTime(Date.now() + EMPTY_DISCOVERY_TTL_MS + 1);
+    fetchMock.mockResolvedValueOnce(served(GOOGLE_LOGIN_PAGE));
+
+    expect(await discoverOAuthProviders(venue)).toEqual(["google"]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("asks again straight away after a probe that got no reply", async () => {
+    // No reply is not an answer: caching it, even briefly, would hide SSO
+    // behind a transient network failure until the page was reloaded.
+    fetchMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const venue = "https://flaky.example";
+
+    expect(await discoverOAuthProviders(venue)).toEqual([]);
+
+    fetchMock.mockResolvedValueOnce(served(GOOGLE_LOGIN_PAGE));
+    expect(await discoverOAuthProviders(venue)).toEqual(["google"]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

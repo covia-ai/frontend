@@ -11,8 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
-import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
-import { ArrowRight, CheckCircle2, Copy, Play, Wrench } from "lucide-react";
+import { copyDataToClipBoard } from "@/lib/utils";
+import { ArrowRight, CheckCircle2, Copy, Play } from "lucide-react";
 import Link from "next/link";
 import { McpGlyph } from "@/components/adapter-glyphs";
 import { notifyWarning } from "@/lib/notify";
@@ -57,13 +57,17 @@ function seedArgs(inputSchema: any): Record<string, unknown> {
 }
 
 export function McpToolsList({ venueId }: McpToolsListProps) {
-  const { venue, auth, status: venueStatus, error: venueError } = useResolvedVenueContext(venueId);
+  // Take the whole resolution, not just the Venue: a definitive failure must
+  // be shown, not swallowed into an endless "Loading…" (#428).
+  const { venue, auth, descriptor, status: venueStatus, error: venueError } = useResolvedVenueContext(venueId);
   const { data: tools, loading, error, reload } = useVenueRead<McpTool[]>({
     venue,
     auth,
     initial: [],
     failureTitle: "Unable to load MCP tools",
-    load: (v) => listMcpTools(v.baseUrl),
+    // venue.mcp.listTools() is the SDK's job-free native read (covia-sdk#23);
+    // the invoke-based v/ops/mcp/tools-list would persist a job per page load.
+    load: (v) => v.mcp.listTools().then((page) => page.tools),
   });
   const [selectedTool, setSelectedTool] = useState<McpTool | null>(null);
   const [toolArgs, setToolArgs] = useState("{}");
@@ -97,11 +101,10 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
     }
     setLastRun(null);
     const jobId = await executeJob({
-      action: () => venue.operations.invoke("v/ops/mcp/tools-call", {
-        server: venue.baseUrl,
-        toolName: selectedTool.name,
-        arguments: args,
-      }),
+      // Tracked on purpose: this is a user-driven run, and the Job is what the
+      // result link below points at. `server` defaults to this venue, so the
+      // caller no longer needs to know the catalog path or the loopback trick.
+      action: () => venue.mcp.callToolTracked(selectedTool.name, args),
       failureTitle: "Unable to run tool",
       missingJobMessage: "The tool completed without returning a job ID",
       // Stay on the catalogue and surface the result inline + a job link,
@@ -128,12 +131,12 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
   if (venueStatus !== "ready")
     return (
       <ContentLayout>
-        <TopBar venueId={venueId} venueName={venue?.metadata.name} />
+        <TopBar venueId={venueId} venueName={descriptor?.metadata.name} />
         <VenueResolutionState
           status={venueStatus}
           error={venueError}
-          icon={Wrench}
-          subject="MCP tools"
+          icon={McpGlyph}
+          subject="MCP Tools"
           venueId={venueId}
         />
       </ContentLayout>

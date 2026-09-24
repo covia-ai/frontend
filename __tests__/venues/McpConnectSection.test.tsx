@@ -12,14 +12,18 @@ const mockCopy = jest.fn();
 jest.mock("@/lib/utils", () => ({
   ...jest.requireActual("@/lib/utils"),
   copyDataToClipBoard: (...args: unknown[]) => mockCopy(...args),
-  listMcpTools: jest.fn(),
 }));
 
 import { McpConnectSection } from "@/components/venue/McpConnectSection";
-import { listMcpTools } from "@/lib/utils";
 import { resetMcpDiscoveryCache } from "@/hooks/use-mcp-discovery";
 
-const mockVenue: any = { baseUrl: "https://venue.example" };
+// Tool listing now goes through the SDK's job-free MCP manager (covia-sdk#23)
+// rather than a hand-rolled fetch, so the venue double carries `mcp`.
+const listToolsMock = jest.fn();
+const mockVenue: any = {
+  baseUrl: "https://venue.example",
+  mcp: { listTools: listToolsMock },
+};
 
 describe("McpConnectSection", () => {
   const originalFetch = global.fetch;
@@ -29,7 +33,7 @@ describe("McpConnectSection", () => {
     // The MCP discovery memo is shared per baseUrl — clear it so each case's
     // own fetch mock is what resolves (W4 4A).
     resetMcpDiscoveryCache();
-    (listMcpTools as jest.Mock).mockResolvedValue([]);
+    listToolsMock.mockResolvedValue({ tools: [] });
   });
 
   afterEach(() => {

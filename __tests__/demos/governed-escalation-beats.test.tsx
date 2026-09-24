@@ -6,33 +6,30 @@ jest.mock('@/lib/operations-catalog', () => ({
 import { runEscalation } from '@/components/governed-escalation/beats';
 import { DEFAULT_ADDRESSES } from '@/components/governed-escalation/fixtures';
 
+// The slice of Job the escalation flow touches, as a fake the test mutates
+// mid-wait. Naming the type up front is what lets `wait` be typed against it:
+// a `this: typeof analysis` inside the object's own initializer is circular.
+type FakeAnalysisJob = {
+  id: string;
+  metadata?: { error?: string };
+  output?: { summary: string };
+  isComplete: boolean;
+  wait: jest.Mock;
+};
+
 beforeEach(() => jest.clearAllMocks());
 
 describe('runEscalation — analysis wait (frontend#338)', () => {
   it('quotes the real finding once the analysis job actually completes, not a placeholder', async () => {
-    // Still PENDING when invoke() resolves, and only reaches COMPLETE after
-    // wait() has polled a couple of times — the exact race that produced the
-    // false "did not complete" quote.
-    // Named so `wait` can type its `this` without referring to the very
-    // object whose type is still being inferred.
-    type AnalysisJob = {
-      id: string;
-      metadata: { status: string };
-      output: unknown;
-      isFinished: boolean;
-      isComplete: boolean;
-      wait: jest.Mock;
-    };
-    const analysis: AnalysisJob = {
+    // Still incomplete when invoke() resolves, and only completes once wait()
+    // returns — the exact race that produced the false "did not complete"
+    // quote.
+    const analysis: FakeAnalysisJob = {
       id: 'analysis-1',
-      metadata: { status: 'PENDING' },
       output: undefined,
-      isFinished: false,
       isComplete: false,
-      wait: jest.fn(async function (this: AnalysisJob) {
-        this.metadata = { status: 'COMPLETE' };
+      wait: jest.fn(async function (this: FakeAnalysisJob) {
         this.output = { summary: 'deviceReuseRate 0.41 vs baseline 0.12, ratio 3.4x' };
-        this.isFinished = true;
         this.isComplete = true;
       }),
     };
@@ -53,11 +50,11 @@ describe('runEscalation — analysis wait (frontend#338)', () => {
   });
 
   it('falls back to the honest placeholder when the analysis genuinely times out', async () => {
-    const analysis = {
+    // No metadata.error either, so the placeholder is the only thing left to
+    // quote.
+    const analysis: FakeAnalysisJob = {
       id: 'analysis-2',
-      metadata: { status: 'STARTED' },
       output: undefined,
-      isFinished: false,
       isComplete: false,
       wait: jest.fn(async () => { throw new Error('timed out'); }),
     };

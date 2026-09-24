@@ -33,6 +33,9 @@ const SEGMENTS: Record<string, { label?: string; listHref?: string; docs?: strin
   // "Integrate" everywhere in the IA (Wave 4F).
   connect: { label: "Integrate" },
   mcp: { label: "MCP" },
+  // The route keeps the protocol's name; the IA calls the concept
+  // "Capabilities" everywhere the user can see it.
+  ucan: { label: "Capabilities" },
   learning: { label: "Resources" },
   privacypolicy: { label: "Privacy Policy" },
   "sdk-job-lifecycle": { label: "TypeScript SDK" },

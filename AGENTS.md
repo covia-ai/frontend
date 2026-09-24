@@ -25,6 +25,7 @@ pnpm install          # Install dependencies
 pnpm dev              # Start dev server (localhost:3000)
 pnpm build            # Production build (also serves as type-check)
 pnpm lint             # ESLint
+pnpm typecheck        # tsc --noEmit (covers __tests__/, which build does not)
 pnpm test             # Run Jest tests
 ```
 

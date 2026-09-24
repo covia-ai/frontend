@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Bot, Plus, Search } from "lucide-react";
+import { Bot, Lock, Plus, Search } from "lucide-react";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
@@ -59,7 +59,7 @@ function searchText(agent: RosterAgent): string {
 
 export function AgentRoster({ venueId }: { venueId?: string } = {}) {
   const resolved = useResolvedVenueContext(venueId);
-  const { descriptor: venueObj, venue } = resolved;
+  const { descriptor: venueObj, venue, isAuthenticated } = resolved;
   const venueStatus = resolved.status ?? (venue ? "ready" : "absent");
 
   const { roster, counts, loading, error, refresh } = useAgentRoster(
@@ -131,13 +131,22 @@ export function AgentRoster({ venueId }: { venueId?: string } = {}) {
               className="pl-8"
             />
           </div>
-          <AddNewAgent
-            trigger={
-              <Button className="gap-1.5" data-testid="roster-new-agent">
-                <Plus size={15} /> New agent
-              </Button>
-            }
-          />
+          {isAuthenticated ? (
+            <AddNewAgent
+              trigger={
+                <Button className="gap-1.5" data-testid="roster-new-agent">
+                  <Plus size={15} /> New agent
+                </Button>
+              }
+            />
+          ) : (
+            // An agent belongs to an account, so creating one signed out would
+            // fail at the venue. Say so before the click, as the operation run
+            // form does (#423).
+            <Button disabled className="gap-1.5" data-testid="roster-new-agent">
+              <Lock size={14} /> Sign in to create
+            </Button>
+          )}
         </div>
 
         {error && <ErrorDisplay error={error} className="mt-4 w-full" />}
@@ -149,7 +158,17 @@ export function AgentRoster({ venueId }: { venueId?: string } = {}) {
         ) : counts.total === 0 ? (
           <div className="mt-16 flex flex-col items-center gap-3 text-center text-muted-foreground">
             <Bot size={34} className="text-primary/60" />
-            <p>No agents yet. Create your first agent to get started.</p>
+            {/* "No agents yet" is a claim about the account, and signed out
+                there is no account to make it about — the venue may well have
+                agents we simply cannot see (#423). */}
+            {isAuthenticated ? (
+              <p>No agents yet. Create your first agent to get started.</p>
+            ) : (
+              <p data-testid="agent-roster-signed-out">
+                Sign in to see your agents. Agents belong to an account, so
+                there is nothing to show while you are signed out.
+              </p>
+            )}
           </div>
         ) : filtered.length === 0 ? (
           <p className="mt-16 text-sm text-muted-foreground">No agents match “{query}”.</p>
