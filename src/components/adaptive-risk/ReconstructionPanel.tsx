@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DidDisplay } from "@/components/DidDisplay";
 import { useAuthStore } from "@/hooks/use-auth";
+import { writeTextToClipboard } from "@/lib/clipboard";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import {
   JOBS_MD_RULE,
@@ -65,7 +66,7 @@ export function ReconstructionPanel({
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(curl);
+      await writeTextToClipboard(curl);
       notifySuccess("Copied", { description: "Paste it into a terminal." });
     } catch (err) {
       notifyError("Unable to copy the command", err);

@@ -257,4 +257,42 @@ describe("useExecutionLifecycle", () => {
     });
     expect(result.current.job?.status).toBe("COMPLETE");
   });
+
+  it("stops — does not poll every second forever — when the job does not exist", async () => {
+    mockVenue.jobs.stream.mockImplementation(() => {
+      throw new Error("HTTP 404");
+    });
+    mockVenue.jobs.get.mockRejectedValue(
+      Object.assign(new Error("Job not found"), { status: 404 }),
+    );
+
+    const { result } = renderHook(() =>
+      useExecutionLifecycle({ jobId: "job-gone" }),
+    );
+    await waitFor(() => expect(result.current.notFound).toBe(true));
+    const reads = mockVenue.jobs.get.mock.calls.length;
+
+    await act(async () => {
+      jest.advanceTimersByTime(10_000);
+    });
+    expect(mockVenue.jobs.get).toHaveBeenCalledTimes(reads);
+  });
+
+  it("aborts the job stream on unmount, so a quiet job cannot hold its connection open", async () => {
+    const stream = fakeStream();
+    mockVenue.jobs.stream.mockReturnValue(stream.generator);
+    mockVenue.jobs.get.mockResolvedValue({
+      metadata: { id: "job-1", status: "PAUSED" },
+    });
+
+    const { result, unmount } = renderHook(() =>
+      useExecutionLifecycle({ jobId: "job-1" }),
+    );
+    await waitFor(() => expect(result.current.job?.status).toBe("PAUSED"));
+    const { signal } = mockVenue.jobs.stream.mock.calls[0][1];
+    expect(signal.aborted).toBe(false);
+
+    unmount();
+    expect(signal.aborted).toBe(true);
+  });
 });

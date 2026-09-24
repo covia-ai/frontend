@@ -3,6 +3,7 @@ import {
   CUSTOM_PROVIDER_OPTION,
   DEFAULT_PROVIDER_OPTION,
   modelSelectionFromId,
+  providerSelectionForOperation,
   resolvedModelId,
 } from "@/lib/agent-config";
 import { cleanCaps, isAgentCap, type AgentCap } from "@/lib/agent-caps";
@@ -52,25 +53,10 @@ function prettyJson(value: unknown): string {
   return value === undefined ? "" : JSON.stringify(value, null, 2);
 }
 
-function providerSelection(operation: unknown): {
-  providerId: string;
-  customProviderOperation: string;
-} {
-  if (typeof operation !== "string" || !operation) {
-    return { providerId: DEFAULT_PROVIDER_OPTION, customProviderOperation: "" };
-  }
-  const known = Object.entries(LLM_PROVIDERS).find(
-    ([, provider]) => provider.operation === operation,
-  );
-  return known
-    ? { providerId: known[0], customProviderOperation: "" }
-    : { providerId: CUSTOM_PROVIDER_OPTION, customProviderOperation: operation };
-}
-
 export function createAgentSettingsDraft(
   config: Record<string, unknown> = {},
 ): AgentSettingsDraft {
-  const provider = providerSelection(config.llmOperation);
+  const provider = providerSelectionForOperation(config.llmOperation);
   const model = modelSelectionFromId(
     provider.providerId,
     typeof config.model === "string" ? config.model : "",
@@ -175,9 +161,9 @@ function equal(left: unknown, right: unknown): boolean {
   return JSON.stringify(stable(left)) === JSON.stringify(stable(right));
 }
 
-// Order-independent deep equality for agent config objects — used both to
+// Order-independent deep equality for agent config values — used both to
 // compute the update patch below and, in use-agent-explorer.ts, to detect a
-// concurrent edit by comparing a freshly re-fetched config against the one
+// concurrent edit by comparing each freshly re-fetched field against the one
 // this editing session started from (see covia-ai/frontend#161).
 export const agentConfigsEqual = equal;
 

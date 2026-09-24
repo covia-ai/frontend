@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useMemo } from "react";
-import { JobMetadata, RunStatus } from "@covia/covia-sdk";
+import { isJobFinished, type JobMetadata, type RunStatus, type Venue } from "@covia/covia-sdk";
 import { Copy } from "lucide-react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -9,13 +9,14 @@ import { JobRowActions } from "@/components/jobs/JobRowActions";
 import { JobDuration } from "@/components/jobs/JobDuration";
 import { TONE_STYLES, toneForRunStatus } from "@/lib/status";
 import { operationVisual, abbreviateJobId } from "@/lib/job-visuals";
-import { TERMINAL_STATUSES } from "@/lib/job-history";
-import { cn, formatDateTime } from "@/lib/utils";
-
-const ACTIVE_STATUSES = new Set([RunStatus.PENDING, RunStatus.STARTED, RunStatus.PAUSED]);
+import { isJobLive } from "@/lib/job-history";
+import { cn, copyDataToClipBoard, formatDateTime } from "@/lib/utils";
 
 export interface JobRowProps {
   job: JobMetadata;
+  /** The venue the list is showing; the row actions act on it. A cached
+   *  instance, so it is referentially stable for `memo`. */
+  venue: Venue;
   /** The live-stream overlay for this job (liveJobs[id]) or undefined. Kept as a
    *  distinct prop so `memo` re-renders only the row whose live data changed. */
   live?: JobMetadata;
@@ -35,7 +36,7 @@ function CopyableId({ id, className }: { id?: string; className?: string }) {
   return (
     <button
       type="button"
-      onClick={(e) => { e.stopPropagation(); if (id) navigator.clipboard?.writeText(id); }}
+      onClick={(e) => { e.stopPropagation(); if (id) void copyDataToClipBoard(id, "Job ID copied"); }}
       title={`${id ?? ""} — click to copy`}
       className={cn(
         "group inline-flex items-center gap-1 rounded font-mono text-[11px] text-muted-foreground transition-colors hover:text-primary",
@@ -48,11 +49,11 @@ function CopyableId({ id, className }: { id?: string; className?: string }) {
   );
 }
 
-function JobRowInner({ job, live, adapter, maxMs, variant, onOpen, onChanged }: JobRowProps) {
+function JobRowInner({ job, venue, live, adapter, maxMs, variant, onOpen, onChanged }: JobRowProps) {
   const eff = live ? { ...job, ...live } : job;
-  const isTerminal = TERMINAL_STATUSES.has(eff.status as RunStatus);
+  const isTerminal = isJobFinished(eff.status as RunStatus);
   const tone = toneForRunStatus(eff.status);
-  const isLive = !!live && ACTIVE_STATUSES.has(eff.status as RunStatus);
+  const isLive = !!live && isJobLive(eff.status);
   const rowTint =
     tone === "failure" ? TONE_STYLES.failure.surface
     : tone === "attention" ? TONE_STYLES.attention.surface
@@ -106,7 +107,7 @@ function JobRowInner({ job, live, adapter, maxMs, variant, onOpen, onChanged }: 
           </span>
         </TableCell>
         <TableCell className="text-right">
-          <JobRowActions job={job} onChanged={onChanged} />
+          <JobRowActions job={job} venue={venue} onChanged={onChanged} />
         </TableCell>
       </TableRow>
     );
@@ -131,7 +132,7 @@ function JobRowInner({ job, live, adapter, maxMs, variant, onOpen, onChanged }: 
             {liveDot}
             <StatusBadge status={eff.status} kind="job" />
           </span>
-          <JobRowActions job={job} onChanged={onChanged} />
+          <JobRowActions job={job} venue={venue} onChanged={onChanged} />
         </div>
         <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
           <CopyableId id={job.id} />

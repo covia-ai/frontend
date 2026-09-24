@@ -1,4 +1,4 @@
-import { keyLook, skillLook, namespaceLook, valueTypeOf, isAssetRef } from "@/lib/workspace-look";
+import { keyLook, skillLook, namespaceLook } from "@/lib/workspace-look";
 import { CONCEPT_ICONS, fieldLook } from "@/lib/concept-icons";
 import { ADAPTER_LOOK } from "@/lib/adapter-icons";
 import {
@@ -114,28 +114,5 @@ describe("fieldLook", () => {
 
   it("returns undefined for an unknown field key", () => {
     expect(fieldLook("some-random-id")).toBeUndefined();
-  });
-});
-
-describe("valueTypeOf", () => {
-  it.each([
-    [{}, "object"],
-    [[], "array"],
-    ["hi", "string"],
-    [3, "number"],
-    [true, "boolean"],
-    [null, "null"],
-    [undefined, "null"],
-  ])("classifies %p", (value, type) => {
-    expect(valueTypeOf(value)).toBe(type);
-  });
-});
-
-describe("isAssetRef", () => {
-  it("detects content-addressed did:key references only", () => {
-    expect(isAssetRef("did:key:z6Mkabc")).toBe(true);
-    expect(isAssetRef("did:web:venue.example")).toBe(false);
-    expect(isAssetRef("just a string")).toBe(false);
-    expect(isAssetRef({})).toBe(false);
   });
 });

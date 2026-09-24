@@ -8,6 +8,7 @@ import { useAuthStore } from "@/hooks/use-auth";
 import { useVenues } from "@/hooks/use-venues";
 import { getVenueFor } from "@/lib/venue-registry";
 import { notifySuccess, notifyError } from "@/lib/notify";
+import { isNotFoundError } from "@/lib/errors";
 
 // How often the shared poller re-checks watched jobs. Only ticks while the
 // watch list is non-empty (mirrors JobList's "only poll when there are
@@ -18,6 +19,12 @@ const WATCH_POLL_MS = 5_000;
 // Small and self-pruning (terminal jobs are unwatched immediately), but
 // capped in case a venue/auth lookup keeps failing for some entry.
 const MAX_WATCHED_JOBS = 50;
+
+// The list is persisted, so an entry that never settles — a job parked on
+// INPUT_REQUIRED for a week, a venue this account can no longer read — would
+// otherwise be re-read every tick, in every tab, in every future session. A
+// day on, an ambient "job complete" toast has stopped being useful anyway.
+const WATCH_TTL_MS = 24 * 60 * 60 * 1000;
 
 export type WatchedJob = { venueId: string; jobId: string; addedAt: number };
 
@@ -64,9 +71,10 @@ function jobReceiptHref(venueId: string, jobId: string): string {
  * (the SDK only offers per-job venue.jobs.stream), so this generalizes the
  * same "one shared poller feeds a store" shape instead.
  *
- * Jobs join the watch list at the one choke point every job-producing
- * action already passes through: useJobExecution().execute() (on success,
- * right before it navigates to the job's own page).
+ * Jobs join the watch list in useJobExecution().execute() (on success, right
+ * before it navigates to the job's own page). Surfaces that keep the job in
+ * view instead — the playground's inline result, a re-run from the jobs list —
+ * invoke directly and are not watched.
  */
 export function useWatchedJobsPoll(): void {
   const jobs = useWatchedJobs((s) => s.jobs);
@@ -75,13 +83,25 @@ export function useWatchedJobsPoll(): void {
     if (jobs.length === 0) return;
 
     let ignore = false;
+    // A pass reads the jobs one by one, so on a slow venue it can outlast the
+    // interval; the next tick must not start a second pass alongside it.
+    let checking = false;
     const check = async () => {
-      for (const { venueId, jobId } of jobs) {
+      if (checking) return;
+      checking = true;
+      try {
+        await checkAll();
+      } finally {
+        checking = false;
+      }
+    };
+    const checkAll = async () => {
+      for (const { venueId, jobId, addedAt } of jobs) {
         if (ignore) return;
         const descriptor = useVenues.getState().venues.find((v) => v.venueId === venueId);
-        if (!descriptor) {
-          // The venue was removed from this browser entirely — nothing left
-          // to check against, so stop tracking rather than fail forever.
+        // No venue left in this browser to check against, or watched for
+        // longer than the TTL — stop tracking rather than re-read forever.
+        if (!descriptor || Date.now() - addedAt > WATCH_TTL_MS) {
           useWatchedJobs.getState().unwatch(venueId, jobId);
           continue;
         }
@@ -108,6 +128,11 @@ export function useWatchedJobsPoll(): void {
           }
           useWatchedJobs.getState().unwatch(venueId, jobId);
         } catch (err: unknown) {
+          // A deleted job will never complete — nothing left to watch for.
+          if (isNotFoundError(err)) {
+            useWatchedJobs.getState().unwatch(venueId, jobId);
+            continue;
+          }
           // Quiet like the HITL poller — a transient read failure here just
           // means we check again next tick, not a user-facing error.
           console.warn(`Watched-job poll failed for ${jobId}:`, err);
@@ -115,8 +140,8 @@ export function useWatchedJobsPoll(): void {
       }
     };
 
-    check();
-    const id = setInterval(check, WATCH_POLL_MS);
+    void check();
+    const id = setInterval(() => void check(), WATCH_POLL_MS);
     return () => {
       ignore = true;
       clearInterval(id);

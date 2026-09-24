@@ -13,13 +13,23 @@ describe('runEscalation — analysis wait (frontend#338)', () => {
     // Still PENDING when invoke() resolves, and only reaches COMPLETE after
     // wait() has polled a couple of times — the exact race that produced the
     // false "did not complete" quote.
-    const analysis = {
+    // Named so `wait` can type its `this` without referring to the very
+    // object whose type is still being inferred.
+    type AnalysisJob = {
+      id: string;
+      metadata: { status: string };
+      output: unknown;
+      isFinished: boolean;
+      isComplete: boolean;
+      wait: jest.Mock;
+    };
+    const analysis: AnalysisJob = {
       id: 'analysis-1',
       metadata: { status: 'PENDING' },
       output: undefined,
       isFinished: false,
       isComplete: false,
-      wait: jest.fn(async function (this: typeof analysis) {
+      wait: jest.fn(async function (this: AnalysisJob) {
         this.metadata = { status: 'COMPLETE' };
         this.output = { summary: 'deviceReuseRate 0.41 vs baseline 0.12, ratio 3.4x' };
         this.isFinished = true;

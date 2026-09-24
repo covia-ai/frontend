@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { JobMetadata } from "@covia/covia-sdk";
+import type { JobMetadata, Venue } from "@covia/covia-sdk";
 import { Ban, Download, Loader2, MoreHorizontal, RotateCcw } from "lucide-react";
 import {
   DropdownMenu,
@@ -20,14 +20,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
-import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
+import { jobFailure, notifyError, notifySuccess } from "@/lib/notify";
+import { isJobCancellable } from "@/lib/job-history";
 import { abbreviateJobId } from "@/lib/job-visuals";
-
-const ACTIVE = new Set(["PENDING", "STARTED", "PAUSED", "INPUT_REQUIRED", "AUTH_REQUIRED"]);
 
 interface JobRowActionsProps {
   job: JobMetadata;
+  /** The venue the job belongs to — the one the list is showing, which on a
+   *  /venues/<id>/jobs route is not necessarily the globally selected one. */
+  venue: Venue;
   /** Called after an action changes venue state, so the list can refetch. */
   onChanged?: () => void;
 }
@@ -39,16 +40,14 @@ interface JobRowActionsProps {
  * client-side from the fetched record. Cancel confirms first (it can lose
  * in-flight work).
  */
-export function JobRowActions({ job, onChanged }: JobRowActionsProps) {
-  const venue = useAuthenticatedVenue();
+export function JobRowActions({ job, venue, onChanged }: JobRowActionsProps) {
   const [busy, setBusy] = useState<null | "rerun" | "cancel" | "receipt">(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
 
   const jobId = job.id ?? "";
-  const isActive = ACTIVE.has((job.status ?? "").toUpperCase());
+  const canCancel = isJobCancellable(job.status);
 
   const rerun = async () => {
-    if (!venue) return notifyWarning("Please connect to a venue first");
     setBusy("rerun");
     try {
       // The list record is a summary; fetch the full job for its operation + input.
@@ -61,7 +60,9 @@ export function JobRowActions({ job, onChanged }: JobRowActionsProps) {
       const newJob = await venue.operations.invoke(operation, full.metadata.input);
       notifySuccess("Re-running operation", {
         description: `New job ${abbreviateJobId(newJob.id)}`,
-        receiptHref: newJob.id ? `/job/${newJob.id}` : undefined,
+        receiptHref: newJob.id
+          ? `/venues/${encodeURIComponent(venue.venueId)}/jobs/${newJob.id}`
+          : undefined,
       });
       onChanged?.();
     } catch (err) {
@@ -73,7 +74,6 @@ export function JobRowActions({ job, onChanged }: JobRowActionsProps) {
   };
 
   const cancel = async () => {
-    if (!venue) return notifyWarning("Please connect to a venue first");
     setBusy("cancel");
     try {
       await venue.jobs.cancel(jobId);
@@ -89,7 +89,6 @@ export function JobRowActions({ job, onChanged }: JobRowActionsProps) {
   };
 
   const downloadReceipt = async () => {
-    if (!venue) return notifyWarning("Please connect to a venue first");
     setBusy("receipt");
     try {
       const full = await venue.jobs.get(jobId);
@@ -147,7 +146,7 @@ export function JobRowActions({ job, onChanged }: JobRowActionsProps) {
           <DropdownMenuItem onSelect={() => void downloadReceipt()} disabled={busy !== null}>
             <Download size={14} /> Download receipt
           </DropdownMenuItem>
-          {isActive && (
+          {canCancel && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem

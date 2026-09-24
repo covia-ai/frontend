@@ -18,7 +18,6 @@ type CachedVenue = {
 // while keeping signed-out access in the null slot.
 const instances = new Map<string, Map<VenueAuth | null, CachedVenue>>();
 const connections = new Map<string, Map<VenueAuth | null, Promise<Venue>>>();
-const connectedInstances = new WeakSet<Venue>();
 const statusCache = new WeakMap<
   Venue,
   { status: StatusData | undefined; checkedAt: number }
@@ -47,7 +46,6 @@ export function getVenueFor(
   if (cached && cached.baseUrl === descriptor.baseUrl) return cached.venue;
 
   if (cached) {
-    connectedInstances.delete(cached.venue);
     statusCache.delete(cached.venue);
     statusRequests.delete(cached.venue);
   }
@@ -70,12 +68,10 @@ export function adoptVenueInstance(
   const cached = byAuth.get(auth);
   if (cached && cached.baseUrl === venue.baseUrl) return cached.venue;
   if (cached) {
-    connectedInstances.delete(cached.venue);
     statusCache.delete(cached.venue);
     statusRequests.delete(cached.venue);
   }
   byAuth.set(auth, { baseUrl: venue.baseUrl, venue });
-  connectedInstances.add(venue);
   statusCache.set(venue, {
     status: venue.lastKnownStatus,
     checkedAt: Date.now(),
@@ -149,7 +145,6 @@ export function connectVenue(
 
 export function evictVenueInstances(venueId: string): void {
   for (const entry of instances.get(venueId)?.values() ?? []) {
-    connectedInstances.delete(entry.venue);
     statusCache.delete(entry.venue);
     statusRequests.delete(entry.venue);
   }

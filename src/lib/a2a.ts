@@ -7,6 +7,8 @@
  * cover the display/derivation the manager doesn't.
  */
 
+import { slugifyAgentId } from "@/lib/agent-id";
+
 export type { A2AImportAgentResult } from "@covia/covia-sdk";
 
 // The wire types are declared here rather than re-exported from the SDK: the
@@ -90,13 +92,7 @@ export function connectedAgentFromBinding(name: string, value: unknown): Connect
 export const A2A_NAME_PATTERN = /^[a-z0-9-]{1,64}$/;
 
 export const slugifyAgentName = (name: string): string =>
-  name
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 64);
+  slugifyAgentId(name).slice(0, 64);
 
 /** Cap on how much of a structured data part is rendered inline. */
 const MAX_DATA_CHARS = 2000;

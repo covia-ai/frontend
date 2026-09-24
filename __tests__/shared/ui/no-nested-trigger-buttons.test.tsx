@@ -17,7 +17,7 @@ jest.mock('@/hooks/use-authenticated-venue', () => ({
 import { AssetInfoSheet } from '@/components/AssetInfoSheet';
 import { RemoveVenueModal } from '@/components/RemoveVenueModal';
 import { ExecutionToolbar } from '@/components/ExecutionToolbar';
-import { SmartBreadcrumb } from '@/components/smartbreadcrumb2';
+import { SmartBreadcrumb } from '@/components/SmartBreadcrumb';
 
 const opAsset: any = {
   id: 'v/ops/test/echo',

@@ -2,15 +2,17 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Venue } from "@covia/covia-sdk";
+import type { Job, Venue } from "@covia/covia-sdk";
 import { errorMessage } from "@/lib/errors";
 import { jobFailure, notifyError, notifyWarning } from "@/lib/notify";
 import { useWatchedJobs } from "@/hooks/use-watched-jobs";
 
-type JobResult = { id?: string } | null | undefined;
-
 type ExecuteJobOptions = {
-  action: () => Promise<JobResult>;
+  // Must start the job and hand it back — `invoke`, never `run`: `run` waits
+  // for the job and resolves to its *result*, which has no id to watch or
+  // link to. (`run<T>` infers T from this return type, so the compiler cannot
+  // catch that mistake; the id check below does.)
+  action: () => Promise<Pick<Job, "id">>;
   failureTitle: string;
   missingJobMessage?: string;
   onError?: (message: string) => void;

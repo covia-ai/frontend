@@ -197,6 +197,39 @@ describe("useAuthStore", () => {
     expect(useAuthStore.getState().deviceKeyHex).toBeNull();
   });
 
+  it("removeDeviceKey forgets every account signed in with that key, on every venue", () => {
+    const KEY_B = "b".repeat(64);
+    act(() => {
+      useAuthStore.getState().addDeviceKey(MOCK_HEX);
+      useAuthStore.getState().loginWithKeypair(VENUE_A, MOCK_HEX, "did:a");
+      useAuthStore.getState().loginWithKeypair(VENUE_B, MOCK_HEX, "did:a");
+      useAuthStore.getState().loginWithKeypair(VENUE_B, KEY_B, "did:b");
+      useAuthStore.getState().loginWithToken(VENUE_A, "token", "did:oauth");
+      useAuthStore.getState().removeDeviceKey(MOCK_HEX);
+    });
+
+    // The private key must not survive anywhere in the persisted blob.
+    expect(JSON.stringify(useAuthStore.getState())).not.toContain(MOCK_HEX);
+    expect(useAuthStore.getState().accountsMap).toEqual({
+      [VENUE_A]: [{ type: "bearer", token: "token", did: "did:oauth" }],
+      [VENUE_B]: [{ type: "keypair", privateKeyHex: KEY_B, did: "did:b" }],
+    });
+    // VENUE_A's active account was the bearer login and is untouched; VENUE_B's
+    // active account was KEY_B (logged in after MOCK_HEX) and is untouched too.
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toMatchObject({ did: "did:oauth" });
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_B)).toMatchObject({ did: "did:b" });
+  });
+
+  it("removeDeviceKey signs out a venue whose active account used that key", () => {
+    act(() => {
+      useAuthStore.getState().loginWithKeypair(VENUE_A, MOCK_HEX, "did:a");
+      useAuthStore.getState().removeDeviceKey(MOCK_HEX);
+    });
+
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toBeNull();
+    expect(useAuthStore.getState().accountsMap).toEqual({});
+  });
+
   it("setDeviceKeyHex records the key in the known list", () => {
     act(() => useAuthStore.getState().setDeviceKeyHex(MOCK_HEX));
     expect(useAuthStore.getState().deviceKeys).toEqual([MOCK_HEX]);

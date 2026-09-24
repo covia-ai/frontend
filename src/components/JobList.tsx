@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components
 import { useCallback, useEffect, useMemo, useRef, useState, type UIEvent } from "react";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { useActiveJobsLive } from "@/hooks/use-active-jobs-live";
-import { JobMetadata, RunStatus }from "@covia/covia-sdk";
+import { isJobFinished, type JobMetadata, RunStatus } from "@covia/covia-sdk";
 import { getExecutionTime } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScheduledList } from "@/components/ScheduledList";
@@ -28,10 +28,8 @@ import {
   jobRecordsFromSlice,
   sliceJobWindow,
   jobTrendFromRecords,
-  TERMINAL_STATUSES,
+  isJobLive,
 } from "@/lib/job-history";
-
-const ACTIVE_STATUSES = new Set([RunStatus.PENDING, RunStatus.STARTED, RunStatus.PAUSED]);
 
 const STATUS_OPTIONS = [
   RunStatus.PENDING, RunStatus.STARTED, RunStatus.PAUSED, RunStatus.CANCELLED, RunStatus.TIMEOUT,
@@ -260,7 +258,7 @@ export function JobList({ venueId }: JobListProps = {}) {
   // current page, so success rate and latency stay stable as you paginate.
   // CANCELLED is user-initiated, not a failure, so it counts as neither.
   const venueStats = useMemo(() => {
-    const terminal = statsData.records.filter(j => TERMINAL_STATUSES.has(j.status as RunStatus));
+    const terminal = statsData.records.filter(j => isJobFinished(j.status as RunStatus));
     const completed = terminal.filter(j => j.status === RunStatus.COMPLETE);
     const failed = terminal.filter(j =>
       j.status !== RunStatus.COMPLETE && j.status !== RunStatus.CANCELLED);
@@ -303,7 +301,7 @@ export function JobList({ venueId }: JobListProps = {}) {
   // Live-stream the active rows on this page so their status flips instantly
   // (the detail view already streams; this brings the list up to parity).
   const activeIds = useMemo(
-    () => sortedRecords.filter(j => ACTIVE_STATUSES.has(j.status as RunStatus)).map(j => j.id ?? "").filter(Boolean),
+    () => sortedRecords.filter(j => isJobLive(j.status)).map(j => j.id ?? "").filter(Boolean),
     [sortedRecords],
   );
   const liveJobs = useActiveJobsLive(venue, activeIds);
@@ -384,13 +382,13 @@ export function JobList({ venueId }: JobListProps = {}) {
 
   // Poll every 5 s when there are active jobs on the current page.
   useEffect(() => {
-    const hasActive = pageRecords.some(j => ACTIVE_STATUSES.has(j.status as RunStatus));
+    const hasActive = pageRecords.some(j => isJobLive(j.status));
     if (!hasActive || !venueObj) return;
     const id = setInterval(() => setRefreshTick(t => t + 1), 5000);
     return () => clearInterval(id);
   }, [pageRecords, venueObj]);
 
-  if (venueStatus !== "ready")
+  if (venueStatus !== "ready" || !venue)
     return (
       <ContentLayout>
         <TopBar venueId={venueId} venueName={venueObj?.metadata.name} />
@@ -519,6 +517,7 @@ export function JobList({ venueId }: JobListProps = {}) {
                 key={job.id}
                 variant="table"
                 job={job}
+                venue={venue}
                 live={liveJobs[job.id ?? ""]}
                 adapter={operationAdapters.adapterFor(job.op)}
                 maxMs={pageMaxMs}
@@ -537,6 +536,7 @@ export function JobList({ venueId }: JobListProps = {}) {
               key={job.id}
               variant="card"
               job={job}
+              venue={venue}
               live={liveJobs[job.id ?? ""]}
               adapter={operationAdapters.adapterFor(job.op)}
               maxMs={pageMaxMs}
@@ -606,6 +606,7 @@ export function JobList({ venueId }: JobListProps = {}) {
       </Tabs>
       <JobDetailDrawer
         job={drawerJob}
+        venue={venue}
         venueId={venueId}
         fullHref={drawerJob ? encodedPath(drawerJob.id ?? "") : undefined}
         onOpenChange={(open) => { if (!open) setDrawerJob(null); }}

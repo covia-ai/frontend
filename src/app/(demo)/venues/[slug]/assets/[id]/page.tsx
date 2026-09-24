@@ -1,5 +1,6 @@
 
 import { AssetViewer } from "@/components/AssetViewer";
+import { routeParam } from "@/lib/route-params";
 
 export default async function Page({
   params,
@@ -12,6 +13,6 @@ export default async function Page({
   // a percent-encoded lattice address for the rare non-hash one — see
   // AssetCard's scopedHref. Decode before handing it to the viewer.
   return (
-          <AssetViewer assetId={decodeURIComponent(id)} venueId={decodeURIComponent(slug)}></AssetViewer>
+          <AssetViewer assetId={routeParam(id)} venueId={routeParam(slug)}></AssetViewer>
   )
 }

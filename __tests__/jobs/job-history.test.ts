@@ -1,4 +1,4 @@
-import { sliceJobWindow, jobTrendFromRecords } from "@/lib/job-history";
+import { sliceJobWindow, jobTrendFromRecords, isJobLive, isJobCancellable } from "@/lib/job-history";
 import { RunStatus, type JobMetadata } from "@covia/covia-sdk";
 
 // The venue rejects a single values response over ~1MB with this error shape;
@@ -146,5 +146,28 @@ describe("jobTrendFromRecords", () => {
     expect(trend.avgDurationMs[3].value).toBeNull();
     // successRate still counts it — COMPLETE regardless of missing duration.
     expect(trend.successRate[3].value).toBe(100);
+  });
+});
+
+describe("job status groupings", () => {
+  const live = [RunStatus.PENDING, RunStatus.STARTED, RunStatus.PAUSED];
+  const waitingOnAPerson = [RunStatus.INPUT_REQUIRED, RunStatus.AUTH_REQUIRED];
+  const finished = [
+    RunStatus.COMPLETE, RunStatus.FAILED, RunStatus.CANCELLED, RunStatus.REJECTED, RunStatus.TIMEOUT,
+  ];
+
+  it("streams and polls only the states that change on their own", () => {
+    expect(live.every(isJobLive)).toBe(true);
+    expect([...waitingOnAPerson, ...finished].some(isJobLive)).toBe(false);
+  });
+
+  it("offers cancel for every unfinished state, including jobs waiting on a person", () => {
+    expect([...live, ...waitingOnAPerson].every(isJobCancellable)).toBe(true);
+    expect(finished.some(isJobCancellable)).toBe(false);
+  });
+
+  it("treats a missing status as neither", () => {
+    expect(isJobLive(undefined)).toBe(false);
+    expect(isJobCancellable(undefined)).toBe(false);
   });
 });

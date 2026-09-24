@@ -7,28 +7,14 @@ import { VenueSelector } from "@/components/VenueSelector";
 import { HitlIndicator } from "@/components/HitlIndicator";
 import { NotificationBell } from "@/components/NotificationBell";
 import { DarkLightToggle } from "../DarkLightToggle";
-import { SmartBreadcrumb } from "../smartbreadcrumb2";
+import { SmartBreadcrumb } from "../SmartBreadcrumb";
 import { VenueSubnav } from "@/components/VenueSubnav";
 import { Separator } from "../ui/separator";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { docsLinkFor } from "@/lib/breadcrumbs";
 import { BookOpen } from "lucide-react";
 import { Button } from "../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
-
-// Checked most-specific first — a venue-scoped route like /venues/x/jobs
-// must resolve to the Jobs doc, not the generic Venues one, so Jobs/Agents/
-// Operations/Assets all run before the plain "/venues" fallback.
-const DOCS_LINKS: { test: (pathname: string) => boolean; href: string }[] = [
-  { test: (p) => p.includes("/jobs"), href: "https://docs.covia.ai/docs/user-guide/api#jobs" },
-  { test: (p) => p.includes("/agents"), href: "https://docs.covia.ai/docs/user-guide/agents" },
-  { test: (p) => p.includes("/operations"), href: "https://docs.covia.ai/docs/user-guide/adapters" },
-  { test: (p) => p.includes("/publicartifacts") || p.includes("/assets"), href: "https://docs.covia.ai/docs/user-guide/api#assets" },
-  { test: (p) => p.includes("/venues"), href: "https://docs.covia.ai/docs/overview/venues" },
-];
-
-function docsLinkFor(pathname: string): string | undefined {
-  return DOCS_LINKS.find(({ test }) => test(pathname))?.href;
-}
 
 type TopBarProps = {
   assetOrJobName?: string;
@@ -37,7 +23,6 @@ type TopBarProps = {
 };
 
 export function TopBar(props: TopBarProps) {
-  const router = useRouter();
   const pathname = usePathname();
   const docsHref = docsLinkFor(pathname);
 
@@ -49,7 +34,7 @@ export function TopBar(props: TopBarProps) {
         </div>
         <div className="flex flex-1 items-center justify-between space-x-4 ml-4 min-w-0">
           <div className="flex flex-1 items-center gap-3 min-w-0">
-            <SmartBreadcrumb onNavigate={(href) => router.push(href)} pathname={pathname} assetOrJobName= {props.assetOrJobName} venueName={props.venueName}/>
+            <SmartBreadcrumb pathname={pathname} assetOrJobName={props.assetOrJobName} venueName={props.venueName} />
           </div>
           <div className="flex shrink-0 items-center justify-end space-x-1 sm:space-x-4">
               {docsHref && (

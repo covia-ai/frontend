@@ -39,7 +39,7 @@ import { AgentStatus } from "@covia/covia-sdk";
 import { useRouter } from "next/navigation";
 import { PageHeading } from "./PageHeading";
 import { cn, gtmEvent, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
-import { useIsAuthenticated } from "@/hooks/use-auth";
+import { useCurrentAuth, useIsAuthenticated } from "@/hooks/use-auth";
 import { useDeviceKeySignIn } from "@/hooks/use-device-key-signin";
 import { DeviceKeyDialog } from "@/components/DeviceKeyDialog";
 import { dispatchAgentMessage } from "@/lib/agent-chat";
@@ -82,6 +82,7 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted, starters, variant = "pag
   const venue = useAuthenticatedVenue();
   const router = useRouter();
   const isAuthenticated = useIsAuthenticated();
+  const auth = useCurrentAuth();
   const startPendingChat = usePendingChats((s) => s.startPendingChat);
   const attachSessionId = usePendingChats((s) => s.attachSessionId);
   const clearPendingChat = usePendingChats((s) => s.clearPendingChat);
@@ -150,7 +151,7 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted, starters, variant = "pag
     const text = prompt.trim();
     // No session id — chat() with none makes the venue mint a fresh session,
     // and it only comes back with the reply.
-    const chat = startPendingChat({ agentId, sessionId: null, text });
+    const chat = startPendingChat({ agentId, sessionId: null, text, turnsAtSend: 0 });
     void dispatchAgentMessage({
       agentId,
       text,
@@ -303,7 +304,7 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted, starters, variant = "pag
       // Venue-level failures (unreachable, stale identity after a venue
       // restart, rejected auth) surface here first — recheck so the app
       // converges on the real venue state instead of repeating this error.
-      revalidateVenueOnFailure(venue, null, err);
+      revalidateVenueOnFailure(venue, auth, err);
     } finally {
       setChecking(false);
     }

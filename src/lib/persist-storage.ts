@@ -39,6 +39,27 @@ export function browserStorage(): SyncStorage {
   }
 }
 
+type PersistedStore = {
+  persist: {
+    getOptions: () => { name?: string };
+    rehydrate: () => Promise<void> | void;
+  };
+};
+
+// `persist` writes a store's whole snapshot on every change and never reads
+// storage again, so a tab opened earlier silently overwrites what another tab
+// saved — for the auth store, the only copy of a newly generated device key.
+// Re-reading on the `storage` event keeps every tab's snapshot current. The
+// event fires only in the *other* tabs, so this cannot loop.
+export function syncStoreAcrossTabs(store: PersistedStore): void {
+  if (typeof window === "undefined") return;
+  window.addEventListener("storage", (event) => {
+    // A cleared key carries no state to adopt; keep what this tab has.
+    if (event.newValue === null) return;
+    if (event.key === store.persist.getOptions().name) void store.persist.rehydrate();
+  });
+}
+
 // Same probing, for per-tab state that should survive reloads but not tabs.
 export function browserSessionStorage(): SyncStorage {
   if (typeof window === "undefined") return noopStorage;

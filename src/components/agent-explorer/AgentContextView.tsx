@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, Eye, Loader2, RefreshCw } from "lucide-react";
+import { Eye, Loader2, RefreshCw } from "lucide-react";
 import { RawTextPanel } from "@/components/content-preview/RawTextPanel";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,12 +42,10 @@ export function AgentContextView({
   agentId,
   sessions,
   initialSessionId,
-  onBack,
 }: {
   agentId: string;
   sessions: Session[];
   initialSessionId: string | null;
-  onBack?: () => void;
 }) {
   const venue = useAuthenticatedVenue();
   const [selectedSessionId, setSelectedSessionId] = useState(initialSessionId);
@@ -77,12 +75,6 @@ export function AgentContextView({
 
   return (
     <div className="flex-1 overflow-y-auto p-6 bg-background">
-      {onBack && (
-        <Button variant="ghost" size="sm" className="mb-4 gap-2" onClick={onBack}>
-          <ArrowLeft size={15} /> Chat
-        </Button>
-      )}
-
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Eye size={16} className="text-muted-foreground" />
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">

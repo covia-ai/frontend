@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ThemedJsonEditor } from "@/components/ThemedJsonEditor";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
+import { isReservedAgentId } from "@/lib/agent-id";
 import { SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
 import { TONE_STYLES } from "@/lib/status";
 
@@ -59,7 +60,7 @@ export function ForkAgentDialog({
   }, [open, sourceAgentId]);
 
   const trimmedAgentId = agentId.trim();
-  const isReserved = trimmedAgentId === DEFAULT_AGENT_ID;
+  const isReserved = isReservedAgentId(trimmedAgentId);
 
   const handleFork = async () => {
     if (!trimmedAgentId || isReserved || forking) return;

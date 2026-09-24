@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useVenues } from "@/hooks/use-venues";
 import {
   buildOAuthLoginUrl,
+  oauthState,
   parseOAuthProviders,
   type OAuthProvider,
 } from "@/lib/oauth";
@@ -22,7 +23,12 @@ export function discoverOAuthProviders(baseUrl: string): Promise<OAuthProvider[]
     })
       .then((response) => response.ok ? response.text() : "")
       .then(parseOAuthProviders)
-      .catch(() => []);
+      .catch(() => {
+        // Only an answer is worth caching: a transient network failure would
+        // otherwise hide the OAuth buttons until the page is reloaded.
+        providerRequests.delete(normalized);
+        return [];
+      });
     providerRequests.set(normalized, request);
   }
   return request;
@@ -60,26 +66,31 @@ export function useOAuthSignInOptions(venueId?: string): OAuthSignInOption[] {
   );
   const providers = useOAuthProviders(baseUrl);
   const pathname = usePathname();
-  const [location, setLocation] = useState<{ origin: string; returnTo: string } | null>(null);
+  // Browser-only inputs, read in an effect so server and first client render agree.
+  const [request, setRequest] = useState<{ origin: string; returnTo: string; state: string } | null>(null);
 
   useEffect(() => {
-    setLocation({
+    // No nonce is minted until a venue actually offers OAuth.
+    if (providers.length === 0) return;
+    setRequest({
       origin: window.location.origin,
       returnTo: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+      state: oauthState(),
     });
-  }, [pathname]);
+  }, [pathname, providers]);
 
   return useMemo(() => {
-    if (!baseUrl || !targetVenueId || !location) return [];
+    if (!baseUrl || !targetVenueId || !request) return [];
     return providers.map((provider) => ({
       provider,
       href: buildOAuthLoginUrl({
         baseUrl,
         provider,
-        frontendOrigin: location.origin,
+        frontendOrigin: request.origin,
         venueId: targetVenueId,
-        returnTo: location.returnTo,
+        returnTo: request.returnTo,
+        state: request.state,
       }),
     }));
-  }, [baseUrl, location, providers, targetVenueId]);
+  }, [baseUrl, request, providers, targetVenueId]);
 }

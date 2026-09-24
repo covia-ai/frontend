@@ -31,7 +31,7 @@ import { AgentRuntimeSummary } from "@/components/agent-explorer/AgentRuntimeSum
 import { ForkAgentDialog } from "@/components/agent-explorer/ForkAgentDialog";
 import { DeleteAgentDialog } from "@/components/agent-explorer/DeleteAgentDialog";
 import { SchedulePickerDialog } from "@/components/SchedulePickerDialog";
-import { useAgentExplorer } from "@/hooks/use-agent-explorer";
+import { useAgentExplorer, type AgentExplorerController } from "@/hooks/use-agent-explorer";
 import { useCurrentAuth } from "@/hooks/use-auth";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useAgentForkProvenance } from "@/hooks/use-agent-fork-provenance";
@@ -45,7 +45,9 @@ import { agentDisplay, humanizeAgentId, shortRefLabel } from "@/lib/agent-displa
  * components; nothing is a rewrite.
  */
 export function AgentProfile({ agentId }: { agentId: string }) {
-  const controller = useAgentExplorer(agentId);
+  // Pinned: this page is the agent its URL names, or a not-found state — never
+  // a different agent the venue happens to have.
+  const controller = useAgentExplorer(agentId, { pinned: true });
   const {
     selectedAgentDetail,
     detailLoading,
@@ -68,6 +70,13 @@ export function AgentProfile({ agentId }: { agentId: string }) {
     venue && selectedAgentDetail ? s.forkedFromOf(venue.venueId, selectedAgentDetail.agentId) : null,
   );
   const [tab, setTab] = useState("conversations");
+
+  // The URL names the agent, so a fork moves the URL rather than the selection.
+  const forkAndOpen: AgentExplorerController["forkAgent"] = async (options) => {
+    const result = await forkAgent(options);
+    if (result.agentId) router.push(`/agents/agent/${encodeURIComponent(result.agentId)}`);
+    return result;
+  };
 
   const agent = selectedAgentDetail;
   const display = agent ? agentDisplay(agent.config) : null;
@@ -161,6 +170,7 @@ export function AgentProfile({ agentId }: { agentId: string }) {
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
+                    data-testid="agent-trigger"
                     variant="outline"
                     size="sm"
                     disabled={triggering || status === AgentStatus.SUSPENDED || status === AgentStatus.TERMINATED}
@@ -182,7 +192,9 @@ export function AgentProfile({ agentId }: { agentId: string }) {
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={triggerAgent}>Trigger agent</AlertDialogAction>
+                    <AlertDialogAction data-testid="agent-trigger-confirm" onClick={triggerAgent}>
+                      Trigger agent
+                    </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -195,7 +207,7 @@ export function AgentProfile({ agentId }: { agentId: string }) {
                 triggerClassName="w-auto"
                 disabled={!venue || status === AgentStatus.SUSPENDED || status === AgentStatus.TERMINATED}
               />
-              <ForkAgentDialog sourceAgentId={agent.agentId} forking={forking} onFork={forkAgent} />
+              <ForkAgentDialog sourceAgentId={agent.agentId} forking={forking} onFork={forkAndOpen} />
               {canSuspend && (
                 <Button variant="outline" size="sm" onClick={suspend}>
                   <Pause size={14} className="mr-1" /> Suspend

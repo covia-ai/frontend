@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Check, Copy } from "lucide-react";
-import { cn, writeTextToClipboard } from "@/lib/utils";
+import { useCopyFeedback } from "@/hooks/use-copy-feedback";
+import { cn } from "@/lib/utils";
 import { TONE_STYLES } from "@/lib/status";
-import { notifyError } from "@/lib/notify";
 
 interface CopyFieldProps {
   label: string;
@@ -23,16 +22,7 @@ interface CopyFieldProps {
 // button sits next to the VALUE it copies, never up beside the label. A brief
 // checkmark confirms the copy without a toast.
 export function CopyField({ label, value, href, description, className }: CopyFieldProps) {
-  const [copied, setCopied] = useState(false);
-  const copy = async () => {
-    try {
-      await writeTextToClipboard(value);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error: unknown) {
-      notifyError(`Unable to copy ${label.toLowerCase()}`, error);
-    }
-  };
+  const { copied, copy } = useCopyFeedback(`Unable to copy ${label.toLowerCase()}`);
 
   const valueClasses = "bg-muted flex-1 min-w-0 rounded-md px-3 py-2 text-xs font-mono break-all";
 
@@ -52,7 +42,7 @@ export function CopyField({ label, value, href, description, className }: CopyFi
             <Button
               variant="outline"
               size="icon"
-              onClick={copy}
+              onClick={() => void copy(value)}
               aria-label={`Copy ${label}`}
               className="shrink-0"
             >

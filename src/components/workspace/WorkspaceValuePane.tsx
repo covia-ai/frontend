@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import dynamic from "next/dynamic";
 import {
+  AlertTriangle,
   Database,
   FileText,
   Loader2,
@@ -10,6 +12,8 @@ import {
 } from "lucide-react";
 import {
   isWritableWorkspaceEntry,
+  parseWorkspaceDraft,
+  workspaceDraftText,
   type WorkspaceMutation,
   type WorkspaceValue,
 } from "@/hooks/use-workspace-explorer";
@@ -32,6 +36,7 @@ import {
   isWorkspaceNamespaceRoot,
   workspaceNamespaceForPath,
 } from "@/lib/workspace-namespaces";
+import { TONE_STYLES } from "@/lib/status";
 
 const ThemedJsonEditor = dynamic(
   () =>
@@ -48,13 +53,53 @@ type WorkspaceValuePaneProps = {
   selectedValue: WorkspaceValue;
   loading: boolean;
   error: string | null;
-  editedData: unknown;
   isAuthenticated: boolean;
   pendingMutation: WorkspaceMutation;
-  onEditedDataChange: (value: unknown) => void;
-  onSave: (value?: unknown) => Promise<boolean>;
+  onSave: (value: unknown) => Promise<boolean>;
   onDelete: () => Promise<boolean>;
 };
+
+type ValueEditorProps = {
+  value: unknown;
+  onSave: (value: unknown) => Promise<boolean>;
+};
+
+// Both editors mount only once the value has loaded (the pane shows a spinner
+// until then, and again while a save re-reads), so their local state can be
+// seeded from `value` without an effect to keep it in step.
+
+function TreeValueEditor({ value, rootName, editable, onSave }: ValueEditorProps & {
+  rootName: string;
+  editable: boolean;
+}) {
+  const [data, setData] = useState(value);
+  return (
+    <ThemedJsonEditor
+      data={data as object}
+      editable={editable}
+      rootName={rootName}
+      collapse={2}
+      onChange={(next) => {
+        setData(next);
+        // The tree editor's onChange only fires once a field edit is
+        // confirmed (not per keystroke), so it's safe to save right away.
+        void onSave(next);
+      }}
+    />
+  );
+}
+
+function ScalarValueEditor({ value, onSave }: ValueEditorProps) {
+  const [draft, setDraft] = useState(() => workspaceDraftText(value));
+  return (
+    <Textarea
+      value={draft}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={() => void onSave(parseWorkspaceDraft(draft, value))}
+      className="min-h-[200px] font-mono text-sm"
+    />
+  );
+}
 
 export function WorkspaceValuePane({
   currentPath,
@@ -63,10 +108,8 @@ export function WorkspaceValuePane({
   selectedValue,
   loading,
   error,
-  editedData,
   isAuthenticated,
   pendingMutation,
-  onEditedDataChange,
   onSave,
   onDelete,
 }: WorkspaceValuePaneProps) {
@@ -119,6 +162,9 @@ export function WorkspaceValuePane({
   const isObject = typeof readData === "object" && readData !== null;
   const canMutate =
     !!selectedPath && isAuthenticated && isWritableWorkspaceEntry(selectedPath);
+  // A truncated read holds only part of the value, so it can be looked at and
+  // deleted but never edited: saving it would overwrite the rest.
+  const canEdit = canMutate && !selectedValue.truncated;
 
   return (
     <>
@@ -197,6 +243,15 @@ export function WorkspaceValuePane({
       </div>
 
       <div className="flex-1 overflow-auto p-4">
+        {selectedPath && selectedValue.truncated && (
+          <p
+            data-testid="workspace-value-truncated"
+            className={`mb-3 flex items-center gap-1.5 text-sm ${TONE_STYLES.attention.text}`}
+          >
+            <AlertTriangle size={14} className="shrink-0" />
+            Too large to load in full — showing part of it, read-only.
+          </p>
+        )}
         {directoryLanding && namespaceEmpty ? (
           <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
             <Database size={32} />
@@ -215,40 +270,19 @@ export function WorkspaceValuePane({
             <p className="mt-2 text-sm">Select a key to view its data</p>
           </div>
         ) : isObject ? (
-          <ThemedJsonEditor
-            data={editedData as object}
-            editable={canMutate}
+          <TreeValueEditor
+            value={readData}
             rootName={displayPath.split("/").pop() || "data"}
-            collapse={2}
-            onChange={(value) => {
-              onEditedDataChange(value);
-              // The tree editor's onChange only fires once a field edit is
-              // confirmed (not per keystroke), so it's safe to save right away.
-              void onSave(value);
-            }}
+            editable={canEdit}
+            onSave={onSave}
           />
         ) : (
           <div className="space-y-2">
             <div className="text-xs uppercase tracking-wider text-muted-foreground">
               Value
             </div>
-            {canMutate ? (
-              <Textarea
-                value={
-                  typeof editedData === "string"
-                    ? editedData
-                    : JSON.stringify(editedData)
-                }
-                onChange={(event) => {
-                  try {
-                    onEditedDataChange(JSON.parse(event.target.value));
-                  } catch {
-                    onEditedDataChange(event.target.value);
-                  }
-                }}
-                onBlur={() => void onSave()}
-                className="min-h-[200px] font-mono text-sm"
-              />
+            {canEdit ? (
+              <ScalarValueEditor value={readData} onSave={onSave} />
             ) : (
               <pre className="overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-4 font-mono text-sm">
                 {typeof readData === "string"

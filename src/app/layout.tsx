@@ -6,6 +6,8 @@ import localFont from 'next/font/local';
 import { ThemeProvider } from "@/components/ThemeProvider";
 import PageViewTracker from "@/components/PageViewTracker";
 import { Analytics } from "@/components/analytics/Analytics";
+import { VenueRuntimeProvider } from "@/components/VenueRuntimeProvider";
+import { Toaster } from "sonner";
 
 
 const { title, description } = siteConfig;
@@ -58,9 +60,21 @@ export default function RootLayout({
             defaultTheme="dark"
             enableSystem
             disableTransitionOnChange
-          >{children}
-
+          >
+            {/* At the root, not in the app shell: /signUp and /auth/callback
+                sit outside the shell but still need the default venues
+                connected and their notifications shown. */}
+            <VenueRuntimeProvider>{children}</VenueRuntimeProvider>
           </ThemeProvider>
+
+        {/* select-text overrides sonner's drag-to-dismiss styling so error
+            details can be selected and copied out of a toast. Widened a
+            little past sonner's 356px default so the longer job-error
+            previews (see lib/notify.ts) don't wrap as tightly. */}
+        <Toaster
+          style={{ "--width": "420px" } as React.CSSProperties}
+          toastOptions={{ classNames: { toast: "select-text cursor-text", description: "select-text" } }}
+        />
 
         <CookieConsentComponent />
         <Analytics />

@@ -5,7 +5,7 @@ import {
   revalidateVenueOnFailure,
   useAuthenticatedVenue,
 } from "@/hooks/use-authenticated-venue";
-import { useIsAuthenticated } from "@/hooks/use-auth";
+import { useCurrentAuth, useIsAuthenticated } from "@/hooks/use-auth";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { TONE_STYLES } from "@/lib/status";
 import { notifyError, notifySuccess } from "@/lib/notify";
@@ -250,6 +250,7 @@ const ConnectionCard = memo(function ConnectionCard({
 export function ConnectionsList() {
   const venue = useAuthenticatedVenue();
   const isAuthenticated = useIsAuthenticated();
+  const auth = useCurrentAuth();
 
   const [connected, setConnected] = useState<Set<string>>(new Set());
   const [health, setHealth] = useState<Record<string, HealthState>>({});
@@ -282,11 +283,11 @@ export function ConnectionsList() {
       .then((names) => setConnected(new Set(Array.isArray(names) ? names : [])))
       .catch((err: unknown) => {
         notifyError("Unable to load connections", err, venue.baseUrl);
-        revalidateVenueOnFailure(venue, null, err);
+        revalidateVenueOnFailure(venue, auth, err);
         setConnected(new Set());
       })
       .finally(() => setLoading(false));
-  }, [venue, isAuthenticated]);
+  }, [venue, isAuthenticated, auth]);
 
   useEffect(() => loadConnections(), [loadConnections]);
 

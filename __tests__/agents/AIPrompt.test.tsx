@@ -25,6 +25,7 @@ jest.mock('@/hooks/use-authenticated-venue', () => ({
 // defaults to authenticated — only the sign-in-gate suite flips it to false.
 const mockUseIsAuthenticated = jest.fn();
 jest.mock('@/hooks/use-auth', () => ({
+  ...require('@test/use-auth').authMock,
   useIsAuthenticated: () => mockUseIsAuthenticated(),
 }));
 

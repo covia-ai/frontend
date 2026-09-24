@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { RouteErrorState } from "@/components/route-states/RouteErrorState";
+import { routeParam } from "@/lib/route-params";
 
 export default function VenueError({
   error,
@@ -12,7 +13,7 @@ export default function VenueError({
 }) {
   const params = useParams<{ slug?: string }>();
   const rawSlug = params?.slug;
-  const venue = rawSlug ? decodeURIComponent(rawSlug) : "this venue";
+  const venue = rawSlug ? routeParam(rawSlug) : "this venue";
 
   return (
     <RouteErrorState

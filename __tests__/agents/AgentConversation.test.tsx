@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 
@@ -68,7 +68,10 @@ describe("AgentConversation copy affordances", () => {
 
     await userEvent.click(screen.getByTestId("agent-turn-copy"));
 
-    expect(mockNotifyError).toHaveBeenCalledWith("Unable to copy message", expect.any(Error));
+    // Reported only after the fallback copy path has also been refused.
+    await waitFor(() =>
+      expect(mockNotifyError).toHaveBeenCalledWith("Unable to copy message", expect.any(Error)),
+    );
     expect(mockNotifySuccess).not.toHaveBeenCalled();
   });
 

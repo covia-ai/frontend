@@ -29,6 +29,84 @@ describe('use-venues rehydration', () => {
   });
 });
 
+// Zustand calls `merge(undefined, current)` when the key is absent. A merge that
+// dereferences `persisted` throws inside persist's promise chain, which
+// swallows it — leaving `hasHydrated()` false forever, so everything gated on
+// useVenuesHydrated never runs for a first-time visitor.
+describe('first visit (nothing persisted)', () => {
+  beforeEach(() => window.localStorage.clear());
+
+  it('finishes hydrating the venues store', () => {
+    jest.isolateModules(() => {
+      const { useVenues } = require('@/hooks/use-venues');
+      expect(useVenues.persist.hasHydrated()).toBe(true);
+      expect(useVenues.getState().venues).toEqual([]);
+    });
+  });
+
+  it('finishes hydrating the auth store', () => {
+    jest.isolateModules(() => {
+      const { useAuthStore } = require('@/hooks/use-auth');
+      expect(useAuthStore.persist.hasHydrated()).toBe(true);
+      expect(useAuthStore.getState().authMap).toEqual({});
+    });
+  });
+});
+
+// Each tab persists its whole snapshot on every change. Without re-reading on
+// the `storage` event, a tab opened earlier overwrites what another tab saved
+// — for the auth store, the only copy of a newly generated device key.
+describe('cross-tab sync', () => {
+  beforeEach(() => window.localStorage.clear());
+
+  const writeFromAnotherTab = (key: string, state: unknown) => {
+    const newValue = JSON.stringify({ state, version: 0 });
+    window.localStorage.setItem(key, newValue);
+    window.dispatchEvent(
+      new StorageEvent('storage', { key, newValue, storageArea: window.localStorage }),
+    );
+  };
+
+  it('adopts a device key another tab saved instead of overwriting it', () => {
+    jest.isolateModules(() => {
+      const { useAuthStore } = require('@/hooks/use-auth');
+      const KEY = 'a'.repeat(64);
+
+      writeFromAnotherTab('venue-auth', {
+        authMap: {}, accountsMap: {}, deviceKeyHex: KEY, deviceKeys: [KEY],
+      });
+      expect(useAuthStore.getState().deviceKeys).toEqual([KEY]);
+
+      // This tab's next write must carry the other tab's key forward.
+      useAuthStore.getState().loginWithToken('did:web:v', 'token', 'did:me');
+      const persisted = JSON.parse(window.localStorage.getItem('venue-auth')!);
+      expect(persisted.state.deviceKeys).toEqual([KEY]);
+    });
+  });
+
+  it('adopts a venue another tab added', () => {
+    jest.isolateModules(() => {
+      const { useVenues } = require('@/hooks/use-venues');
+      const added = { venueId: 'did:web:other-tab', baseUrl: 'https://other-tab', metadata: {} };
+
+      writeFromAnotherTab('venues', { venues: [added], selectedVenueId: added.venueId });
+
+      expect(useVenues.getState().venues.map((v: any) => v.venueId)).toEqual([added.venueId]);
+    });
+  });
+
+  it('ignores storage events for unrelated keys', () => {
+    jest.isolateModules(() => {
+      const { useVenues } = require('@/hooks/use-venues');
+      const rehydrate = jest.spyOn(useVenues.persist, 'rehydrate');
+
+      writeFromAnotherTab('sidebar', { isOpen: false });
+
+      expect(rehydrate).not.toHaveBeenCalled();
+    });
+  });
+});
+
 describe('reconcileVenues', () => {
   const { reconcileVenues } = require('@/hooks/use-venues');
   const v = (venueId: string, baseUrl: string, name?: string): any =>

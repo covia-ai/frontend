@@ -32,6 +32,7 @@ import { parseSkillFrontmatter } from "@/lib/skills";
 import { gtmEvent } from "@/lib/utils";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
 import { LLM_PROVIDERS } from "@/config/llm-providers";
+import { isReservedAgentId, slugifyAgentId } from "@/lib/agent-id";
 import {
   AgentRuntimeFields,
   CUSTOM_PROVIDER_OPTION,
@@ -46,9 +47,6 @@ export const FROM_SKILLS_OP = "v/ops/agent/from-skills";
 const MIGRATE_DOCS_URL = "https://docs.covia.ai/docs/user-guide/agents/migrate-an-agent";
 const SKILLS_DOCS_URL = "https://docs.covia.ai/docs/user-guide/agents/tools-and-context";
 const COMMUNITY_URL = "https://discord.gg/fywdrKd8QT";
-
-const slugify = (name: string) =>
-  name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
 
 /** One staged SKILL.md, previewed from its frontmatter before it is imported. */
 interface StagedSkill {
@@ -116,7 +114,7 @@ export function PortAgentDialog({
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [availableKeys, setAvailableKeys] = useState<string[]>([]);
 
-  const resolvedAgentId = slugify(agentName);
+  const resolvedAgentId = slugifyAgentId(agentName);
   const provider = LLM_PROVIDERS[llmProvider];
   const usingProvider = llmProvider !== DEFAULT_PROVIDER_OPTION;
   const isCustomProvider = llmProvider === CUSTOM_PROVIDER_OPTION;
@@ -211,7 +209,7 @@ export function PortAgentDialog({
       notifyWarning("Please enter an agent name");
       return;
     }
-    if (resolvedAgentId === DEFAULT_AGENT_ID) {
+    if (isReservedAgentId(resolvedAgentId)) {
       notifyWarning(`"${DEFAULT_AGENT_ID}" is reserved — pick another name`);
       return;
     }

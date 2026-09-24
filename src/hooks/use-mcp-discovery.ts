@@ -20,7 +20,12 @@ export function discoverMcpUrl(baseUrl: string): Promise<string> {
         return response.json();
       })
       .then((body) => (body?.error ? "Not Available" : (body?.server_url ?? "Not Available")))
-      .catch(() => "Not Available");
+      .catch(() => {
+        // Share a failure with whoever is asking right now, but don't keep it:
+        // one dropped request must not hide the venue's MCP URL until reload.
+        requests.delete(normalized);
+        return "Not Available";
+      });
     requests.set(normalized, request);
   }
   return request;

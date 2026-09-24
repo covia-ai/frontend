@@ -25,6 +25,8 @@ const JOBS = [
   { id: "c", name: "C", status: "STARTED", op: "z", created: "2026-01-01T00:00:00Z" },
 ] as unknown as import("@covia/covia-sdk").JobMetadata[];
 
+const VENUE = { venueId: "venue-1" } as import("@covia/covia-sdk").Venue;
+
 // Mirrors JobList's stable-props pattern: stable job refs + a string adapter +
 // useCallback handlers, so only the changed `live` overlay differs between renders.
 function Harness() {
@@ -39,6 +41,7 @@ function Harness() {
           key={job.id}
           variant="card"
           job={job}
+          venue={VENUE}
           live={live[job.id ?? ""] as never}
           adapter="test:echo"
           maxMs={0}

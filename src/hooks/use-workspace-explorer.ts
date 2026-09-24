@@ -69,6 +69,22 @@ export function parseWorkspaceInput(input: string): unknown {
   }
 }
 
+// The scalar editor edits TEXT and only becomes a value here, on save — parsing
+// per keystroke made "1.05" untypeable (it collapsed at "1.0") and silently
+// turned a stored "123" into a number. The rule: text is JSON when it parses
+// and a string when it does not — except that a value loaded as a string stays
+// a string, unless the text is a JSON object or array, the only JSON that
+// cannot be mistaken for plain text.
+export function workspaceDraftText(value: unknown): string {
+  return typeof value === "string" ? value : JSON.stringify(value);
+}
+
+export function parseWorkspaceDraft(text: string, loaded: unknown): unknown {
+  const parsed = parseWorkspaceInput(text);
+  if (typeof loaded !== "string") return parsed;
+  return typeof parsed === "object" && parsed !== null ? parsed : text;
+}
+
 // The backend only reports root namespaces that already have data under
 // them. Every venue supports the full fixed set regardless, so the root
 // listing always shows all of them — with any extra keys the backend does
@@ -120,7 +136,6 @@ export function useWorkspaceExplorer(initialPath?: string) {
   } = useLatestQuery<WorkspaceValue>(EMPTY_VALUE);
   const [currentPath, setCurrentPath] = useState(startPath);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  const [editedData, setEditedData] = useState<unknown>(null);
   const [pendingMutation, setPendingMutation] =
     useState<WorkspaceMutation>(null);
   const [namespaceRefreshing, setNamespaceRefreshing] = useState(false);
@@ -148,7 +163,6 @@ export function useWorkspaceExplorer(initialPath?: string) {
     invalidateMutation();
     selectedPathRef.current = null;
     setSelectedPath(null);
-    setEditedData(null);
     resetValue();
   }, [invalidateMutation, resetValue]);
 
@@ -218,7 +232,6 @@ export function useWorkspaceExplorer(initialPath?: string) {
       invalidateMutation();
       selectedPathRef.current = path;
       setSelectedPath(path);
-      setEditedData(null);
       void loadValue(path);
     },
     [invalidateMutation, loadValue],
@@ -233,7 +246,6 @@ export function useWorkspaceExplorer(initialPath?: string) {
     setCurrentPath(startPath);
     selectedPathRef.current = null;
     setSelectedPath(null);
-    setEditedData(null);
     listingCache.current.clear();
     valueCache.current.clear();
     resetValue();
@@ -252,12 +264,6 @@ export function useWorkspaceExplorer(initialPath?: string) {
   useEffect(() => {
     if (valueError) notifyError("Unable to read path", valueError);
   }, [valueError]);
-
-  useEffect(() => {
-    if (!valueLoading) {
-      setEditedData(selectedValue.value);
-    }
-  }, [selectedValue.value, valueLoading]);
 
   const navigateTo = useCallback(
     (path: string) => {
@@ -313,16 +319,18 @@ export function useWorkspaceExplorer(initialPath?: string) {
     [],
   );
 
-  // Accepts an optional fresh value so callers that just received a new
-  // value from an onChange handler (e.g. the JSON editor) can save it
-  // immediately without waiting a tick for `editedData` state to catch up.
+  // Resolves true only when a write happened. Every write is an operation —
+  // a job on the venue — so an unchanged value (blurring out of an untouched
+  // editor) must not write. A truncated read never writes either: the editor
+  // only holds part of the value, and saving it would destroy the rest.
   const save = useCallback(
-    async (nextValue?: unknown): Promise<boolean> => {
+    async (value: unknown): Promise<boolean> => {
       if (!venue || !isAuthenticated || !selectedPath) return false;
       if (!isWritableWorkspaceEntry(selectedPath)) return false;
+      if (selectedValue.truncated) return false;
+      if (JSON.stringify(value) === JSON.stringify(selectedValue.value)) return false;
       const generation = ++mutationGeneration.current;
       const path = selectedPath;
-      const value = nextValue !== undefined ? nextValue : editedData;
       setPendingMutation("save");
       try {
         await venue.workspace.write(path, value);
@@ -342,7 +350,7 @@ export function useWorkspaceExplorer(initialPath?: string) {
         }
       }
     },
-    [editedData, isAuthenticated, loadValue, mutationIsCurrent, selectedPath, venue],
+    [isAuthenticated, loadValue, mutationIsCurrent, selectedPath, selectedValue, venue],
   );
 
   const create = useCallback(
@@ -426,10 +434,8 @@ export function useWorkspaceExplorer(initialPath?: string) {
     selectedValue,
     valueLoading,
     valueError,
-    editedData,
     pendingMutation,
     namespaceRefreshing,
-    setEditedData,
     navigateTo,
     selectPath,
     clearSelection,

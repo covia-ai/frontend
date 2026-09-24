@@ -9,10 +9,9 @@ jest.mock("next/navigation", () => ({
 jest.mock("@/components/admin-panel/TopBar", () => ({
   TopBar: () => <div data-testid="top-bar" />,
 }));
-jest.mock("@/lib/notify", () => ({
-  notifyError: jest.fn(),
-  notifyWarning: jest.fn(),
-}));
+jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
+jest.mock("@/hooks/use-authenticated-venue", () =>
+  require("@test/use-authenticated-venue").venueMock);
 jest.mock("@/hooks/use-watched-jobs", () => ({
   useWatchedJobs: { getState: () => ({ watch: jest.fn() }) },
 }));
@@ -24,15 +23,20 @@ jest.mock("@/lib/utils", () => ({
   copyDataToClipBoard: jest.fn(),
 }));
 
+// Mirrors the SDK: `invoke` resolves to the started Job, `run` waits and
+// resolves to the operation's *result* — which carries no job id. Keeping both
+// honest is what catches a Run button wired to the wrong one.
+const invokeMock = jest.fn();
 const runMock = jest.fn();
 const mockVenue = {
   venueId: "did:web:venue.example",
   baseUrl: "https://venue.example",
   metadata: { name: "Test Venue" },
-  operations: { run: runMock },
+  operations: { invoke: invokeMock, run: runMock },
 };
+const mockResolved = { venue: mockVenue as unknown, auth: null, status: "ready", error: null };
 jest.mock("@/hooks/use-resolved-venue", () => ({
-  useResolvedVenue: () => mockVenue,
+  useResolvedVenueContext: () => mockResolved,
 }));
 
 import { notifyWarning } from "@/lib/notify";
@@ -59,8 +63,10 @@ async function selectEchoTool(user: ReturnType<typeof userEvent.setup>) {
 describe("McpToolsList (4D)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    Object.assign(mockResolved, { venue: mockVenue, status: "ready" });
     listMcpToolsMock.mockResolvedValue([TOOL]);
-    runMock.mockResolvedValue({ id: "job-abc-123" });
+    invokeMock.mockResolvedValue({ id: "job-abc-123" });
+    runMock.mockResolvedValue({ content: [{ type: "text", text: "hi" }] });
   });
 
   it("seeds the test args by type, not empty strings", async () => {
@@ -81,10 +87,10 @@ describe("McpToolsList (4D)", () => {
     await user.click(screen.getByRole("button", { name: /^run$/i }));
 
     await waitFor(() =>
-      expect(runMock).toHaveBeenCalledWith("v/ops/mcp/tools-call", expect.objectContaining({ toolName: "echo" })),
+      expect(invokeMock).toHaveBeenCalledWith("v/ops/mcp/tools-call", expect.objectContaining({ toolName: "echo" })),
     );
     // Inline result appears…
-    expect(await screen.findByTestId("mcp-run-result")).toHaveTextContent("Run started");
+    expect(await screen.findByTestId("mcp-run-result")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /view job/i })).toHaveAttribute(
       "href",
       `/venues/${encodeURIComponent("did:web:venue.example")}/jobs/job-abc-123`,
@@ -105,6 +111,21 @@ describe("McpToolsList (4D)", () => {
     await user.click(screen.getByRole("button", { name: /^run$/i }));
 
     expect(notifyWarning).toHaveBeenCalledWith("Arguments must be valid JSON");
-    expect(runMock).not.toHaveBeenCalled();
+    expect(invokeMock).not.toHaveBeenCalled();
+  });
+
+  it("shows a load error — not the empty state — when the tools read fails", async () => {
+    listMcpToolsMock.mockRejectedValue(new Error("HTTP 503"));
+    render(<McpToolsList venueId="did:web:venue.example" />);
+
+    expect(await screen.findByTestId("mcp-tools-load-error")).toBeInTheDocument();
+  });
+
+  it("hands over to the venue resolution state instead of spinning when the venue never resolves", () => {
+    Object.assign(mockResolved, { venue: undefined, status: "unreachable" });
+    render(<McpToolsList venueId="did:web:gone.example" />);
+
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(listMcpToolsMock).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useResolvedVenue } from "@/hooks/use-resolved-venue";
+import { useState } from "react";
+import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
+import { useVenueRead } from "@/hooks/use-venue-read";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,11 +12,13 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
-import { ArrowRight, CheckCircle2, Copy, Play } from "lucide-react";
+import { ArrowRight, CheckCircle2, Copy, Play, Wrench } from "lucide-react";
 import Link from "next/link";
 import { McpGlyph } from "@/components/adapter-glyphs";
-import { notifyError, notifyWarning } from "@/lib/notify";
+import { notifyWarning } from "@/lib/notify";
 import { useJobExecution } from "@/hooks/use-job-execution";
+import { ListLoadError } from "@/components/ListLoadError";
+import { VenueResolutionState } from "@/components/VenueResolutionState";
 
 interface McpTool {
   name: string;
@@ -54,9 +57,14 @@ function seedArgs(inputSchema: any): Record<string, unknown> {
 }
 
 export function McpToolsList({ venueId }: McpToolsListProps) {
-  const venue = useResolvedVenue(venueId);
-  const [tools, setTools] = useState<McpTool[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { venue, auth, status: venueStatus, error: venueError } = useResolvedVenueContext(venueId);
+  const { data: tools, loading, error, reload } = useVenueRead<McpTool[]>({
+    venue,
+    auth,
+    initial: [],
+    failureTitle: "Unable to load MCP tools",
+    load: (v) => listMcpTools(v.baseUrl),
+  });
   const [selectedTool, setSelectedTool] = useState<McpTool | null>(null);
   const [toolArgs, setToolArgs] = useState("{}");
   // The most recent run, shown inline so you can invoke a tool and reach its
@@ -78,18 +86,6 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
     setLastRun(null);
   };
 
-  useEffect(() => {
-    if (!venue) return;
-    setLoading(true);
-    listMcpTools(venue.baseUrl)
-      .then((tools) => setTools(tools))
-      .catch((err) => {
-        notifyError("Unable to load MCP tools", err, venue.baseUrl);
-        setTools([]);
-      })
-      .finally(() => setLoading(false));
-  }, [venue]);
-
   const handleRunTool = async () => {
     if (!venue || !selectedTool) return;
     let args: any;
@@ -101,7 +97,7 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
     }
     setLastRun(null);
     const jobId = await executeJob({
-      action: () => venue.operations.run("v/ops/mcp/tools-call", {
+      action: () => venue.operations.invoke("v/ops/mcp/tools-call", {
         server: venue.baseUrl,
         toolName: selectedTool.name,
         arguments: args,
@@ -129,6 +125,20 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
       2
     );
 
+  if (venueStatus !== "ready")
+    return (
+      <ContentLayout>
+        <TopBar venueId={venueId} venueName={venue?.metadata.name} />
+        <VenueResolutionState
+          status={venueStatus}
+          error={venueError}
+          icon={Wrench}
+          subject="MCP tools"
+          venueId={venueId}
+        />
+      </ContentLayout>
+    );
+
   return (
     <ContentLayout>
       <TopBar venueId={venueId} venueName={venue?.metadata.name} />
@@ -144,7 +154,11 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
               <div>
                 <h1 className="text-2xl font-thin">MCP Tools</h1>
                 <p className="text-sm text-muted-foreground">
-                  {loading ? "Loading…" : `${tools.length} tool${tools.length !== 1 ? "s" : ""} available`}
+                  {loading
+                    ? "Loading…"
+                    : error
+                      ? "Unavailable"
+                      : `${tools.length} tool${tools.length !== 1 ? "s" : ""} available`}
                 </p>
               </div>
             </div>
@@ -173,7 +187,11 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
                   </div>
                 )}
 
-                {!loading && tools.length === 0 && (
+                {!loading && error && (
+                  <ListLoadError error={error} onRetry={reload} data-testid="mcp-tools-load-error" />
+                )}
+
+                {!loading && !error && tools.length === 0 && (
                   <p className="text-sm text-muted-foreground px-6 py-10 text-center">
                     No MCP tools found on this venue.
                   </p>

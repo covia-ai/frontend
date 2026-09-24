@@ -1,8 +1,9 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
-import { AdapterInfo } from "@covia/covia-sdk";
-import { useResolvedVenue } from "@/hooks/use-resolved-venue";
+import { Fragment, useMemo, useState } from "react";
+import type { AdapterInfo } from "@covia/covia-sdk";
+import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
+import { useVenueRead } from "@/hooks/use-venue-read";
 import { useRouter } from "next/navigation";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
@@ -12,10 +13,11 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, Plug, Search } from "lucide-react";
-import { notifyError } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import { TypeTile } from "@/components/TypeTile";
 import { adapterLookup } from "@/lib/adapter-icons";
+import { ListLoadError } from "@/components/ListLoadError";
+import { VenueResolutionState } from "@/components/VenueResolutionState";
 
 type SortCol = "name" | "ops";
 
@@ -24,9 +26,17 @@ interface AdaptersListProps {
 }
 
 export function AdaptersList({ venueId }: AdaptersListProps) {
-  const venue = useResolvedVenue(venueId);
-  const [adapters, setAdapters] = useState<AdapterInfo[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { venue, auth, status: venueStatus, error: venueError } = useResolvedVenueContext(venueId);
+  // Job-free: reads straight from the lattice (v/info/adapters), so it
+  // includes adapters with zero catalog operations — unlike inferring
+  // adapter names from metadata.operation.adapter on the operations list.
+  const { data: adapters, loading, error, reload } = useVenueRead<AdapterInfo[]>({
+    venue,
+    auth,
+    initial: [],
+    failureTitle: "Unable to load adapters",
+    load: (v) => v.adapters.list(),
+  });
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<{ col: SortCol; dir: "asc" | "desc" }>({ col: "name", dir: "asc" });
   // Single-expand, like the accordion this replaced — only one adapter's
@@ -36,26 +46,6 @@ export function AdaptersList({ venueId }: AdaptersListProps) {
 
   const toggleSort = (col: SortCol) =>
     setSort((prev) => (prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" }));
-
-  useEffect(() => {
-    if (!venue) return;
-    let ignore = false;
-    setLoading(true);
-    // Job-free: reads straight from the lattice (v/info/adapters), so it
-    // includes adapters with zero catalog operations — unlike inferring
-    // adapter names from metadata.operation.adapter on the operations list.
-    venue.adapters
-      .list()
-      .then((result) => { if (!ignore) setAdapters(result); })
-      .catch((err) => {
-        if (!ignore) {
-          notifyError("Unable to load adapters", err, venue.baseUrl);
-          setAdapters([]);
-        }
-      })
-      .finally(() => { if (!ignore) setLoading(false); });
-    return () => { ignore = true; };
-  }, [venue]);
 
   const filteredAdapters = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -80,6 +70,20 @@ export function AdaptersList({ venueId }: AdaptersListProps) {
     router.push(`/venues/${encodeURIComponent(venue.venueId)}/operations/${segments}`);
   };
 
+  if (venueStatus !== "ready")
+    return (
+      <ContentLayout>
+        <TopBar venueId={venueId} venueName={venue?.metadata.name} />
+        <VenueResolutionState
+          status={venueStatus}
+          error={venueError}
+          icon={Plug}
+          subject="Adapters"
+          venueId={venueId}
+        />
+      </ContentLayout>
+    );
+
   return (
     <ContentLayout>
       <TopBar venueId={venueId} venueName={venue?.metadata.name} />
@@ -94,7 +98,11 @@ export function AdaptersList({ venueId }: AdaptersListProps) {
               <div>
                 <h1 className="text-2xl font-thin">Adapters</h1>
                 <p className="text-sm text-muted-foreground">
-                  {loading ? "Loading…" : `${adapters.length} adapter${adapters.length !== 1 ? "s" : ""} registered`}
+                  {loading
+                    ? "Loading…"
+                    : error
+                      ? "Unavailable"
+                      : `${adapters.length} adapter${adapters.length !== 1 ? "s" : ""} registered`}
                 </p>
               </div>
             </div>
@@ -124,7 +132,11 @@ export function AdaptersList({ venueId }: AdaptersListProps) {
               </div>
             )}
 
-            {!loading && filteredAdapters.length === 0 && (
+            {!loading && error && (
+              <ListLoadError error={error} onRetry={reload} data-testid="adapters-load-error" />
+            )}
+
+            {!loading && !error && filteredAdapters.length === 0 && (
               <p className="text-sm text-muted-foreground px-6 py-10 text-center">
                 {adapters.length === 0 ? "No adapters registered on this venue." : "No adapters match your filter."}
               </p>

@@ -22,6 +22,11 @@ export type PendingChat = {
   // agent is in view, since the one it belongs to does not exist yet.
   sessionId: string | null;
   text: string;
+  // How many turns the target session held when this was sent (0 for a session
+  // that does not exist yet). The venue's record of this message can only land
+  // after them, so an identical earlier turn — "yes", "continue" — is never
+  // mistaken for it.
+  turnsAtSend: number;
 };
 
 type PendingChatsStore = {

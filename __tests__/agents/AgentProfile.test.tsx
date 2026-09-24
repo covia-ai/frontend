@@ -25,7 +25,10 @@ const controller: Record<string, unknown> = {
   updateAgentConfig: jest.fn(),
 };
 
-jest.mock("@/hooks/use-agent-explorer", () => ({ useAgentExplorer: () => controller }));
+const mockUseAgentExplorer = jest.fn((..._args: unknown[]) => controller);
+jest.mock("@/hooks/use-agent-explorer", () => ({
+  useAgentExplorer: (...args: unknown[]) => mockUseAgentExplorer(...args),
+}));
 jest.mock("@/hooks/use-authenticated-venue", () => ({
   ...require("@test/use-authenticated-venue").venueMock,
   useAuthenticatedVenue: () => ({ venueId: "did:key:zVenue", baseUrl: "https://v.example" }),
@@ -91,6 +94,12 @@ describe("AgentProfile", () => {
     expect(screen.getByRole("tab", { name: /context/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /settings/i })).toBeInTheDocument();
     expect(screen.getByTestId("chat-surface")).toBeInTheDocument();
+  });
+
+  // The URL names the agent, so the hook must never substitute another one.
+  it("pins the hook to the agent its URL names", () => {
+    render(<AgentProfile agentId="refund-bot" />);
+    expect(mockUseAgentExplorer).toHaveBeenCalledWith("refund-bot", { pinned: true });
   });
 
   it("shows a not-found state with a way back when the agent has no detail", () => {

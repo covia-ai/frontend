@@ -22,9 +22,8 @@ describe("agentDisplay provider label", () => {
     expect(agentDisplay(undefined).providerLabel).toBe("Venue default");
   });
 
-  // providerForOperation falls back to "anthropic" for anything it does not
-  // recognise, which is right for seeding the create form but wrong as a
-  // label: a venue-local operation was captioned "Anthropic (Claude)".
+  // Falling back to a curated provider for an unrecognised operation
+  // captioned a venue-local one "Anthropic (Claude)".
   it("says custom for an operation that is not a known provider", () => {
     expect(agentDisplay({ llmOperation: "v/ops/local/my-llm" }).providerLabel).toBe("Custom model");
   });

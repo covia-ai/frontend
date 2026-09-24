@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { VenueAuth } from "@/hooks/use-auth";
 import { identityTokenFor } from "@/lib/identity-token";
+import { writeTextToClipboard } from "@/lib/clipboard";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { TONE_STYLES } from "@/lib/status";
 import { Button } from "@/components/ui/button";
@@ -67,7 +68,7 @@ export function MintTokenDialog({ venueId, account, open, onOpenChange }: MintTo
   const copy = async () => {
     if (!minted) return;
     try {
-      await navigator.clipboard.writeText(minted.token);
+      await writeTextToClipboard(minted.token);
       notifySuccess("Identity token copied");
     } catch (err) {
       notifyError("Unable to copy identity token", err);

@@ -76,7 +76,7 @@ describe('persisted stores where localStorage is unusable', () => {
     withLocalStorage(methodlessStorage, () => {
       jest.isolateModules(() => {
         const { useSidebar } = require('@/hooks/use-sidebar');
-        expect(() => useSidebar.getState().setIsOpen(false)).not.toThrow();
+        expect(() => useSidebar.getState().toggleOpen()).not.toThrow();
         expect(useSidebar.getState().isOpen).toBe(false);
       });
     });

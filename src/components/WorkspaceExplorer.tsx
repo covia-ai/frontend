@@ -102,10 +102,8 @@ export function WorkspaceExplorer({ initialPath }: WorkspaceExplorerProps = {}) 
             selectedValue={explorer.selectedValue}
             loading={explorer.valueLoading}
             error={explorer.valueError}
-            editedData={explorer.editedData}
             isAuthenticated={explorer.isAuthenticated}
             pendingMutation={explorer.pendingMutation}
-            onEditedDataChange={explorer.setEditedData}
             onSave={explorer.save}
             onDelete={explorer.remove}
           />

@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { NotFoundError } from "@covia/covia-sdk";
 import { useAgentExplorer } from "@/hooks/use-agent-explorer";
+import { usePendingChats } from "@/hooks/use-pending-chats";
 
 let mockVenue: any;
 
@@ -113,7 +114,7 @@ describe("useAgentExplorer — updateAgentConfig re-fetch-before-save guard (#16
 
     let outcome: unknown;
     await act(async () => {
-      outcome = await result.current.updateAgentConfig({ systemPrompt: "my edit" });
+      outcome = await result.current.updateAgentConfig({ systemPrompt: "my edit" }, { systemPrompt: "v1" });
     });
 
     expect(outcome).toEqual({ status: "conflict", freshConfig: { systemPrompt: "changed elsewhere" } });
@@ -133,7 +134,69 @@ describe("useAgentExplorer — updateAgentConfig re-fetch-before-save guard (#16
 
     let outcome: unknown;
     await act(async () => {
-      outcome = await result.current.updateAgentConfig({ systemPrompt: "my edit" });
+      outcome = await result.current.updateAgentConfig({ systemPrompt: "my edit" }, { systemPrompt: "v1" });
+    });
+
+    expect(outcome).toEqual({ status: "saved" });
+    expect(agentHandle.update).toHaveBeenCalledWith({ config: { systemPrompt: "my edit" } });
+    expect(notifyWarning).not.toHaveBeenCalled();
+  });
+});
+
+describe("useAgentExplorer — updateAgentConfig guard against the editor's baseline (#161)", () => {
+  beforeEach(() => {
+    (notifyWarning as jest.Mock).mockReset();
+  });
+  afterEach(() => jest.useRealTimers());
+
+  // The fallback poll refreshes the hook's copy of the config every few
+  // seconds. Comparing against that copy let an outside edit slip past the
+  // guard as soon as one poll had absorbed it.
+  it("still catches an outside edit after a poll has absorbed it", async () => {
+    jest.useFakeTimers();
+    mockVenue = makeVenue("venue-a", ["agent-a"], { "agent-a": { systemPrompt: "v1" } });
+    const { result } = renderHook(() => useAgentExplorer("agent-a"));
+    await waitFor(() => expect(result.current.selectedAgentDetail).not.toBeNull());
+    const agentHandle = mockVenue.agent.mock.results[0].value;
+
+    mockVenue.agents.info.mockResolvedValue({
+      agentId: "agent-a",
+      status: "SLEEPING",
+      config: { systemPrompt: "changed elsewhere" },
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(3100);
+    });
+    await waitFor(() =>
+      expect(result.current.selectedAgentDetail?.config).toEqual({ systemPrompt: "changed elsewhere" }),
+    );
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await result.current.updateAgentConfig({ systemPrompt: "my edit" }, { systemPrompt: "v1" });
+    });
+
+    expect(outcome).toEqual({ status: "conflict", freshConfig: { systemPrompt: "changed elsewhere" } });
+    expect(agentHandle.update).not.toHaveBeenCalled();
+  });
+
+  it("does not treat an outside edit to a field this save leaves alone as a conflict", async () => {
+    mockVenue = makeVenue("venue-a", ["agent-a"], { "agent-a": { systemPrompt: "v1", model: "m1" } });
+    const { result } = renderHook(() => useAgentExplorer("agent-a"));
+    await waitFor(() => expect(result.current.selectedAgentDetail).not.toBeNull());
+    const agentHandle = mockVenue.agent.mock.results[0].value;
+    mockVenue.agents.info.mockResolvedValue({
+      agentId: "agent-a",
+      status: "SLEEPING",
+      config: { systemPrompt: "v1", model: "changed elsewhere" },
+    });
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await result.current.updateAgentConfig(
+        { systemPrompt: "my edit" },
+        { systemPrompt: "v1", model: "m1" },
+      );
     });
 
     expect(outcome).toEqual({ status: "saved" });
@@ -270,5 +333,262 @@ describe("useAgentExplorer — live event stream (frontend#242)", () => {
     });
 
     await waitFor(() => expect(result.current.selectedAgentDetail?.status).toBe("RUNNING"));
+  });
+});
+
+// A host addressed to one agent (the profile page) passes { pinned: true }.
+describe("useAgentExplorer — pinned to one agent", () => {
+  beforeEach(() => {
+    (notifyError as jest.Mock).mockReset();
+  });
+
+  it("leaves a missing agent missing instead of selecting another one", async () => {
+    mockVenue = makeVenue("venue-a", ["agent-a"]);
+    const { result } = renderHook(() => useAgentExplorer("ghost", { pinned: true }));
+
+    await waitFor(() => expect(mockVenue.agents.info).toHaveBeenCalledWith("ghost"));
+    await waitFor(() => expect(result.current.detailLoading).toBe(false));
+
+    expect(result.current.selectedAgentId).toBeNull();
+    expect(result.current.selectedAgentDetail).toBeNull();
+    // Absent is not an error: nothing to toast, and the host shows not-found.
+    expect(result.current.detailError).toBe(false);
+    expect(notifyError).not.toHaveBeenCalled();
+    expect(mockVenue.agents.info).not.toHaveBeenCalledWith("agent-a");
+  });
+
+  it("does not adopt the new venue's agents when the venue is switched", async () => {
+    mockVenue = makeVenue("venue-a", ["agent-a"]);
+    const { result, rerender } = renderHook(() => useAgentExplorer("agent-a", { pinned: true }));
+    await waitFor(() => expect(result.current.selectedAgentDetail?.agentId).toBe("agent-a"));
+
+    mockVenue = makeVenue("venue-b", ["agent-b"]);
+    rerender();
+
+    await waitFor(() => expect(result.current.selectedAgentDetail).toBeNull());
+    await waitFor(() => expect(result.current.selectedAgentId).toBeNull());
+    expect(mockVenue.agents.info).not.toHaveBeenCalledWith("agent-b");
+  });
+
+  it("never fetches the agent list, which such a host does not show", async () => {
+    mockVenue = makeVenue("venue-a", ["agent-a"]);
+    const { result } = renderHook(() => useAgentExplorer("agent-a", { pinned: true }));
+    await waitFor(() => expect(result.current.selectedAgentDetail).not.toBeNull());
+
+    await act(async () => {
+      await result.current.forkAgent({ agentId: "agent-a-fork", includeTimeline: false });
+    });
+
+    expect(mockVenue.agents.list).not.toHaveBeenCalled();
+  });
+
+  it("reports the fork but leaves the selection for the host to move", async () => {
+    mockVenue = makeVenue("venue-a", ["agent-a"]);
+    const { result } = renderHook(() => useAgentExplorer("agent-a", { pinned: true }));
+    await waitFor(() => expect(result.current.selectedAgentDetail).not.toBeNull());
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await result.current.forkAgent({ agentId: "agent-a-fork", includeTimeline: false });
+    });
+
+    expect(outcome).toEqual({ status: "created", agentId: "agent-a-fork" });
+    expect(result.current.selectedAgentId).toBe("agent-a");
+  });
+});
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
+describe("useAgentExplorer — selection", () => {
+  it("selects and loads the first agent when the list is bare id strings", async () => {
+    // The job-free GET /api/v1/agents returns ["agent-a"], not objects —
+    // regression: .agentId of a string is undefined, which left the picker
+    // with nothing selected forever.
+    mockVenue = makeVenue("venue-a", ["agent-a"]);
+    mockVenue.agents.list.mockResolvedValue({ agents: ["agent-a"] });
+    const { result } = renderHook(() => useAgentExplorer());
+
+    await waitFor(() => expect(result.current.selectedAgentId).toBe("agent-a"));
+    await waitFor(() => expect(result.current.selectedAgentDetail?.agentId).toBe("agent-a"));
+  });
+
+  it("ignores a slow detail response after another agent is selected", async () => {
+    const first = deferred<unknown>();
+    mockVenue = makeVenue("venue-a", ["agent-a", "agent-b"]);
+    mockVenue.agents.info.mockImplementation((agentId: string) =>
+      agentId === "agent-a"
+        ? first.promise
+        : Promise.resolve({ agentId, status: "SLEEPING", config: {} }),
+    );
+    const { result } = renderHook(() => useAgentExplorer("agent-a"));
+    await waitFor(() => expect(mockVenue.agents.info).toHaveBeenCalledWith("agent-a"));
+
+    act(() => result.current.setSelectedAgentId("agent-b"));
+    await waitFor(() => expect(result.current.selectedAgentDetail?.agentId).toBe("agent-b"));
+
+    await act(async () => {
+      first.resolve({ agentId: "agent-a", status: "SLEEPING", config: {} });
+    });
+    expect(result.current.selectedAgentDetail?.agentId).toBe("agent-b");
+  });
+});
+
+describe("useAgentExplorer — runtime actions", () => {
+  it("suspends and resumes a running agent around its config update", async () => {
+    const calls: string[] = [];
+    mockVenue = makeVenue("venue-a", ["agent-a"]);
+    mockVenue.agents.info.mockResolvedValue({ agentId: "agent-a", status: "RUNNING", config: {} });
+    mockVenue.agent.mockReturnValue({
+      chatSession: jest.fn(),
+      suspend: jest.fn(async () => { calls.push("suspend"); }),
+      update: jest.fn(async () => { calls.push("update"); }),
+      resume: jest.fn(async () => { calls.push("resume"); }),
+    });
+    const { result } = renderHook(() => useAgentExplorer("agent-a"));
+    await waitFor(() => expect(result.current.selectedAgentDetail).not.toBeNull());
+
+    await act(async () => {
+      await result.current.updateAgentConfig({ systemPrompt: "updated while running" }, {});
+    });
+
+    expect(calls).toEqual(["suspend", "update", "resume"]);
+  });
+
+  it("leaves an agent that is not running alone around its config update", async () => {
+    mockVenue = makeVenue("venue-a", ["agent-a"]);
+    const { result } = renderHook(() => useAgentExplorer("agent-a"));
+    await waitFor(() => expect(result.current.selectedAgentDetail).not.toBeNull());
+    const agentHandle = mockVenue.agent.mock.results[0].value;
+
+    await act(async () => {
+      await result.current.updateAgentConfig({ systemPrompt: "my edit" }, {});
+    });
+
+    expect(agentHandle.update).toHaveBeenCalledTimes(1);
+    expect(agentHandle.suspend).not.toHaveBeenCalled();
+    expect(agentHandle.resume).not.toHaveBeenCalled();
+  });
+
+  it("triggers the selected agent once", async () => {
+    const trigger = jest.fn().mockResolvedValue({ agentId: "agent-a", status: "SLEEPING" });
+    mockVenue = makeVenue("venue-a", ["agent-a"]);
+    mockVenue.agent.mockReturnValue({ chatSession: jest.fn(), trigger });
+    const { result } = renderHook(() => useAgentExplorer("agent-a"));
+    await waitFor(() => expect(result.current.selectedAgentDetail).not.toBeNull());
+
+    await act(async () => {
+      result.current.triggerAgent();
+    });
+
+    expect(trigger).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(result.current.triggering).toBe(false));
+  });
+});
+
+// One session entry as venue.agents.listSessions returns it.
+function sessionEntry(id: string, conversation: unknown[]) {
+  return {
+    id,
+    metadata: { created: 1000, turns: conversation.length },
+    pending: [],
+    frames: [{ conversation }],
+  };
+}
+
+function sessionsPage(items: unknown[]) {
+  return { items, total: items.length, offset: 0, limit: 50 };
+}
+
+describe("useAgentExplorer — composer", () => {
+  afterEach(() => {
+    act(() => usePendingChats.setState({ pendingChats: [] }));
+    jest.useRealTimers();
+  });
+
+  // chatSession/sessions are shared state, not scoped per agent — a send's
+  // resolution must check the user hasn't switched agents before touching
+  // them, or a slow reply for the old agent overwrites the one now on screen
+  // (covia-ai/frontend#195).
+  it("does not let a slow send for a previous agent disturb the newly selected agent", async () => {
+    const send = deferred<unknown>();
+    mockVenue = makeVenue("venue-a", ["agent-a", "agent-b"]);
+    mockVenue.agents.info.mockImplementation((agentId: string) =>
+      Promise.resolve({ agentId, status: "RUNNING", config: {} }),
+    );
+    mockVenue.agents.listSessions.mockImplementation((agentId: string) =>
+      Promise.resolve(sessionsPage([
+        sessionEntry(`sess-${agentId}`, [{ role: "assistant", content: `${agentId}-reply`, ts: 1 }]),
+      ])),
+    );
+    mockVenue.agent.mockReturnValue({
+      chatSession: (sessionId?: string) => ({ sessionId, send: () => send.promise }),
+    });
+    const { result } = renderHook(() => useAgentExplorer("agent-a"));
+    await waitFor(() => expect(result.current.selectedSessionId).toBe("sess-agent-a"));
+
+    act(() => result.current.setMessageText("hello"));
+    act(() => result.current.send());
+    act(() => result.current.setSelectedAgentId("agent-b"));
+    await waitFor(() => expect(result.current.selectedSessionId).toBe("sess-agent-b"));
+
+    await act(async () => {
+      send.resolve({ response: "ok", sessionId: "sess-agent-a" });
+    });
+
+    expect(result.current.selectedSessionId).toBe("sess-agent-b");
+    expect(result.current.currentSession?.conversation).toEqual([
+      expect.objectContaining({ content: "agent-b-reply" }),
+    ]);
+  });
+
+  it("drops the draft when another agent is selected, so it cannot be sent to them", async () => {
+    mockVenue = makeVenue("venue-a", ["agent-a", "agent-b"]);
+    const { result } = renderHook(() => useAgentExplorer("agent-a"));
+    await waitFor(() => expect(result.current.selectedAgentDetail).not.toBeNull());
+
+    act(() => result.current.setMessageText("for agent-a only"));
+    act(() => result.current.setSelectedAgentId("agent-b"));
+
+    await waitFor(() => expect(result.current.selectedAgentDetail?.agentId).toBe("agent-b"));
+    expect(result.current.messageText).toBe("");
+  });
+
+  it("keeps echoing a repeated message until the venue records the new turn", async () => {
+    jest.useFakeTimers();
+    const earlier = [
+      { role: "user", content: "yes", ts: 1 },
+      { role: "assistant", content: "Shall I continue?", ts: 2 },
+    ];
+    mockVenue = makeVenue("venue-a", ["agent-a"]);
+    mockVenue.agents.info.mockResolvedValue({ agentId: "agent-a", status: "RUNNING", config: {} });
+    mockVenue.agents.listSessions.mockResolvedValue(sessionsPage([sessionEntry("sess-1", earlier)]));
+    // A send that never settles — the agent is still thinking.
+    mockVenue.agent.mockReturnValue({
+      chatSession: (sessionId?: string) => ({ sessionId, send: () => new Promise(() => {}) }),
+    });
+    const { result } = renderHook(() => useAgentExplorer("agent-a"));
+    await waitFor(() => expect(result.current.currentSession?.conversation).toHaveLength(2));
+
+    act(() => result.current.setMessageText("yes"));
+    act(() => result.current.send());
+
+    // The identical earlier "yes" is not this message.
+    expect(result.current.pendingChat?.text).toBe("yes");
+    expect(result.current.echoAlreadyRecorded).toBe(false);
+
+    mockVenue.agents.listSessions.mockResolvedValue(
+      sessionsPage([sessionEntry("sess-1", [...earlier, { role: "user", content: "yes", ts: 3 }])]),
+    );
+    await act(async () => {
+      jest.advanceTimersByTime(3100);
+    });
+
+    await waitFor(() => expect(result.current.echoAlreadyRecorded).toBe(true));
   });
 });
