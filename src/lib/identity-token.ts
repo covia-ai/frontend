@@ -1,6 +1,11 @@
 import { Ed25519Auth } from "@covia/covia-sdk";
 import type { VenueAuth } from "@/hooks/use-auth";
 
+// Upper bound on a minted device-key token's lifetime. Venues can't revoke
+// these JWTs yet (covia#197, #534), so a leaked token stays usable until it
+// expires; 30 days bounds that window.
+export const MAX_IDENTITY_TOKEN_LIFETIME_SECONDS = 2_592_000;
+
 // Lifetimes offered when minting a device-key token. A minted JWT is a
 // bearer credential — anyone holding it can act as this identity at the
 // venue until it expires — so the long options deserve deliberate choice.
@@ -8,8 +13,7 @@ export const IDENTITY_TOKEN_LIFETIMES = [
   { seconds: 300, label: "5 minutes" },
   { seconds: 3_600, label: "1 hour" },
   { seconds: 86_400, label: "24 hours" },
-  { seconds: 2_592_000, label: "30 days" },
-  { seconds: 31_536_000, label: "1 year" },
+  { seconds: MAX_IDENTITY_TOKEN_LIFETIME_SECONDS, label: "30 days" },
 ] as const;
 
 /**
@@ -19,6 +23,7 @@ export const IDENTITY_TOKEN_LIFETIMES = [
  * - Device-key accounts mint a fresh EdDSA JWT via the SDK's
  *   `Ed25519Auth.identityToken`, with `aud` bound to the venue DID so the
  *   token cannot be replayed at another venue, and the requested lifetime.
+ *   Throws a RangeError above MAX_IDENTITY_TOKEN_LIFETIME_SECONDS.
  * - OAuth accounts return their stored bearer token unchanged (its lifetime
  *   is whatever the venue issued; `lifetimeSeconds` is ignored).
  */
@@ -28,6 +33,9 @@ export function identityTokenFor(
   lifetimeSeconds = 300,
 ): string {
   if (auth.type === "bearer") return auth.token;
+  if (lifetimeSeconds > MAX_IDENTITY_TOKEN_LIFETIME_SECONDS) {
+    throw new RangeError("Identity token lifetime cannot exceed 30 days");
+  }
   return Ed25519Auth.fromHex(auth.privateKeyHex).identityToken(venueDid, lifetimeSeconds);
 }
 

@@ -1,0 +1,45 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"
+    # One PR for the routine minor/patch churn instead of one per package.
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      # Framework majors are migrations — take them deliberately, not via
+      # auto-bump. Minors and patches still flow.
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      # Companion packages whose major must match the framework's, so they
+      # move with it rather than on their own (#445 paired Next 15 with
+      # eslint-config-next 16 and failed lint).
+      - dependency-name: "eslint-config-next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react-dom"
+        update-types: ["version-update:semver-major"]
+      # @types/node's major must match the Node runtime (CI: node-version 22),
+      # or the types advertise APIs the runtime lacks (#443 offered 26).
+      # Bump it together with the runtime.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+
+  # Keeps the SHA-pinned actions in .github/workflows current.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"
+    # One PR for all action bumps (#439–#441 arrived as three).
+    groups:
+      github-actions:
+        patterns: ["*"]
