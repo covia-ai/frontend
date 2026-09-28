@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import {
   AlertDialog,
@@ -26,11 +26,6 @@ type DeleteAgentDialogProps = {
 // and permanent removal sits behind its own confirmation step.
 export function DeleteAgentDialog({ agentId, onDelete }: DeleteAgentDialogProps) {
   const [open, setOpen] = useState(false);
-  const [confirmingRemove, setConfirmingRemove] = useState(false);
-
-  useEffect(() => {
-    if (!open) setConfirmingRemove(false);
-  }, [open]);
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
@@ -45,64 +40,76 @@ export function DeleteAgentDialog({ agentId, onDelete }: DeleteAgentDialogProps)
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
-        {confirmingRemove ? (
-          <>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                Permanently remove &quot;{agentId}&quot;?
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                This deletes the record entirely and frees the name for
-                reuse. This cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <Button variant="outline" onClick={() => setConfirmingRemove(false)}>
-                Back
-              </Button>
-              <AlertDialogAction
-                className="bg-destructive text-white hover:bg-destructive/90"
-                data-testid="delete-agent-confirm-remove"
-                onClick={() => onDelete(true)}
-              >
-                Remove permanently
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </>
-        ) : (
-          <>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete agent &quot;{agentId}&quot;?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Terminating keeps the record for audit but reserves the
-                name, so recreating an agent with this ID will fail until
-                it&apos;s removed permanently.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="flex-col sm:flex-col">
-              <AlertDialogAction
-                className="w-full"
-                data-testid="delete-agent-terminate"
-                onClick={() => onDelete(false)}
-              >
-                Terminate (keep record)
-              </AlertDialogAction>
-              <Button
-                variant="outline"
-                className="w-full"
-                data-testid="delete-agent-remove-step"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setConfirmingRemove(true);
-                }}
-              >
-                Remove permanently (frees the name)
-              </Button>
-              <AlertDialogCancel className="w-full mt-0">Cancel</AlertDialogCancel>
-            </AlertDialogFooter>
-          </>
-        )}
+        {/* Mounted only while open, so the confirmation step starts over on
+            every open without anything having to reset it. */}
+        <DeleteAgentChoices agentId={agentId} onDelete={onDelete} />
       </AlertDialogContent>
     </AlertDialog>
+  );
+}
+
+function DeleteAgentChoices({ agentId, onDelete }: DeleteAgentDialogProps) {
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
+
+  if (confirmingRemove) {
+    return (
+      <>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            Permanently remove &quot;{agentId}&quot;?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            This deletes the record entirely and frees the name for
+            reuse. This cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <Button variant="outline" onClick={() => setConfirmingRemove(false)}>
+            Back
+          </Button>
+          <AlertDialogAction
+            className="bg-destructive text-white hover:bg-destructive/90"
+            data-testid="delete-agent-confirm-remove"
+            onClick={() => onDelete(true)}
+          >
+            Remove permanently
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Delete agent &quot;{agentId}&quot;?</AlertDialogTitle>
+        <AlertDialogDescription>
+          Terminating keeps the record for audit but reserves the
+          name, so recreating an agent with this ID will fail until
+          it&apos;s removed permanently.
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter className="flex-col sm:flex-col">
+        <AlertDialogAction
+          className="w-full"
+          data-testid="delete-agent-terminate"
+          onClick={() => onDelete(false)}
+        >
+          Terminate (keep record)
+        </AlertDialogAction>
+        <Button
+          variant="outline"
+          className="w-full"
+          data-testid="delete-agent-remove-step"
+          onClick={(e) => {
+            e.preventDefault();
+            setConfirmingRemove(true);
+          }}
+        >
+          Remove permanently (frees the name)
+        </Button>
+        <AlertDialogCancel className="w-full mt-0">Cancel</AlertDialogCancel>
+      </AlertDialogFooter>
+    </>
   );
 }

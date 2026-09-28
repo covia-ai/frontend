@@ -172,16 +172,16 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
   // shown. The full catalogue is already in memory (one catalog read per
   // venue), so growing the window is a pure client-side slice — no refetch, and
   // search/filter always apply to the complete list, not just a loaded window.
-  const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
+  // The window is stored with the filter identity it was grown under, so a
+  // narrowed list (new search text or tags) starts from the first batch in the
+  // same render — no effect resetting it a frame late.
+  const resetKey = `${searchInput} ${selectedTags.join(" ")}`;
+  const [shown, setShown] = useState({ resetKey, count: BATCH_SIZE });
+  const visibleCount = shown.resetKey === resetKey ? shown.count : BATCH_SIZE;
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   // Set the moment a grow is requested; cleared once the new slice renders, so
   // a burst of intersection events can't stack multiple batches at once.
   const growingRef = useRef(false);
-
-  // Reset the window to the first batch whenever the filtered set changes
-  // (search text or selected tags), so a narrowed list starts from the top.
-  const resetKey = `${searchInput} ${selectedTags.join(" ")}`;
-  useEffect(() => { setVisibleCount(BATCH_SIZE); }, [resetKey]);
 
   const visibleItems = useMemo(
     () => filteredAssets.slice(0, visibleCount),
@@ -193,8 +193,11 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
   const maybeLoadMore = useCallback(() => {
     if (growingRef.current) return;
     growingRef.current = true;
-    setVisibleCount((v) => v + BATCH_SIZE);
-  }, []);
+    setShown((previous) => ({
+      resetKey,
+      count: (previous.resetKey === resetKey ? previous.count : BATCH_SIZE) + BATCH_SIZE,
+    }));
+  }, [resetKey]);
 
   // Clear the grow guard once the new slice has rendered.
   useEffect(() => { growingRef.current = false; }, [visibleItems.length]);

@@ -62,7 +62,6 @@ export function CommandPalette() {
   const authMap = useAuthStore((s) => s.authMap);
 
   const { items, refreshing, unreachableVenueIds } = useCommandPaletteData(open);
-  const [query, setQuery] = useState("");
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -74,10 +73,6 @@ export function CommandPalette() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [toggle]);
-
-  useEffect(() => {
-    if (!open) setQuery("");
-  }, [open]);
 
   const navActions = useMemo(() => buildNavActions(), []);
   const switchVenueActions = useMemo(() => buildSwitchVenueActions(venues), [venues]);
@@ -124,8 +119,6 @@ export function CommandPalette() {
     close();
   }
 
-  const showRecent = query.trim() === "" && recentItems.length > 0;
-
   return (
     <CommandDialog
       open={open}
@@ -133,6 +126,66 @@ export function CommandPalette() {
       title="Command palette"
       description="Search assets, operations, jobs, agents, skills, and approvals across every connected venue, or run an action."
     >
+      {/* The dialog unmounts its children when closed, so the query lives in
+          the body and starts empty on every open without an effect clearing it. */}
+      <CommandPaletteBody
+        items={items}
+        refreshing={refreshing}
+        unreachableVenueIds={unreachableVenueIds}
+        recentItems={recentItems}
+        navActions={navActions}
+        switchVenueActions={switchVenueActions}
+        isAuthenticated={isAuthenticated}
+        authMap={authMap}
+        venueNameFor={venueNameFor}
+        onGoTo={goTo}
+        onSelectItem={handleSelectItem}
+        onQuickAction={handleQuickAction}
+        onSelectRecent={handleSelectRecent}
+        onSwitchVenue={handleSwitchVenue}
+      />
+    </CommandDialog>
+  );
+}
+
+type CommandPaletteBodyProps = {
+  items: PaletteItem[];
+  refreshing: boolean;
+  unreachableVenueIds: string[];
+  recentItems: PaletteRecentItem[];
+  navActions: ReturnType<typeof buildNavActions>;
+  switchVenueActions: ReturnType<typeof buildSwitchVenueActions>;
+  isAuthenticated: boolean;
+  authMap: Record<string, unknown>;
+  venueNameFor: (venueId: string) => string;
+  onGoTo: (href: string) => void;
+  onSelectItem: (item: PaletteItem) => void;
+  onQuickAction: (item: PaletteItem, action: PaletteQuickAction) => void;
+  onSelectRecent: (recent: PaletteRecentItem) => void;
+  onSwitchVenue: (venueId: string) => void;
+};
+
+function CommandPaletteBody({
+  items,
+  refreshing,
+  unreachableVenueIds,
+  recentItems,
+  navActions,
+  switchVenueActions,
+  isAuthenticated,
+  authMap,
+  venueNameFor,
+  onGoTo,
+  onSelectItem,
+  onQuickAction,
+  onSelectRecent,
+  onSwitchVenue,
+}: CommandPaletteBodyProps) {
+  const [query, setQuery] = useState("");
+  const showRecent = query.trim() === "" && recentItems.length > 0;
+
+  return (
+    <>
       <CommandInput
         placeholder="Search everything, or run a command..."
         value={query}
@@ -149,7 +202,7 @@ export function CommandPalette() {
                 <CommandItem
                   key={`recent:${item.kind}:${item.venueId}:${item.id}`}
                   value={`recent ${item.title} ${item.id}`}
-                  onSelect={() => handleSelectRecent(item)}
+                  onSelect={() => onSelectRecent(item)}
                 >
                   <Icon className="size-4" />
                   <span className="truncate">{item.title}</span>
@@ -169,7 +222,7 @@ export function CommandPalette() {
               <CommandItem
                 key={action.id}
                 value={`go to ${action.label}`}
-                onSelect={() => goTo(action.href)}
+                onSelect={() => onGoTo(action.href)}
               >
                 <action.icon className="size-4" />
                 <span>Go to {action.label}</span>
@@ -179,7 +232,7 @@ export function CommandPalette() {
             <CommandItem
               key={action.id}
               value={`switch venue ${action.label}`}
-              onSelect={() => handleSwitchVenue(action.venueId)}
+              onSelect={() => onSwitchVenue(action.venueId)}
             >
               <Building2 className="size-4" />
               <span>Switch to {action.label}</span>
@@ -197,7 +250,7 @@ export function CommandPalette() {
                 <div key={`${item.kind}:${item.venueId}:${item.id}`}>
                   <CommandItem
                     value={`${item.title} ${item.id} ${item.venueName}`}
-                    onSelect={() => handleSelectItem(item)}
+                    onSelect={() => onSelectItem(item)}
                   >
                     <Icon className="size-4" />
                     <div className="flex min-w-0 flex-col">
@@ -218,7 +271,7 @@ export function CommandPalette() {
                       <CommandItem
                         key={action.id + item.id}
                         value={`${action.label} ${item.venueName}`}
-                        onSelect={() => handleQuickAction(item, action)}
+                        onSelect={() => onQuickAction(item, action)}
                       >
                         <Icon className="size-4 opacity-50" />
                         <span className="truncate text-muted-foreground">{action.label}</span>
@@ -239,7 +292,7 @@ export function CommandPalette() {
           — showing results from the rest.
         </div>
       )}
-    </CommandDialog>
+    </>
   );
 }
 

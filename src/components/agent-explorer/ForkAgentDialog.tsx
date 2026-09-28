@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { GitFork, Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -46,31 +46,6 @@ export function ForkAgentDialog({
   onFork,
 }: ForkAgentDialogProps) {
   const [open, setOpen] = useState(false);
-  const [agentId, setAgentId] = useState("");
-  const [includeTimeline, setIncludeTimeline] = useState(false);
-  const [configOverride, setConfigOverride] = useState<Record<string, unknown>>({});
-  const [showConfigOverride, setShowConfigOverride] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    setAgentId(`${sourceAgentId}-fork`);
-    setIncludeTimeline(false);
-    setConfigOverride({});
-    setShowConfigOverride(false);
-  }, [open, sourceAgentId]);
-
-  const trimmedAgentId = agentId.trim();
-  const isReserved = isReservedAgentId(trimmedAgentId);
-
-  const handleFork = async () => {
-    if (!trimmedAgentId || isReserved || forking) return;
-    const result = await onFork({
-      agentId: trimmedAgentId,
-      includeTimeline,
-      config: configOverride,
-    });
-    if (result.status === "created") setOpen(false);
-  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -91,77 +66,114 @@ export function ForkAgentDialog({
             Creates a new agent from this one&apos;s config and state.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <Label htmlFor="fork-agent-id">New agent ID</Label>
-            <Input
-              id="fork-agent-id"
-              data-testid="fork-agent-id"
-              className={SUGGESTION_PLACEHOLDER_CLASS}
-              value={agentId}
-              onChange={(e) => setAgentId(e.target.value)}
-            />
-            {isReserved && (
-              <p className={`text-sm ${TONE_STYLES.attention.text}`}>
-                &quot;{DEFAULT_AGENT_ID}&quot; is reserved. Choose another ID.
-              </p>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="fork-include-timeline"
-              data-testid="fork-include-timeline"
-              checked={includeTimeline}
-              onCheckedChange={(checked) => setIncludeTimeline(checked === true)}
-            />
-            <Label htmlFor="fork-include-timeline" className="font-normal">
-              Include timeline history
-            </Label>
-          </div>
-
-          <div className="space-y-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-auto p-0 text-sm font-normal text-muted-foreground hover:bg-transparent"
-              onClick={() => setShowConfigOverride((v) => !v)}
-              data-testid="fork-config-override-toggle"
-            >
-              {showConfigOverride ? "Hide config overrides" : "Override config (optional)"}
-            </Button>
-            {showConfigOverride && (
-              <div className="rounded-md border p-2" data-testid="fork-config-override-editor">
-                <ThemedJsonEditor
-                  data={configOverride}
-                  rootName="config"
-                  editable
-                  onChange={(data) =>
-                    setConfigOverride(
-                      typeof data === "object" && data !== null
-                        ? (data as Record<string, unknown>)
-                        : {},
-                    )
-                  }
-                />
-              </div>
-            )}
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button
-            data-testid="fork-agent-submit"
-            onClick={handleFork}
-            disabled={forking || !trimmedAgentId || isReserved}
-          >
-            {forking && <Loader2 size={14} className="mr-1 animate-spin" />}
-            {forking ? "Forking…" : "Fork agent"}
-          </Button>
-        </DialogFooter>
+        {/* Mounted only while open, so every open starts from the source's
+            defaults without an effect re-seeding the fields. */}
+        <ForkAgentForm
+          sourceAgentId={sourceAgentId}
+          forking={forking}
+          onFork={onFork}
+          onForked={() => setOpen(false)}
+        />
       </DialogContent>
     </Dialog>
+  );
+}
+
+type ForkAgentFormProps = Omit<ForkAgentDialogProps, "disabled"> & {
+  /** Called once the fork has been created, so the dialog can close. */
+  onForked: () => void;
+};
+
+function ForkAgentForm({ sourceAgentId, forking, onFork, onForked }: ForkAgentFormProps) {
+  const [agentId, setAgentId] = useState(`${sourceAgentId}-fork`);
+  const [includeTimeline, setIncludeTimeline] = useState(false);
+  const [configOverride, setConfigOverride] = useState<Record<string, unknown>>({});
+  const [showConfigOverride, setShowConfigOverride] = useState(false);
+
+  const trimmedAgentId = agentId.trim();
+  const isReserved = isReservedAgentId(trimmedAgentId);
+
+  const handleFork = async () => {
+    if (!trimmedAgentId || isReserved || forking) return;
+    const result = await onFork({
+      agentId: trimmedAgentId,
+      includeTimeline,
+      config: configOverride,
+    });
+    if (result.status === "created") onForked();
+  };
+
+  return (
+    <>
+      <div className="space-y-4 py-2">
+        <div className="space-y-2">
+          <Label htmlFor="fork-agent-id">New agent ID</Label>
+          <Input
+            id="fork-agent-id"
+            data-testid="fork-agent-id"
+            className={SUGGESTION_PLACEHOLDER_CLASS}
+            value={agentId}
+            onChange={(e) => setAgentId(e.target.value)}
+          />
+          {isReserved && (
+            <p className={`text-sm ${TONE_STYLES.attention.text}`}>
+              &quot;{DEFAULT_AGENT_ID}&quot; is reserved. Choose another ID.
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="fork-include-timeline"
+            data-testid="fork-include-timeline"
+            checked={includeTimeline}
+            onCheckedChange={(checked) => setIncludeTimeline(checked === true)}
+          />
+          <Label htmlFor="fork-include-timeline" className="font-normal">
+            Include timeline history
+          </Label>
+        </div>
+
+        <div className="space-y-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-auto p-0 text-sm font-normal text-muted-foreground hover:bg-transparent"
+            onClick={() => setShowConfigOverride((v) => !v)}
+            data-testid="fork-config-override-toggle"
+          >
+            {showConfigOverride ? "Hide config overrides" : "Override config (optional)"}
+          </Button>
+          {showConfigOverride && (
+            <div className="rounded-md border p-2" data-testid="fork-config-override-editor">
+              <ThemedJsonEditor
+                data={configOverride}
+                rootName="config"
+                editable
+                onChange={(data) =>
+                  setConfigOverride(
+                    typeof data === "object" && data !== null
+                      ? (data as Record<string, unknown>)
+                      : {},
+                  )
+                }
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button
+          data-testid="fork-agent-submit"
+          onClick={handleFork}
+          disabled={forking || !trimmedAgentId || isReserved}
+        >
+          {forking && <Loader2 size={14} className="mr-1 animate-spin" />}
+          {forking ? "Forking…" : "Fork agent"}
+        </Button>
+      </DialogFooter>
+    </>
   );
 }

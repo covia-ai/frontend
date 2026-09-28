@@ -72,6 +72,52 @@ export function AddNewAgent({
   open: controlledOpen,
   onOpenChange,
   dialogTitle = "Create a new agent",
+  ...form
+}: AddNewAgentProps = {}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (nextOpen: boolean) => {
+    if (controlledOpen === undefined) setInternalOpen(nextOpen);
+    onOpenChange?.(nextOpen);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      {trigger !== null && (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button data-testid="create-agent-trigger" className="shrink-0 gap-2">
+              <PlusCircledIcon />
+              Create Agent
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
+      <DialogContent className="max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden bg-card p-0 text-card-foreground sm:max-w-5xl">
+        <DialogHeader className="border-b px-6 py-4">
+          <DialogTitle className="text-lg">{dialogTitle}</DialogTitle>
+          <DialogDescription>
+            Define the agent, then create it now or save the configuration as a template.
+          </DialogDescription>
+        </DialogHeader>
+        {/* The form is mounted only while the dialog is open, so every open
+            starts from the seed props without an effect re-seeding a dozen
+            fields on the transition — and closing discards the draft without
+            anything having to clear it. */}
+        <AddNewAgentForm {...form} onClose={() => setOpen(false)} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type AddNewAgentFormProps = Omit<
+  AddNewAgentProps,
+  "trigger" | "open" | "onOpenChange" | "dialogTitle"
+> & {
+  onClose: () => void;
+};
+
+function AddNewAgentForm({
   submitLabel = "Create",
   initialAgentName = "",
   initialSystemPrompt = "",
@@ -81,28 +127,39 @@ export function AddNewAgent({
   preferAvailableProvider = true,
   initialConfig,
   initialConfigPreview,
-}: AddNewAgentProps = {}) {
+  onClose,
+}: AddNewAgentFormProps) {
   const router = useRouter();
+  const venue = useAuthenticatedVenue();
+  // Resolved inline fields of the seed config, for the staged capabilities and
+  // the summary line. The state initialisers below read it once, on mount.
+  const configPreview = initialConfigPreview ?? (
+    initialConfig === undefined ? {} : inlineAgentConfigPreview(initialConfig)
+  );
+  const seededModel = modelSelectionFromId(initialProvider, initialModel);
   const [agentName, setAgentName] = useState(initialAgentName);
-  const [agentId, setAgentId] = useState("");
+  const [agentId, setAgentId] = useState(() => slugifyAgentId(initialAgentName));
   const [agentIdEdited, setAgentIdEdited] = useState(false);
   const [llmProvider, setLlmProvider] = useState(initialProvider);
-  const [customProviderOperation, setCustomProviderOperation] = useState("");
+  const [customProviderOperation, setCustomProviderOperation] = useState(initialCustomProviderOperation);
   // "" = venue default (model omitted from config); CUSTOM_MODEL_OPTION shows
   // a free-text input for ids not in the curated list.
-  const [model, setModel] = useState("");
-  const [customModel, setCustomModel] = useState("");
+  const [model, setModel] = useState(seededModel.model);
+  const [customModel, setCustomModel] = useState(seededModel.customModel);
   const [systemPrompt, setSystemPrompt] = useState(initialSystemPrompt);
   const [initialCommand, setInitialCommand] = useState("");
   const [creating, setCreating] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
-  const [internalOpen, setInternalOpen] = useState(false);
   const [availableKeys, setAvailableKeys] = useState<string[]>([]);
   // Staged tools/skills: there's no agentId to call agent:update against
   // until creation completes, so the picker only edits this local state and
   // it rides along in buildAgentConfig()'s overrides at submit time.
-  const [stagedTools, setStagedTools] = useState<string[]>([]);
-  const [stagedSkills, setStagedSkills] = useState<string[]>([]);
+  const [stagedTools, setStagedTools] = useState<string[]>(
+    () => (Array.isArray(configPreview.tools) ? configPreview.tools : []),
+  );
+  const [stagedSkills, setStagedSkills] = useState<string[]>(
+    () => (Array.isArray(configPreview.skills) ? configPreview.skills : []),
+  );
   const [touchedCapabilities, setTouchedCapabilities] = useState(false);
   // Caps default absent (unrestricted). capsEnabled/caps seed from a cloned
   // template so the editor honestly shows what's already there, but — same
@@ -110,51 +167,27 @@ export function AddNewAgent({
   // (set on actual user interaction, not on seeding) decides whether the
   // built config carries an override; otherwise an untouched clone would
   // silently duplicate its own inherited caps layer.
-  const [capsEnabled, setCapsEnabled] = useState(false);
-  const [caps, setCaps] = useState<AgentCap[]>([]);
+  const [capsEnabled, setCapsEnabled] = useState(() => Array.isArray(configPreview.caps));
+  const [caps, setCaps] = useState<AgentCap[]>(
+    () => (Array.isArray(configPreview.caps) ? configPreview.caps.filter(isAgentCap) : []),
+  );
   const [touchedCaps, setTouchedCaps] = useState(false);
   // A key pasted inline when the chosen provider has none — stored on create
   // so you don't have to leave the dialog to add it in Secrets first.
   const [apiKeyInput, setApiKeyInput] = useState("");
 
-
-  const venue = useAuthenticatedVenue();
-  const open = controlledOpen ?? internalOpen;
-  const setOpen = (nextOpen: boolean) => {
-    if (controlledOpen === undefined) setInternalOpen(nextOpen);
-    onOpenChange?.(nextOpen);
-  };
-
   const resolvedAgentId = agentId.trim() || slugifyAgentId(agentName);
   const agentIdReserved = isReservedAgentId(resolvedAgentId);
 
+  // The venue's stored secret names, so the model picker knows which
+  // providers already have a key.
   useEffect(() => {
-    if (!open) return;
-    setAgentName(initialAgentName);
-    setAgentId(slugifyAgentId(initialAgentName));
-    setAgentIdEdited(false);
-    setSystemPrompt(initialSystemPrompt);
-    setLlmProvider(initialProvider);
-    setCustomProviderOperation(initialCustomProviderOperation);
-    const modelSelection = modelSelectionFromId(initialProvider, initialModel);
-    setModel(modelSelection.model);
-    setCustomModel(modelSelection.customModel);
-    setInitialCommand("");
-    setApiKeyInput("");
-    const preview = initialConfigPreview ?? (
-      initialConfig === undefined ? {} : inlineAgentConfigPreview(initialConfig)
-    );
-    setStagedTools(Array.isArray(preview.tools) ? preview.tools : []);
-    setStagedSkills(Array.isArray(preview.skills) ? preview.skills : []);
-    setTouchedCapabilities(false);
-    const previewCaps = Array.isArray(preview.caps) ? preview.caps.filter(isAgentCap) : [];
-    setCaps(previewCaps);
-    setCapsEnabled(Array.isArray(preview.caps));
-    setTouchedCaps(false);
     if (!venue) return;
+    let active = true;
     venue.secrets
       .list()
       .then((secrets: string[]) => {
+        if (!active) return;
         setAvailableKeys(secrets);
         // Templates all default to OpenAI, but most users hold a different key.
         // If the seeded provider has no key and another does, switch to a ready
@@ -169,22 +202,13 @@ export function AddNewAgent({
           }
         }
       })
-      .catch(() => setAvailableKeys([]));
-    // initialConfig/initialConfigPreview intentionally excluded: they seed
-    // the staged tools/skills only on the open transition, same as every
-    // other field here — adding them would refire this reset (wiping
-    // in-progress edits) whenever a caller passes a fresh inline object.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    open,
-    venue,
-    initialAgentName,
-    initialSystemPrompt,
-    initialProvider,
-    initialCustomProviderOperation,
-    initialModel,
-    preferAvailableProvider,
-  ]);
+      .catch(() => {
+        if (active) setAvailableKeys([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [venue, preferAvailableProvider, initialProvider]);
 
   // The model actually sent in the agent config; "" means omit (venue default).
   const resolvedModel = resolvedModelId(model, customModel);
@@ -273,13 +297,8 @@ export function AddNewAgent({
       }
 
       gtmEvent.createAgent(result.agentId, llmProvider);
-      setAgentName("");
-      setAgentId("");
-      setAgentIdEdited(false);
-      setSystemPrompt("");
-      setCustomProviderOperation("");
-      setInitialCommand("");
-      setOpen(false);
+      // Closing unmounts this form, so its fields need no clearing here.
+      onClose();
       router.push(`/agents/chat?agentId=${encodeURIComponent(result.agentId)}`);
     } catch (err) {
       gtmEvent.createAgentFailed(resolvedAgentId, err instanceof Error ? err.message : undefined);
@@ -316,9 +335,6 @@ export function AddNewAgent({
     }
   };
 
-  const configPreview = initialConfigPreview ?? (
-    initialConfig === undefined ? {} : inlineAgentConfigPreview(initialConfig)
-  );
   const capabilitiesSummary = [
     stagedSkills.length ? `a skills index (${stagedSkills.join(", ")})` : "",
     stagedTools.length ? `${stagedTools.length} tool${stagedTools.length === 1 ? "" : "s"}` : "",
@@ -335,25 +351,7 @@ export function AddNewAgent({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      {trigger !== null && (
-        <DialogTrigger asChild>
-          {trigger ?? (
-            <Button data-testid="create-agent-trigger" className="shrink-0 gap-2">
-              <PlusCircledIcon />
-              Create Agent
-            </Button>
-          )}
-        </DialogTrigger>
-      )}
-      <DialogContent className="max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden bg-card p-0 text-card-foreground sm:max-w-5xl">
-        <DialogHeader className="border-b px-6 py-4">
-          <DialogTitle className="text-lg">{dialogTitle}</DialogTitle>
-          <DialogDescription>
-            Define the agent, then create it now or save the configuration as a template.
-          </DialogDescription>
-        </DialogHeader>
-
+    <>
         <div className="grid min-h-0 overflow-y-auto lg:grid-cols-2">
           <section
             data-testid="agent-identity-column"
@@ -531,7 +529,6 @@ export function AddNewAgent({
             {creating ? "Creating…" : submitLabel}
           </Button>
         </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </>
   );
 }

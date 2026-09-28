@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { Asset, Namespace, assetHash, didFromPublicKey, didUrl, parseDidUrl } from "@covia/covia-sdk";
 import { cn, copyDataToClipBoard } from "@/lib/utils";
 import { assetKindLook, getAssetKind } from "@/lib/asset-kind";
@@ -85,17 +85,21 @@ export const AssetHeader = ({ asset }: AssetHeaderProps) => {
   const identiconDid = assetIdenticonDid(asset);
   const description = asset?.metadata?.description as string | undefined;
 
-  const descriptionRef = useRef<HTMLParagraphElement>(null);
-  const [expanded, setExpanded] = useState(false);
+  // "Expanded" belongs to the description it was expanded for, so a new
+  // description renders collapsed without an effect having to collapse it.
+  const [expansion, setExpansion] = useState<{ description?: string; expanded: boolean }>({
+    description,
+    expanded: false,
+  });
+  const expanded = expansion.description === description && expansion.expanded;
   const [isTruncated, setIsTruncated] = useState(false);
-
-  useEffect(() => {
-    setExpanded(false);
-    const el = descriptionRef.current;
-    // Measured against the clamped (collapsed) layout, so this only ever
-    // reflects whether line-clamp-2 is actually cutting text off — not
-    // whatever the height happens to be after the reader expands it.
-    setIsTruncated(!!el && el.scrollHeight > el.clientHeight + 1);
+  // Measured when the paragraph mounts and again when the description changes
+  // (a new callback identity re-runs a ref callback) — so it reflects whether
+  // line-clamp-2 is actually cutting text off in the collapsed layout, never
+  // whatever the height happens to be after the reader expands it. Without a
+  // description the placeholder shows, which is never worth expanding.
+  const measureClamp = useCallback((el: HTMLParagraphElement | null) => {
+    if (el) setIsTruncated(!!description && el.scrollHeight > el.clientHeight + 1);
   }, [description]);
 
   return (
@@ -110,7 +114,7 @@ export const AssetHeader = ({ asset }: AssetHeaderProps) => {
                </Badge>
              </div>
               <p
-                ref={descriptionRef}
+                ref={measureClamp}
                 data-testid="assetH_descr"
                 className={cn(
                   "text-sm",
@@ -124,7 +128,7 @@ export const AssetHeader = ({ asset }: AssetHeaderProps) => {
                 <button
                   type="button"
                   data-testid="assetH_descr_toggle"
-                  onClick={() => setExpanded((value) => !value)}
+                  onClick={() => setExpansion({ description, expanded: !expanded })}
                   className="text-xs text-secondary hover:underline mt-0.5"
                 >
                   {expanded ? "Show less" : "Show more"}

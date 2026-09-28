@@ -89,16 +89,35 @@ export function PortAgentDialog({
   initialName,
   initialSystemPrompt,
 }: PortAgentDialogProps) {
-  const router = useRouter();
-  const venue = useAuthenticatedVenue();
-
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = open ?? internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
-  const wasOpen = useRef(false);
 
-  const [agentName, setAgentName] = useState("");
-  const [systemPrompt, setSystemPrompt] = useState("");
+  return (
+    <Dialog open={isOpen} onOpenChange={setOpen}>
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
+      {/* The form is mounted only while the dialog is open, so the seed props
+          apply on every open without an effect watching for the transition,
+          and closing discards the draft without anything resetting it. */}
+      <PortAgentForm
+        initialName={initialName}
+        initialSystemPrompt={initialSystemPrompt}
+        onClose={() => setOpen(false)}
+      />
+    </Dialog>
+  );
+}
+
+type PortAgentFormProps = Pick<PortAgentDialogProps, "initialName" | "initialSystemPrompt"> & {
+  onClose: () => void;
+};
+
+function PortAgentForm({ initialName, initialSystemPrompt, onClose }: PortAgentFormProps) {
+  const router = useRouter();
+  const venue = useAuthenticatedVenue();
+
+  const [agentName, setAgentName] = useState(initialName ?? "");
+  const [systemPrompt, setSystemPrompt] = useState(initialSystemPrompt ?? "");
   const [skills, setSkills] = useState<StagedSkill[]>([]);
   const [draft, setDraft] = useState("");
   const [firstTask, setFirstTask] = useState("");
@@ -124,36 +143,13 @@ export function PortAgentDialog({
   // Load the venue's stored secret names so the model picker knows which
   // providers already have a key.
   useEffect(() => {
-    if (!isOpen || !venue) return;
+    if (!venue) return;
     let active = true;
     venue.secrets.list()
       .then((secrets: string[]) => { if (active) setAvailableKeys(secrets); })
       .catch(() => { if (active) setAvailableKeys([]); });
     return () => { active = false; };
-  }, [isOpen, venue]);
-
-  // Seed name/prompt on the transition into open (e.g. converting a connected
-  // agent), without clobbering edits while the dialog stays open.
-  useEffect(() => {
-    if (isOpen && !wasOpen.current) {
-      if (initialName !== undefined) setAgentName(initialName);
-      if (initialSystemPrompt !== undefined) setSystemPrompt(initialSystemPrompt);
-    }
-    wasOpen.current = isOpen;
-  }, [isOpen, initialName, initialSystemPrompt]);
-
-  const reset = () => {
-    setAgentName("");
-    setSystemPrompt("");
-    setSkills([]);
-    setDraft("");
-    setFirstTask("");
-    setLlmProvider(DEFAULT_PROVIDER_OPTION);
-    setModel("");
-    setCustomModel("");
-    setCustomProviderOperation("");
-    setApiKeyInput("");
-  };
+  }, [venue]);
 
   const handleProviderChange = (id: string) => {
     setLlmProvider(id);
@@ -257,8 +253,8 @@ export function PortAgentDialog({
       notifySuccess(`Ported ${createdId}`, {
         description: importedCount === 1 ? "1 skill imported" : `${importedCount} skills imported`,
       });
-      reset();
-      setOpen(false);
+      // Closing unmounts this form, so its fields need no clearing here.
+      onClose();
       router.push(`/agents/chat?agentId=${encodeURIComponent(createdId)}`);
     } catch (err) {
       const { reason, jobHref } = jobFailure(err, venue.venueId);
@@ -269,8 +265,6 @@ export function PortAgentDialog({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setOpen}>
-      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden sm:max-w-2xl">
         <DialogHeader className="border-b p-6">
           <DialogTitle className="flex items-center gap-2">
@@ -465,7 +459,7 @@ export function PortAgentDialog({
         </div>
 
         <DialogFooter className="border-t p-6">
-          <Button variant="ghost" onClick={() => setOpen(false)} disabled={creating}>
+          <Button variant="ghost" onClick={onClose} disabled={creating}>
             Cancel
           </Button>
           <Button onClick={handlePort} disabled={creating} className="gap-2" data-testid="port-agent-submit">
@@ -474,6 +468,5 @@ export function PortAgentDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
-    </Dialog>
   );
 }

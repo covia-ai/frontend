@@ -49,7 +49,7 @@ export const CreateAssetComponent = ({
     initialFile?: File;
 }) => {
     const router = useRouter();
-    const [step, setStep] = useState(0);
+    const [step, setStep] = useState(1);
     const [jsonData, setJsonData] = useState<any>({});
     const [assetType, setAssetType] = useState("file");
     const [assetJSONData, setAssetJSONData] = useState<any>({});
@@ -63,6 +63,8 @@ export const CreateAssetComponent = ({
     const isControlled = controlledOpen !== undefined;
     const open = isControlled ? controlledOpen : uncontrolledOpen;
     const setOpen = useCallback((next: boolean) => {
+      // Closing ends the flow: the next open starts from the first screen.
+      if (!next) setStep(1);
       if (isControlled) onOpenChange?.(next);
       else setUncontrolledOpen(next);
     }, [isControlled, onOpenChange]);
@@ -190,11 +192,7 @@ export const CreateAssetComponent = ({
       
     }
   
-    useEffect(() => {
-          if(open == false)
-              setStep(1)
-      }, [open]);
-    
+
     return (
         <Dialog open={open} onOpenChange={setOpen}>
           {!isControlled &&
