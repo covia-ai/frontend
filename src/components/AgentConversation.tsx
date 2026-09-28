@@ -78,9 +78,10 @@ function AgentConversationBase({
   const agentName = humanizeAgentId(agentId);
   // Grouping walks the whole transcript; memoise so it recomputes only when the
   // conversation itself changes, never on an unrelated parent re-render.
+  const conversation = session?.conversation;
   const groups = useMemo(
-    () => (session?.conversation ? groupTranscript(session.conversation) : []),
-    [session?.conversation],
+    () => (conversation ? groupTranscript(conversation) : []),
+    [conversation],
   );
 
   return (

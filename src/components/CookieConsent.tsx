@@ -4,12 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useStoredValue } from "@/hooks/use-stored-value";
 import {
+  CONSENT_CHANGE_EVENT,
   DEFAULT_CATEGORIES,
   OPEN_CONSENT_DRAWER_EVENT,
   readConsent,
   writeConsent,
   type ConsentCategories,
+  type StoredConsent,
 } from "@/lib/consent";
 
 /**
@@ -27,11 +30,9 @@ import {
  * `lib/consent`, so returning users are not asked twice.
  */
 
-type Mode = "hidden" | "banner" | "drawer";
-
 // `localStorage` access throws in some browsers (notably Safari private
 // mode); showing the banner beats crashing the tree.
-function safeReadConsent() {
+function safeReadConsent(): StoredConsent | null {
   try {
     return readConsent();
   } catch {
@@ -39,107 +40,112 @@ function safeReadConsent() {
   }
 }
 
-export const CookieConsentComponent = () => {
-  const [mode, setMode] = useState<Mode>("hidden");
-  const [categories, setCategories] =
-    useState<ConsentCategories>(DEFAULT_CATEGORIES);
+const ACCEPT_ALL: ConsentCategories = { essential: true, analytics: true, marketing: true };
+const ESSENTIAL_ONLY: ConsentCategories = { essential: true, analytics: false, marketing: false };
 
-  // On mount: show the banner unless a current decision is already stored.
-  useEffect(() => {
-    const stored = safeReadConsent();
-    if (stored) setCategories(stored.categories);
-    else setMode("banner");
-  }, []);
+export const CookieConsentComponent = () => {
+  // The stored decision, read as the external state it is: undefined until
+  // hydration (so the server and the first client render agree on showing
+  // nothing), then the record or null. writeConsent announces every write, so
+  // this follows them without being told.
+  const [stored] = useStoredValue(safeReadConsent, { events: [CONSENT_CHANGE_EVENT] });
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  // Closing the drawer without deciding puts the banner away too, until the
+  // next visit.
+  const [dismissed, setDismissed] = useState(false);
 
   // Anything can ask for the drawer — the privacy policy page does.
   useEffect(() => {
-    function openDrawer() {
-      // Re-read so the drawer always reflects the latest saved state.
-      const stored = safeReadConsent();
-      if (stored) setCategories(stored.categories);
-      setMode("drawer");
-    }
+    const openDrawer = () => setDrawerOpen(true);
     window.addEventListener(OPEN_CONSENT_DRAWER_EVENT, openDrawer);
-    return () =>
-      window.removeEventListener(OPEN_CONSENT_DRAWER_EVENT, openDrawer);
+    return () => window.removeEventListener(OPEN_CONSENT_DRAWER_EVENT, openDrawer);
   }, []);
-
-  // Esc closes the drawer.
-  useEffect(() => {
-    if (mode !== "drawer") return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setMode("hidden");
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [mode]);
 
   const decide = useCallback((next: ConsentCategories) => {
     writeConsent(next);
-    setCategories(next);
-    setMode("hidden");
+    setDrawerOpen(false);
+  }, []);
+  const close = useCallback(() => {
+    setDrawerOpen(false);
+    setDismissed(true);
   }, []);
 
-  const acceptAll = useCallback(
-    () => decide({ essential: true, analytics: true, marketing: true }),
-    [decide],
-  );
-  const rejectNonEssential = useCallback(
-    () => decide({ essential: true, analytics: false, marketing: false }),
-    [decide],
-  );
-  const savePreferences = useCallback(
-    () => decide(categories),
-    [decide, categories],
-  );
-  const toggle = useCallback(
-    (key: "analytics" | "marketing", value: boolean) =>
-      setCategories((prev) => ({ ...prev, [key]: value })),
-    [],
-  );
-
-  if (mode === "hidden") return null;
-
-  if (mode === "banner") {
+  if (drawerOpen) {
+    // Mounted only while open, so its draft is seeded from the stored decision
+    // on every opening — the drawer always reflects the latest saved state.
     return (
-      <div
-        id="cookie_consent"
-        role="dialog"
-        aria-label="Cookie consent"
-        aria-live="polite"
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card text-card-foreground shadow-lg"
-      >
-        <div className="mx-auto flex max-w-5xl flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm leading-relaxed">
-            We use cookies to make Covia work and to understand how the app is
-            used. You can change this later from the{" "}
-            <a
-              href="/privacypolicy"
-              className="text-primary underline underline-offset-2 hover:text-primary/80"
-            >
-              privacy policy
-            </a>{" "}
-            page.
-          </p>
-          <div className="flex shrink-0 flex-wrap gap-2">
-            <Button size="sm" onClick={acceptAll}>
-              Accept All
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setMode("drawer")}
-            >
-              Customise
-            </Button>
-            <Button size="sm" variant="outline" onClick={rejectNonEssential}>
-              Reject Non-Essential
-            </Button>
-          </div>
-        </div>
-      </div>
+      <PreferencesDrawer
+        initial={stored?.categories ?? DEFAULT_CATEGORIES}
+        onSave={decide}
+        onClose={close}
+      />
     );
   }
+
+  // No usable decision — a first visit, cleared storage or a superseded policy
+  // version — asks. Unknown (still hydrating) shows nothing yet.
+  if (stored !== null || dismissed) return null;
+
+  return (
+    <div
+      id="cookie_consent"
+      role="dialog"
+      aria-label="Cookie consent"
+      aria-live="polite"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card text-card-foreground shadow-lg"
+    >
+      <div className="mx-auto flex max-w-5xl flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm leading-relaxed">
+          We use cookies to make Covia work and to understand how the app is
+          used. You can change this later from the{" "}
+          <a
+            href="/privacypolicy"
+            className="text-primary underline underline-offset-2 hover:text-primary/80"
+          >
+            privacy policy
+          </a>{" "}
+          page.
+        </p>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Button size="sm" onClick={() => decide(ACCEPT_ALL)}>
+            Accept All
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setDrawerOpen(true)}
+          >
+            Customise
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => decide(ESSENTIAL_ONLY)}>
+            Reject Non-Essential
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+type PreferencesDrawerProps = {
+  initial: ConsentCategories;
+  onSave: (categories: ConsentCategories) => void;
+  onClose: () => void;
+};
+
+function PreferencesDrawer({ initial, onSave, onClose }: PreferencesDrawerProps) {
+  const [categories, setCategories] = useState<ConsentCategories>(initial);
+
+  // Esc closes the drawer.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const toggle = (key: "analytics" | "marketing", value: boolean) =>
+    setCategories((prev) => ({ ...prev, [key]: value }));
 
   return (
     <div
@@ -148,7 +154,7 @@ export const CookieConsentComponent = () => {
       aria-label="Cookie preferences"
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center"
       onClick={(e) => {
-        if (e.target === e.currentTarget) setMode("hidden");
+        if (e.target === e.currentTarget) onClose();
       }}
     >
       <div className="w-full max-w-lg rounded-t-lg border border-border bg-card p-5 text-card-foreground shadow-xl sm:rounded-lg">
@@ -158,7 +164,7 @@ export const CookieConsentComponent = () => {
             size="icon"
             variant="ghost"
             aria-label="Close cookie preferences"
-            onClick={() => setMode("hidden")}
+            onClick={onClose}
             autoFocus
           >
             <X className="size-4" />
@@ -187,20 +193,20 @@ export const CookieConsentComponent = () => {
         </div>
 
         <div className="mt-5 flex flex-wrap gap-2">
-          <Button size="sm" onClick={savePreferences}>
+          <Button size="sm" onClick={() => onSave(categories)}>
             Save Preferences
           </Button>
-          <Button size="sm" variant="outline" onClick={rejectNonEssential}>
+          <Button size="sm" variant="outline" onClick={() => onSave(ESSENTIAL_ONLY)}>
             Reject Non-Essential
           </Button>
-          <Button size="sm" variant="outline" onClick={acceptAll}>
+          <Button size="sm" variant="outline" onClick={() => onSave(ACCEPT_ALL)}>
             Accept All
           </Button>
         </div>
       </div>
     </div>
   );
-};
+}
 
 type CategoryRowProps = {
   name: string;

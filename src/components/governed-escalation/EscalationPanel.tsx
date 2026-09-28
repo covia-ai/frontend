@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import type { Venue } from "@covia/covia-sdk";
+import type { Job, Venue } from "@covia/covia-sdk";
 import { ExternalLink, Inbox, RefreshCw, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,13 @@ import type { BeatJobState } from "@/components/demo-kit/BeatCard";
 // token with the venue's own ucan:verify so the grant on screen is
 // cryptographically checked rather than merely displayed.
 
+const toBeatJobState = (job: Job): BeatJobState => ({
+  jobId: job.id,
+  status: job.metadata?.status ?? null,
+  error: job.metadata?.error ?? null,
+  output: job.isComplete ? job.output : null,
+});
+
 export function EscalationPanel({
   venue,
   state,
@@ -36,34 +43,35 @@ export function EscalationPanel({
   escalation: { analysisJobId: string | null; askJobId: string } | null;
 }) {
   const [ask, setAsk] = useState<{ id: string; title: string } | null>(null);
-  const [job, setJob] = useState<BeatJobState | null>(state);
-  const [hydrated, setHydrated] = useState(false);
+  // What this panel has found out about the ask's job on its own — the parked
+  // job re-read after the trip to the Inbox, or a refresh — kept with the
+  // `state` it was found under. A fresh `state` from the running flow
+  // supersedes it; `state` falling away (the flow no longer driving) does not.
+  const [learnt, setLearnt] = useState<{ under: BeatJobState | null; job: BeatJobState } | null>(null);
+  const job = learnt && (state === null || learnt.under === state) ? learnt.job : state;
   const [grant, setGrant] = useState<GrantVerification | null>(null);
   const [checking, setChecking] = useState(false);
 
+  // Re-read the parked job from the venue when nothing else knows it. Beat 4
+  // deliberately sends the viewer to the Inbox and back, and a client-side
+  // navigation drops React state — without this the panel would vanish and
+  // the ask would look lost even though it is sitting on the venue in
+  // INPUT_REQUIRED.
+  const askJobId = escalation?.askJobId;
+  const needsParkedJob = !!venue && !job && !!askJobId;
   useEffect(() => {
-    if (state) setJob(state);
-  }, [state]);
-
-  // Re-read the parked job from the venue on mount. Beat 4 deliberately sends
-  // the viewer to the Inbox and back, and a client-side navigation drops React
-  // state — without this the panel would vanish and the ask would look lost
-  // even though it is sitting on the venue in INPUT_REQUIRED.
-  useEffect(() => {
-    if (!venue || state || hydrated || !escalation) return;
-    setHydrated(true);
+    if (!needsParkedJob || !venue || !askJobId) return;
+    let active = true;
     venue.jobs
-      .get(escalation.askJobId)
-      .then((parked) =>
-        setJob({
-          jobId: parked.id,
-          status: parked.metadata?.status ?? null,
-          error: parked.metadata?.error ?? null,
-          output: parked.isComplete ? parked.output : null,
-        }),
-      )
+      .get(askJobId)
+      .then((parked) => {
+        if (active) setLearnt({ under: state, job: toBeatJobState(parked) });
+      })
       .catch(() => undefined);
-  }, [venue, state, hydrated, escalation]);
+    return () => {
+      active = false;
+    };
+  }, [needsParkedJob, venue, askJobId, state]);
 
   // Find the ask this run raised, so the deep link lands on it rather than
   // dumping the viewer at the top of a list.
@@ -78,18 +86,13 @@ export function EscalationPanel({
     };
   }, [venue, job]);
 
+  const jobId = job?.jobId;
   const check = useCallback(async () => {
-    if (!venue || !job?.jobId) return;
+    if (!venue || !jobId) return;
     setChecking(true);
     try {
-      const refreshed = await venue.jobs.get(job.jobId);
-      const next: BeatJobState = {
-        jobId: refreshed.id,
-        status: refreshed.metadata?.status ?? null,
-        error: refreshed.metadata?.error ?? null,
-        output: refreshed.isComplete ? refreshed.output : null,
-      };
-      setJob(next);
+      const next = toBeatJobState(await venue.jobs.get(jobId));
+      setLearnt({ under: state, job: next });
       const token = extractGrantToken(next.output);
       setGrant(token ? await verifyGrantToken(venue, token) : null);
     } catch (err) {
@@ -97,11 +100,11 @@ export function EscalationPanel({
     } finally {
       setChecking(false);
     }
-  }, [venue, job?.jobId]);
+  }, [venue, jobId, state]);
 
   if (!job) return null;
 
-  const parked = job?.status === "INPUT_REQUIRED";
+  const parked = job.status === "INPUT_REQUIRED";
 
   return (
     <div className="rounded border p-3 flex flex-col gap-3" data-testid="ge-escalation">
@@ -123,8 +126,8 @@ export function EscalationPanel({
           The ask is waiting for a human
         </p>
         <div className="flex items-center gap-2">
-          <StatusBadge status={job?.status ?? undefined} kind="job" as="pill" />
-          <Button variant="ghost" size="sm" onClick={check} disabled={checking || !venue}>
+          <StatusBadge status={job.status ?? undefined} kind="job" as="pill" />
+          <Button variant="ghost" size="sm" onClick={check} disabled={checking || !venue} data-testid="ge-refresh">
             <RefreshCw className={checking ? "size-4 animate-spin" : "size-4"} />
           </Button>
         </div>
@@ -193,7 +196,7 @@ export function EscalationPanel({
         </div>
       )}
 
-      {job?.status === "COMPLETE" && job.output != null && (
+      {job.status === "COMPLETE" && job.output != null && (
         <details className="text-xs">
           <summary className="cursor-pointer text-muted-foreground">
             What the resumed job returned
@@ -207,7 +210,7 @@ export function EscalationPanel({
         </details>
       )}
 
-      {job?.status === "COMPLETE" && !grant && (
+      {job.status === "COMPLETE" && !grant && (
         <p className="text-xs text-muted-foreground" data-testid="ge-grant-none">
           The job resumed, but carried no capability token — the approval was
           answered without echoing the offered grant, or it was rejected.

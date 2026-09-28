@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useStoredValue } from "@/hooks/use-stored-value";
 import { useVenues } from "@/hooks/use-venues";
 import {
   buildOAuthLoginUrl,
@@ -64,21 +65,23 @@ export function discoverOAuthProviders(baseUrl: string): Promise<OAuthProvider[]
   return entry.request;
 }
 
+const NO_PROVIDERS: OAuthProvider[] = [];
+
 export function useOAuthProviders(baseUrl?: string): OAuthProvider[] {
-  const [providers, setProviders] = useState<OAuthProvider[]>([]);
+  // The answer is kept with the venue it is for, so a venue switch offers no
+  // providers until the new venue has answered — never the previous venue's.
+  const [answer, setAnswer] = useState<{ baseUrl: string; providers: OAuthProvider[] } | null>(null);
 
   useEffect(() => {
+    if (!baseUrl) return;
     let active = true;
-    setProviders([]);
-    if (!baseUrl) return () => { active = false; };
-
-    void discoverOAuthProviders(baseUrl).then((available) => {
-      if (active) setProviders(available);
+    void discoverOAuthProviders(baseUrl).then((providers) => {
+      if (active) setAnswer({ baseUrl, providers });
     });
     return () => { active = false; };
   }, [baseUrl]);
 
-  return providers;
+  return answer && answer.baseUrl === baseUrl ? answer.providers : NO_PROVIDERS;
 }
 
 export type OAuthSignInOption = {
@@ -96,18 +99,23 @@ export function useOAuthSignInOptions(venueId?: string): OAuthSignInOption[] {
   );
   const providers = useOAuthProviders(baseUrl);
   const pathname = usePathname();
-  // Browser-only inputs, read in an effect so server and first client render agree.
-  const [request, setRequest] = useState<{ origin: string; returnTo: string; state: string } | null>(null);
-
-  useEffect(() => {
-    // No nonce is minted until a venue actually offers OAuth.
-    if (providers.length === 0) return;
-    setRequest({
-      origin: window.location.origin,
-      returnTo: `${window.location.pathname}${window.location.search}${window.location.hash}`,
-      state: oauthState(),
-    });
-  }, [pathname, providers]);
+  const offersOAuth = providers.length > 0;
+  // Browser-only inputs, read as the external state they are, so the server
+  // and the first client render agree (no options until hydration). No nonce
+  // is minted until a venue actually offers OAuth; `pathname` keeps the
+  // return-to current across client navigations.
+  const readRequest = useCallback(
+    () =>
+      offersOAuth
+        ? {
+            origin: window.location.origin,
+            returnTo: `${pathname}${window.location.search}${window.location.hash}`,
+            state: oauthState(),
+          }
+        : null,
+    [offersOAuth, pathname],
+  );
+  const [request] = useStoredValue(readRequest);
 
   return useMemo(() => {
     if (!baseUrl || !targetVenueId || !request) return [];

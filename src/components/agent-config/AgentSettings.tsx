@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { AgentStatus } from "@covia/covia-sdk";
 import { TONE_STYLES } from "@/lib/status";
 import { AlertTriangle, Loader2, RotateCcw, Save, Wrench } from "lucide-react";
@@ -46,10 +46,10 @@ type AgentSettingsProps = {
 
 export function AgentSettings({ agent, onSave }: AgentSettingsProps) {
   const venue = useAuthenticatedVenue();
-  const initialConfig = useRef<Record<string, unknown>>(agent.config ?? {});
-  const [draft, setDraft] = useState(() =>
-    createAgentSettingsDraft(initialConfig.current),
-  );
+  // The config the draft and its patch are computed against: the last saved
+  // truth, refreshed after every successful save and on every conflict.
+  const [baseline, setBaseline] = useState<Record<string, unknown>>(() => agent.config ?? {});
+  const [draft, setDraft] = useState(() => createAgentSettingsDraft(baseline));
   const [availableKeys, setAvailableKeys] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [capabilitySaving, setCapabilitySaving] = useState(false);
@@ -74,17 +74,15 @@ export function AgentSettings({ agent, onSave }: AgentSettingsProps) {
     value: AgentSettingsDraft[K],
   ) => setDraft((current) => ({ ...current, [key]: value }));
 
-  const result = configFromAgentSettingsDraft(draft, initialConfig.current);
-  const patch = result.config
-    ? agentConfigUpdatePatch(initialConfig.current, result.config)
-    : {};
+  const result = configFromAgentSettingsDraft(draft, baseline);
+  const patch = result.config ? agentConfigUpdatePatch(baseline, result.config) : {};
   const dirty = Object.keys(patch).length > 0;
   const running = agent.status === AgentStatus.RUNNING;
   const unavailableTools = Array.isArray(agent.unavailableTools)
     ? agent.unavailableTools
     : [];
 
-  const reset = () => setDraft(createAgentSettingsDraft(initialConfig.current));
+  const reset = () => setDraft(createAgentSettingsDraft(baseline));
 
   // Picker toggles bypass the draft/JSON save path entirely: each is a narrow
   // { tools } or { skills } patch computed from the last-saved config, sent
@@ -92,11 +90,9 @@ export function AgentSettings({ agent, onSave }: AgentSettingsProps) {
   // race with an unrelated in-progress Advanced-JSON edit. On success both
   // the saved baseline and the JSON field are refreshed so the two views of
   // tools/skills never visibly disagree.
-  const attachedTools = stringArray(initialConfig.current.tools);
-  const attachedSkills = stringArray(initialConfig.current.skills);
-  const attachedContext = Array.isArray(initialConfig.current.context)
-    ? initialConfig.current.context
-    : [];
+  const attachedTools = stringArray(baseline.tools);
+  const attachedSkills = stringArray(baseline.skills);
+  const attachedContext = Array.isArray(baseline.context) ? baseline.context : [];
   const hasMemoryContext = attachedContext.some(isMemoryContextEntry);
 
   const saveCapability = async (
@@ -105,9 +101,9 @@ export function AgentSettings({ agent, onSave }: AgentSettingsProps) {
   ) => {
     setCapabilitySaving(true);
     try {
-      const outcome = await onSave({ [key]: nextValue }, initialConfig.current);
+      const outcome = await onSave({ [key]: nextValue }, baseline);
       if (outcome.status === "saved") {
-        initialConfig.current = { ...initialConfig.current, [key]: nextValue };
+        setBaseline((current) => ({ ...current, [key]: nextValue }));
         const jsonField =
           key === "tools" ? "toolsJson" : key === "skills" ? "skillsJson" : "contextJson";
         setField(jsonField, JSON.stringify(nextValue, null, 2));
@@ -115,7 +111,7 @@ export function AgentSettings({ agent, onSave }: AgentSettingsProps) {
         // The server config moved since this editor loaded — rebase the
         // whole draft onto the fresh truth rather than reapplying just this
         // one toggle against a config we now know is stale.
-        initialConfig.current = outcome.freshConfig;
+        setBaseline(outcome.freshConfig);
         setDraft(createAgentSettingsDraft(outcome.freshConfig));
       }
     } finally {
@@ -137,12 +133,12 @@ export function AgentSettings({ agent, onSave }: AgentSettingsProps) {
     if (!result.config || !dirty) return;
     setSaving(true);
     try {
-      const outcome = await onSave(patch, initialConfig.current);
+      const outcome = await onSave(patch, baseline);
       if (outcome.status === "saved") {
-        initialConfig.current = result.config;
+        setBaseline(result.config);
         setDraft(createAgentSettingsDraft(result.config));
       } else if (outcome.status === "conflict") {
-        initialConfig.current = outcome.freshConfig;
+        setBaseline(outcome.freshConfig);
         setDraft(createAgentSettingsDraft(outcome.freshConfig));
       }
     } finally {

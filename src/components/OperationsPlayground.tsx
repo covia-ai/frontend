@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Lock } from "lucide-react";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useStoredValue } from "@/hooks/use-stored-value";
 import { resolveOperationByAddress } from "@/lib/operations-catalog";
 import { notifyError } from "@/lib/notify";
 
@@ -64,44 +65,63 @@ function findOp(tab: PlaygroundTab, opValue: string): OpDef {
   return TAB_OPS[tab].find((op) => op.value === opValue) ?? TAB_OPS[tab][0];
 }
 
+type PlaygroundState = { tab: PlaygroundTab; opValue: string; inputText: string };
+
+const placeholderText = (tab: PlaygroundTab, opValue: string) =>
+  JSON.stringify(findOp(tab, opValue).placeholder, null, 2);
+
+/** The tab, operation and input a shared link carries; defaults without one. */
+function restoreFromSearch(search: string | undefined): PlaygroundState {
+  const params = new URLSearchParams(search ?? "");
+  const tab = isPlaygroundTab(params.get("tab")) ? (params.get("tab") as PlaygroundTab) : "schema";
+  const urlOp = params.get("op");
+  const opValue = urlOp && TAB_OPS[tab].some((op) => op.value === urlOp) ? urlOp : TAB_OPS[tab][0].value;
+  let inputText = placeholderText(tab, opValue);
+  const urlInput = params.get("input");
+  if (urlInput) {
+    try {
+      inputText = JSON.stringify(JSON.parse(urlInput), null, 2);
+    } catch {
+      // Fall back to the sub-op's placeholder rather than a broken link.
+    }
+  }
+  return { tab, opValue, inputText };
+}
+
+const readSearch = () => window.location.search;
+
 export function OperationsPlayground() {
+  // The share link's state, read as the browser state it is: undefined on the
+  // server and during hydration, then the query string. window.location rather
+  // than useSearchParams keeps this route static — same rationale as JobList's
+  // ?tab= restore.
+  const [search] = useStoredValue(readSearch);
+  const restored = useMemo(() => restoreFromSearch(search), [search]);
+
+  // Until the URL is known the form runs on defaults; once it is, the form
+  // remounts seeded from the link — once, at hydration, before anything can
+  // have been typed. Later URL writes come from the form itself.
+  return (
+    <PlaygroundForm
+      key={search === undefined ? "defaults" : "restored"}
+      initial={restored}
+      hydrated={search !== undefined}
+    />
+  );
+}
+
+function PlaygroundForm({ initial, hydrated }: { initial: PlaygroundState; hydrated: boolean }) {
   const venue = useAuthenticatedVenue();
   const isAuthenticated = useIsAuthenticated();
   const router = useRouter();
   const pathname = usePathname();
 
-  const [tab, setTab] = useState<PlaygroundTab>("schema");
-  const [opValue, setOpValue] = useState<string>(TAB_OPS.schema[0].value);
-  const [inputText, setInputText] = useState<string>(() => JSON.stringify(TAB_OPS.schema[0].placeholder, null, 2));
+  const [tab, setTab] = useState<PlaygroundTab>(initial.tab);
+  const [opValue, setOpValue] = useState<string>(initial.opValue);
+  const [inputText, setInputText] = useState<string>(initial.inputText);
   const [inputError, setInputError] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [invoking, setInvoking] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
-
-  // Restore tab/op/input from a shared link once on mount. Reading
-  // window.location directly rather than useSearchParams keeps this route
-  // static — same rationale as JobList's ?tab= restore.
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const restoredTab = isPlaygroundTab(params.get("tab")) ? (params.get("tab") as PlaygroundTab) : "schema";
-    const urlOp = params.get("op");
-    const restoredOp = urlOp && TAB_OPS[restoredTab].some((op) => op.value === urlOp)
-      ? urlOp
-      : TAB_OPS[restoredTab][0].value;
-    const urlInput = params.get("input");
-    let restoredInputText = JSON.stringify(findOp(restoredTab, restoredOp).placeholder, null, 2);
-    if (urlInput) {
-      try {
-        restoredInputText = JSON.stringify(JSON.parse(urlInput), null, 2);
-      } catch {
-        // Fall back to the sub-op's placeholder rather than a broken link.
-      }
-    }
-    setTab(restoredTab);
-    setOpValue(restoredOp);
-    setInputText(restoredInputText);
-    setHydrated(true);
-  }, []);
 
   function writeUrl(nextTab: PlaygroundTab, nextOp: string, nextInputText: string) {
     const params = new URLSearchParams();
@@ -118,7 +138,7 @@ export function OperationsPlayground() {
   function handleTabChange(nextTabValue: string) {
     if (!isPlaygroundTab(nextTabValue)) return;
     const nextOp = TAB_OPS[nextTabValue][0];
-    const nextInputText = JSON.stringify(nextOp.placeholder, null, 2);
+    const nextInputText = placeholderText(nextTabValue, nextOp.value);
     setTab(nextTabValue);
     setOpValue(nextOp.value);
     setInputText(nextInputText);
@@ -128,8 +148,7 @@ export function OperationsPlayground() {
   }
 
   function handleOpChange(nextOpValue: string) {
-    const nextOp = findOp(tab, nextOpValue);
-    const nextInputText = JSON.stringify(nextOp.placeholder, null, 2);
+    const nextInputText = placeholderText(tab, nextOpValue);
     setOpValue(nextOpValue);
     setInputText(nextInputText);
     setInputError(null);
