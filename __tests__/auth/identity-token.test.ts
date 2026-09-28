@@ -1,4 +1,9 @@
-import { identityTokenFor, decodeJwtClaims } from "@/lib/identity-token";
+import {
+  identityTokenFor,
+  decodeJwtClaims,
+  IDENTITY_TOKEN_LIFETIMES,
+  MAX_IDENTITY_TOKEN_LIFETIME_SECONDS,
+} from "@/lib/identity-token";
 import { generateKeyPair, privateKeyToHex } from "@covia/covia-sdk";
 
 const decodeClaims = (token: string) =>
@@ -34,6 +39,20 @@ describe("identityTokenFor", () => {
     );
     const claims = decodeClaims(token);
     expect(claims.exp - claims.iat).toBe(300);
+  });
+
+  it("refuses device-key lifetimes over 30 days", () => {
+    const { privateKey } = generateKeyPair();
+    const account = { type: "keypair" as const, privateKeyHex: privateKeyToHex(privateKey), did: "did:key:zMe" };
+
+    expect(() => identityTokenFor(account, "did:key:zVenue", MAX_IDENTITY_TOKEN_LIFETIME_SECONDS)).not.toThrow();
+    expect(() => identityTokenFor(account, "did:key:zVenue", MAX_IDENTITY_TOKEN_LIFETIME_SECONDS + 1)).toThrow(RangeError);
+  });
+
+  it("offers no quick lifetime above the cap", () => {
+    for (const { seconds } of IDENTITY_TOKEN_LIFETIMES) {
+      expect(seconds).toBeLessThanOrEqual(MAX_IDENTITY_TOKEN_LIFETIME_SECONDS);
+    }
   });
 
   it("returns the stored bearer token unchanged for OAuth accounts", () => {
