@@ -14,7 +14,7 @@
     "jest:clear": "jest --clearCache"
   },
   "dependencies": {
-    "@covia/covia-sdk": "^1.19.1",
+    "@covia/covia-sdk": "^1.20.0",
     "@cyntler/react-doc-viewer": "^1.17.1",
     "@next/third-parties": "^16.3.6",
     "@radix-ui/react-accordion": "^1.2.20",
