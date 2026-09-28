@@ -3,10 +3,9 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { TypedResultRenderer } from '@/components/typed-result/TypedResultRenderer';
 
+// Read-only display goes through json-edit-react 2's JsonViewer.
 jest.mock('json-edit-react', () => ({
-  JsonEditor: (props: any) => <div data-testid="json-editor">{JSON.stringify(props.data)}</div>,
-  githubDarkTheme: { name: 'dark' },
-  githubLightTheme: { name: 'light' },
+  JsonViewer: (props: any) => <div data-testid="json-viewer">{JSON.stringify(props.data)}</div>,
 }));
 jest.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light' }),
@@ -31,14 +30,14 @@ describe('TypedResultRenderer', () => {
 
   it('falls back to the JSON viewer for an unrecognized shape', async () => {
     render(<TypedResultRenderer value={{ name: 'Ada' }} schema={{ type: 'string' }} />);
-    expect(await screen.findByTestId('json-editor')).toBeInTheDocument();
+    expect(await screen.findByTestId('json-viewer')).toBeInTheDocument();
   });
 
   it('falls back to the JSON viewer when the value does not match the classified shape', async () => {
     // Schema says array-of-objects but the actual value is a string — degrade
     // gracefully instead of crashing on Array.isArray/object-shape mismatch.
     render(<TypedResultRenderer value="not an array" schema={TABLE_SCHEMA} />);
-    expect(await screen.findByTestId('json-editor')).toBeInTheDocument();
+    expect(await screen.findByTestId('json-viewer')).toBeInTheDocument();
   });
 
   it('shows the strict-validated badge only when strict is true and the shape is known', () => {

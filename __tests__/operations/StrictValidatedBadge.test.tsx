@@ -4,10 +4,9 @@ import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { StrictValidatedBadge } from '@/components/typed-result/StrictValidatedBadge';
 
+// Read-only display goes through json-edit-react 2's JsonViewer.
 jest.mock('json-edit-react', () => ({
-  JsonEditor: (props: any) => <div data-testid="json-editor">{JSON.stringify(props.data)}</div>,
-  githubDarkTheme: { name: 'dark' },
-  githubLightTheme: { name: 'light' },
+  JsonViewer: (props: any) => <div data-testid="json-viewer">{JSON.stringify(props.data)}</div>,
 }));
 jest.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light' }),
@@ -23,6 +22,6 @@ describe('StrictValidatedBadge', () => {
     await user.click(screen.getByTestId('strict-validated-badge'));
 
     expect(screen.getByText('Response Schema')).toBeInTheDocument();
-    expect(screen.getByTestId('json-editor')).toHaveTextContent(JSON.stringify(schema));
+    expect(screen.getByTestId('json-viewer')).toHaveTextContent(JSON.stringify(schema));
   });
 });

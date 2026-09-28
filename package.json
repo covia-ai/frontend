@@ -16,6 +16,7 @@
   "dependencies": {
     "@covia/covia-sdk": "^1.20.0",
     "@cyntler/react-doc-viewer": "^1.17.1",
+    "@json-edit-react/themes": "^1.0.0",
     "@radix-ui/react-accordion": "^1.2.20",
     "@radix-ui/react-alert-dialog": "^1.1.23",
     "@radix-ui/react-checkbox": "^1.3.11",
@@ -38,7 +39,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "copy-to-clipboard": "^4.0.2",
-    "json-edit-react": "^1.30.2",
+    "json-edit-react": "^2.0.0",
     "lucide-react": "^1.48.0",
     "mime-types": "^3.0.2",
     "next": "^16.3.6",
