@@ -45,4 +45,8 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withBundleAnalyzer(nextConfig);
+// The analyzer is a webpack plugin, and wrapping the config registers a
+// `webpack` hook even when disabled — which a Turbopack build (the default
+// since Next 16) refuses to run alongside. Only wrap when analysing; the
+// `analyze` script builds with --webpack for that reason.
+export default process.env.ANALYZE === "true" ? withBundleAnalyzer(nextConfig) : nextConfig;

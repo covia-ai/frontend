@@ -10,7 +10,7 @@ Covia frontend — Next.js web UI for interacting with Covia venue servers via `
 
 ## Tech Stack
 
-- **Framework:** Next.js 15 (App Router)
+- **Framework:** Next.js 16 (App Router, Turbopack)
 - **Language:** TypeScript 5.9+
 - **React:** 19
 - **State Management:** Zustand 5 (with `persist` middleware for localStorage)

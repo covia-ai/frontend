@@ -1,34 +1,37 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
-
-const eslintConfig = [
+// eslint-config-next 16 ships flat configs directly, so the FlatCompat bridge
+// (and its @eslint/eslintrc dependency) that Next 15 needed is gone.
+const eslintConfig = defineConfig([
+  globalIgnores([
+    ".next/**",
+    "build/**",
+    "coverage/**",
+    "node_modules/**",
+    "out/**",
+    "next-env.d.ts",
+  ]),
+  ...nextVitals,
+  ...nextTs,
   {
-    ignores: [
-      ".next/**",
-      "build/**",
-      "coverage/**",
-      "node_modules/**",
-      "out/**",
-      "next-env.d.ts",
-    ],
-  },
-   ...compat.config({
-      extends: ["next/core-web-vitals", "next/typescript"],
-      rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
-      "@typescript-eslint/no-non-null-asserted-optional-chain" : "error",
-      "@typescript-eslint/no-unused-vars" : ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "caughtErrors": "none" }],
-      "react-hooks/rules-of-hooks" : "error"
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-non-null-asserted-optional-chain": "error",
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrors: "none" }],
+      "react-hooks/rules-of-hooks": "error",
+      // eslint-plugin-react-hooks 7 (via eslint-config-next 16) added the React
+      // Compiler's rules to "recommended". They flagged 94 existing sites in 57
+      // files when Next 16 landed — a refactor to take on its own, not with a
+      // framework bump — so they report as warnings until then. Fix, then
+      // promote each back to "error" as its count reaches zero.
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/refs": "warn",
+      "react-hooks/preserve-manual-memoization": "warn",
+      "react-hooks/purity": "warn",
     },
-   }),
+  },
   {
     // Two AGENTS.md conventions that are easy to break by accident. The
     // ignored files are the single places allowed to touch the real thing.
@@ -52,6 +55,6 @@ const eslintConfig = [
     files: ["__tests__/**/*.{ts,tsx}"],
     rules: { "@typescript-eslint/no-require-imports": "off" },
   },
-];
+]);
 
 export default eslintConfig;
