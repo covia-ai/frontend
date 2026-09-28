@@ -59,6 +59,7 @@ export interface RosterCounts {
   tasks: number;
 }
 
+type RosterEntry = { agentId: string; status?: string; tasks?: number };
 type InfoSnapshot = {
   status?: string;
   tasks?: number;
@@ -66,6 +67,20 @@ type InfoSnapshot = {
   runs?: number;
 };
 type SessionSnapshot = { lastActive?: number; queued: number; nextWake?: number };
+
+// Every read is stored with the venue it answers for and read back only while
+// that venue is current. A venue switch must not leave the previous venue's
+// agents on screen — their cards build their action handle from the *new*
+// venue, so Trigger / Suspend / Delete would fire against the wrong venue with
+// a stale agent id — and keying the state this way shows the placeholder in
+// the same render as the switch, with nothing to reset. It also keeps
+// `loading` honest while the venue store is still rehydrating on first mount:
+// no venue reads as not loading, a venue with no listing yet as loading.
+type Listing = { venue: Venue; entries: RosterEntry[]; error: string | null };
+type Snapshots<T> = { venue: Venue; byAgent: Record<string, T> };
+
+const NO_ENTRIES: RosterEntry[] = [];
+const NO_SNAPSHOTS: Record<string, never> = {};
 
 // Covia timestamps come through as ms; guard the odd seconds value.
 function toMs(v: unknown): number | undefined {
@@ -88,48 +103,39 @@ function toMs(v: unknown): number | undefined {
  * venue-side session summary would let the roster drop this scan entirely.
  */
 export function useAgentRoster(venue: Venue | null | undefined) {
-  const [entries, setEntries] = useState<{ agentId: string; status?: string; tasks?: number }[]>([]);
-  const [infos, setInfos] = useState<Record<string, InfoSnapshot>>({});
-  const [sessions, setSessions] = useState<Record<string, SessionSnapshot>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [listing, setListing] = useState<Listing | null>(null);
+  const [infos, setInfos] = useState<Snapshots<InfoSnapshot> | null>(null);
+  const [sessions, setSessions] = useState<Snapshots<SessionSnapshot> | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const infoGen = useRef(0);
   const sessionGen = useRef(0);
 
-  // A venue switch must not leave the previous venue's agents on screen: their
-  // cards build their action handle from the *new* venue, so Trigger / Suspend
-  // / Delete would fire against the wrong venue with a stale agent id. This
-  // also restores `loading`, which the no-venue branch below clears on first
-  // mount while the venue store is still rehydrating — without it the roster
-  // shows its "no agents yet" empty state for the whole first list round-trip.
-  // Keyed on `venue` alone, so a manual refresh does not blank the roster.
-  useEffect(() => {
-    setEntries([]);
-    setInfos({});
-    setSessions({});
-    setError(null);
-    setLoading(!!venue);
-  }, [venue]);
+  const current = listing && listing.venue === venue ? listing : null;
+  const entries = current?.entries ?? NO_ENTRIES;
+  const loading = !!venue && current === null;
+  const error = current?.error ?? null;
+  const infoByAgent = infos && infos.venue === venue ? infos.byAgent : NO_SNAPSHOTS;
+  const sessionByAgent = sessions && sessions.venue === venue ? sessions.byAgent : NO_SNAPSHOTS;
 
-  // Membership + status: poll the lean list.
+  // Membership + status: poll the lean list. Keyed on `venue` (and the manual
+  // refresh), so a refresh does not blank the roster.
   useEffect(() => {
-    if (!venue) {
-      setEntries([]);
-      setLoading(false);
-      return;
-    }
+    if (!venue) return;
     let active = true;
     const fetchList = async () => {
       try {
         const result = await venue.agents.list(true);
         if (!active) return;
-        setEntries(normalizeAgentEntries(result?.agents));
-        setError(null);
+        setListing({ venue, entries: normalizeAgentEntries(result?.agents), error: null });
       } catch (err) {
-        if (active) setError(errorMessage(err, "Unable to load agents"));
-      } finally {
-        if (active) setLoading(false);
+        if (!active) return;
+        const message = errorMessage(err, "Unable to load agents");
+        // A failed read reports, and settles `loading`, but keeps the last good list.
+        setListing((previous) => ({
+          venue,
+          entries: previous?.venue === venue ? previous.entries : NO_ENTRIES,
+          error: message,
+        }));
       }
     };
     void fetchList();
@@ -169,12 +175,13 @@ export function useAgentRoster(venue: Venue | null | undefined) {
       // transient network failure should not cause.
       const present = new Set(entries.map((e) => e.agentId));
       setInfos((previous) => {
+        const kept = previous?.venue === venue ? previous.byAgent : NO_SNAPSHOTS;
         const next: Record<string, InfoSnapshot> = {};
-        for (const [id, info] of Object.entries(previous)) {
+        for (const [id, info] of Object.entries(kept)) {
           if (present.has(id)) next[id] = info;
         }
         for (const [id, info] of pairs) if (info) next[id] = info;
-        return next;
+        return { venue, byAgent: next };
       });
     })();
     return () => {
@@ -229,12 +236,13 @@ export function useAgentRoster(venue: Venue | null | undefined) {
       // silently erase an agent's liveness meta until the next id-set change.
       const present = new Set(targets.map((e) => e.agentId));
       setSessions((previous) => {
+        const kept = previous?.venue === venue ? previous.byAgent : NO_SNAPSHOTS;
         const next: Record<string, SessionSnapshot> = {};
-        for (const [id, snap] of Object.entries(previous)) {
+        for (const [id, snap] of Object.entries(kept)) {
           if (present.has(id)) next[id] = snap;
         }
         for (const [id, snap] of pairs) if (snap) next[id] = snap;
-        return next;
+        return { venue, byAgent: next };
       });
     })();
     return () => {
@@ -246,8 +254,8 @@ export function useAgentRoster(venue: Venue | null | undefined) {
   const roster: RosterAgent[] = useMemo(
     () =>
       entries.map((e) => {
-        const info = infos[e.agentId];
-        const sess = sessions[e.agentId];
+        const info = infoByAgent[e.agentId];
+        const sess = sessionByAgent[e.agentId];
         return {
           agentId: e.agentId,
           status: e.status ?? info?.status,
@@ -259,7 +267,7 @@ export function useAgentRoster(venue: Venue | null | undefined) {
           nextWake: sess?.nextWake,
         };
       }),
-    [entries, infos, sessions],
+    [entries, infoByAgent, sessionByAgent],
   );
 
   const counts: RosterCounts = useMemo(() => {

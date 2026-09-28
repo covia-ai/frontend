@@ -10,8 +10,8 @@ import {
 import {
   AgentStatus,
   NotFoundError,
-  type Agent,
   type ChatSession,
+  type Venue,
 } from "@covia/covia-sdk";
 import type { AgentDetail, AgentListItem, Session } from "@/config/types";
 import { useCurrentAuth } from "@/hooks/use-auth";
@@ -43,35 +43,86 @@ type AgentExplorerOptions = {
   pinned?: boolean;
 };
 
+/**
+ * One agent on one venue. Every per-agent slot below is filed under this key
+ * and read back only while it is the current selection, so a venue or agent
+ * switch shows the placeholder in the same render — nothing has to be reset —
+ * and a late reply for the previous selection has nowhere visible to land.
+ */
+type AgentKey = string;
+const agentKey = (venue: Venue, agentId: string): AgentKey => `${venue.venueId}\n${agentId}`;
+
+type ListSlot = { venue: Venue; list: AgentListItem[] };
+type DetailSlot = { key: AgentKey; detail: AgentDetail | null; error: boolean };
+type SessionsSlot = { key: AgentKey; sessions: Session[] };
+type ChatSlot = { key: AgentKey; session: ChatSession | null; newChatRequested: boolean };
+type DraftSlot = { key: AgentKey; text: string };
+
+/**
+ * Whether a read may take over a slot showing another agent. Only the
+ * selection effect's own load may (`replace`), and only while that selection
+ * stands; a poll or a post-action refresh updates a slot only if it still
+ * shows the same agent, so it can neither clobber the agent now on screen nor
+ * bring back one the user has left.
+ */
+type Landing = { replace: () => boolean };
+const UPDATE_ONLY: Landing = { replace: () => false };
+
+const NO_AGENTS: AgentListItem[] = [];
+const NO_SESSIONS: Session[] = [];
+
+/** Latest-call-wins, per agent: a stale reply for one agent cannot cancel a
+ *  newer read for another. */
+function nextRequest(counters: Map<AgentKey, number>, key: AgentKey): () => boolean {
+  const requestId = (counters.get(key) ?? 0) + 1;
+  counters.set(key, requestId);
+  return () => counters.get(key) === requestId;
+}
+
 export function useAgentExplorer(
   initialAgentId?: string,
   { pinned = false }: AgentExplorerOptions = {},
 ) {
   const venue = useAuthenticatedVenue();
   const auth = useCurrentAuth();
-  const [agentList, setAgentList] = useState<AgentListItem[]>([]);
-  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(
+  const [listSlot, setListSlot] = useState<ListSlot | null>(null);
+  // The host's or user's explicit choice; a picker falls back to the first
+  // agent listed, a pinned host to none.
+  const [chosenAgentId, setChosenAgentId] = useState<string | null>(
     initialAgentId ?? null,
   );
-  const [selectedAgentDetail, setSelectedAgentDetail] =
-    useState<AgentDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [detailError, setDetailError] = useState(false);
-  const [agentHandle, setAgentHandle] = useState<Agent | null>(null);
-  const [chatSession, setChatSession] = useState<ChatSession | null>(null);
-  const [newChatRequested, setNewChatRequested] = useState(false);
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [messageText, setMessageText] = useState("");
-  const [triggering, setTriggering] = useState(false);
+  const [detailSlot, setDetailSlot] = useState<DetailSlot | null>(null);
+  const [sessionsSlot, setSessionsSlot] = useState<SessionsSlot | null>(null);
+  const [chatSlot, setChatSlot] = useState<ChatSlot | null>(null);
+  const [draft, setDraft] = useState<DraftSlot | null>(null);
+  const [triggeringKey, setTriggeringKey] = useState<AgentKey | null>(null);
   const [forking, setForking] = useState(false);
   const listRequest = useRef(0);
-  const detailRequest = useRef(0);
-  const sessionRequest = useRef(0);
-  const venueRef = useRef(venue);
-  const selectedAgentIdRef = useRef(selectedAgentId);
-  venueRef.current = venue;
-  selectedAgentIdRef.current = selectedAgentId;
+  const detailRequests = useRef(new Map<AgentKey, number>());
+  const sessionRequests = useRef(new Map<AgentKey, number>());
+
+  const agentList = listSlot && listSlot.venue === venue ? listSlot.list : NO_AGENTS;
+  const loading = !!venue && !pinned && listSlot?.venue !== venue;
+  const selectedAgentId =
+    chosenAgentId ?? (pinned ? null : agentList[0]?.agentId ?? null);
+  const currentKey = venue && selectedAgentId ? agentKey(venue, selectedAgentId) : null;
+  const agentHandle = useMemo(
+    () => (venue && selectedAgentId ? venue.agent(selectedAgentId) : null),
+    [venue, selectedAgentId],
+  );
+  const detail = detailSlot && detailSlot.key === currentKey ? detailSlot : null;
+  const selectedAgentDetail = detail?.detail ?? null;
+  const detailError = detail?.error ?? false;
+  const sessions =
+    sessionsSlot && sessionsSlot.key === currentKey ? sessionsSlot.sessions : NO_SESSIONS;
+  // Loading until both the detail and the sessions have landed for this agent.
+  const detailLoading =
+    currentKey !== null && (detail === null || sessionsSlot?.key !== currentKey);
+  const chat = chatSlot && chatSlot.key === currentKey ? chatSlot : null;
+  // A draft is addressed to the agent it was typed for; it is never shown
+  // under — so never sent to — whichever agent is selected next.
+  const messageText = draft && draft.key === currentKey ? draft.text : "";
+  const triggering = triggeringKey !== null && triggeringKey === currentKey;
 
   const { live, detailVersion, activity } = useAgentLiveEvents(venue, selectedAgentId);
 
@@ -92,24 +143,19 @@ export function useAgentExplorer(
     (surfaceErrors = false) => {
       if (!venue || pinned) return Promise.resolve();
       const requestId = ++listRequest.current;
+      const stillCurrent = () => requestId === listRequest.current;
       return venue.agents
         .list(true)
         .then((result) => {
-          if (
-            requestId === listRequest.current &&
-            venueRef.current === venue
-          ) {
-            setAgentList(normalizeAgentEntries(result.agents));
-          }
+          if (stillCurrent()) setListSlot({ venue, list: normalizeAgentEntries(result.agents) });
         })
         .catch((error: unknown) => {
-          if (
-            surfaceErrors &&
-            requestId === listRequest.current &&
-            venueRef.current === venue
-          ) {
-            notifyError("Unable to load agents", error, venue.baseUrl);
-          }
+          if (!stillCurrent()) return;
+          // A failed first read still settles `loading`; the list keeps what it had.
+          setListSlot((previous) =>
+            previous?.venue === venue ? previous : { venue, list: NO_AGENTS },
+          );
+          if (surfaceErrors) notifyError("Unable to load agents", error, venue.baseUrl);
         });
     },
     [venue, pinned],
@@ -134,18 +180,17 @@ export function useAgentExplorer(
   );
 
   const refreshAgentDetail = useCallback(
-    (agentId: string | null, surfaceErrors = false) => {
-      if (!agentId) return Promise.resolve();
-      const requestId = ++detailRequest.current;
-      const stillCurrent = () =>
-        requestId === detailRequest.current &&
-        venueRef.current === venue &&
-        selectedAgentIdRef.current === agentId;
+    (agentId: string | null, surfaceErrors = false, landing: Landing = UPDATE_ONLY) => {
+      if (!venue || !agentId) return Promise.resolve();
+      const key = agentKey(venue, agentId);
+      const stillCurrent = nextRequest(detailRequests.current, key);
+      const publish = (slot: Omit<DetailSlot, "key">) =>
+        setDetailSlot((previous) =>
+          landing.replace() || previous?.key === key ? { key, ...slot } : previous,
+        );
       return loadAgentDetail(agentId)
-        .then((detail) => {
-          if (!stillCurrent()) return;
-          setSelectedAgentDetail(detail);
-          setDetailError(false);
+        .then((loaded) => {
+          if (stillCurrent()) publish({ detail: loaded, error: false });
         })
         .catch((error: unknown) => {
           if (!stillCurrent()) return;
@@ -156,144 +201,69 @@ export function useAgentExplorer(
             // That's not a failure to report; just drop the selection. A
             // picker host then auto-selects whatever the new venue actually
             // has, and a pinned host shows its not-found state.
-            setSelectedAgentId(null);
-            setSelectedAgentDetail(null);
-            setAgentHandle(null);
+            publish({ detail: null, error: false });
+            setChosenAgentId((chosen) => (chosen === agentId ? null : chosen));
             return;
           }
           if (!surfaceErrors) return;
-          const { reason, jobHref } = jobFailure(error, venue?.venueId);
-          notifyError("Unable to load agent details", reason, venue?.baseUrl, jobHref);
-          setSelectedAgentDetail(null);
-          setDetailError(true);
+          const { reason, jobHref } = jobFailure(error, venue.venueId);
+          notifyError("Unable to load agent details", reason, venue.baseUrl, jobHref);
+          publish({ detail: null, error: true });
         });
     },
     [loadAgentDetail, venue],
   );
 
   const refreshSessions = useCallback(
-    (agentId: string | null) => {
+    (agentId: string | null, landing: Landing = UPDATE_ONLY) => {
       if (!venue || !agentId) return Promise.resolve();
-      const requestId = ++sessionRequest.current;
+      const key = agentKey(venue, agentId);
+      const stillCurrent = nextRequest(sessionRequests.current, key);
+      const publish = (list: Session[]) =>
+        setSessionsSlot((previous) =>
+          landing.replace() || previous?.key === key ? { key, sessions: list } : previous,
+        );
       return venue.agents
         .listSessions(agentId, { offset: 0, limit: SESSION_LIMIT })
         .then((result) => {
-          if (
-            requestId === sessionRequest.current &&
-            venueRef.current === venue &&
-            selectedAgentIdRef.current === agentId
-          ) {
-            setSessions(agentSessionsToSessions(result?.items));
-          }
+          if (stillCurrent()) publish(agentSessionsToSessions(result?.items));
         })
         .catch(() => {
-          if (
-            requestId === sessionRequest.current &&
-            venueRef.current === venue &&
-            selectedAgentIdRef.current === agentId
-          ) {
-            setSessions([]);
-          }
+          if (stillCurrent()) publish(NO_SESSIONS);
         });
     },
     [venue],
   );
 
-  useEffect(() => {
-    let active = true;
-    const requests = listRequest;
-    ++requests.current;
-    if (!venue) {
-      setAgentList([]);
-      setLoading(false);
-      return () => {
-        active = false;
-        ++requests.current;
-      };
-    }
-    setLoading(true);
-    void refreshAgentList(true).finally(() => {
-      if (active) setLoading(false);
-    });
-    return () => {
-      active = false;
-      ++requests.current;
-    };
-  }, [venue, refreshAgentList]);
-
-  useEffect(() => {
-    if (!pinned && agentList.length > 0 && !selectedAgentId) {
-      setSelectedAgentId(agentList[0].agentId);
-    }
-  }, [pinned, agentList, selectedAgentId]);
-
-  useEffect(() => {
-    let active = true;
-    const detailRequests = detailRequest;
-    const sessionRequests = sessionRequest;
-    ++detailRequests.current;
-    ++sessionRequests.current;
-    setChatSession(null);
-    setNewChatRequested(false);
-    setSessions([]);
-    // A draft is addressed to the agent it was typed for; carrying it over
-    // would let it be sent to whichever agent is selected next.
-    setMessageText("");
-    if (!venue || !selectedAgentId) {
-      setAgentHandle(null);
-      setSelectedAgentDetail(null);
-      setDetailLoading(false);
-      return () => {
-        active = false;
-        ++detailRequests.current;
-        ++sessionRequests.current;
-      };
-    }
-
-    const handle = venue.agent(selectedAgentId);
-    setAgentHandle(handle);
-    setDetailLoading(true);
-    setDetailError(false);
-    void Promise.all([
-      refreshAgentDetail(selectedAgentId, true),
-      refreshSessions(selectedAgentId),
-    ]).finally(() => {
-      if (active) setDetailLoading(false);
-    });
-    return () => {
-      active = false;
-      ++detailRequests.current;
-      ++sessionRequests.current;
-    };
-  }, [
-    venue,
-    selectedAgentId,
-    refreshAgentDetail,
-    refreshSessions,
-  ]);
-
-  useEffect(() => {
-    if (!agentHandle || sessions.length === 0 || chatSession) return;
-    if (awaitingNewSession || newChatRequested) return;
-    setChatSession(agentHandle.chatSession(sessions[0].sessionId));
-  }, [
-    sessions,
-    chatSession,
-    agentHandle,
-    awaitingNewSession,
-    newChatRequested,
-  ]);
-
   // The agent list has no live-update path — the venue's per-agent SSE
-  // stream reports one agent's run loop, not "which agents exist" — so it
-  // always polls.
+  // stream reports one agent's run loop, not "which agents exist" — so it is
+  // read once here and then polled. A pinned host never shows it.
   useEffect(() => {
     if (!venue || pinned) return;
+    const requests = listRequest;
+    ++requests.current;
+    void refreshAgentList(true);
     const timer = setInterval(() => {
       void refreshAgentList();
     }, POLL_INTERVAL_MS);
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      ++requests.current;
+    };
   }, [venue, pinned, refreshAgentList]);
+
+  // The selected agent's detail and sessions. This load is the one allowed to
+  // take over the slots — and only while this selection stands.
+  useEffect(() => {
+    if (!venue || !selectedAgentId) return;
+    let active = true;
+    const landing: Landing = { replace: () => active };
+    void refreshAgentDetail(selectedAgentId, true, landing);
+    void refreshSessions(selectedAgentId, landing);
+    return () => {
+      active = false;
+    };
+  }, [venue, selectedAgentId, refreshAgentDetail, refreshSessions]);
 
   // The selected agent's detail + sessions poll only as a fallback for
   // venues/connections where the live event stream isn't working; once
@@ -313,6 +283,22 @@ export function useAgentExplorer(
     void refreshSessions(selectedAgentId);
   }, [detailVersion, venue, selectedAgentId, refreshAgentDetail, refreshSessions]);
 
+  // The conversation shown is the one the user chose or, until they choose,
+  // the most recent session at the time the sessions first arrived — adopted
+  // as the choice here, during render, so it then stays put when a newer
+  // session appears (following the newest would yank the reader out of the
+  // thread they are reading). Nothing is adopted while a new chat is being
+  // started or its first message is still in flight.
+  const firstSessionId = sessions[0]?.sessionId ?? null;
+  if (agentHandle && currentKey && !chat && !awaitingNewSession && firstSessionId) {
+    setChatSlot({
+      key: currentKey,
+      session: agentHandle.chatSession(firstSessionId),
+      newChatRequested: false,
+    });
+  }
+  const chatSession = chat?.session ?? null;
+
   const selectedSessionId = chatSession?.sessionId ?? null;
   const currentSession = useMemo(
     () =>
@@ -327,6 +313,13 @@ export function useAgentExplorer(
     selectedSessionId,
   );
   const sending = pendingChat !== null;
+
+  const setMessageText = useCallback(
+    (text: string) => {
+      if (currentKey) setDraft({ key: currentKey, text });
+    },
+    [currentKey],
+  );
 
   const suspend = () => {
     if (!agentHandle || !selectedAgentId) return;
@@ -376,12 +369,9 @@ export function useAgentExplorer(
       .then(() => {
         gtmEvent.deleteAgent(agentId, remove);
         notifySuccess(remove ? "Agent removed" : "Agent terminated");
-        if (selectedAgentIdRef.current === agentId) {
-          setSelectedAgentId(null);
-          setSelectedAgentDetail(null);
-          setAgentHandle(null);
-          setChatSession(null);
-        }
+        // Drop the choice if it is still this agent; its detail, sessions and
+        // chat fall away with the selection.
+        setChosenAgentId((chosen) => (chosen === agentId ? null : chosen));
         void refreshAgentList();
       })
       .catch((error: unknown) => {
@@ -401,9 +391,10 @@ export function useAgentExplorer(
   };
 
   const triggerAgent = () => {
-    if (!agentHandle || !selectedAgentId || triggering) return;
+    if (!agentHandle || !selectedAgentId || !currentKey || triggering) return;
     const agentId = selectedAgentId;
-    setTriggering(true);
+    const key = currentKey;
+    setTriggeringKey(key);
     agentHandle
       .trigger()
       .then(() => {
@@ -417,7 +408,7 @@ export function useAgentExplorer(
         notifyError("Unable to trigger agent", reason, venue?.baseUrl, jobHref);
       })
       .finally(() => {
-        if (selectedAgentIdRef.current === agentId) setTriggering(false);
+        setTriggeringKey((previous) => (previous === key ? null : previous));
       });
   };
 
@@ -443,7 +434,7 @@ export function useAgentExplorer(
       notifySuccess(`Forked "${result.agentId}" from "${result.forkedFrom}"`);
       await refreshAgentList();
       // A pinned host follows its URL, so it navigates to the fork itself.
-      if (!pinned) setSelectedAgentId(result.agentId);
+      if (!pinned) setChosenAgentId(result.agentId);
       return { status: "created", agentId: result.agentId };
     } catch (error) {
       gtmEvent.forkAgentFailed(sourceId, error instanceof Error ? error.message : undefined);
@@ -460,8 +451,9 @@ export function useAgentExplorer(
       config: Record<string, unknown>,
       baseline: Record<string, unknown>,
     ): Promise<AgentConfigSaveOutcome> => {
-      if (!agentHandle || !selectedAgentId || !selectedAgentDetail) return { status: "failed" };
+      if (!venue || !agentHandle || !selectedAgentId || !selectedAgentDetail) return { status: "failed" };
       const agentId = selectedAgentId;
+      const key = agentKey(venue, agentId);
 
       // Re-fetch immediately before writing so a concurrent edit made
       // elsewhere (another tab/session) since the editor loaded is caught
@@ -475,7 +467,7 @@ export function useAgentExplorer(
       try {
         fresh = await loadAgentDetail(agentId);
       } catch (error) {
-        notifyError("Unable to verify agent settings before saving", error, venue?.baseUrl);
+        notifyError("Unable to verify agent settings before saving", error, venue.baseUrl);
         return { status: "failed" };
       }
       const freshConfig = fresh.config ?? {};
@@ -483,7 +475,9 @@ export function useAgentExplorer(
         (key) => !agentConfigsEqual(freshConfig[key], baseline[key]),
       );
       if (conflicted) {
-        setSelectedAgentDetail(fresh);
+        setDetailSlot((previous) =>
+          previous?.key === key ? { key, detail: fresh, error: false } : previous,
+        );
         notifyWarning(
           "This agent's settings changed since you loaded this editor. The latest version is now shown — reapply your edit and save again.",
         );
@@ -507,12 +501,12 @@ export function useAgentExplorer(
             notifyError(
               "Unable to restore agent after settings update",
               resumeError,
-              venue?.baseUrl,
+              venue.baseUrl,
             );
           }
         }
-        const { reason, jobHref } = jobFailure(error, venue?.venueId);
-        notifyError("Unable to update agent settings", reason, venue?.baseUrl, jobHref);
+        const { reason, jobHref } = jobFailure(error, venue.venueId);
+        notifyError("Unable to update agent settings", reason, venue.baseUrl, jobHref);
         void refreshAgentDetail(agentId);
         void refreshAgentList();
         return { status: "failed" };
@@ -525,7 +519,7 @@ export function useAgentExplorer(
           notifyError(
             "Agent settings saved, but unable to resume agent",
             error,
-            venue?.baseUrl,
+            venue.baseUrl,
           );
         }
       }
@@ -562,23 +556,23 @@ export function useAgentExplorer(
   };
 
   const startNewChat = () => {
-    setChatSession(null);
-    setNewChatRequested(true);
+    if (!currentKey) return;
+    setChatSlot({ key: currentKey, session: null, newChatRequested: true });
   };
 
   const selectSession = (sessionId: string) => {
-    if (!agentHandle) return;
-    setChatSession(agentHandle.chatSession(sessionId));
-    setNewChatRequested(false);
+    if (!agentHandle || !currentKey) return;
+    setChatSlot({ key: currentKey, session: agentHandle.chatSession(sessionId), newChatRequested: false });
   };
 
   const send = () => {
-    if (!agentHandle || !selectedAgentId || !messageText.trim()) return;
+    if (!venue || !agentHandle || !selectedAgentId || !currentKey || !messageText.trim()) return;
     const text = messageText.trim();
     const agentId = selectedAgentId;
+    const key = currentKey;
     const session = chatSession ?? agentHandle.chatSession();
     const sessionId = session.sessionId ?? null;
-    setMessageText("");
+    setDraft({ key, text: "" });
     const chat = startPendingChat({
       agentId,
       sessionId,
@@ -589,38 +583,33 @@ export function useAgentExplorer(
     void dispatchAgentMessage({
       agentId,
       text,
-      venueId: venue?.venueId ?? "",
-      venueBaseUrl: venue?.baseUrl,
+      venueId: venue.venueId,
+      venueBaseUrl: venue.baseUrl,
       send: (message) => session.send(message),
-      agentStatus: venue
-        ? () => venue.agents.info(agentId).then((info) => info.status)
-        : undefined,
+      agentStatus: () => venue.agents.info(agentId).then((info) => info.status),
     })
       .then(async (result) => {
-        const stillSelected =
-          venueRef.current === venue &&
-          selectedAgentIdRef.current === agentId;
-        if (stillSelected) {
-          setChatSession(session);
-          setNewChatRequested(false);
-        }
+        // The conversation this message went to becomes the one shown — for
+        // this agent. Another agent's chat, if the user has moved on, is left
+        // alone.
+        setChatSlot((previous) =>
+          previous && previous.key !== key ? previous : { key, session, newChatRequested: false },
+        );
         if (sessionId === null && result?.sessionId) {
           attachSessionId(chat, result.sessionId);
         }
-        if (stillSelected) {
-          await refreshSessions(agentId);
-          void refreshAgentDetail(agentId);
-          void refreshAgentList();
-        }
+        // Refreshes land only in slots still showing this agent.
+        await refreshSessions(agentId);
+        void refreshAgentDetail(agentId);
+        void refreshAgentList();
       })
       .catch((error: unknown) => {
         revalidateVenueOnFailure(venue, auth, error);
-        if (
-          venueRef.current === venue &&
-          selectedAgentIdRef.current === agentId
-        ) {
-          setMessageText(text);
-        }
+        // Give the text back to its agent's composer unless a newer draft is
+        // already there — or another agent's draft, which is not ours to replace.
+        setDraft((previous) =>
+          previous && (previous.key !== key || previous.text) ? previous : { key, text },
+        );
       })
       .finally(() => clearPendingChat(chat));
   };
@@ -642,7 +631,7 @@ export function useAgentExplorer(
   return {
     agentList,
     selectedAgentId,
-    setSelectedAgentId,
+    setSelectedAgentId: setChosenAgentId,
     selectedAgentDetail,
     loading,
     detailLoading,

@@ -62,9 +62,22 @@ describe("FilesExplorer", () => {
     mockVenue.dlfs.list.mockResolvedValue({ entries: [] });
     render(<FilesExplorer />);
 
-    expect(await screen.findByText("vault")).toBeInTheDocument();
+    // The default drive is chosen in the same render the drive list arrives,
+    // so "vault" is both a drive entry and the breadcrumb root at once.
+    expect(await screen.findAllByText("vault")).not.toHaveLength(0);
     expect(screen.getByText("notes")).toBeInTheDocument();
     await waitFor(() => expect(mockVenue.dlfs.list).toHaveBeenCalledWith("vault", undefined));
+  });
+
+  // A deep link names a drive; if the venue does not have it, the first real
+  // drive is shown rather than a listing that can only fail.
+  it("falls back to the first drive when the requested one does not exist", async () => {
+    mockVenue.dlfs.listDrives.mockResolvedValue({ drives: ["vault", "notes"] });
+    mockVenue.dlfs.list.mockResolvedValue({ entries: [] });
+    render(<FilesExplorer initialDrive="missing" />);
+
+    await waitFor(() => expect(mockVenue.dlfs.list).toHaveBeenCalledWith("vault", undefined));
+    expect(mockVenue.dlfs.list).not.toHaveBeenCalledWith("missing", undefined);
   });
 
   it("navigates into a directory and lists its entries", async () => {

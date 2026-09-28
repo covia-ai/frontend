@@ -6,6 +6,7 @@ import {
   type Asset,
   type JobMetadata,
   type RunStatus,
+  type Venue,
 } from "@covia/covia-sdk";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { resolveOperationByAddress } from "@/lib/operations-catalog";
@@ -22,6 +23,23 @@ function parseJobMessage(raw: string): unknown {
   }
 }
 
+/**
+ * What the transport has established about one job on one venue. Stored with
+ * that identity and read back only while it is the one being viewed, so a
+ * route change shows a fresh, loading job in the same render — nothing has to
+ * be reset — and a late reply for the previous job has nowhere visible to land.
+ */
+type Lifecycle = {
+  venue: Venue | undefined;
+  jobId: string;
+  job?: JobMetadata;
+  error: string | null;
+  streaming: boolean;
+};
+
+/** The operation schema resolved for one job's `op` on one venue. */
+type ResolvedOperation = { venue: Venue | undefined; op: string; asset?: Asset };
+
 export function useExecutionLifecycle({
   venueId,
   jobId,
@@ -30,11 +48,8 @@ export function useExecutionLifecycle({
   jobId: string;
 }) {
   const { venue } = useResolvedVenueContext(venueId);
-  const [job, setJob] = useState<JobMetadata>();
-  const [operationAsset, setOperationAsset] = useState<Asset>();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [streaming, setStreaming] = useState(false);
+  const [lifecycle, setLifecycle] = useState<Lifecycle | null>(null);
+  const [resolved, setResolved] = useState<ResolvedOperation | null>(null);
   const [message, setMessage] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
   const lifecycleGeneration = useRef(0);
@@ -42,9 +57,19 @@ export function useExecutionLifecycle({
   const sendGeneration = useRef(0);
   const refreshRef = useRef<(() => Promise<void>) | null>(null);
 
+  const current =
+    lifecycle && lifecycle.venue === venue && lifecycle.jobId === jobId ? lifecycle : null;
+  const job = current?.job;
+  const error = current?.error ?? null;
+  const streaming = current?.streaming ?? false;
+  // Loading until the first metadata or the first failure lands for this job.
+  const loading = !!venue && !!jobId && job === undefined && error === null;
+  const operationAsset =
+    resolved && resolved.venue === venue && resolved.op === job?.op ? resolved.asset : undefined;
+
   useEffect(() => {
-    const lifecycle = lifecycleGeneration;
-    const generation = ++lifecycle.current;
+    const lifecycleGen = lifecycleGeneration;
+    const generation = ++lifecycleGen.current;
     let active = true;
     let pollTimer: ReturnType<typeof setInterval> | null = null;
     let pollInFlight = false;
@@ -56,20 +81,25 @@ export function useExecutionLifecycle({
     // event would leave a quiet (e.g. PAUSED) job's stream open after unmount.
     const stream = new AbortController();
 
-    setJob(undefined);
-    setOperationAsset(undefined);
-    setLoading(true);
-    setError(null);
-    setStreaming(false);
-
     const ownsLifecycle = () =>
-      active && lifecycle.current === generation;
+      active && lifecycleGen.current === generation;
+
+    // Every publication is filed under this effect's job, so it can only ever
+    // update the entry the page is currently reading.
+    const publish = (patch: Partial<Pick<Lifecycle, "job" | "error" | "streaming">>) =>
+      setLifecycle((previous) => {
+        const base =
+          previous && previous.venue === venue && previous.jobId === jobId
+            ? previous
+            : { venue, jobId, job: undefined, error: null, streaming: false };
+        return { ...base, ...patch };
+      });
 
     const stopTransport = () => {
       if (pollTimer) clearInterval(pollTimer);
       pollTimer = null;
       stream.abort();
-      if (ownsLifecycle()) setStreaming(false);
+      if (ownsLifecycle()) publish({ streaming: false });
     };
 
     const settle = () => {
@@ -80,9 +110,7 @@ export function useExecutionLifecycle({
     const applyMetadata = (metadata: JobMetadata) => {
       if (!ownsLifecycle()) return;
       hasLoaded = true;
-      setJob(metadata);
-      setLoading(false);
-      setError(null);
+      publish({ job: metadata, error: null });
       if (
         metadata.status &&
         isJobFinished(metadata.status as RunStatus)
@@ -106,8 +134,7 @@ export function useExecutionLifecycle({
         // every second for as long as the page stays open.
         if (isNotFoundError(fetchError)) settle();
         if (hasLoaded) return;
-        setLoading(false);
-        setError(errorMessage(fetchError, "Unable to load job"));
+        publish({ error: errorMessage(fetchError, "Unable to load job") });
       } finally {
         pollInFlight = false;
       }
@@ -115,7 +142,6 @@ export function useExecutionLifecycle({
     refreshRef.current = fetchStatus;
 
     if (!venue || !jobId) {
-      setLoading(false);
       return () => {
         active = false;
         refreshRef.current = null;
@@ -126,7 +152,7 @@ export function useExecutionLifecycle({
 
     const startPolling = () => {
       if (pollTimer || settled || !ownsLifecycle()) return;
-      setStreaming(false);
+      publish({ streaming: false });
       pollTimer = setInterval(() => {
         void fetchStatus();
       }, POLL_INTERVAL_MS);
@@ -145,7 +171,7 @@ export function useExecutionLifecycle({
           if (!ownsLifecycle()) return;
           if (!gotEvent) {
             gotEvent = true;
-            setStreaming(true);
+            publish({ streaming: true });
           }
           try {
             const data = event.json() as any;
@@ -160,7 +186,7 @@ export function useExecutionLifecycle({
         // Fall through to the reattach/fallback logic below.
       }
       if (!ownsLifecycle() || settled) return;
-      setStreaming(false);
+      publish({ streaming: false });
       if (isRetry) {
         startPolling();
         return;
@@ -174,31 +200,31 @@ export function useExecutionLifecycle({
 
     return () => {
       active = false;
-      ++lifecycle.current;
+      ++lifecycleGen.current;
       stopTransport();
       refreshRef.current = null;
     };
   }, [jobId, venue]);
 
+  const op = job?.op;
   useEffect(() => {
     const assetRequests = assetGeneration;
     const generation = ++assetRequests.current;
     let active = true;
-    setOperationAsset(undefined);
-    if (!venue || !job?.op) {
+    if (!venue || !op) {
       return () => {
         active = false;
         ++assetRequests.current;
       };
     }
 
-    void resolveOperationByAddress(venue, job.op)
+    void resolveOperationByAddress(venue, op)
       .then((asset) => {
         if (
           active &&
           assetRequests.current === generation
         ) {
-          setOperationAsset(asset);
+          setResolved({ venue, op, asset });
         }
       })
       .catch(() => {
@@ -209,7 +235,7 @@ export function useExecutionLifecycle({
       active = false;
       ++assetRequests.current;
     };
-  }, [job?.op, venue]);
+  }, [op, venue]);
 
   useEffect(
     () => () => {
