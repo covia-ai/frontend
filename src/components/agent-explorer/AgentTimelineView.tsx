@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Clock, Loader2, MessageSquare, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { DidDisplay } from "@/components/DidDisplay";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useLatestQuery } from "@/hooks/use-latest-query";
 import { notifyError } from "@/lib/notify";
 import { TONE_STYLES } from "@/lib/status";
 
@@ -66,6 +67,8 @@ const KNOWN_KEYS = new Set([
   "toolFailures",
   "tokens",
 ]);
+
+const NO_ENTRIES: TimelineEntry[] = [];
 
 function TimelineCard({ entry }: { entry: TimelineEntry }) {
   const duration = formatDuration(entry.start, entry.end);
@@ -187,34 +190,38 @@ export function AgentTimelineView({
   agentId: string;
 }) {
   const venue = useAuthenticatedVenue();
-  const [loading, setLoading] = useState(true);
-  const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
+  // The read is keyed on the agent as well as the venue, so the outcome carries
+  // its key and the view derives the current one: switching agents can never
+  // show the previous agent's timeline, not even for the render before the new
+  // read starts.
+  const key = venue ? `${venue.venueId}/${agentId}` : "";
+  const { data: outcome, loading: reading, run, invalidate } = useLatestQuery<{
+    key: string;
+    entries: TimelineEntry[];
+  }>({ key: "", entries: NO_ENTRIES });
 
   useEffect(() => {
     if (!venue) {
-      setLoading(false);
+      invalidate();
       return;
     }
-    let cancelled = false;
-    setLoading(true);
-    venue.workspace
-      .read(`g/${agentId}/timeline`)
-      .then((result) => (Array.isArray(result?.value) ? result.value : []))
-      .then((entries) => {
-        if (cancelled) return;
+    const readKey = `${venue.venueId}/${agentId}`;
+    void run(async () => {
+      try {
+        const result = await venue.workspace.read(`g/${agentId}/timeline`);
+        const entries = Array.isArray(result?.value) ? (result.value as TimelineEntry[]) : [];
         // Newest first — matches the session list's most-recent-first ordering.
-        setTimeline([...(entries as TimelineEntry[])].reverse());
-      })
-      .catch((error) => {
-        if (!cancelled) notifyError("Unable to load agent timeline", error, venue.baseUrl);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [venue, agentId]);
+        return { key: readKey, entries: [...entries].reverse() };
+      } catch (error) {
+        notifyError("Unable to load agent timeline", error, venue.baseUrl);
+        return { key: readKey, entries: NO_ENTRIES };
+      }
+    });
+  }, [venue, agentId, run, invalidate]);
+
+  const settled = outcome.key === key;
+  const timeline = settled ? outcome.entries : NO_ENTRIES;
+  const loading = !!venue && (reading || !settled);
 
   return (
     <div className="flex-1 overflow-y-auto p-6 bg-background">

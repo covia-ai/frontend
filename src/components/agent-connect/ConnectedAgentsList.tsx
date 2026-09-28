@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
+import type { Venue } from "@covia/covia-sdk";
 import { Cable, Loader2, Lock, MessageSquareText, Plug, Unplug, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { FROM_SKILLS_OP, PortAgentDialog } from "@/components/PortAgentDialog";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useVenueHasOperation } from "@/hooks/use-venue-operation";
+import { useVenueRead } from "@/hooks/use-venue-read";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { TONE_STYLES } from "@/lib/status";
 import {
@@ -17,6 +19,26 @@ import {
   ConnectedAgent,
   connectedAgentFromBinding,
 } from "@/lib/a2a";
+
+const NO_AGENTS: ConnectedAgent[] = [];
+
+// Every `w/a2a/agents/<name>` binding, read job-free. A binding that cannot be
+// read still lists, as a bare name, rather than hiding the agent.
+async function readConnectedAgents(venue: Venue): Promise<ConnectedAgent[]> {
+  const listing = await venue.workspace.list(A2A_AGENTS_DIR);
+  const names = listing.exists ? listing.keys ?? [] : [];
+  const entries = await Promise.all(
+    names.map(async (name) => {
+      try {
+        const rec = await venue.workspace.read(`${A2A_AGENTS_DIR}/${name}`);
+        return connectedAgentFromBinding(name, rec.value);
+      } catch {
+        return connectedAgentFromBinding(name, undefined);
+      }
+    }),
+  );
+  return entries.sort((a, b) => a.name.localeCompare(b.name));
+}
 
 /**
  * The connected (BYOA) agents on this venue: every `w/a2a/agents/<name>`
@@ -28,47 +50,18 @@ export function ConnectedAgentsList() {
   const venue = useAuthenticatedVenue();
   const isAuthenticated = useIsAuthenticated();
 
-  const [agents, setAgents] = useState<ConnectedAgent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: agents, loading, reload } = useVenueRead<ConnectedAgent[]>({
+    venue,
+    enabled: isAuthenticated,
+    initial: NO_AGENTS,
+    failureTitle: "Unable to load connected agents",
+    load: readConnectedAgents,
+  });
   const [removing, setRemoving] = useState<string | null>(null);
   // Seeds the Port dialog when converting a connected agent to native.
   const [convertSeed, setConvertSeed] = useState<{ name: string; prompt: string } | null>(null);
   // Convert ports the agent, so it needs the same operation Port does (#350).
   const canConvert = useVenueHasOperation(FROM_SKILLS_OP) !== false;
-
-  const load = useCallback(async () => {
-    if (!venue) return;
-    setLoading(true);
-    try {
-      const listing = await venue.workspace.list(A2A_AGENTS_DIR);
-      const names = listing.exists ? listing.keys ?? [] : [];
-      const entries = await Promise.all(
-        names.map(async (name) => {
-          try {
-            const rec = await venue.workspace.read(`${A2A_AGENTS_DIR}/${name}`);
-            return connectedAgentFromBinding(name, rec.value);
-          } catch {
-            return connectedAgentFromBinding(name, undefined);
-          }
-        }),
-      );
-      setAgents(entries.sort((a, b) => a.name.localeCompare(b.name)));
-    } catch (error) {
-      setAgents([]);
-      notifyError("Unable to load connected agents", error, venue.baseUrl);
-    } finally {
-      setLoading(false);
-    }
-  }, [venue]);
-
-  useEffect(() => {
-    if (!venue || !isAuthenticated) {
-      setAgents([]);
-      setLoading(false);
-      return;
-    }
-    void load();
-  }, [venue, isAuthenticated, load]);
 
   const disconnect = async (name: string) => {
     if (!venue) return;
@@ -76,7 +69,8 @@ export function ConnectedAgentsList() {
     try {
       await venue.workspace.delete(`${A2A_AGENTS_DIR}/${name}`);
       notifySuccess(`Disconnected ${name}`);
-      setAgents((prev) => prev.filter((a) => a.name !== name));
+      // Re-read rather than patch a local copy: the list shows what the venue holds.
+      reload();
     } catch (error) {
       notifyError("Unable to disconnect agent", error, venue.baseUrl);
     } finally {

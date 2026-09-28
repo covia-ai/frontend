@@ -6,6 +6,7 @@ jest.mock("@/hooks/use-authenticated-venue", () =>
   require("@test/use-authenticated-venue").venueMock);
 
 import { useVenueRead } from "@/hooks/use-venue-read";
+import { useAuthStore } from "@/hooks/use-auth";
 import { revalidateVenueOnFailure } from "@/hooks/use-authenticated-venue";
 import { notifyError } from "@/lib/notify";
 
@@ -92,6 +93,42 @@ describe("useVenueRead", () => {
     expect(disabled.result.current.loading).toBe(false);
 
     expect(load).not.toHaveBeenCalled();
+  });
+
+  it("rechecks the venue with the account stored for it when no auth is given", async () => {
+    const failure = new Error("HTTP 401");
+    act(() => useAuthStore.setState({ authMap: { [venueA.venueId]: AUTH } }));
+    const { result } = renderHook(() =>
+      useVenueRead<string[]>({
+        venue: venueA,
+        initial: [],
+        failureTitle: "Unable to load things",
+        load: () => Promise.reject(failure),
+      }),
+    );
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(revalidateVenueOnFailure).toHaveBeenCalledWith(venueA, AUTH, failure);
+  });
+
+  it("can fail quietly for reads that have their own fallback", async () => {
+    const failure = new Error("HTTP 503");
+    const { result } = renderHook(() =>
+      useVenueRead<number>({
+        venue: venueA,
+        auth: AUTH,
+        initial: 0,
+        failureTitle: "Unable to count things",
+        notify: false,
+        load: () => Promise.reject(failure),
+      }),
+    );
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current).toMatchObject({ data: 0, error: "HTTP 503" });
+    expect(notifyError).not.toHaveBeenCalled();
+    // Quiet is about the toast, not the health check.
+    expect(revalidateVenueOnFailure).toHaveBeenCalledWith(venueA, AUTH, failure);
   });
 
   it("reload re-reads the same venue", async () => {

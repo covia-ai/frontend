@@ -41,8 +41,10 @@ jest.mock("@/hooks/use-auth", () => ({
   ...require("@test/use-auth").authMock,
   useIsAuthenticated: () => true,
   useCurrentAuth: () => mockAuth,
-  useAuthStore: (selector: (state: { logout: typeof mockLogout }) => unknown) =>
-    selector({ logout: mockLogout }),
+  // The clone-source read resolves the account stored for the venue through
+  // the same store, so it needs an authMap as well as the logout action.
+  useAuthStore: (selector: (state: { logout: typeof mockLogout; authMap: Record<string, unknown> }) => unknown) =>
+    selector({ logout: mockLogout, authMap: {} }),
 }));
 jest.mock("@/hooks/use-venue-auth-health", () => ({
   useVenueAccessState: () => mockAccessState,

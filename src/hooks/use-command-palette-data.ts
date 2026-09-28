@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useVenues } from "@/hooks/use-venues";
 import { useAuthStore } from "@/hooks/use-auth";
+import { useLatestQuery } from "@/hooks/use-latest-query";
 import { getVenueFor } from "@/lib/venue-registry";
 import { fetchVenueItems, type PaletteItem } from "@/lib/command-palette";
 
@@ -25,6 +26,12 @@ export type CommandPaletteData = {
   unreachableVenueIds: string[];
 };
 
+// What a refresh publishes: the venue set it read for, that set's items as of
+// the read, and the venues that could not be reached.
+type Refresh = { venueIds: string[]; items: PaletteItem[]; unreachableVenueIds: string[] };
+
+const NO_REFRESH: Refresh = { venueIds: [], items: [], unreachableVenueIds: [] };
+
 // Fetches every connected venue's palette catalog in parallel, lazily (only
 // once `active`, i.e. the palette is actually open). Cached results render
 // immediately; anything past CACHE_TTL_MS refreshes silently in the
@@ -32,18 +39,11 @@ export type CommandPaletteData = {
 export function useCommandPaletteData(active: boolean): CommandPaletteData {
   const venues = useVenues((state) => state.venues);
   const authMap = useAuthStore((state) => state.authMap);
-  const [items, setItems] = useState<PaletteItem[]>(() =>
-    itemsFromCache(venues.map((v) => v.venueId)),
-  );
-  const [refreshing, setRefreshing] = useState(false);
-  const [unreachableVenueIds, setUnreachableVenueIds] = useState<string[]>([]);
+  const venueIds = useMemo(() => venues.map((v) => v.venueId), [venues]);
+  const { data: refresh, loading: refreshing, run } = useLatestQuery<Refresh>(NO_REFRESH);
 
   useEffect(() => {
     if (!active) return;
-    let cancelled = false;
-    const venueIds = venues.map((v) => v.venueId);
-    setItems(itemsFromCache(venueIds));
-
     const now = Date.now();
     const stale = venues.filter((v) => {
       const cached = cache.get(v.venueId);
@@ -51,33 +51,34 @@ export function useCommandPaletteData(active: boolean): CommandPaletteData {
     });
     if (stale.length === 0) return;
 
-    setRefreshing(true);
-    Promise.allSettled(
-      stale.map(async (descriptor) => {
-        const auth = authMap[descriptor.venueId] ?? null;
-        const venue = getVenueFor(descriptor, auth);
-        const { items: venueItems, failed } = await fetchVenueItems(venue, descriptor, {
-          authenticated: !!auth,
-        });
-        cache.set(descriptor.venueId, { items: venueItems, fetchedAt: Date.now() });
-        return { venueId: descriptor.venueId, failed };
-      }),
-    ).then((results) => {
-      if (cancelled) return;
-      const unreachable = results
+    void run(async () => {
+      const results = await Promise.allSettled(
+        stale.map(async (descriptor) => {
+          const auth = authMap[descriptor.venueId] ?? null;
+          const venue = getVenueFor(descriptor, auth);
+          const { items: venueItems, failed } = await fetchVenueItems(venue, descriptor, {
+            authenticated: !!auth,
+          });
+          cache.set(descriptor.venueId, { items: venueItems, fetchedAt: Date.now() });
+          return { venueId: descriptor.venueId, failed };
+        }),
+      );
+      const unreachableVenueIds = results
         .map((result, i) =>
           result.status === "rejected" || result.value.failed ? stale[i].venueId : null,
         )
         .filter((id): id is string => id !== null);
-      setItems(itemsFromCache(venueIds));
-      setUnreachableVenueIds(unreachable);
-      setRefreshing(false);
+      return { venueIds, items: itemsFromCache(venueIds), unreachableVenueIds };
     });
+  }, [active, venues, venueIds, authMap, run]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [active, venues, authMap]);
+  // A refresh that answered for the current venue set is the freshest view;
+  // otherwise the cache is, including whatever a refresh for an older set
+  // left in it.
+  const items = useMemo(
+    () => (refresh.venueIds === venueIds ? refresh.items : itemsFromCache(venueIds)),
+    [refresh, venueIds],
+  );
 
-  return { items, refreshing, unreachableVenueIds };
+  return { items, refreshing, unreachableVenueIds: refresh.unreachableVenueIds };
 }

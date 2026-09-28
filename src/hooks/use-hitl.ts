@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import { create } from "zustand";
+import type { Venue } from "@covia/covia-sdk";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useIsAuthenticated } from "@/hooks/use-auth";
+import { useVenueRead } from "@/hooks/use-venue-read";
 import { countOpenHitlRequests, listHitlRequests, type HitlRequest } from "@/lib/hitl";
 
 // How often the shared poller re-checks the inbox, so a request that arrives
@@ -66,45 +68,30 @@ export function useHitlOpenCountPoll(): void {
   }, [venue, isAuthenticated]);
 }
 
+const NO_REQUESTS: HitlRequest[] = [];
+
+async function readInbox(venue: Venue): Promise<HitlRequest[]> {
+  const list = await listHitlRequests(venue);
+  // The page has the freshest view of the inbox — publish it so the indicators
+  // drop the moment a request is answered, without waiting for the next poll.
+  publishOpenCount(list);
+  return list;
+}
+
 /** The signed-in user's HITL inbox, newest first. */
 export function useHitlRequests() {
   const venue = useAuthenticatedVenue();
   const isAuthenticated = useIsAuthenticated();
-  const [requests, setRequests] = useState<HitlRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshTick, setRefreshTick] = useState(0);
+  const { data: requests, loading, error, reload } = useVenueRead<HitlRequest[]>({
+    venue,
+    enabled: isAuthenticated,
+    initial: NO_REQUESTS,
+    failureTitle: "Unable to load requests",
+    // The page shows a failed read in place — an error must never look like an
+    // empty inbox — so there is no toast on top of it.
+    notify: false,
+    load: readInbox,
+  });
 
-  const refresh = useCallback(() => setRefreshTick((t) => t + 1), []);
-
-  useEffect(() => {
-    if (!venue || !isAuthenticated) {
-      setRequests([]);
-      setError(null);
-      setLoading(false);
-      return;
-    }
-    let ignore = false;
-    setLoading(true);
-    setError(null);
-    listHitlRequests(venue)
-      .then((list) => {
-        if (ignore) return;
-        setRequests(list);
-        // The page has the freshest view of the inbox — publish it so the
-        // indicators drop the moment a request is answered, without waiting
-        // for the next poll.
-        publishOpenCount(list);
-      })
-      .catch((err: unknown) => {
-        if (ignore) return;
-        setRequests([]);
-        // Surfaced by the page: a failed read must never look like an empty inbox.
-        setError(err instanceof Error ? err.message : String(err));
-      })
-      .finally(() => { if (!ignore) setLoading(false); });
-    return () => { ignore = true; };
-  }, [venue, isAuthenticated, refreshTick]);
-
-  return { requests, loading, error, refresh };
+  return { requests, loading, error, refresh: reload };
 }

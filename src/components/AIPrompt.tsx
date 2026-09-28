@@ -3,7 +3,7 @@ import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +24,9 @@ import { MagicWandIcon } from "@radix-ui/react-icons";
 import { EllipsisVertical, Loader2 } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useVenueRead } from "@/hooks/use-venue-read";
 import { usePendingChats } from "@/hooks/use-pending-chats";
+import type { AgentListItem } from "@/config/types";
 import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { KNOWN_LLM_KEYS, LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
@@ -48,6 +50,8 @@ import { revalidateVenueOnFailure } from "@/hooks/use-authenticated-venue";
 // Sentinel picker value — never a real agentId — meaning "create a fresh,
 // distinctly-named agent" rather than targeting an existing one.
 const NEW_AGENT_OPTION = "__new__";
+
+const NO_AGENT_OPTIONS: AgentListItem[] = [];
 
 function makeWorkspaceAgentId(): string {
   return `workspace-agent-${Date.now().toString(36)}`;
@@ -76,7 +80,6 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted, starters, variant = "pag
   const [showPickerDialog, setShowPickerDialog] = useState(false)
   const [detectedKeys, setDetectedKeys] = useState<string[]>([])
   const [selectedSecretName, setSelectedSecretName] = useState('')
-  const [agentOptions, setAgentOptions] = useState<{ agentId: string; status?: string }[]>([])
   const [selectedAgentId, setSelectedAgentId] = useState<string>(fixedAgentId ?? DEFAULT_AGENT_ID)
   const [pendingAgentId, setPendingAgentId] = useState<string>(fixedAgentId ?? DEFAULT_AGENT_ID)
   const venue = useAuthenticatedVenue();
@@ -102,21 +105,15 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted, starters, variant = "pag
   // fresh venue.agents.list() call in handleMagicWand — that one drives the
   // actual resume/create/send decision, this one only feeds the dropdown, so
   // it being briefly stale (until the next refresh) never causes a bad send.
-  async function refreshAgentOptions() {
-    if (fixedAgentId) return;
-    if (!venue) { setAgentOptions([]); return; }
-    try {
-      const { agents } = await venue.agents.list();
-      setAgentOptions(normalizeAgentEntries(agents));
-    } catch {
-      // Non-fatal — picker just falls back to Assistant / New agent.
-    }
-  }
-
-  useEffect(() => {
-    refreshAgentOptions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [venue, fixedAgentId]);
+  // A failed read is non-fatal: the picker falls back to Assistant / New agent.
+  const { data: agentOptions, reload: refreshAgentOptions } = useVenueRead<AgentListItem[]>({
+    venue,
+    enabled: !fixedAgentId,
+    initial: NO_AGENT_OPTIONS,
+    failureTitle: "Unable to list agents",
+    notify: false,
+    load: async (target) => normalizeAgentEntries((await target.agents.list()).agents),
+  });
 
   const { defaultAgentLabel, otherAgents } = useMemo(() => {
     const hasDefault = agentOptions.some((a) => a.agentId === DEFAULT_AGENT_ID);

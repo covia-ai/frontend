@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useVenueRead } from "@/hooks/use-venue-read";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { Button } from "./ui/button";
@@ -35,6 +36,8 @@ function isMemoryEntry(value: unknown): value is MemoryEntry {
   return !!value && typeof value === "object" && typeof (value as { text?: unknown }).text === "string";
 }
 
+const NO_ENTRIES: MemoryEntry[] = [];
+
 // A compact "edited 2h ago" for the timestamp the entry already carries but the
 // old table dropped; the absolute time rides along as the title.
 function editedWhen(entry: MemoryEntry): { rel: string; abs: string } | null {
@@ -56,8 +59,19 @@ export function MemoryPanel() {
   const venue = useAuthenticatedVenue();
   const isAuthenticated = useIsAuthenticated();
 
-  const [entries, setEntries] = useState<MemoryEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  // The memory list is a job-free values read; every mutation below re-reads
+  // it rather than patching a local copy.
+  const { data: entries, loading, reload: loadMemory } = useVenueRead<MemoryEntry[]>({
+    venue,
+    enabled: isAuthenticated,
+    initial: NO_ENTRIES,
+    failureTitle: "Unable to load memory",
+    load: async (target) => {
+      const result = await target.workspace.read(MEMORY_PATH);
+      const value = result?.value;
+      return Array.isArray(value) ? value.filter(isMemoryEntry) : [];
+    },
+  });
   const [newText, setNewText] = useState("");
   const [adding, setAdding] = useState(false);
   const [query, setQuery] = useState("");
@@ -65,29 +79,6 @@ export function MemoryPanel() {
   const [editText, setEditText] = useState("");
   const [savingIndex, setSavingIndex] = useState<number | null>(null);
   const [deletingIndex, setDeletingIndex] = useState<number | null>(null);
-
-  const loadMemory = useCallback(() => {
-    if (!venue || !isAuthenticated) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    venue.workspace
-      .read(MEMORY_PATH)
-      .then((result) => {
-        const value = result.value;
-        setEntries(Array.isArray(value) ? value.filter(isMemoryEntry) : []);
-      })
-      .catch((err) => {
-        notifyError("Unable to load memory", err, venue.baseUrl);
-        setEntries([]);
-      })
-      .finally(() => setLoading(false));
-  }, [venue, isAuthenticated]);
-
-  useEffect(() => {
-    loadMemory();
-  }, [loadMemory]);
 
   // Filter the loaded entries client-side but keep each one's ORIGINAL index —
   // remember/update/forget key off the true 1-based position, so a filtered view

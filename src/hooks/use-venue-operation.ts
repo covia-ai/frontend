@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import type { AdapterInfo } from "@covia/covia-sdk";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useVenueRead } from "@/hooks/use-venue-read";
 
 /**
  * Whether the connected venue publishes a given catalog operation.
@@ -18,25 +18,15 @@ import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
  */
 export function useVenueHasOperation(operationPath: string): boolean | undefined {
   const venue = useAuthenticatedVenue();
-  const [has, setHas] = useState<boolean | undefined>(undefined);
+  const { data: adapters } = useVenueRead<AdapterInfo[] | null>({
+    venue,
+    initial: null,
+    failureTitle: "Unable to read the adapter registry",
+    // An unreadable registry is not evidence of absence — stay unknown, quietly.
+    notify: false,
+    load: (target) => target.adapters.list(),
+  });
 
-  useEffect(() => {
-    if (!venue) {
-      setHas(undefined);
-      return;
-    }
-    let ignore = false;
-    setHas(undefined);
-    venue.adapters
-      .list()
-      .then((adapters: AdapterInfo[]) => {
-        if (ignore) return;
-        setHas(adapters.some((a) => a.operations?.includes(operationPath)));
-      })
-      // An unreadable registry is not evidence of absence — stay unknown.
-      .catch(() => { if (!ignore) setHas(undefined); });
-    return () => { ignore = true; };
-  }, [venue, operationPath]);
-
-  return has;
+  // Derived from the registry read, so a change of path costs no request.
+  return adapters ? adapters.some((a) => a.operations?.includes(operationPath)) : undefined;
 }

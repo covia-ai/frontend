@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import type { Venue } from "@covia/covia-sdk";
+import { useLatestQuery } from "@/hooks/use-latest-query";
 
 type TextContentState = {
   text: string;
@@ -17,8 +18,32 @@ const EMPTY_TEXT_CONTENT: TextContentState = {
   error: null,
 };
 
+const LOADING_TEXT_CONTENT: TextContentState = {
+  text: "",
+  loaded: false,
+  loading: true,
+  error: null,
+};
+
+// What a read answers for. `source` is the venue for an asset read and null for
+// a plain URL; `key` is the asset id or the URL. An outcome for anything else
+// is simply not the current one.
+type TextOutcome = {
+  source: Venue | null;
+  key: string;
+  text: string;
+  error: string | null;
+};
+
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function stateFor(wanted: boolean, outcome: TextOutcome | null): TextContentState {
+  if (!wanted) return EMPTY_TEXT_CONTENT;
+  if (!outcome) return LOADING_TEXT_CONTENT;
+  if (outcome.error !== null) return { text: "", loaded: false, loading: false, error: outcome.error };
+  return { text: outcome.text, loaded: true, loading: false, error: null };
 }
 
 export async function readTextStream(
@@ -47,93 +72,66 @@ export function useAssetTextContent(
   assetId: string,
   enabled: boolean,
 ): TextContentState {
-  const [state, setState] =
-    useState<TextContentState>(EMPTY_TEXT_CONTENT);
+  const { data: outcome, run, invalidate } = useLatestQuery<TextOutcome | null>(null);
 
   useEffect(() => {
-    let active = true;
-    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
-
     if (!venue || !assetId || !enabled) {
-      setState(EMPTY_TEXT_CONTENT);
+      invalidate();
       return;
     }
-
-    setState({ text: "", loaded: false, loading: true, error: null });
-    void venue.assets
-      .getContent(assetId)
-      .then(async (stream) => {
+    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+    void run(async () => {
+      try {
+        const stream = await venue.assets.getContent(assetId);
         if (!stream) throw new Error("Asset content is unavailable");
         const text = await readTextStream(stream, (nextReader) => {
           reader = nextReader;
         });
-        if (active) {
-          setState({ text, loaded: true, loading: false, error: null });
-        }
-      })
-      .catch((error: unknown) => {
-        if (active) {
-          setState({
-            text: "",
-            loaded: false,
-            loading: false,
-            error: errorMessage(error),
-          });
-        }
-      });
-
+        return { source: venue, key: assetId, text, error: null };
+      } catch (error: unknown) {
+        return { source: venue, key: assetId, text: "", error: errorMessage(error) };
+      }
+    });
     return () => {
-      active = false;
       if (reader) void reader.cancel().catch(() => undefined);
     };
-  }, [assetId, enabled, venue]);
+  }, [assetId, enabled, venue, run, invalidate]);
 
-  return state;
+  const wanted = !!venue && !!assetId && enabled;
+  const current =
+    wanted && outcome && outcome.source === venue && outcome.key === assetId ? outcome : null;
+  return stateFor(wanted, current);
 }
 
 export function useRemoteTextContent(
   url: string,
   enabled: boolean,
 ): TextContentState {
-  const [state, setState] =
-    useState<TextContentState>(EMPTY_TEXT_CONTENT);
+  const { data: outcome, run, invalidate } = useLatestQuery<TextOutcome | null>(null);
 
   useEffect(() => {
     if (!url || !enabled) {
-      setState(EMPTY_TEXT_CONTENT);
+      invalidate();
       return;
     }
-
-    let active = true;
     const controller = new AbortController();
-    setState({ text: "", loaded: false, loading: true, error: null });
-    void fetch(url, { signal: controller.signal })
-      .then((response) => {
+    void run(async () => {
+      try {
+        const response = await fetch(url, { signal: controller.signal });
         if (!response.ok) {
           throw new Error(`Unable to load content (${response.status})`);
         }
-        return response.text();
-      })
-      .then((text) => {
-        if (active) {
-          setState({ text, loaded: true, loading: false, error: null });
-        }
-      })
-      .catch((error: unknown) => {
-        if (!active || controller.signal.aborted) return;
-        setState({
-          text: "",
-          loaded: false,
-          loading: false,
-          error: errorMessage(error),
-        });
-      });
+        return { source: null, key: url, text: await response.text(), error: null };
+      } catch (error: unknown) {
+        // An aborted request belongs to a consumer that has since closed; the
+        // query has already moved on, so this outcome is never shown.
+        return { source: null, key: url, text: "", error: controller.signal.aborted ? null : errorMessage(error) };
+      }
+    });
+    return () => controller.abort();
+  }, [enabled, url, run, invalidate]);
 
-    return () => {
-      active = false;
-      controller.abort();
-    };
-  }, [enabled, url]);
-
-  return state;
+  const wanted = !!url && enabled;
+  const current = wanted && outcome && outcome.source === null && outcome.key === url ? outcome : null;
+  return stateFor(wanted, current);
 }

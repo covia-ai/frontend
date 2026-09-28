@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { AssetHeader } from "@/components/AssetHeader";
 import { AssetLoadState } from "@/components/AssetLoadState";
@@ -36,6 +36,16 @@ const DiagramViewer = dynamic(
   },
 );
 
+// Run-in-place: the last job this page kicked off (streamed inline below the
+// form, with a link out to the full job), the validation message and the
+// confirmation step.
+type RunState = {
+  jobId: string | null;
+  invocationError: string;
+  confirmationRequired: boolean;
+};
+const IDLE_RUN: RunState = { jobId: null, invocationError: "", confirmationRequired: false };
+
 type OperationViewerProps = {
   assetId: string;
   venueId: string;
@@ -57,9 +67,11 @@ export function OperationViewer({
     assetId,
   );
 
+  // Told once, when the operation turns out not to exist — an Effect Event, so
+  // a new `onNotFound` identity does not fire it again.
+  const reportNotFound = useEffectEvent(() => onNotFound?.());
   useEffect(() => {
-    if (notFound) onNotFound?.();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (notFound) reportNotFound();
   }, [notFound]);
   const schema = useMemo(
     () =>
@@ -69,23 +81,20 @@ export function OperationViewer({
     [asset],
   );
   const inputController = useOperationInput(venue?.venueId, assetId, schema);
-  const [invocationError, setInvocationError] = useState("");
   const { execute: executeJob, running: loading } = useJobExecution(venue);
-  const [confirmationRequired, setConfirmationRequired] = useState(false);
-  // Run-in-place: the last job this page kicked off, streamed inline below the
-  // form instead of navigating away. A link out to the full job stays offered.
-  const [jobId, setJobId] = useState<string | null>(null);
 
   // Every operation shares one route, so jumping between operations (the
-  // command palette, a catalogue link) reuses this component instance. Without
-  // this the previous operation's result panel and validation state survive
-  // under the new operation's form. `inputController` is already keyed on the
-  // asset; the run state has to be reset by hand.
-  useEffect(() => {
-    setJobId(null);
-    setInvocationError("");
-    setConfirmationRequired(false);
-  }, [assetId, venue?.venueId]);
+  // command palette, a catalogue link) reuses this component instance. The run
+  // state is stored with the operation it belongs to, so the previous
+  // operation's result panel and validation state can never show under the new
+  // operation's form — a run that completes after the switch stays filed under
+  // the operation that started it. `inputController` is already keyed on the
+  // asset.
+  const runKey = `${venue?.venueId ?? ""}/${assetId}`;
+  const [storedRun, setStoredRun] = useState<RunState & { key: string }>({ key: runKey, ...IDLE_RUN });
+  const run = storedRun.key === runKey ? storedRun : IDLE_RUN;
+  const updateRun = (patch: Partial<RunState>) =>
+    setStoredRun((previous) => ({ ...(previous.key === runKey ? previous : IDLE_RUN), ...patch, key: runKey }));
 
   const operation = asset?.metadata?.operation as any;
   const adapter = adapterOfMetadata(operation);
@@ -93,30 +102,28 @@ export function OperationViewer({
 
   const runOperation = async () => {
     if (!asset || !venue) {
-      setInvocationError("This asset is not an operation and cannot be invoked");
+      updateRun({ invocationError: "This asset is not an operation and cannot be invoked" });
       return;
     }
 
-    setConfirmationRequired(false);
-    setJobId(null);
+    updateRun({ confirmationRequired: false, jobId: null });
     await executeJob({
       action: () => asset.invoke(inputController.input),
       failureTitle: "Unable to run operation",
-      onError: setInvocationError,
+      onError: (message) => updateRun({ invocationError: message }),
       navigate: false,
-      onSuccess: setJobId,
+      onSuccess: (id) => updateRun({ jobId: id }),
     });
   };
 
   const requestRun = () => {
-    if (!confirmationRequired) {
+    if (!run.confirmationRequired) {
       const validationError = validateOperationInput(
         inputController.input,
         schema,
       );
       if (validationError) {
-        setInvocationError(validationError);
-        setConfirmationRequired(true);
+        updateRun({ invocationError: validationError, confirmationRequired: true });
         return;
       }
     }
@@ -171,9 +178,9 @@ export function OperationViewer({
                     schema={schema}
                     outputSchema={asset.metadata.operation.output}
                     controller={inputController}
-                    errorMessage={invocationError}
+                    errorMessage={run.invocationError}
                     loading={loading}
-                    confirmationRequired={confirmationRequired}
+                    confirmationRequired={run.confirmationRequired}
                     isAuthenticated={isAuthenticated}
                     onRun={requestRun}
                     scheduleTarget={
@@ -186,15 +193,15 @@ export function OperationViewer({
                 {asset.metadata.operation.steps && (
                   <DiagramViewer metadata={asset.metadata} />
                 )}
-                {jobId && venue && (
+                {run.jobId && venue && (
                   <div
                     className="mt-4 rounded-xl border bg-card p-4"
                     data-testid="operation-inline-result"
                   >
                     <OperationRunResult
-                      jobId={jobId}
+                      jobId={run.jobId}
                       venueId={venue.venueId}
-                      jobHref={`/venues/${encodeURIComponent(venue.venueId)}/jobs/${jobId}`}
+                      jobHref={`/venues/${encodeURIComponent(venue.venueId)}/jobs/${run.jobId}`}
                     />
                   </div>
                 )}
