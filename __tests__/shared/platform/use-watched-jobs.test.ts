@@ -145,4 +145,57 @@ describe("useWatchedJobsPoll", () => {
     expect(mockJobsGet).not.toHaveBeenCalled();
     expect(useWatchedJobs.getState().jobs).toHaveLength(0);
   });
+
+  it("unwatches a job the venue no longer has, instead of re-reading it forever", async () => {
+    mockJobsGet.mockRejectedValue(Object.assign(new Error("Job not found"), { status: 404 }));
+    act(() => useWatchedJobs.getState().watch("v1", "j1"));
+
+    renderHook(() => useWatchedJobsPoll());
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(useWatchedJobs.getState().jobs).toHaveLength(0);
+  });
+
+  it("keeps watching through a transient read failure", async () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    mockJobsGet.mockRejectedValue(new Error("Failed to fetch"));
+    act(() => useWatchedJobs.getState().watch("v1", "j1"));
+
+    renderHook(() => useWatchedJobsPoll());
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(useWatchedJobs.getState().jobs).toHaveLength(1);
+    warn.mockRestore();
+  });
+
+  it("stops watching an entry older than a day without reading it", async () => {
+    const twoDaysAgo = Date.now() - 2 * 24 * 60 * 60 * 1000;
+    act(() => useWatchedJobs.setState({ jobs: [{ venueId: "v1", jobId: "j-old", addedAt: twoDaysAgo }] }));
+
+    renderHook(() => useWatchedJobsPoll());
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mockJobsGet).not.toHaveBeenCalled();
+    expect(useWatchedJobs.getState().jobs).toHaveLength(0);
+  });
+
+  it("does not start a second pass while a slow one is still reading", async () => {
+    mockJobsGet.mockReturnValue(new Promise(() => {})); // never settles
+    act(() => useWatchedJobs.getState().watch("v1", "j1"));
+
+    renderHook(() => useWatchedJobsPoll());
+    await act(async () => {
+      jest.advanceTimersByTime(30_000);
+    });
+
+    expect(mockJobsGet).toHaveBeenCalledTimes(1);
+  });
 });

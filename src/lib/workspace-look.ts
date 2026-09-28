@@ -133,32 +133,3 @@ export function skillLook(nameOrKey: string): TypeLook {
 
   return CONCEPT_ICONS.skill;
 }
-
-export type ValueTypeName = "object" | "array" | "string" | "number" | "boolean" | "null";
-
-/** The JSON shape of a workspace value, for the row/inspector badge. */
-export function valueTypeOf(value: unknown): ValueTypeName {
-  if (value === null || value === undefined) return "null";
-  if (Array.isArray(value)) return "array";
-  const t = typeof value;
-  if (t === "object") return "object";
-  if (t === "number") return "number";
-  if (t === "boolean") return "boolean";
-  return "string";
-}
-
-/** Short mono label for a value-type badge. */
-export const VALUE_TYPE_LABEL: Record<ValueTypeName, string> = {
-  object: "{ }",
-  array: "[ ]",
-  string: "str",
-  number: "num",
-  boolean: "bool",
-  null: "null",
-};
-
-/** A did:key asset reference (content-addressed) — rendered with a DID
- *  identicon rather than a type icon. */
-export function isAssetRef(value: unknown): value is string {
-  return typeof value === "string" && value.startsWith("did:key:");
-}

@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { PlayCircle, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { listCatalogOperations } from "@/lib/operations-catalog";
-import { useLatestQuery } from "@/hooks/use-latest-query";
+import { useVenueRead } from "@/hooks/use-venue-read";
 // A roomier grid than the shared 14rem density: operation cards now carry a
 // signature block, so they need width to breathe (concept-fidelity catalogue).
 const OPS_GRID_CLASS =
@@ -25,8 +25,8 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { VenueResolutionState } from "@/components/VenueResolutionState";
 
 // How many cards to reveal per infinite-scroll step. Operation cards are tall
-// (they carry the full IN→OUT signature), so the old viewport-fit pagination
-// (useGridPageSize) showed only ~2 per page on a 185-op venue. Infinite scroll
+// (they carry the full IN→OUT signature), so viewport-fit pagination showed
+// only ~2 per page on a 185-op venue. Infinite scroll
 // appends a batch at a time as the sentinel scrolls into view, mirroring the
 // Jobs list, so the whole catalogue is reachable by scrolling rather than
 // clicking through dozens of pages.
@@ -42,14 +42,6 @@ const ADAPTER_FACET_CAP = 12;
 
 export function OperationsList({ venueId }: OperationsListProps = {}) {
   const searchParams = useSearchParams()
-  const {
-    data: assetsMetadata,
-    loading: isLoading,
-    error: loadError,
-    run: runOperationsQuery,
-    reset: resetOperationsQuery,
-    invalidate: invalidateOperationsQuery,
-  } = useLatestQuery<Asset[]>([], { initialLoading: true });
   const router = useRouter();
 
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -61,6 +53,7 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
   const {
     descriptor: venueObj,
     venue,
+    auth,
     isAuthenticated,
   } = resolvedVenue;
   const venueStatus = resolvedVenue.status ?? (venue ? "ready" : "absent");
@@ -71,33 +64,23 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
   }
   // Fetches the full catalog once per venue — search text only filters
   // client-side (see filteredAssets) so typing never triggers a refetch.
-  useEffect(() => {
-     if (!venue || venueStatus !== "ready") {
-       resetOperationsQuery();
-       return invalidateOperationsQuery;
-     }
-     void runOperationsQuery(
-       async () => {
-          // Discover ops from the venue catalog (v/ops + v/test/ops), plus the
-          // signed-in user's own w/ops, by path — one read per tree, no
-          // per-asset round trip. Each op keeps its resolvable catalog path as
-          // its id (drives the URL).
-          const ops = await listCatalogOperations(venue, { includeUserOps: isAuthenticated });
-          const sorted = [...ops].sort((a, b) =>
-            (a.metadata?.name ?? a.path).localeCompare(b.metadata?.name ?? b.path));
-          return sorted.map(op => new Operation(op.path, venue, op.metadata));
-       },
-       { clear: true },
-     );
-     return invalidateOperationsQuery;
-  }, [
+  const { data: assetsMetadata, loading: isLoading, error: loadError } = useVenueRead<Asset[]>({
     venue,
-    venueStatus,
-    isAuthenticated,
-    runOperationsQuery,
-    resetOperationsQuery,
-    invalidateOperationsQuery,
-  ]);
+    auth,
+    enabled: venueStatus === "ready",
+    initial: [],
+    failureTitle: "Unable to load operations",
+    load: async (v) => {
+      // Discover ops from the venue catalog (v/ops + v/test/ops), plus the
+      // signed-in user's own w/ops, by path — one read per tree, no
+      // per-asset round trip. Each op keeps its resolvable catalog path as
+      // its id (drives the URL).
+      const ops = await listCatalogOperations(v, { includeUserOps: isAuthenticated });
+      const sorted = [...ops].sort((a, b) =>
+        (a.metadata?.name ?? a.path).localeCompare(b.metadata?.name ?? b.path));
+      return sorted.map(op => new Operation(op.path, v, op.metadata));
+    },
+  });
 
   const adapterOptions = useMemo(() => {
     const names = assetsMetadata

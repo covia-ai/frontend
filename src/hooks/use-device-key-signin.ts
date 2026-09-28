@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { generateKeyPair, privateKeyToHex, Ed25519Auth } from "@covia/covia-sdk";
 import { useAuthStore } from "@/hooks/use-auth";
+import { useCopyFeedback } from "@/hooks/use-copy-feedback";
 import { useVenues } from "@/hooks/use-venues";
 import { probeDeviceKeyAuth } from "@/lib/venue-auth-probe";
 import { notifyWarning } from "@/lib/notify";
@@ -47,7 +48,7 @@ export function useDeviceKeySignIn(options: { trackSignUp?: boolean; venueId?: s
   const [isExisting, setIsExisting] = useState(false);
   const [pastedKey, setPastedKey] = useState("");
   const [keyError, setKeyError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const { copied, copy } = useCopyFeedback("Unable to copy device key");
   const [checking, setChecking] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -185,11 +186,7 @@ export function useDeviceKeySignIn(options: { trackSignUp?: boolean; venueId?: s
   };
 
   const handleCopy = () => {
-    if (deviceKey) {
-      navigator.clipboard.writeText(deviceKey);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+    if (deviceKey) void copy(deviceKey);
   };
 
   const handleContinue = () => {

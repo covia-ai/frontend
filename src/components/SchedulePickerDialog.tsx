@@ -53,7 +53,7 @@ interface SchedulePickerDialogProps {
 }
 
 // Shared cadence picker mounted from both the operation run sheet
-// (OperationInputForm) and the agent detail page (AgentChatPanel) — see
+// (OperationInputForm) and the agent detail page (AgentProfile) — see
 // covia-ai/frontend#230. No cron option: the venue doesn't support it yet
 // (covia#408 stage 2, unscheduled) — don't build UI for a capability the
 // backend can't fulfill, even as a disabled placeholder.

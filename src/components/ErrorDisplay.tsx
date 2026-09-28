@@ -15,12 +15,13 @@ export const ErrorDisplay = ({ error, className = "" }: ErrorDisplayProps) => {
   const hasDifferentDetail = summary !== detail;
 
   return (
-    <div className={`text-destructive ${className}`}>
+    <div className={`text-destructive ${className}`} data-testid="error-display">
       <div className="flex items-center space-x-2">
         <AlertCircle size={16} className="shrink-0" />
         <span className="text-sm font-medium">{summary}</span>
         {hasDifferentDetail && (
           <button
+            data-testid="error-detail-toggle"
             onClick={() => setShowDetail(!showDetail)}
             className="text-xs text-muted-foreground underline flex items-center space-x-1 hover:text-foreground"
           >

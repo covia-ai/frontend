@@ -4,7 +4,8 @@ import { useMemo } from "react";
 import { didFromPublicKey } from "@covia/covia-sdk";
 import { Identicon } from "@/components/Identicon";
 import { isDidKey } from "@/lib/identicon";
-import { abbreviateDid, cn, writeTextToClipboard } from "@/lib/utils";
+import { writeTextToClipboard } from "@/lib/clipboard";
+import { abbreviateDid, cn } from "@/lib/utils";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import {
   DropdownMenu,

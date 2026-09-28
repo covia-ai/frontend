@@ -14,6 +14,7 @@ import {
   type ChatSession,
 } from "@covia/covia-sdk";
 import type { AgentDetail, AgentListItem, Session } from "@/config/types";
+import { useCurrentAuth } from "@/hooks/use-auth";
 import { revalidateVenueOnFailure, useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import {
   findPendingChat,
@@ -32,8 +33,22 @@ import { useAgentLiveEvents } from "@/hooks/use-agent-live-events";
 const POLL_INTERVAL_MS = 3000;
 const SESSION_LIMIT = 50;
 
-export function useAgentExplorer(initialAgentId?: string) {
+type AgentExplorerOptions = {
+  /**
+   * The host is addressed to exactly one agent (the profile page) and has no
+   * picker to fall back to: a missing agent stays missing rather than being
+   * swapped for the first one on the venue, and the agent list — which such a
+   * host never shows — is neither fetched nor polled.
+   */
+  pinned?: boolean;
+};
+
+export function useAgentExplorer(
+  initialAgentId?: string,
+  { pinned = false }: AgentExplorerOptions = {},
+) {
   const venue = useAuthenticatedVenue();
+  const auth = useCurrentAuth();
   const [agentList, setAgentList] = useState<AgentListItem[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(
     initialAgentId ?? null,
@@ -75,7 +90,7 @@ export function useAgentExplorer(initialAgentId?: string) {
 
   const refreshAgentList = useCallback(
     (surfaceErrors = false) => {
-      if (!venue) return Promise.resolve();
+      if (!venue || pinned) return Promise.resolve();
       const requestId = ++listRequest.current;
       return venue.agents
         .list(true)
@@ -97,7 +112,7 @@ export function useAgentExplorer(initialAgentId?: string) {
           }
         });
     },
-    [venue],
+    [venue, pinned],
   );
 
   const loadAgentDetail = useCallback(
@@ -138,9 +153,9 @@ export function useAgentExplorer(initialAgentId?: string) {
             // This agentId doesn't exist on the currently connected venue —
             // most commonly because the venue was switched while this agent
             // was open (every agent belongs to one venue's own lattice).
-            // That's not a failure to report; just fall back to the
-            // explorer's list view, which will auto-select whatever the new
-            // venue actually has.
+            // That's not a failure to report; just drop the selection. A
+            // picker host then auto-selects whatever the new venue actually
+            // has, and a pinned host shows its not-found state.
             setSelectedAgentId(null);
             setSelectedAgentDetail(null);
             setAgentHandle(null);
@@ -207,10 +222,10 @@ export function useAgentExplorer(initialAgentId?: string) {
   }, [venue, refreshAgentList]);
 
   useEffect(() => {
-    if (agentList.length > 0 && !selectedAgentId) {
+    if (!pinned && agentList.length > 0 && !selectedAgentId) {
       setSelectedAgentId(agentList[0].agentId);
     }
-  }, [agentList, selectedAgentId]);
+  }, [pinned, agentList, selectedAgentId]);
 
   useEffect(() => {
     let active = true;
@@ -221,6 +236,9 @@ export function useAgentExplorer(initialAgentId?: string) {
     setChatSession(null);
     setNewChatRequested(false);
     setSessions([]);
+    // A draft is addressed to the agent it was typed for; carrying it over
+    // would let it be sent to whichever agent is selected next.
+    setMessageText("");
     if (!venue || !selectedAgentId) {
       setAgentHandle(null);
       setSelectedAgentDetail(null);
@@ -270,12 +288,12 @@ export function useAgentExplorer(initialAgentId?: string) {
   // stream reports one agent's run loop, not "which agents exist" — so it
   // always polls.
   useEffect(() => {
-    if (!venue) return;
+    if (!venue || pinned) return;
     const timer = setInterval(() => {
       void refreshAgentList();
     }, POLL_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [venue, refreshAgentList]);
+  }, [venue, pinned, refreshAgentList]);
 
   // The selected agent's detail + sessions poll only as a fallback for
   // venues/connections where the live event stream isn't working; once
@@ -424,7 +442,8 @@ export function useAgentExplorer(initialAgentId?: string) {
       recordForkProvenance(venue.venueId, result.agentId, result.forkedFrom);
       notifySuccess(`Forked "${result.agentId}" from "${result.forkedFrom}"`);
       await refreshAgentList();
-      setSelectedAgentId(result.agentId);
+      // A pinned host follows its URL, so it navigates to the fork itself.
+      if (!pinned) setSelectedAgentId(result.agentId);
       return { status: "created", agentId: result.agentId };
     } catch (error) {
       gtmEvent.forkAgentFailed(sourceId, error instanceof Error ? error.message : undefined);
@@ -437,15 +456,21 @@ export function useAgentExplorer(initialAgentId?: string) {
   };
 
   const updateAgentConfig = useCallback(
-    async (config: Record<string, unknown>): Promise<AgentConfigSaveOutcome> => {
+    async (
+      config: Record<string, unknown>,
+      baseline: Record<string, unknown>,
+    ): Promise<AgentConfigSaveOutcome> => {
       if (!agentHandle || !selectedAgentId || !selectedAgentDetail) return { status: "failed" };
       const agentId = selectedAgentId;
 
       // Re-fetch immediately before writing so a concurrent edit made
-      // elsewhere (another tab/session) since this config was loaded is
-      // caught rather than silently overwritten (#161). No version/etag
-      // exists on agent config, so this is a plain fetch-and-compare against
-      // the config this hook currently believes is live.
+      // elsewhere (another tab/session) since the editor loaded is caught
+      // rather than silently overwritten (#161). No version/etag exists on
+      // agent config, so this is a plain fetch-and-compare — against the
+      // editor's own `baseline`, because `selectedAgentDetail` follows the
+      // poll and would absorb an outside edit within seconds, waving a patch
+      // built on the stale values straight through. Only the keys being
+      // written can lose an edit, so only they are compared.
       let fresh: AgentDetail;
       try {
         fresh = await loadAgentDetail(agentId);
@@ -453,12 +478,16 @@ export function useAgentExplorer(initialAgentId?: string) {
         notifyError("Unable to verify agent settings before saving", error, venue?.baseUrl);
         return { status: "failed" };
       }
-      if (!agentConfigsEqual(fresh.config ?? {}, selectedAgentDetail.config ?? {})) {
+      const freshConfig = fresh.config ?? {};
+      const conflicted = Object.keys(config).some(
+        (key) => !agentConfigsEqual(freshConfig[key], baseline[key]),
+      );
+      if (conflicted) {
         setSelectedAgentDetail(fresh);
         notifyWarning(
           "This agent's settings changed since you loaded this editor. The latest version is now shown — reapply your edit and save again.",
         );
-        return { status: "conflict", freshConfig: fresh.config ?? {} };
+        return { status: "conflict", freshConfig };
       }
 
       const wasRunning = selectedAgentDetail.status === AgentStatus.RUNNING;
@@ -550,7 +579,12 @@ export function useAgentExplorer(initialAgentId?: string) {
     const session = chatSession ?? agentHandle.chatSession();
     const sessionId = session.sessionId ?? null;
     setMessageText("");
-    const chat = startPendingChat({ agentId, sessionId, text });
+    const chat = startPendingChat({
+      agentId,
+      sessionId,
+      text,
+      turnsAtSend: currentSession?.conversation.length ?? 0,
+    });
 
     void dispatchAgentMessage({
       agentId,
@@ -580,7 +614,7 @@ export function useAgentExplorer(initialAgentId?: string) {
         }
       })
       .catch((error: unknown) => {
-        revalidateVenueOnFailure(venue, null, error);
+        revalidateVenueOnFailure(venue, auth, error);
         if (
           venueRef.current === venue &&
           selectedAgentIdRef.current === agentId
@@ -597,11 +631,13 @@ export function useAgentExplorer(initialAgentId?: string) {
     selectedAgentDetail.status !== AgentStatus.SUSPENDED;
   const echoAlreadyRecorded =
     !!pendingChat &&
-    (currentSession?.conversation ?? []).some(
-      (message) =>
-        message.role === "user" &&
-        messageContentToString(message.content) === pendingChat.text,
-    );
+    (currentSession?.conversation ?? [])
+      .slice(pendingChat.turnsAtSend)
+      .some(
+        (message) =>
+          message.role === "user" &&
+          messageContentToString(message.content) === pendingChat.text,
+      );
 
   return {
     agentList,

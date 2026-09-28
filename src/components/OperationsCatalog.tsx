@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
-import { useIsAuthenticated } from "@/hooks/use-auth";
+import { useCurrentAuth } from "@/hooks/use-auth";
+import { useVenueRead } from "@/hooks/use-venue-read";
 import { useVenueAccess } from "@/hooks/use-venue-access";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
@@ -37,8 +38,9 @@ import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { adapterOf, listCatalogOperations, resolveOperationByAddress, type CatalogOp } from "@/lib/operations-catalog";
 import { PlayCircle, RefreshCw, Search } from "lucide-react";
-import { notifyError, notifyWarning } from "@/lib/notify";
+import { notifyWarning } from "@/lib/notify";
 import { useJobExecution } from "@/hooks/use-job-execution";
+import { ListLoadError } from "@/components/ListLoadError";
 
 function defaultsFromSchema(schema: any): string {
   const props = schema?.properties;
@@ -56,35 +58,27 @@ function defaultsFromSchema(schema: any): string {
 
 export function OperationsCatalog() {
   const venue = useAuthenticatedVenue();
-  const isAuthenticated = useIsAuthenticated();
+  const auth = useCurrentAuth();
   const access = useVenueAccess(venue?.baseUrl, venue?.venueId);
   const canRead = access.state === "connected" || access.state === "public";
   const needsAuth =
     access.state === "signed-out" || access.state === "auth-rejected" || access.state === "auth-unverified";
-  // Bumped by the refresh control so ops registered after page load show up
-  // without a reload — the catalog is otherwise fetched once per venue.
-  const [refreshTick, setRefreshTick] = useState(0);
-  const [ops, setOps] = useState<CatalogOp[]>([]);
-  const [loading, setLoading] = useState(true);
+  // `reload` backs the refresh control, so ops registered after page load show
+  // up without a reload — the catalog is otherwise fetched once per venue.
+  const { data: ops, loading, error, reload } = useVenueRead<CatalogOp[]>({
+    venue,
+    auth,
+    enabled: canRead,
+    initial: [],
+    failureTitle: "Unable to load operation catalog",
+    load: (v) => listCatalogOperations(v, { includeUserOps: auth !== null }),
+  });
   const [search, setSearch] = useState("");
   const [filterAdapter, setFilterAdapter] = useState("");
   const [selectedOp, setSelectedOp] = useState<CatalogOp | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [runInput, setRunInput] = useState("{}");
   const { execute: executeJob, running } = useJobExecution(venue);
-
-  useEffect(() => {
-    if (!venue || !canRead) {
-      setOps([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    listCatalogOperations(venue, { includeUserOps: isAuthenticated })
-      .then((list) => setOps(list))
-      .catch((err) => notifyError("Unable to load operation catalog", err, venue.baseUrl))
-      .finally(() => setLoading(false));
-  }, [venue, canRead, isAuthenticated, refreshTick]);
 
   const adapters = useMemo(
     () => Array.from(new Set(ops.map((op) => adapterOf(op.path)))).sort(),
@@ -191,7 +185,7 @@ export function OperationsCatalog() {
               ))}
             </SelectContent>
           </Select>
-          {!loading && (
+          {!loading && !error && (
             <span className="text-xs text-muted-foreground whitespace-nowrap">
               {filtered.length} ops · {grouped.length} adapters
             </span>
@@ -205,7 +199,7 @@ export function OperationsCatalog() {
                 data-testid="refresh-catalog"
                 aria-label="Refresh operation catalog"
                 disabled={loading}
-                onClick={() => setRefreshTick((t) => t + 1)}
+                onClick={reload}
               >
                 <RefreshCw size={16} className={loading ? "animate-spin" : undefined} />
               </Button>
@@ -309,7 +303,11 @@ export function OperationsCatalog() {
           </Accordion>
         )}
 
-        {!loading && filtered.length === 0 && (
+        {!loading && error && (
+          <ListLoadError error={error} onRetry={reload} data-testid="operations-catalog-load-error" />
+        )}
+
+        {!loading && !error && filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-2">
             <PlayCircle size={40} />
             <p className="text-sm">

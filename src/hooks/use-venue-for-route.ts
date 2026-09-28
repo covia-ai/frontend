@@ -6,7 +6,7 @@ import {
   useVenues,
   type VenueDescriptor,
 } from "@/hooks/use-venues";
-import { useAuthStore } from "@/hooks/use-auth";
+import { useAuthStore, type VenueAuth } from "@/hooks/use-auth";
 import { connectVenue } from "@/lib/venue-registry";
 import { reportVenueHealth } from "@/hooks/use-venue-health";
 import { notifyError } from "@/lib/notify";
@@ -35,14 +35,6 @@ export function useVenueForRoute(routeVenueId?: string): VenueResolution {
   const globalVenueObj = venues.find(
     (venue) => venue.venueId === selectedVenueId,
   );
-  const getAuthForVenue = useAuthStore((x) => x.getAuthForVenue);
-  const authMap = useAuthStore((x) => x.authMap);
-  const connecting = useRef(new Set<string>());
-  const failed = useRef(new Set<string>());
-  const [failedAttempt, setFailedAttempt] = useState<{
-    key: string;
-    error: string;
-  } | null>(null);
   // A venue answers to several identifiers — its canonical did:key, its
   // did:web, its URL — but the store is only ever keyed by the canonical one
   // that connectVenue resolves. Remember which route id mapped to which
@@ -50,22 +42,33 @@ export function useVenueForRoute(routeVenueId?: string): VenueResolution {
   // actually added instead of waiting forever for one under the name it
   // asked for (#428).
   const [alias, setAlias] = useState<{ route: string; venueId: string } | null>(null);
-
   const aliasId = routeVenueId && alias?.route === routeVenueId ? alias.venueId : undefined;
   const found = routeVenueId
     ? venues.find((v) => v.venueId === routeVenueId || (!!aliasId && v.venueId === aliasId))
     : undefined;
-  const authData = routeVenueId ? authMap[routeVenueId] : undefined;
-  const attemptKey = `${routeVenueId ?? ""}:${JSON.stringify(authData ?? null)}`;
+  const auth = useAuthStore((state) =>
+    routeVenueId ? state.authMap[routeVenueId] ?? null : null,
+  );
+  const connecting = useRef(new Set<string>());
+  // A failed connect is remembered against the auth *object* it used. Store
+  // values are immutable, so a fresh sign-in (even the same DID with a renewed
+  // token) is a new object and retries — without ever serialising a key or
+  // token into a lookup key.
+  const [failure, setFailure] = useState<{
+    venueId: string;
+    auth: VenueAuth | null;
+    error: string;
+  } | null>(null);
+  const hasFailed = failure !== null && failure.venueId === routeVenueId && failure.auth === auth;
 
   useEffect(() => {
-    if (!routeVenueId || found || connecting.current.has(routeVenueId) || failed.current.has(attemptKey)) return;
+    if (!routeVenueId || found || hasFailed || connecting.current.has(routeVenueId)) return;
     connecting.current.add(routeVenueId);
-    const auth = getAuthForVenue(routeVenueId);
-    let identifier = routeVenueId;
-    try { identifier = decodeURIComponent(routeVenueId); } catch { /* connect will surface the invalid id */ }
-    reportVenueHealth(identifier, { state: "connecting" });
-    connectVenue(identifier, auth, 10_000)
+    // `routeVenueId` is already decoded by the page. Decoding again would turn
+    // a did:web port (`did:web:host%3A8080`, encoded by the DID spec itself)
+    // into a path separator and connect to a different venue.
+    reportVenueHealth(routeVenueId, { state: "connecting" });
+    connectVenue(routeVenueId, auth, 10_000)
       .then((v) => {
         const descriptor = toVenueDescriptor(v);
         // A connect that resolves no identity cannot be stored or matched, so
@@ -73,13 +76,13 @@ export function useVenueForRoute(routeVenueId?: string): VenueResolution {
         // state and the caller waits on "connecting" forever (#428).
         if (!descriptor.venueId) {
           throw new CoviaError(
-            `Connected to ${identifier} but it reported no venue identity`,
+            `Connected to ${routeVenueId} but it reported no venue identity`,
           );
         }
         reportVenueHealth(v.baseUrl, {
           state: "connected",
           version: v.lastKnownStatus?.version,
-          publicAccess: authData ? undefined : v.lastKnownStatus !== undefined,
+          publicAccess: auth ? undefined : v.lastKnownStatus !== undefined,
         });
         addVenue(descriptor);
         // The canonical id may differ from the one the route used (a did:web
@@ -90,16 +93,15 @@ export function useVenueForRoute(routeVenueId?: string): VenueResolution {
         }
       })
       .catch((err: unknown) => {
-        failed.current.add(attemptKey);
-        const detail = err instanceof Error ? err.message : String(err);
-        setFailedAttempt({ key: attemptKey, error: detail });
-        reportVenueHealth(identifier, { state: "unreachable", detail });
-        notifyError("Unable to connect to venue", err, identifier);
+        const error = err instanceof Error ? err.message : String(err);
+        setFailure({ venueId: routeVenueId, auth, error });
+        reportVenueHealth(routeVenueId, { state: "unreachable", detail: error });
+        notifyError("Unable to connect to venue", err, routeVenueId);
       })
       .finally(() => {
         connecting.current.delete(routeVenueId);
       });
-  }, [routeVenueId, found, addVenue, getAuthForVenue, authMap, authData, attemptKey]);
+  }, [routeVenueId, found, hasFailed, addVenue, auth]);
 
   if (!routeVenueId) {
     return {
@@ -109,12 +111,6 @@ export function useVenueForRoute(routeVenueId?: string): VenueResolution {
     };
   }
   if (found) return { descriptor: found, status: "ready", error: null };
-  if (failedAttempt?.key === attemptKey) {
-    return {
-      descriptor: null,
-      status: "unreachable",
-      error: failedAttempt.error,
-    };
-  }
+  if (hasFailed) return { descriptor: null, status: "unreachable", error: failure.error };
   return { descriptor: null, status: "connecting", error: null };
 }

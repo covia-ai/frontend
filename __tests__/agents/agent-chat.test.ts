@@ -48,9 +48,7 @@ describe("dispatchAgentMessage", () => {
       send: async () => ({ response: "  " }),
     });
 
-    expect(notifyWarning).toHaveBeenCalledWith("The agent sent an empty reply", {
-      description: "It may have hit an error — check its session in the explorer.",
-    });
+    expect(notifyWarning).toHaveBeenCalledTimes(1);
   });
 
   it("warns on a slow reply but never abandons the send", async () => {

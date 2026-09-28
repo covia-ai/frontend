@@ -25,12 +25,11 @@ import { cn, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
 
 type AgentChatProps = {
   initialAgentId?: string;
-  fixedAgent?: boolean;
 };
 
 const NEW_SESSION_VALUE = "__new__";
 
-export function AgentChat({ initialAgentId, fixedAgent = false }: AgentChatProps) {
+export function AgentChat({ initialAgentId }: AgentChatProps) {
   const controller = useAgentExplorer(initialAgentId);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
   const {
@@ -103,34 +102,27 @@ export function AgentChat({ initialAgentId, fixedAgent = false }: AgentChatProps
   return (
     <div className="mx-auto flex h-[calc(100vh-8rem)] min-h-[36rem] w-full max-w-6xl flex-col overflow-hidden rounded-xl border bg-background shadow-sm">
       <header className="flex min-h-14 flex-wrap items-center gap-2 border-b px-3 py-2 sm:px-5">
-        {fixedAgent ? (
-          <div className="flex min-w-0 items-center gap-2.5">
-            <AgentIdenticon agentId={selectedAgentId} className="size-8" />
-            <span className="truncate text-sm font-semibold">{agentName}</span>
-          </div>
-        ) : (
-          <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
-            <SelectTrigger
-              aria-label="Agent"
-              className="h-10 w-auto gap-2 border-0 bg-transparent px-1.5 shadow-none"
-            >
-              <div className="flex min-w-0 items-center gap-2.5">
-                <AgentIdenticon agentId={selectedAgentId} className="size-8" />
-                <span className="truncate text-sm font-semibold">{agentName}</span>
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              {agentList.map((agent) => (
-                <SelectItem key={agent.agentId} value={agent.agentId}>
-                  <span className="flex items-center gap-2">
-                    <AgentIdenticon agentId={agent.agentId} className="size-5" />
-                    {humanizeAgentId(agent.agentId)}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+        <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
+          <SelectTrigger
+            aria-label="Agent"
+            className="h-10 w-auto gap-2 border-0 bg-transparent px-1.5 shadow-none"
+          >
+            <div className="flex min-w-0 items-center gap-2.5">
+              <AgentIdenticon agentId={selectedAgentId} className="size-8" />
+              <span className="truncate text-sm font-semibold">{agentName}</span>
+            </div>
+          </SelectTrigger>
+          <SelectContent>
+            {agentList.map((agent) => (
+              <SelectItem key={agent.agentId} value={agent.agentId}>
+                <span className="flex items-center gap-2">
+                  <AgentIdenticon agentId={agent.agentId} className="size-5" />
+                  {humanizeAgentId(agent.agentId)}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <StatusBadge status={selectedAgentDetail.status} kind="agent" as="pill" />
         <span className="hidden items-center gap-1 rounded-md border bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground sm:inline-flex">
           <Cpu size={11} /> {display.model || display.providerLabel}

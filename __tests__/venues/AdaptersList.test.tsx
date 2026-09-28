@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 
@@ -12,7 +12,9 @@ jest.mock("next/navigation", () => ({
 jest.mock("@/components/admin-panel/TopBar", () => ({
   TopBar: () => <div data-testid="top-bar" />,
 }));
-jest.mock("@/lib/notify", () => ({ notifyError: jest.fn() }));
+jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
+jest.mock("@/hooks/use-authenticated-venue", () =>
+  require("@test/use-authenticated-venue").venueMock);
 
 const listMock = jest.fn();
 const mockVenue = {
@@ -21,7 +23,7 @@ const mockVenue = {
   metadata: { name: "Test Venue" },
   adapters: { list: listMock },
 };
-// The page takes the whole resolution now, so a definitive failure renders a
+// The page takes the whole resolution, so a definitive failure renders a
 // venue error instead of an endless spinner (#428).
 let mockResolution: Record<string, unknown>;
 jest.mock("@/hooks/use-resolved-venue", () => ({
@@ -29,6 +31,7 @@ jest.mock("@/hooks/use-resolved-venue", () => ({
 }));
 
 import { AdaptersList } from "@/components/AdaptersList";
+import { revalidateVenueOnFailure } from "@/hooks/use-authenticated-venue";
 
 describe("AdaptersList", () => {
   beforeEach(() => {
@@ -80,15 +83,38 @@ describe("AdaptersList", () => {
     );
   });
 
-  it("renders the venue error instead of spinning forever when resolution fails (#428)", async () => {
+  it("shows a load error — not the empty state — when the read fails", async () => {
+    const failure = new Error("HTTP 503");
+    listMock.mockRejectedValue(failure);
+    render(<AdaptersList venueId="did:web:venue.example" />);
+
+    expect(await screen.findByTestId("adapters-load-error")).toBeInTheDocument();
+    // A failed read is a venue-health signal, so it forces a status recheck.
+    expect(revalidateVenueOnFailure).toHaveBeenCalledWith(mockVenue, null, failure);
+
+    // Retry re-reads and recovers without a page reload.
+    listMock.mockResolvedValue([{ name: "http", description: "HTTP fetch", operations: [] }]);
+    await userEvent.click(screen.getByTestId("list-load-retry"));
+    await waitFor(() => expect(screen.queryByTestId("adapters-load-error")).not.toBeInTheDocument());
+    expect(listMock).toHaveBeenCalledTimes(2);
+  });
+
+  // #428: a definitive resolution failure used to be swallowed into an
+  // endless spinner, with no way to tell a slow venue from a dead one.
+  it("renders the venue error instead of spinning forever when resolution fails", async () => {
     mockResolution = {
       descriptor: null, venue: undefined, auth: null, isAuthenticated: false,
       status: "unreachable", error: "Venue identity changed at https://venue-3.covia.ai",
     };
 
+    const user = userEvent.setup();
     render(<AdaptersList venueId="did:web:venue-3.covia.ai" />);
 
-    expect(await screen.findByText(/Something went wrong/i)).toBeInTheDocument();
+    const display = await screen.findByTestId("error-display");
+    await user.click(within(display).getByTestId("error-detail-toggle"));
+    expect(display).toHaveTextContent("Venue identity changed at https://venue-3.covia.ai");
+
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(listMock).not.toHaveBeenCalled();
   });
 });

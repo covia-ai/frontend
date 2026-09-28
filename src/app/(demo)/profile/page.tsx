@@ -19,6 +19,7 @@ import { ShikiCodeBlock } from "@/components/ShikiCodeBlock";
 import { AccountsPanel } from "@/components/AccountsPanel";
 import { IdentityTokenButton } from "@/components/IdentityTokenButton";
 import { KeysPanel } from "@/components/KeysPanel";
+import { useCopyFeedback } from "@/hooks/use-copy-feedback";
 import { NotificationLog } from "@/components/NotificationLog";
 
 function toHex(bytes: Uint8Array): string {
@@ -29,13 +30,8 @@ function toHex(bytes: Uint8Array): string {
 // explicitly revealed. Copy works without revealing (clipboard gets the real
 // value), so the common path never puts the key on screen.
 function SecretCopyField({ label, value }: { label: string; value: string }) {
-  const [copied, setCopied] = useState(false);
+  const { copied, copy } = useCopyFeedback(`Unable to copy ${label.toLowerCase()}`);
   const [revealed, setRevealed] = useState(false);
-  const copy = () => {
-    navigator.clipboard.writeText(value);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
   return (
     <div>
       <p className="text-sm text-muted-foreground mb-1">{label}</p>
@@ -60,7 +56,7 @@ function SecretCopyField({ label, value }: { label: string; value: string }) {
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="outline" size="icon" onClick={copy} aria-label="Copy private key" className="shrink-0">
+            <Button variant="outline" size="icon" onClick={() => void copy(value)} aria-label="Copy private key" className="shrink-0">
               {copied ? <Check className={`h-4 w-4 ${TONE_STYLES.success.text}`} /> : <Copy className="h-4 w-4" />}
             </Button>
           </TooltipTrigger>

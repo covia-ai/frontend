@@ -25,6 +25,7 @@ pnpm install          # Install dependencies
 pnpm dev              # Start dev server (localhost:3000)
 pnpm build            # Production build (also serves as type-check)
 pnpm lint             # ESLint
+pnpm typecheck        # tsc --noEmit (covers __tests__/, which build does not)
 pnpm test             # Run Jest tests
 ```
 
@@ -102,8 +103,31 @@ sonner `toast()`. `notifyError(title, err, target?)` for failures (always pass
 the caught error — it becomes a copyable description, and bare network
 failures get the unreachable target named); `notifySuccess` / `notifyWarning`
 / `notifyInfo` for the rest. Failure titles read "Unable to <verb> <object>".
-Every notification is recorded to the in-memory session log
-(`use-notification-log.ts`), viewable on the Profile page.
+Every notification is recorded to the notification log
+(`use-notification-log.ts`, persisted to localStorage), viewable on the
+Profile page — so never put a secret or token in a title or description.
+
+### Clipboard
+
+Never call `navigator.clipboard` directly: it does not exist outside a secure
+context (a venue UI served over plain HTTP), and an un-awaited write reports a
+copy that never happened. Use `writeTextToClipboard` (`src/lib/clipboard.ts`),
+or `useCopyFeedback` (`src/hooks/use-copy-feedback.ts`) for a copy button that
+shows a checkmark instead of a toast.
+
+### Routes and breadcrumbs
+
+Breadcrumb labels, list-route links and per-section docs links come from one
+table in `src/lib/breadcrumbs.ts`. A new route needs no entry unless
+title-casing its segment reads wrongly. Crumbs are real `<Link>`s — don't
+navigate from `onClick`.
+
+### Persisted stores
+
+Zustand `persist` stores use `browserStorage` from `src/lib/persist-storage.ts`.
+A custom `merge` must tolerate `persisted === undefined` (a first visit):
+throwing there is swallowed and leaves the store permanently un-hydrated. Stores
+whose loss matters (`venue-auth`, `venues`) also call `syncStoreAcrossTabs`.
 
 ### Components
 
@@ -119,7 +143,7 @@ Every notification is recorded to the in-memory session log
 
 ## Testing
 
-- **Framework:** Jest 30 + ts-jest + jest-environment-jsdom
+- **Framework:** Jest 30 via `next/jest` (SWC) + jest-environment-jsdom
 - **Libraries:** @testing-library/react, @testing-library/user-event
 - **Location:** `__tests__/` directory at project root
 - **Naming:** `ComponentName.test.tsx` or `hook-name.test.ts`

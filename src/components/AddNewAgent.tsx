@@ -36,7 +36,8 @@ import { AgentCapsEditor } from "@/components/agent-config/AgentCapsEditor";
 import { AgentConnectionsPicker } from "@/components/agent-config/AgentConnectionsPicker";
 import { withToolToggled, type CatalogOp } from "@/lib/operations-catalog";
 import { withSkillToggled, type SkillSummary } from "@/lib/skills";
-import { cleanCaps, emptyCap, isAgentCap, type AgentCap } from "@/lib/agent-caps";
+import { cleanCaps, isAgentCap, type AgentCap } from "@/lib/agent-caps";
+import { isReservedAgentId, slugifyAgentId } from "@/lib/agent-id";
 import {
   AGENT_TEMPLATES_CHANGED_EVENT,
   asSdkAgentConfig,
@@ -56,6 +57,8 @@ interface AddNewAgentProps {
   initialAgentName?: string;
   initialSystemPrompt?: string;
   initialProvider?: string;
+  /** The operation path when `initialProvider` is the custom option. */
+  initialCustomProviderOperation?: string;
   initialModel?: string;
   preferAvailableProvider?: boolean;
   /** Exact template/clone config: an inline map, reference, or ordered layers. */
@@ -63,9 +66,6 @@ interface AddNewAgentProps {
   /** Resolved inline fields for describing configs that contain references. */
   initialConfigPreview?: AgentConfigMap;
 }
-
-const slugify = (name: string) =>
-  name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
 
 export function AddNewAgent({
   trigger,
@@ -76,6 +76,7 @@ export function AddNewAgent({
   initialAgentName = "",
   initialSystemPrompt = "",
   initialProvider = "anthropic",
+  initialCustomProviderOperation = "",
   initialModel = "",
   preferAvailableProvider = true,
   initialConfig,
@@ -124,17 +125,17 @@ export function AddNewAgent({
     onOpenChange?.(nextOpen);
   };
 
-  const resolvedAgentId = agentId.trim() || slugify(agentName);
-  const isReservedAgentId = resolvedAgentId === DEFAULT_AGENT_ID;
+  const resolvedAgentId = agentId.trim() || slugifyAgentId(agentName);
+  const agentIdReserved = isReservedAgentId(resolvedAgentId);
 
   useEffect(() => {
     if (!open) return;
     setAgentName(initialAgentName);
-    setAgentId(slugify(initialAgentName));
+    setAgentId(slugifyAgentId(initialAgentName));
     setAgentIdEdited(false);
     setSystemPrompt(initialSystemPrompt);
     setLlmProvider(initialProvider);
-    setCustomProviderOperation("");
+    setCustomProviderOperation(initialCustomProviderOperation);
     const modelSelection = modelSelectionFromId(initialProvider, initialModel);
     setModel(modelSelection.model);
     setCustomModel(modelSelection.customModel);
@@ -158,10 +159,7 @@ export function AddNewAgent({
         // Templates all default to OpenAI, but most users hold a different key.
         // If the seeded provider has no key and another does, switch to a ready
         // one so "Use Template" just works instead of showing "No API key".
-        const ready = (id: string) => {
-          const p = LLM_PROVIDERS[id];
-          return !!p && (!p.requiresKey || secrets.includes(p.secretKey));
-        };
+        const ready = (id: string) => isAgentProviderReady(id, secrets);
         if (preferAvailableProvider && !ready(initialProvider)) {
           const pick = Object.keys(LLM_PROVIDERS).find(ready);
           if (pick) {
@@ -183,6 +181,7 @@ export function AddNewAgent({
     initialAgentName,
     initialSystemPrompt,
     initialProvider,
+    initialCustomProviderOperation,
     initialModel,
     preferAvailableProvider,
   ]);
@@ -202,17 +201,21 @@ export function AddNewAgent({
     isAgentProviderReady(providerId, availableKeys);
 
   const buildAgentConfig = (): AgentConfigInput => {
-    const provider = LLM_PROVIDERS[llmProvider];
+    // Unticked capabilities mean "unrestricted", which is the absence of the
+    // key — an empty array would deny every tool call instead.
+    const capsCleared = touchedCaps && !capsEnabled;
     const baseConfig = withoutAgentConfigFields(
       initialConfig,
-      ["llmOperation", "model", "systemPrompt"],
+      ["llmOperation", "model", "systemPrompt", ...(capsCleared ? ["caps"] : [])],
     );
+    // Undefined for the venue default, which is likewise the absence of the key.
+    const llmOperation =
+      llmProvider === CUSTOM_PROVIDER_OPTION
+        ? customProviderOperation.trim()
+        : LLM_PROVIDERS[llmProvider]?.operation;
     const overrides: AgentConfigMap = {
       ...(initialConfig === undefined ? { operation: "v/ops/llmagent/chat" } : {}),
-      llmOperation:
-        llmProvider === CUSTOM_PROVIDER_OPTION
-          ? customProviderOperation.trim()
-          : provider.operation,
+      ...(llmOperation && { llmOperation }),
       ...(resolvedModel && { model: resolvedModel }),
       ...(systemPrompt.trim() && { systemPrompt: systemPrompt.trim() }),
       // Only override tools/skills once the picker's actually been touched —
@@ -220,7 +223,7 @@ export function AddNewAgent({
       // (inlineAgentConfigPreview can't see those), and forcing [] here would
       // silently strip them. Once touched, the picker owns the full array.
       ...(touchedCapabilities && { tools: stagedTools, skills: stagedSkills }),
-      ...(touchedCaps && { caps: cleanCaps(caps) }),
+      ...(touchedCaps && capsEnabled && { caps: cleanCaps(caps) }),
     };
     return withAgentConfigOverrides(baseConfig, overrides);
   };
@@ -246,7 +249,7 @@ export function AddNewAgent({
       notifyWarning(`Enter an API key for ${provider.label}, or add one in Secrets`);
       return;
     }
-    if (isReservedAgentId) {
+    if (agentIdReserved) {
       notifyWarning(`"${DEFAULT_AGENT_ID}" is reserved for the workspace prompt bar — pick another id`);
       return;
     }
@@ -289,7 +292,7 @@ export function AddNewAgent({
 
   const handleSaveTemplate = async () => {
     if (
-      !venue || !agentName.trim() || !resolvedAgentId || isReservedAgentId ||
+      !venue || !agentName.trim() || !resolvedAgentId || agentIdReserved ||
       (llmProvider === CUSTOM_PROVIDER_OPTION && !customProviderOperation.trim())
     ) return;
     const path = `w/templates/${resolvedAgentId}`;
@@ -366,7 +369,7 @@ export function AddNewAgent({
                 value={agentName}
                 onChange={(e) => {
                   setAgentName(e.target.value);
-                  if (!agentIdEdited) setAgentId(slugify(e.target.value));
+                  if (!agentIdEdited) setAgentId(slugifyAgentId(e.target.value));
                 }}
               />
             </div>
@@ -383,7 +386,7 @@ export function AddNewAgent({
                   setAgentIdEdited(true);
                 }}
               />
-              {isReservedAgentId ? (
+              {agentIdReserved ? (
                 <p className={`flex items-center gap-1 text-sm ${TONE_STYLES.attention.text}`}>
                   <AlertTriangle size={14} />
                   &quot;{DEFAULT_AGENT_ID}&quot; is reserved. Choose another ID.
@@ -446,7 +449,6 @@ export function AddNewAgent({
               onEnabledChange={(next) => {
                 setCapsEnabled(next);
                 setTouchedCaps(true);
-                if (next && caps.length === 0) setCaps([emptyCap()]);
               }}
               caps={caps}
               onCapsChange={(next) => {
@@ -473,6 +475,7 @@ export function AddNewAgent({
               onApiKeyChange={setApiKeyInput}
               customProviderOperation={customProviderOperation}
               onCustomProviderOperationChange={setCustomProviderOperation}
+              allowVenueDefaultProvider
             />
 
             <div className="space-y-2">
@@ -506,7 +509,7 @@ export function AddNewAgent({
             onClick={handleSaveTemplate}
             disabled={
               savingTemplate || creating || !venue || !agentName.trim() ||
-              isReservedAgentId ||
+              agentIdReserved ||
               (llmProvider === CUSTOM_PROVIDER_OPTION && !customProviderOperation.trim())
             }
             className="gap-2"
@@ -521,7 +524,7 @@ export function AddNewAgent({
             onClick={handleNewAgent}
             disabled={
               creating || savingTemplate || !venue || !agentName.trim() ||
-              !isProviderReady(llmProvider) || isReservedAgentId ||
+              !isProviderReady(llmProvider) || agentIdReserved ||
               (llmProvider === CUSTOM_PROVIDER_OPTION && !customProviderOperation.trim())
             }
           >

@@ -30,6 +30,21 @@ const eslintConfig = [
     },
    }),
   {
+    // Two AGENTS.md conventions that are easy to break by accident. The
+    // ignored files are the single places allowed to touch the real thing.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/lib/clipboard.ts", "src/lib/notify.ts", "src/app/layout.tsx"],
+    rules: {
+      "no-restricted-syntax": ["error", {
+        selector: "MemberExpression[object.name='navigator'][property.name='clipboard']",
+        message: "Use writeTextToClipboard (src/lib/clipboard.ts) or useCopyFeedback — navigator.clipboard does not exist outside a secure context.",
+      }],
+      "no-restricted-imports": ["error", {
+        paths: [{ name: "sonner", message: "Notify through src/lib/notify.ts so every notification is logged and errors stay copyable." }],
+      }],
+    },
+  },
+  {
     // `jest.mock` factories are hoisted above every import, so a shared double
     // can only be reached from inside one with `require`. This is Jest's own
     // documented idiom, not a lapse back to CommonJS — the same files use ESM

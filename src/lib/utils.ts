@@ -1,7 +1,7 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import * as mime from 'mime-types'
-import copy from 'copy-to-clipboard';
+import { writeTextToClipboard } from "@/lib/clipboard"
 import { notifyError, notifySuccess } from "@/lib/notify"
 import { track, trackLegacyAlias, trackPageView } from "@/lib/analytics"
 
@@ -9,7 +9,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// Chat/prompt-style inputs (AIPrompt, AgentChatPanel's composer) want their
+// Chat/prompt-style inputs (AIPrompt, AgentChatSurface's composer) want their
 // placeholder to read as a soft suggestion, not full-strength body text —
 // shadcn's Input/Textarea default to placeholder:text-muted-foreground at
 // full opacity, which (especially against these components' very dark
@@ -192,19 +192,6 @@ export function friendlyError(error: string): { summary: string; detail: string 
 export function abbreviateDid(did: string, chars = 16): string {
   if (did.length <= chars + 5) return did;
   return `${did.slice(0, chars)}…${did.slice(-4)}`;
-}
-
-export async function writeTextToClipboard(value: string): Promise<void> {
-  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(value);
-      return;
-    } catch {
-      // Fall through to copy-to-clipboard for browsers that expose the API
-      // but reject it outside a secure context or without permission.
-    }
-  }
-  if (!copy(value)) throw new Error("The browser did not accept the clipboard write");
 }
 
 export async function copyDataToClipBoard(entityId: string, message: string) {

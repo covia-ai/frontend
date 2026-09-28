@@ -36,4 +36,15 @@ describe("discoverMcpUrl", () => {
     }) as unknown as typeof fetch;
     expect(await discoverMcpUrl("https://err.example")).toBe("Not Available");
   });
+
+  it("does not keep a failed discovery, so a later ask retries", async () => {
+    const fetchMock = jest.fn()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ server_url: "https://flaky.example/mcp" }) });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    expect(await discoverMcpUrl("https://flaky.example")).toBe("Not Available");
+    expect(await discoverMcpUrl("https://flaky.example")).toBe("https://flaky.example/mcp");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });

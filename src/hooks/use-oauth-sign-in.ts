@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useVenues } from "@/hooks/use-venues";
 import {
   buildOAuthLoginUrl,
+  oauthState,
   parseOAuthProviders,
   type OAuthProvider,
 } from "@/lib/oauth";
@@ -32,8 +33,7 @@ function probeProviders(normalized: string): Promise<OAuthProvider[]> {
     credentials: "omit",
   })
     .then((response) => response.ok ? response.text() : "")
-    .then(parseOAuthProviders)
-    .catch((): OAuthProvider[] => []);
+    .then(parseOAuthProviders);
 }
 
 export function discoverOAuthProviders(baseUrl: string): Promise<OAuthProvider[]> {
@@ -41,17 +41,27 @@ export function discoverOAuthProviders(baseUrl: string): Promise<OAuthProvider[]
   const cached = providerRequests.get(normalized);
   if (cached && Date.now() < cached.expiresAt) return cached.request;
 
-  // Hold concurrent callers to one probe, then keep the answer only if the
-  // venue actually advertised something. Caching an empty answer for the life
-  // of the tab would hide SSO from anyone whose tab predates the operator
-  // turning it on.
-  const request = probeProviders(normalized);
-  const entry: DiscoveryEntry = { request, expiresAt: Number.POSITIVE_INFINITY };
+  // Hold concurrent callers to one probe, then trust the answer only for as
+  // long as it deserves. Providers found: for good. None advertised: for the
+  // TTL, since caching that for the life of the tab would hide SSO from anyone
+  // whose tab predates the operator turning it on. No reply at all: not at
+  // all — that is not an answer, and a transient network failure must not
+  // hide the buttons until the page is reloaded.
+  const probe = probeProviders(normalized);
+  const entry: DiscoveryEntry = {
+    request: probe.catch((): OAuthProvider[] => []),
+    expiresAt: Number.POSITIVE_INFINITY,
+  };
   providerRequests.set(normalized, entry);
-  void request.then((providers) => {
-    if (providers.length === 0) entry.expiresAt = Date.now() + EMPTY_DISCOVERY_TTL_MS;
-  });
-  return request;
+  void probe.then(
+    (providers) => {
+      if (providers.length === 0) entry.expiresAt = Date.now() + EMPTY_DISCOVERY_TTL_MS;
+    },
+    () => {
+      providerRequests.delete(normalized);
+    },
+  );
+  return entry.request;
 }
 
 export function useOAuthProviders(baseUrl?: string): OAuthProvider[] {
@@ -86,26 +96,31 @@ export function useOAuthSignInOptions(venueId?: string): OAuthSignInOption[] {
   );
   const providers = useOAuthProviders(baseUrl);
   const pathname = usePathname();
-  const [location, setLocation] = useState<{ origin: string; returnTo: string } | null>(null);
+  // Browser-only inputs, read in an effect so server and first client render agree.
+  const [request, setRequest] = useState<{ origin: string; returnTo: string; state: string } | null>(null);
 
   useEffect(() => {
-    setLocation({
+    // No nonce is minted until a venue actually offers OAuth.
+    if (providers.length === 0) return;
+    setRequest({
       origin: window.location.origin,
       returnTo: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+      state: oauthState(),
     });
-  }, [pathname]);
+  }, [pathname, providers]);
 
   return useMemo(() => {
-    if (!baseUrl || !targetVenueId || !location) return [];
+    if (!baseUrl || !targetVenueId || !request) return [];
     return providers.map((provider) => ({
       provider,
       href: buildOAuthLoginUrl({
         baseUrl,
         provider,
-        frontendOrigin: location.origin,
+        frontendOrigin: request.origin,
         venueId: targetVenueId,
-        returnTo: location.returnTo,
+        returnTo: request.returnTo,
+        state: request.state,
       }),
     }));
-  }, [baseUrl, location, providers, targetVenueId]);
+  }, [baseUrl, request, providers, targetVenueId]);
 }

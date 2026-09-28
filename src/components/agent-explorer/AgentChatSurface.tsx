@@ -23,9 +23,7 @@ import { cn, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
 
 /**
  * The chat surface for the selected agent — session picker/rename, the
- * transcript, and the composer. Extracted from AgentChatPanel so both the
- * explorer workbench and the agent profile's "Conversations" tab share exactly
- * the same, tested chat logic.
+ * transcript, and the composer — the agent profile's "Conversations" tab.
  */
 export function AgentChatSurface({ controller }: { controller: AgentExplorerController }) {
   const {

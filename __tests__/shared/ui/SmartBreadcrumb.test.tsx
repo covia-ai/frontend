@@ -1,7 +1,7 @@
 import React from 'react';
 import { render } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { SmartBreadcrumb } from '@/components/smartbreadcrumb2';
+import { SmartBreadcrumb } from '@/components/SmartBreadcrumb';
 
 function labels(): string[] {
   return Array.from(document.querySelectorAll('[data-slot="breadcrumb-link"]'))
@@ -45,5 +45,30 @@ describe('SmartBreadcrumb catalog addresses', () => {
       />
     );
     expect(labels()).toEqual(['Home', 'Venues', 'Covia Test Venue', 'Operations']);
+  });
+});
+
+// Crumbs are the primary navigation trail: an anchor without href cannot be
+// focused by keyboard, opened in a new tab, or prefetched.
+describe('SmartBreadcrumb links', () => {
+  const visibleLinks = () =>
+    Array.from(document.querySelectorAll<HTMLAnchorElement>('[data-slot="breadcrumb-link"]'))
+      .filter((el) => el.closest('[aria-hidden="true"]') === null);
+
+  it('renders every crumb as a real link to its page', () => {
+    render(<SmartBreadcrumb pathname="/venues/did%3Aweb%3Atest/jobs" />);
+
+    expect(visibleLinks().map((el) => el.getAttribute('href'))).toEqual([
+      '/',
+      '/venues',
+      '/venues/did%3Aweb%3Atest',
+      '/venues/did%3Aweb%3Atest/jobs',
+    ]);
+  });
+
+  it('marks only the last crumb as the current page', () => {
+    render(<SmartBreadcrumb pathname="/venues/did%3Aweb%3Atest/jobs" />);
+
+    expect(visibleLinks().map((el) => el.getAttribute('aria-current'))).toEqual([null, null, null, 'page']);
   });
 });

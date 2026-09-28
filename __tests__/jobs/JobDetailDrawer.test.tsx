@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { RunStatus } from "@covia/covia-sdk";
+import { RunStatus, type Venue } from "@covia/covia-sdk";
 
 jest.mock("@/components/ExecutionViewer", () => ({
   ExecutionViewer: ({ jobId }: { jobId: string }) => <div data-testid="exec-viewer">{jobId}</div>,
@@ -10,9 +10,11 @@ jest.mock("@/components/jobs/JobRowActions", () => ({
 
 import { JobDetailDrawer } from "@/components/jobs/JobDetailDrawer";
 
+const venue = { venueId: "venue-1" } as Venue;
+
 describe("JobDetailDrawer", () => {
   it("is closed (renders nothing) when job is null", () => {
-    render(<JobDetailDrawer job={null} onOpenChange={() => {}} />);
+    render(<JobDetailDrawer job={null} venue={venue} onOpenChange={() => {}} />);
     expect(screen.queryByTestId("exec-viewer")).not.toBeInTheDocument();
   });
 
@@ -20,6 +22,7 @@ describe("JobDetailDrawer", () => {
     render(
       <JobDetailDrawer
         job={{ id: "0xabc", status: RunStatus.COMPLETE }}
+        venue={venue}
         venueId="venue-1"
         fullHref="/job/0xabc"
         onOpenChange={() => {}}

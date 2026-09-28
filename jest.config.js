@@ -9,7 +9,7 @@ const config = {
   testEnvironment: "jsdom",
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   moduleNameMapper: {
-    "\\.(css|less|scss|sass)$": "identity-obj-proxy",
+    // Stylesheet imports need no entry: next/jest maps them itself.
     "^@/(.*)$": "<rootDir>/src/$1",
     // Shared test doubles. `jest.mock` factories are hoisted above imports, so
     // they reach these through require("@test/...") rather than a top import.

@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { writeTextToClipboard } from "@/lib/clipboard";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import type { Session } from "@/config/types";
 import type { PendingChat } from "@/hooks/use-pending-chats";
@@ -25,7 +26,7 @@ import {
 // Shared by both turn kinds so the two copy affordances can't drift in what
 // they put on the clipboard or how they report failure.
 function copyMessage(text: string) {
-  navigator.clipboard.writeText(text).then(
+  writeTextToClipboard(text).then(
     () => notifySuccess("Message copied"),
     (err: unknown) => notifyError("Unable to copy message", err),
   );
@@ -39,7 +40,7 @@ type AgentConversationProps = {
   echoAlreadyRecorded: boolean;
   transcriptRef: RefObject<HTMLDivElement | null>;
   /** The agent's brief (system-prompt snippet) shown in the new-chat empty
-   *  state for context. Optional — the legacy explorer omits it. */
+   *  state for context. */
   agentBrief?: string;
   /** When set, the new-chat empty state offers starter-prompt chips that
    *  populate the composer. Optional. */
@@ -54,8 +55,8 @@ const STARTER_PROMPTS = [
   "Summarise your recent activity",
 ];
 
-// The shared conversation surface for both the focused chat and the legacy
-// explorer. Keeping turn rendering here prevents the two interfaces from
+// The shared conversation surface for both the focused chat and the agent
+// profile. Keeping turn rendering here prevents the two interfaces from
 // drifting in typography, tool grouping, pending-message behavior, or source
 // labelling while their surrounding controls remain intentionally different.
 //

@@ -69,7 +69,7 @@ export async function dispatchAgentMessage({
     const response = result?.response;
     if (response == null || (typeof response === "string" && response.trim() === "")) {
       notifyWarning("The agent sent an empty reply", {
-        description: "It may have hit an error — check its session in the explorer.",
+        description: "It may have hit an error — check its session on the agent's page.",
       });
     }
     gtmEvent.sendAgentMessage(agentId);

@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, Clock, Loader2, MessageSquare, TriangleAlert } from "lucide-react";
+import { Clock, Loader2, MessageSquare, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { DidDisplay } from "@/components/DidDisplay";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { notifyError } from "@/lib/notify";
@@ -181,15 +180,11 @@ function TimelineCard({ entry }: { entry: TimelineEntry }) {
   );
 }
 
-// Inline replacement for the chat area (session picker + transcript +
-// composer) in AgentChatPanel — the header above (name/status/icons) stays
-// put, only this region swaps between chat and timeline.
+// The agent profile's "Timeline" tab.
 export function AgentTimelineView({
   agentId,
-  onBack,
 }: {
   agentId: string;
-  onBack?: () => void;
 }) {
   const venue = useAuthenticatedVenue();
   const [loading, setLoading] = useState(true);
@@ -223,12 +218,6 @@ export function AgentTimelineView({
 
   return (
     <div className="flex-1 overflow-y-auto p-6 bg-background">
-      {onBack && (
-        <Button variant="ghost" size="sm" className="mb-4 gap-2" onClick={onBack}>
-          <ArrowLeft size={15} /> Chat
-        </Button>
-      )}
-
       {loading && (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="animate-spin text-primary" size={28} />

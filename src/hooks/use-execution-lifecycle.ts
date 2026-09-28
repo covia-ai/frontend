@@ -50,7 +50,11 @@ export function useExecutionLifecycle({
     let pollInFlight = false;
     let updateVersion = 0;
     let hasLoaded = false;
-    let finished = false;
+    // Nothing more can change: a terminal status, or a job that does not exist.
+    let settled = false;
+    // Aborting is what closes the SSE connection; a flag checked on the next
+    // event would leave a quiet (e.g. PAUSED) job's stream open after unmount.
+    const stream = new AbortController();
 
     setJob(undefined);
     setOperationAsset(undefined);
@@ -64,7 +68,13 @@ export function useExecutionLifecycle({
     const stopTransport = () => {
       if (pollTimer) clearInterval(pollTimer);
       pollTimer = null;
+      stream.abort();
       if (ownsLifecycle()) setStreaming(false);
+    };
+
+    const settle = () => {
+      settled = true;
+      stopTransport();
     };
 
     const applyMetadata = (metadata: JobMetadata) => {
@@ -77,8 +87,7 @@ export function useExecutionLifecycle({
         metadata.status &&
         isJobFinished(metadata.status as RunStatus)
       ) {
-        finished = true;
-        stopTransport();
+        settle();
       }
     };
 
@@ -92,7 +101,11 @@ export function useExecutionLifecycle({
         ++updateVersion;
         applyMetadata(result.metadata);
       } catch (fetchError: unknown) {
-        if (!ownsLifecycle() || hasLoaded) return;
+        if (!ownsLifecycle()) return;
+        // A missing job will not start existing: stop, rather than re-asking
+        // every second for as long as the page stays open.
+        if (isNotFoundError(fetchError)) settle();
+        if (hasLoaded) return;
         setLoading(false);
         setError(errorMessage(fetchError, "Unable to load job"));
       } finally {
@@ -112,7 +125,7 @@ export function useExecutionLifecycle({
     void fetchStatus();
 
     const startPolling = () => {
-      if (pollTimer || finished || !ownsLifecycle()) return;
+      if (pollTimer || settled || !ownsLifecycle()) return;
       setStreaming(false);
       pollTimer = setInterval(() => {
         void fetchStatus();
@@ -128,7 +141,7 @@ export function useExecutionLifecycle({
     const openStream = async (isRetry: boolean) => {
       try {
         let gotEvent = false;
-        for await (const event of venue.jobs.stream(jobId)) {
+        for await (const event of venue.jobs.stream(jobId, { signal: stream.signal })) {
           if (!ownsLifecycle()) return;
           if (!gotEvent) {
             gotEvent = true;
@@ -141,19 +154,19 @@ export function useExecutionLifecycle({
           } catch {
             // Ignore malformed stream events; a later event can still recover.
           }
-          if (finished || !ownsLifecycle()) return;
+          if (settled || !ownsLifecycle()) return;
         }
       } catch {
         // Fall through to the reattach/fallback logic below.
       }
-      if (!ownsLifecycle() || finished) return;
+      if (!ownsLifecycle() || settled) return;
       setStreaming(false);
       if (isRetry) {
         startPolling();
         return;
       }
       await fetchStatus();
-      if (!ownsLifecycle() || finished) return;
+      if (!ownsLifecycle() || settled) return;
       void openStream(true);
     };
 
@@ -162,7 +175,7 @@ export function useExecutionLifecycle({
     return () => {
       active = false;
       ++lifecycle.current;
-      if (pollTimer) clearInterval(pollTimer);
+      stopTransport();
       refreshRef.current = null;
     };
   }, [jobId, venue]);

@@ -173,8 +173,11 @@ export function OperationsPlayground() {
 
         <Tabs value={tab} onValueChange={handleTabChange}>
           <TabsList>
+            {/* Locked while a run is being submitted, like the operation picker
+                below: switching clears the result pane, and the in-flight
+                invoke would then fill it under the wrong operation. */}
             {TABS.map((t) => (
-              <TabsTrigger key={t} value={t}>{TAB_LABELS[t]}</TabsTrigger>
+              <TabsTrigger key={t} value={t} disabled={invoking}>{TAB_LABELS[t]}</TabsTrigger>
             ))}
           </TabsList>
 
@@ -183,7 +186,7 @@ export function OperationsPlayground() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 <Card>
                   <CardContent className="pt-6 space-y-4">
-                    <Select value={opValue} onValueChange={handleOpChange}>
+                    <Select value={opValue} onValueChange={handleOpChange} disabled={invoking}>
                       <SelectTrigger className="w-full">
                         <SelectValue />
                       </SelectTrigger>
@@ -202,7 +205,7 @@ export function OperationsPlayground() {
                     />
                     {inputError && <ErrorDisplay error={inputError} />}
                     {isAuthenticated ? (
-                      <Button onClick={() => void handleRun()} disabled={!venue || invoking}>
+                      <Button onClick={() => void handleRun()} disabled={!venue || invoking} data-testid="playground-run">
                         {invoking ? "Running…" : "Run"}
                       </Button>
                     ) : (

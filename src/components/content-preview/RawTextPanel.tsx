@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useCopyFeedback } from "@/hooks/use-copy-feedback";
 
 type RawTextPanelProps = {
   value: string;
@@ -16,26 +16,7 @@ export function RawTextPanel({
   loading = false,
   error = null,
 }: RawTextPanelProps) {
-  const [copied, setCopied] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(
-    () => () => {
-      if (timer.current) clearTimeout(timer.current);
-    },
-    [],
-  );
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Clipboard access can be denied outside a secure browser context.
-    }
-  };
+  const { copied, copy } = useCopyFeedback("Unable to copy text");
 
   if (error) {
     return <ErrorDisplay error={error} className="p-4" />;
@@ -46,7 +27,7 @@ export function RawTextPanel({
       <Tooltip>
         <TooltipTrigger asChild>
           <button
-            onClick={() => void copy()}
+            onClick={() => void copy(value)}
             className="absolute right-2 top-2 z-10 rounded-md bg-muted p-1.5 transition-colors hover:bg-muted/80"
             aria-label={copied ? "Copied" : "Copy all"}
             disabled={loading}

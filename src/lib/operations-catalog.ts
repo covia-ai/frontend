@@ -46,13 +46,11 @@ async function readValue(venue: Venue, path: string): Promise<any> {
 // under the root, and the previous hard-coded depth silently dropped those.
 // An operation node is a leaf and is never descended into, so its own
 // input/output schemas can't be mistaken for nested entries.
+//
+// A missing sub-tree reads as an empty value, not an error — so a rejection
+// here is a real failure (unreachable venue, rejected auth) and propagates.
 async function readCatalog(venue: Venue, base: string): Promise<CatalogOp[]> {
-  let tree: any;
-  try {
-    tree = await readValue(venue, base);
-  } catch {
-    return [];
-  }
+  const tree = await readValue(venue, base);
   if (!tree || typeof tree !== "object") return [];
 
   const out: CatalogOp[] = [];
@@ -78,9 +76,14 @@ export async function listCatalogOperations(
   venue: Venue,
   options: { includeUserOps?: boolean } = {},
 ): Promise<CatalogOp[]> {
-  const bases = ["v/ops", "v/test/ops"];
-  if (options.includeUserOps) bases.push("w/ops");
-  const trees = await Promise.all(bases.map((base) => readCatalog(venue, base)));
+  // v/ops IS the catalogue: failing to read it fails the listing, so callers
+  // can show an error instead of an empty venue. The other sub-trees are
+  // extras a venue may not serve to this caller; losing one only narrows the list.
+  const extras = ["v/test/ops", ...(options.includeUserOps ? ["w/ops"] : [])];
+  const trees = await Promise.all([
+    readCatalog(venue, "v/ops"),
+    ...extras.map((base) => readCatalog(venue, base).catch(() => [] as CatalogOp[])),
+  ]);
   const operations = trees.flat();
   operationMetadataCache.set(
     venue,

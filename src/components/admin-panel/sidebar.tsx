@@ -4,29 +4,24 @@ import { SidebarLegalFooter } from "@/components/admin-panel/sidebar-legal-foote
 import { SidebarToggle } from "@/components/admin-panel/sidebar-toggle";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/hooks/use-sidebar";
-import { useStore } from "@/hooks/use-store";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
 import Image from "next/image";
 import Link from "next/link";
 export function Sidebar() {
-  const sidebar = useStore(useSidebar, (x) => x);
+  const isOpen = useSidebar((state) => state.isOpen);
+  const toggleOpen = useSidebar((state) => state.toggleOpen);
   const { theme } = useTheme();
-  if (!sidebar) return null;
-  const { isOpen, toggleOpen, getOpenState, setIsHover, settings } = sidebar;
 
   return (
     <aside
       className={cn(
         "fixed top-0 left-0 z-20 flex flex-col text-sidebar-foreground text-md bg-linear-to-b from-sidebar from-60% via-primary-light via-75% to-secondary-light to-90% shadow-lg h-screen -translate-x-full lg:translate-x-0 transition-[width] ease-in-out duration-300",
-        !getOpenState() ? "w-[90px]" : "w-56  ",
-        settings.disabled && "hidden"
+        isOpen ? "w-56" : "w-[90px]"
       )}
     >
       <SidebarToggle isOpen={isOpen} setIsOpen={toggleOpen} />
       <div
-        onMouseEnter={() => setIsHover(true)}
-        onMouseLeave={() => setIsHover(false)}
         // flex-1 min-h-0 makes this the sidebar's middle region, between the
         // header below and SidebarLegalFooter below — a normal flex sibling
         // now (not an absolute overlay), so it can never overlap this
@@ -39,7 +34,7 @@ export function Sidebar() {
           aria-label="sidebar" role="button"
           className={cn(
             "shrink-0 transition-transform ease-in-out duration-300 mb-1 ",
-            !getOpenState() ? "translate-x-1" : "translate-x-0"
+            isOpen ? "translate-x-0" : "translate-x-1"
           )}
           variant="link"
           asChild
@@ -47,9 +42,9 @@ export function Sidebar() {
             <h1
               className={cn(
                 "font-bold text-lg whitespace-nowrap transition-[transform,opacity,display] ease-in-out duration-300",
-                !getOpenState()
-                  ? "-translate-x-96 opacity-0 hidden"
-                  : "translate-x-0 opacity-100"
+                isOpen
+                  ? "translate-x-0 opacity-100"
+                  : "-translate-x-96 opacity-0 hidden"
               )}
             >
 
@@ -64,9 +59,9 @@ export function Sidebar() {
 
             </h1>
         </Button>
-        <Menu isOpen={getOpenState()} />
+        <Menu isOpen={isOpen} />
       </div>
-      <SidebarLegalFooter isOpen={getOpenState()} />
+      <SidebarLegalFooter isOpen={isOpen} />
     </aside>
   );
 }

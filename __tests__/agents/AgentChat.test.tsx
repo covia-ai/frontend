@@ -90,16 +90,6 @@ describe("AgentChat", () => {
     expect(value.startNewChat).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps the assistant identity fixed on the home-style surface", () => {
-    mockUseAgentExplorer.mockReturnValue(controller());
-
-    render(<AgentChat initialAgentId="writer" fixedAgent />);
-
-    // The header shows the humanised name (identicon + "Writer"), not the slug.
-    expect(screen.getByText("Writer")).toBeInTheDocument();
-    expect(screen.queryByRole("combobox", { name: "Agent" })).not.toBeInTheDocument();
-  });
-
   it("offers agent creation when the venue has no selectable agent", () => {
     mockUseAgentExplorer.mockReturnValue(
       controller({

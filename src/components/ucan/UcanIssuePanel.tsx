@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useIsAuthenticated } from "@/hooks/use-auth";
+import { writeTextToClipboard } from "@/lib/clipboard";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { TONE_STYLES } from "@/lib/status";
 import {
@@ -139,7 +140,7 @@ function IssueForm({ venueDid }: { venueDid: string }) {
   const copy = async () => {
     if (!minted) return;
     try {
-      await navigator.clipboard.writeText(minted.token);
+      await writeTextToClipboard(minted.token);
       notifySuccess("Capability token copied");
     } catch (err) {
       notifyError("Unable to copy capability token", err);

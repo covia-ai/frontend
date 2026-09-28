@@ -5,7 +5,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { Venue } from "@covia/covia-sdk";
 import { reportVenueHealth } from "@/hooks/use-venue-health";
-import { browserStorage } from "@/lib/persist-storage";
+import { browserStorage, syncStoreAcrossTabs } from "@/lib/persist-storage";
 import { connectVenue } from "@/lib/venue-registry";
 
 export type VenueDescriptor = {
@@ -141,7 +141,8 @@ export const useVenues = create(
       name: "venues",
       storage: createJSONStorage(browserStorage),
       merge: (persisted, current) => {
-        const saved = persisted as Partial<VenuesStore>;
+        // Undefined on a first visit — see the matching note in use-auth.
+        const saved = (persisted ?? {}) as Partial<VenuesStore>;
         const venues = (saved.venues ?? [])
           .filter(
             (venue) =>
@@ -163,6 +164,8 @@ export const useVenues = create(
     },
   ),
 );
+
+syncStoreAcrossTabs(useVenues);
 
 // Storage reads are synchronous, but persist still defers `hasHydrated()`
 // through a microtask, so the very first render of anything reading this

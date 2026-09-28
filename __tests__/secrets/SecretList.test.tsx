@@ -14,11 +14,12 @@ jest.mock("@/hooks/use-authenticated-venue", () => ({
   revalidateVenueOnFailure: (...a: any[]) => mockRevalidate(...a),
 }));
 
-const mockUseIsAuthenticated = jest.fn();
+const mockUseCurrentAuth = jest.fn();
 jest.mock("@/hooks/use-auth", () => ({
   ...require("@test/use-auth").authMock,
-  useIsAuthenticated: () => mockUseIsAuthenticated(),
+  useCurrentAuth: () => mockUseCurrentAuth(),
 }));
+const SIGNED_IN = require("@test/use-auth").sampleKeypairAuth;
 
 function makeVenue(over: Partial<{ list: jest.Mock; set: jest.Mock; del: jest.Mock }> = {}) {
   const list = over.list ?? jest.fn().mockResolvedValue(["GITHUB_TOKEN", "OPENAI_API_KEY", "MY_CUSTOM_KEY"]);
@@ -29,7 +30,7 @@ function makeVenue(over: Partial<{ list: jest.Mock; set: jest.Mock; del: jest.Mo
 
 beforeEach(() => {
   mockToast.mockReset();
-  mockUseIsAuthenticated.mockReset().mockReturnValue(true);
+  mockUseCurrentAuth.mockReset().mockReturnValue(SIGNED_IN);
   mockUseAuthenticatedVenue.mockReset();
 });
 
@@ -109,12 +110,25 @@ describe("SecretList (2A)", () => {
 
   it("shows the auth-required card and hides the list when not signed in", () => {
     const { venue } = makeVenue();
-    mockUseIsAuthenticated.mockReturnValue(false);
+    mockUseCurrentAuth.mockReturnValue(null);
     mockUseAuthenticatedVenue.mockReturnValue(venue);
     render(<SecretList />);
 
     expect(screen.getByText("Authentication required")).toBeInTheDocument();
     expect(screen.queryByPlaceholderText("Secret name")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Search secrets")).not.toBeInTheDocument();
+  });
+
+  it("shows a load error — not 'no secrets' — when the read fails, and rechecks the venue", async () => {
+    const failure = new Error("HTTP 401");
+    const { venue, list } = makeVenue({ list: jest.fn().mockRejectedValue(failure) });
+    mockUseAuthenticatedVenue.mockReturnValue(venue);
+    render(<SecretList />);
+
+    expect(await screen.findByTestId("secrets-load-error")).toBeInTheDocument();
+    expect(list).toHaveBeenCalledTimes(1);
+    // Re-probed with the account the read was made as — a null auth here would
+    // record a private venue as publicly readable.
+    expect(mockRevalidate).toHaveBeenCalledWith(venue, SIGNED_IN, failure);
   });
 });

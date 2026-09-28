@@ -66,7 +66,8 @@ describe("useJobExecution", () => {
 
     await act(async () => {
       await result.current.execute({
-        action: async () => ({}),
+        // A result, not a Job — what `operations.run` would hand back.
+        action: async () => ({}) as never,
         failureTitle: "Unable to run tool",
         missingJobMessage: "The tool completed without returning a job ID",
         onError,

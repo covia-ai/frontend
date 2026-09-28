@@ -62,7 +62,7 @@ describe("AgentSettings — tool/skill picker", () => {
 
   async function openPickerOnCapabilitiesTab(onSave: jest.Mock, agent: AgentDetail = baseAgent) {
     const user = userEvent.setup();
-    render(<AgentSettings agent={agent} onBack={jest.fn()} onSave={onSave} />);
+    render(<AgentSettings agent={agent} onSave={onSave} />);
     await user.click(screen.getByRole("tab", { name: "Capabilities" }));
     await user.click(screen.getByTestId("open-tool-skill-picker"));
     await user.click(screen.getByRole("button", { name: /covia/i }));
@@ -84,7 +84,7 @@ describe("AgentSettings — tool/skill picker", () => {
     await user.click(await screen.findByRole("checkbox", { name: "Attach Write" }));
 
     await waitFor(() =>
-      expect(onSave).toHaveBeenCalledWith({ tools: ["v/ops/covia/read", "v/ops/covia/write"] }),
+      expect(onSave).toHaveBeenCalledWith({ tools: ["v/ops/covia/read", "v/ops/covia/write"] }, expect.any(Object)),
     );
     await waitFor(() =>
       expect(screen.getByTestId("agent-tools-json")).toHaveValue(
@@ -120,7 +120,7 @@ describe("AgentSettings — inject user memory into context", () => {
       ...baseAgent,
       config: { context: [{ op: "v/ops/memory", input: { command: "recall" }, label: "User Memory" }] },
     };
-    render(<AgentSettings agent={agent} onBack={jest.fn()} onSave={jest.fn()} />);
+    render(<AgentSettings agent={agent} onSave={jest.fn()} />);
     await user.click(screen.getByRole("tab", { name: "Capabilities" }));
 
     expect(screen.getByRole("checkbox", { name: /inject user memory into context/i })).toBeChecked();
@@ -133,15 +133,16 @@ describe("AgentSettings — inject user memory into context", () => {
       ...baseAgent,
       config: { context: ["w/notes"] },
     };
-    render(<AgentSettings agent={agent} onBack={jest.fn()} onSave={onSave} />);
+    render(<AgentSettings agent={agent} onSave={onSave} />);
     await user.click(screen.getByRole("tab", { name: "Capabilities" }));
 
     await user.click(screen.getByRole("checkbox", { name: /inject user memory into context/i }));
 
     await waitFor(() =>
-      expect(onSave).toHaveBeenCalledWith({
-        context: ["w/notes", { op: "v/ops/memory", input: { command: "recall" }, label: "User Memory" }],
-      }),
+      expect(onSave).toHaveBeenCalledWith(
+        { context: ["w/notes", { op: "v/ops/memory", input: { command: "recall" }, label: "User Memory" }] },
+        expect.any(Object),
+      ),
     );
   });
 
@@ -154,12 +155,12 @@ describe("AgentSettings — inject user memory into context", () => {
         context: ["w/notes", { op: "v/ops/memory", input: { command: "recall" }, label: "User Memory" }],
       },
     };
-    render(<AgentSettings agent={agent} onBack={jest.fn()} onSave={onSave} />);
+    render(<AgentSettings agent={agent} onSave={onSave} />);
     await user.click(screen.getByRole("tab", { name: "Capabilities" }));
 
     await user.click(screen.getByRole("checkbox", { name: /inject user memory into context/i }));
 
-    await waitFor(() => expect(onSave).toHaveBeenCalledWith({ context: ["w/notes"] }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith({ context: ["w/notes"] }, expect.any(Object)));
   });
 });
 
@@ -177,7 +178,7 @@ describe("AgentSettings — capabilities (caps) editor", () => {
       ...baseAgent,
       config: { caps: [{ with: "w/notes/", can: "crud/write" }] },
     };
-    render(<AgentSettings agent={agent} onBack={jest.fn()} onSave={jest.fn()} />);
+    render(<AgentSettings agent={agent} onSave={jest.fn()} />);
     await user.click(screen.getByRole("tab", { name: "Capabilities" }));
 
     expect(screen.getByRole("checkbox", { name: /capabilities \(optional\)/i })).toBeChecked();
@@ -191,7 +192,7 @@ describe("AgentSettings — capabilities (caps) editor", () => {
       ...baseAgent,
       config: { caps: [{ with: "w/notes/", can: "crud/write" }] },
     };
-    render(<AgentSettings agent={agent} onBack={jest.fn()} onSave={onSave} />);
+    render(<AgentSettings agent={agent} onSave={onSave} />);
     await user.click(screen.getByRole("tab", { name: "Capabilities" }));
 
     await user.clear(screen.getByTestId("cap-with-0"));
@@ -199,7 +200,7 @@ describe("AgentSettings — capabilities (caps) editor", () => {
     await user.click(screen.getByTestId("save-agent-settings"));
 
     await waitFor(() =>
-      expect(onSave).toHaveBeenCalledWith({ caps: [{ with: "w/other/", can: "crud/write" }] }),
+      expect(onSave).toHaveBeenCalledWith({ caps: [{ with: "w/other/", can: "crud/write" }] }, expect.any(Object)),
     );
   });
 
@@ -210,13 +211,13 @@ describe("AgentSettings — capabilities (caps) editor", () => {
       ...baseAgent,
       config: { caps: [{ with: "w/notes/", can: "crud/write" }] },
     };
-    render(<AgentSettings agent={agent} onBack={jest.fn()} onSave={onSave} />);
+    render(<AgentSettings agent={agent} onSave={onSave} />);
     await user.click(screen.getByRole("tab", { name: "Capabilities" }));
 
     await user.click(screen.getByRole("checkbox", { name: /capabilities \(optional\)/i }));
     await user.click(screen.getByTestId("save-agent-settings"));
 
-    await waitFor(() => expect(onSave).toHaveBeenCalledWith({ caps: null }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith({ caps: null }, expect.any(Object)));
   });
 });
 
@@ -236,7 +237,7 @@ describe("AgentSettings — concurrent-edit conflict on save", () => {
       ...baseAgent,
       config: { systemPrompt: "original", tools: ["v/ops/covia/read"] },
     };
-    render(<AgentSettings agent={agent} onBack={jest.fn()} onSave={onSave} />);
+    render(<AgentSettings agent={agent} onSave={onSave} />);
 
     const promptField = screen.getByTestId("agent-system-prompt");
     await user.clear(promptField);
@@ -253,7 +254,7 @@ describe("AgentSettings — concurrent-edit conflict on save", () => {
   it("does not touch the draft on an ordinary (non-conflict) failure", async () => {
     const user = userEvent.setup();
     const onSave = jest.fn().mockResolvedValue({ status: "failed" });
-    render(<AgentSettings agent={baseAgent} onBack={jest.fn()} onSave={onSave} />);
+    render(<AgentSettings agent={baseAgent} onSave={onSave} />);
 
     const promptField = screen.getByTestId("agent-system-prompt");
     await user.clear(promptField);

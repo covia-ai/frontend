@@ -42,17 +42,43 @@ export function isAgentProviderReady(
   return !provider.requiresKey || availableKeys.includes(provider.secretKey);
 }
 
-export function providerForOperation(llmOperation?: string): string {
-  const match = Object.entries(LLM_PROVIDERS).find(
-    ([, provider]) => provider.operation === llmOperation,
+type ProviderSelection = {
+  providerId: string;
+  customProviderOperation: string;
+};
+
+// Lossless: an operation outside the curated list is a custom provider, and no
+// operation at all is the venue's default — neither is a curated provider, so
+// neither may be reported as one.
+export function providerSelectionForOperation(operation: unknown): ProviderSelection {
+  if (typeof operation !== "string" || !operation) {
+    return { providerId: DEFAULT_PROVIDER_OPTION, customProviderOperation: "" };
+  }
+  const known = Object.entries(LLM_PROVIDERS).find(
+    ([, provider]) => provider.operation === operation,
   );
-  return match?.[0] ?? "anthropic";
+  return known
+    ? { providerId: known[0], customProviderOperation: "" }
+    : { providerId: CUSTOM_PROVIDER_OPTION, customProviderOperation: operation };
 }
 
-export type AgentCreationSeed = {
+type AgentProviderSeed = {
+  initialProvider: string;
+  initialCustomProviderOperation: string;
+};
+
+/** The create dialog's provider props for a config that states its operation. */
+export function providerSeedForOperation(operation: unknown): AgentProviderSeed {
+  const { providerId, customProviderOperation } = providerSelectionForOperation(operation);
+  return {
+    initialProvider: providerId,
+    initialCustomProviderOperation: customProviderOperation,
+  };
+}
+
+export type AgentCreationSeed = AgentProviderSeed & {
   initialAgentName: string;
   initialSystemPrompt: string;
-  initialProvider: string;
   initialModel: string;
   initialConfig: AgentConfigInput;
 };
@@ -74,9 +100,9 @@ export function cloneSeedFromAgent(agent: AgentDetail): AgentCreationSeed {
     initialAgentName: `${agent.agentId} copy`,
     initialSystemPrompt:
       typeof systemPrompt === "string" ? systemPrompt : "",
-    initialProvider: providerForOperation(
-      typeof llmOperation === "string" ? llmOperation : undefined,
-    ),
+    // `info` returns the resolved config, so a missing llmOperation here
+    // really is "venue default" rather than something a layer might supply.
+    ...providerSeedForOperation(llmOperation),
     initialModel: typeof model === "string" ? model : "",
     initialConfig,
   };

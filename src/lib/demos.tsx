@@ -4,9 +4,8 @@ import { AdaptiveRiskDemo } from "@/components/adaptive-risk/AdaptiveRiskDemo";
 import { GovernedEscalationDemo } from "@/components/governed-escalation/GovernedEscalationDemo";
 
 // The demo registry. /demos lists these entries and /demos/[slug] renders
-// them, so adding a demo is adding an entry here (plus, optionally, a
-// breadcrumb label in smartbreadcrumb2's labelMap — the crumb falls back to
-// the raw slug without one).
+// them, so adding a demo is adding an entry here. Its breadcrumb is the slug
+// title-cased; add a label in lib/breadcrumbs only if that reads wrongly.
 export type DemoEntry = {
   slug: string;
   /** PageHeading pieces: plain lead text and the highlighted tail. */

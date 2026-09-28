@@ -1,7 +1,8 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { revalidateVenueOnFailure, useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useVenueRead } from "@/hooks/use-venue-read";
 import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -12,7 +13,8 @@ import { Card } from "./ui/card";
 import { TypeTile } from "./TypeTile";
 import { conceptLook } from "@/lib/concept-icons";
 import { CONNECTIONS } from "@/config/connections";
-import { useIsAuthenticated } from "@/hooks/use-auth";
+import { useCurrentAuth } from "@/hooks/use-auth";
+import { ListLoadError } from "@/components/ListLoadError";
 import { KNOWN_LLM_KEYS } from "@/config/llm-providers";
 import { keyNameSuggestions, recentKeyNames, rememberKeyName } from "@/lib/recent-keys";
 import {
@@ -64,8 +66,6 @@ export function groupSecretsByProvider(secrets: string[]): { label: string; name
 }
 
 export function SecretList() {
-  const [secrets, setSecrets] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState("");
   const [newValue, setNewValue] = useState("");
   const [adding, setAdding] = useState(false);
@@ -76,44 +76,28 @@ export function SecretList() {
   const [recent, setRecent] = useState<string[]>([]);
   useEffect(() => setRecent(recentKeyNames()), []);
 
+  const venue = useAuthenticatedVenue();
+  const auth = useCurrentAuth();
+  const isAuthenticated = auth !== null;
+
+  const { data: secrets, loading, error, reload: loadSecrets } = useVenueRead<string[]>({
+    venue,
+    auth,
+    enabled: isAuthenticated,
+    initial: [],
+    failureTitle: "Unable to load secrets",
+    load: async (v) => {
+      const names = await v.secrets.list();
+      return Array.isArray(names) ? names : [];
+    },
+  });
+
   // Grouped name suggestions: recent → your existing keys → common LLM keys.
   const nameGroups = keyNameSuggestions({
     recent,
     existing: secrets,
     common: Object.keys(KNOWN_LLM_KEYS),
   });
-
-  const venue = useAuthenticatedVenue();
-  const isAuthenticated = useIsAuthenticated();
-
-  const loadSecrets = useCallback(() => {
-    if (!venue || !isAuthenticated) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    venue.secrets
-      .list()
-      .then((result) => {
-        setSecrets(Array.isArray(result) ? result : []);
-      })
-      .catch((err: any) => {
-        notifyError("Unable to load secrets", err, venue.baseUrl);
-        // A connectivity or auth failure here is a venue problem, not a
-        // secrets problem — force a status recheck so health indicators and
-        // resolution-gated pages converge on the real state (unreachable,
-        // auth-required, or a restarted venue identity).
-        revalidateVenueOnFailure(venue, null, err);
-        setSecrets([]);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [venue, isAuthenticated]);
-
-  useEffect(() => {
-    loadSecrets();
-  }, [loadSecrets]);
 
   // Filter the already-loaded names client-side, then group — no new fetch.
   const groups = useMemo(() => {
@@ -286,7 +270,11 @@ export function SecretList() {
               </div>
             )}
 
-            {!loading && secrets.length === 0 && (
+            {!loading && error && (
+              <ListLoadError error={error} onRetry={loadSecrets} data-testid="secrets-load-error" />
+            )}
+
+            {!loading && !error && secrets.length === 0 && (
               <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
                 <KeyRound size={32} />
                 <p className="text-sm mt-2">No secrets stored</p>

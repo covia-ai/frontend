@@ -60,11 +60,8 @@ export interface AgentDisplay {
   hasCaps: boolean;
 }
 
-// `providerForOperation` is deliberately not used here: it falls back to
-// "anthropic" for any operation it doesn't recognise, which is the right
-// default when seeding the create form's provider dropdown but wrong as a
-// label — it would caption a venue-local or custom LLM operation
-// "Anthropic (Claude)". Match the operation exactly, or say it's custom.
+// A label must never guess: a venue-local or custom LLM operation is captioned
+// as custom, not as whichever curated provider happens to be a form's default.
 function providerLabelFor(config: Record<string, any> | undefined): string {
   const op = config?.llmOperation as string | undefined;
   if (!op) return "Venue default";

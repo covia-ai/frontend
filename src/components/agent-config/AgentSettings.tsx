@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AgentStatus } from "@covia/covia-sdk";
 import { TONE_STYLES } from "@/lib/status";
-import { AlertTriangle, ArrowLeft, Loader2, RotateCcw, Save, Wrench } from "lucide-react";
+import { AlertTriangle, Loader2, RotateCcw, Save, Wrench } from "lucide-react";
 import type { AgentDetail } from "@/config/types";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import {
@@ -37,11 +37,14 @@ function stringArray(value: unknown): string[] {
 
 type AgentSettingsProps = {
   agent: AgentDetail;
-  onBack?: () => void;
-  onSave: (config: Record<string, unknown>) => Promise<AgentConfigSaveOutcome>;
+  /** `baseline` is the config the patch was computed against (#161). */
+  onSave: (
+    config: Record<string, unknown>,
+    baseline: Record<string, unknown>,
+  ) => Promise<AgentConfigSaveOutcome>;
 };
 
-export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
+export function AgentSettings({ agent, onSave }: AgentSettingsProps) {
   const venue = useAuthenticatedVenue();
   const initialConfig = useRef<Record<string, unknown>>(agent.config ?? {});
   const [draft, setDraft] = useState(() =>
@@ -102,7 +105,7 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
   ) => {
     setCapabilitySaving(true);
     try {
-      const outcome = await onSave({ [key]: nextValue });
+      const outcome = await onSave({ [key]: nextValue }, initialConfig.current);
       if (outcome.status === "saved") {
         initialConfig.current = { ...initialConfig.current, [key]: nextValue };
         const jsonField =
@@ -134,7 +137,7 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
     if (!result.config || !dirty) return;
     setSaving(true);
     try {
-      const outcome = await onSave(patch);
+      const outcome = await onSave(patch, initialConfig.current);
       if (outcome.status === "saved") {
         initialConfig.current = result.config;
         setDraft(createAgentSettingsDraft(result.config));
@@ -150,11 +153,6 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
   return (
     <div data-testid="agent-settings" className="flex min-h-0 flex-1 flex-col">
       <div className="border-b px-6 py-4">
-        {onBack && (
-          <Button variant="ghost" size="sm" className="mb-4 gap-2" onClick={onBack}>
-            <ArrowLeft size={15} /> Chat
-          </Button>
-        )}
         <div>
           <h4 className="font-semibold">Agent settings</h4>
           <p className="mt-1 text-sm text-muted-foreground">

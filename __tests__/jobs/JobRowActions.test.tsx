@@ -6,20 +6,19 @@ jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
 const getMock = jest.fn();
 const cancelMock = jest.fn().mockResolvedValue({});
 const invokeMock = jest.fn().mockResolvedValue({ id: "0xNEWJOB" });
-const mockVenue = {
-  venueId: "venue-1",
-  baseUrl: "https://venue.example",
-  jobs: { get: getMock, cancel: cancelMock },
-  operations: { invoke: invokeMock },
-};
-jest.mock("@/hooks/use-authenticated-venue", () => ({
-  ...require("@test/use-authenticated-venue").venueMock,
-  useAuthenticatedVenue: () => mockVenue,
-}));
 
 import { JobRowActions } from "@/components/jobs/JobRowActions";
 import { notifySuccess } from "@/lib/notify";
-import { RunStatus } from "@covia/covia-sdk";
+import { RunStatus, type Venue } from "@covia/covia-sdk";
+
+// The venue arrives as a prop (the one the list is showing) — never from the
+// globally selected venue, which can differ on a /venues/<id>/jobs route.
+const venue = {
+  venueId: "did:web:venue.example",
+  baseUrl: "https://venue.example",
+  jobs: { get: getMock, cancel: cancelMock },
+  operations: { invoke: invokeMock },
+} as unknown as Venue;
 
 // Real job records carry the operation as a content hash under `op` (#322).
 const fullJob = (over: Record<string, unknown> = {}) => ({
@@ -37,17 +36,23 @@ describe("JobRowActions", () => {
   });
 
   it("re-runs the operation with the fetched op + input", async () => {
-    render(<JobRowActions job={{ id: "0xabc", status: RunStatus.COMPLETE }} />);
+    render(<JobRowActions venue={venue} job={{ id: "0xabc", status: RunStatus.COMPLETE }} />);
     await userEvent.click(screen.getByTestId("job-actions-0xabc"));
     await userEvent.click(await screen.findByText("Re-run"));
 
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("0xop", { x: 1 }));
     expect(getMock).toHaveBeenCalledWith("0xabc");
-    expect(notifySuccess).toHaveBeenCalled();
+    // The receipt deep-links to the new job on the same venue.
+    expect(notifySuccess).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        receiptHref: "/venues/did%3Aweb%3Avenue.example/jobs/0xNEWJOB",
+      }),
+    );
   });
 
   it("downloads a JSON receipt built from the job record", async () => {
-    render(<JobRowActions job={{ id: "0xabc", status: RunStatus.COMPLETE }} />);
+    render(<JobRowActions venue={venue} job={{ id: "0xabc", status: RunStatus.COMPLETE }} />);
     await userEvent.click(screen.getByTestId("job-actions-0xabc"));
     await userEvent.click(await screen.findByText("Download receipt"));
 
@@ -58,7 +63,7 @@ describe("JobRowActions", () => {
 
   it("shows Cancel only for an active job, and cancels after confirming", async () => {
     const onChanged = jest.fn();
-    render(<JobRowActions job={{ id: "0xrun", status: RunStatus.STARTED }} onChanged={onChanged} />);
+    render(<JobRowActions venue={venue} job={{ id: "0xrun", status: RunStatus.STARTED }} onChanged={onChanged} />);
     await userEvent.click(screen.getByTestId("job-actions-0xrun"));
     await userEvent.click(await screen.findByText("Cancel job"));
 
@@ -71,7 +76,7 @@ describe("JobRowActions", () => {
   });
 
   it("hides Cancel for a terminal job", async () => {
-    render(<JobRowActions job={{ id: "0xdone", status: RunStatus.COMPLETE }} />);
+    render(<JobRowActions venue={venue} job={{ id: "0xdone", status: RunStatus.COMPLETE }} />);
     await userEvent.click(screen.getByTestId("job-actions-0xdone"));
     await screen.findByText("Re-run");
     expect(screen.queryByText("Cancel job")).not.toBeInTheDocument();

@@ -7,10 +7,22 @@ import { notifyWarning } from "@/lib/notify";
 // instances for the old identity mint tokens the venue rejects ("Token
 // audience not accepted"), and its credentials can never be valid again.
 
+// Everything the app holds for one venue id beyond its entry in the venues
+// list: cached SDK instances and the credentials scoped to it.
+function dropVenueScopedState(venueId: string): void {
+  evictVenueInstances(venueId);
+  useAuthStore.getState().purgeVenueAuth(venueId);
+}
+
+/** Disconnect a venue at the user's request, leaving no credentials behind. */
+export function forgetVenue(venueId: string): void {
+  useVenues.getState().removeVenue(venueId);
+  dropVenueScopedState(venueId);
+}
+
 /** Drop everything scoped to a dead venue identity and tell the user why. */
 export function retireVenueIdentity(replacement: VenueReplacement): void {
-  evictVenueInstances(replacement.oldId);
-  useAuthStore.getState().purgeVenueAuth(replacement.oldId);
+  dropVenueScopedState(replacement.oldId);
   notifyWarning(`Venue at ${replacement.baseUrl} has a new identity`, {
     description:
       `${replacement.name ?? "The venue"} restarted with a fresh DID. ` +

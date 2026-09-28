@@ -77,6 +77,27 @@ describe('listCatalogOperations', () => {
     await expect(listCatalogOperations(venue)).resolves.toEqual([]);
   });
 
+  it('rejects when the venue catalogue itself cannot be read, so callers can show an error', async () => {
+    const failure = new Error('HTTP 503');
+    const read = jest.fn((path: string) =>
+      path === 'v/ops' ? Promise.reject(failure) : Promise.resolve({ exists: false }));
+    const venue = { venueId: 'did:key:z6MkVenue', workspace: { read } } as any;
+
+    await expect(listCatalogOperations(venue)).rejects.toBe(failure);
+  });
+
+  it('still lists the venue catalogue when an extra sub-tree is refused', async () => {
+    const read = jest.fn((path: string) =>
+      path === 'v/ops'
+        ? Promise.resolve({ exists: true, value: { agent: { suspend: { operation: {} } } } })
+        : Promise.reject(new Error('HTTP 403')));
+    const venue = { venueId: 'did:key:z6MkVenue', workspace: { read } } as any;
+
+    const ops = await listCatalogOperations(venue, { includeUserOps: true });
+
+    expect(ops.map((o) => o.path)).toEqual(['v/ops/agent/suspend']);
+  });
+
   it('includes operations at any depth, including directly under the root', async () => {
     // Venues mix depths: most ops are v/ops/<adapter>/<op>, but some (skills,
     // memory) sit directly under v/ops. A fixed-depth walk dropped the latter.
