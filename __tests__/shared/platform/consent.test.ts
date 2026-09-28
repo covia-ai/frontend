@@ -37,6 +37,19 @@ describe('consent storage', () => {
     expect(document.cookie).toContain(CONSENT_KEY);
   });
 
+  it('omits Secure from the cookie on http (Safari drops it on localhost)', () => {
+    // jsdom's document.cookie getter hides attributes, so watch the setter.
+    const set = jest.spyOn(Document.prototype, 'cookie', 'set');
+    try {
+      writeConsent({ essential: true, analytics: false, marketing: false });
+      const written = set.mock.calls.map(([c]) => c).find((c) => c.startsWith(`${CONSENT_KEY}=`));
+      expect(written).toContain('SameSite=Lax');
+      expect(written).not.toContain('Secure');
+    } finally {
+      set.mockRestore();
+    }
+  });
+
   it('dispatches covia-consent-change so listeners react in the same tab', () => {
     const listener = jest.fn();
     window.addEventListener('covia-consent-change', listener);
