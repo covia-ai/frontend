@@ -37,7 +37,7 @@ export type CadencePreset = keyof typeof CADENCE_PRESETS;
 // violating "reads must not create jobs".
 export async function listScheduledEvents(venue: Venue): Promise<ScheduledEvent[]> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  venue.auth.apply(headers, venue.venueId);
+  await venue.auth.apply(headers, venue.venueId);
   const data = await fetchWithError<{ events: ScheduledEvent[] }>(
     `${venue.baseUrl}/api/v1/schedules`,
     { headers },

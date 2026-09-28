@@ -12,7 +12,7 @@ export async function verifyVenueAccount(venue: Venue): Promise<void> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  venue.auth.apply(headers, venue.venueId);
+  await venue.auth.apply(headers, venue.venueId);
   await fetchWithError(
     `${venue.baseUrl}/api/v1/agents?includeTerminated=false`,
     { headers },
