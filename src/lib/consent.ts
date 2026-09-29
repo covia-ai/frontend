@@ -193,8 +193,10 @@ function persist(record: StoredConsent): void {
   } catch {
     // Storage disabled — the cookie below still carries the decision.
   }
-  // URL-encoded because the value contains quotes and braces.
-  document.cookie = `${CONSENT_KEY}=${encodeURIComponent(value)}; path=/; max-age=${COOKIE_MAX_AGE_SECONDS}; SameSite=Lax`
+  // URL-encoded because the value contains quotes and braces. Secure only on
+  // HTTPS: Safari drops Secure cookies set from http://localhost in dev.
+  const secure = window.location.protocol === 'https:' ? '; Secure' : ''
+  document.cookie = `${CONSENT_KEY}=${encodeURIComponent(value)}; path=/; max-age=${COOKIE_MAX_AGE_SECONDS}; SameSite=Lax${secure}`
 }
 
 export function writeConsent(categories: ConsentCategories): StoredConsent {
