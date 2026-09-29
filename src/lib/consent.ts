@@ -29,11 +29,11 @@ export const CONSENT_KEY = 'covia-consent'
  * whenever `src/content/legal/privacy.ts` materially changes what is
  * collected, which invalidates older records and re-prompts.
  *
- * Note this deliberately tracks the *app's* policy (v1.3, effective
- * 2026-09-29), not covia.ai's ('2026-04-11'). The two properties currently
- * write host-only cookies so the values never meet. Unifying consent across
- * `.covia.ai` (D070 §11) has to reconcile them: the shapes already match,
- * only the version constants differ.
+ * This tracks the *app's* policy (v1.3, effective 2026-09-29). covia.ai
+ * publishes the same v1.3 text, but the two properties write host-only
+ * cookies, so their consent records never meet. Unifying consent across
+ * `.covia.ai` (D070 §11) still has to share one cookie and keep the two
+ * version constants in step.
  */
 export const PRIVACY_POLICY_VERSION = '2026-09-29'
 
