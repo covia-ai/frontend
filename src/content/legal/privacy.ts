@@ -1,10 +1,10 @@
-// Covia Privacy Policy v1.3 DRAFT (not yet approved; supersedes v1.2 once approved).
+// Covia Privacy Policy v1.3 (effective 2026-09-29).
 //
 // Version history and approvals:
 //   v1.0  2026-08-14  approved by Chirdeep Chhabra 2026-08-14
 //   v1.1  2026-08-27  approved by Chirdeep Chhabra 2026-08-29
 //   v1.2  2026-08-28  approved by Chirdeep Chhabra 2026-08-29
-//   v1.3  DRAFT       prepared 2026-09-28, pending approval by Chirdeep Chhabra
+//   v1.3  2026-09-29  approved by Chirdeep Chhabra 2026-09-29
 //
 // None of these has been reviewed by external counsel. That is a separate
 // question from the approvals above and is still outstanding.
@@ -49,16 +49,15 @@
 //      privacy@covia.ai, since there is no self-service account delete yet
 //      (covia#536).
 //
-// On approval: set the effective date below and move PRIVACY_POLICY_VERSION
-// in src/lib/consent.ts to the same date (this re-prompts every user, which
-// is intended for a change of this size).
+// PRIVACY_POLICY_VERSION moved to 2026-09-29 with this version, so every
+// user is asked for analytics consent again (intended for a change of this size).
 //
 // Keep in step with PRIVACY_POLICY_VERSION in src/lib/consent.ts, which
 // invalidates stored consent and re-prompts every user when it moves.
 // No em dashes in the copy below (house style). Edit the markdown to change
 // the page.
 export const PRIVACY_POLICY_MD = `
-**Effective date: [set on approval]** · Version 1.3 (draft)
+**Effective date: 29 September 2026** · Version 1.3
 
 ## Introduction
 

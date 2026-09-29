@@ -35,7 +35,7 @@ export const CONSENT_KEY = 'covia-consent'
  * `.covia.ai` (D070 §11) has to reconcile them: the shapes already match,
  * only the version constants differ.
  */
-export const PRIVACY_POLICY_VERSION = '2026-08-28'
+export const PRIVACY_POLICY_VERSION = '2026-09-29'
 
 /** Cookie written by the previous `react-cookie-consent` banner. */
 const LEGACY_COOKIE_NAME = 'yourAppCookieConsent'
