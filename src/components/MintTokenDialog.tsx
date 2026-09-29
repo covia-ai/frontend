@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import type { VenueAuth } from "@/hooks/use-auth";
-import { identityTokenFor } from "@/lib/identity-token";
+import { identityTokenFor, MAX_IDENTITY_TOKEN_LIFETIME_SECONDS } from "@/lib/identity-token";
 import { notifyError, notifySuccess } from "@/lib/notify";
+import { TONE_STYLES } from "@/lib/status";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -51,7 +52,9 @@ export function MintTokenDialog({ venueId, account, open, onOpenChange }: MintTo
   const [minted, setMinted] = useState<{ token: string; expiresAt: Date } | null>(null);
 
   const seconds = Math.round(Number(amount) * UNIT_SECONDS[unit]);
-  const valid = audience.trim().startsWith("did:") && Number.isFinite(seconds) && seconds >= 60;
+  const tooLong = seconds > MAX_IDENTITY_TOKEN_LIFETIME_SECONDS;
+  const valid =
+    audience.trim().startsWith("did:") && Number.isFinite(seconds) && seconds >= 60 && !tooLong;
   const longLived = valid && seconds > UNIT_SECONDS.days;
 
   const mint = () => {
@@ -126,6 +129,11 @@ export function MintTokenDialog({ venueId, account, open, onOpenChange }: MintTo
                 </SelectContent>
               </Select>
             </div>
+            {tooLong && (
+              <p data-testid="mint-token-too-long" className={`text-xs ${TONE_STYLES.attention.text} mt-1`}>
+                The maximum lifetime is 30 days.
+              </p>
+            )}
             {longLived && (
               <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
                 Long-lived token: anyone holding it can act as you until it

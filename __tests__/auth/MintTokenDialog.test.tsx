@@ -66,4 +66,24 @@ describe('MintTokenDialog', () => {
     await user.type(audience, 'not-a-did');
     expect(screen.getByTestId('mint-token-mint')).toBeDisabled();
   });
+
+  it('caps the lifetime at 30 days', async () => {
+    const user = userEvent.setup();
+    render(<IdentityTokenButton venueId={VENUE} account={KEY_ACCOUNT} />);
+
+    await user.click(screen.getByTestId('account-token'));
+    await user.click(await screen.findByTestId('token-custom'));
+
+    // Default unit is hours: 720 h is exactly 30 days, 721 h is over.
+    const amount = await screen.findByTestId('mint-token-amount');
+    await user.clear(amount);
+    await user.type(amount, '720');
+    expect(screen.getByTestId('mint-token-mint')).toBeEnabled();
+    expect(screen.queryByTestId('mint-token-too-long')).not.toBeInTheDocument();
+
+    await user.clear(amount);
+    await user.type(amount, '721');
+    expect(screen.getByTestId('mint-token-mint')).toBeDisabled();
+    expect(screen.getByTestId('mint-token-too-long')).toHaveTextContent('30 days');
+  });
 });
