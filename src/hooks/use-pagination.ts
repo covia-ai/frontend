@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type SetStateAction } from "react";
 
 type PageNumberOptions = {
   totalItems: number;
@@ -13,16 +13,23 @@ export function usePageNumber({
   pageSize,
   resetKey,
 }: PageNumberOptions) {
-  const [currentPage, setCurrentPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  // The chosen page is stored with the filter identity it was chosen under, so
+  // a new identity reads as page one in the same render — nothing has to reset
+  // it a frame later. A result set that shrinks pulls the page back into range
+  // the same way: the clamp is applied on read, never written back.
+  const [chosen, setChosen] = useState<{ resetKey?: string; page: number }>({ resetKey, page: 1 });
+  const currentPage = Math.min(chosen.resetKey === resetKey ? chosen.page : 1, totalPages);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [resetKey]);
-
-  useEffect(() => {
-    setCurrentPage((page) => Math.min(page, totalPages));
-  }, [totalPages]);
+  const setCurrentPage = useCallback(
+    (update: SetStateAction<number>) => {
+      setChosen((previous) => {
+        const base = Math.min(previous.resetKey === resetKey ? previous.page : 1, totalPages);
+        return { resetKey, page: typeof update === "function" ? update(base) : update };
+      });
+    },
+    [resetKey, totalPages],
+  );
 
   return { currentPage, setCurrentPage, totalPages };
 }

@@ -21,15 +21,6 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-non-null-asserted-optional-chain": "error",
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrors: "none" }],
       "react-hooks/rules-of-hooks": "error",
-      // eslint-plugin-react-hooks 7 (via eslint-config-next 16) added the React
-      // Compiler's rules to "recommended". They flagged 94 existing sites in 57
-      // files when Next 16 landed — a refactor to take on its own, not with a
-      // framework bump — so they report as warnings until then. Fix, then
-      // promote each back to "error" as its count reaches zero.
-      "react-hooks/set-state-in-effect": "warn",
-      "react-hooks/refs": "warn",
-      "react-hooks/preserve-manual-memoization": "warn",
-      "react-hooks/purity": "warn",
     },
   },
   {
@@ -54,6 +45,11 @@ const eslintConfig = defineConfig([
     // imports everywhere else.
     files: ["__tests__/**/*.{ts,tsx}"],
     rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
+  {
+    // A test's `next/image` stand-in renders a bare <img>; the LCP advice is for pages.
+    files: ["__tests__/**/*.{ts,tsx}"],
+    rules: { "@next/next/no-img-element": "off" },
   },
 ]);
 

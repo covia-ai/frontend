@@ -1,12 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import type { Venue } from "@covia/covia-sdk";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { notifyError } from "@/lib/notify";
 import { AdaptiveRiskAddresses } from "./fixtures";
-import { DecisionSnapshot, readDecisions } from "./beats";
+import { readDecisions } from "./beats";
+import { useLedgerSnapshot } from "./use-ledger-snapshot";
 
 // The decision ledger, read job-free. Beat 2 proves the gate is not merely a
 // blocker (a clean case flows through it to a written decision); beat 3 uses
@@ -23,24 +22,12 @@ export function DecisionsPanel({
   /** When set, call out that this applicant has NO decision record. */
   absenceOf?: string;
 }) {
-  const [snapshot, setSnapshot] = useState<DecisionSnapshot | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const refresh = useCallback(async () => {
-    if (!venue) return;
-    setLoading(true);
-    try {
-      setSnapshot(await readDecisions(venue, addresses));
-    } catch (err) {
-      notifyError("Unable to read the decision ledger", err, venue.baseUrl);
-    } finally {
-      setLoading(false);
-    }
-  }, [venue, addresses]);
-
-  useEffect(() => {
-    if (refreshToken > 0) void refresh();
-  }, [refreshToken, refresh]);
+  const { snapshot, loading, refresh } = useLedgerSnapshot(
+    venue,
+    refreshToken,
+    "Unable to read the decision ledger",
+    (target) => readDecisions(target, addresses),
+  );
 
   if (!snapshot) return null;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Venue } from "@covia/covia-sdk";
 import { Loader2, Save } from "lucide-react";
 import {
@@ -53,25 +53,60 @@ export function SkillEditorDialog({
   /** Receives the path the venue wrote, so the caller can reload and select it. */
   onSaved: (path: string) => void;
 }) {
-  const [markdown, setMarkdown] = useState(initialMarkdown);
+  // Held here rather than in the editor so the dialog can refuse to close
+  // mid-save; the editor reports it while the request is in flight.
   const [saving, setSaving] = useState(false);
+  const copy = COPY[mode];
 
-  // Reopening for a different skill must not show the previous draft. Keyed on
-  // `open` as well so cancelling and reopening restores the original text
-  // rather than leaving the abandoned edit in place.
-  useEffect(() => {
-    if (open) {
-      setMarkdown(initialMarkdown);
-      setSaving(false);
-    }
-  }, [open, initialMarkdown]);
+  return (
+    <Dialog open={open} onOpenChange={(next) => !saving && onOpenChange(next)}>
+      <DialogContent className="sm:max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>{copy.title}</DialogTitle>
+          <DialogDescription>{copy.description}</DialogDescription>
+        </DialogHeader>
+        {/* Mounted only while open: reopening for a different skill, or after a
+            cancelled edit, starts from `initialMarkdown` again without an effect
+            re-seeding the draft — and a draft in progress is never replaced
+            underneath the writer while the dialog stays open. */}
+        <SkillMarkdownEditor
+          venue={venue}
+          mode={mode}
+          initialMarkdown={initialMarkdown}
+          saving={saving}
+          onSavingChange={setSaving}
+          onSaved={onSaved}
+          onClose={() => onOpenChange(false)}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
 
+function SkillMarkdownEditor({
+  venue,
+  mode,
+  initialMarkdown,
+  saving,
+  onSavingChange,
+  onSaved,
+  onClose,
+}: {
+  venue: Venue;
+  mode: SkillEditorMode;
+  initialMarkdown: string;
+  saving: boolean;
+  onSavingChange: (saving: boolean) => void;
+  onSaved: (path: string) => void;
+  onClose: () => void;
+}) {
+  const [markdown, setMarkdown] = useState(initialMarkdown);
   const check = useMemo(() => validateSkillMarkdown(markdown), [markdown]);
   const copy = COPY[mode];
 
   const save = async () => {
     if (!check.ok) return;
-    setSaving(true);
+    onSavingChange(true);
     try {
       const result = await saveSkill(venue, markdown);
       // The venue reports the frontmatter keys it recognised but does not
@@ -84,53 +119,46 @@ export function SkillEditorDialog({
         notifySuccess(result.existed ? `Updated ${result.name}` : `Created ${result.name}`);
       }
       onSaved(result.path);
-      onOpenChange(false);
+      onClose();
     } catch (cause) {
       notifyError(`Unable to save ${mode === "edit" ? "changes" : "skill"}`, cause, venue.baseUrl);
     } finally {
-      setSaving(false);
+      onSavingChange(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !saving && onOpenChange(next)}>
-      <DialogContent className="sm:max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>{copy.title}</DialogTitle>
-          <DialogDescription>{copy.description}</DialogDescription>
-        </DialogHeader>
+    <>
+      <Textarea
+        aria-label="Skill markdown"
+        value={markdown}
+        onChange={(event) => setMarkdown(event.target.value)}
+        spellCheck={false}
+        // The Textarea primitive sets `field-sizing-content`, so it grows to
+        // fit. Long skills (the venue's own a2a skill is ~4KB) then push the
+        // dialog past the viewport and the Save button out of reach, so cap
+        // the height and let the textarea scroll inside instead.
+        className="max-h-[50vh] min-h-[22rem] overflow-y-auto font-mono text-[13px] leading-6"
+      />
 
-        <Textarea
-          aria-label="Skill markdown"
-          value={markdown}
-          onChange={(event) => setMarkdown(event.target.value)}
-          spellCheck={false}
-          // The Textarea primitive sets `field-sizing-content`, so it grows to
-          // fit. Long skills (the venue's own a2a skill is ~4KB) then push the
-          // dialog past the viewport and the Save button out of reach, so cap
-          // the height and let the textarea scroll inside instead.
-          className="max-h-[50vh] min-h-[22rem] overflow-y-auto font-mono text-[13px] leading-6"
-        />
+      <p
+        className={check.ok ? "text-xs text-muted-foreground" : "text-xs text-destructive"}
+        role={check.ok ? undefined : "alert"}
+      >
+        {check.ok
+          ? `Saves to ${USER_SKILLSET}/${check.name}`
+          : check.error}
+      </p>
 
-        <p
-          className={check.ok ? "text-xs text-muted-foreground" : "text-xs text-destructive"}
-          role={check.ok ? undefined : "alert"}
-        >
-          {check.ok
-            ? `Saves to ${USER_SKILLSET}/${check.name}`
-            : check.error}
-        </p>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancel
-          </Button>
-          <Button onClick={() => void save()} disabled={!check.ok || saving}>
-            {saving ? <Loader2 size={14} className="mr-1.5 animate-spin" /> : <Save size={14} className="mr-1.5" />}
-            {copy.action}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose} disabled={saving}>
+          Cancel
+        </Button>
+        <Button onClick={() => void save()} disabled={!check.ok || saving}>
+          {saving ? <Loader2 size={14} className="mr-1.5 animate-spin" /> : <Save size={14} className="mr-1.5" />}
+          {copy.action}
+        </Button>
+      </DialogFooter>
+    </>
   );
 }

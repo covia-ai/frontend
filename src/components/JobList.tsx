@@ -1,7 +1,7 @@
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
-import { useCallback, useEffect, useMemo, useRef, useState, type UIEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type UIEvent } from "react";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { useActiveJobsLive } from "@/hooks/use-active-jobs-live";
 import { isJobFinished, type JobMetadata, RunStatus } from "@covia/covia-sdk";
@@ -50,22 +50,27 @@ const FILTER_WINDOW = 100;
 const STATS_WINDOW = 50;
 const EMPTY_JOB_QUERY = { records: [] as JobMetadata[], totalCount: 0 };
 
+// The tab a deep link asks for — SchedulePickerDialog's "Schedule created"
+// toast points at /jobs?tab=scheduled (#230). Read from the URL through
+// useSyncExternalStore rather than next/navigation's useSearchParams, so this
+// doesn't force the route out of static rendering / require a Suspense
+// boundary for what's a one-off query param read: the server snapshot stands
+// in during hydration and the URL's answer replaces it without a second
+// commit. The URL never changes underneath a mounted list, so there is
+// nothing to subscribe to.
+const subscribeToNothing = () => () => {};
+const readRequestedTab = () =>
+  new URLSearchParams(window.location.search).get("tab") === "scheduled" ? "scheduled" : "history";
+
 interface JobListProps {
   venueId?: string;
 }
 
 export function JobList({ venueId }: JobListProps = {}) {
-  // Lets SchedulePickerDialog's "Schedule created" toast deep-link to
-  // /jobs?tab=scheduled (#230). Read after mount rather than via
-  // next/navigation's useSearchParams so this doesn't force the route out
-  // of static rendering / require a Suspense boundary for what's a one-off
-  // query param read.
-  const [activeTab, setActiveTab] = useState("history");
-  useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("tab") === "scheduled") {
-      setActiveTab("scheduled");
-    }
-  }, []);
+  const requestedTab = useSyncExternalStore(subscribeToNothing, readRequestedTab, () => "history");
+  // The user's choice, once made, wins over the deep link.
+  const [chosenTab, setChosenTab] = useState<string | null>(null);
+  const activeTab = chosenTab ?? requestedTab;
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [dateFilter, setDateFilter] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -76,11 +81,6 @@ export function JobList({ venueId }: JobListProps = {}) {
     setSort(prev => prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" });
   const [refreshTick, setRefreshTick] = useState(0);
   const [drawerJob, setDrawerJob] = useState<JobMetadata | null>(null);
-  // Infinite scroll: how many of the newest jobs are currently shown. Grows in
-  // ITEMS_PER_PAGE steps as the user scrolls the list; the unfiltered fetch
-  // reads the newest `visibleCount` from the lattice, filter mode slices its
-  // window client-side to the same count.
-  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const scrollBoxRef = useRef<HTMLDivElement | null>(null);
   // Set the moment a grow is requested; cleared when the next fetch settles, so
@@ -121,10 +121,23 @@ export function JobList({ venueId }: JobListProps = {}) {
   // count, so pagination and refresh can skip the list() count probe — the
   // window self-corrects (sliceJobWindow) if the index moved meanwhile.
   const countRef = useRef<{ venueId: string; count: number } | null>(null);
-  // Read through a ref so the fetch callbacks don't depend on the auth
-  // object's identity — it's only consulted when a fetch fails.
+  // The auth a failed fetch re-probes with, kept in a ref (written from an
+  // effect, never during render) so the fetch callbacks don't depend on the
+  // auth object's identity — it's only consulted when a fetch fails, and a
+  // caller that hands over a fresh object per render must not refetch.
   const authRef = useRef(auth);
-  authRef.current = auth;
+  useEffect(() => {
+    authRef.current = auth;
+  }, [auth]);
+  // Infinite scroll: how many of the newest jobs are currently shown. Grows in
+  // ITEMS_PER_PAGE steps as the user scrolls the list; the unfiltered fetch
+  // reads the newest `visibleCount` from the lattice, filter mode slices its
+  // window client-side to the same count. The window is stored with the venue
+  // and filters it was grown under, so a change to either starts from the
+  // first page in the same render — the feed fetch never sees the stale count.
+  const resetKey = `${venueKey} ${statusFilter.join(" ")} ${dateFilter.join(" ")} ${debouncedQuery}`;
+  const [shown, setShown] = useState({ resetKey, count: ITEMS_PER_PAGE });
+  const visibleCount = shown.resetKey === resetKey ? shown.count : ITEMS_PER_PAGE;
 
   const isInRange = useCallback((date: string, ranges: string[]) => {
     if (ranges.length === 0) return true;
@@ -246,9 +259,6 @@ export function JobList({ venueId }: JobListProps = {}) {
   // answer. Rendering it says "this venue has no jobs" to anyone who looks
   // during the first seconds of a cold load (#419).
   const countsKnown = hasFilters ? recentSettled : pageSettled || recentSettled;
-  const resetKey = `${venueObj?.venueId ?? ""} ${statusFilter.join(" ")} ${dateFilter.join(" ")} ${debouncedQuery}`;
-  // Reset the window to the first page whenever the venue or filters change.
-  useEffect(() => { setVisibleCount(ITEMS_PER_PAGE); }, [resetKey]);
 
   const pageRecords = filteredRecords
     ? filteredRecords.slice(0, visibleCount)
@@ -324,8 +334,11 @@ export function JobList({ venueId }: JobListProps = {}) {
   const maybeLoadMore = useCallback(() => {
     if (!hasMore || loading || growingRef.current) return;
     growingRef.current = true;
-    setVisibleCount((v) => v + ITEMS_PER_PAGE);
-  }, [hasMore, loading]);
+    setShown((previous) => ({
+      resetKey,
+      count: (previous.resetKey === resetKey ? previous.count : ITEMS_PER_PAGE) + ITEMS_PER_PAGE,
+    }));
+  }, [hasMore, loading, resetKey]);
 
   // Clear the grow guard once a fetch settles (unfiltered) or immediately
   // (filtered has no fetch), so the next scroll can load again.
@@ -427,7 +440,7 @@ export function JobList({ venueId }: JobListProps = {}) {
   return (
     <ContentLayout >
       <TopBar venueId={venueId} venueName={venueObj?.metadata.name}/>
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-2">
+      <Tabs value={activeTab} onValueChange={setChosenTab} className="mt-2">
         <TabsList data-testid="jobs-tabs">
           <TabsTrigger value="history" data-testid="jobs-tab-history">History</TabsTrigger>
           <TabsTrigger value="scheduled" data-testid="jobs-tab-scheduled">Scheduled</TabsTrigger>

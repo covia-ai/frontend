@@ -11,7 +11,6 @@ let authed = true;
 jest.mock("@/hooks/use-auth", () => ({
   ...require("@test/use-auth").authMock,
   useIsAuthenticated: () => authed,
-  useAuthStore: () => jest.fn(),
   useCurrentAuth: () => ({ type: "keypair" }),
 }));
 
@@ -93,8 +92,12 @@ describe("ConnectedAgentsList", () => {
     await waitFor(() => expect(screen.getByTestId("connected-list-empty")).toBeInTheDocument());
   });
 
-  it("disconnects an agent by deleting its binding", async () => {
-    listMock.mockResolvedValue({ exists: true, type: "Map", keys: ["alpha"] });
+  it("disconnects an agent by deleting its binding, then re-reads the list", async () => {
+    // The venue no longer lists the binding once it is deleted; the list
+    // re-reads rather than patching a local copy.
+    listMock
+      .mockResolvedValueOnce({ exists: true, type: "Map", keys: ["alpha"] })
+      .mockResolvedValue({ exists: true, type: "Map", keys: [] });
     readMock.mockResolvedValue(bindingFor("alpha"));
 
     render(<ConnectedAgentsList />);
@@ -104,7 +107,8 @@ describe("ConnectedAgentsList", () => {
 
     await waitFor(() => expect(deleteMock).toHaveBeenCalledWith("w/a2a/agents/alpha"));
     expect(notifySuccess).toHaveBeenCalled();
-    await waitFor(() => expect(screen.queryByText("alpha card")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId("connected-list-empty")).toBeInTheDocument());
+    expect(listMock).toHaveBeenCalledTimes(2);
   });
 
   it("converts a connected agent to native by seeding the Port dialog", async () => {

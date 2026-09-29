@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import type { Venue } from "@covia/covia-sdk";
 import { readTextStream } from "@/hooks/use-asset-text-content";
+import { useLatestQuery } from "@/hooks/use-latest-query";
 
 // Preview-type dispatch by filename extension — mirrors DocumentViewer's
 // CONTENT_TYPE_TO_FILE_TYPE convention rather than inventing a new
@@ -46,6 +47,21 @@ const EMPTY_STATE: FilePreviewState = {
   imageUrl: null,
 };
 
+const LOADING_STATE: FilePreviewState = { ...EMPTY_STATE, loading: true };
+
+// A preview remembers the file it is of, so selecting another file reads as
+// "nothing yet" by comparison rather than by clearing state in an effect.
+type PreviewOutcome = {
+  venue: Venue;
+  drive: string;
+  path: string;
+  kind: FilePreviewKind;
+  text: string;
+  displayText: string;
+  imageUrl: string | null;
+  error: string | null;
+};
+
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -62,24 +78,26 @@ export function useFilePreview(
   path: string | null,
   kind: FilePreviewKind,
 ): FilePreviewState {
-  const [state, setState] = useState<FilePreviewState>(EMPTY_STATE);
+  const { data: outcome, run, invalidate } = useLatestQuery<PreviewOutcome | null>(null);
+  const wanted =
+    !!venue && !!drive && !!path && (kind === "json" || kind === "text" || kind === "image");
 
   useEffect(() => {
+    if (!venue || !drive || !path || (kind !== "json" && kind !== "text" && kind !== "image")) {
+      invalidate();
+      return;
+    }
     let active = true;
     let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
     let objectUrl: string | null = null;
+    const base: PreviewOutcome = {
+      venue, drive, path, kind, text: "", displayText: "", imageUrl: null, error: null,
+    };
 
-    if (!venue || !drive || !path || (kind !== "json" && kind !== "text" && kind !== "image")) {
-      setState(EMPTY_STATE);
-      return;
-    }
-
-    setState({ ...EMPTY_STATE, loading: true });
-
-    if (kind === "image") {
-      void venue.dlfs
-        .getContent(drive, path)
-        .then(async (stream) => {
+    void run(async () => {
+      try {
+        const stream = await venue.dlfs.getContent(drive, path);
+        if (kind === "image") {
           reader = stream.getReader();
           const chunks: Uint8Array[] = [];
           while (true) {
@@ -87,43 +105,51 @@ export function useFilePreview(
             if (value) chunks.push(value);
             if (done) break;
           }
-          if (!active) return;
-          const blob = new Blob(chunks as BlobPart[]);
-          objectUrl = URL.createObjectURL(blob);
-          setState({ ...EMPTY_STATE, imageUrl: objectUrl });
-        })
-        .catch((error: unknown) => {
-          if (active) setState({ ...EMPTY_STATE, error: errorMessage(error) });
+          // Superseded before the image was assembled: no URL to leak. The
+          // query has moved on, so whatever is returned here is never shown.
+          if (!active) return base;
+          objectUrl = URL.createObjectURL(new Blob(chunks as BlobPart[]));
+          return { ...base, imageUrl: objectUrl };
+        }
+        const text = await readTextStream(stream, (nextReader) => {
+          reader = nextReader;
         });
-    } else {
-      void venue.dlfs
-        .getContent(drive, path)
-        .then(async (stream) => {
-          const text = await readTextStream(stream, (nextReader) => {
-            reader = nextReader;
-          });
-          if (!active) return;
-          let displayText = text;
-          if (kind === "json") {
-            try {
-              displayText = JSON.stringify(JSON.parse(text), null, 2);
-            } catch {
-              // Not actually valid JSON despite the extension — show it raw.
-            }
+        let displayText = text;
+        if (kind === "json") {
+          try {
+            displayText = JSON.stringify(JSON.parse(text), null, 2);
+          } catch {
+            // Not actually valid JSON despite the extension — show it raw.
           }
-          setState({ ...EMPTY_STATE, text, displayText });
-        })
-        .catch((error: unknown) => {
-          if (active) setState({ ...EMPTY_STATE, error: errorMessage(error) });
-        });
-    }
+        }
+        return { ...base, text, displayText };
+      } catch (error: unknown) {
+        return { ...base, error: errorMessage(error) };
+      }
+    });
 
     return () => {
       active = false;
       if (reader) void reader.cancel().catch(() => undefined);
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [venue, drive, path, kind]);
+  }, [venue, drive, path, kind, run, invalidate]);
 
-  return state;
+  if (!wanted) return EMPTY_STATE;
+  const current =
+    outcome &&
+    outcome.venue === venue &&
+    outcome.drive === drive &&
+    outcome.path === path &&
+    outcome.kind === kind
+      ? outcome
+      : null;
+  if (!current) return LOADING_STATE;
+  return {
+    loading: false,
+    error: current.error,
+    text: current.text,
+    displayText: current.displayText,
+    imageUrl: current.imageUrl,
+  };
 }

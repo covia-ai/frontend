@@ -100,18 +100,16 @@ export function useAssetCatalog({
 
   // Infinite scroll: how many of the (filtered) cards are shown. Growing the
   // window is a client-side slice; search/filter always apply to the full list.
-  const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
+  // The window is stored with the filter identity it was grown under, so a
+  // narrowed list (new search or tags) starts from the first batch in the same
+  // render — no effect resetting it a frame late.
+  const resetKey = `${searchInput} ${tagKey}`;
+  const [shown, setShown] = useState({ resetKey, count: BATCH_SIZE });
+  const visibleCount = shown.resetKey === resetKey ? shown.count : BATCH_SIZE;
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   // Set the moment a grow is requested; cleared once the new slice renders, so a
   // burst of intersection events can't stack multiple batches at once.
   const growingRef = useRef(false);
-
-  // Reset to the first batch whenever the filtered set changes (search / tags),
-  // so a narrowed list starts from the top.
-  const resetKey = `${searchInput} ${tagKey}`;
-  useEffect(() => {
-    setVisibleCount(BATCH_SIZE);
-  }, [resetKey]);
 
   const visibleItems = useMemo(() => filteredAssets.slice(0, visibleCount), [filteredAssets, visibleCount]);
   const hasMore = visibleCount < filteredAssets.length;
@@ -119,8 +117,11 @@ export function useAssetCatalog({
   const loadMore = useCallback(() => {
     if (growingRef.current) return;
     growingRef.current = true;
-    setVisibleCount((v) => v + BATCH_SIZE);
-  }, []);
+    setShown((previous) => ({
+      resetKey,
+      count: (previous.resetKey === resetKey ? previous.count : BATCH_SIZE) + BATCH_SIZE,
+    }));
+  }, [resetKey]);
 
   useEffect(() => {
     growingRef.current = false;

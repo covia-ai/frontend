@@ -1,7 +1,8 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useStoredValue } from "@/hooks/use-stored-value";
 import { useVenueRead } from "@/hooks/use-venue-read";
 import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { Button } from "./ui/button";
@@ -47,6 +48,8 @@ const GROUP_NOTES: Record<string, string> = { Other: "your own named credentials
 // iconography, shared with the rest of the type vocabulary.
 const SECRET_LOOK = conceptLook("secret");
 
+const NO_NAMES: string[] = [];
+
 /** Buckets a flat secret-name list into provider groups for display — a
  *  connection's credential, a known LLM key, or unclassified (frontend#166). */
 export function groupSecretsByProvider(secrets: string[]): { label: string; names: string[] }[] {
@@ -73,8 +76,10 @@ export function SecretList() {
   // Per-row in-flight guard: the name currently being deleted disables its own
   // Delete control and blocks starting a second concurrent delete.
   const [deletingName, setDeletingName] = useState<string | null>(null);
-  const [recent, setRecent] = useState<string[]>([]);
-  useEffect(() => setRecent(recentKeyNames()), []);
+  // Names this browser added before, for the suggestions dropdown — browser
+  // state, so it is read as such and is simply unknown until hydration.
+  const [recentStored, refreshRecent] = useStoredValue(recentKeyNames);
+  const recent = recentStored ?? NO_NAMES;
 
   const venue = useAuthenticatedVenue();
   const auth = useCurrentAuth();
@@ -117,7 +122,7 @@ export function SecretList() {
       .then(() => {
         notifySuccess(`Secret "${newName}" stored`);
         rememberKeyName(newName.trim());
-        setRecent(recentKeyNames());
+        refreshRecent();
         setNewName("");
         setNewValue("");
         loadSecrets();

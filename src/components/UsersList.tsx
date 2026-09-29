@@ -1,9 +1,9 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import type { AuthenticationKeysMap, StatusData, UserSummary } from "@covia/covia-sdk";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
-import { revalidateVenueOnFailure } from "@/hooks/use-authenticated-venue";
+import { useVenueRead } from "@/hooks/use-venue-read";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,52 +64,55 @@ function AccountTypeChip({ managed }: { managed: boolean }) {
 // for anything else (a real venue/auth problem).
 type ListState = "checking" | "ready" | "forbidden" | "error";
 
+// What the users read settles to. `forbidden` is an answer, not a failure: the
+// venue said no to this account, and the page shows the gate for it.
+type Directory = { users: UserSummary[]; forbidden: boolean };
+const NO_DIRECTORY: Directory = { users: [], forbidden: false };
+
 export function UsersList({ venueId }: UsersListProps) {
   const { venue, isAuthenticated, auth, status: venueStatus } = useResolvedVenueContext(venueId);
-  const [users, setUsers] = useState<UserSummary[]>([]);
-  const [listState, setListState] = useState<ListState>("checking");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
-  const [status, setStatus] = useState<StatusData | undefined>(undefined);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [authenticators, setAuthenticators] = useState<Record<string, AuthenticationKeysMap>>({});
   const [authLoading, setAuthLoading] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!venue) return;
-    let ignore = false;
-    getVenueStatus(venue).then((s) => { if (!ignore) setStatus(s); });
-    return () => { ignore = true; };
-  }, [venue]);
+  // The admission-policy line comes from the venue's status (job-free). A
+  // venue that cannot answer just shows the policy as unavailable.
+  const { data: status } = useVenueRead<StatusData | undefined>({
+    venue,
+    auth,
+    initial: undefined,
+    failureTitle: "Unable to read venue status",
+    notify: false,
+    load: (target) => getVenueStatus(target),
+  });
 
-  useEffect(() => {
-    if (!venue) return;
-    if (!isAuthenticated) {
-      setListState("forbidden");
-      return;
-    }
-    let ignore = false;
-    setListState("checking");
-    venue.users
-      .list()
-      .then((result) => {
-        if (ignore) return;
-        setUsers(result.users ?? []);
-        setListState("ready");
-      })
-      .catch((err) => {
-        if (ignore) return;
-        if (errorStatus(err) === 403) {
-          // Signed in, just not an operator — a gated view, not a broken page.
-          setListState("forbidden");
-          return;
-        }
-        notifyError("Unable to load users", err, venue.baseUrl);
-        revalidateVenueOnFailure(venue, auth, err);
-        setListState("error");
-      });
-    return () => { ignore = true; };
-  }, [venue, isAuthenticated, auth]);
+  // A 403 is a gated view, not a broken page: signed in, just not an operator,
+  // so it settles as `forbidden` without a toast. Anything else is a real
+  // venue/auth problem, toasted and followed by a venue recheck.
+  const { data: directory, loading: usersLoading, error: usersError } = useVenueRead<Directory>({
+    venue,
+    auth,
+    enabled: isAuthenticated,
+    initial: NO_DIRECTORY,
+    failureTitle: "Unable to load users",
+    load: async (target) => {
+      try {
+        const result = await target.users.list();
+        return { users: result.users ?? [], forbidden: false };
+      } catch (err) {
+        if (errorStatus(err) === 403) return { users: [], forbidden: true };
+        throw err;
+      }
+    },
+  });
+  const users = directory.users;
+  const listState: ListState =
+    !isAuthenticated || directory.forbidden ? "forbidden"
+    : usersLoading ? "checking"
+    : usersError ? "error"
+    : "ready";
 
   // Search (DID substring) then the account-type facet compose: the facet
   // counts are taken over the search-filtered set, so Managed + External always

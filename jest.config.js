@@ -25,15 +25,16 @@ const config = {
   coverageProvider: "v8",
   coveragePathIgnorePatterns: ["/node_modules/", "/.next/"],
   // A ratchet, not a target: set just under the coverage the suite actually
-  // had when this landed (82.77 / 80.26 / 72.16), so an unrelated PR cannot
+  // had when this landed (82.77 / 80.26 / 72.16; raised to 87.36 / 82.19 / 76.00 / 87.36
+  // after the React Hooks cleanup), so an unrelated PR cannot
   // quietly erode it. The small margin absorbs v8's run-to-run jitter. Raise
   // these numbers as coverage climbs — never lower them to make a build pass.
   coverageThreshold: {
     global: {
-      statements: 80,
-      branches: 78,
-      functions: 70,
-      lines: 80,
+      statements: 85,
+      branches: 80,
+      functions: 74,
+      lines: 85,
     },
   },
 };

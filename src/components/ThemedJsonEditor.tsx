@@ -1,14 +1,16 @@
 "use client";
 
+import { useMemo } from "react";
 import { useTheme } from "next-themes";
-import { JsonEditor, githubDarkTheme, githubLightTheme } from "json-edit-react";
+import { JsonEditor, JsonViewer, type ThemeInput, type ThemeStyles } from "json-edit-react";
+import { githubDarkTheme, githubLightTheme } from "@json-edit-react/themes";
 
 // Neither built-in theme styles the edit input, so it falls back to the
 // library's default (near-black text, no explicit background) — on top of
 // githubDarkTheme's near-black container that reads as black-on-black.
 // Layered on unconditionally: it only ever shows once the edit UI renders,
-// so it's inert wherever editing is restricted.
-const inputThemeOverride = {
+// so it's inert in the read-only viewer.
+const inputThemeOverride: Record<"dark" | "light", ThemeStyles> = {
   dark: {
     input: { color: "#E6EDF3", backgroundColor: "#161b22", borderColor: "#30363d" },
     inputHighlight: "#264f78",
@@ -44,21 +46,19 @@ export function ThemedJsonEditor({
 }: ThemedJsonEditorProps) {
   const { theme } = useTheme();
   const dark = theme === "dark";
-  return (
-    <JsonEditor
-      data={data}
-      setData={editable ? onChange : undefined}
-      rootName={rootName}
-      rootFontSize="0.875em"
-      maxWidth={maxWidth}
-      restrictEdit={!editable}
-      restrictAdd={!editable}
-      restrictDelete={!editable}
-      collapse={collapse}
-      theme={[
-        dark ? githubDarkTheme : githubLightTheme,
-        dark ? inputThemeOverride.dark : inputThemeOverride.light,
-      ]}
-    />
+  // json-edit-react 2 re-renders per node only while its object props keep
+  // their identity, so the theme pair is built once per colour mode.
+  const editorTheme = useMemo<ThemeInput>(
+    () => [
+      dark ? githubDarkTheme : githubLightTheme,
+      dark ? inputThemeOverride.dark : inputThemeOverride.light,
+    ],
+    [dark],
   );
+  const shared = { data, rootName, baseFontSize: "0.875em", maxWidth, collapse, theme: editorTheme };
+
+  // The editor is strictly controlled in v2 (setData is required), and the
+  // viewer is the read-only entry point: no edit controls to restrict.
+  if (!editable || !onChange) return <JsonViewer {...shared} />;
+  return <JsonEditor {...shared} setData={onChange} />;
 }

@@ -70,10 +70,8 @@ export function HitlGrantAsk({ request, ask, kind, venue, signingKeyHex, onDone,
   // audience, else the requester (`from`). Never `agent` — that's a display
   // name, not a DID, and would fail the token's aud check.
   const audience = spec?.audience ?? request.from ?? "";
-  const targetVenue = useMemo(
-    () => (spec?.venue ? venues.find((v) => v.venueId === spec.venue) : undefined),
-    [venues, spec?.venue],
-  );
+  const targetVenueId = spec?.venue;
+  const targetVenue = targetVenueId ? venues.find((v) => v.venueId === targetVenueId) : undefined;
 
   const [rows, setRows] = useState<CapRow[]>(
     (kind === "token" ? spec?.caps ?? [] : offered).map((c) => ({ ...c, included: true })),

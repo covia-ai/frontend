@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -35,6 +35,7 @@ import type { AgentListItem } from "@/config/types";
 import { useAuthStore, useCurrentAuth, useIsAuthenticated } from "@/hooks/use-auth";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useVenueHasOperation } from "@/hooks/use-venue-operation";
+import { useVenueRead } from "@/hooks/use-venue-read";
 import {
   reportVenueAuthHealth,
   useVenueAccessState,
@@ -52,6 +53,8 @@ import {
 import { notifyError } from "@/lib/notify";
 import { TONE_STYLES } from "@/lib/status";
 
+const NO_AGENTS: AgentListItem[] = [];
+
 export function AgentCreate() {
   const router = useRouter();
   const venue = useAuthenticatedVenue();
@@ -63,8 +66,6 @@ export function AgentCreate() {
   // Port needs an operation older venues don't publish (#350). Only a
   // definitive "absent" disables it; unknown stays offered.
   const canPort = useVenueHasOperation(FROM_SKILLS_OP) !== false;
-  const [agents, setAgents] = useState<AgentListItem[]>([]);
-  const [agentsLoading, setAgentsLoading] = useState(true);
   const [sourceAgentId, setSourceAgentId] = useState("");
   const [cloneLoading, setCloneLoading] = useState(false);
   const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
@@ -83,38 +84,26 @@ export function AgentCreate() {
     notifyError(title, error, venue.baseUrl);
   }, [auth, venue]);
 
-  useEffect(() => {
-    let active = true;
-    if (!venue || !canUseAgents) {
-      setAgents([]);
-      setAgentsLoading(false);
-      return () => {
-        active = false;
-      };
-    }
-
-    setAgentsLoading(true);
-    void venue.agents
-      .list()
-      .then(({ agents: entries }) => {
-        if (!active) return;
-        if (auth) reportVenueAuthHealth(venue.venueId, auth, { state: "accepted" });
-        setAgents(normalizeAgentEntries(entries));
-      })
-      .catch((error: unknown) => {
-        if (active) {
-          setAgents([]);
-          handleAgentError("Unable to load agents", error);
-        }
-      })
-      .finally(() => {
-        if (active) setAgentsLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [auth, canUseAgents, handleAgentError, venue]);
+  // The clone-source list. A successful list is positive evidence the stored
+  // account is accepted; a rejected one is reported to the auth-health store
+  // rather than toasted (handleAgentError), so the read itself stays quiet.
+  const { data: agents, loading: agentsLoading } = useVenueRead<AgentListItem[]>({
+    venue,
+    enabled: canUseAgents,
+    initial: NO_AGENTS,
+    failureTitle: "Unable to load agents",
+    notify: false,
+    load: async (target) => {
+      try {
+        const { agents: entries } = await target.agents.list();
+        if (auth) reportVenueAuthHealth(target.venueId, auth, { state: "accepted" });
+        return normalizeAgentEntries(entries);
+      } catch (error) {
+        handleAgentError("Unable to load agents", error);
+        throw error;
+      }
+    },
+  });
 
   const prepareClone = async () => {
     if (!venue || !sourceAgentId) return;

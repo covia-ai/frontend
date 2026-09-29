@@ -2,13 +2,15 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
-jest.mock('json-edit-react', () => ({
-  JsonEditor: ({ data }: { data: unknown }) => (
+// Both of json-edit-react 2's entry points render the value; which one the
+// pane picks (the editor when the user may edit, the viewer otherwise) is not
+// what these tests are about.
+jest.mock('json-edit-react', () => {
+  const JsonContent = ({ data }: { data: unknown }) => (
     <pre data-testid="workspace-json-content">{JSON.stringify(data)}</pre>
-  ),
-  githubDarkTheme: {},
-  githubLightTheme: {},
-}));
+  );
+  return { JsonEditor: JsonContent, JsonViewer: JsonContent };
+});
 jest.mock('next-themes', () => ({ useTheme: () => ({ theme: 'light' }) }));
 
 const mockVenue: any = {

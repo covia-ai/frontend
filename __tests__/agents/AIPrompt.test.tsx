@@ -17,7 +17,11 @@ jest.mock('@/lib/notify', () => ({
 }));
 
 const mockUseAuthenticatedVenue = jest.fn();
+// The complete double underneath: the agent-picker read revalidates the venue
+// on failure, which a mock that only provides useAuthenticatedVenue would leave
+// undefined.
 jest.mock('@/hooks/use-authenticated-venue', () => ({
+  ...require('@test/use-authenticated-venue').venueMock,
   useAuthenticatedVenue: () => mockUseAuthenticatedVenue(),
 }));
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { DLFSEntry } from "@covia/covia-sdk";
 import {
   ChevronRight,
@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useFilesExplorer } from "@/hooks/use-files-explorer";
 import { filePreviewKind, useFilePreview } from "@/hooks/use-file-preview";
+import { useVenueRead } from "@/hooks/use-venue-read";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CopyField } from "@/components/CopyField";
@@ -32,30 +33,19 @@ interface FilesExplorerProps {
 type WebDavInfo = { enabled: boolean; url?: string; windows?: string };
 
 function useWebDavInfo(venue: ReturnType<typeof useFilesExplorer>["venue"]) {
-  const [info, setInfo] = useState<WebDavInfo | null>(null);
-
-  useEffect(() => {
-    if (!venue) {
-      setInfo(null);
-      return;
-    }
-    let active = true;
-    void venue.workspace
-      .read("v/info/adapters/dlfs")
-      .then((result) => {
-        if (!active) return;
-        const webdav = (result.value as { webdav?: WebDavInfo } | undefined)?.webdav;
-        setInfo(webdav ?? { enabled: false });
-      })
-      .catch(() => {
-        if (active) setInfo(null);
-      });
-    return () => {
-      active = false;
-    };
-  }, [venue]);
-
-  return info;
+  const { data } = useVenueRead<WebDavInfo | null>({
+    venue,
+    initial: null,
+    failureTitle: "Unable to read WebDAV settings",
+    // Informational card only: without the answer it simply does not show.
+    notify: false,
+    load: async (target) => {
+      const result = await target.workspace.read("v/info/adapters/dlfs");
+      const webdav = (result.value as { webdav?: WebDavInfo } | undefined)?.webdav;
+      return webdav ?? { enabled: false };
+    },
+  });
+  return data;
 }
 
 function formatSize(size?: number): string {

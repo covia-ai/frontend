@@ -96,6 +96,20 @@ GET; don't reintroduce a list-then-`getAsset`-each hydration pass. DLFS drives
 and directories read job-free through the SDK's `venue.dlfs` (1.12+), never
 via `dlfs:*` operations.
 
+### Venue reads and derived state
+
+A venue-scoped read goes through `useVenueRead` (`src/hooks/use-venue-read.ts`):
+latest-wins, `error` distinct from "loaded, and empty", a venue recheck on
+failure, and `reload()`. When a read is keyed on more than the venue (an
+asset, a path, an agent), use `useLatestQuery` and store the outcome with the
+key it answers for, then compare during render. Never reset state in an effect
+when an input changes: store the value with its key, derive it, remount with a
+`key`, or read browser-held values through `useStoredValue`
+(`useSyncExternalStore`). Effects that need the latest props use
+`useEffectEvent`, not a ref assigned during render. The React Hooks rules
+(`set-state-in-effect`, `refs`, `purity`, `preserve-manual-memoization`)
+enforce this at error level; do not downgrade or disable them.
+
 ### Notifications
 
 All user-facing notifications go through `src/lib/notify.ts` — never bare

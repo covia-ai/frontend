@@ -21,6 +21,11 @@ export interface AgentLiveEventsResult {
   activity: AgentLiveActivity | null;
 }
 
+const IDLE: AgentLiveEventsResult = { live: false, detailVersion: 0, activity: null };
+
+/** The stream's state, filed under the subscription it came from. */
+type LiveState = AgentLiveEventsResult & { venue: Venue | null; agentId: string | null };
+
 /**
  * Subscribe to an agent's live run-loop events (venue >= 0.9.7). Falls back
  * silently — `live` stays/reverts to false — on venues without the route,
@@ -31,19 +36,32 @@ export function useAgentLiveEvents(
   venue: Venue | null,
   agentId: string | null,
 ): AgentLiveEventsResult {
-  const [live, setLive] = useState(false);
-  const [detailVersion, setDetailVersion] = useState(0);
-  const [activity, setActivity] = useState<AgentLiveActivity | null>(null);
+  // Stored with the (venue, agent) it describes and read back only while that
+  // is still the subscription, so a switch reports idle at once and a frame
+  // from the previous stream has nowhere visible to land.
+  const [state, setState] = useState<LiveState>({ venue: null, agentId: null, ...IDLE });
+  // The same Venue instance can come back (getVenueFor caches one per venue
+  // and account), so the key alone cannot expire a stale frame: switching away
+  // and back would briefly report the old stream as live. Adjust on the change
+  // itself, during render.
+  if (state.venue !== venue || state.agentId !== agentId) {
+    setState({ venue, agentId, ...IDLE });
+  }
 
   useEffect(() => {
-    setLive(false);
-    setDetailVersion(0);
-    setActivity(null);
     if (!venue || !agentId) return;
 
     let cancelled = false;
     let sawFirstFrame = false;
     const controller = new AbortController();
+    const publish = (patch: (current: AgentLiveEventsResult) => Partial<AgentLiveEventsResult>) =>
+      setState((previous) => {
+        const current =
+          previous.venue === venue && previous.agentId === agentId
+            ? previous
+            : { venue, agentId, ...IDLE };
+        return { ...current, ...patch(current) };
+      });
 
     void (async () => {
       try {
@@ -51,27 +69,27 @@ export function useAgentLiveEvents(
           if (cancelled) break;
           if (!sawFirstFrame) {
             sawFirstFrame = true;
-            setLive(true);
+            publish(() => ({ live: true }));
           } else if (
             evt.type === "status" ||
             evt.type === "run:end" ||
             evt.type === "cycle:end"
           ) {
-            setDetailVersion((v) => v + 1);
+            publish((current) => ({ detailVersion: current.detailVersion + 1 }));
           }
 
-          if (evt.type === "inference:start") setActivity({ kind: "inference" });
-          else if (evt.type === "inference:end") setActivity(null);
-          else if (evt.type === "tool:start") setActivity({ kind: "tool", label: evt.name });
-          else if (evt.type === "tool:result") setActivity(null);
-          else if (evt.type === "run:end") setActivity(null);
+          if (evt.type === "inference:start") publish(() => ({ activity: { kind: "inference" } }));
+          else if (evt.type === "inference:end") publish(() => ({ activity: null }));
+          else if (evt.type === "tool:start") publish(() => ({ activity: { kind: "tool", label: evt.name } }));
+          else if (evt.type === "tool:result") publish(() => ({ activity: null }));
+          else if (evt.type === "run:end") publish(() => ({ activity: null }));
         }
       } catch {
         // UnsupportedVenueFeatureError on older venues, a dropped
         // connection, or any other failure — fall through to the finally
         // block, which reverts `live` unless this effect is cleaning up.
       } finally {
-        if (!cancelled) setLive(false);
+        if (!cancelled) publish(() => ({ live: false }));
       }
     })();
 
@@ -81,5 +99,10 @@ export function useAgentLiveEvents(
     };
   }, [venue, agentId]);
 
-  return { live, detailVersion, activity };
+  const current = state.venue === venue && state.agentId === agentId;
+  return {
+    live: current ? state.live : IDLE.live,
+    detailVersion: current ? state.detailVersion : IDLE.detailVersion,
+    activity: current ? state.activity : IDLE.activity,
+  };
 }

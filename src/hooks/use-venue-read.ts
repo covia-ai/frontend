@@ -1,21 +1,31 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useState } from "react";
 import type { Venue } from "@covia/covia-sdk";
 import { revalidateVenueOnFailure } from "@/hooks/use-authenticated-venue";
-import type { VenueAuth } from "@/hooks/use-auth";
+import { useAuthStore, type VenueAuth } from "@/hooks/use-auth";
 import { useLatestQuery } from "@/hooks/use-latest-query";
 import { errorMessage } from "@/lib/errors";
 import { notifyError } from "@/lib/notify";
 
 type VenueReadOptions<T> = {
   venue: Venue | null | undefined;
-  /** The auth `venue` was built with — a failed read re-probes with it. */
-  auth: VenueAuth | null;
+  /**
+   * The auth `venue` was built with — a failed read re-probes with it. Omit it
+   * to use the account stored for `venue`, which is what useAuthenticatedVenue
+   * built the instance from; pass it when the caller already holds it (a page
+   * reading through useResolvedVenueContext).
+   */
+  auth?: VenueAuth | null;
   /** False while the read must not run (e.g. signed out). Default true. */
   enabled?: boolean;
   initial: T;
   failureTitle: string;
+  /**
+   * False for a read whose failure has its own quiet fallback — a badge count
+   * that simply shows nothing — rather than a toast. Default true.
+   */
+  notify?: boolean;
   load: (venue: Venue) => Promise<T>;
 };
 
@@ -35,9 +45,16 @@ export function useVenueRead<T>({
   enabled = true,
   initial,
   failureTitle,
+  notify = true,
   load,
 }: VenueReadOptions<T>) {
-  const initialValue = useRef(initial).current;
+  const storedAuth = useAuthStore((state) =>
+    venue ? state.authMap[venue.venueId] ?? null : null,
+  );
+  const effectiveAuth = auth === undefined ? storedAuth : auth;
+  // The placeholder is fixed on the first render: callers pass a fresh literal
+  // each time, and the outcome has to compare against one stable value.
+  const [initialValue] = useState(() => initial);
   // The outcome is stored with the venue it came from, so neither rows nor an
   // error can show under another venue's name — not even for the render between
   // a venue switch and the effect that starts the new read.
@@ -47,24 +64,28 @@ export function useVenueRead<T>({
     error: string | null;
   }>({ venue: null, value: initialValue, error: null });
   const [reloadTick, setReloadTick] = useState(0);
-  const latest = useRef({ auth, failureTitle, load });
-  latest.current = { auth, failureTitle, load };
+
+  // An Effect Event sees the current `load`, auth and title when it is called
+  // without making them dependencies, so an inline `load` closure does not
+  // restart the read on every render.
+  const read = useEffectEvent(async (target: Venue) => {
+    try {
+      return { venue: target, value: await load(target), error: null };
+    } catch (cause) {
+      if (notify) notifyError(failureTitle, cause, target.baseUrl);
+      revalidateVenueOnFailure(target, effectiveAuth, cause);
+      return { venue: target, value: initialValue, error: errorMessage(cause, failureTitle) };
+    }
+  });
 
   useEffect(() => {
     if (!venue || !enabled) {
       invalidate();
       return;
     }
-    void run(async () => {
-      try {
-        return { venue, value: await latest.current.load(venue), error: null };
-      } catch (cause) {
-        notifyError(latest.current.failureTitle, cause, venue.baseUrl);
-        revalidateVenueOnFailure(venue, latest.current.auth, cause);
-        return { venue, value: initialValue, error: errorMessage(cause, latest.current.failureTitle) };
-      }
-    });
-  }, [venue, enabled, reloadTick, run, invalidate, initialValue]);
+    const pending = read(venue);
+    void run(() => pending);
+  }, [venue, enabled, reloadTick, run, invalidate]);
 
   const reload = useCallback(() => setReloadTick((tick) => tick + 1), []);
 

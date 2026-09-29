@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { isJobFinished, type JobMetadata, type RunStatus } from "@covia/covia-sdk";
 
 /** Minimal shape we need — the resolved venue's per-job SSE stream. */
@@ -31,6 +31,8 @@ export function useActiveJobsLive(
   venue: StreamVenue | null | undefined,
   activeIds: string[],
 ): Record<string, JobMetadata> {
+  // Everything ever streamed, by job id. Which of it is reported is decided
+  // below from the active set, so a change to that set needs no reset here.
   const [live, setLive] = useState<Record<string, JobMetadata>>({});
   // A stable primitive dep: the sorted set of active ids.
   const key = [...activeIds].sort().join(",");
@@ -49,9 +51,6 @@ export function useActiveJobsLive(
     const ids = venue && key ? key.split(",") : [];
     if (!venue || ids.length === 0) {
       closeStreams(open);
-      // Clear only when there's something to clear — returning the same object
-      // lets React bail out, so an unstable `venue` ref can't cause a loop.
-      setLive((prev) => (Object.keys(prev).length ? {} : prev));
       return;
     }
 
@@ -94,5 +93,13 @@ export function useActiveJobsLive(
     return () => closeStreams(open);
   }, []);
 
-  return live;
+  // Only the jobs currently active are reported; a job that left the set (or
+  // belonged to a previous venue) simply stops being looked up.
+  return useMemo(() => {
+    const visible: Record<string, JobMetadata> = {};
+    for (const id of key ? key.split(",") : []) {
+      if (live[id]) visible[id] = live[id];
+    }
+    return visible;
+  }, [live, key]);
 }

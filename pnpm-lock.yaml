@@ -34,6 +34,9 @@ importers:
       '@cyntler/react-doc-viewer':
         specifier: ^1.17.1
         version: 1.17.1(@types/react@19.3.0)(css-to-react-native@3.2.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@json-edit-react/themes':
+        specifier: ^1.0.0
+        version: 1.0.0(json-edit-react@2.0.0(react@19.3.0))(react@19.3.0)
       '@radix-ui/react-accordion':
         specifier: ^1.2.20
         version: 1.2.20(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -101,8 +104,8 @@ importers:
         specifier: ^4.0.2
         version: 4.0.2
       json-edit-react:
-        specifier: ^1.30.2
-        version: 1.30.2(react@19.3.0)
+        specifier: ^2.0.0
+        version: 2.0.0(react@19.3.0)
       lucide-react:
         specifier: ^1.48.0
         version: 1.48.0(react@19.3.0)
@@ -803,6 +806,15 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
+
+  '@json-edit-react/themes@1.0.0':
+    resolution: {integrity: sha512-pOeoNI0v1p+McuAXeMrtnqD9kK6yXoPwPd0Eca4SOoSuv+8SSFdqEPXTea+rhZ2mOfN8uTg29pGhHqALZVEaMw==}
+    peerDependencies:
+      json-edit-react: ^2.0.0
+      react: '>=18.0.0'
+    peerDependenciesMeta:
+      react:
+        optional: true
 
   '@napi-rs/wasm-runtime@1.2.4':
     resolution: {integrity: sha512-AJxoUD2/15ESHbvpcyjU274nsAPLuOtPHCk0vKJM5pj//Fg/B1FXNWjPnXTT9PymCYYiHo4zPj0ZomXBKhoy7g==}
@@ -3361,10 +3373,10 @@ packages:
   json-buffer@3.0.1:
     resolution: {integrity: sha512-4bV5BfR2mqfQTJm+V5tPPdf+ZpuhiIvTuAB5g8kcrXOZpTT/QwwVRWBywX1ozr6lEuPdbHxwaJlm9G6mI2sfSQ==}
 
-  json-edit-react@1.30.2:
-    resolution: {integrity: sha512-uUIDqCxTvOXoIgxJXLscInTL09M+W7RPl/vJQIXlrgImcK8umQ8MdGFCCExCyPRNoRhAAXQJ0//QnDftM8UdSQ==}
+  json-edit-react@2.0.0:
+    resolution: {integrity: sha512-sJikCSIEp+8r8wJg9PkymF8EUceKqLVsdVjq1jRF5uJdeIWErBlELOBJw1BbesA6StNsZGl3/554MDH7qpyQkQ==}
     peerDependencies:
-      react: '>=16.0.0'
+      react: '>=18.0.0'
 
   json-parse-even-better-errors@2.3.1:
     resolution: {integrity: sha512-xyFwyhro/JEof6Ghe2iz2NcXoj2sloNsWr/XsERDK/oiPCfaNhl5ONfp+jQdAZRQQ0IJWNzH9zIZF7li91kh2w==}
@@ -5596,6 +5608,12 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.6.0
     optional: true
+
+  '@json-edit-react/themes@1.0.0(json-edit-react@2.0.0(react@19.3.0))(react@19.3.0)':
+    dependencies:
+      json-edit-react: 2.0.0(react@19.3.0)
+    optionalDependencies:
+      react: 19.3.0
 
   '@napi-rs/wasm-runtime@1.2.4(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)':
     dependencies:
@@ -8580,7 +8598,7 @@ snapshots:
 
   json-buffer@3.0.1: {}
 
-  json-edit-react@1.30.2(react@19.3.0):
+  json-edit-react@2.0.0(react@19.3.0):
     dependencies:
       react: 19.3.0
 

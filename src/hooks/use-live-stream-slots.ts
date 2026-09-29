@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 /** Browsers allow roughly six concurrent connections per origin on HTTP/1.1.
  *  Each live agent stream holds one open for as long as it is mounted, so the
@@ -9,6 +9,23 @@ import { useEffect, useMemo, useState } from "react";
 export const MAX_LIVE_STREAMS = 4;
 
 type Candidate = { agentId: string; status?: string };
+
+/** Running agents first, then whoever already held a slot; at most `max`. */
+function allocate(candidates: Candidate[], previous: string[], max: number): string[] {
+  const statusOf = new Map(
+    candidates.map((c) => [c.agentId, (c.status ?? "").toUpperCase()] as const),
+  );
+  const running = candidates
+    .filter((c) => statusOf.get(c.agentId) === "RUNNING")
+    .map((c) => c.agentId);
+  const carried = previous.filter(
+    (id) => statusOf.has(id) && statusOf.get(id) !== "TERMINATED" && !running.includes(id),
+  );
+  const next = [...running, ...carried].slice(0, max);
+  const unchanged =
+    next.length === previous.length && next.every((id, i) => id === previous[i]);
+  return unchanged ? previous : next;
+}
 
 /**
  * Decide which agents may hold an open event stream.
@@ -25,36 +42,28 @@ export function useLiveStreamSlots(
   candidates: Candidate[],
   max: number = MAX_LIVE_STREAMS,
 ): Set<string> {
-  const [granted, setGranted] = useState<string[]>([]);
-
   // Status only matters here as RUNNING / TERMINATED / other, and the poll
-  // hands us a fresh array every 3s — so key the effect on the shape we
-  // actually read rather than on array identity.
+  // hands us a fresh array every 3s — so key on the shape we actually read
+  // rather than on array identity.
   const signature = useMemo(
-    () => candidates.map((c) => `${c.agentId}:${(c.status ?? "").toUpperCase()}`).join(" "),
-    [candidates],
+    () =>
+      `${max}|${candidates.map((c) => `${c.agentId}:${(c.status ?? "").toUpperCase()}`).join(" ")}`,
+    [candidates, max],
   );
 
-  useEffect(() => {
-    const statusOf = new Map(
-      candidates.map((c) => [c.agentId, (c.status ?? "").toUpperCase()] as const),
-    );
-    const running = candidates
-      .filter((c) => statusOf.get(c.agentId) === "RUNNING")
-      .map((c) => c.agentId);
-
-    setGranted((previous) => {
-      const carried = previous.filter(
-        (id) => statusOf.has(id) && statusOf.get(id) !== "TERMINATED" && !running.includes(id),
-      );
-      const next = [...running, ...carried].slice(0, max);
-      const unchanged =
-        next.length === previous.length && next.every((id, i) => id === previous[i]);
-      return unchanged ? previous : next;
-    });
-    // `signature` stands in for `candidates`; see the memo above.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature, max]);
+  // The carry-over rule makes this state, not a derivation: who holds a slot
+  // depends on who held one before. It is adjusted during render when the
+  // inputs change (the "information from previous renders" pattern), so the
+  // answer is always in step with the roster it was computed from.
+  const [slots, setSlots] = useState<{ signature: string; granted: string[] }>({
+    signature: "",
+    granted: [],
+  });
+  let granted = slots.granted;
+  if (slots.signature !== signature) {
+    granted = allocate(candidates, slots.granted, max);
+    setSlots({ signature, granted });
+  }
 
   return useMemo(() => new Set(granted), [granted]);
 }

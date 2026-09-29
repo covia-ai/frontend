@@ -8,7 +8,7 @@ import { Boxes, Building2, ExternalLink, Fingerprint, Globe, Link as LinkIcon, P
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useVenues } from "@/hooks/use-venues";
-import { use, useEffect, useState, type ComponentType } from "react";
+import { use, type ComponentType } from "react";
 import { CopyField } from "@/components/CopyField";
 import { StatTile } from "@/components/StatTile";
 import { TopBar } from "@/components/admin-panel/TopBar";
@@ -20,7 +20,7 @@ import { McpConnectSection } from "@/components/venue/McpConnectSection";
 import { VenueMark } from "@/components/VenueMark";
 import { VenueTrustPill } from "@/components/VenueTrustPill";
 import { venueDisplayName } from "@/lib/venue-display";
-import { notifyError } from "@/lib/notify";
+import { useVenueRead } from "@/hooks/use-venue-read";
 import type { Venue } from "@covia/covia-sdk";
 import { routeParam } from "@/lib/route-params";
 
@@ -67,25 +67,24 @@ export default function VenuePage({ params }: VenuePageProps) {
   const router = useRouter();
   const { slug } = use(params);
   const routeVenueId = routeParam(slug);
-  const { venue, status, error } = useResolvedVenueContext(routeVenueId);
+  const { venue, auth, status, error } = useResolvedVenueContext(routeVenueId);
   const selectedVenueId = useVenues((state) => state.selectedVenueId);
   const selectVenue = useVenues((state) => state.selectVenue);
   // Shared /.well-known/mcp discovery — one request even though McpConnectSection
   // below also consumes it (W4 4A; was fetched twice per load).
   const venueMCPUrl = useMcpDiscovery(venue);
-  const [overview, setOverview] = useState(EMPTY_OVERVIEW);
-  useEffect(() => {
-    setOverview(EMPTY_OVERVIEW);
-    if (!venue || status !== "ready") return;
-    // The route can change venue under this component; a slower reply from
-    // the previous venue must not overwrite the current one.
-    let active = true;
-    loadVenueOverview(venue).then(
-      (loaded) => { if (active) setOverview(loaded); },
-      (err: unknown) => { if (active) notifyError("Unable to load venue details", err, venue.baseUrl); },
-    );
-    return () => { active = false; };
-  }, [venue, status]);
+  // Read once the venue is usable. The route can change venue under this
+  // component; the read is keyed to the venue it came from, so a slower reply
+  // from the previous one can never show here, and a failure shows the
+  // placeholder counts.
+  const { data: overview } = useVenueRead<VenueOverview>({
+    venue,
+    auth,
+    enabled: status === "ready",
+    initial: EMPTY_OVERVIEW,
+    failureTitle: "Unable to load venue details",
+    load: loadVenueOverview,
+  });
 
   const isCurrentVenue = selectedVenueId === venue?.venueId;
   const venueHost = (() => {

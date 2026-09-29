@@ -47,7 +47,12 @@ export function AgentChatSurface({ controller }: { controller: AgentExplorerCont
   } = controller;
 
   const transcriptRef = useRef<HTMLDivElement | null>(null);
-  const [renaming, setRenaming] = useState(false);
+  // The rename editor belongs to the session it was opened on, so a session
+  // switch (or a rename left open when one happens) closes it without the
+  // previous session's draft leaking into the newly selected one.
+  const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null);
+  const renaming = renamingSessionId !== null && renamingSessionId === selectedSessionId;
+  const stopRenaming = () => setRenamingSessionId(null);
   const [nameDraft, setNameDraft] = useState("");
 
   // Venue-persisted title (if set) beats the auto-derived first-message title,
@@ -59,14 +64,8 @@ export function AgentChatSurface({ controller }: { controller: AgentExplorerCont
     if (selectedAgentId && selectedSessionId) {
       renameSession(selectedAgentId, selectedSessionId, nameDraft);
     }
-    setRenaming(false);
+    stopRenaming();
   };
-
-  useEffect(() => {
-    // A session switch (or a rename left open when one happens) must not leak
-    // the previous session's draft into the newly selected one.
-    setRenaming(false);
-  }, [selectedSessionId]);
 
   useEffect(() => {
     if (transcriptRef.current) {
@@ -92,7 +91,7 @@ export function AgentChatSurface({ controller }: { controller: AgentExplorerCont
               onChange={(event) => setNameDraft(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") saveName();
-                if (event.key === "Escape") setRenaming(false);
+                if (event.key === "Escape") stopRenaming();
               }}
               placeholder="Name this session…"
               className="h-8 text-sm"
@@ -111,7 +110,7 @@ export function AgentChatSurface({ controller }: { controller: AgentExplorerCont
               variant="outline"
               size="sm"
               className="h-8 px-2"
-              onClick={() => setRenaming(false)}
+              onClick={stopRenaming}
             >
               <X size={14} />
             </Button>
@@ -161,7 +160,7 @@ export function AgentChatSurface({ controller }: { controller: AgentExplorerCont
                     className="h-8 px-2"
                     onClick={() => {
                       setNameDraft(currentSession?.title ?? "");
-                      setRenaming(true);
+                      setRenamingSessionId(selectedSessionId);
                     }}
                   >
                     <Pencil size={14} />

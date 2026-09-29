@@ -28,6 +28,8 @@ jest.mock('json-edit-react', () => ({
       }}>Update JSON</button>
     </div>
   ),
+  // The "View metadata" dialog is read-only and renders through JsonViewer.
+  JsonViewer: () => <div data-testid="json-viewer" />,
 }));
 
 // Mock fetch for DataAsset.getContentURL()

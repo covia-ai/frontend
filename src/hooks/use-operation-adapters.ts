@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import type { Venue } from "@covia/covia-sdk";
+import { useLatestQuery } from "@/hooks/use-latest-query";
 import {
   adapterForOp,
   buildOperationAdapterIndex,
@@ -36,6 +37,14 @@ export type OperationAdapterResolver = {
   adapterFor: (op?: string) => string | undefined;
 };
 
+type IndexOutcome = {
+  venue: Venue | null;
+  includeUserOps: boolean;
+  index: OperationAdapterIndex | null;
+};
+
+const NO_INDEX: IndexOutcome = { venue: null, includeUserOps: false, index: null };
+
 /**
  * Resolves a job's operation adapter for icon selection without any per-row
  * network read. Returns a resolver immediately; it yields undefined until the
@@ -47,26 +56,23 @@ export function useOperationAdapters(
   venue: Venue | null | undefined,
   includeUserOps: boolean,
 ): OperationAdapterResolver {
-  const [index, setIndex] = useState<OperationAdapterIndex | null>(null);
+  // The outcome carries the inputs it answers, so a switch of venue or scope
+  // reads as "no index yet" by comparison, with nothing to clear in an effect.
+  const { data: outcome, run, invalidate } = useLatestQuery<IndexOutcome>(NO_INDEX);
 
   useEffect(() => {
     if (!venue) {
-      setIndex(null);
+      invalidate();
       return;
     }
-    let active = true;
-    setIndex(null);
-    indexFor(venue, includeUserOps)
-      .then((next) => {
-        if (active) setIndex(next);
-      })
-      .catch(() => {
-        if (active) setIndex(null);
-      });
-    return () => {
-      active = false;
-    };
-  }, [venue, includeUserOps]);
+    void run(async () => ({
+      venue,
+      includeUserOps,
+      index: await indexFor(venue, includeUserOps).catch(() => null),
+    }));
+  }, [venue, includeUserOps, run, invalidate]);
 
+  const index =
+    outcome.venue === venue && outcome.includeUserOps === includeUserOps ? outcome.index : null;
   return { adapterFor: (op?: string) => adapterForOp(index, op) };
 }
