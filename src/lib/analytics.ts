@@ -262,7 +262,7 @@ function ensurePostHog(): Promise<void> {
         // `capture_dead_clicks` records the element a user clicked, which on
         // this app carries asset names, agent names and DIDs.
         // `capture_performance` attaches URLs to web-vitals events. Neither
-        // is disclosed in privacy policy v1.2, and surveys would render
+        // is disclosed in privacy policy v1.3, and surveys would render
         // vendor UI inside the product.
         capture_dead_clicks: false,
         capture_performance: false,
