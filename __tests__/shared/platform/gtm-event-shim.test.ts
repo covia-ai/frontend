@@ -75,7 +75,7 @@ describe('user-authored text never reaches a vendor', () => {
   /*
    * An asset name is free text someone typed. Sending it would put customer
    * names and business facts into a third-party analytics store, which is what
-   * autocapture is disabled for and what privacy policy v1.2 says we do not do.
+   * autocapture is disabled for and what privacy policy v1.3 says we do not do.
    */
 
   it('reports the content-addressed id for a created asset, not its name', () => {
