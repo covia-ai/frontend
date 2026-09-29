@@ -222,7 +222,7 @@ agent ids, venue ids, job ids, operation addresses. **No parameter carries text
 a user typed.** An asset name is free text ("Acme Q3 payroll model"), so
 sending it would place customer names and business facts in a third-party
 analytics store. That is the same reason PostHog's `autocapture` is off, and
-privacy policy v1.2 states we do not send asset contents.
+privacy policy v1.3 states we do not send asset contents.
 
 `create_asset` therefore carries `asset_id`, replacing the previous
 `asset_name`, and `create_asset_failed` carries only `reason` — registration
@@ -303,7 +303,7 @@ downloaded `dead-clicks-autocapture`, `web-vitals-with-attribution` and
 | `disable_surveys` | `true` | Would render vendor UI inside the product |
 | `disable_session_recording` | `true` | See "Session replay" below |
 
-None of these is disclosed in privacy policy v1.2, and none is needed for the
+None of these is disclosed in privacy policy v1.3, and none is needed for the
 D070 taxonomy. Pinning them in code means the behaviour cannot be changed from
 the PostHog UI: the same two-gate posture used for session replay, where the
 project toggle and the client flag both have to say yes. A test asserts each
@@ -318,10 +318,12 @@ Observed effect on preview after granting consent: exactly two
 
 **Off, and must stay off until the privacy policy discloses it.**
 
-Privacy policy v1.2 (`src/content/legal/privacy.ts`) names PostHog as a
-processor, which is what permits events. It also states plainly that we do not
-record your screen or session, so enabling replay contradicts the published
-policy until that sentence changes.
+Privacy policy v1.3 (`src/content/legal/privacy.ts`) names PostHog as a
+processor, which is what permits events. It also states plainly that on
+app.covia.ai we do not record your screen or session, so enabling replay
+contradicts the published policy until that sentence changes. (Since v1.3, the
+policy discloses Microsoft Clarity recording page interactions on covia.ai;
+that disclosure covers the website only, not this app.)
 
 Replay on this app would capture job inputs and outputs, agent transcripts,
 workspace and asset content, and secret names. PostHog masks form inputs by
@@ -329,16 +331,16 @@ default but not arbitrary rendered text.
 
 Before setting `NEXT_PUBLIC_POSTHOG_SESSION_RECORDING=true`:
 
-1. Amend the policy: remove the "we do not record your screen or session"
-   commitment, disclose replay and what it captures, bump the version and
-   effective date, and bump `PRIVACY_POLICY_VERSION` in `src/lib/consent.ts`
+1. Amend the policy: remove the "on app.covia.ai we do not record your screen
+   or session" commitment, disclose replay and what it captures, bump the
+   version and effective date, and bump `PRIVACY_POLICY_VERSION` in `src/lib/consent.ts`
    to match (which re-prompts every user for consent).
 2. Agree a masking configuration covering job, asset, workspace and agent-chat
    surfaces.
 3. Update the public telemetry manifest at `covia.ai/telemetry` (§7).
 
 Note that adding PostHog **at all**, events only and no replay, makes it a
-sub-processor. Policy v1.2 covers that case; `NEXT_PUBLIC_POSTHOG_KEY` is still
+sub-processor. Policy v1.3 covers that case; `NEXT_PUBLIC_POSTHOG_KEY` is still
 unset by default so nothing loads until someone deliberately configures it.
 
 ### Location data
@@ -363,7 +365,7 @@ transformation that drops the fine-grained fields, under Data → Transformation
 **Raw IP addresses are not stored.** PostHog's *Discard client IP data* is on
 (Settings → Project → Privacy), and its docs confirm GeoIP enrichment still
 runs before the address is dropped. GA4 has `anonymize_ip: true`. Privacy
-policy v1.2 states both the location fields and the IP discard.
+policy v1.3 states both the location fields and the IP discard.
 
 ### Retention
 
