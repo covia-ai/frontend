@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { VenueAuth } from "@/hooks/use-auth";
 import { identityTokenFor, MAX_IDENTITY_TOKEN_LIFETIME_SECONDS } from "@/lib/identity-token";
 import { notifyError, notifySuccess } from "@/lib/notify";
+import { TONE_STYLES } from "@/lib/status";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
