@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { UCANVerifyResult } from "@covia/covia-sdk";
-import { ShieldCheck, ShieldX, Search } from "lucide-react";
+import { Lock, ShieldCheck, ShieldX, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DidDisplay } from "@/components/DidDisplay";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useIsAuthenticated } from "@/hooks/use-auth";
 import { notifyError } from "@/lib/notify";
 import { TONE_STYLES } from "@/lib/status";
 import {
@@ -21,20 +22,38 @@ import {
   type AttRow,
 } from "@/lib/ucan-console";
 
+// The venue's enforcement message for a refused invoke. It is written for an
+// operator (auth.public.caps, UCAN.md section refs), so the panel swaps it for
+// plain wording rather than surfacing it to someone who pasted a token.
+const DENIAL_MARKER = "Capability denied";
+
+const DENIED_MESSAGE =
+  "This venue does not let your account run verification. Ask the venue operator for access to ucan:verify.";
+
+function isCapabilityDenied(err: unknown): boolean {
+  const message = (err as { message?: unknown } | null)?.message;
+  return typeof message === "string" && message.includes(DENIAL_MARKER);
+}
+
 /**
- * The diagnostic half of the console, and the half that works signed out: a
- * token is evidence anyone holding it should be able to read. Verification is
- * the venue's own verdict (`ucan:verify`), not a client-side guess, so what
- * this panel shows is what enforcement would decide.
+ * The diagnostic half of the console. Verification is the venue's own verdict
+ * (`ucan:verify`), not a client-side guess, so what this panel shows is what
+ * enforcement would decide.
+ *
+ * Venues do not let anonymous callers invoke operations (covia-ai/covia#528),
+ * so verify is gated on sign-in the same way the operation run form is,
+ * rather than letting the click through to a refusal (#418). The token can
+ * still be pasted signed out; only the venue call waits for an account.
  */
 export function UcanVerifyPanel() {
   const venue = useAuthenticatedVenue();
+  const isAuthenticated = useIsAuthenticated();
   const [token, setToken] = useState("");
   const [check, setCheck] = useState<AttRow>({ with: "", can: "" });
   const [result, setResult] = useState<UCANVerifyResult | null>(null);
   const [verifying, setVerifying] = useState(false);
 
-  const canVerify = token.trim().length > 0 && !!venue && !verifying;
+  const canVerify = isAuthenticated && token.trim().length > 0 && !!venue && !verifying;
 
   const verify = async () => {
     if (!venue) return;
@@ -43,7 +62,11 @@ export function UcanVerifyPanel() {
       setResult(await venue.ucan.verify(token.trim(), verifyCheck(check)));
     } catch (err) {
       setResult(null);
-      notifyError("Unable to verify capability", err, venue.baseUrl);
+      notifyError(
+        "Unable to verify capability",
+        isCapabilityDenied(err) ? new Error(DENIED_MESSAGE) : err,
+        venue.baseUrl,
+      );
     } finally {
       setVerifying(false);
     }
@@ -98,10 +121,27 @@ export function UcanVerifyPanel() {
           </div>
         </div>
 
-        <Button data-testid="ucan-verify-submit" onClick={verify} disabled={!canVerify}>
-          <Search className="mr-1 h-4 w-4" />
-          {verifying ? "Verifying…" : "Verify"}
-        </Button>
+        {isAuthenticated ? (
+          <Button data-testid="ucan-verify-submit" onClick={verify} disabled={!canVerify}>
+            <Search className="mr-1 h-4 w-4" />
+            {verifying ? "Verifying…" : "Verify"}
+          </Button>
+        ) : (
+          <div className="space-y-1">
+            <Button
+              data-testid="ucan-verify-submit"
+              variant="outline"
+              disabled
+              className="gap-2 text-muted-foreground"
+            >
+              <Lock size={14} />
+              Sign in to verify on this venue
+            </Button>
+            <p className="text-xs text-muted-foreground" data-testid="ucan-verify-signin-note">
+              This venue does not permit anonymous verification.
+            </p>
+          </div>
+        )}
 
         {!venue && (
           <p className="text-xs text-muted-foreground">
