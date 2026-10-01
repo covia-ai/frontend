@@ -49,8 +49,7 @@ export function UcanIssuePanel() {
         <Lock className="mx-auto h-5 w-5 text-muted-foreground" />
         <p className="mt-2 font-medium text-foreground">Sign in to issue capabilities</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Verification is open to everyone. Minting a grant acts as you, so it
-          needs an account.
+          Minting a grant acts as you, so it needs an account.
         </p>
       </Card>
     );

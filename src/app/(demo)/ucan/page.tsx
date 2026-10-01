@@ -8,9 +8,10 @@ import { UcanIssuePanel } from "@/components/ucan/UcanIssuePanel";
 import { UcanVerifyPanel } from "@/components/ucan/UcanVerifyPanel";
 
 /**
- * The capability console. Verification is the everyday surface and is open to
- * everyone — a token is evidence, and "why was I denied?" should be answerable
- * without an account. Issuance sits behind its own gate on the second tab.
+ * The capability console. Verification is the everyday surface; it needs an
+ * account because venues do not let anonymous callers invoke operations
+ * (covia-ai/covia#528). Issuance sits behind its own, stricter gate on the
+ * second tab.
  */
 export default function UcanPage() {
   return (
