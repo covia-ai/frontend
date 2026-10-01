@@ -70,7 +70,7 @@ export function jobFailure(err: unknown, venueId?: string): { reason: unknown; j
 
   const jobHref =
     failed.jobData.id && venueId
-      ? `/venues/${encodeURIComponent(venueId)}/jobs/${failed.jobData.id}`
+      ? `/venues/${encodeURIComponent(venueId)}/jobs/${encodeURIComponent(failed.jobData.id)}`
       : undefined;
   const reason =
     wrapped !== undefined ? err // already a clean Error — reuse it
