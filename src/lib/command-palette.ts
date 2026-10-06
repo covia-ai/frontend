@@ -46,7 +46,9 @@ async function fetchAssetItems(
   venue: Venue,
   descriptor: VenueDescriptor,
 ): Promise<PaletteItem[]> {
-  const assetList = await venue.listAssets({ expand: "metadata" });
+  // kind: 'data' leaves operations on the venue; the filter below still drops
+  // agent templates and skills, and covers venues that ignore `kind`.
+  const assetList = await venue.listAssets({ expand: "metadata", kind: "data" });
   const venueName = descriptor.metadata.name ?? descriptor.venueId;
   return assetList.items
     .filter((entry) => {

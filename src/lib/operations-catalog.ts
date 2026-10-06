@@ -161,7 +161,8 @@ export async function buildOperationAdapterIndex(
   // read) must not blank out the other's contribution.
   const [ops, assets] = await Promise.all([
     listCatalogOperations(venue, options).catch(() => [] as CatalogOp[]),
-    venue.listAssets({ expand: "metadata" }).catch(() => null),
+    // Only operation assets carry an adapter, so the venue can drop the rest.
+    venue.listAssets({ expand: "metadata", kind: "operation" }).catch(() => null),
   ]);
 
   const byPath = new Map<string, string>();
