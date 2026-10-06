@@ -44,7 +44,10 @@ export function AssetList({ venueId }: AssetListProps = {}) {
   // catalog content with their own path-first views, so they're excluded here;
   // what's left is genuinely CAS-only content, correctly hash-addressed.
   // expand: 'metadata' inlines every item's metadata into the listing call, so
-  // there's no per-id hydration pass.
+  // there's no per-id hydration pass. kind: 'data' has the venue drop
+  // operations before paging (covia#530), so the bulk of the catalogue is never
+  // sent (#420). The client-side kind check stays: agent templates and skills
+  // are not operations, and venues older than covia#530 ignore `kind`.
   const fetchCatalog = useCallback(
     async (venue: Venue, publish: (assets: DataAsset[]) => void) => {
       const artifacts: DataAsset[] = [];
@@ -59,6 +62,7 @@ export function AssetList({ venueId }: AssetListProps = {}) {
       while (offset < total) {
         const page = await venue.listAssets({
           expand: "metadata",
+          kind: "data",
           offset,
           limit: CATALOG_PAGE,
         });

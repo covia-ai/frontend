@@ -71,7 +71,7 @@ describe('AssetList', () => {
     render(<AssetList />);
     await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
     expect(mockVenue.listAssets).toHaveBeenCalledTimes(1);
-    expect(mockVenue.listAssets).toHaveBeenCalledWith({ expand: 'metadata', offset: 0, limit: 1000 });
+    expect(mockVenue.listAssets).toHaveBeenCalledWith({ expand: 'metadata', kind: 'data', offset: 0, limit: 1000 });
   });
 
   it('reveals assets a batch at a time (infinite scroll); Load more grows the window', async () => {
@@ -245,8 +245,8 @@ describe('AssetList catalogue paging', () => {
     render(<AssetList />);
 
     await waitFor(() => expect(mockVenue.listAssets).toHaveBeenCalledTimes(2));
-    expect(mockVenue.listAssets).toHaveBeenNthCalledWith(1, { expand: 'metadata', offset: 0, limit: 1000 });
-    expect(mockVenue.listAssets).toHaveBeenNthCalledWith(2, { expand: 'metadata', offset: 1000, limit: 1000 });
+    expect(mockVenue.listAssets).toHaveBeenNthCalledWith(1, { expand: 'metadata', kind: 'data', offset: 0, limit: 1000 });
+    expect(mockVenue.listAssets).toHaveBeenNthCalledWith(2, { expand: 'metadata', kind: 'data', offset: 1000, limit: 1000 });
 
     // An asset from beyond the cap is reachable, which is the whole point.
     await waitFor(() => expect(screen.getByText(/Showing 24 of 1200/)).toBeInTheDocument());

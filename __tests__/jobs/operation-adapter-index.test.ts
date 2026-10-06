@@ -6,7 +6,7 @@ const HASH_B = "b".repeat(64);
 
 // A venue mock exercising the real job-free reads buildOperationAdapterIndex
 // uses: listCatalogOperations walks `workspace.read(<base>)`, and the hash map
-// comes from `listAssets({ expand: "metadata" })`.
+// comes from `listAssets({ expand: "metadata", kind: "operation" })`.
 function mockVenue(overrides: Record<string, unknown> = {}) {
   const trees: Record<string, unknown> = {
     "v/ops": { http: { get: { operation: { adapter: "http:get" }, name: "HTTP GET" } } },
@@ -40,7 +40,7 @@ describe("buildOperationAdapterIndex", () => {
     expect(index.byPath.get("v/test/ops/echo")).toBe("test:echo");
 
     // Neither read invokes an operation (would persist a job).
-    expect(venue.listAssets).toHaveBeenCalledWith({ expand: "metadata" });
+    expect(venue.listAssets).toHaveBeenCalledWith({ expand: "metadata", kind: "operation" });
   });
 
   it("survives one read failing without losing the other", async () => {

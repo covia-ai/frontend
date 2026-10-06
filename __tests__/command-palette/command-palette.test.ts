@@ -80,6 +80,8 @@ describe("fetchVenueItems", () => {
 
     expect(failed).toBe(false);
     expect(items).toHaveLength(6);
+    // Operations are filtered on the venue, not shipped and discarded (#420).
+    expect(venue.listAssets).toHaveBeenCalledWith({ expand: "metadata", kind: "data" });
 
     const asset = items.find((i) => i.kind === "asset")!;
     expect(asset).toMatchObject({
