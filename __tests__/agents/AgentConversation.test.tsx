@@ -113,3 +113,44 @@ describe("AgentConversation copy affordances", () => {
     });
   });
 });
+
+// A failed send stays in the transcript with Retry and Edit (frontend#285 item 1).
+describe("AgentConversation — failed send", () => {
+  function renderFailed(failedSend: { text: string; reason: string; recorded: boolean }) {
+    const onRetry = jest.fn();
+    const onEditFailed = jest.fn();
+    render(
+      <AgentConversation
+        agentId="writer"
+        selectedSessionId="s1"
+        session={session}
+        pendingChat={null}
+        echoAlreadyRecorded={false}
+        transcriptRef={React.createRef<HTMLDivElement>()}
+        failedSend={failedSend}
+        onRetry={onRetry}
+        onEditFailed={onEditFailed}
+      />,
+    );
+    return { onRetry, onEditFailed };
+  }
+
+  it("shows an unsent message with its reason, Retry and Edit", async () => {
+    const { onRetry, onEditFailed } = renderFailed({ text: "Summarise it", reason: "network down", recorded: false });
+    expect(screen.getByText("Summarise it")).toBeInTheDocument();
+    expect(screen.getByTestId("failed-send-reason")).toHaveTextContent("Not sent: network down");
+    await userEvent.click(screen.getByTestId("failed-send-retry"));
+    await userEvent.click(screen.getByTestId("failed-send-edit"));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+    expect(onEditFailed).toHaveBeenCalledTimes(1);
+  });
+
+  it("doesn't repeat a message the venue already recorded, and offers only Retry", () => {
+    renderFailed({ text: "What is a venue?", reason: "tool loop failed", recorded: true });
+    // The recorded user turn appears once (from the transcript), not twice.
+    expect(screen.getAllByText("What is a venue?")).toHaveLength(1);
+    expect(screen.getByTestId("failed-send-reason")).toHaveTextContent("No reply: tool loop failed");
+    expect(screen.getByTestId("failed-send-retry")).toBeInTheDocument();
+    expect(screen.queryByTestId("failed-send-edit")).not.toBeInTheDocument();
+  });
+});

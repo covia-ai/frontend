@@ -20,6 +20,23 @@ export function agentSendingPlaceholder(activity: AgentLiveActivity | null): str
   return "Waiting for the agent's reply…";
 }
 
+// The venue allows one chat in flight per session. The client normally
+// prevents a second send, but it loses track of an in-flight chat across a
+// reload or dropped request — translate the venue's raw rejection (which leads
+// with a hex session id) into something actionable.
+function friendlySendFailure(reason: unknown): unknown {
+  return /already has an in-flight chat/i.test(errorMessage(reason))
+    ? new Error(
+        "The agent is still working on an earlier message in this session. " +
+        "Wait for its reply, or start a new chat.")
+    : reason;
+}
+
+/** One line for the transcript's failed-message row: why the send failed. */
+export function describeSendFailure(error: unknown, venueId?: string): string {
+  return errorMessage(friendlySendFailure(jobFailure(error, venueId).reason));
+}
+
 type DispatchAgentMessageOptions = {
   agentId: string;
   text: string;
@@ -77,16 +94,7 @@ export async function dispatchAgentMessage({
   } catch (error: unknown) {
     gtmEvent.sendAgentMessageFailed(agentId, errorMessage(error));
     const { reason, jobHref } = jobFailure(error, venueId);
-    // The venue allows one chat in flight per session. The client normally
-    // prevents a second send, but it loses track of an in-flight chat across
-    // a reload or dropped request — translate the venue's raw rejection
-    // (which leads with a hex session id) into something actionable.
-    const friendly = /already has an in-flight chat/i.test(errorMessage(reason))
-      ? new Error(
-          "The agent is still working on an earlier message in this session. " +
-          "Wait for its reply, or start a new chat.")
-      : reason;
-    notifyError("Unable to send message", friendly, venueBaseUrl, jobHref);
+    notifyError("Unable to send message", friendlySendFailure(reason), venueBaseUrl, jobHref);
     throw error;
   } finally {
     clearTimeout(slowTimer);
