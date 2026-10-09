@@ -51,16 +51,20 @@ export function AgentChat({ initialAgentId }: AgentChatProps) {
     activity,
     canSend,
     echoAlreadyRecorded,
+    failedSend,
+    retrySend,
+    editFailedSend,
     resume,
     startNewChat,
     selectSession,
     send,
   } = controller;
 
+  const hasFailedSend = failedSend !== null;
   useEffect(() => {
     const transcript = transcriptRef.current;
     if (transcript) transcript.scrollTop = transcript.scrollHeight;
-  }, [currentSession?.conversation.length, sending]);
+  }, [currentSession?.conversation.length, sending, hasFailedSend]);
 
   const sessionLabel = (session: (typeof sessions)[number]) =>
     session.title ?? defaultSessionTitle(session) ?? formatSessionLabel(session);
@@ -183,6 +187,9 @@ export function AgentChat({ initialAgentId }: AgentChatProps) {
         session={currentSession}
         pendingChat={pendingChat}
         echoAlreadyRecorded={echoAlreadyRecorded}
+        failedSend={failedSend}
+        onRetry={canSend ? retrySend : undefined}
+        onEditFailed={editFailedSend}
         transcriptRef={transcriptRef}
         agentBrief={display.brief}
         onStarter={setMessageText}

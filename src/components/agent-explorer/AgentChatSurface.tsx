@@ -40,6 +40,9 @@ export function AgentChatSurface({ controller }: { controller: AgentExplorerCont
     activity,
     canSend,
     echoAlreadyRecorded,
+    failedSend,
+    retrySend,
+    editFailedSend,
     renameSession,
     startNewChat,
     selectSession,
@@ -67,11 +70,12 @@ export function AgentChatSurface({ controller }: { controller: AgentExplorerCont
     stopRenaming();
   };
 
+  const hasFailedSend = failedSend !== null;
   useEffect(() => {
     if (transcriptRef.current) {
       transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
     }
-  }, [currentSession?.conversation.length, sending]);
+  }, [currentSession?.conversation.length, sending, hasFailedSend]);
 
   if (!selectedAgentDetail) return null;
 
@@ -189,6 +193,9 @@ export function AgentChatSurface({ controller }: { controller: AgentExplorerCont
         session={currentSession}
         pendingChat={pendingChat}
         echoAlreadyRecorded={echoAlreadyRecorded}
+        failedSend={failedSend}
+        onRetry={canSend ? retrySend : undefined}
+        onEditFailed={editFailedSend}
         transcriptRef={transcriptRef}
         agentBrief={agentDisplay(selectedAgentDetail.config).brief}
         onStarter={setMessageText}
