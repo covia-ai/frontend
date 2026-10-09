@@ -25,6 +25,9 @@ const securityHeaders = [
   // Severs window.opener for cross-origin windows (e.g. a venue opened in a
   // new tab). Sign-in is a full-page redirect, not a popup, so this is safe.
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+  // Vercel already sends max-age=63072000; this adds includeSubDomains. It
+  // only covers hosts under app.covia.ai, not the rest of *.covia.ai.
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
 ];
 
 const nextConfig: NextConfig = {
