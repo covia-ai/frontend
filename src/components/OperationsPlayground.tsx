@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { useIsAuthenticated } from "@/hooks/use-auth";
+import { useWriteAccess } from "@/hooks/use-write-access";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useStoredValue } from "@/hooks/use-stored-value";
 import { resolveOperationByAddress } from "@/lib/operations-catalog";
@@ -112,7 +112,7 @@ export function OperationsPlayground() {
 
 function PlaygroundForm({ initial, hydrated }: { initial: PlaygroundState; hydrated: boolean }) {
   const venue = useAuthenticatedVenue();
-  const isAuthenticated = useIsAuthenticated();
+  const write = useWriteAccess();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -157,7 +157,7 @@ function PlaygroundForm({ initial, hydrated }: { initial: PlaygroundState; hydra
   }
 
   async function handleRun() {
-    if (!venue || !isAuthenticated) return;
+    if (!venue || !write.canWrite) return;
     let parsed: unknown;
     try {
       parsed = JSON.parse(inputText);
@@ -223,14 +223,14 @@ function PlaygroundForm({ initial, hydrated }: { initial: PlaygroundState; hydra
                       data-testid="playground-input"
                     />
                     {inputError && <ErrorDisplay error={inputError} />}
-                    {isAuthenticated ? (
+                    {write.canWrite ? (
                       <Button onClick={() => void handleRun()} disabled={!venue || invoking} data-testid="playground-run">
                         {invoking ? "Running…" : "Run"}
                       </Button>
                     ) : (
-                      <Button variant="outline" disabled className="gap-2 text-muted-foreground">
+                      <Button variant="outline" disabled className="gap-2 text-muted-foreground" title={write.lockedTitle}>
                         <Lock size={14} />
-                        Sign in to run operations
+                        {write.lockedLabel("run operations")}
                       </Button>
                     )}
                   </CardContent>

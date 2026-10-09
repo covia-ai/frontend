@@ -15,6 +15,7 @@ import { TypeTile } from "./TypeTile";
 import { conceptLook } from "@/lib/concept-icons";
 import { CONNECTIONS } from "@/config/connections";
 import { useCurrentAuth } from "@/hooks/use-auth";
+import { useWriteAccess } from "@/hooks/use-write-access";
 import { ListLoadError } from "@/components/ListLoadError";
 import { KNOWN_LLM_KEYS } from "@/config/llm-providers";
 import { keyNameSuggestions, recentKeyNames, rememberKeyName } from "@/lib/recent-keys";
@@ -84,6 +85,7 @@ export function SecretList() {
   const venue = useAuthenticatedVenue();
   const auth = useCurrentAuth();
   const isAuthenticated = auth !== null;
+  const write = useWriteAccess({ signedIn: isAuthenticated });
 
   const { data: secrets, loading, error, reload: loadSecrets } = useVenueRead<string[]>({
     venue,
@@ -166,7 +168,7 @@ export function SecretList() {
   return (
     <div className="flex flex-col gap-4">
       {/* Add Secret Form */}
-      {isAuthenticated ? (
+      {write.canWrite ? (
         <Card className="p-4">
           <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
             <Plus size={16} /> Add secret
@@ -242,10 +244,19 @@ export function SecretList() {
         <Card className="p-4 flex flex-row items-start gap-3">
           <Lock size={16} className="text-muted-foreground mt-0.5 shrink-0" />
           <div>
-            <p className="text-sm font-medium text-foreground">Authentication required</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Sign in to store and manage secrets. Secret operations require a verified identity.
-            </p>
+            {write.reason === "not-admitted" ? (
+              <>
+                <p className="text-sm font-medium text-foreground">Account not admitted</p>
+                <p className="text-xs text-muted-foreground mt-1">{write.lockedTitle}</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-medium text-foreground">Authentication required</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Sign in to store and manage secrets. Secret operations require a verified identity.
+                </p>
+              </>
+            )}
           </div>
         </Card>
       )}

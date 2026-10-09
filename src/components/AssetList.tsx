@@ -20,6 +20,7 @@ import { ListToolbar } from "./ListToolbar";
 import { Input } from "./ui/input";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { VenueResolutionState } from "@/components/VenueResolutionState";
+import { useWriteAccess } from "@/hooks/use-write-access";
 
 
 interface AssetListProps {
@@ -106,7 +107,7 @@ export function AssetList({ venueId }: AssetListProps = {}) {
     initialSearch: searchParams.get("search") ?? "",
     selectedTags,
   });
-  const isAuthenticated = resolvedVenue.isAuthenticated;
+  const write = useWriteAccess({ venueId: venue?.venueId, signedIn: resolvedVenue.isAuthenticated });
 
   const handleSearchChange = (value: string) => {
     setSearchInput(value);
@@ -155,7 +156,7 @@ export function AssetList({ venueId }: AssetListProps = {}) {
                     className="pl-8"
                   />
                 </div>
-                {isAuthenticated && (
+                {write.canWrite && (
                   <CreateAssetComponent venue={venue ?? undefined}></CreateAssetComponent>
                 )}
                 <FiltersSheet
