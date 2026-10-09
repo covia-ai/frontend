@@ -8,6 +8,7 @@ import {
   FileInput,
   FileOutput,
   Fingerprint,
+  GitFork,
   Hash,
   Layers,
   Link2,
@@ -19,6 +20,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { JobStateTimeline } from "@/components/jobs/JobStateTimeline";
+import { JobTreePanel } from "@/components/jobs/JobTree";
 import { didUrl, Namespace } from "@covia/covia-sdk";
 import { RunStatus, isJobFinished } from "@covia/covia-sdk";
 import { AssetLoadState } from "@/components/AssetLoadState";
@@ -216,6 +218,14 @@ export function ExecutionViewer({
               </Panel>
             )}
           </div>
+
+          {/* Job tree — rebuilt from parent links; absent for a standalone job */}
+          <JobTreePanel
+            venue={venue}
+            venueId={resolvedVenueId}
+            job={job}
+            wrap={(tree) => <Panel icon={GitFork} title="Job tree">{tree}</Panel>}
+          />
 
           {/* State history — reconstructed from the job's prev chain */}
           <Panel icon={History} title="State history">
