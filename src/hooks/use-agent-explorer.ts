@@ -26,7 +26,7 @@ import { agentSessionsToSessions } from "@/lib/agent-sessions";
 import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { agentConfigsEqual, type AgentConfigSaveOutcome } from "@/lib/agent-settings";
 import { gtmEvent } from "@/lib/utils";
-import { dispatchAgentMessage } from "@/lib/agent-chat";
+import { describeSendFailure, dispatchAgentMessage } from "@/lib/agent-chat";
 import { useAgentForkProvenance } from "@/hooks/use-agent-fork-provenance";
 import { useAgentLiveEvents } from "@/hooks/use-agent-live-events";
 
@@ -57,6 +57,16 @@ type DetailSlot = { key: AgentKey; detail: AgentDetail | null; error: boolean };
 type SessionsSlot = { key: AgentKey; sessions: Session[] };
 type ChatSlot = { key: AgentKey; session: ChatSession | null; newChatRequested: boolean };
 type DraftSlot = { key: AgentKey; text: string };
+/** A message whose send failed, kept in its conversation so it can be retried
+ *  or taken back into the composer. `turnsAtSend` tells whether the venue had
+ *  already recorded the message before failing (then only the reply is missing). */
+type FailedSendSlot = {
+  key: AgentKey;
+  sessionId: string | null;
+  text: string;
+  reason: string;
+  turnsAtSend: number;
+};
 
 /**
  * Whether a read may take over a slot showing another agent. Only the
@@ -95,6 +105,7 @@ export function useAgentExplorer(
   const [sessionsSlot, setSessionsSlot] = useState<SessionsSlot | null>(null);
   const [chatSlot, setChatSlot] = useState<ChatSlot | null>(null);
   const [draft, setDraft] = useState<DraftSlot | null>(null);
+  const [failedSlot, setFailedSlot] = useState<FailedSendSlot | null>(null);
   const [triggeringKey, setTriggeringKey] = useState<AgentKey | null>(null);
   const [forking, setForking] = useState(false);
   const listRequest = useRef(0);
@@ -565,19 +576,21 @@ export function useAgentExplorer(
     setChatSlot({ key: currentKey, session: agentHandle.chatSession(sessionId), newChatRequested: false });
   };
 
-  const send = () => {
-    if (!venue || !agentHandle || !selectedAgentId || !currentKey || !messageText.trim()) return;
-    const text = messageText.trim();
+  // Sends `text` to the conversation on screen (or a new one). Shared by the
+  // composer and by retrying a failed message.
+  const dispatch = (text: string) => {
+    if (!venue || !agentHandle || !selectedAgentId || !currentKey) return;
     const agentId = selectedAgentId;
     const key = currentKey;
     const session = chatSession ?? agentHandle.chatSession();
     const sessionId = session.sessionId ?? null;
-    setDraft({ key, text: "" });
+    const turnsAtSend = currentSession?.conversation.length ?? 0;
+    setFailedSlot((previous) => (previous?.key === key ? null : previous));
     const chat = startPendingChat({
       agentId,
       sessionId,
       text,
-      turnsAtSend: currentSession?.conversation.length ?? 0,
+      turnsAtSend,
     });
 
     void dispatchAgentMessage({
@@ -605,13 +618,65 @@ export function useAgentExplorer(
       })
       .catch((error: unknown) => {
         revalidateVenueOnFailure(venue, auth, error);
-        // Give the text back to its agent's composer unless a newer draft is
-        // already there — or another agent's draft, which is not ours to replace.
-        setDraft((previous) =>
-          previous && (previous.key !== key || previous.text) ? previous : { key, text },
-        );
+        // Keep the message in its conversation, marked failed, with Retry and
+        // Edit — rather than silently dropping it back into the composer.
+        setFailedSlot({
+          key,
+          sessionId: session.sessionId ?? sessionId,
+          text,
+          reason: describeSendFailure(error, venue.venueId),
+          turnsAtSend,
+        });
+        // The venue may have kept the message before the turn failed; re-read
+        // so the transcript shows what it actually holds.
+        void refreshSessions(agentId);
       })
       .finally(() => clearPendingChat(chat));
+  };
+
+  const send = () => {
+    if (!currentKey || !messageText.trim()) return;
+    const text = messageText.trim();
+    setDraft({ key: currentKey, text: "" });
+    dispatch(text);
+  };
+
+  // The failed message for the conversation on screen, if any.
+  const failed =
+    failedSlot && failedSlot.key === currentKey && failedSlot.sessionId === selectedSessionId
+      ? failedSlot
+      : null;
+  const failedSend = failed
+    ? {
+        text: failed.text,
+        reason: failed.reason,
+        // The venue recorded the message before the turn failed, so the
+        // transcript already shows it and only the reply is missing.
+        recorded: (currentSession?.conversation ?? [])
+          .slice(failed.turnsAtSend)
+          .some(
+            (message) =>
+              message.role === "user" &&
+              messageContentToString(message.content) === failed.text,
+          ),
+      }
+    : null;
+
+  // Only while the agent can take messages: a failed run often leaves it
+  // SUSPENDED, and the composer's own Send is disabled then too.
+  const retrySend = () => {
+    if (failed && !pendingChat && canSend) dispatch(failed.text);
+  };
+
+  // Takes the failed message back into the composer to change it. A newer
+  // draft already there is not overwritten.
+  const editFailedSend = () => {
+    if (!failed || !currentKey) return;
+    const key = currentKey;
+    setDraft((previous) =>
+      previous && previous.key === key && previous.text ? previous : { key, text: failed.text },
+    );
+    setFailedSlot(null);
   };
 
   const canSend =
@@ -647,6 +712,9 @@ export function useAgentExplorer(
     activity,
     canSend,
     echoAlreadyRecorded,
+    failedSend,
+    retrySend,
+    editFailedSend,
     suspend,
     resume,
     triggerAgent,

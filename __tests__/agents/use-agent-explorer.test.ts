@@ -559,6 +559,73 @@ describe("useAgentExplorer — composer", () => {
     expect(result.current.messageText).toBe("");
   });
 
+  it("keeps a failed message in its conversation, then retries it", async () => {
+    mockVenue = makeVenue("venue-a", ["agent-a"]);
+    mockVenue.agents.info.mockResolvedValue({ agentId: "agent-a", status: "RUNNING", config: {} });
+    mockVenue.agents.listSessions.mockResolvedValue(
+      sessionsPage([sessionEntry("sess-1", [{ role: "assistant", content: "hi", ts: 1 }])]),
+    );
+    const send = jest
+      .fn()
+      .mockRejectedValueOnce(new Error("upstream model unavailable"))
+      .mockResolvedValueOnce({ response: "done", sessionId: "sess-1" });
+    mockVenue.agent.mockReturnValue({
+      chatSession: (sessionId?: string) => ({ sessionId, send }),
+    });
+    const { result } = renderHook(() => useAgentExplorer("agent-a"));
+    await waitFor(() => expect(result.current.selectedSessionId).toBe("sess-1"));
+
+    act(() => result.current.setMessageText("summarise"));
+    await act(async () => {
+      result.current.send();
+    });
+
+    await waitFor(() =>
+      expect(result.current.failedSend).toEqual({
+        text: "summarise",
+        reason: "upstream model unavailable",
+        recorded: false,
+      }),
+    );
+    // Not silently dropped back into the composer.
+    expect(result.current.messageText).toBe("");
+
+    await act(async () => {
+      result.current.retrySend();
+    });
+    expect(send).toHaveBeenLastCalledWith("summarise");
+    await waitFor(() => expect(result.current.failedSend).toBeNull());
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it("marks a failure the venue already recorded, and Edit returns the text to the composer", async () => {
+    mockVenue = makeVenue("venue-a", ["agent-a"]);
+    mockVenue.agents.info.mockResolvedValue({ agentId: "agent-a", status: "RUNNING", config: {} });
+    mockVenue.agents.listSessions.mockResolvedValue(sessionsPage([sessionEntry("sess-1", [])]));
+    const send = jest.fn().mockImplementation(() => {
+      // The venue keeps the user turn, then the run fails.
+      mockVenue.agents.listSessions.mockResolvedValue(
+        sessionsPage([sessionEntry("sess-1", [{ role: "user", content: "summarise", ts: 2 }])]),
+      );
+      return Promise.reject(new Error("tool loop failed"));
+    });
+    mockVenue.agent.mockReturnValue({ chatSession: (sessionId?: string) => ({ sessionId, send }) });
+    const { result } = renderHook(() => useAgentExplorer("agent-a"));
+    await waitFor(() => expect(result.current.selectedSessionId).toBe("sess-1"));
+
+    act(() => result.current.setMessageText("summarise"));
+    await act(async () => {
+      result.current.send();
+    });
+    await waitFor(() =>
+      expect(result.current.failedSend).toEqual({ text: "summarise", reason: "tool loop failed", recorded: true }),
+    );
+
+    act(() => result.current.editFailedSend());
+    expect(result.current.messageText).toBe("summarise");
+    expect(result.current.failedSend).toBeNull();
+  });
+
   it("keeps echoing a repeated message until the venue records the new turn", async () => {
     jest.useFakeTimers();
     const earlier = [

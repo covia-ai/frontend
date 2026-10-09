@@ -1,6 +1,6 @@
 import { memo, useMemo, type RefObject } from "react";
 import Link from "next/link";
-import { Copy, ExternalLink, Loader2 } from "lucide-react";
+import { AlertCircle, Copy, ExternalLink, Loader2, Pencil, RotateCcw } from "lucide-react";
 
 import { AgentToolTurnGroup } from "@/components/AgentToolTurn";
 import { AgentIdenticon } from "@/components/agent-roster/AgentIdenticon";
@@ -45,6 +45,11 @@ type AgentConversationProps = {
   /** When set, the new-chat empty state offers starter-prompt chips that
    *  populate the composer. Optional. */
   onStarter?: (text: string) => void;
+  /** A message in this conversation whose send failed. `recorded`: the venue
+   *  kept the message and only the reply is missing. */
+  failedSend?: { text: string; reason: string; recorded: boolean } | null;
+  onRetry?: () => void;
+  onEditFailed?: () => void;
 };
 
 // Generic conversation starters — populate the composer so the person can
@@ -73,8 +78,11 @@ function AgentConversationBase({
   transcriptRef,
   agentBrief,
   onStarter,
+  failedSend,
+  onRetry,
+  onEditFailed,
 }: AgentConversationProps) {
-  const hasConversation = Boolean(session?.conversation.length || pendingChat);
+  const hasConversation = Boolean(session?.conversation.length || pendingChat || failedSend);
   const agentName = humanizeAgentId(agentId);
   // Grouping walks the whole transcript; memoise so it recomputes only when the
   // conversation itself changes, never on an unrelated parent re-render.
@@ -255,6 +263,44 @@ function AgentConversationBase({
               </div>
             );
           })}
+
+        {failedSend && !pendingChat && (
+          <div data-testid="failed-send" className="mb-6 flex flex-col items-end gap-1.5">
+            {!failedSend.recorded && (
+              <div className="max-w-[85%] rounded-3xl rounded-br-md border border-destructive/50 bg-muted/60 px-4 py-2.5 text-[15px] leading-6 whitespace-pre-wrap break-words">
+                {failedSend.text}
+              </div>
+            )}
+            <div className="flex max-w-[85%] flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs">
+              <span className="flex min-w-0 items-center gap-1 text-destructive">
+                <AlertCircle size={13} className="shrink-0" />
+                <span data-testid="failed-send-reason" className="break-words">
+                  {failedSend.recorded ? "No reply" : "Not sent"}: {failedSend.reason}
+                </span>
+              </span>
+              {onRetry && (
+                <button
+                  type="button"
+                  data-testid="failed-send-retry"
+                  onClick={onRetry}
+                  className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 font-medium text-foreground hover:bg-muted"
+                >
+                  <RotateCcw size={13} /> Retry
+                </button>
+              )}
+              {onEditFailed && !failedSend.recorded && (
+                <button
+                  type="button"
+                  data-testid="failed-send-edit"
+                  onClick={onEditFailed}
+                  className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 font-medium text-foreground hover:bg-muted"
+                >
+                  <Pencil size={13} /> Edit
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {pendingChat && !echoAlreadyRecorded && (
           <div data-testid="pending-user-message" className="mb-6 flex justify-end">
