@@ -28,6 +28,7 @@ jest.mock('@/hooks/use-authenticated-venue', () => ({
   useAuthenticatedVenue: () => mockVenue,
 }));
 jest.mock('@/hooks/use-auth', () => ({
+  ...require('@test/use-auth').authMock,
   useIsAuthenticated: () => false,
 }));
 

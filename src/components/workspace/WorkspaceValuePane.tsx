@@ -53,7 +53,10 @@ type WorkspaceValuePaneProps = {
   selectedValue: WorkspaceValue;
   loading: boolean;
   error: string | null;
-  isAuthenticated: boolean;
+  /** Signed in, and the venue admits the account (see useWriteAccess). */
+  canWrite: boolean;
+  /** Why writes are locked when the account isn't admitted. */
+  writeLockTitle?: string;
   pendingMutation: WorkspaceMutation;
   onSave: (value: unknown) => Promise<boolean>;
   onDelete: () => Promise<boolean>;
@@ -108,7 +111,8 @@ export function WorkspaceValuePane({
   selectedValue,
   loading,
   error,
-  isAuthenticated,
+  canWrite,
+  writeLockTitle,
   pendingMutation,
   onSave,
   onDelete,
@@ -161,7 +165,7 @@ export function WorkspaceValuePane({
   const readData = selectedValue.value;
   const isObject = typeof readData === "object" && readData !== null;
   const canMutate =
-    !!selectedPath && isAuthenticated && isWritableWorkspaceEntry(selectedPath);
+    !!selectedPath && canWrite && isWritableWorkspaceEntry(selectedPath);
   // A truncated read holds only part of the value, so it can be looked at and
   // deleted but never edited: saving it would overwrite the rest.
   const canEdit = canMutate && !selectedValue.truncated;
@@ -219,8 +223,8 @@ export function WorkspaceValuePane({
             <span
               className="flex items-center gap-1 text-xs text-muted-foreground"
               title={
-                !isAuthenticated
-                  ? "Read-only — sign in to modify workspace data"
+                !canWrite
+                  ? writeLockTitle ?? "Read-only — sign in to modify workspace data"
                   : displayPath === "w"
                     ? "Read-only — select a key inside Workspace to edit it"
                     : "Read-only — only paths under \"w\" (Workspace) can be edited"

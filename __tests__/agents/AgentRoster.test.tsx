@@ -87,3 +87,22 @@ describe("AgentRoster when signed in", () => {
     expect(screen.queryByTestId("agent-roster-signed-out")).not.toBeInTheDocument();
   });
 });
+
+describe("AgentRoster when the venue rejected the account (#220)", () => {
+  it("locks creation instead of offering a button the venue will refuse", () => {
+    const { useAuthStore } = jest.requireActual("@/hooks/use-auth");
+    const { reportVenueAuthHealth, useVenueAuthHealth } = jest.requireActual("@/hooks/use-venue-auth-health");
+    const account = { type: "keypair", did: "did:key:z6MkUser", privateKeyHex: "00".repeat(32) };
+    useAuthStore.setState({ authMap: { "venue-1": account } });
+    reportVenueAuthHealth("venue-1", account, { state: "rejected", detail: "403", status: 403 });
+
+    render(<AgentRoster />);
+
+    const button = screen.getByTestId("roster-new-agent");
+    expect(button).toBeDisabled();
+    expect(button).toHaveTextContent("Account not admitted");
+
+    useAuthStore.setState({ authMap: {} });
+    useVenueAuthHealth.setState({ byVenue: {} });
+  });
+});
