@@ -191,12 +191,12 @@ describe('AddNewAgent', () => {
     await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
 
     await user.click(screen.getByTestId('model-select'));
-    await user.click(await screen.findByRole('option', { name: 'claude-opus-4-8' }));
+    await user.click(await screen.findByRole('option', { name: 'claude-opus-5-5' }));
     await user.click(screen.getByTestId('create-agent'));
 
     await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
     const config = mockVenue.agents.create.mock.calls[0][0].config;
-    expect(config.model).toBe('claude-opus-4-8');
+    expect(config.model).toBe('claude-opus-5-5');
   });
 
   it('preserves cloned creation settings while allowing identity fields to change', async () => {
@@ -206,6 +206,8 @@ describe('AddNewAgent', () => {
         initialAgentName="writer copy"
         initialSystemPrompt="You are a careful writer."
         initialProvider="anthropic"
+        // Not in the picker's list any more: a cloned model it doesn't carry
+        // must still show as selected and be kept.
         initialModel="claude-opus-4-8"
         preferAvailableProvider={false}
         initialConfig={{
@@ -286,7 +288,7 @@ describe('AddNewAgent', () => {
 
     // Pick an Anthropic model, then switch provider — the id must not leak.
     await user.click(screen.getByTestId('model-select'));
-    await user.click(await screen.findByRole('option', { name: 'claude-opus-4-8' }));
+    await user.click(await screen.findByRole('option', { name: 'claude-opus-5-5' }));
     const providerSelect = screen.getAllByRole('combobox')[0];
     await user.click(providerSelect);
     await user.click(await screen.findByRole('option', { name: 'Ollama (local)' }));

@@ -410,6 +410,7 @@ function PortAgentForm({ initialName, initialSystemPrompt, onClose }: PortAgentF
 
           <div className="space-y-4">
             <AgentRuntimeFields
+              venue={venue}
               providerId={llmProvider}
               onProviderChange={handleProviderChange}
               model={model}

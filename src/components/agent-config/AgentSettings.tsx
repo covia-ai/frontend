@@ -183,6 +183,7 @@ export function AgentSettings({ agent, onSave }: AgentSettingsProps) {
                 </p>
               </div>
               <AgentRuntimeFields
+                venue={venue}
                 providerId={draft.providerId}
                 onProviderChange={(providerId) => {
                   setDraft((current) => ({

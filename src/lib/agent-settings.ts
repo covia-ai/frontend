@@ -58,7 +58,6 @@ export function createAgentSettingsDraft(
 ): AgentSettingsDraft {
   const provider = providerSelectionForOperation(config.llmOperation);
   const model = modelSelectionFromId(
-    provider.providerId,
     typeof config.model === "string" ? config.model : "",
   );
   const advanced = Object.fromEntries(
