@@ -110,6 +110,20 @@ when an input changes: store the value with its key, derive it, remount with a
 (`set-state-in-effect`, `refs`, `purity`, `preserve-manual-memoization`)
 enforce this at error level; do not downgrade or disable them.
 
+### Theme and hydration
+
+The server can't know the theme, so markup must never branch on it in
+JavaScript: the first client render has to match the server's HTML, and
+next-themes' `useTheme()` already holds the stored theme on that render. A
+mismatch makes React discard the server HTML and re-render the whole tree,
+which is also what triggers its "Encountered a script tag" warning.
+Appearance that differs by theme uses the `dark:` variant, driven by the class
+next-themes sets on `<html>` before first paint: render both versions and let
+CSS choose. Code that needs the theme as a value (a third-party theme prop,
+chart colours) uses `useResolvedTheme` (`src/hooks/use-resolved-theme.ts`),
+which is `undefined` until hydrated and never `"system"`. Read
+`useTheme().resolvedTheme` directly only in event handlers.
+
 ### Notifications
 
 All user-facing notifications go through `src/lib/notify.ts` — never bare

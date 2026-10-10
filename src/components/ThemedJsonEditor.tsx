@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useTheme } from "next-themes";
+import { useResolvedTheme } from "@/hooks/use-resolved-theme";
 import { JsonEditor, JsonViewer, type ThemeInput, type ThemeStyles } from "json-edit-react";
 import { githubDarkTheme, githubLightTheme } from "@json-edit-react/themes";
 
@@ -44,8 +44,7 @@ export function ThemedJsonEditor({
   editable = false,
   onChange,
 }: ThemedJsonEditorProps) {
-  const { theme } = useTheme();
-  const dark = theme === "dark";
+  const dark = useResolvedTheme() === "dark";
   // json-edit-react 2 re-renders per node only while its object props keep
   // their identity, so the theme pair is built once per colour mode.
   const editorTheme = useMemo<ThemeInput>(

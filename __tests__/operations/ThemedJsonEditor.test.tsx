@@ -31,7 +31,7 @@ jest.mock('@json-edit-react/themes', () => ({
 
 let mockTheme = 'light';
 jest.mock('next-themes', () => ({
-  useTheme: () => ({ theme: mockTheme }),
+  useTheme: () => ({ resolvedTheme: mockTheme }),
 }));
 
 describe('ThemedJsonEditor', () => {
@@ -47,7 +47,7 @@ describe('ThemedJsonEditor', () => {
     expect(screen.getByTestId('json-viewer')).toHaveTextContent('light');
   });
 
-  it('treats an unset/system theme as light, same as JSONViewer', () => {
+  it('treats a not-yet-resolved theme as light, same as JSONViewer', () => {
     mockTheme = undefined as any;
     render(<ThemedJsonEditor data={{ a: 1 }} />);
     expect(screen.getByTestId('json-viewer')).toHaveTextContent('light');
