@@ -180,3 +180,13 @@ whose loss matters (`venue-auth`, `venues`) also call `syncStoreAcrossTabs`.
 
 - **@covia/covia-sdk** — Installed from npm (`@covia/covia-sdk`, pinned in `package.json`). Provides `Grid`, `Venue`, `Ed25519Auth`, `BearerAuth`, `generateKeyPair`, `privateKeyToHex`.
 - **Covia venue server** — Frontend connects to a running venue for all API calls. Default dev venue at `localhost:8080`.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
