@@ -1,6 +1,5 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import * as mime from 'mime-types'
 import { writeTextToClipboard } from "@/lib/clipboard"
 import { notifyError, notifySuccess } from "@/lib/notify"
 import { track, trackLegacyAlias, trackPageView } from "@/lib/analytics"
@@ -20,16 +19,6 @@ export const SUGGESTION_PLACEHOLDER_CLASS = "placeholder:text-muted-foreground/6
 export function getLicenseUrl(licenseName : string) {
   if(licenseName.trim() ==  "CC BY 4.0")
     return "https://creativecommons.org/licenses/by/4.0/"
-}
-export function getContentTypeForFile(filename: string): [string, string] {
-
-    const mimeType =  mime.contentType(filename) || "";
-    const contentType = mimeType.split(';')[0];
-    // Binary types (pdf, images, zip, …) have no charset segment — fields
-    // like AssetMetadataFields.encoding are always-string, so this must
-    // never come back as undefined.
-    const charset  = mimeType.split(';')[1]?.split("=")[1] ?? "";
-    return [contentType,charset];
 }
 export function getExecutionTime(date1:string, date2:string) {
   const milliseconds1 = new Date(date1).getTime();
