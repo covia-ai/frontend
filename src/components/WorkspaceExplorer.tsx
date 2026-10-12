@@ -7,6 +7,7 @@ import { WorkspaceBrowserPane } from "@/components/workspace/WorkspaceBrowserPan
 import { WorkspaceNamespacePane } from "@/components/workspace/WorkspaceNamespacePane";
 import { WorkspaceValuePane } from "@/components/workspace/WorkspaceValuePane";
 import { workspaceNamespaceForPath } from "@/lib/workspace-namespaces";
+import { useWriteAccess } from "@/hooks/use-write-access";
 
 interface WorkspaceExplorerProps {
   // Seeds the explorer's starting location (e.g. from a ?path= query param
@@ -16,6 +17,7 @@ interface WorkspaceExplorerProps {
 
 export function WorkspaceExplorer({ initialPath }: WorkspaceExplorerProps = {}) {
   const explorer = useWorkspaceExplorer(initialPath);
+  const write = useWriteAccess({ signedIn: explorer.isAuthenticated });
   const activeNamespace = workspaceNamespaceForPath(explorer.currentPath)?.key ?? null;
 
   // The three panes are a Miller-column layout that only fits side-by-side from
@@ -79,7 +81,7 @@ export function WorkspaceExplorer({ initialPath }: WorkspaceExplorerProps = {}) 
             currentPath={explorer.currentPath}
             pathSegments={explorer.pathSegments}
             selectedPath={explorer.selectedPath}
-            isAuthenticated={explorer.isAuthenticated}
+            canWrite={write.canWrite}
             pendingMutation={explorer.pendingMutation}
             refreshing={explorer.namespaceRefreshing}
             onNavigate={explorer.navigateTo}
@@ -102,7 +104,8 @@ export function WorkspaceExplorer({ initialPath }: WorkspaceExplorerProps = {}) 
             selectedValue={explorer.selectedValue}
             loading={explorer.valueLoading}
             error={explorer.valueError}
-            isAuthenticated={explorer.isAuthenticated}
+            canWrite={write.canWrite}
+            writeLockTitle={write.lockedTitle}
             pendingMutation={explorer.pendingMutation}
             onSave={explorer.save}
             onDelete={explorer.remove}

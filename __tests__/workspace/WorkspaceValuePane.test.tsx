@@ -16,7 +16,7 @@ function renderPane(selectedValue: WorkspaceValue) {
       selectedValue={selectedValue}
       loading={false}
       error={null}
-      isAuthenticated
+      canWrite
       pendingMutation={null}
       onSave={onSave}
       onDelete={jest.fn()}

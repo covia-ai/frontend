@@ -16,6 +16,7 @@ import { agentDisplay, humanizeAgentId, relTime, shortRefLabel } from "@/lib/age
 import { DEFAULT_AGENT_ID } from "@/config/agents";
 import { AgentRosterCard } from "@/components/agent-roster/AgentRosterCard";
 import { useLiveStreamSlots } from "@/hooks/use-live-stream-slots";
+import { useWriteAccess } from "@/hooks/use-write-access";
 
 const AGENTS_GRID_CLASS =
   "grid w-full grid-cols-[repeat(auto-fill,minmax(min(20rem,100%),1fr))] items-stretch gap-4";
@@ -60,6 +61,7 @@ function searchText(agent: RosterAgent): string {
 export function AgentRoster({ venueId }: { venueId?: string } = {}) {
   const resolved = useResolvedVenueContext(venueId);
   const { descriptor: venueObj, venue, isAuthenticated } = resolved;
+  const write = useWriteAccess({ venueId: venue?.venueId, signedIn: isAuthenticated });
   const venueStatus = resolved.status ?? (venue ? "ready" : "absent");
 
   const { roster, counts, loading, error, refresh } = useAgentRoster(
@@ -131,7 +133,7 @@ export function AgentRoster({ venueId }: { venueId?: string } = {}) {
               className="pl-8"
             />
           </div>
-          {isAuthenticated ? (
+          {write.canWrite ? (
             <AddNewAgent
               trigger={
                 <Button className="gap-1.5" data-testid="roster-new-agent">
@@ -143,8 +145,8 @@ export function AgentRoster({ venueId }: { venueId?: string } = {}) {
             // An agent belongs to an account, so creating one signed out would
             // fail at the venue. Say so before the click, as the operation run
             // form does (#423).
-            <Button disabled className="gap-1.5" data-testid="roster-new-agent">
-              <Lock size={14} /> Sign in to create
+            <Button disabled className="gap-1.5" data-testid="roster-new-agent" title={write.lockedTitle}>
+              <Lock size={14} /> {write.lockedLabel("create")}
             </Button>
           )}
         </div>

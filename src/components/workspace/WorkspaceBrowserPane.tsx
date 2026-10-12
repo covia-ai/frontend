@@ -35,7 +35,8 @@ type WorkspaceBrowserPaneProps = {
   currentPath: string;
   pathSegments: string[];
   selectedPath: string | null;
-  isAuthenticated: boolean;
+  /** Signed in, and the venue admits the account (see useWriteAccess). */
+  canWrite: boolean;
   pendingMutation: WorkspaceMutation;
   refreshing: boolean;
   onNavigate: (path: string) => void;
@@ -51,7 +52,7 @@ export function WorkspaceBrowserPane({
   currentPath,
   pathSegments,
   selectedPath,
-  isAuthenticated,
+  canWrite,
   pendingMutation,
   refreshing,
   onNavigate,
@@ -73,7 +74,7 @@ export function WorkspaceBrowserPane({
     if (await onCreate(key, value)) closeCreate();
   };
 
-  const canCreate = isAuthenticated && isMutableWorkspacePath(currentPath);
+  const canCreate = canWrite && isMutableWorkspacePath(currentPath);
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
