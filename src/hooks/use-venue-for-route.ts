@@ -8,6 +8,7 @@ import {
 } from "@/hooks/use-venues";
 import { useAuthStore, type VenueAuth } from "@/hooks/use-auth";
 import { connectVenue } from "@/lib/venue-registry";
+import { publicCapsOf } from "@/lib/venue-public-caps";
 import { reportVenueHealth } from "@/hooks/use-venue-health";
 import { notifyError } from "@/lib/notify";
 import { CoviaError } from "@covia/covia-sdk";
@@ -83,6 +84,7 @@ export function useVenueForRoute(routeVenueId?: string): VenueResolution {
           state: "connected",
           version: v.lastKnownStatus?.version,
           publicAccess: auth ? undefined : v.lastKnownStatus !== undefined,
+          publicCaps: publicCapsOf(v.lastKnownStatus),
         });
         addVenue(descriptor);
         // The canonical id may differ from the one the route used (a did:web

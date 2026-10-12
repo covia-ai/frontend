@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import type { PublicCaps } from "@/lib/venue-public-caps";
 
 // In-memory (never persisted) reachability state per venue transport address.
 // Keyed by baseUrl, not DID: health describes the address we probe, and it
@@ -10,7 +11,7 @@ import { create } from "zustand";
 // an unreachable venue is visible instead of silently failing page by page.
 export type VenueHealth =
   | { state: "connecting"; checkedAt: number }
-  | { state: "connected"; version?: string; publicAccess?: boolean; checkedAt: number }
+  | { state: "connected"; version?: string; publicAccess?: boolean; publicCaps?: PublicCaps; checkedAt: number }
   | { state: "unreachable"; detail: string; checkedAt: number };
 
 type VenueHealthStore = {
@@ -26,7 +27,7 @@ export const useVenueHealth = create<VenueHealthStore>((set) => ({
 
 export function reportVenueHealth(
   baseUrl: string | undefined,
-  health: { state: "connecting" } | { state: "connected"; version?: string; publicAccess?: boolean } | { state: "unreachable"; detail: string },
+  health: { state: "connecting" } | { state: "connected"; version?: string; publicAccess?: boolean; publicCaps?: PublicCaps } | { state: "unreachable"; detail: string },
 ): void {
   if (!baseUrl) return;
   useVenueHealth.getState().report(baseUrl, { ...health, checkedAt: Date.now() } as VenueHealth);
