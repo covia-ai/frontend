@@ -10,6 +10,7 @@ import {
   Fingerprint,
   GitFork,
   Hash,
+  KeyRound,
   Layers,
   Link2,
   MessageSquare,
@@ -25,6 +26,7 @@ import { didUrl, Namespace } from "@covia/covia-sdk";
 import { RunStatus, isJobFinished } from "@covia/covia-sdk";
 import { AssetLoadState } from "@/components/AssetLoadState";
 import { DidDisplay } from "@/components/DidDisplay";
+import { CredentialBadges } from "@/components/CredentialBadges";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { StatusBadge } from "@/components/StatusBadge";
 import { TopBar } from "@/components/admin-panel/TopBar";
@@ -45,6 +47,7 @@ import {
   abbreviateJobId,
 } from "@/lib/job-visuals";
 import { JobDuration } from "@/components/jobs/JobDuration";
+import { credentialUsesOf } from "@/lib/credential-refs";
 
 /** A small labelled fact tile for the at-a-glance strip. */
 function MetaTile({ icon: Icon, label, children, spin }: {
@@ -102,6 +105,7 @@ export function ExecutionViewer({
 
   const op = job ? operationVisual(job, operationSchema?.adapter) : null;
   const sv = job ? statusVisual(job.status) : null;
+  const credentials = credentialUsesOf(job?.input);
   const failed = job?.status === RunStatus.FAILED;
   const finished = job?.status ? isJobFinished(job.status) : false;
 
@@ -271,6 +275,13 @@ export function ExecutionViewer({
                   <Layers size={15} className="mt-0.5 shrink-0 text-muted-foreground" />
                   <span className="w-24 shrink-0 text-muted-foreground">Operation</span>
                   <span className="min-w-0 flex-1 break-all font-mono text-xs text-primary">{job.op}</span>
+                </div>
+              )}
+              {credentials.length > 0 && (
+                <div className="flex items-start gap-3">
+                  <KeyRound size={15} className="mt-0.5 shrink-0 text-muted-foreground" />
+                  <span className="w-24 shrink-0 text-muted-foreground">Credential</span>
+                  <CredentialBadges uses={credentials} className="min-w-0 flex-1" />
                 </div>
               )}
               <p className="pt-1 text-xs text-muted-foreground">

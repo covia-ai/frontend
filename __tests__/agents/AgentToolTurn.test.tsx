@@ -70,3 +70,27 @@ describe('AgentToolTurnGroup', () => {
     expect(screen.queryByTestId('tool-group-toggle')).not.toBeInTheDocument();
   });
 });
+
+describe('AgentToolTurn credentials', () => {
+  it('shows the connection a call used on the collapsed row', () => {
+    render(
+      <AgentToolTurn
+        role="tool"
+        tool={{
+          name: 'http_get',
+          text: '{"status":200}',
+          isError: false,
+          credentials: [{ label: 'GitHub', refs: [{ ref: 's/GITHUB_TOKEN', kind: 'secret', name: 'GITHUB_TOKEN' }] }],
+        }}
+      />,
+    );
+    expect(screen.queryByTestId('tool-turn-body')).not.toBeInTheDocument();
+    expect(screen.getByTestId('credential-badge')).toHaveTextContent('GitHub');
+    expect(screen.getByTestId('credential-badge')).toHaveAttribute('title', 'Credential: s/GITHUB_TOKEN');
+  });
+
+  it('shows no badge for a call without credentials', () => {
+    render(<AgentToolTurn role="tool" tool={{ name: 'covia_list', text: '[]', isError: false }} />);
+    expect(screen.queryByTestId('credential-badges')).not.toBeInTheDocument();
+  });
+});

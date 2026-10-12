@@ -8,12 +8,18 @@
 // successful tool call — whose result is a map in `structuredContent`, with no
 // `content` — rendered as an empty bubble.
 
+import { credentialUsesOf, type CredentialUse } from "@/lib/credential-refs";
+
 export type Turn = {
   role?: string;
   content?: unknown;
   structuredContent?: unknown;
   name?: unknown;
   source?: unknown;
+  /** On a tool result: the id of the call it answers. */
+  id?: unknown;
+  /** On an assistant turn: the calls it made, `{id, name, arguments}`. */
+  toolCalls?: unknown;
 };
 
 // Turn content is `string | map | any cell` per the conversation contract.
@@ -112,13 +118,53 @@ export function groupTranscript<M extends Groupable>(
   return items;
 }
 
-export type ToolTurn = { name?: string; text: string; isError: boolean };
+// Tool-call arguments by call id, from the assistant turns that made them. A
+// tool result records only its call's id, so this is how a result row finds
+// what it was called with. Arguments arrive as an object, or as a JSON string
+// from providers that send them that way.
+export function toolCallArgumentsById(conversation: readonly Turn[]): Map<string, unknown> {
+  const byId = new Map<string, unknown>();
+  for (const turn of conversation) {
+    if (!Array.isArray(turn.toolCalls)) continue;
+    for (const call of turn.toolCalls as unknown[]) {
+      if (call == null || typeof call !== "object") continue;
+      const { id, arguments: args } = call as { id?: unknown; arguments?: unknown };
+      if (typeof id !== "string") continue;
+      byId.set(id, parseArguments(args));
+    }
+  }
+  return byId;
+}
+
+function parseArguments(args: unknown): unknown {
+  if (typeof args !== "string") return args;
+  try {
+    return JSON.parse(args);
+  } catch {
+    return undefined;
+  }
+}
+
+export type ToolTurn = {
+  name?: string;
+  text: string;
+  isError: boolean;
+  /** Connections the call used, read from its arguments (frontend#291). */
+  credentials?: CredentialUse[];
+};
 
 // Present a tool/system turn: its display text and whether it was a failure.
 // A failure is a `system` turn (the venue's tool-failure notice) or a tool
 // result whose string content begins with "Error:" (how the loop records a
 // thrown tool). A success carries its result in `structuredContent`.
-export function describeToolTurn(msg: Turn): ToolTurn {
+export function describeToolTurn(msg: Turn, argumentsById?: Map<string, unknown>): ToolTurn {
+  const described = describeToolTurnBody(msg);
+  const args = typeof msg.id === "string" ? argumentsById?.get(msg.id) : undefined;
+  const credentials = credentialUsesOf(args);
+  return credentials.length > 0 ? { ...described, credentials } : described;
+}
+
+function describeToolTurnBody(msg: Turn): ToolTurn {
   const name = typeof msg.name === "string" ? msg.name : undefined;
 
   if (typeof msg.content === "string") {
