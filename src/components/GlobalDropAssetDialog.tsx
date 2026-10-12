@@ -1,8 +1,15 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { UploadCloud } from "lucide-react";
-import { CreateAssetComponent } from "@/components/CreateAssetComponent";
 import { useGlobalFileDrop, useGlobalFileDropListener } from "@/hooks/use-global-file-drop";
+
+// The wizard pulls in json-edit-react and the Radix form primitives, so it
+// loads only once a file is dropped rather than with every page (#472).
+const CreateAssetComponent = dynamic(
+  () => import("@/components/CreateAssetComponent").then((module) => module.CreateAssetComponent),
+  { ssr: false },
+);
 
 // Mounted once in AdminPanelLayout. Owns the app-wide drag overlay and, once
 // a file is dropped, mounts a controlled CreateAssetComponent in fast-path
