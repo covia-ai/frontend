@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   toVenueDescriptor,
   useVenues,
+  useVenuesHydrated,
   type VenueDescriptor,
 } from "@/hooks/use-venues";
 import { useAuthStore, type VenueAuth } from "@/hooks/use-auth";
@@ -61,9 +62,16 @@ export function useVenueForRoute(routeVenueId?: string): VenueResolution {
     error: string;
   } | null>(null);
   const hasFailed = failure !== null && failure.venueId === routeVenueId && failure.auth === auth;
+  // During hydration the store reads as its initial, empty state, so every
+  // routed venue looks unknown on the first client render. Deciding then
+  // fired a connect for a venue that was already stored (#465).
+  const hydrated = useVenuesHydrated();
+  // A did:key is an identity, not an address: there is nothing to connect to.
+  // Once the stored list has loaded, an unknown one can only be reported.
+  const unknownKey = hydrated && !found && !!routeVenueId?.startsWith("did:key:");
 
   useEffect(() => {
-    if (!routeVenueId || found || hasFailed || connecting.current.has(routeVenueId)) return;
+    if (!routeVenueId || !hydrated || found || unknownKey || hasFailed || connecting.current.has(routeVenueId)) return;
     connecting.current.add(routeVenueId);
     // `routeVenueId` is already decoded by the page. Decoding again would turn
     // a did:web port (`did:web:host%3A8080`, encoded by the DID spec itself)
@@ -103,7 +111,7 @@ export function useVenueForRoute(routeVenueId?: string): VenueResolution {
       .finally(() => {
         connecting.current.delete(routeVenueId);
       });
-  }, [routeVenueId, found, hasFailed, addVenue, auth]);
+  }, [routeVenueId, hydrated, found, unknownKey, hasFailed, addVenue, auth]);
 
   if (!routeVenueId) {
     return {
@@ -113,6 +121,13 @@ export function useVenueForRoute(routeVenueId?: string): VenueResolution {
     };
   }
   if (found) return { descriptor: found, status: "ready", error: null };
+  if (unknownKey) {
+    return {
+      descriptor: null,
+      status: "unreachable",
+      error: `${routeVenueId} isn't in your venue list, and a did:key has no address to connect to. Add the venue by its URL or did:web first.`,
+    };
+  }
   if (hasFailed) return { descriptor: null, status: "unreachable", error: failure.error };
   return { descriptor: null, status: "connecting", error: null };
 }

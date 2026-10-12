@@ -145,4 +145,46 @@ describe("useVenueForRoute", () => {
       expect(notifyMock.notifyError).toHaveBeenCalledTimes(1);
     });
   });
+
+  // #465: zustand reads the initial (empty) state while the page hydrates, so
+  // a stored venue looked unknown on the first render and was connected to.
+  it("waits for the stored venue list to hydrate before connecting", () => {
+    let hydrated = false;
+    let finish: (() => void) | undefined;
+    const hasHydrated = jest.spyOn(useVenues.persist, "hasHydrated").mockImplementation(() => hydrated);
+    const onFinish = jest.spyOn(useVenues.persist, "onFinishHydration").mockImplementation((listener) => {
+      finish = () => listener(useVenues.getState());
+      return () => {};
+    });
+    try {
+      act(() => useVenues.setState({ venues: [] }));
+      const { result } = renderHook(() => useVenueForRoute(CANONICAL));
+
+      expect(result.current.status).toBe("connecting");
+      expect(connect).not.toHaveBeenCalled();
+
+      act(() => {
+        useVenues.setState({ venues: [{ venueId: CANONICAL, baseUrl: ROUTED_URL, metadata: {} }] });
+        hydrated = true;
+        finish?.();
+      });
+
+      expect(result.current.status).toBe("ready");
+      expect(result.current.descriptor?.venueId).toBe(CANONICAL);
+      expect(connect).not.toHaveBeenCalled();
+      expect(notifyMock.notifyError).not.toHaveBeenCalled();
+    } finally {
+      hasHydrated.mockRestore();
+      onFinish.mockRestore();
+    }
+  });
+
+  it("reports an unknown did:key without trying to connect to it", () => {
+    const { result } = renderHook(() => useVenueForRoute(CANONICAL));
+
+    expect(result.current.status).toBe("unreachable");
+    expect(result.current.error).toMatch(/isn't in your venue list/);
+    expect(connect).not.toHaveBeenCalled();
+    expect(notifyMock.notifyError).not.toHaveBeenCalled();
+  });
 });
