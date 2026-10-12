@@ -30,6 +30,15 @@ export type VenueResolution = {
   error: string | null;
 };
 
+// A did:key is an identity, not an address: there is nothing to connect to,
+// so an unknown one can only be reported (#465).
+export function isAddresslessVenueId(venueId: string): boolean {
+  return venueId.startsWith("did:key:");
+}
+
+export const ADDRESSLESS_VENUE_DETAIL =
+  "isn't in your venue list, and a did:key has no address to connect to. Add the venue by its URL or did:web first.";
+
 export function useVenueForRoute(routeVenueId?: string): VenueResolution {
   const venues = useVenues((state) => state.venues);
   const selectedVenueId = useVenues((state) => state.selectedVenueId);
@@ -66,9 +75,8 @@ export function useVenueForRoute(routeVenueId?: string): VenueResolution {
   // routed venue looks unknown on the first client render. Deciding then
   // fired a connect for a venue that was already stored (#465).
   const hydrated = useVenuesHydrated();
-  // A did:key is an identity, not an address: there is nothing to connect to.
-  // Once the stored list has loaded, an unknown one can only be reported.
-  const unknownKey = hydrated && !found && !!routeVenueId?.startsWith("did:key:");
+  // Once the stored list has loaded, an unknown did:key can only be reported.
+  const unknownKey = hydrated && !found && !!routeVenueId && isAddresslessVenueId(routeVenueId);
 
   useEffect(() => {
     if (!routeVenueId || !hydrated || found || unknownKey || hasFailed || connecting.current.has(routeVenueId)) return;
@@ -125,7 +133,7 @@ export function useVenueForRoute(routeVenueId?: string): VenueResolution {
     return {
       descriptor: null,
       status: "unreachable",
-      error: `${routeVenueId} isn't in your venue list, and a did:key has no address to connect to. Add the venue by its URL or did:web first.`,
+      error: `${routeVenueId} ${ADDRESSLESS_VENUE_DETAIL}`,
     };
   }
   if (hasFailed) return { descriptor: null, status: "unreachable", error: failure.error };
