@@ -44,8 +44,12 @@ async function readValue(venue: Venue, path: string): Promise<any> {
 // rather than at a fixed depth. Venues mix depths: most ops are
 // v/ops/<adapter>/<op>, but some (v/ops/skills, v/ops/memory) sit directly
 // under the root, and the previous hard-coded depth silently dropped those.
-// An operation node is a leaf and is never descended into, so its own
-// input/output schemas can't be mistaken for nested entries.
+//
+// An operation node can also hold operations beneath it: hosted venues still
+// carry the retired `v/ops/skills` umbrella with skills/list, read, parse and
+// import nested under it (#421). So the walk continues below an operation,
+// but never into its `operation` field, so its own input/output schemas can't
+// be mistaken for nested entries.
 //
 // A missing sub-tree reads as an empty value, not an error — so a rejection
 // here is a real failure (unreachable venue, rejected auth) and propagates.
@@ -55,12 +59,13 @@ async function readCatalog(venue: Venue, base: string): Promise<CatalogOp[]> {
 
   const out: CatalogOp[] = [];
   const walk = (node: any, path: string) => {
-    if (!node || typeof node !== "object") return;
-    if (node.operation) {
-      out.push({ path, metadata: node });
-      return;
+    if (!node || typeof node !== "object" || Array.isArray(node)) return;
+    const isOperation = node.operation != null && typeof node.operation === "object";
+    if (isOperation) out.push({ path, metadata: node });
+    for (const key of Object.keys(node)) {
+      if (isOperation && key === "operation") continue;
+      walk(node[key], `${path}/${key}`);
     }
-    for (const key of Object.keys(node)) walk(node[key], `${path}/${key}`);
   };
   walk(tree, base);
   return out;

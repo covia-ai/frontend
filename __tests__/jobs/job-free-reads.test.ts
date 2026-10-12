@@ -113,7 +113,7 @@ describe('listCatalogOperations', () => {
     expect(ops.map((o) => o.path).sort()).toEqual(['v/ops/agent/suspend', 'v/ops/skills']);
   });
 
-  it('excludes namespace nodes and never descends into an operation', async () => {
+  it("excludes namespace nodes and never reads an operation's own schemas as entries", async () => {
     const { venue } = venueWithTree({
       'v/ops': {
         // `agent` is a pure namespace; the op's own input schema carries a
@@ -127,6 +127,28 @@ describe('listCatalogOperations', () => {
     const ops = await listCatalogOperations(venue);
 
     expect(ops.map((o) => o.path)).toEqual(['v/ops/agent/suspend']);
+  });
+
+  // #421: hosted venues still carry the retired v/ops/skills umbrella, with the
+  // real skills operations nested beneath it. Stopping at the umbrella hid them.
+  it('finds operations nested under an operation node', async () => {
+    const { venue } = venueWithTree({
+      'v/ops': {
+        skills: {
+          name: 'Skills',
+          dateCreated: '2026-07-17T00:00:00Z',
+          operation: { adapter: 'skills:manage', input: { properties: { operation: { type: 'string' } } } },
+          list: { name: 'List skills', operation: { adapter: 'skills:list' } },
+          read: { name: 'Read skill', operation: { adapter: 'skills:read' } },
+          // Metadata naming an operation by string is not itself an operation.
+          provenance: { operation: 'v/ops/skills' },
+        },
+      },
+    });
+
+    const ops = await listCatalogOperations(venue);
+
+    expect(ops.map((o) => o.path).sort()).toEqual(['v/ops/skills', 'v/ops/skills/list', 'v/ops/skills/read']);
   });
 
   it('reads the user catalog at w/ops only when includeUserOps is set', async () => {
