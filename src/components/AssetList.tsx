@@ -107,7 +107,7 @@ export function AssetList({ venueId }: AssetListProps = {}) {
     initialSearch: searchParams.get("search") ?? "",
     selectedTags,
   });
-  const write = useWriteAccess({ venueId: venue?.venueId, signedIn: resolvedVenue.isAuthenticated });
+  const write = useWriteAccess({ venueId: venue?.venueId, signedIn: resolvedVenue.isAuthenticated, anonymous: true });
 
   const handleSearchChange = (value: string) => {
     setSearchInput(value);
@@ -157,7 +157,9 @@ export function AssetList({ venueId }: AssetListProps = {}) {
                   />
                 </div>
                 {write.canWrite && (
-                  <CreateAssetComponent venue={venue ?? undefined}></CreateAssetComponent>
+                  <span title={write.anonymousNote} className="inline-flex">
+                    <CreateAssetComponent venue={venue ?? undefined}></CreateAssetComponent>
+                  </span>
                 )}
                 <FiltersSheet
                   title="Filter Assets"

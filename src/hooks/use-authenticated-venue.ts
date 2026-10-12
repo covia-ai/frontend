@@ -15,6 +15,7 @@ import {
   getVenueFor,
 } from "@/lib/venue-registry";
 import { applyVenueReplacement } from "@/lib/venue-replacement";
+import { publicCapsOf } from "@/lib/venue-public-caps";
 
 export { evictVenueInstances, getVenueFor };
 
@@ -54,6 +55,7 @@ function validateVenue(
           state: "connected",
           version: status?.version,
           publicAccess: authData ? undefined : status !== undefined,
+          publicCaps: publicCapsOf(status),
         });
         if (!authData) return;
         // Verify the account separately from the public status endpoint.
@@ -98,6 +100,7 @@ function validateVenue(
                 state: "connected",
                 version: fresh.lastKnownStatus?.version,
                 publicAccess: fresh.lastKnownStatus !== undefined,
+                publicCaps: publicCapsOf(fresh.lastKnownStatus),
               });
             })
             .catch(() => {

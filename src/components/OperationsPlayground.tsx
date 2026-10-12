@@ -112,7 +112,7 @@ export function OperationsPlayground() {
 
 function PlaygroundForm({ initial, hydrated }: { initial: PlaygroundState; hydrated: boolean }) {
   const venue = useAuthenticatedVenue();
-  const write = useWriteAccess();
+  const write = useWriteAccess({ anonymous: true });
   const router = useRouter();
   const pathname = usePathname();
 
@@ -224,9 +224,16 @@ function PlaygroundForm({ initial, hydrated }: { initial: PlaygroundState; hydra
                     />
                     {inputError && <ErrorDisplay error={inputError} />}
                     {write.canWrite ? (
-                      <Button onClick={() => void handleRun()} disabled={!venue || invoking} data-testid="playground-run">
-                        {invoking ? "Running…" : "Run"}
-                      </Button>
+                      <>
+                        <Button onClick={() => void handleRun()} disabled={!venue || invoking} data-testid="playground-run">
+                          {invoking ? "Running…" : "Run"}
+                        </Button>
+                        {write.anonymousNote && (
+                          <p className="text-xs text-muted-foreground" data-testid="playground-anonymous-note">
+                            {write.anonymousNote}
+                          </p>
+                        )}
+                      </>
                     ) : (
                       <Button variant="outline" disabled className="gap-2 text-muted-foreground" title={write.lockedTitle}>
                         <Lock size={14} />

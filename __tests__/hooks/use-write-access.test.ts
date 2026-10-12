@@ -1,10 +1,13 @@
 import { act, renderHook } from "@testing-library/react";
 import { useAuthStore, type VenueAuth } from "@/hooks/use-auth";
 import { reportVenueAuthHealth, useVenueAuthHealth } from "@/hooks/use-venue-auth-health";
+import { reportVenueHealth, useVenueHealth } from "@/hooks/use-venue-health";
+import type { PublicCaps } from "@/lib/venue-public-caps";
 import { useVenues } from "@/hooks/use-venues";
 import { useWriteAccess } from "@/hooks/use-write-access";
 
 const VENUE = "did:key:z6MkVenue";
+const BASE_URL = "https://venue.example";
 const account: VenueAuth = { type: "keypair", did: "did:key:z6MkUser", privateKeyHex: "00".repeat(32) };
 
 function signIn() {
@@ -19,8 +22,20 @@ describe("useWriteAccess", () => {
     act(() => {
       useAuthStore.setState({ authMap: {} });
       useVenueAuthHealth.setState({ byVenue: {} });
+      useVenueHealth.setState({ byUrl: {} });
+      useVenues.setState({ venues: [] });
     });
   });
+
+  function signedOutOn(publicCaps: PublicCaps | undefined) {
+    act(() => {
+      useVenues.setState({
+        selectedVenueId: VENUE,
+        venues: [{ venueId: VENUE, baseUrl: BASE_URL, metadata: {} }],
+      });
+      reportVenueHealth(BASE_URL, { state: "connected", publicAccess: true, publicCaps });
+    });
+  }
 
   it("locks writes when signed out", () => {
     act(() => useVenues.setState({ selectedVenueId: VENUE }));
@@ -63,4 +78,30 @@ describe("useWriteAccess", () => {
     const { result } = renderHook(() => useWriteAccess({ venueId: "did:key:z6MkOtherVenue", signedIn: true }));
     expect(result.current.reason).toBe("not-admitted");
   });
+
+  it("lets signed-out callers write where opted in and the venue's public scope is unrestricted", () => {
+    signedOutOn("unrestricted");
+    const { result } = renderHook(() => useWriteAccess({ anonymous: true }));
+    expect(result.current.canWrite).toBe(true);
+    expect(result.current.anonymous).toBe(true);
+    expect(result.current.anonymousNote).toMatch(/shared guest account/);
+    expect(result.current.reason).toBeNull();
+  });
+
+  it("keeps signed-out callers locked where the call site has not opted in", () => {
+    signedOutOn("unrestricted");
+    const { result } = renderHook(() => useWriteAccess());
+    expect(result.current.canWrite).toBe(false);
+    expect(result.current.reason).toBe("signed-out");
+  });
+
+  it.each<PublicCaps | undefined>(["read-only", "custom", "disabled", undefined])(
+    "keeps signed-out callers locked when the public scope is %s",
+    (publicCaps) => {
+      signedOutOn(publicCaps);
+      const { result } = renderHook(() => useWriteAccess({ anonymous: true }));
+      expect(result.current.canWrite).toBe(false);
+      expect(result.current.reason).toBe("signed-out");
+    },
+  );
 });

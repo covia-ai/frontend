@@ -7,6 +7,7 @@ import { Venue } from "@covia/covia-sdk";
 import { reportVenueHealth } from "@/hooks/use-venue-health";
 import { browserStorage, syncStoreAcrossTabs } from "@/lib/persist-storage";
 import { connectVenue } from "@/lib/venue-registry";
+import { publicCapsOf } from "@/lib/venue-public-caps";
 
 export type VenueDescriptor = {
   venueId: string;
@@ -65,9 +66,10 @@ async function connectToDefaultVenues(): Promise<Venue[]> {
         const venue = await connectVenue(url);
         const version = venue.lastKnownStatus?.version;
         const publicAccess = venue.lastKnownStatus !== undefined;
-        reportVenueHealth(venue.baseUrl, { state: "connected", version, publicAccess });
+        const publicCaps = publicCapsOf(venue.lastKnownStatus);
+        reportVenueHealth(venue.baseUrl, { state: "connected", version, publicAccess, publicCaps });
         if (venue.baseUrl !== url) {
-          reportVenueHealth(url, { state: "connected", version, publicAccess });
+          reportVenueHealth(url, { state: "connected", version, publicAccess, publicCaps });
         }
         return venue;
       } catch (error: unknown) {
