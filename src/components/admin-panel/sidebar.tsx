@@ -5,13 +5,11 @@ import { SidebarToggle } from "@/components/admin-panel/sidebar-toggle";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
-import { useTheme } from "next-themes";
 import Image from "next/image";
 import Link from "next/link";
 export function Sidebar() {
   const isOpen = useSidebar((state) => state.isOpen);
   const toggleOpen = useSidebar((state) => state.toggleOpen);
-  const { theme } = useTheme();
 
   return (
     <aside
@@ -51,8 +49,11 @@ export function Sidebar() {
               <Link href="https://www.covia.ai">
                <div className="flex flex-row items-center justify-center space-x-4">
                 <Image src="/Covia_logo_icon_transparent.png" width={25} height={0} alt="covia"></Image>
-                {theme == "light" && <Image src="/covia.ai_dark_blue.png" width={100} height={0} alt="Covia" ></Image>}
-                {theme == "dark" && <Image src="/covia.ai_dark_mode.png" width={100} height={0} alt="Covia" ></Image>}
+                {/* Both wordmarks render everywhere and the theme class on
+                    <html> picks one: the server can't know the theme, so a
+                    JS choice here would never match the client's markup. */}
+                <Image src="/covia.ai_dark_blue.png" width={100} height={0} alt="Covia" className="dark:hidden" />
+                <Image src="/covia.ai_dark_mode.png" width={100} height={0} alt="Covia" className="hidden dark:block" />
 
               </div>
               </Link>

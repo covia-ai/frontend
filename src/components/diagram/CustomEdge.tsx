@@ -6,7 +6,7 @@ import {
   type EdgeProps,
   type Edge,
 } from '@xyflow/react';
- import { useTheme } from 'next-themes';
+import { useResolvedTheme } from '@/hooks/use-resolved-theme';
  
 const CustomEdge: FC<EdgeProps<Edge<{ startLabel: string; color: string }>>> = ({
   id,
@@ -26,11 +26,10 @@ const CustomEdge: FC<EdgeProps<Edge<{ startLabel: string; color: string }>>> = (
     targetY,
     targetPosition,
   });
-  const { theme  } = useTheme();
+  const theme = useResolvedTheme();
   return (
     <>
-      {theme == "dark" && <BaseEdge id={id} path={edgePath} style={{ stroke: 'lightgray', strokeWidth: 2 }} />}
-      {theme == "light" && <BaseEdge id={id} path={edgePath} style={{ stroke: 'darkgray', strokeWidth: 2 }} />}
+      <BaseEdge id={id} path={edgePath} style={{ stroke: theme === "light" ? 'darkgray' : 'lightgray', strokeWidth: 2 }} />
       <EdgeLabelRenderer>
         {data?.startLabel && <div
           style={{

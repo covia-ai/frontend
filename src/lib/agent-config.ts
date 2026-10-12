@@ -12,15 +12,12 @@ export type ModelSelection = {
   customModel: string;
 };
 
-export function modelSelectionFromId(
-  providerId: string,
-  modelId: string,
-): ModelSelection {
-  if (!modelId) return { model: "", customModel: "" };
-  const knownModel = LLM_PROVIDERS[providerId]?.models?.includes(modelId);
-  return knownModel
-    ? { model: modelId, customModel: "" }
-    : { model: CUSTOM_MODEL_OPTION, customModel: modelId };
+// A configured id is selected as itself. Which models the picker lists comes
+// from the venue after mount, so it can't decide this; instead the picker lists
+// any selected id it doesn't carry, and the free-text field is only for typing
+// a new one.
+export function modelSelectionFromId(modelId: string): ModelSelection {
+  return { model: modelId, customModel: "" };
 }
 
 export function resolvedModelId(model: string, customModel: string): string {

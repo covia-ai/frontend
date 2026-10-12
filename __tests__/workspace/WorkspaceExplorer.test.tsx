@@ -11,7 +11,7 @@ jest.mock('json-edit-react', () => {
   );
   return { JsonEditor: JsonContent, JsonViewer: JsonContent };
 });
-jest.mock('next-themes', () => ({ useTheme: () => ({ theme: 'light' }) }));
+jest.mock('next-themes', () => ({ useTheme: () => ({ resolvedTheme: 'light' }) }));
 
 const mockVenue: any = {
   venueId: 'venue-1',

@@ -136,14 +136,14 @@ function AddNewAgentForm({
   const configPreview = initialConfigPreview ?? (
     initialConfig === undefined ? {} : inlineAgentConfigPreview(initialConfig)
   );
-  const seededModel = modelSelectionFromId(initialProvider, initialModel);
+  const seededModel = modelSelectionFromId(initialModel);
   const [agentName, setAgentName] = useState(initialAgentName);
   const [agentId, setAgentId] = useState(() => slugifyAgentId(initialAgentName));
   const [agentIdEdited, setAgentIdEdited] = useState(false);
   const [llmProvider, setLlmProvider] = useState(initialProvider);
   const [customProviderOperation, setCustomProviderOperation] = useState(initialCustomProviderOperation);
   // "" = venue default (model omitted from config); CUSTOM_MODEL_OPTION shows
-  // a free-text input for ids not in the curated list.
+  // a free-text input for an id the picker doesn't list.
   const [model, setModel] = useState(seededModel.model);
   const [customModel, setCustomModel] = useState(seededModel.customModel);
   const [systemPrompt, setSystemPrompt] = useState(initialSystemPrompt);
@@ -462,6 +462,7 @@ function AddNewAgentForm({
             />
 
             <AgentRuntimeFields
+              venue={venue}
               providerId={llmProvider}
               onProviderChange={handleProviderChange}
               model={model}

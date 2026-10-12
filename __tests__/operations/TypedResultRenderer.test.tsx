@@ -8,7 +8,7 @@ jest.mock('json-edit-react', () => ({
   JsonViewer: (props: any) => <div data-testid="json-viewer">{JSON.stringify(props.data)}</div>,
 }));
 jest.mock('next-themes', () => ({
-  useTheme: () => ({ theme: 'light' }),
+  useTheme: () => ({ resolvedTheme: 'light' }),
 }));
 
 const TABLE_SCHEMA = { type: 'array', items: { type: 'object', properties: { name: { type: 'string' } } } };

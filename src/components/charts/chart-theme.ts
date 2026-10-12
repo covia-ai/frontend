@@ -1,9 +1,9 @@
 "use client";
 
-import { useTheme } from "next-themes";
+import { useResolvedTheme } from "@/hooks/use-resolved-theme";
 
 // Hex mirrors of the OKLCH tokens in globals.css, computed once so chart code
-// never needs getComputedStyle — same "useTheme() branch to a literal per-mode
+// never needs getComputedStyle — same "useResolvedTheme() branch to a literal per-mode
 // value" pattern already used by ThemedJsonEditor.tsx's githubDarkTheme/
 // githubLightTheme choice. Recomputing these from a config change is a
 // find-and-check-globals.css job, not automatic — there's no live link.
@@ -38,9 +38,8 @@ const CHART_COLORS: Record<"light" | "dark", ChartColors> = {
   },
 };
 
-// resolvedTheme (not theme, which can be "system") so a system-theme reader
-// gets the color actually rendered rather than an unresolved default.
+// The painted theme, never "system", and undefined (so light) until hydration,
+// matching the server render.
 export function useChartColors(): ChartColors {
-  const { resolvedTheme } = useTheme();
-  return CHART_COLORS[resolvedTheme === "dark" ? "dark" : "light"];
+  return CHART_COLORS[useResolvedTheme() === "dark" ? "dark" : "light"];
 }

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Venue } from "@covia/covia-sdk";
-import { useTheme } from "next-themes";
+import { useResolvedTheme } from "@/hooks/use-resolved-theme";
 import { JsonViewer as JsonTree } from "json-edit-react";
 import { githubDarkTheme, githubLightTheme } from "@json-edit-react/themes";
 import { Eye, Loader2 } from "lucide-react";
@@ -34,7 +34,7 @@ type JsonViewerProps = {
 export const JsonViewer = ({ assetId, venue: providedVenue }: JsonViewerProps) => {
   const fallbackVenue = useAuthenticatedVenue();
   const venue = providedVenue ?? fallbackVenue;
-  const { theme } = useTheme();
+  const theme = useResolvedTheme();
   const [open, setOpen] = useState(false);
   const content = useAssetTextContent(venue, assetId, open);
   const parsed = useMemo(() => {

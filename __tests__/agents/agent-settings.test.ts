@@ -25,7 +25,7 @@ describe("agent settings config", () => {
 
     expect(draft.providerId).toBe(CUSTOM_PROVIDER_OPTION);
     expect(draft.customProviderOperation).toBe("w/ops/private/model");
-    expect(draft.customModel).toBe("private-v2");
+    expect(draft.model).toBe("private-v2");
     expect(configFromAgentSettingsDraft(draft).config).toMatchObject({
       operation: "v/ops/llmagent/chat",
       llmOperation: "w/ops/private/model",
