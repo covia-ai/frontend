@@ -21,6 +21,7 @@ import {
   groupTranscript,
   messageContentSections,
   messageContentToString,
+  toolCallArgumentsById,
 } from "@/lib/agent-turns";
 
 // Shared by both turn kinds so the two copy affordances can't drift in what
@@ -91,6 +92,10 @@ function AgentConversationBase({
     () => (conversation ? groupTranscript(conversation) : []),
     [conversation],
   );
+  const argumentsById = useMemo(
+    () => toolCallArgumentsById(conversation ?? []),
+    [conversation],
+  );
 
   return (
     <div
@@ -137,7 +142,7 @@ function AgentConversationBase({
                   <AgentToolTurnGroup
                     turns={item.messages.map((message) => ({
                       role: message.role,
-                      tool: describeToolTurn(message),
+                      tool: describeToolTurn(message, argumentsById),
                       ts: message.ts,
                     }))}
                   />

@@ -3,6 +3,7 @@ import {
   groupTranscript,
   messageContentSections,
   messageContentToString,
+  toolCallArgumentsById,
 } from '@/lib/agent-turns';
 
 describe('messageContentSections', () => {
@@ -148,5 +149,48 @@ describe('groupTranscript', () => {
 
   it('returns an empty list for an empty conversation', () => {
     expect(groupTranscript([])).toEqual([]);
+  });
+});
+
+describe('tool-call credentials', () => {
+  const conversation = [
+    { role: 'user', content: 'Who am I on GitHub?' },
+    {
+      role: 'assistant',
+      content: '',
+      toolCalls: [
+        { id: 'call_1', name: 'http_get', arguments: { url: 'https://api.github.com/user', bearerSecret: 's/GITHUB_TOKEN' } },
+        // Some providers send arguments as a JSON string.
+        { id: 'call_2', name: 'http_get', arguments: '{"url":"https://slack.com/api/auth.test","bearerSecret":"s/SLACK_TOKEN"}' },
+        { id: 'call_3', name: 'covia_list', arguments: { path: 'w/' } },
+      ],
+    },
+    { role: 'tool', id: 'call_1', name: 'http_get', structuredContent: { status: 200 } },
+    { role: 'tool', id: 'call_2', name: 'http_get', structuredContent: { status: 200 } },
+    { role: 'tool', id: 'call_3', name: 'covia_list', structuredContent: { items: [] } },
+  ];
+
+  it('maps each call id to its arguments, parsing string arguments', () => {
+    const byId = toolCallArgumentsById(conversation);
+    expect(byId.get('call_1')).toEqual({ url: 'https://api.github.com/user', bearerSecret: 's/GITHUB_TOKEN' });
+    expect(byId.get('call_2')).toEqual({ url: 'https://slack.com/api/auth.test', bearerSecret: 's/SLACK_TOKEN' });
+  });
+
+  it('names the connection a tool result used, from its call arguments', () => {
+    const byId = toolCallArgumentsById(conversation);
+    expect(describeToolTurn(conversation[2], byId).credentials?.map((c) => c.label)).toEqual(['GitHub']);
+    expect(describeToolTurn(conversation[3], byId).credentials?.map((c) => c.label)).toEqual(['Slack']);
+  });
+
+  it('adds nothing for calls without credentials, unmatched ids, or no lookup', () => {
+    const byId = toolCallArgumentsById(conversation);
+    expect(describeToolTurn(conversation[4], byId).credentials).toBeUndefined();
+    expect(describeToolTurn({ ...conversation[2], id: 'call_missing' }, byId).credentials).toBeUndefined();
+    expect(describeToolTurn(conversation[2]).credentials).toBeUndefined();
+  });
+
+  it('ignores unparseable string arguments', () => {
+    const byId = toolCallArgumentsById([{ role: 'assistant', toolCalls: [{ id: 'x', arguments: '{not json' }] }]);
+    expect(byId.get('x')).toBeUndefined();
   });
 });

@@ -90,4 +90,24 @@ describe("ExecutionViewer — rich job detail", () => {
     // No Output panel for a failed job.
     expect(screen.queryByText("Output")).not.toBeInTheDocument();
   });
+
+  it("shows which connection an HTTP job used, from the reference in its input", () => {
+    setExecution({
+      ...baseJob,
+      name: "HTTP GET",
+      op: "v/ops/http/get",
+      input: { url: "https://api.github.com/user", bearerSecret: "s/GITHUB_TOKEN" },
+    });
+    render(<ExecutionViewer jobId={baseJob.id} venueId="did:key:z6MkVenue" />);
+
+    expect(screen.getByText("Credential")).toBeInTheDocument();
+    expect(screen.getByTestId("credential-badge")).toHaveTextContent("GitHub");
+    expect(screen.getByTestId("credential-badge")).toHaveAttribute("title", "Credential: s/GITHUB_TOKEN");
+  });
+
+  it("has no Credential row for a job without credential references", () => {
+    setExecution(baseJob);
+    render(<ExecutionViewer jobId={baseJob.id} venueId="did:key:z6MkVenue" />);
+    expect(screen.queryByText("Credential")).not.toBeInTheDocument();
+  });
 });
