@@ -69,7 +69,7 @@ function controller(overrides: Record<string, unknown> = {}) {
 }
 
 describe("AgentChat", () => {
-  it("renders a focused conversation and sends from the multiline composer", () => {
+  it("renders a focused conversation and sends from the multiline composer", async () => {
     const value = controller();
     mockUseAgentExplorer.mockReturnValue(value);
 
@@ -78,10 +78,9 @@ describe("AgentChat", () => {
     expect(mockUseAgentExplorer).toHaveBeenCalledWith("writer");
     expect(screen.getByTestId("agent-transcript")).toBeInTheDocument();
     expect(screen.getByText("Draft a launch post")).toBeInTheDocument();
-    expect(screen.getByText("Here is a concise first draft.").parentElement?.parentElement).toHaveClass(
-      "text-[15px]",
-      "leading-6",
-    );
+    // Markdown loads on first use (#473); the reply is a <p> once it has.
+    const reply = await screen.findByText("Here is a concise first draft.", { selector: "p" });
+    expect(reply.parentElement?.parentElement).toHaveClass("text-[15px]", "leading-6");
 
     fireEvent.keyDown(screen.getByTestId("clean-composer-input"), {
       key: "Enter",

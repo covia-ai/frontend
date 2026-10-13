@@ -4,7 +4,7 @@ import { AlertCircle, Copy, ExternalLink, Loader2, Pencil, RotateCcw } from "luc
 
 import { AgentToolTurnGroup } from "@/components/AgentToolTurn";
 import { AgentIdenticon } from "@/components/agent-roster/AgentIdenticon";
-import { MarkdownMessage } from "@/components/MarkdownMessage";
+import { LazyMarkdownMessage } from "@/components/LazyMarkdownMessage";
 import { humanizeAgentId } from "@/lib/agent-display";
 import {
   DropdownMenu,
@@ -249,7 +249,7 @@ function AgentConversationBase({
                   title={title}
                   className="min-w-0 flex-1 break-words text-[15px] leading-6"
                 >
-                  <MarkdownMessage>{text}</MarkdownMessage>
+                  <LazyMarkdownMessage>{text}</LazyMarkdownMessage>
                   {/* The user bubble opens its menu on a click anywhere in the
                       bubble, which would fight text selection and link clicks
                       in rendered markdown — so the reply gets its own button

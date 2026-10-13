@@ -5,8 +5,8 @@ import "@testing-library/jest-dom";
 jest.mock("@/components/admin-panel/TopBar", () => ({
   TopBar: () => <div data-testid="top-bar" />,
 }));
-jest.mock("@/components/MarkdownMessage", () => ({
-  MarkdownMessage: ({ children }: { children: string }) => (
+jest.mock("@/components/LazyMarkdownMessage", () => ({
+  LazyMarkdownMessage: ({ children }: { children: string }) => (
     <div data-testid="safe-markdown">{children}</div>
   ),
 }));

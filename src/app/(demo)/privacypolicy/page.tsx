@@ -1,9 +1,6 @@
-"use client";
-
 import { LegalPage } from "@/components/LegalPage";
+import { ConsentPreferencesButton } from "@/components/ConsentPreferencesButton";
 import { PRIVACY_POLICY_MD } from "@/content/legal/privacy";
-import { Button } from "@/components/ui/button";
-import { openConsentPreferences } from "@/lib/consent";
 
 export default function PrivacyPolicyPage() {
   return (
@@ -19,9 +16,7 @@ export default function PrivacyPolicyPage() {
           Change what this app is allowed to measure. Declining analytics
           stops Google Analytics and PostHog from loading at all.
         </p>
-        <Button size="sm" variant="outline" onClick={openConsentPreferences}>
-          Manage cookie preferences
-        </Button>
+        <ConsentPreferencesButton />
       </div>
     </LegalPage>
   );
