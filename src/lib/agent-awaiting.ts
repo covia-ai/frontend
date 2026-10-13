@@ -1,18 +1,12 @@
-import { RunStatus } from "@covia/covia-sdk";
+import { RunStatus, type AgentAwaiting } from "@covia/covia-sdk";
 
-/**
- * How many of an agent's pending jobs are paused on a person (covia#557):
- * `input` → INPUT_REQUIRED, `auth` → AUTH_REQUIRED. The venue derives this on
- * every `agents.info` / `agents.list` read, separately from the lifecycle
- * status, so a SLEEPING agent can still be waiting on someone.
- *
- * Mirrors the SDK's `AgentAwaiting`; parsed here rather than trusted so the
- * roster works against venues from before covia#557, which omit the field.
- */
-export interface AgentAwaiting {
-  input: number;
-  auth: number;
-}
+// `AgentAwaiting` (SDK 1.23): how many of an agent's pending jobs are paused
+// on a person (covia#557) — `input` → INPUT_REQUIRED, `auth` → AUTH_REQUIRED.
+// The venue derives it on every `agents.info` / `agents.list` read,
+// separately from the lifecycle status, so a SLEEPING agent can still be
+// waiting on someone. Parsed below rather than trusted: venues from before
+// covia#557 omit the field, and the counts come straight off the wire.
+export type { AgentAwaiting };
 
 function count(v: unknown): number {
   return typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0;
