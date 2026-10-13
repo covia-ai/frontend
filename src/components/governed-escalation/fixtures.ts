@@ -56,7 +56,8 @@ export const driftPaths = (root: string) => ({
   limitReview: `${root}/limit-review`,
 });
 
-export const VENUE_HITL_SKILL = "v/skills/hitl";
+// Where HITLAdapter installs the skill: installSkill("agents/hitl", …).
+export const VENUE_HITL_SKILL = "v/skills/agents/hitl";
 
 export function monitorConfig(addresses: EscalationAddresses) {
   const paths = driftPaths(addresses.root);
