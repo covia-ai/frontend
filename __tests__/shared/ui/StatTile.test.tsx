@@ -1,4 +1,6 @@
 import React from "react";
+import { readdirSync, readFileSync, statSync } from "fs";
+import { join } from "path";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { Activity } from "lucide-react";
@@ -20,7 +22,7 @@ describe("StatTile", () => {
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 
-  it("renders a sparkline when trend data is passed", () => {
+  it("renders a sparkline when trend data is passed", async () => {
     render(
       <StatTile
         icon={Activity}
@@ -32,6 +34,34 @@ describe("StatTile", () => {
         }}
       />,
     );
-    expect(screen.getByRole("img", { name: "Success Rate trend" })).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: "Success Rate trend" })).toBeInTheDocument();
+  });
+
+});
+
+// #476: recharts is the largest library a page would otherwise load up front.
+// A static import of the chart primitives from anywhere outside their folder
+// would pull it back into that page's initial JS, so pin who may import them.
+describe("chart imports stay lazy (#476)", () => {
+  const SRC = join(__dirname, "../../../src");
+  const files = (dir: string): string[] =>
+    readdirSync(dir).flatMap((name) => {
+      const path = join(dir, name);
+      return statSync(path).isDirectory() ? files(path) : /\.tsx?$/.test(name) ? [path] : [];
+    });
+  const importersOf = (pattern: RegExp) =>
+    files(SRC)
+      .filter((path) => pattern.test(readFileSync(path, "utf8")))
+      .map((path) => path.slice(SRC.length + 1))
+      .sort();
+
+  it("reaches recharts only from the charts folder", () => {
+    expect(importersOf(/from\s+["']recharts["']/).every((p) => p.startsWith("components/charts/"))).toBe(true);
+  });
+
+  it("loads the chart primitives only dynamically outside that folder", () => {
+    expect(
+      importersOf(/^import\s+(?!type\b)[^;]*from\s+["']@\/components\/charts\/(?!chart-theme)/m),
+    ).toEqual([]);
   });
 });
