@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Venue } from "@covia/covia-sdk";
 import { normalizeAgentEntries } from "@/lib/agent-list";
+import { readAwaiting, awaitingTotal, type AgentAwaiting } from "@/lib/agent-awaiting";
 import { errorMessage } from "@/lib/errors";
 
 const POLL_INTERVAL_MS = 3000;
@@ -48,6 +49,8 @@ export interface RosterAgent {
   queued?: number;
   /** Soonest future scheduled wake, ms epoch. */
   nextWake?: number;
+  /** Pending jobs paused on a person (covia#557). Absent on older venues. */
+  awaiting?: AgentAwaiting;
 }
 
 export interface RosterCounts {
@@ -57,12 +60,15 @@ export interface RosterCounts {
   suspended: number;
   terminated: number;
   tasks: number;
+  /** Agents with at least one job waiting on a person. */
+  awaiting: number;
 }
 
 type RosterEntry = { agentId: string; status?: string; tasks?: number };
 type InfoSnapshot = {
   status?: string;
   tasks?: number;
+  awaiting?: AgentAwaiting;
   config?: Record<string, any>;
   runs?: number;
 };
@@ -160,7 +166,13 @@ export function useAgentRoster(venue: Venue | null | undefined) {
             const info = await venue.agents.info(e.agentId);
             return [
               e.agentId,
-              { status: info.status, tasks: info.tasks, config: info.config, runs: info.timelineLength },
+              {
+                status: info.status,
+                tasks: info.tasks,
+                awaiting: readAwaiting(info),
+                config: info.config,
+                runs: info.timelineLength,
+              },
             ] as const;
           } catch {
             return [e.agentId, undefined] as const;
@@ -260,6 +272,9 @@ export function useAgentRoster(venue: Venue | null | undefined) {
           agentId: e.agentId,
           status: e.status ?? info?.status,
           tasks: e.tasks ?? info?.tasks,
+          // The list is polled every 3s and carries `awaiting`, so it wins;
+          // `info` is read only when the agent set changes.
+          awaiting: readAwaiting(e) ?? info?.awaiting,
           config: info?.config,
           runs: info?.runs,
           lastActive: sess?.lastActive,
@@ -271,7 +286,15 @@ export function useAgentRoster(venue: Venue | null | undefined) {
   );
 
   const counts: RosterCounts = useMemo(() => {
-    const c: RosterCounts = { total: roster.length, running: 0, sleeping: 0, suspended: 0, terminated: 0, tasks: 0 };
+    const c: RosterCounts = {
+      total: roster.length,
+      running: 0,
+      sleeping: 0,
+      suspended: 0,
+      terminated: 0,
+      tasks: 0,
+      awaiting: 0,
+    };
     for (const a of roster) {
       const s = (a.status ?? "").toUpperCase();
       if (s === "RUNNING") c.running++;
@@ -279,6 +302,7 @@ export function useAgentRoster(venue: Venue | null | undefined) {
       else if (s === "SUSPENDED") c.suspended++;
       else if (s === "TERMINATED") c.terminated++;
       c.tasks += a.tasks ?? 0;
+      if (awaitingTotal(a.awaiting) > 0) c.awaiting++;
     }
     return c;
   }, [roster]);

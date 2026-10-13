@@ -250,3 +250,30 @@ describe('resolved requests show the outcome', () => {
     expect(screen.queryByTestId('hitl-respond-toggle')).not.toBeInTheDocument();
   });
 });
+
+describe('agent deep link (#364)', () => {
+  const requests = [
+    req({ id: 'a', title: 'From bot', agent: 'bot' }),
+    req({ id: 'b', title: 'From bot-2', agent: 'bot-2' }),
+    req({ id: 'c', title: 'Old bot ask', agent: 'bot', status: 'answered' }),
+  ];
+
+  it("narrows to that agent's open requests, by exact id", () => {
+    withRequests(requests);
+    render(<HitlInbox initialAgent="bot" />);
+
+    expect(screen.getByText('From bot')).toBeInTheDocument();
+    expect(screen.queryByText('From bot-2')).not.toBeInTheDocument();
+    expect(screen.queryByText('Old bot ask')).not.toBeInTheDocument();
+    expect(screen.getByTestId('hitl-agent-filter')).toHaveTextContent('bot');
+  });
+
+  it('drops the agent filter from its chip', async () => {
+    withRequests(requests);
+    render(<HitlInbox initialAgent="bot" />);
+
+    await userEvent.click(screen.getByRole('button', { name: /every agent/i }));
+    expect(screen.queryByTestId('hitl-agent-filter')).not.toBeInTheDocument();
+    expect(screen.getByText('From bot-2')).toBeInTheDocument();
+  });
+});

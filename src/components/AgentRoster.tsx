@@ -14,6 +14,8 @@ import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { useAgentRoster, type RosterAgent } from "@/hooks/use-agent-roster";
 import { agentDisplay, humanizeAgentId, relTime, shortRefLabel } from "@/lib/agent-display";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
+import { awaitingTotal } from "@/lib/agent-awaiting";
+import { TONE_STYLES } from "@/lib/status";
 import { AgentRosterCard } from "@/components/agent-roster/AgentRosterCard";
 import { useLiveStreamSlots } from "@/hooks/use-live-stream-slots";
 import { useWriteAccess } from "@/hooks/use-write-access";
@@ -21,9 +23,11 @@ import { useWriteAccess } from "@/hooks/use-write-access";
 const AGENTS_GRID_CLASS =
   "grid w-full grid-cols-[repeat(auto-fill,minmax(min(20rem,100%),1fr))] items-stretch gap-4";
 
-// Status groups, in the order the workforce reads best: what's working, then
-// what's asleep, paused, or spent. Anything unrecognised falls to "Other".
+// Status groups, in the order the workforce reads best: what's waiting on a
+// person, what's working, then what's asleep, paused, or spent. Anything
+// unrecognised falls to "Other".
 const GROUPS: { key: string; label: string }[] = [
+  { key: "AWAITING", label: "Waiting on you" },
   { key: "RUNNING", label: "Running" },
   { key: "SLEEPING", label: "Sleeping" },
   { key: "SUSPENDED", label: "Suspended" },
@@ -31,8 +35,12 @@ const GROUPS: { key: string; label: string }[] = [
   { key: "OTHER", label: "Other" },
 ];
 
-function groupKey(status?: string): string {
-  const s = (status ?? "").toUpperCase();
+// An agent with a job paused on a person leads the roster whatever its
+// lifecycle status: a SLEEPING agent blocked on an answer is not idle
+// (covia#557). The card keeps its own status pill, so nothing is hidden.
+function groupKey(agent: RosterAgent): string {
+  if (awaitingTotal(agent.awaiting) > 0) return "AWAITING";
+  const s = (agent.status ?? "").toUpperCase();
   return ["RUNNING", "SLEEPING", "SUSPENDED", "TERMINATED"].includes(s) ? s : "OTHER";
 }
 
@@ -79,7 +87,7 @@ export function AgentRoster({ venueId }: { venueId?: string } = {}) {
   const grouped = useMemo(() => {
     const map = new Map<string, RosterAgent[]>();
     for (const a of filtered) {
-      const key = groupKey(a.status);
+      const key = groupKey(a);
       (map.get(key) ?? map.set(key, []).get(key)!).push(a);
     }
     for (const list of map.values()) list.sort(sortAgents);
@@ -180,7 +188,11 @@ export function AgentRoster({ venueId }: { venueId?: string } = {}) {
               const list = grouped.get(g.key)!;
               return (
                 <section key={g.key}>
-                  <h2 className="mb-2.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <h2
+                    className={`mb-2.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide ${
+                      g.key === "AWAITING" ? TONE_STYLES.attention.text : "text-muted-foreground"
+                    }`}
+                  >
                     {g.label}
                     <span className="font-mono text-muted-foreground/70">· {list.length}</span>
                     {g.key === "SLEEPING" &&

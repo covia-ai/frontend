@@ -97,6 +97,24 @@ describe("AgentProfile", () => {
   });
 
   // The URL names the agent, so the hook must never substitute another one.
+  it("flags an agent paused on a person and links to where to answer (#364)", () => {
+    controller.selectedAgentDetail = {
+      ...(controller.selectedAgentDetail as object),
+      awaiting: { input: 1, auth: 0 },
+    };
+    render(<AgentProfile agentId="refund-bot" />);
+
+    const badge = screen.getByTestId("agent-awaiting");
+    expect(badge).toHaveTextContent(/Waiting on you/);
+    expect(badge).toHaveAttribute("href", "/inbox?agent=refund-bot");
+    expect(badge).toHaveAttribute("title", "1 request needs input");
+  });
+
+  it("shows no waiting badge when nothing is pending or the venue predates it", () => {
+    render(<AgentProfile agentId="refund-bot" />);
+    expect(screen.queryByTestId("agent-awaiting")).not.toBeInTheDocument();
+  });
+
   it("pins the hook to the agent its URL names", () => {
     render(<AgentProfile agentId="refund-bot" />);
     expect(mockUseAgentExplorer).toHaveBeenCalledWith("refund-bot", { pinned: true });

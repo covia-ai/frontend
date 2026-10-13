@@ -61,6 +61,11 @@ const EMPTY_JOB_QUERY = { records: [] as JobMetadata[], totalCount: 0 };
 const subscribeToNothing = () => () => {};
 const readRequestedTab = () =>
   new URLSearchParams(window.location.search).get("tab") === "scheduled" ? "scheduled" : "history";
+// Same pattern for a status filter, e.g. /jobs?status=AUTH_REQUIRED from an
+// agent's "Waiting on you" link (#364). Read as the raw string so the
+// snapshot is stable; unknown statuses are dropped when parsed.
+const readRequestedStatus = () => new URLSearchParams(window.location.search).get("status") ?? "";
+const KNOWN_STATUSES = new Set<string>(STATUS_OPTIONS.map((o) => o.value));
 
 interface JobListProps {
   venueId?: string;
@@ -71,7 +76,14 @@ export function JobList({ venueId }: JobListProps = {}) {
   // The user's choice, once made, wins over the deep link.
   const [chosenTab, setChosenTab] = useState<string | null>(null);
   const activeTab = chosenTab ?? requestedTab;
-  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const requestedStatusParam = useSyncExternalStore(subscribeToNothing, readRequestedStatus, () => "");
+  const requestedStatus = useMemo(
+    () => requestedStatusParam.split(",").filter((s) => KNOWN_STATUSES.has(s)),
+    [requestedStatusParam],
+  );
+  // As with the tab, the user's own filter choice replaces the deep link's.
+  const [chosenStatus, setStatusFilter] = useState<string[] | null>(null);
+  const statusFilter = chosenStatus ?? requestedStatus;
   const [dateFilter, setDateFilter] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -373,7 +385,9 @@ export function JobList({ venueId }: JobListProps = {}) {
   useEffect(() => {
     if (!venueObj) return;
     if (prevVenueId.current !== venueObj.venueId) {
-      setStatusFilter([]);
+      // First mount (no previous venue) keeps the ?status= deep link; a real
+      // switch clears it along with the rest.
+      setStatusFilter(prevVenueId.current === undefined ? null : []);
       setDateFilter([]);
       setSearchQuery("");
       setDebouncedQuery("");
