@@ -12,7 +12,7 @@ import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useAuthStore } from "@/hooks/use-auth";
 import { useHitlRequests } from "@/hooks/use-hitl";
 import type { HitlRequest } from "@/lib/hitl";
-import { Inbox, RefreshCw, Search } from "lucide-react";
+import { Inbox, RefreshCw, Search, X } from "lucide-react";
 
 // Empty selection means "no filter" (show every status) — same convention as
 // the Status group on the Jobs filter sheet — so there's no separate "All"
@@ -35,8 +35,15 @@ function matchesQuery(request: HitlRequest, needle: string): boolean {
  * @param initialRequestId Opens this request expanded on mount, for deep links
  *   such as /inbox?requestId=… — the demo pages send a viewer to the ask they
  *   just raised rather than rebuilding an approval surface of their own.
+ * @param initialAgent Narrows to this agent's open requests, for the agent
+ *   roster's "Waiting on you" link (/inbox?agent=…, frontend#364). An exact
+ *   match on the request's `agent`, not the search box, so `bot` doesn't
+ *   also pull in `bot-2`. Dismissible from the chip it shows.
  */
-export function HitlInbox({ initialRequestId }: { initialRequestId?: string } = {}) {
+export function HitlInbox({
+  initialRequestId,
+  initialAgent,
+}: { initialRequestId?: string; initialAgent?: string } = {}) {
   const venue = useAuthenticatedVenue();
   const { requests, loading, error, refresh } = useHitlRequests();
   // Whether stored credentials exist for *the venue actually being read*. The
@@ -51,7 +58,9 @@ export function HitlInbox({ initialRequestId }: { initialRequestId?: string } = 
 
   // No filter pre-selected — the inbox shows everything until the user
   // narrows it down, rather than silently hiding non-open requests.
-  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  // The agent link is about what's waiting, so it starts on Open.
+  const [statusFilter, setStatusFilter] = useState<string[]>(initialAgent ? ["open"] : []);
+  const [agentFilter, setAgentFilter] = useState<string | null>(initialAgent ?? null);
   const [query, setQuery] = useState("");
   // The list only tracks which single card is open for editing; each card owns
   // its own draft, so a draft can never bleed across cards (frontend#196).
@@ -63,12 +72,15 @@ export function HitlInbox({ initialRequestId }: { initialRequestId?: string } = 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const base = requests.filter(
-      (r) => (statusFilter.length === 0 || statusFilter.includes(r.status)) && matchesQuery(r, needle),
+      (r) =>
+        (statusFilter.length === 0 || statusFilter.includes(r.status)) &&
+        (agentFilter === null || r.agent === agentFilter) &&
+        matchesQuery(r, needle),
     );
     if (!justAnsweredId || base.some((r) => r.id === justAnsweredId)) return base;
     const pinned = requests.find((r) => r.id === justAnsweredId);
     return pinned ? [pinned, ...base] : base;
-  }, [requests, statusFilter, query, justAnsweredId]);
+  }, [requests, statusFilter, agentFilter, query, justAnsweredId]);
 
   function changeStatusFilter(next: string[]) {
     setStatusFilter(next);
@@ -132,6 +144,25 @@ export function HitlInbox({ initialRequestId }: { initialRequestId?: string } = 
         }
         summary={!loading && requests.length > 0 && `Showing ${visible.length} of ${requests.length}`}
       />
+
+      {agentFilter !== null && (
+        <div>
+          <span
+            data-testid="hitl-agent-filter"
+            className="inline-flex items-center gap-1 rounded-full border bg-muted px-2.5 py-0.5 text-xs text-muted-foreground"
+          >
+            From agent <span className="font-mono text-foreground">{agentFilter}</span>
+            <button
+              type="button"
+              aria-label="Show requests from every agent"
+              onClick={() => setAgentFilter(null)}
+              className="ml-0.5 rounded-full hover:text-foreground"
+            >
+              <X size={12} />
+            </button>
+          </span>
+        </div>
+      )}
 
       {loading && (
         <div className="flex items-center justify-center py-20">

@@ -106,3 +106,29 @@ describe("AgentRoster when the venue rejected the account (#220)", () => {
     useVenueAuthHealth.setState({ byVenue: {} });
   });
 });
+
+describe("AgentRoster waiting on a person (#364)", () => {
+  it("leads with a Waiting on you group, whatever the agent's lifecycle status", () => {
+    roster = [
+      { agentId: "alpha", status: "RUNNING" },
+      { agentId: "blocked", status: "SLEEPING", awaiting: { input: 1, auth: 0 } },
+    ];
+    render(<AgentRoster />);
+
+    const headings = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent ?? "");
+    expect(headings[0]).toMatch(/Waiting on you/);
+    expect(headings[1]).toMatch(/Running/);
+    // The blocked agent isn't listed twice, and isn't under Sleeping.
+    expect(screen.getAllByTestId("agent-card").map((c) => c.textContent)).toEqual(["blocked", "alpha"]);
+    expect(headings.some((h) => /Sleeping/.test(h))).toBe(false);
+  });
+
+  it("shows no such group when nothing is waiting, or the venue doesn't say", () => {
+    roster = [
+      { agentId: "alpha", status: "SLEEPING", awaiting: { input: 0, auth: 0 } },
+      { agentId: "beta", status: "SLEEPING" },
+    ];
+    render(<AgentRoster />);
+    expect(screen.queryByText(/Waiting on you/)).not.toBeInTheDocument();
+  });
+});

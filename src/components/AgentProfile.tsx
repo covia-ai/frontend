@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AgentStatus } from "@covia/covia-sdk";
-import { BellRing, Cpu, GitFork, Loader2, Pause, Play, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, BellRing, CircleAlert, Cpu, GitFork, Loader2, Pause, Play, ShieldCheck } from "lucide-react";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import {
   AlertDialog,
@@ -36,6 +37,8 @@ import { useCurrentAuth } from "@/hooks/use-auth";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useAgentForkProvenance } from "@/hooks/use-agent-fork-provenance";
 import { agentDisplay, humanizeAgentId, shortRefLabel } from "@/lib/agent-display";
+import { awaitingDescription, awaitingHref, awaitingTotal, readAwaiting } from "@/lib/agent-awaiting";
+import { TONE_STYLES } from "@/lib/status";
 
 /**
  * The agent drill-in as a profile (Direction C): a clean identity header with
@@ -82,6 +85,8 @@ export function AgentProfile({ agentId }: { agentId: string }) {
   const display = agent ? agentDisplay(agent.config) : null;
   const status = agent?.status;
   const canSuspend = status === AgentStatus.RUNNING || status === AgentStatus.SLEEPING;
+  const awaitingRaw = readAwaiting(agent);
+  const awaiting = awaitingTotal(awaitingRaw) > 0 ? awaitingRaw : undefined;
 
   return (
     <div className="flex h-full flex-col">
@@ -118,6 +123,16 @@ export function AgentProfile({ agentId }: { agentId: string }) {
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl font-semibold leading-tight">{humanizeAgentId(agent.agentId)}</h1>
                 <StatusBadge status={agent.status} kind="agent" as="pill" />
+                {awaiting && (
+                  <Link
+                    href={awaitingHref(agent.agentId, awaiting)}
+                    data-testid="agent-awaiting"
+                    title={awaitingDescription(awaiting)}
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${TONE_STYLES.attention.pill}`}
+                  >
+                    <CircleAlert size={12} /> Waiting on you · Respond <ArrowUpRight size={12} />
+                  </Link>
+                )}
                 {(agent.tasks ?? 0) > 0 && (
                   <Badge variant="outline">
                     {agent.tasks} task{agent.tasks === 1 ? "" : "s"}

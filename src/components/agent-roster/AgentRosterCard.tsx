@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Venue } from "@covia/covia-sdk";
 import {
   ArrowUpRight,
   Clock,
+  CircleAlert,
   Cpu,
   MessageSquareText,
   MoreHorizontal,
@@ -28,6 +30,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { TONE_STYLES } from "@/lib/status";
 import { agentDisplay, humanizeAgentId, relTime, shortRefLabel } from "@/lib/agent-display";
+import { awaitingDescription, awaitingHref, awaitingTotal } from "@/lib/agent-awaiting";
 import type { RosterAgent } from "@/hooks/use-agent-roster";
 import { AgentLiveActivity } from "./AgentLiveActivity";
 import { AgentIdenticon } from "./AgentIdenticon";
@@ -57,6 +60,7 @@ export function AgentRosterCard({
   const isTerminated = status === "TERMINATED";
   const { providerLabel, model, brief, skills, hasCaps } = agentDisplay(agent.config);
   const modelLabel = model || providerLabel;
+  const awaiting = awaitingTotal(agent.awaiting) > 0 ? agent.awaiting : undefined;
 
   const handle = venue.agent(agentId);
   const run = async (fn: () => Promise<unknown>, ok: string, fail: string) => {
@@ -82,7 +86,7 @@ export function AgentRosterCard({
     <Card
       onClick={goOpen}
       className={`group flex h-full cursor-pointer flex-col gap-0 overflow-hidden rounded-lg border bg-card p-0 shadow-sm transition-all hover:border-accent hover:shadow-md ${
-        isRunning ? "border-primary/40" : ""
+        awaiting ? "border-amber-500/50" : isRunning ? "border-primary/40" : ""
       } ${isTerminated ? "opacity-70" : ""}`}
     >
       {/* Identity */}
@@ -101,6 +105,26 @@ export function AgentRosterCard({
         </button>
         <StatusBadge status={agent.status} kind="agent" as="pill" />
       </div>
+
+      {/* Paused on a person (covia#557). A real link, so it opens in a new
+          tab like any other; stopPropagation keeps the card's open-on-click
+          from firing as well. */}
+      {awaiting && (
+        <Link
+          href={awaitingHref(agentId, awaiting)}
+          data-testid="roster-awaiting"
+          onClick={(e) => e.stopPropagation()}
+          className={`flex items-center gap-2 border-b px-4 py-2 text-xs font-medium ${TONE_STYLES.attention.text} ${TONE_STYLES.attention.surface}`}
+        >
+          <CircleAlert size={13} className="shrink-0" />
+          <span className="min-w-0 flex-1 truncate">
+            Waiting on you · {awaitingDescription(awaiting)}
+          </span>
+          <span className="inline-flex shrink-0 items-center gap-0.5 font-semibold">
+            Respond <ArrowUpRight size={12} />
+          </span>
+        </Link>
+      )}
 
       {/* What it is */}
       <div className="flex flex-1 flex-col gap-2.5 px-4 py-3">

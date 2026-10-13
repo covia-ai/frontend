@@ -123,6 +123,29 @@ describe('JobList windowed fetching', () => {
     expect(mockVenue.workspace.list).toHaveBeenCalledTimes(1);
   });
 
+  describe('?status= deep link (#364)', () => {
+    afterEach(() => window.history.replaceState({}, '', '/'));
+
+    it('starts filtered to the status the link names', async () => {
+      window.history.replaceState({}, '', '/jobs?status=AUTH_REQUIRED');
+      render(<JobList />);
+
+      // A filter reads one FILTER_WINDOW window, and every fixture job is COMPLETE.
+      await waitFor(() => {
+        expect(mockVenue.workspace.slice).toHaveBeenCalledWith('j', TOTAL - 100, 100);
+      });
+      expect(await screen.findByText(/Showing 0 of/)).toBeInTheDocument();
+    });
+
+    it('ignores a status it does not know', async () => {
+      window.history.replaceState({}, '', '/jobs?status=BOGUS');
+      render(<JobList />);
+
+      expect((await screen.findAllByText('job-997')).length).toBeGreaterThan(0);
+      expect(mockVenue.workspace.slice).not.toHaveBeenCalledWith('j', TOTAL - 100, 100);
+    });
+  });
+
   it('recovers from a stale count between list() and slice() (#193)', async () => {
     // The list() probe reads count=990, but the index has already grown to
     // TOTAL (998) by the time slice() runs — the stale-count race behind
