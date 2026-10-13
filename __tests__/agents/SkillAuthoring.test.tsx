@@ -14,12 +14,15 @@ jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
 
 // A venue skill (read-only) and one of the user's own, so the two action sets
 // can be told apart.
+// v/skills holds skillsets; skills sit one level down (frontend#482).
 const VENUE_TREE = {
-  agents: {
-    name: "Agent skills",
-    description: "Manage agents safely.",
-    content: { inline: "## Agent workflow" },
-    skill: { tools: ["v/ops/agent/list"] },
+  root: {
+    agents: {
+      name: "Agent skills",
+      description: "Manage agents safely.",
+      content: { inline: "## Agent workflow" },
+      skill: { tools: ["v/ops/agent/list"] },
+    },
   },
 };
 const USER_TREE = {

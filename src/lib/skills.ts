@@ -12,6 +12,10 @@ export type SkillSummary = {
   tools: string[];
   reference: string | null;
   hasContent: boolean;
+  /** Every address this skill was listed at. The venue installs an entry
+   *  point in more than one skillset (root/ and its family), and an agent
+   *  may name any of them; `path` is the one shown. Absent → just `path`. */
+  aliases?: string[];
 };
 
 type SkillMetadata = {
@@ -114,75 +118,112 @@ export function skillsFromAssets(assets: Skill[], source: SkillSource): SkillSum
   });
 }
 
-// A node is a skill when it carries the `skill` facet; anything else that is a
-// plain object is a container to descend into. Same match-by-shape rule
-// readCatalog uses for operations (operations-catalog.ts) and for the same
-// reason: skills sit at mixed depths. Most live directly under v/skills, but
-// every per-provider connection skill is one level down under
-// v/skills/connections/<provider>, and a fixed depth silently dropped all 20
-// of them — plus rendered their `connections` parent as a description-less,
-// tool-less skill of its own (frontend#351).
+// Skillset listing mirrors the venue exactly (covia venue/docs/SKILLS.md §4.1,
+// Skills.listSkills / Skills.isSkillValue), frontend#482:
 //
-// A string leaf is a legacy bare-string alias (frontend#229); normalizeSkill
-// resolves it, so pass it through rather than descending into its characters.
-function walkSkillTree(node: unknown, path: string, out: { key: string; value: unknown; path: string }[]): void {
-  if (typeof node === "string") {
-    out.push({ key: path.split("/").pop() ?? path, value: node, path });
-    return;
-  }
-  if (node === null || typeof node !== "object" || Array.isArray(node)) return;
-  const record = node as Record<string, unknown>;
-  if ("skill" in record) {
-    out.push({ key: path.split("/").pop() ?? path, value: record, path });
-    return;
-  }
-  for (const key of Object.keys(record)) {
-    walkSkillTree(record[key], path ? `${path}/${key}` : key, out);
-  }
+//  - A skillset is ONE directory, a map whose keys are skill names, read one
+//    level deep. Nothing is walked recursively.
+//  - A member is a skill when isSkillValue holds (below). Any other member is
+//    a nested directory: the venue reports it as "not a skill" and does not
+//    look inside it.
+//  - `w/skills` is one skillset. `v/skills` holds skillsets, so each of its
+//    keys (`root`, `data`, `connections`, …) is listed as one. That is how
+//    v/skills/connections/<provider> is reached (frontend#351).
+//
+// The previous walk recursed everywhere and counted only nodes with a `skill`
+// facet, which the venue treats as optional. A skill without one (most
+// imported SKILL.md files) was opened up and its metadata strings listed as
+// skills of their own.
+
+const SKILL_KEYS = ["description", "name", "skill", "content", "operation"];
+
+/** covia Skills.isSkillValue: a string reference, or a non-empty map with any
+ *  skill-shaped key. */
+function isSkillValue(value: unknown): boolean {
+  if (typeof value === "string") return true;
+  const map = record(value);
+  return map !== null && Object.keys(map).length > 0 && SKILL_KEYS.some((key) => key in map);
 }
 
-// Flatten one skills root into summaries.
-//
-// The category containers (root/, data/, ops-tools/, building/, admin/) are
-// indexes: they mostly re-list skills that already exist at the top level, so
-// a plain flatten double-counts. On venue-4 that is 71 nodes for 49 distinct
-// skills. De-duplicated by name — the identity agentUsesSkill already treats
-// as an alias — keeping the shallowest path, so a skill stays at the canonical
-// address it has today and only genuinely nested ones (the connections/*) get
-// a deeper one.
-export function skillsFromTree(tree: unknown, source: SkillSource, root: string): SkillSummary[] {
-  const found: { key: string; value: unknown; path: string }[] = [];
-  walkSkillTree(tree, "", found);
+// A string member is a reference the venue resolves when listing, and its
+// listing drops one that fails to resolve. Accept exactly the reference forms
+// SKILLS.md §4.1 names for a skill ref: a lattice path, an asset ref
+// (a/<hash>, /a/<hash>, bare hex), a DID path, or a content ref (file://,
+// dlfs/). This also drops the `name` / `description` strings of a node that
+// is both a skill and a skillset (v/skills/agents on long-lived venues), which
+// the venue fails to resolve for the same reason.
+const SKILL_REF = /^(?:\/?a\/[0-9a-fA-F]+|[0-9a-fA-F]{64}|[vwgo]\/\S+|did:\S+|file:\/\/\S+|dlfs\/\S+)$/;
 
+function isListedMember(value: unknown): boolean {
+  return typeof value === "string" ? SKILL_REF.test(value) : isSkillValue(value);
+}
+
+/** One skillset's members, one level deep, keys sorted as the venue lists them. */
+function skillsetMembers(dir: unknown, path: string): { key: string; value: unknown; path: string }[] {
+  const map = record(dir);
+  if (!map) return [];
+  return Object.keys(map)
+    .sort()
+    .filter((key) => isListedMember(map[key]))
+    .map((key) => ({ key, value: map[key], path: `${path}/${key}` }));
+}
+
+// First-wins by name, as the venue resolves collisions. The later addresses
+// are kept as aliases so an agent that names any of them still matches.
+function firstWins(members: { key: string; value: unknown; path: string }[], source: SkillSource): SkillSummary[] {
   const byName = new Map<string, SkillSummary>();
-  const depth = (entry: { path: string }) => entry.path.split("/").length;
-  for (const entry of [...found].sort((a, b) => depth(a) - depth(b) || a.path.localeCompare(b.path))) {
-    const skill = normalizeSkill(entry.key, entry.value, source, `${root}/${entry.path}`);
-    if (!byName.has(skill.name)) byName.set(skill.name, skill);
+  for (const member of members) {
+    const skill = normalizeSkill(member.key, member.value, source, member.path);
+    const first = byName.get(skill.name);
+    if (first) first.aliases = [...(first.aliases ?? [first.path]), member.path];
+    else byName.set(skill.name, skill);
   }
   return [...byName.values()];
 }
 
-// Every skill under v/skills and w/skills, nested ones included. One job-free
-// values read per root (GET /api/v1/values/read) returns the whole sub-tree
-// with inline metadata, so this is one request per root rather than the
-// list-then-get-each pass venue.skills.list() performs — and unlike that
-// listing it is not limited to direct children.
+/** The skills in one skillset (e.g. `w/skills`). */
+export function skillsFromSkillset(dir: unknown, source: SkillSource, path: string): SkillSummary[] {
+  return firstWins(skillsetMembers(dir, path), source);
+}
+
+/** The skills in a directory of skillsets (`v/skills`): each key is one
+ *  skillset. `root` (the venue's default entry skillset) is listed first so
+ *  an entry point keeps its root/ address; the rest follow in key order. */
+export function skillsFromSkillsets(dir: unknown, source: SkillSource, path: string): SkillSummary[] {
+  const map = record(dir);
+  if (!map) return [];
+  const sets = Object.keys(map).sort((a, b) => Number(b === "root") - Number(a === "root") || a.localeCompare(b));
+  return firstWins(sets.flatMap((set) => skillsetMembers(map[set], `${path}/${set}`)), source);
+}
+
+// Every skill in the venue's skillsets (v/skills/*) and the caller's own
+// w/skills. One job-free values read per root (GET /api/v1/values/read)
+// returns the sub-tree with inline metadata, so this is one request per root
+// rather than invoking skills:list, which would create a job per call.
 export async function listAllSkills(venue: Venue): Promise<SkillSummary[]> {
   const [venueTree, userTree] = await Promise.all([
     venue.workspace.read("v/skills").then((r) => r.value),
     venue.workspace.read("w/skills").then((r) => r.value).catch(() => null),
   ]);
   return [
-    ...skillsFromTree(venueTree, "venue", "v/skills"),
-    ...skillsFromTree(userTree, "user", "w/skills"),
+    ...skillsFromSkillsets(venueTree, "venue", "v/skills"),
+    ...skillsFromSkillset(userTree, "user", "w/skills"),
   ];
+}
+
+/** Every string an agent's `skills` array might name this skill by. */
+function skillAliases(skill: SkillSummary): Set<string> {
+  return new Set(
+    [skill.path, ...(skill.aliases ?? []), skill.reference, skill.name, skill.key].filter(
+      (value): value is string => Boolean(value),
+    ),
+  );
 }
 
 export function agentUsesSkill(config: unknown, skill: SkillSummary): boolean {
   const values = record(config)?.skills;
   if (!Array.isArray(values)) return false;
-  const candidates = new Set([skill.path, skill.reference, skill.name, skill.key].filter(Boolean));
+  const candidates = skillAliases(skill);
   return values.some((value) => typeof value === "string" && candidates.has(value));
 }
 
@@ -191,7 +232,7 @@ export function agentUsesSkill(config: unknown, skill: SkillSummary): boolean {
 // to strip all of them, not just the one the picker happens to display;
 // attaching always (re-)adds the canonical `path`.
 export function withSkillToggled(skills: string[], skill: SkillSummary, attached: boolean): string[] {
-  const candidates = new Set([skill.path, skill.reference, skill.name, skill.key].filter(Boolean));
+  const candidates = skillAliases(skill);
   const next = skills.filter((value) => !candidates.has(value));
   return attached ? [...next, skill.path] : next;
 }
