@@ -6,7 +6,7 @@ import { Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCopyFeedback } from "@/hooks/use-copy-feedback";
 import { cn } from "@/lib/utils";
-import { highlightCode, supportedShikiLanguage } from "@/lib/shiki";
+import { supportedShikiLanguage } from "@/lib/shiki-languages";
 
 type ShikiCodeBlockProps = {
   code: string;
@@ -39,9 +39,14 @@ export function ShikiCodeBlock({
       active = false;
     };
 
-    void highlightCode(code, supportedLanguage).then((result) => {
-      if (active) setHighlighted({ key: highlightKey, html: result });
-    });
+    // The highlighter loads on first use, not with the page (#473); until it
+    // resolves, the plain <pre> below is what shows.
+    void import("@/lib/shiki")
+      .then(({ highlightCode }) => highlightCode(code, supportedLanguage))
+      .catch(() => null)
+      .then((result) => {
+        if (active) setHighlighted({ key: highlightKey, html: result });
+      });
     return () => {
       active = false;
     };

@@ -7,7 +7,7 @@ import { Bot, BookOpenCheck, ChevronLeft, Copy, Loader2, Pencil, Plus, Search, T
 import { cn } from "@/lib/utils";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
-import { MarkdownMessage } from "@/components/MarkdownMessage";
+import { LazyMarkdownMessage } from "@/components/LazyMarkdownMessage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -301,7 +301,7 @@ export function SkillsLibrary() {
 
                 <section className="py-5">
                   {library.detail.body ? (
-                    <MarkdownMessage className="text-[15px] leading-7">{library.detail.body}</MarkdownMessage>
+                    <LazyMarkdownMessage className="text-[15px] leading-7">{library.detail.body}</LazyMarkdownMessage>
                   ) : (
                     <p className="text-sm text-muted-foreground">This skill has no separate instruction body.</p>
                   )}
