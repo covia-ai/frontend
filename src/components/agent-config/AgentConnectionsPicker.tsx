@@ -78,7 +78,7 @@ export function AgentConnectionsPicker({ venue, attachedSkills, onToggleSkill }:
   const isAttached = useCallback(
     (service: ConnectionService) => {
       const s = summaryFor(service);
-      const aliases = [s.path, s.reference, s.name, s.key].filter(Boolean) as string[];
+      const aliases = [s.path, ...(s.aliases ?? []), s.reference, s.name, s.key].filter(Boolean) as string[];
       return aliases.some((a) => attachedSkills.includes(a));
     },
     [attachedSkills, summaryFor],

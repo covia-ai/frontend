@@ -15,36 +15,45 @@ const mockVenue: any = {
   venueId: "venue-1",
   baseUrl: "https://venue.example",
   workspace: {
-    // The venue returns the whole v/skills sub-tree in one job-free read; a
-    // node carrying the `skill` facet is a skill, anything else is a container
-    // to descend into (frontend#351).
+    // The venue returns the whole v/skills sub-tree in one job-free read.
+    // v/skills holds skillsets, each read one level deep (frontend#351,
+    // frontend#482).
     read: jest.fn((path: string) => Promise.resolve(path === "v/skills"
       ? {
           exists: true,
           value: {
+            root: {
+              agents: {
+                name: "Agent skills",
+                description: "Manage agents safely.",
+                content: { inline: "## Agent workflow\nUse explicit tools." },
+                skill: { tools: ["v/ops/agent/list"] },
+              },
+              // A name keyLook maps to its own concept (building → create).
+              building: {
+                name: "Building agents",
+                description: "Assemble agents from operations.",
+                content: { inline: "## Build\nCompose operations." },
+                skill: {},
+              },
+              // An unmapped name → the skill-glyph fallback tile (never blank).
+              "zzz-unmapped": {
+                name: "Zulu miscellany",
+                description: "An unmapped skill name.",
+                content: { inline: "## Misc" },
+                skill: {},
+              },
+            },
+            // The agents family re-lists the root entry point (a mirror).
             agents: {
-              name: "Agent skills",
-              description: "Manage agents safely.",
-              content: { inline: "## Agent workflow\nUse explicit tools." },
-              skill: { tools: ["v/ops/agent/list"] },
+              agents: {
+                name: "Agent skills",
+                description: "Manage agents safely.",
+                content: { inline: "## Agent workflow\nUse explicit tools." },
+                skill: { tools: ["v/ops/agent/list"] },
+              },
             },
-            // A name keyLook maps to its own concept (building → create).
-            building: {
-              name: "Building agents",
-              description: "Assemble agents from operations.",
-              content: { inline: "## Build\nCompose operations." },
-              skill: {},
-            },
-            // An unmapped name → the skill-glyph fallback tile (never blank).
-            "zzz-unmapped": {
-              name: "Zulu miscellany",
-              description: "An unmapped skill name.",
-              content: { inline: "## Misc" },
-              skill: {},
-            },
-            // A container, not a skill: no facet of its own, children one
-            // level down. The old direct-children listing showed this as a
-            // description-less skill and hid what was inside it.
+            // Another skillset: its members are skills one level down.
             connections: {
               sentry: {
                 name: "Sentry",
@@ -66,7 +75,9 @@ const mockVenue: any = {
     info: jest.fn().mockResolvedValue({
       agentId: "manager",
       status: "SLEEPING",
-      config: { skills: ["v/skills/agents"] },
+      // A template-style family path; the skill is listed at root/agents and
+      // still matches through its aliases.
+      config: { skills: ["v/skills/agents/agents"] },
     }),
   },
   operations: { run: jest.fn(), invoke: jest.fn() },

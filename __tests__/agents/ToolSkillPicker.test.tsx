@@ -35,12 +35,15 @@ const mockVenue: any = {
       if (path === "v/skills") {
         return Promise.resolve({
           exists: true,
+          // v/skills holds skillsets; skills sit one level down (frontend#482).
           value: {
-            summarizer: {
-              name: "Summarizer",
-              description: "Summarize text",
-              content: { inline: "Do the thing" },
-              skill: {},
+            root: {
+              summarizer: {
+                name: "Summarizer",
+                description: "Summarize text",
+                content: { inline: "Do the thing" },
+                skill: {},
+              },
             },
           },
         });
@@ -112,7 +115,7 @@ describe("ToolSkillPicker", () => {
   });
 
   it("lists skills with a source badge and reflects attached skills, toggling calls onToggleSkill", async () => {
-    const { user, onToggleSkill } = await openSheet({ attachedSkills: ["v/skills/summarizer"] });
+    const { user, onToggleSkill } = await openSheet({ attachedSkills: ["v/skills/root/summarizer"] });
     await user.click(screen.getByRole("tab", { name: /^Skills/ }));
 
     expect(await screen.findByText("Summarizer")).toBeInTheDocument();
@@ -121,7 +124,7 @@ describe("ToolSkillPicker", () => {
 
     await user.click(screen.getByRole("checkbox", { name: "Attach Summarizer" }));
     expect(onToggleSkill).toHaveBeenCalledWith(
-      expect.objectContaining({ path: "v/skills/summarizer" }),
+      expect.objectContaining({ path: "v/skills/root/summarizer" }),
       false,
     );
   });
