@@ -19,8 +19,10 @@ No page heading, no venue calls, no auth dependency. Two defects: the thumbnail 
 Three bands. The demo reel is new and leads; everything that was there survives below it.
 
 - **Heading** — `PageHeading` ("The Covia **Resources library**"). Net new.
-- **The demo reel** — thirteen clips recorded against a live venue, each proving one claim. Audience chips (*All · Investor · CTO · CISO · Partners · Board · Developers*) filter the grid; a card carries a poster, its own runtime, the clip's claim, its audiences, and a marker where a second cut exists. Clicking opens a player dialog.
-- **The preserved band** — the three YouTube cards and the Discord and Documentation cards, unchanged in content.
+- **The demo reel** — thirteen clips recorded against a live venue, each proving one claim. Audience chips (*All · CTO · CISO · Partners · Developers*) filter the grid; a card carries a poster, its own runtime, the clip's claim, its audiences, and a marker where a second cut exists.
+
+Every audience a clip carries is shown on its card, because the tags say who the clip was written for. Only some are worth a chip: Investor and Board stay off, being rooms we walk someone into rather than ones they browse from, and a chip per room turns the one control that matters into a row of seven. Nothing becomes unreachable, and a test asserts that, so a future clip tagged only for investors fails the suite rather than hiding behind *All*. Clicking opens a player dialog.
+- **The preserved band** — the three YouTube cards and the Discord and Documentation cards. Content unchanged; the videos gain audience tags in the same vocabulary as the reel, so every video on the page is tagged rather than only the ones that arrive with a manifest. Their fixed heights became minimums to make room.
 
 ### The cut switcher
 
@@ -52,10 +54,11 @@ Real `<track>` over WebVTT sidecars, not burned-in captions: viewer-togglable, O
 | *(nothing)* | **added:** page heading · 13-clip reel · audience filter · player dialog · cut switcher · captions |
 | *(defect)* row overflowed below ~900px | **fixed:** wraps |
 | *(defect)* cards not keyboard-reachable | **fixed:** real buttons, focus ring |
+| *(nothing)* | **added:** audience tags on the three videos |
 
 ## 5. Testing
 
-`demo-reel-manifest.test` (shape, the eight clips with a second cut, media paths, runtime formatting, cross-origin detection), `ReelGrid.test` (filtering, order, per-clip runtimes, keyboard selection), `ReelPlayer.test` (switcher gating, source **and** track swap, playhead restored, resume only if it was playing, clamped to the new duration, captions enabled), `VideoThumbnails.test` (the superset guard — the three ids, their targets, the wider middle card, wrapping, focusability).
+`demo-reel-manifest.test` (shape, the eight clips with a second cut, media paths, runtime formatting, cross-origin detection), `ReelGrid.test` (filtering, the chips offered, audiences kept on cards, order, per-clip runtimes, keyboard selection), `ReelPlayer.test` (switcher gating, source **and** track swap, playhead restored, resume only if it was playing, clamped to the new duration, captions enabled), `VideoThumbnails.test` (the superset guard — the three ids, their targets, the wider middle card, wrapping, focusability, the new audience tags, and that the cards can grow past their minimum height).
 
 Full suite **181 suites / 1350 tests** green; `next build` clean; `eslint` clean. Live-verified signed out on `:3020` at 1440 / 768 / 375 — grid reflows 3→2→1, the preserved row wraps, the dialog and its switcher fit a 375px viewport — and the cut switch measured at **0.000s drift** when paused and seamless while playing.
 

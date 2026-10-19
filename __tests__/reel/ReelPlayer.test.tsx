@@ -63,6 +63,14 @@ describe('ReelPlayer', () => {
     expect(track()).toHaveAttribute('default');
   });
 
+  /** Both sides name a room, so neither label describes how the file was made. */
+  it('names each cut by who it is talking to', () => {
+    render(<ReelPlayer clip={BOTH_CUTS} onOpenChange={jest.fn()} />);
+    expect(screen.getByTestId('cut-narrated')).toHaveTextContent('Developer/CTO');
+    expect(screen.getByTestId('cut-ciso')).toHaveTextContent('CISO');
+    expect(screen.queryByText('Narrated')).not.toBeInTheDocument();
+  });
+
   it('shows the switcher only when there is a second cut', () => {
     const { unmount } = render(<ReelPlayer clip={BOTH_CUTS} onOpenChange={jest.fn()} />);
     expect(screen.getByTestId('cut-switcher')).toBeInTheDocument();

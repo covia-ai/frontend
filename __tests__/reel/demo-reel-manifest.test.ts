@@ -1,4 +1,5 @@
 import { DEMO_REEL } from '@/config/demo-reel';
+import { audiencesOf, unreachableClips } from '@/components/reel/ReelGrid';
 import { formatRuntime, reelIsCrossOrigin, reelMediaUrl, reelPosterUrl } from '@/lib/reel-media';
 
 /**
@@ -65,6 +66,24 @@ describe('demo reel manifest', () => {
       expect(clip).not.toHaveProperty('cuts.narrated.runtimeSec');
       expect(clip).not.toHaveProperty('cuts.ciso.runtimeSec');
     }
+  });
+
+  /**
+   * The page filters by CTO, CISO and Developers only. Investor, Partners and
+   * Board stay on the cards but are not chips, which is safe exactly as long as
+   * no clip is tagged *only* with those. A new clip for investors alone would
+   * be visible under All and unreachable under every chip — this catches it.
+   */
+  it('leaves no clip reachable only through an audience that is not a filter', () => {
+    expect(audiencesOf(DEMO_REEL)).toEqual(['CTO', 'CISO', 'Partners', 'Developers']);
+    expect(unreachableClips(DEMO_REEL).map((c) => c.slug)).toEqual([]);
+  });
+
+  /** Investor and Board are tags, not chips — but they are still on the cards. */
+  it('still tags clips for the rooms it does not filter by', () => {
+    const tagged = (audience: string) => DEMO_REEL.filter((c) => c.audiences.includes(audience));
+    expect(tagged('Investor').length).toBeGreaterThan(0);
+    expect(tagged('Board').length).toBeGreaterThan(0);
   });
 });
 

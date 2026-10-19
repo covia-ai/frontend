@@ -13,19 +13,41 @@ interface ReelGridProps {
 const ALL = "All";
 
 /**
- * Every audience named by at least one clip, in the order the suite names them.
+ * The audiences this page offers as filters.
  *
- * Derived rather than listed, so a clip written for a new audience appears in
- * the filter the moment the manifest is regenerated.
+ * Every audience a clip carries is shown on its card, because the tags say who
+ * the clip was written for. Only some of them are worth a chip: the people who
+ * actually arrive at this page come to it as a builder, a risk owner or someone
+ * integrating, and a chip per room turns the one control that matters into a
+ * row of seven. Investor and Board stay off for that reason — both are rooms we
+ * walk someone into, not ones they browse from.
+ *
+ * Nothing becomes unreachable. Every clip tagged Investor or Board is also
+ * tagged CTO or CISO, and `unreachableClips` is asserted against the manifest
+ * so that stays true as clips are added.
+ */
+const FILTER_AUDIENCES = ["CTO", "CISO", "Partners", "Developers"];
+
+/**
+ * The filterable audiences named by at least one clip, in suite order.
+ *
+ * Still derived from the clips rather than listed outright, so a filter never
+ * appears for an audience no clip actually carries.
  */
 export function audiencesOf(clips: ReelClip[]): string[] {
   const seen: string[] = [];
   for (const clip of clips) {
     for (const audience of clip.audiences) {
-      if (!seen.includes(audience)) seen.push(audience);
+      if (FILTER_AUDIENCES.includes(audience) && !seen.includes(audience)) seen.push(audience);
     }
   }
   return seen;
+}
+
+/** Whether every clip can still be reached from the filters on offer. */
+export function unreachableClips(clips: ReelClip[]): ReelClip[] {
+  const offered = audiencesOf(clips);
+  return clips.filter((clip) => !clip.audiences.some((a) => offered.includes(a)));
 }
 
 export function filterByAudience(clips: ReelClip[], audience: string): ReelClip[] {

@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
-import { ReelGrid, audiencesOf, filterByAudience } from '@/components/reel/ReelGrid';
+import { ReelGrid, audiencesOf, filterByAudience, unreachableClips } from '@/components/reel/ReelGrid';
 import type { ReelClip } from '@/config/demo-reel';
 
 const CLIPS: ReelClip[] = [
@@ -24,8 +24,13 @@ const CLIPS: ReelClip[] = [
 ];
 
 describe('audience filtering', () => {
-  it('lists each audience once, in the order the suite names them', () => {
-    expect(audiencesOf(CLIPS)).toEqual(['Investor', 'CISO', 'Developers']);
+  it('offers only the audiences this page filters by, in suite order', () => {
+    // n6 is tagged Investor and CISO; Investor is not a filter on this page.
+    expect(audiencesOf(CLIPS)).toEqual(['CISO', 'Developers']);
+  });
+
+  it('still reaches every clip from the filters on offer', () => {
+    expect(unreachableClips(CLIPS)).toEqual([]);
   });
 
   it('All keeps everything; a named audience keeps only its clips', () => {
@@ -43,6 +48,25 @@ describe('ReelGrid', () => {
       'reel-card-n6-day-on-the-grid',
       'reel-card-c5-sdk-job',
     ]);
+  });
+
+  it('offers no chip for an audience this page does not filter by', () => {
+    render(<ReelGrid clips={CLIPS} onSelect={jest.fn()} />);
+    expect(screen.queryByTestId('reel-filter-investor')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('reel-filter-board')).not.toBeInTheDocument();
+  });
+
+  it('offers Partners as a chip wherever a clip carries it', () => {
+    const withPartners: ReelClip[] = [...CLIPS, { ...CLIPS[1], slug: 'n5', audiences: ['Partners'] }];
+    expect(audiencesOf(withPartners)).toEqual(['CISO', 'Developers', 'Partners']);
+    render(<ReelGrid clips={withPartners} onSelect={jest.fn()} />);
+    expect(screen.getByTestId('reel-filter-partners')).toBeInTheDocument();
+  });
+
+  /** The chip is gone; the tag still describes the clip on its card. */
+  it('keeps the audience on the card even when it is not a filter', () => {
+    render(<ReelGrid clips={CLIPS} onSelect={jest.fn()} />);
+    expect(screen.getByText('Investor')).toBeInTheDocument();
   });
 
   it('narrows to one audience and back', async () => {

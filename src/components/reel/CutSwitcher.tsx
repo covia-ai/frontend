@@ -3,9 +3,16 @@
 import type { ReelCutId } from "@/config/demo-reel";
 import { cn } from "@/lib/utils";
 
-/** What each cut is called on screen, and what it is for. */
+/**
+ * What each cut is called on screen, and what it is for.
+ *
+ * Named by the room rather than by the artifact. "Narrated" described how the
+ * cut was made, which told a viewer nothing and read oddly beside "CISO", a
+ * label that names an audience. Both now answer the same question: who is this
+ * one talking to?
+ */
 export const CUT_LABELS: Record<ReelCutId, { label: string; hint: string }> = {
-  narrated: { label: "Narrated", hint: "The clip as it ships" },
+  narrated: { label: "Developer/CTO", hint: "Told to whoever builds and runs the system" },
   ciso: { label: "CISO", hint: "The same picture, told to whoever owns the risk" },
 };
 

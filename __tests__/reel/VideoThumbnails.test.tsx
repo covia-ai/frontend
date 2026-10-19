@@ -13,9 +13,21 @@ import { VideoThumbnails } from '@/components/VideoThumbnails';
  * that calls it one.
  */
 const EXPECTED = [
-  { id: 'b0HwKymJbnA', title: 'Covia.ai App Demo showing federated orchestration' },
-  { id: '5FtCG8bYS3w', title: 'Covia.ai Venue Operation with Gemini Demo' },
-  { id: 'qgfCdKwG4Rs', title: 'Covia.ai multi-agent coordination and agentic economics' },
+  {
+    id: 'b0HwKymJbnA',
+    title: 'Covia.ai App Demo showing federated orchestration',
+    audiences: ['CTO', 'Partners'],
+  },
+  {
+    id: '5FtCG8bYS3w',
+    title: 'Covia.ai Venue Operation with Gemini Demo',
+    audiences: ['Developers', 'CTO'],
+  },
+  {
+    id: 'qgfCdKwG4Rs',
+    title: 'Covia.ai multi-agent coordination and agentic economics',
+    audiences: ['Investor', 'CTO', 'Partners'],
+  },
 ];
 
 describe('VideoThumbnails (preserved from the original page)', () => {
@@ -40,6 +52,28 @@ describe('VideoThumbnails (preserved from the original page)', () => {
       );
     }
     open.mockRestore();
+  });
+
+  it('tags each video with its audience, as the reel cards above do', () => {
+    render(<VideoThumbnails />);
+    for (const { title, audiences } of EXPECTED) {
+      const card = screen.getByRole('button', { name: `Watch on YouTube: ${title}` });
+      const tags = Array.from(card.querySelectorAll('[data-slot="badge"]')).map(
+        (e) => e.textContent?.trim(),
+      );
+      expect(tags).toEqual(audiences);
+    }
+  });
+
+  /** Fixed heights would clip the new tag row, so the cards grew a minimum. */
+  it('lets a card grow past its minimum height', () => {
+    render(<VideoThumbnails />);
+    for (const card of screen.getAllByRole('button')) {
+      const classes = card.className.split(/\s+/);
+      expect(classes).not.toContain('h-60');
+      expect(classes).not.toContain('h-68');
+      expect(classes.some((c) => c === 'min-h-60' || c === 'min-h-68')).toBe(true);
+    }
   });
 
   it('keeps the middle card wider than its neighbours', () => {
