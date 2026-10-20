@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { DEMO_REEL, type ReelClip } from "@/config/demo-reel";
+import { DEMO_REEL, type ReelClip, type ReelCutId } from "@/config/demo-reel";
 import { ReelGrid } from "./ReelGrid";
 import { ReelPlayer } from "./ReelPlayer";
 
@@ -19,7 +19,7 @@ interface ReelSectionProps {
  * beyond thirteen posters that are lazy by default.
  */
 export function ReelSection({ clips = DEMO_REEL }: ReelSectionProps) {
-  const [playing, setPlaying] = useState<ReelClip | null>(null);
+  const [playing, setPlaying] = useState<{ clip: ReelClip; cut: ReelCutId } | null>(null);
 
   if (clips.length === 0) return null;
 
@@ -35,8 +35,15 @@ export function ReelSection({ clips = DEMO_REEL }: ReelSectionProps) {
         </p>
       </div>
 
-      <ReelGrid clips={clips} onSelect={setPlaying} />
-      <ReelPlayer clip={playing} onOpenChange={(open) => !open && setPlaying(null)} />
+      <ReelGrid
+        clips={clips}
+        onSelect={(clip, cut = "narrated") => setPlaying({ clip, cut })}
+      />
+      <ReelPlayer
+        clip={playing?.clip ?? null}
+        initialCut={playing?.cut}
+        onOpenChange={(open) => !open && setPlaying(null)}
+      />
     </section>
   );
 }

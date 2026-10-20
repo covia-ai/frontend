@@ -12,14 +12,19 @@ import { cn } from "@/lib/utils";
  * label that names an audience. Both now answer the same question: who is this
  * one talking to?
  */
-export const CUT_LABELS: Record<ReelCutId, { label: string; hint: string; Icon: typeof Code2 }> = {
+export const CUT_LABELS: Record<
+  ReelCutId,
+  { label: string; long: string; hint: string; Icon: typeof Code2 }
+> = {
   narrated: {
     label: "Developer/CTO",
+    long: "For Developers & CTOs",
     hint: "Told to whoever builds and runs the system",
     Icon: Code2,
   },
   ciso: {
     label: "CISO",
+    long: "For CISOs",
     hint: "The same picture, told to whoever owns the risk",
     Icon: ShieldCheck,
   },
@@ -34,12 +39,13 @@ interface CutSwitcherProps {
 /**
  * Choose which voice is telling the clip.
  *
- * The first version was a bare segmented control sitting at the end of a row of
- * metadata, and it read as two words rather than as something you could press —
- * people did not discover the second cut at all. So it now says what it is
- * ("Narrated for"), carries an icon per audience, sits in a visible frame, and
- * gives the unselected side a hover state, which is the thing that actually
- * signals "this is a control" on a first look.
+ * Two earlier versions sat *under* the picture — first as a bare segmented
+ * pair, then as a labelled one — and neither was read as a control, because
+ * something placed after the thing it modifies reads as a caption about it.
+ * So these are tabs, above the video: the one pattern everybody already
+ * understands as "there are two versions of this", met before you press play
+ * rather than after. The selected tab is filled violet as well as underlined,
+ * so which one you are on survives a glance.
  *
  * Only rendered when a clip has both cuts, which is eight of the thirteen. On
  * the other five there is no control at all rather than a disabled one: a
@@ -50,50 +56,41 @@ export function CutSwitcher({ available, value, onChange }: CutSwitcherProps) {
   if (available.length < 2) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-      <span
-        className="text-muted-foreground text-xs font-medium tracking-wide uppercase"
-        id="cut-switcher-label"
-      >
-        Narrated for
-      </span>
-
-      <div
-        className="bg-muted/60 inline-flex gap-1 rounded-lg border p-1"
-        role="radiogroup"
-        aria-labelledby="cut-switcher-label"
-        data-testid="cut-switcher"
-      >
-        {available.map((cut) => {
-          const { label, hint, Icon } = CUT_LABELS[cut];
-          const selected = cut === value;
-          return (
-            <button
-              key={cut}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              title={hint}
-              data-testid={`cut-${cut}`}
-              onClick={() => onChange(cut)}
-              className={cn(
-                "flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors",
-                "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-hidden",
-                selected
-                  ? "bg-background text-foreground ring-border shadow-sm ring-1"
-                  : "text-muted-foreground hover:bg-background/70 hover:text-foreground",
-              )}
-            >
-              <Icon size={14} aria-hidden="true" />
-              {label}
-            </button>
-          );
-        })}
-      </div>
-
-      <span className="text-muted-foreground/80 w-full text-xs sm:w-auto">
-        Same clip, two voices.
-      </span>
+    <div
+      className="flex border-b"
+      role="tablist"
+      aria-label="Choose a narration"
+      data-testid="cut-switcher"
+    >
+      {available.map((cut) => {
+        const { long, label, hint, Icon } = CUT_LABELS[cut];
+        const selected = cut === value;
+        return (
+          <button
+            key={cut}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            title={hint}
+            data-testid={`cut-${cut}`}
+            onClick={() => onChange(cut)}
+            className={cn(
+              "-mb-px flex cursor-pointer items-center gap-2 rounded-t-md border-b-2 px-4 py-2.5 text-sm transition-colors",
+              "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-hidden",
+              selected
+                ? "bg-icon-violet/20 text-icon-violet border-icon-violet font-medium"
+                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground border-transparent",
+            )}
+          >
+            <Icon size={15} aria-hidden="true" />
+            {/* The long form says who it is for; the short form is all that
+                fits on a phone, where the tab row is already two thirds of
+                the dialog's width. */}
+            <span className="hidden sm:inline">{long}</span>
+            <span className="sm:hidden">{label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

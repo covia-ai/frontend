@@ -100,9 +100,27 @@ describe('ReelGrid', () => {
     expect(screen.getByText('1:02')).toBeInTheDocument();
   });
 
-  it('marks only the clips that have a second cut', () => {
+  /**
+   * D: the second cut is announced on the card, so it is discoverable without
+   * opening anything, and each side opens the clip straight into that voice.
+   */
+  it('offers both voices on a two-cut card, and none on a one-cut card', () => {
     render(<ReelGrid clips={CLIPS} onSelect={jest.fn()} />);
-    expect(screen.getAllByText('CISO cut')).toHaveLength(1);
+    expect(screen.getByTestId('reel-cuts-n6-day-on-the-grid')).toBeInTheDocument();
+    expect(screen.queryByTestId('reel-cuts-c5-sdk-job')).not.toBeInTheDocument();
+    expect(screen.getByText('Watch narrated for')).toBeInTheDocument();
+  });
+
+  it('opens the clip in the voice the card names', async () => {
+    const onSelect = jest.fn();
+    const user = userEvent.setup();
+    render(<ReelGrid clips={CLIPS} onSelect={onSelect} />);
+
+    await user.click(screen.getByTestId('reel-cut-n6-day-on-the-grid-ciso'));
+    expect(onSelect).toHaveBeenLastCalledWith(CLIPS[0], 'ciso');
+
+    await user.click(screen.getByTestId('reel-cut-n6-day-on-the-grid-narrated'));
+    expect(onSelect).toHaveBeenLastCalledWith(CLIPS[0], 'narrated');
   });
 
   it('hands the chosen clip back, from a keyboard as readily as a mouse', async () => {
@@ -110,10 +128,10 @@ describe('ReelGrid', () => {
     const user = userEvent.setup();
     render(<ReelGrid clips={CLIPS} onSelect={onSelect} />);
 
-    await user.click(screen.getByTestId('reel-card-c5-sdk-job'));
+    await user.click(screen.getByTestId('reel-open-c5-sdk-job'));
     expect(onSelect).toHaveBeenCalledWith(CLIPS[1]);
 
-    screen.getByTestId('reel-card-n6-day-on-the-grid').focus();
+    screen.getByTestId('reel-open-n6-day-on-the-grid').focus();
     await user.keyboard('{Enter}');
     expect(onSelect).toHaveBeenLastCalledWith(CLIPS[0]);
   });

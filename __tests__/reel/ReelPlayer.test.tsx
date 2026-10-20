@@ -78,14 +78,13 @@ describe('ReelPlayer', () => {
   it('presents the cuts as a labelled choice rather than two words', () => {
     render(<ReelPlayer clip={BOTH_CUTS} onOpenChange={jest.fn()} />);
 
-    const group = screen.getByTestId('cut-switcher');
-    expect(group).toHaveAttribute('role', 'radiogroup');
-    expect(group).toHaveAccessibleName('Narrated for');
+    const tabs = screen.getByTestId('cut-switcher');
+    expect(tabs).toHaveAttribute('role', 'tablist');
 
     const selected = screen.getByTestId('cut-narrated');
-    expect(selected).toHaveAttribute('role', 'radio');
-    expect(selected).toHaveAttribute('aria-checked', 'true');
-    expect(screen.getByTestId('cut-ciso')).toHaveAttribute('aria-checked', 'false');
+    expect(selected).toHaveAttribute('role', 'tab');
+    expect(selected).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByTestId('cut-ciso')).toHaveAttribute('aria-selected', 'false');
 
     // The unselected side must look pressable, which is what a first-time
     // viewer actually reads as "this does something".
@@ -93,17 +92,39 @@ describe('ReelPlayer', () => {
     expect(screen.getByTestId('cut-ciso').className).toContain('cursor-pointer');
   });
 
-  it('says in words that a second voice exists', () => {
+  /** Violet fill as well as the underline, so a glance says which tab is on. */
+  it('fills the selected tab rather than only underlining it', () => {
     render(<ReelPlayer clip={BOTH_CUTS} onOpenChange={jest.fn()} />);
-    expect(screen.getByText('Same clip, two voices.')).toBeInTheDocument();
+    expect(screen.getByTestId('cut-narrated').className).toContain('bg-icon-violet');
+    expect(screen.getByTestId('cut-ciso').className).not.toContain('bg-icon-violet/20');
   });
 
-  it('keeps aria-checked in step with the chosen cut', async () => {
+  /** Tabs belong above the picture: below it they read as a caption about it. */
+  it('puts the tabs before the video in document order', () => {
+    render(<ReelPlayer clip={BOTH_CUTS} onOpenChange={jest.fn()} />);
+    const tabs = screen.getByTestId('cut-switcher');
+    const position = tabs.compareDocumentPosition(screen.getByTestId('reel-video'));
+    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('keeps aria-selected in step with the chosen cut', async () => {
     const user = userEvent.setup();
     render(<ReelPlayer clip={BOTH_CUTS} onOpenChange={jest.fn()} />);
     await user.click(screen.getByTestId('cut-ciso'));
-    expect(screen.getByTestId('cut-ciso')).toHaveAttribute('aria-checked', 'true');
-    expect(screen.getByTestId('cut-narrated')).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByTestId('cut-ciso')).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByTestId('cut-narrated')).toHaveAttribute('aria-selected', 'false');
+  });
+
+  /** The grid card can ask for a voice by name; the player must honour it. */
+  it('opens on the cut it was asked for', () => {
+    render(<ReelPlayer clip={BOTH_CUTS} initialCut="ciso" onOpenChange={jest.fn()} />);
+    expect(video()).toHaveAttribute('src', '/reel-media/c1-the-refusal/ciso.mp4');
+    expect(screen.getByTestId('cut-ciso')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('falls back to the narrated cut when asked for one the clip lacks', () => {
+    render(<ReelPlayer clip={ONE_CUT} initialCut="ciso" onOpenChange={jest.fn()} />);
+    expect(video()).toHaveAttribute('src', '/reel-media/c5-sdk-job/narrated.mp4');
   });
 
   it('shows the switcher only when there is a second cut', () => {

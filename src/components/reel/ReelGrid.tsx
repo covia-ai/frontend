@@ -1,14 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { ReelClip } from "@/config/demo-reel";
+import type { ReelClip, ReelCutId } from "@/config/demo-reel";
 import { ReelCard } from "./ReelCard";
 import { Button } from "@/components/ui/button";
 import { publicAudiences } from "@/lib/reel-audiences";
 
 interface ReelGridProps {
   clips: ReelClip[];
-  onSelect: (clip: ReelClip) => void;
+  onSelect: (clip: ReelClip, cut?: ReelCutId) => void;
 }
 
 const ALL = "All";

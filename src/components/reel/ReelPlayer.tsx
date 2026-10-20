@@ -16,6 +16,8 @@ import {
 
 interface ReelPlayerProps {
   clip: ReelClip | null;
+  /** Which voice to open on, when the grid card asked for one by name. */
+  initialCut?: ReelCutId;
   onOpenChange: (open: boolean) => void;
 }
 
@@ -33,18 +35,19 @@ export function cutsOf(clip: ReelClip): ReelCutId[] {
  * refuses to emit a pair whose durations disagree, which is what makes
  * restoring the playhead safe to do blind.
  */
-export function ReelPlayer({ clip, onOpenChange }: ReelPlayerProps) {
-  const [cut, setCut] = useState<ReelCutId>("narrated");
+export function ReelPlayer({ clip, initialCut = "narrated", onOpenChange }: ReelPlayerProps) {
+  const [cut, setCut] = useState<ReelCutId>(initialCut);
   const videoRef = useRef<HTMLVideoElement>(null);
   /** Where to land once the newly chosen cut has loaded. */
   const resumeRef = useRef<{ time: number; playing: boolean } | null>(null);
 
-  // A fresh clip always starts in its own voice; carrying the previous clip's
-  // choice over would silently open a CISO cut for someone who picked it once.
+  // A fresh clip opens on the voice it was asked for — the grid card can name
+  // one — and never on the voice left over from the previous clip, which would
+  // silently hand someone a CISO cut because they picked it once.
   useEffect(() => {
-    if (clip) setCut("narrated");
+    if (clip) setCut(clip.cuts[initialCut] ? initialCut : "narrated");
     resumeRef.current = null;
-  }, [clip]);
+  }, [clip, initialCut]);
 
   const changeCut = useCallback((next: ReelCutId) => {
     const video = videoRef.current;
@@ -92,6 +95,10 @@ export function ReelPlayer({ clip, onOpenChange }: ReelPlayerProps) {
           <DialogDescription className="text-sm">{clip.claim}</DialogDescription>
         </DialogHeader>
 
+        {/* Above the picture, not below it: a control placed after the thing
+            it modifies reads as a caption about it. */}
+        <CutSwitcher available={cutsOf(clip)} value={cut} onChange={changeCut} />
+
         <video
           ref={videoRef}
           // Keyed on the clip only. Changing the cut must update `src` on the
@@ -119,11 +126,6 @@ export function ReelPlayer({ clip, onOpenChange }: ReelPlayerProps) {
             default
           />
         </video>
-
-        {/* Directly under the picture and on its own line. At the end of the
-            metadata row it was the last thing on screen anyone looked at, and
-            the second cut went undiscovered. */}
-        <CutSwitcher available={cutsOf(clip)} value={cut} onChange={changeCut} />
 
         <div className="flex flex-wrap items-center gap-2">
           {publicAudiences(clip.audiences).map((audience) => (
