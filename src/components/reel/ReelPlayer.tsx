@@ -119,18 +119,20 @@ export function ReelPlayer({ clip, onOpenChange }: ReelPlayerProps) {
           />
         </video>
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            {clip.audiences.map((audience) => (
-              <Badge key={audience} variant="outline" className="text-xs font-normal">
-                {audience}
-              </Badge>
-            ))}
-            <span className="text-muted-foreground font-mono text-xs tabular-nums">
-              {formatRuntime(clip.runtimeSec)}
-            </span>
-          </div>
-          <CutSwitcher available={cutsOf(clip)} value={cut} onChange={changeCut} />
+        {/* Directly under the picture and on its own line. At the end of the
+            metadata row it was the last thing on screen anyone looked at, and
+            the second cut went undiscovered. */}
+        <CutSwitcher available={cutsOf(clip)} value={cut} onChange={changeCut} />
+
+        <div className="flex flex-wrap items-center gap-2">
+          {clip.audiences.map((audience) => (
+            <Badge key={audience} variant="outline" className="text-xs font-normal">
+              {audience}
+            </Badge>
+          ))}
+          <span className="text-muted-foreground font-mono text-xs tabular-nums">
+            {formatRuntime(clip.runtimeSec)}
+          </span>
         </div>
 
         {clip.synopsis && <p className="text-muted-foreground text-sm">{clip.synopsis}</p>}

@@ -71,6 +71,41 @@ describe('ReelPlayer', () => {
     expect(screen.queryByText('Narrated')).not.toBeInTheDocument();
   });
 
+  /**
+   * The affordance, not the behaviour: as a bare pair of words at the end of a
+   * metadata row, nobody read this as something they could press.
+   */
+  it('presents the cuts as a labelled choice rather than two words', () => {
+    render(<ReelPlayer clip={BOTH_CUTS} onOpenChange={jest.fn()} />);
+
+    const group = screen.getByTestId('cut-switcher');
+    expect(group).toHaveAttribute('role', 'radiogroup');
+    expect(group).toHaveAccessibleName('Narrated for');
+
+    const selected = screen.getByTestId('cut-narrated');
+    expect(selected).toHaveAttribute('role', 'radio');
+    expect(selected).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByTestId('cut-ciso')).toHaveAttribute('aria-checked', 'false');
+
+    // The unselected side must look pressable, which is what a first-time
+    // viewer actually reads as "this does something".
+    expect(screen.getByTestId('cut-ciso').className).toMatch(/hover:/);
+    expect(screen.getByTestId('cut-ciso').className).toContain('cursor-pointer');
+  });
+
+  it('says in words that a second voice exists', () => {
+    render(<ReelPlayer clip={BOTH_CUTS} onOpenChange={jest.fn()} />);
+    expect(screen.getByText('Same clip, two voices.')).toBeInTheDocument();
+  });
+
+  it('keeps aria-checked in step with the chosen cut', async () => {
+    const user = userEvent.setup();
+    render(<ReelPlayer clip={BOTH_CUTS} onOpenChange={jest.fn()} />);
+    await user.click(screen.getByTestId('cut-ciso'));
+    expect(screen.getByTestId('cut-ciso')).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByTestId('cut-narrated')).toHaveAttribute('aria-checked', 'false');
+  });
+
   it('shows the switcher only when there is a second cut', () => {
     const { unmount } = render(<ReelPlayer clip={BOTH_CUTS} onOpenChange={jest.fn()} />);
     expect(screen.getByTestId('cut-switcher')).toBeInTheDocument();
