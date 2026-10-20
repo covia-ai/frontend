@@ -17,7 +17,7 @@ export const ADAPTIVE_RISK_BEATS: DemoBeat[] = [
     id: "silos",
     title: "1 · Two silos, one substrate",
     narration:
-      "rk-sentinel scans the applications and writes device and velocity signals into a shared ledger. It never calls the credit agent and does not know it exists.",
+      "rk-sentinel scans the applications and writes one signal per applicant into a shared ledger, flagging devices shared across applications and amounts out of line with the cohort. It never calls the credit agent and does not know it exists.",
     watch: "The signal ledger fills — a job record, not a message to another agent.",
   },
   {
