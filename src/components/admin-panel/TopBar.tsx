@@ -9,6 +9,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { DarkLightToggle } from "../DarkLightToggle";
 import { SmartBreadcrumb } from "../SmartBreadcrumb";
 import { VenueSubnav } from "@/components/VenueSubnav";
+import { TopBarOverflowMenu } from "@/components/admin-panel/TopBarOverflowMenu";
 import { Separator } from "../ui/separator";
 import { usePathname } from "next/navigation";
 import { docsLinkFor } from "@/lib/breadcrumbs";
@@ -52,10 +53,17 @@ export function TopBar(props: TopBarProps) {
                   <TooltipContent>View documentation for this page</TooltipContent>
                 </Tooltip>
               )}
+              {/* The HITL indicator and the bell stay inline at every width:
+                  both carry a count you are meant to notice without opening
+                  anything. The theme toggle is hidden rather than unmounted so
+                  its ctrl/cmd-X shortcut still works on a narrow window. */}
               <HitlIndicator />
               <NotificationBell />
-              <DarkLightToggle/>
+              <div className="hidden sm:block">
+                <DarkLightToggle/>
+              </div>
               <VenueSelector venueId={props.venueId} />
+              <TopBarOverflowMenu docsHref={docsHref} venueId={props.venueId} />
               <ChromeSignInButton venueId={props.venueId}/>
           </div>
         </div>
