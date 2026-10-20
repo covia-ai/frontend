@@ -1,28 +1,30 @@
 # Resources (/learning), Reimagined — design & build spec
 
-**Status:** built on `feat/learning-reel`. Direction approved.
+**Status:** built on `feat/learning-reel`, rebased onto current `develop`. Direction approved.
 **Series:** Jobs ✓ · Agents ✓ · Operations ✓ · Connections ✓ · Home ✓ · **Resources** → Venues · Workspace/Files
 
 One shared design system, on the app's own theme, every redesign a **strict superset** of what the page shows today (no detail lost).
 
-## 1. What Resources was
+> **Rebased.** This work was first written against a `develop` that predated `4e4f934`, "5A: reimagine the Resources / Learning page", which had already brought this page onto the design system. That branch duplicated some of it worse and contradicted it in one place, so its page scaffolding was dropped and the reel re-integrated on top of what landed. What this doc now describes is the reel *added to* the current Resources page, not a second redesign of it.
+
+## 1. What Resources is (as `develop` has it)
 
 `app/(demo)/learning/page.tsx` — a centred column inside `ContentLayout` + `TopBar`:
 
-- **`VideoThumbnails`** — three hard-coded YouTube ids, each a card with a thumbnail, a hover play overlay, a caption and a click that opens youtube.com. The middle card is deliberately wider.
-- A `Separator`, then **two cards** — *Covia AI Discord* and *Covia Documentation*.
+- **`VideoThumbnails`** — a reflowing grid driven by the `RESOURCE_VIDEOS` registry in `lib/resources.ts`, each video a real anchor to YouTube with a hover play affordance.
+- **Two link cards** — *Covia Labs Discord* and *Covia Documentation*, also real anchors, with brand-tinted `TypeTile`s.
+- A `PageHeading` ("Learn & build") and small-caps section headings ("Watch", "Read & connect").
 
-No page heading, no venue calls, no auth dependency. Two defects: the thumbnail row was a non-wrapping `flex-row` that overflowed below ~900px, and the cards were `div`s with click handlers, so unreachable from the keyboard.
+No venue calls and no auth dependency.
 
 ## 2. What Resources becomes
 
-Three bands. The demo reel is new and leads; everything that was there survives below it.
+The reel becomes a new "Demo reel" section above "Watch", titled in the page's own small-caps style. Everything already on the page stays exactly as it is.
 
-- **Heading** — `PageHeading` ("The Covia **Resources library**"). Net new.
 - **The demo reel** — thirteen clips recorded against a live venue, each proving one claim. Audience chips (*All · CTO · CISO · Partners · Developers*) filter the grid; a card carries a poster, its own runtime, the clip's claim, its audiences, and a marker where a second cut exists.
 
 Every audience a clip carries is shown on its card, because the tags say who the clip was written for. Only some are worth a chip: Investor and Board stay off, being rooms we walk someone into rather than ones they browse from, and a chip per room turns the one control that matters into a row of seven. Nothing becomes unreachable, and a test asserts that, so a future clip tagged only for investors fails the suite rather than hiding behind *All*. Clicking opens a player dialog.
-- **The preserved band** — the three YouTube cards and the Discord and Documentation cards. Content unchanged; the videos gain audience tags in the same vocabulary as the reel, so every video on the page is tagged rather than only the ones that arrive with a manifest. Their fixed heights became minimums to make room.
+- **The existing bands** — "Watch" and "Read & connect", untouched apart from one addition: the videos gain audience tags in the same vocabulary as the reel, carried on the registry as an optional `audiences` and rendered through `publicAudiences`, so every video on the page is tagged rather than only the ones that arrive with a manifest.
 
 ### The cut switcher
 
@@ -41,31 +43,27 @@ Real `<track>` over WebVTT sidecars, not burned-in captions: viewer-togglable, O
 - **`components/reel/`** — `ReelSection` (state), `ReelGrid` (filter + layout), `ReelCard`, `ReelPlayer` (dialog + playhead preservation), `CutSwitcher`. All presentational below `ReelSection`.
 - **Zero venue calls**, no job, no polling. The manifest is a module, posters are static, and a master is fetched only once someone presses play.
 
-## 4. Parity map (superset — nothing lost)
+## 4. What changes on the page (additive only)
 
-| Today | In the redesign |
+| On `develop` | After this branch |
 |---|---|
-| Three YouTube cards (3 fixed ids) | Same ids, titles, thumbnails, click-through |
-| Wider middle card | Preserved |
-| Hover play overlay + thumbnail fallback | Preserved |
-| Discord card → `discord.gg/fywdrKd8QT` | Unchanged |
-| Documentation card → `docs.covia.ai` | Unchanged |
-| Centred column, `ContentLayout` + `TopBar`, `Separator` | Unchanged |
-| *(nothing)* | **added:** page heading · 13-clip reel · audience filter · player dialog · cut switcher · captions |
-| *(defect)* row overflowed below ~900px | **fixed:** wraps |
-| *(defect)* cards not keyboard-reachable | **fixed:** real buttons, focus ring |
+| `PageHeading` "Learn & build" + subtitle | Unchanged |
+| "Watch" — registry-driven video grid, real anchors | Unchanged, plus an audience tag row per video |
+| "Read & connect" — Discord + Documentation cards | Unchanged |
+| `RESOURCE_VIDEOS` entries | Gain an optional `audiences` |
+| *(nothing)* | **added:** a "Demo reel" section — 13 clips, audience filter, player dialog, Developer/CTO · CISO tabs, real captions |
 | *(nothing)* | **added:** audience tags on the three videos |
 
 ## 5. Testing
 
-`demo-reel-manifest.test` (shape, the eight clips with a second cut, media paths, runtime formatting, cross-origin detection), `ReelGrid.test` (filtering, the chips offered, audiences kept on cards, order, per-clip runtimes, keyboard selection), `ReelPlayer.test` (switcher gating, source **and** track swap, playhead restored, resume only if it was playing, clamped to the new duration, captions enabled), `VideoThumbnails.test` (the superset guard — the three ids, their targets, the wider middle card, wrapping, focusability, the new audience tags, and that the cards can grow past their minimum height).
+`demo-reel-manifest.test` (shape, the eight clips with a second cut, media paths, runtime formatting, cross-origin detection), `ReelGrid.test` (filtering, the chips offered, audiences kept on cards, order, per-clip runtimes, keyboard selection), `ReelPlayer.test` (switcher gating, source **and** track swap, playhead restored, resume only if it was playing, clamped to the new duration, captions enabled), `resource-video-audiences.test` (the tags only, so it cannot fight a later change to the rest of the card: each video tagged from the registry, Investor kept in the registry and off the page, and a video with no audiences left untagged rather than empty-framed).
 
-Full suite **181 suites / 1350 tests** green; `next build` clean; `eslint` clean. Live-verified signed out on `:3020` at 1440 / 768 / 375 — grid reflows 3→2→1, the preserved row wraps, the dialog and its switcher fit a 375px viewport — and the cut switch measured at **0.000s drift** when paused and seamless while playing.
+`next build` clean and `eslint` clean on the rebased branch; every reel suite green. Live-verified on `:3020`, signed out and signed in against a local venue, at 1440 / 768 / 375 — the reel grid reflows 3→2→1, nothing overflows at any width, the dialog and its tabs fit a 375px viewport — and the cut switch measured at **0.000s drift** when paused and seamless while playing.
 
 ## 6. Dependencies & blast radius
 
 - **New:** `components/reel/*`, `config/demo-reel.ts`, `lib/reel-media.ts`, `public/reel/*.webp`, `__tests__/reel/*`.
-- **Modify:** `learning/page.tsx` (heading + `<ReelSection/>`; the JSX below untouched), `VideoThumbnails.tsx` (wrapping and focusability only), `.gitignore` (the media tree).
+- **Modify:** `learning/page.tsx` (one section added above "Watch"), `lib/resources.ts` (optional `audiences`), `VideoThumbnails.tsx` (renders the tag row), `.gitignore` (the media tree).
 - **Reuse, unchanged:** `PageHeading`, `Card`, `Badge`, `Dialog`, `Separator`, `Button`, `ContentLayout`, `TopBar`.
 - **No new runtime libraries.** Native `<video>` with `<track>`; no player SDK.
 - No SDK, backend or shared-code changes.
@@ -76,8 +74,8 @@ Full suite **181 suites / 1350 tests** green; `next build` clean; `eslint` clean
 - **Nothing downloads until play** — `preload="metadata"` behind a poster, so the page costs thirteen small stills.
 - **Cross-origin captions** fail quietly if CORS is wrong; `reelIsCrossOrigin` sets the attribute and a test covers it.
 - **The suite moves.** It was re-rendered end to end, and a voice variant was dropped, while this page was being designed. The generated manifest is the defence: regenerate, review the diff, done.
-- **Rollback:** delete the heading and the `<ReelSection/>` line from `page.tsx` and revert two cosmetic lines in `VideoThumbnails`. The page returns to exactly today's behaviour; nothing below the new band was restructured.
+- **Rollback:** delete the "Demo reel" heading and the `<ReelSection/>` line from `page.tsx`, and the tag row from `VideoThumbnails`. The page returns to exactly what `develop` has; nothing else was restructured.
 
 ## 8. Rollout
 
-Worktree `learning-reel` · branch `feat/learning-reel` · dev server `:3020`. Local until approved for `develop`.
+Worktree `learning-reel` · branch `feat/learning-reel`, rebased onto `origin/develop` and zero commits behind · dev server `:3020`. Local until approved for `develop`.
