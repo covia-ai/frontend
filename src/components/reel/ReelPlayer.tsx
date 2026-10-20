@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { ReelClip, ReelCutId } from "@/config/demo-reel";
 import { CutSwitcher } from "./CutSwitcher";
 import { formatRuntime, reelIsCrossOrigin, reelMediaUrl, reelPosterUrl } from "@/lib/reel-media";
@@ -36,18 +36,17 @@ export function cutsOf(clip: ReelClip): ReelCutId[] {
  * restoring the playhead safe to do blind.
  */
 export function ReelPlayer({ clip, initialCut = "narrated", onOpenChange }: ReelPlayerProps) {
-  const [cut, setCut] = useState<ReelCutId>(initialCut);
+  // Initialised, not synchronised. The player is keyed per open request by
+  // ReelSection, so a new clip — or the same clip asked for in the other voice
+  // — mounts a fresh one and this initialiser runs again. Switching tabs inside
+  // the player changes this state without changing the key, which is what lets
+  // the playhead survive a switch.
+  const [cut, setCut] = useState<ReelCutId>(() =>
+    clip?.cuts[initialCut] ? initialCut : "narrated",
+  );
   const videoRef = useRef<HTMLVideoElement>(null);
   /** Where to land once the newly chosen cut has loaded. */
   const resumeRef = useRef<{ time: number; playing: boolean } | null>(null);
-
-  // A fresh clip opens on the voice it was asked for — the grid card can name
-  // one — and never on the voice left over from the previous clip, which would
-  // silently hand someone a CISO cut because they picked it once.
-  useEffect(() => {
-    if (clip) setCut(clip.cuts[initialCut] ? initialCut : "narrated");
-    resumeRef.current = null;
-  }, [clip, initialCut]);
 
   const changeCut = useCallback((next: ReelCutId) => {
     const video = videoRef.current;
