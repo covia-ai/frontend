@@ -26,7 +26,7 @@ const EXPECTED = [
   {
     id: 'qgfCdKwG4Rs',
     title: 'Covia.ai multi-agent coordination and agentic economics',
-    audiences: ['Investor', 'CTO', 'Partners'],
+    audiences: ['CTO', 'Partners'],
   },
 ];
 
@@ -74,6 +74,12 @@ describe('VideoThumbnails (preserved from the original page)', () => {
       expect(classes).not.toContain('h-68');
       expect(classes.some((c) => c === 'min-h-60' || c === 'min-h-68')).toBe(true);
     }
+  });
+
+  /** Same rule as the reel above: the page does not advertise that audience. */
+  it('does not show a hidden audience on a video card', () => {
+    render(<VideoThumbnails />);
+    expect(screen.queryByText('Investor')).not.toBeInTheDocument();
   });
 
   it('keeps the middle card wider than its neighbours', () => {

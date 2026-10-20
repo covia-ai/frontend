@@ -1,5 +1,6 @@
 import { DEMO_REEL } from '@/config/demo-reel';
 import { audiencesOf, unreachableClips } from '@/components/reel/ReelGrid';
+import { HIDDEN_AUDIENCES, publicAudiences } from '@/lib/reel-audiences';
 import { formatRuntime, reelIsCrossOrigin, reelMediaUrl, reelPosterUrl } from '@/lib/reel-media';
 
 /**
@@ -79,11 +80,45 @@ describe('demo reel manifest', () => {
     expect(unreachableClips(DEMO_REEL).map((c) => c.slug)).toEqual([]);
   });
 
-  /** Investor and Board are tags, not chips — but they are still on the cards. */
-  it('still tags clips for the rooms it does not filter by', () => {
-    const tagged = (audience: string) => DEMO_REEL.filter((c) => c.audiences.includes(audience));
-    expect(tagged('Investor').length).toBeGreaterThan(0);
-    expect(tagged('Board').length).toBeGreaterThan(0);
+  /** Board is a tag, not a chip — but it is still shown on the card. */
+  it('still tags clips for a room it does not filter by', () => {
+    expect(DEMO_REEL.filter((c) => c.audiences.includes('Board')).length).toBeGreaterThan(0);
+  });
+
+  /**
+   * The manifest keeps Investor because the clip scripts do and that targeting
+   * is real; the page is what must not show it. Asserting both halves means
+   * neither can be "tidied" into agreement by accident.
+   */
+  it('keeps Investor in the data and off the page', () => {
+    const tagged = DEMO_REEL.filter((c) => c.audiences.includes('Investor')).map((c) => c.slug);
+    expect(tagged.sort()).toEqual(['c0-the-grid', 'c4-many-clouds', 'n6-day-on-the-grid']);
+
+    for (const clip of DEMO_REEL) {
+      expect(publicAudiences(clip.audiences)).not.toContain('Investor');
+    }
+    expect(audiencesOf(DEMO_REEL)).not.toContain('Investor');
+
+    // Whatever the hidden list grows to, no chip may come from it.
+    for (const hidden of HIDDEN_AUDIENCES) {
+      expect(audiencesOf(DEMO_REEL)).not.toContain(hidden);
+    }
+  });
+
+  /** c4 drops to a single tag once Investor goes; none may drop to zero. */
+  it('leaves every clip with at least one audience to show', () => {
+    for (const clip of DEMO_REEL) {
+      expect(publicAudiences(clip.audiences).length).toBeGreaterThan(0);
+    }
+    const c4 = DEMO_REEL.find((c) => c.slug === 'c4-many-clouds')!;
+    expect(publicAudiences(c4.audiences)).toEqual(['CTO']);
+  });
+
+  /** Every chip on offer must match something, or it is a dead control. */
+  it('offers no filter chip that matches nothing', () => {
+    for (const audience of audiencesOf(DEMO_REEL)) {
+      expect(DEMO_REEL.filter((c) => c.audiences.includes(audience)).length).toBeGreaterThan(0);
+    }
   });
 });
 

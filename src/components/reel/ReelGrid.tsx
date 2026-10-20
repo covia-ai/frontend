@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { ReelClip } from "@/config/demo-reel";
 import { ReelCard } from "./ReelCard";
 import { Button } from "@/components/ui/button";
+import { publicAudiences } from "@/lib/reel-audiences";
 
 interface ReelGridProps {
   clips: ReelClip[];
@@ -37,7 +38,7 @@ const FILTER_AUDIENCES = ["CTO", "CISO", "Partners", "Developers"];
 export function audiencesOf(clips: ReelClip[]): string[] {
   const seen: string[] = [];
   for (const clip of clips) {
-    for (const audience of clip.audiences) {
+    for (const audience of publicAudiences(clip.audiences)) {
       if (FILTER_AUDIENCES.includes(audience) && !seen.includes(audience)) seen.push(audience);
     }
   }

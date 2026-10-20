@@ -63,10 +63,12 @@ describe('ReelGrid', () => {
     expect(screen.getByTestId('reel-filter-partners')).toBeInTheDocument();
   });
 
-  /** The chip is gone; the tag still describes the clip on its card. */
-  it('keeps the audience on the card even when it is not a filter', () => {
+  /** Investor is in the clip data but must never reach the page. */
+  it('does not render a hidden audience as a tag or a chip', () => {
+    expect(CLIPS[0].audiences).toContain('Investor');
     render(<ReelGrid clips={CLIPS} onSelect={jest.fn()} />);
-    expect(screen.getByText('Investor')).toBeInTheDocument();
+    expect(screen.queryByText('Investor')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('reel-filter-investor')).not.toBeInTheDocument();
   });
 
   it('narrows to one audience and back', async () => {

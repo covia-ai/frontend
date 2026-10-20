@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReelClip, ReelCutId } from "@/config/demo-reel";
 import { CutSwitcher } from "./CutSwitcher";
 import { formatRuntime, reelIsCrossOrigin, reelMediaUrl, reelPosterUrl } from "@/lib/reel-media";
+import { publicAudiences } from "@/lib/reel-audiences";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -125,7 +126,7 @@ export function ReelPlayer({ clip, onOpenChange }: ReelPlayerProps) {
         <CutSwitcher available={cutsOf(clip)} value={cut} onChange={changeCut} />
 
         <div className="flex flex-wrap items-center gap-2">
-          {clip.audiences.map((audience) => (
+          {publicAudiences(clip.audiences).map((audience) => (
             <Badge key={audience} variant="outline" className="text-xs font-normal">
               {audience}
             </Badge>

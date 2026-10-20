@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Play, ShieldCheck } from "lucide-react";
 import type { ReelClip } from "@/config/demo-reel";
 import { formatRuntime, reelPosterUrl } from "@/lib/reel-media";
+import { publicAudiences } from "@/lib/reel-audiences";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -69,7 +70,7 @@ export function ReelCard({ clip, onSelect }: ReelCardProps) {
         <p className="text-muted-foreground line-clamp-3 flex-1 text-sm">{clip.claim}</p>
 
         <div className="flex flex-wrap gap-1 pt-1">
-          {clip.audiences.map((audience) => (
+          {publicAudiences(clip.audiences).map((audience) => (
             <Badge key={audience} variant="outline" className="text-xs font-normal">
               {audience}
             </Badge>
