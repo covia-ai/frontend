@@ -3,9 +3,9 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { LogInIcon, Globe, Lock, CircleUserRound, Key } from "lucide-react";
+import { LogInIcon, CircleUserRound, Key } from "lucide-react";
 import { FaGithub, FaGoogle, FaMicrosoft } from "react-icons/fa";
-import { Badge } from "@/components/ui/badge";
+import { VenueAccessBadge } from "@/components/VenueAccessBadge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger }from "@/components/ui/dropdown-menu";
 import { abbreviateDid } from "@/lib/utils";
 import { DeviceKeyDialog } from "@/components/DeviceKeyDialog";
@@ -13,7 +13,6 @@ import { Identicon } from "@/components/Identicon";
 import { useDeviceKeySignIn } from "@/hooks/use-device-key-signin";
 import { useAuthStore } from "@/hooks/use-auth";
 import { useVenues } from "@/hooks/use-venues";
-import { useVenueAccess } from "@/hooks/use-venue-access";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useOAuthSignInOptions } from "@/hooks/use-oauth-sign-in";
 import { OAUTH_PROVIDER_LABELS } from "@/lib/oauth";
@@ -73,10 +72,6 @@ export function ChromeSignInButton(props: ChromeSignInButtonProps) {
     activeVenueId ? state.accountsMap[activeVenueId] : undefined,
   );
   const storedAccounts = storedAccountsRaw ?? [];
-  const activeBaseUrl = useVenues((state) =>
-    activeVenueId ? state.venues.find((v) => v.venueId === activeVenueId)?.baseUrl : undefined,
-  );
-  const access = useVenueAccess(activeBaseUrl, activeVenueId ?? undefined);
   const oauthOptions = useOAuthSignInOptions(activeVenueId ?? undefined);
 
   const {
@@ -88,26 +83,11 @@ export function ChromeSignInButton(props: ChromeSignInButtonProps) {
   } = useDeviceKeySignIn({ venueId: props.venueId });
 
   if (!auth) {
-    // Only assert "Public" once a real anonymous read has confirmed it — a
-    // private venue that hasn't finished being probed yet shows neither
-    // badge rather than briefly claiming public access it doesn't have.
-    const accessBadge =
-      access.state === "public"
-        ? { icon: Globe, label: "Public" }
-        : access.state === "signed-out"
-          ? { icon: Lock, label: "Sign-in required" }
-          : null;
     return (
       <div className="flex items-center gap-2" key={props.index}>
-        {accessBadge && (
-          <Badge
-            variant="outline"
-            className="h-9 px-3 gap-1.5 text-sm bg-muted text-muted-foreground hidden sm:flex items-center font-normal"
-          >
-            <accessBadge.icon size={14} />
-            {accessBadge.label}
-          </Badge>
-        )}
+        {/* Inline from sm up; below that the same state is a row in the
+            topbar's overflow menu, where it does not compete for width. */}
+        <VenueAccessBadge venueId={props.venueId} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
