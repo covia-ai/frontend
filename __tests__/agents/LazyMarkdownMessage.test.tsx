@@ -4,6 +4,10 @@ import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
 import { LazyMarkdownMessage } from "@/components/LazyMarkdownMessage";
+import { warmMarkdownPipeline } from "@test/lazy-boundaries";
+
+// Compile the lazy module before the clock starts — see @test/lazy-boundaries.
+beforeAll(warmMarkdownPipeline);
 
 describe("LazyMarkdownMessage (#473)", () => {
   it("renders the Markdown once the pipeline has loaded", async () => {

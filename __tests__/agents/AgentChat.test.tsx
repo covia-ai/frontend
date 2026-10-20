@@ -4,6 +4,7 @@ import "@testing-library/jest-dom";
 
 import { AgentChat } from "@/components/agent-chat/AgentChat";
 import { useAgentExplorer } from "@/hooks/use-agent-explorer";
+import { warmMarkdownPipeline } from "@test/lazy-boundaries";
 
 jest.mock("@/hooks/use-agent-explorer", () => ({
   useAgentExplorer: jest.fn(),
@@ -67,6 +68,9 @@ function controller(overrides: Record<string, unknown> = {}) {
     ...overrides,
   } as ReturnType<typeof useAgentExplorer>;
 }
+
+// Compile the lazy module before the clock starts — see @test/lazy-boundaries.
+beforeAll(warmMarkdownPipeline);
 
 describe("AgentChat", () => {
   it("renders a focused conversation and sends from the multiline composer", async () => {

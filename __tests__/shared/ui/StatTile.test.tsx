@@ -10,6 +10,10 @@ jest.mock("next-themes", () => ({
 }));
 
 import { StatTile } from "@/components/StatTile";
+import { warmSparkline } from "@test/lazy-boundaries";
+
+// Compile the lazy module before the clock starts — see @test/lazy-boundaries.
+beforeAll(warmSparkline);
 
 describe("StatTile", () => {
   it("renders label, value and caption without a trend prop, unchanged", () => {
