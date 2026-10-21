@@ -56,3 +56,8 @@ DECISIONS.md
 
 # Throwaway identities emitted by scripts/seed-venue-users.mjs
 scripts/seeded-users.json
+
+# Demo-reel media. Masters are 150MB+ and are re-rendered often, so they are
+# served from the reel media base (see lib/reel-media.ts), never committed.
+# Regenerate locally with `pnpm reel:assets --media` in the demo-reels tree.
+/public/reel-media

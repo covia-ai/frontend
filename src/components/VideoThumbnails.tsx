@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { ExternalLink, Play } from "lucide-react";
 import { RESOURCE_VIDEOS, youtubeThumb, youtubeWatchUrl } from "@/lib/resources";
+import { publicAudiences } from "@/lib/reel-audiences";
+import { Badge } from "@/components/ui/badge";
 
 // A responsive grid of the resource videos, data-driven from lib/resources so
 // adding a video is a one-line registry entry and the grid reflows at any count
@@ -43,6 +45,15 @@ export function VideoThumbnails() {
           <div className="flex flex-col gap-1.5 p-3">
             <p className="text-sm font-medium leading-snug">{video.title}</p>
             {video.blurb && <p className="text-xs text-muted-foreground">{video.blurb}</p>}
+            {video.audiences && publicAudiences(video.audiences).length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {publicAudiences(video.audiences).map((audience) => (
+                  <Badge key={audience} variant="outline" className="text-xs font-normal">
+                    {audience}
+                  </Badge>
+                ))}
+              </div>
+            )}
             <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
               <ExternalLink size={12} aria-hidden="true" /> YouTube
             </p>

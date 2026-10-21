@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TypeTile } from "@/components/TypeTile";
 import { VideoThumbnails } from "@/components/VideoThumbnails";
+import { ReelSection } from "@/components/reel/ReelSection";
 import { DiscordGlyph } from "@/components/adapter-glyphs";
 import { ExternalLink, LibraryBig } from "lucide-react";
 import type { IconCmp } from "@/lib/file-type-look";
@@ -54,7 +55,18 @@ export default function ResourcesPage() {
           Watch, read and connect: walkthrough videos, full documentation, and the Covia community, all in one place.
         </p>
 
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Watch</h2>
+        <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Demo reel
+        </h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Short clips, each proving one thing, recorded against a live venue. Eight of them can also
+          be heard in a cut narrated for whoever owns the risk.
+        </p>
+        <ReelSection />
+
+        <h2 className="mb-3 mt-8 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Watch
+        </h2>
         <VideoThumbnails />
 
         <h2 className="mb-3 mt-8 text-xs font-semibold uppercase tracking-wide text-muted-foreground">

@@ -9,12 +9,31 @@ export type ResourceVideo = {
   title: string;
   /** Optional one-line description, shown under the title when present. */
   blurb?: string;
+  /**
+   * Who the video is for, in the same vocabulary the demo reel above it uses,
+   * so the page tags every video on it rather than only the clips that arrive
+   * with a manifest. Rendered through `publicAudiences`, which drops the ones
+   * this page does not advertise.
+   */
+  audiences?: string[];
 };
 
 export const RESOURCE_VIDEOS: ResourceVideo[] = [
-  { id: "b0HwKymJbnA", title: "Covia.ai App Demo showing federated orchestration" },
-  { id: "5FtCG8bYS3w", title: "Covia.ai Venue Operation with Gemini Demo" },
-  { id: "qgfCdKwG4Rs", title: "Covia.ai multi-agent coordination and agentic economics" },
+  {
+    id: "b0HwKymJbnA",
+    title: "Covia.ai App Demo showing federated orchestration",
+    audiences: ["CTO", "Partners"],
+  },
+  {
+    id: "5FtCG8bYS3w",
+    title: "Covia.ai Venue Operation with Gemini Demo",
+    audiences: ["Developers", "CTO"],
+  },
+  {
+    id: "qgfCdKwG4Rs",
+    title: "Covia.ai multi-agent coordination and agentic economics",
+    audiences: ["Investor", "CTO", "Partners"],
+  },
 ];
 
 export function youtubeWatchUrl(id: string): string {
