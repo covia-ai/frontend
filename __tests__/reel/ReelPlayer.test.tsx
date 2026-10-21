@@ -1,3 +1,13 @@
+/**
+ * The mp4 branch of the player.
+ *
+ * Both fixtures use slugs that deliberately appear nowhere in the upload record
+ * (`config/demo-reel-youtube.ts`), because a clip that has been uploaded
+ * resolves to a YouTube source and would never reach the `<video>` element
+ * these tests are about. That is not a workaround: an un-uploaded clip is
+ * exactly what self-hosting looks like, so this suite is the fallback path's
+ * coverage. The YouTube path has its own suite in `ReelPlayerYouTube.test.tsx`.
+ */
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -6,21 +16,21 @@ import { ReelPlayer, cutsOf } from '@/components/reel/ReelPlayer';
 import type { ReelClip } from '@/config/demo-reel';
 
 const BOTH_CUTS: ReelClip = {
-  slug: 'c1-the-refusal', id: 'c1', title: 'The Refusal',
+  slug: 'x1-self-hosted-pair', id: 'x1', title: 'The Refusal',
   claim: 'An agent cannot act outside its authority.',
   synopsis: 'The rule runs first, and the approval never happens.',
   audiences: ['CISO', 'CTO'], runtimeSec: 79, poster: 'c1-the-refusal.webp',
   cuts: {
-    narrated: { media: 'c1-the-refusal/narrated.mp4', captions: 'c1-the-refusal/narrated.vtt' },
-    ciso: { media: 'c1-the-refusal/ciso.mp4', captions: 'c1-the-refusal/ciso.vtt' },
+    narrated: { media: 'x1-self-hosted-pair/narrated.mp4', captions: 'x1-self-hosted-pair/narrated.vtt' },
+    ciso: { media: 'x1-self-hosted-pair/ciso.mp4', captions: 'x1-self-hosted-pair/ciso.vtt' },
   },
 };
 
 const ONE_CUT: ReelClip = {
-  slug: 'c5-sdk-job', id: 'c5', title: 'Run a Job with the SDK',
+  slug: 'x5-self-hosted-single', id: 'x5', title: 'Run a Job with the SDK',
   claim: 'A developer reaches execution in a few lines.',
   audiences: ['Developers'], runtimeSec: 62, poster: 'c5-sdk-job.webp',
-  cuts: { narrated: { media: 'c5-sdk-job/narrated.mp4', captions: 'c5-sdk-job/narrated.vtt' } },
+  cuts: { narrated: { media: 'x5-self-hosted-single/narrated.mp4', captions: 'x5-self-hosted-single/narrated.vtt' } },
 };
 
 function video(): HTMLVideoElement {
@@ -58,8 +68,8 @@ describe('ReelPlayer', () => {
 
   it('opens on the narrated cut, with its captions sidecar', () => {
     render(<ReelPlayer clip={BOTH_CUTS} onOpenChange={jest.fn()} />);
-    expect(video()).toHaveAttribute('src', '/reel-media/c1-the-refusal/narrated.mp4');
-    expect(track()).toHaveAttribute('src', '/reel-media/c1-the-refusal/narrated.vtt');
+    expect(video()).toHaveAttribute('src', '/reel-media/x1-self-hosted-pair/narrated.mp4');
+    expect(track()).toHaveAttribute('src', '/reel-media/x1-self-hosted-pair/narrated.vtt');
     expect(track()).toHaveAttribute('default');
   });
 
@@ -118,13 +128,13 @@ describe('ReelPlayer', () => {
   /** The grid card can ask for a voice by name; the player must honour it. */
   it('opens on the cut it was asked for', () => {
     render(<ReelPlayer clip={BOTH_CUTS} initialCut="ciso" onOpenChange={jest.fn()} />);
-    expect(video()).toHaveAttribute('src', '/reel-media/c1-the-refusal/ciso.mp4');
+    expect(video()).toHaveAttribute('src', '/reel-media/x1-self-hosted-pair/ciso.mp4');
     expect(screen.getByTestId('cut-ciso')).toHaveAttribute('aria-selected', 'true');
   });
 
   it('falls back to the narrated cut when asked for one the clip lacks', () => {
     render(<ReelPlayer clip={ONE_CUT} initialCut="ciso" onOpenChange={jest.fn()} />);
-    expect(video()).toHaveAttribute('src', '/reel-media/c5-sdk-job/narrated.mp4');
+    expect(video()).toHaveAttribute('src', '/reel-media/x5-self-hosted-single/narrated.mp4');
   });
 
   it('shows the switcher only when there is a second cut', () => {
@@ -143,8 +153,8 @@ describe('ReelPlayer', () => {
 
     await user.click(screen.getByTestId('cut-ciso'));
 
-    expect(video()).toHaveAttribute('src', '/reel-media/c1-the-refusal/ciso.mp4');
-    expect(track()).toHaveAttribute('src', '/reel-media/c1-the-refusal/ciso.vtt');
+    expect(video()).toHaveAttribute('src', '/reel-media/x1-self-hosted-pair/ciso.mp4');
+    expect(track()).toHaveAttribute('src', '/reel-media/x1-self-hosted-pair/ciso.vtt');
   });
 
   /** The whole point of the switcher: the same moment, in the other voice. */
@@ -212,7 +222,7 @@ describe('ReelPlayer', () => {
   it('starts a newly chosen clip in its own voice', () => {
     const { rerender } = render(<ReelPlayer clip={BOTH_CUTS} onOpenChange={jest.fn()} />);
     rerender(<ReelPlayer clip={ONE_CUT} onOpenChange={jest.fn()} />);
-    expect(video()).toHaveAttribute('src', '/reel-media/c5-sdk-job/narrated.mp4');
+    expect(video()).toHaveAttribute('src', '/reel-media/x5-self-hosted-single/narrated.mp4');
   });
 
   it('leaves crossOrigin off while the reel is served from this origin', () => {
