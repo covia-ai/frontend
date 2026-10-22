@@ -1,12 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { usePathname } from "next/navigation";
-import { useStoredValue } from "@/hooks/use-stored-value";
+import { useEffect, useRef, useState } from "react";
+import { notifyError } from "@/lib/notify";
 import { useVenues } from "@/hooks/use-venues";
 import {
   buildOAuthLoginUrl,
-  oauthState,
+  OAUTH_ERROR,
   parseOAuthProviders,
   type OAuthProvider,
 } from "@/lib/oauth";
@@ -86,7 +85,7 @@ export function useOAuthProviders(baseUrl?: string): OAuthProvider[] {
 
 export type OAuthSignInOption = {
   provider: OAuthProvider;
-  href: string;
+  signIn: () => Promise<void>;
 };
 
 export function useOAuthSignInOptions(venueId?: string): OAuthSignInOption[] {
@@ -98,37 +97,23 @@ export function useOAuthSignInOptions(venueId?: string): OAuthSignInOption[] {
       : undefined,
   );
   const providers = useOAuthProviders(baseUrl);
-  const pathname = usePathname();
-  const offersOAuth = providers.length > 0;
-  // Browser-only inputs, read as the external state they are, so the server
-  // and the first client render agree (no options until hydration). No nonce
-  // is minted until a venue actually offers OAuth; `pathname` keeps the
-  // return-to current across client navigations.
-  const readRequest = useCallback(
-    () =>
-      offersOAuth
-        ? {
-            origin: window.location.origin,
-            returnTo: `${pathname}${window.location.search}${window.location.hash}`,
-            state: oauthState(),
-          }
-        : null,
-    [offersOAuth, pathname],
-  );
-  const [request] = useStoredValue(readRequest);
-
-  return useMemo(() => {
-    if (!baseUrl || !targetVenueId || !request) return [];
-    return providers.map((provider) => ({
-      provider,
-      href: buildOAuthLoginUrl({
-        baseUrl,
-        provider,
-        frontendOrigin: request.origin,
-        venueId: targetVenueId,
-        returnTo: request.returnTo,
-        state: request.state,
-      }),
-    }));
-  }, [baseUrl, request, providers, targetVenueId]);
+  const starting = useRef(false);
+  if (!baseUrl || !targetVenueId) return [];
+  return providers.map((provider) => ({
+    provider,
+    signIn: async () => {
+      if (starting.current) return;
+      starting.current = true;
+      try {
+        const url = await buildOAuthLoginUrl({
+          baseUrl, provider, venueId: targetVenueId, frontendOrigin: window.location.origin,
+          returnTo: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+        });
+        window.location.assign(url);
+      } catch {
+        starting.current = false;
+        notifyError("Unable to sign in", OAUTH_ERROR.start);
+      }
+    },
+  }));
 }

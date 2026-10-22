@@ -59,10 +59,10 @@ __tests__/                  # Jest test files (root level)
 
 ### Authentication
 
-Two auth modes, both stored in localStorage under key `"venue-auth"`:
+Two auth modes: device keys persist under `"venue-auth"`; bearer credentials stay in memory in the current tab:
 
 - **Device Key** — Ed25519 keypair generated client-side, stored as hex. Uses `Ed25519Auth` from SDK. Key persists across logouts.
-- **OAuth** — Redirects to venue's `/auth/{provider}` endpoint, receives bearer token on callback. Uses `BearerAuth` from SDK.
+- **OAuth** — Redirects to venue's `/auth/{provider}` endpoint, receives a one-use code on callback and exchanges it with S256 PKCE. The pending transaction alone uses sessionStorage; bearer tokens are never persisted and are forgotten on sign-out or reload. Uses `BearerAuth` from SDK.
 
 Key files: `hooks/use-auth.ts` (Zustand store), `lib/auth-provider.ts` (SDK bridge), `components/sign-in-button.tsx` (UI).
 

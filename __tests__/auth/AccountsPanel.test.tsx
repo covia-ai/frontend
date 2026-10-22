@@ -77,7 +77,7 @@ describe('AccountsPanel', () => {
     expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toMatchObject({ did: 'did:a1' });
   });
 
-  it('signs out of a venue but keeps its accounts listed', async () => {
+  it('signs out of a venue and forgets its bearer accounts', async () => {
     act(() => {
       useAuthStore.getState().loginWithToken(VENUE_A, 'token1', 'did:a1');
     });
@@ -86,8 +86,8 @@ describe('AccountsPanel', () => {
 
     await user.click(screen.getByTestId('venue-signout'));
     expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toBeNull();
-    expect(screen.getAllByTestId('account-entry')).toHaveLength(1);
-    expect(screen.getByTestId('account-use')).toBeInTheDocument();
+    expect(screen.queryByTestId('account-entry')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('account-use')).not.toBeInTheDocument();
   });
 
   it('forgets an account entirely via the remove control', async () => {

@@ -28,37 +28,29 @@ function AuthCallbackInner() {
     if (handled.current) return;
     handled.current = true;
 
-    // The venue redirects here with the JWT in the query string, and that JWT
-    // carries the user's email and name in a readable (base64url, unencrypted)
-    // payload. Clear it from the address bar and the current history entry
-    // before doing anything else, so a credential-and-PII-bearing URL is live
-    // for as short a time as possible and does not persist if the sign-in
-    // below fails and we never navigate away.
+    // Remove the one-use code (and any obsolete token-bearing query) before
+    // network requests or analytics. Keep a snapshot for this one exchange.
+    const params = new URLSearchParams(searchParams.toString());
     window.history.replaceState(null, "", window.location.pathname);
 
-    const callback = readOAuthCallback(searchParams, (venueId) =>
-      useVenues.getState().venues.some((venue) => venue.venueId === venueId),
-    );
-
-    if (callback.status !== "accepted") {
-      if (callback.status === "rejected") notifyError("Unable to sign in", callback.reason);
-      router.replace("/signUp");
-      return;
-    }
-
-    const { venueId, token, did, returnTo } = callback;
-    useAuthStore.getState().loginWithToken(venueId, token, did);
-    // D070 §4 identity. The token carries the venue's `email` claim, which
-    // is what produces the same user_id as covia.ai and Brevo. It is hashed
-    // in memory and never stored or sent; see lib/analytics.
-    //
-    // Identify resolves before the login event is reported, so the event
-    // carries user_id. Not awaited, so the redirect below is never delayed;
-    // `finally` so the event still fires if identify fails.
-    void identify({ did, token }, { auth_method: "oauth" }).finally(() => {
-      gtmEvent.signUp("oauth");
-    });
-    router.replace(returnTo);
+    void (async () => {
+      if (!useVenues.persist.hasHydrated()) await useVenues.persist.rehydrate();
+      const callback = await readOAuthCallback(params, (venueId) =>
+        useVenues.getState().venues.find((venue) => venue.venueId === venueId)?.baseUrl,
+      );
+      if (callback.status !== "accepted") {
+        if (callback.status === "rejected") notifyError("Unable to sign in", callback.reason);
+        router.replace("/signUp");
+        return;
+      }
+      const { venueId, token, did, returnTo } = callback;
+      useAuthStore.getState().loginWithToken(venueId, token, did);
+      // Only the derived analytics identity leaves this call; never the token.
+      void identify({ did, token }, { auth_method: "oauth" }).finally(() => {
+        gtmEvent.signUp("oauth");
+      });
+      router.replace(returnTo);
+    })();
   }, [searchParams, router]);
 
   return <SigningIn />;
