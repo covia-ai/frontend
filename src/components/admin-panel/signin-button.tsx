@@ -126,18 +126,16 @@ export function ChromeSignInButton(props: ChromeSignInButtonProps) {
                 <DropdownMenuSeparator />
               </>
             )}
-            {oauthOptions.map(({ provider, href }) => {
+            {oauthOptions.map(({ provider, signIn }) => {
               const ProviderIcon = provider === "google"
                 ? FaGoogle
                 : provider === "microsoft"
                   ? FaMicrosoft
                   : FaGithub;
               return (
-                <DropdownMenuItem key={provider} asChild>
-                  <a href={href}>
-                    <ProviderIcon />
-                    Continue with {OAUTH_PROVIDER_LABELS[provider]}
-                  </a>
+                <DropdownMenuItem key={provider} onSelect={() => void signIn()}>
+                  <ProviderIcon />
+                  Continue with {OAUTH_PROVIDER_LABELS[provider]}
                 </DropdownMenuItem>
               );
             })}

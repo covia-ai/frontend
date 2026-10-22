@@ -1,131 +1,116 @@
-import {
-  buildOAuthLoginUrl,
-  oauthState,
-  parseOAuthProviders,
-  readOAuthCallback,
-  safeReturnTo,
-} from "@/lib/oauth";
-import {
-  discoverOAuthProviders,
-  EMPTY_DISCOVERY_TTL_MS,
-} from "@/hooks/use-oauth-sign-in";
+import { webcrypto, createHash } from "node:crypto";
+import { buildOAuthLoginUrl, parseOAuthProviders, readOAuthCallback, safeReturnTo, OAUTH_ERROR } from "@/lib/oauth";
+import { discoverOAuthProviders, EMPTY_DISCOVERY_TTL_MS } from "@/hooks/use-oauth-sign-in";
 
 const VENUE = "did:web:venue.example";
 const USER = "did:key:z6MkUser";
-
-// Unsigned on purpose: the frontend never verifies the signature (the venue
-// does, on every call) — it only reads the claims.
+const BASE = "https://venue.example";
 const jwt = (claims: Record<string, unknown>) =>
   `header.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.signature`;
-
-const callbackParams = (overrides: Record<string, string | null> = {}) => {
-  const params = new URLSearchParams({
-    token: jwt({ sub: USER, iss: VENUE, aud: VENUE }),
-    did: USER,
-    venueId: VENUE,
-    returnTo: "/jobs?page=2",
-    state: oauthState(),
-  });
-  for (const [key, value] of Object.entries(overrides)) {
-    if (value === null) params.delete(key);
-    else params.set(key, value);
-  }
-  return params;
-};
-const knownVenue = (venueId: string) => venueId === VENUE;
+const token = jwt({ sub: USER, iss: VENUE });
+const knownVenue = (id: string) => id === VENUE ? BASE : undefined;
+const begin = async (returnTo = "/jobs?page=2") => new URL(await buildOAuthLoginUrl({
+  baseUrl: BASE, provider: "google", frontendOrigin: window.location.origin, venueId: VENUE, returnTo,
+}));
+const callback = (login: URL) => new URLSearchParams({ code: "one-use-code", state: login.searchParams.get("state")! });
 
 describe("OAuth venue sign-in", () => {
-  it("extracts only supported providers advertised by the venue login page", () => {
-    expect(parseOAuthProviders(`
-      <a href="/auth/github">GitHub</a>
-      <a href='/auth/google'>Google</a>
-      <a href="/auth/custom">Custom</a>
-      <a href="https://evil.example/auth/microsoft/extra">Wrong path</a>
-    `)).toEqual(["google", "github"]);
+  const realFetch = global.fetch;
+  const realCrypto = global.crypto;
+  let fetchMock: jest.Mock;
+  beforeAll(() => Object.defineProperty(global, "crypto", { value: webcrypto, configurable: true }));
+  afterAll(() => Object.defineProperty(global, "crypto", { value: realCrypto, configurable: true }));
+  beforeEach(() => {
+    window.sessionStorage.clear();
+    fetchMock = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ token, did: USER }) });
+    global.fetch = fetchMock;
   });
+  afterEach(() => { global.fetch = realFetch; jest.restoreAllMocks(); });
 
-  it("builds a venue login URL with a scoped callback and return path", () => {
-    const login = new URL(buildOAuthLoginUrl({
-      baseUrl: "https://venue.example/",
-      provider: "microsoft",
-      frontendOrigin: "https://app.example",
-      venueId: "did:web:venue.example",
-      returnTo: "/agents/view?agentId=manager",
-      state: "nonce-123",
-    }));
-    const callback = new URL(login.searchParams.get("redirect_uri")!);
-
-    expect(login.origin + login.pathname).toBe("https://venue.example/auth/microsoft");
-    expect(callback.origin + callback.pathname).toBe("https://app.example/auth/callback");
-    expect(callback.searchParams.get("venueId")).toBe("did:web:venue.example");
-    expect(callback.searchParams.get("returnTo")).toBe("/agents/view?agentId=manager");
-    expect(callback.searchParams.get("state")).toBe("nonce-123");
+  it("extracts supported advertised providers", () => {
+    expect(parseOAuthProviders(`<a href="/auth/github">GitHub</a><a href='/auth/google'>Google</a><a href="/auth/custom">Custom</a>`)).toEqual(["google", "github"]);
   });
-
-  it("rejects external and callback-loop return paths", () => {
-    expect(safeReturnTo("https://evil.example")).toBe("/");
-    expect(safeReturnTo("//evil.example")).toBe("/");
-    expect(safeReturnTo("/auth/callback?again=true")).toBe("/");
-    expect(safeReturnTo("/jobs?page=2")).toBe("/jobs?page=2");
+  it.each(["https://evil.example", "//evil.example", "/\\evil.example", "/\n/evil.example", "/auth/callback?again=true"])("refuses unsafe return path %s", (path) => {
+    expect(safeReturnTo(path)).toBe("/");
   });
-
-  describe("callback validation", () => {
-    beforeEach(() => window.sessionStorage.clear());
-
-    it("keeps one unguessable nonce per tab until a callback consumes it", () => {
-      const state = oauthState();
-      expect(state).toMatch(/^[0-9a-f]{32}$/);
-      expect(oauthState()).toBe(state);
-    });
-
-    it("accepts a response that answers this tab's sign-in", () => {
-      expect(readOAuthCallback(callbackParams(), knownVenue)).toEqual({
-        status: "accepted",
-        venueId: VENUE,
-        token: expect.any(String),
-        did: USER,
-        returnTo: "/jobs?page=2",
-      });
-    });
-
-    it("treats a callback URL with no token as not a sign-in at all", () => {
-      expect(readOAuthCallback(callbackParams({ token: null }), knownVenue)).toEqual({ status: "absent" });
-    });
-
-    // Login CSRF: a crafted link carrying the attacker's own valid token.
-    it.each([
-      ["a missing state", { state: null }],
-      ["a state this tab never issued", { state: "f".repeat(32) }],
-    ])("rejects %s", (_label, overrides) => {
-      expect(readOAuthCallback(callbackParams(overrides), knownVenue).status).toBe("rejected");
-    });
-
-    it("rejects any response when this tab never started a sign-in", () => {
-      const params = callbackParams();
-      window.sessionStorage.clear();
-      expect(readOAuthCallback(params, knownVenue).status).toBe("rejected");
-    });
-
-    it("accepts a given callback only once", () => {
-      const params = callbackParams();
-      expect(readOAuthCallback(params, knownVenue).status).toBe("accepted");
-      expect(readOAuthCallback(params, knownVenue).status).toBe("rejected");
-    });
-
-    it.each([
-      ["a venue the browser is not connected to", { venueId: "did:web:elsewhere.example" }],
-      ["no venue", { venueId: null }],
-      ["a DID the token was not issued for", { did: "did:key:z6MkSomeoneElse" }],
-      ["a token issued by a different venue", { token: jwt({ sub: USER, iss: "did:web:elsewhere.example" }) }],
-      ["a token that is not a JWT", { token: "not-a-jwt" }],
-    ])("rejects %s", (_label, overrides) => {
-      expect(readOAuthCallback(callbackParams(overrides), knownVenue).status).toBe("rejected");
-    });
-
-    it("never returns to an external URL", () => {
-      const result = readOAuthCallback(callbackParams({ returnTo: "https://evil.example" }), knownVenue);
-      expect(result).toMatchObject({ status: "accepted", returnTo: "/" });
-    });
+  it("binds an exact callback and exchanges with the matching S256 proof", async () => {
+    const login = await begin();
+    expect(login.origin + login.pathname).toBe(`${BASE}/auth/google`);
+    expect(login.searchParams.get("redirect_uri")).toBe(`${window.location.origin}/auth/callback`);
+    expect(login.searchParams.get("code_challenge_method")).toBe("S256");
+    expect(login.searchParams.get("state")).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    const params = callback(login);
+    params.set("venueId", "did:web:evil.example");
+    params.set("returnTo", "https://evil.example");
+    expect(await readOAuthCallback(params, knownVenue)).toEqual({ status: "accepted", venueId: VENUE, token, did: USER, returnTo: "/jobs?page=2" });
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url.href).toBe(`${BASE}/auth/exchange`);
+    expect(options).toMatchObject({ method: "POST", credentials: "omit", cache: "no-store", redirect: "error", referrerPolicy: "no-referrer" });
+    const form = options.body as URLSearchParams;
+    expect(form.get("code")).toBe("one-use-code");
+    expect(form.get("redirect_uri")).toBe(`${window.location.origin}/auth/callback`);
+    expect(createHash("sha256").update(form.get("code_verifier")!).digest("base64url")).toBe(login.searchParams.get("code_challenge"));
+    expect(window.sessionStorage.length).toBe(0);
+    expect(await readOAuthCallback(params, knownVenue)).toMatchObject({ status: "rejected", reason: OAUTH_ERROR.transaction });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+  it("replaces a previous pending login with fresh state and proof", async () => {
+    const first = await begin(), second = await begin();
+    expect(first.searchParams.get("state")).not.toBe(second.searchParams.get("state"));
+    expect(first.searchParams.get("code_challenge")).not.toBe(second.searchParams.get("code_challenge"));
+    expect(await readOAuthCallback(callback(first), knownVenue)).toMatchObject({ status: "rejected" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it.each(["missing", "wrong", "duplicate", "token", "error"])("refuses %s callback state/data before exchange", async (kind) => {
+    const params = callback(await begin());
+    if (kind === "missing") params.delete("state");
+    if (kind === "wrong") params.set("state", "wrong");
+    if (kind === "duplicate") params.append("state", params.get("state")!);
+    if (kind === "token") params.set("token", token);
+    if (kind === "error") params.set("error", "access_denied");
+    expect(await readOAuthCallback(params, knownVenue)).toMatchObject({ status: "rejected", reason: OAUTH_ERROR.transaction });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it("rejects missing and expired transactions", async () => {
+    const params = callback(await begin());
+    const now = Date.now();
+    jest.spyOn(Date, "now").mockReturnValue(now + 300_001);
+    expect(await readOAuthCallback(params, knownVenue)).toMatchObject({ status: "rejected" });
+    expect(await readOAuthCallback(params, knownVenue)).toMatchObject({ status: "rejected" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it.each([undefined, "https://different.example"])("refuses a removed or moved venue (%s)", async (base) => {
+    expect(await readOAuthCallback(callback(await begin()), () => base)).toMatchObject({ status: "rejected", reason: OAUTH_ERROR.venue });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it.each([
+    { token: "malformed", did: USER },
+    { token: jwt({ sub: "other", iss: VENUE }), did: USER },
+    { token: jwt({ sub: USER, iss: "other" }), did: USER },
+    { token, did: null },
+  ])("rejects wrongly scoped credentials", async (reply) => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => reply });
+    expect(await readOAuthCallback(callback(await begin()), knownVenue)).toMatchObject({ status: "rejected", reason: OAUTH_ERROR.credential });
+  });
+  it("consumes a failed exchange and never exposes raw diagnostic text", async () => {
+    const params = callback(await begin());
+    fetchMock.mockRejectedValue(new Error("secret-provider-response"));
+    expect(await readOAuthCallback(params, knownVenue)).toEqual({ status: "rejected", reason: OAUTH_ERROR.exchange });
+    expect(await readOAuthCallback(params, knownVenue)).toMatchObject({ status: "rejected", reason: OAUTH_ERROR.transaction });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+  it("rejects HTTP errors without reading their body", async () => {
+    const json = jest.fn();
+    fetchMock.mockResolvedValue({ ok: false, json });
+    expect(await readOAuthCallback(callback(await begin()), knownVenue)).toMatchObject({ status: "rejected", reason: OAUTH_ERROR.exchange });
+    expect(json).not.toHaveBeenCalled();
+  });
+  it("fails closed when tab storage cannot save the verifier", async () => {
+    jest.spyOn(Storage.prototype, "setItem").mockImplementation(() => {});
+    await expect(begin()).rejects.toThrow(OAUTH_ERROR.start);
+  });
+  it("accepts an empty callback as a direct visit", async () => {
+    expect(await readOAuthCallback(new URLSearchParams(), knownVenue)).toEqual({ status: "absent" });
   });
 });
 

@@ -17,14 +17,12 @@ export function OAuthSignInButtons({ venueId }: { venueId?: string }) {
 
   return (
     <div className="flex w-64 flex-col gap-2" aria-label="OAuth sign-in options">
-      {options.map(({ provider, href }) => {
+      {options.map(({ provider, signIn }) => {
         const Icon = PROVIDER_ICONS[provider];
         return (
-          <Button key={provider} asChild variant="outline" className="w-full justify-center gap-2">
-            <a href={href}>
-              <Icon className="size-4" />
-              Continue with {OAUTH_PROVIDER_LABELS[provider]}
-            </a>
+          <Button key={provider} onClick={() => void signIn()} variant="outline" className="w-full justify-center gap-2">
+            <Icon className="size-4" />
+            Continue with {OAUTH_PROVIDER_LABELS[provider]}
           </Button>
         );
       })}

@@ -1,6 +1,6 @@
 import React from "react";
 import { readdirSync, readFileSync, statSync } from "fs";
-import { join } from "path";
+import { join, relative, sep } from "path";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { Activity } from "lucide-react";
@@ -56,7 +56,7 @@ describe("chart imports stay lazy (#476)", () => {
   const importersOf = (pattern: RegExp) =>
     files(SRC)
       .filter((path) => pattern.test(readFileSync(path, "utf8")))
-      .map((path) => path.slice(SRC.length + 1))
+      .map((path) => relative(SRC, path).split(sep).join("/"))
       .sort();
 
   it("reaches recharts only from the charts folder", () => {
