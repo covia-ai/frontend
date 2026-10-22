@@ -23,7 +23,7 @@ export interface AgentListItem {
 
 export interface SessionMessage {
    role: string;
-   content: any;
+   content?: any;
    ts?: number;
    source?: string;
    /** The job that delivered this turn (chat/request intake), when the venue

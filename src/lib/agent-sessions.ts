@@ -1,5 +1,5 @@
 import type { AgentSession } from "@covia/covia-sdk";
-import type { Session, SessionMessage } from "@/config/types";
+import type { Session } from "@/config/types";
 import { messageContentToString } from "@/lib/agent-turns";
 
 export function agentSessionsToSessions(items: unknown): Session[] {
@@ -9,11 +9,8 @@ export function agentSessionsToSessions(items: unknown): Session[] {
     .map((item): Session => {
       const session = item as AgentSession;
       const metadata = session.metadata ?? {};
-      const frames = Array.isArray(session.frames) ? session.frames : [];
-      const conversation = frames.flatMap((frame) => {
-        const f = frame as { conversation?: SessionMessage[] } | undefined;
-        return Array.isArray(f?.conversation) ? f.conversation : [];
-      });
+      // The SDK owns frame formats and compacted-history expansion.
+      const conversation = Array.isArray(session.conversation) ? session.conversation : [];
 
       return {
         sessionId: String(session.id ?? ""),

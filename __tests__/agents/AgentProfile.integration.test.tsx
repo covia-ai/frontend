@@ -44,6 +44,7 @@ function sessionEntry(id: string, created: number, conversation: unknown[], extr
     metadata: { created, turns: conversation.length },
     pending: [],
     frames: [{ conversation }],
+    conversation,
     ...extra,
   };
 }
