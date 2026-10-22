@@ -5,21 +5,22 @@ import {
 } from "@/lib/agent-sessions";
 
 describe("agent session normalization", () => {
-  it("flattens frame conversations and sorts newest sessions first", () => {
+  it("uses SDK transcripts and sorts newest sessions first", () => {
     const sessions = agentSessionsToSessions([
       {
         id: "older-session",
         metadata: { created: 100, turns: 1 },
-        frames: [{ conversation: [{ role: "user", content: "old" }] }],
+        conversation: [{ role: "user", content: "old" }],
       },
       {
         id: "newer-session",
         metadata: { created: 200, turns: 2, parties: ["user", "agent"] },
         pending: ["work"],
         wakeTime: 1750000000000,
-        frames: [
-          { conversation: [{ role: "user", content: "hello" }] },
-          { conversation: [{ role: "assistant", content: "hi" }] },
+        frames: [{ historyVersion: 1, contextStart: 2, history: [] }],
+        conversation: [
+          { role: "user", content: "hello" },
+          { role: "assistant", content: "hi" },
         ],
       },
     ]);
@@ -60,7 +61,7 @@ describe("agent session normalization", () => {
       {
         id: "titled-session",
         metadata: { created: 100, turns: 1, title: "Planning the launch" },
-        frames: [{ conversation: [{ role: "user", content: "hi" }] }],
+        conversation: [{ role: "user", content: "hi" }],
       },
     ]);
     expect(sessions[0].title).toBe("Planning the launch");

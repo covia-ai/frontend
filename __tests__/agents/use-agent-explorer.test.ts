@@ -498,6 +498,7 @@ function sessionEntry(id: string, conversation: unknown[]) {
     metadata: { created: 1000, turns: conversation.length },
     pending: [],
     frames: [{ conversation }],
+    conversation,
   };
 }
 
