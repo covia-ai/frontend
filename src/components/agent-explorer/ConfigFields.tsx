@@ -80,7 +80,7 @@ function FieldValue({ value }: { value: unknown }) {
   );
 }
 
-// Renders an agent config/stateConfig record as labeled fields instead of a
+// Renders an agent config record as labeled fields instead of a
 // raw JSON dump — skills/tools as chips, prompts as readable paragraphs,
 // everything else as plain labeled values, falling back to pretty JSON only
 // for shapes with no clean human rendering (nested objects, mixed arrays).

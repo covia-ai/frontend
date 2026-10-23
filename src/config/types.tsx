@@ -6,8 +6,6 @@ export interface AgentDetail {
    config?: Record<string, any>;
    unavailableTools?: unknown[];
    error?: string;
-   /** Legacy SDK field; canonical editable configuration is `config`. */
-   stateConfig?: Record<string, any>;
    state?: Record<string, any>;
    timeline?: any[];
    [key: string]: any;

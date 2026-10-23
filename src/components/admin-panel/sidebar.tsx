@@ -48,12 +48,16 @@ export function Sidebar() {
 
               <Link href="https://www.covia.ai">
                <div className="flex flex-row items-center justify-center space-x-4">
-                <Image src="/Covia_logo_icon_transparent.png" width={25} height={0} alt="covia"></Image>
+                <Image src="/Covia_logo_icon_transparent.png" width={25} height={25} alt="covia" />
                 {/* Both wordmarks render everywhere and the theme class on
                     <html> picks one: the server can't know the theme, so a
-                    JS choice here would never match the client's markup. */}
-                <Image src="/covia.ai_dark_blue.png" width={100} height={0} alt="Covia" className="dark:hidden" />
-                <Image src="/covia.ai_dark_mode.png" width={100} height={0} alt="Covia" className="hidden dark:block" />
+                    JS choice here would never match the client's markup.
+                    Sized in their real proportions (the PNGs are 1330x294)
+                    so next/image's attributes match what CSS renders, and
+                    eager because a wordmark is the largest thing painted
+                    above the fold. */}
+                <Image src="/covia.ai_dark_blue.png" width={100} height={22} loading="eager" alt="Covia" className="dark:hidden" />
+                <Image src="/covia.ai_dark_mode.png" width={100} height={22} loading="eager" alt="Covia" className="hidden dark:block" />
 
               </div>
               </Link>

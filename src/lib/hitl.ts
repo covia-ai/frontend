@@ -1,4 +1,4 @@
-import { Venue, UnsupportedVenueFeatureError, createUCANJWT, hexToPrivateKey } from "@covia/covia-sdk";
+import { Venue, createUCANJWT, hexToPrivateKey } from "@covia/covia-sdk";
 import { resolveOperationByAddress } from "@/lib/operations-catalog";
 
 // Human-in-the-loop requests. A request is delivered as a durable record into
@@ -163,20 +163,13 @@ async function sliceInboxRecords(venue: Venue): Promise<unknown[]> {
 }
 
 // The indicator badge only needs a number, not the records: one job-free
-// aggregate groups the inbox by status server-side. Venues without the
-// aggregate surface fall back to the full listing.
+// aggregate groups the inbox by status server-side. There is no listing
+// fallback for venues without it: the SDK serves every Values read through one
+// latch, so a venue that can't aggregate can't list either.
 export async function countOpenHitlRequests(venue: Venue): Promise<number> {
-  try {
-    const res = await venue.workspace.aggregate("h", { groupBy: "status" });
-    if (!res.exists) return 0;
-    return res.groups?.open?.count ?? 0;
-  } catch (err) {
-    if (err instanceof UnsupportedVenueFeatureError) {
-      const requests = await listHitlRequests(venue);
-      return requests.filter((r) => r.status === "open").length;
-    }
-    throw err;
-  }
+  const res = await venue.workspace.aggregate("h", { groupBy: "status" });
+  if (!res.exists) return 0;
+  return res.groups?.open?.count ?? 0;
 }
 
 // Which required asks are still unanswered. `false` is a legitimate answer to

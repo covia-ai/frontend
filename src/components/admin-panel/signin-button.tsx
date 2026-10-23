@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
 import { LogInIcon, CircleUserRound, Key } from "lucide-react";
 import { FaGithub, FaGoogle, FaMicrosoft } from "react-icons/fa";
 import { VenueAccessBadge } from "@/components/VenueAccessBadge";
@@ -18,8 +17,6 @@ import { useOAuthSignInOptions } from "@/hooks/use-oauth-sign-in";
 import { OAUTH_PROVIDER_LABELS } from "@/lib/oauth";
 
 type ChromeSignInButtonProps = {
-  index?: string | number;
-  isOpen?: boolean;
   venueId?: string;
 };
 
@@ -84,7 +81,7 @@ export function ChromeSignInButton(props: ChromeSignInButtonProps) {
 
   if (!auth) {
     return (
-      <div className="flex items-center gap-2" key={props.index}>
+      <div className="flex items-center gap-2">
         {/* Inline from sm up; below that the same state is a row in the
             topbar's overflow menu, where it does not compete for width. */}
         <VenueAccessBadge venueId={props.venueId} />
@@ -95,12 +92,7 @@ export function ChromeSignInButton(props: ChromeSignInButtonProps) {
               className="justify-center h-8 my-5 text-sm hover:bg-primary-vlight hover:text-foreground"
             >
               <LogInIcon />
-              <span
-                className={cn(
-                  "whitespace-nowrap hidden md:block lg:block",
-                  props.isOpen === false ? "opacity-0 hidden" : "opacity-100"
-                )}
-              >
+              <span className="whitespace-nowrap hidden md:block lg:block">
                 Sign In
               </span>
             </Button>

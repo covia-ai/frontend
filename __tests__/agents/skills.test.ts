@@ -5,7 +5,6 @@ import {
   skillsFromSkillsets,
   withSkillToggled,
   parseSkillFrontmatter,
-  skillsFromAssets,
 } from "@/lib/skills";
 
 describe("skills library normalization", () => {
@@ -33,19 +32,9 @@ describe("skills library normalization", () => {
     });
   });
 
-  it("maps resolved SDK skill assets, preserving venue and user as distinct sources", () => {
-    const assets = [
-      { id: "w/skills/review", metadata: { description: "Review work" } },
-    ] as never;
-    expect(skillsFromAssets(assets, "user"))
-      .toEqual([expect.objectContaining({ key: "review", path: "w/skills/review", source: "user" })]);
-  });
-
   it("matches agent configs by canonical path, reference, or skill name", () => {
-    // normalizeSkill's string-value branch is defensive: SkillManager
-    // (venue.skills.list()/get()) never hands back a raw reference string —
-    // it either resolves to a full asset or is skipped entirely
-    // (covia-sdk#32) — but the function itself still supports it directly.
+    // A skillset member can be a bare reference string (an asset id or path,
+    // see SKILL_REF), which the listing passes straight to normalizeSkill.
     const skill = normalizeSkill("review", "a/abc", "user", "w/skills/review");
     expect(agentUsesSkill({ skills: ["w/skills/review"] }, skill)).toBe(true);
     expect(agentUsesSkill({ skills: ["a/abc"] }, skill)).toBe(true);

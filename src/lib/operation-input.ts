@@ -2,15 +2,6 @@ import { getParsedAssetId } from "@covia/covia-sdk";
 
 export const TOP_LEVEL_INPUT_KEY = "__top__";
 
-export type OperationInputType =
-  | "string"
-  | "number"
-  | "json"
-  | "object"
-  | "any"
-  | "asset"
-  | "array";
-
 export type OperationInputProperty = {
   type?: string;
   default?: unknown;

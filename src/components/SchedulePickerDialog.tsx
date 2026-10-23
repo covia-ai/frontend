@@ -45,11 +45,9 @@ interface SchedulePickerDialogProps {
   // Input passed to the operation when it fires.
   input: unknown;
   triggerLabel?: string;
-  triggerVariant?: "default" | "outline";
   triggerSize?: "default" | "sm";
   triggerClassName?: string;
   disabled?: boolean;
-  onScheduled?: () => void;
 }
 
 // Shared cadence picker mounted from both the operation run sheet
@@ -62,11 +60,9 @@ export function SchedulePickerDialog({
   operation,
   input,
   triggerLabel = "Run on a schedule",
-  triggerVariant = "outline",
   triggerSize = "default",
   triggerClassName = "w-auto whitespace-nowrap",
   disabled,
-  onScheduled,
 }: SchedulePickerDialogProps) {
   const [open, setOpen] = useState(false);
   const [cadence, setCadence] = useState<Cadence>("once");
@@ -104,7 +100,6 @@ export function SchedulePickerDialog({
         notifySuccess("Schedule created", { receiptHref: "/jobs?tab=scheduled" });
         setOpen(false);
         reset();
-        onScheduled?.();
       })
       .catch((err) => notifyError("Unable to create schedule", err))
       .finally(() => setSubmitting(false));
@@ -120,7 +115,7 @@ export function SchedulePickerDialog({
     >
       <DialogTrigger asChild>
         <Button
-          variant={triggerVariant}
+          variant="outline"
           size={triggerSize}
           type="button"
           className={cn("gap-1.5", triggerClassName)}
