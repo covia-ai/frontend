@@ -55,6 +55,10 @@ jest.mock('@/hooks/use-venues', () => ({
 }));
 
 import { JobList } from '@/components/JobList';
+import { warmSparkline } from '@test/lazy-boundaries';
+
+// Compile the lazy module before the clock starts — see @test/lazy-boundaries.
+beforeAll(warmSparkline);
 
 describe('JobList windowed fetching', () => {
   beforeEach(() => {

@@ -34,6 +34,10 @@ jest.mock("@/hooks/use-authenticated-venue", () => ({
 }));
 
 import { AgentProfile } from "@/components/AgentProfile";
+import { warmMarkdownPipeline } from "@test/lazy-boundaries";
+
+// Compile the lazy module before the clock starts — see @test/lazy-boundaries.
+beforeAll(warmMarkdownPipeline);
 
 const AGENT = { agentId: "agent-1", status: "RUNNING", tasks: 0 };
 

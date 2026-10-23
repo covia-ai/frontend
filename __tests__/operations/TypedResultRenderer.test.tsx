@@ -2,6 +2,10 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { TypedResultRenderer } from '@/components/typed-result/TypedResultRenderer';
+import { warmThemedJsonEditor } from '@test/lazy-boundaries';
+
+// Compile the lazy module before the clock starts — see @test/lazy-boundaries.
+beforeAll(warmThemedJsonEditor);
 
 // Read-only display goes through json-edit-react 2's JsonViewer.
 jest.mock('json-edit-react', () => ({

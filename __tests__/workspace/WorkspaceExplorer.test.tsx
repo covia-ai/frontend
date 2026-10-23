@@ -33,6 +33,10 @@ jest.mock('@/hooks/use-auth', () => ({
 }));
 
 import { WorkspaceExplorer } from '@/components/WorkspaceExplorer';
+import { warmThemedJsonEditor } from '@test/lazy-boundaries';
+
+// Compile the lazy module before the clock starts — see @test/lazy-boundaries.
+beforeAll(warmThemedJsonEditor);
 
 describe('WorkspaceExplorer job-free reads', () => {
   beforeEach(() => {
