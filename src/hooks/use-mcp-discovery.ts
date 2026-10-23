@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import type { Venue } from "@covia/covia-sdk";
+import { useVenueRead } from "@/hooks/use-venue-read";
 
 // The venue landing and McpConnectSection both need the venue's MCP server URL
 // from /.well-known/mcp — and both render on the landing page, so the naive two
@@ -39,20 +39,16 @@ export function resetMcpDiscoveryCache(): void {
 
 // The resolved MCP URL for a venue ("Not Found" until it loads, then the
 // server_url or "Not Available"). Shared per baseUrl, so a page mounting two
-// consumers still makes one discovery request.
+// consumers still makes one discovery request. The answer is held with the
+// venue it is for, so after a venue switch a Copy button can never hand over
+// the previous venue's URL. discoverMcpUrl never rejects, so there is no
+// failure for useVenueRead to report or recheck.
 export function useMcpDiscovery(venue: Venue | null | undefined): string {
-  const [mcpUrl, setMcpUrl] = useState("Not Found");
-
-  useEffect(() => {
-    if (!venue) return;
-    let active = true;
-    void discoverMcpUrl(venue.baseUrl).then((url) => {
-      if (active) setMcpUrl(url);
-    });
-    return () => {
-      active = false;
-    };
-  }, [venue]);
-
-  return mcpUrl;
+  return useVenueRead({
+    venue,
+    initial: "Not Found",
+    notify: false,
+    failureTitle: "Unable to discover the MCP server",
+    load: (target) => discoverMcpUrl(target.baseUrl),
+  }).data;
 }

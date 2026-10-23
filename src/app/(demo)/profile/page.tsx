@@ -13,6 +13,7 @@ import { DidDisplay } from "@/components/DidDisplay";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCurrentAuth, useAuthStore } from "@/hooks/use-auth";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useVenueRead } from "@/hooks/use-venue-read";
 import { Ed25519Auth, type DIDDocument } from "@covia/covia-sdk";
 import { PageHeading } from "@/components/PageHeading";
 import { ShikiCodeBlock } from "@/components/ShikiCodeBlock";
@@ -83,19 +84,21 @@ export default function ProfilePage() {
       state.deviceKeys.length > 0,
   );
 
-  const [didDocument, setDidDocument] = useState<DIDDocument | null>(null);
-  const [didDocError, setDidDocError] = useState(false);
+  // Read with the venue it answers for, so a venue switch never shows the
+  // previous venue's document or its stale failure under the new name.
+  const { data: didDocument, error: didDocError } = useVenueRead<DIDDocument | null>({
+    venue,
+    initial: null,
+    notify: false,
+    failureTitle: "Unable to load the venue DID document",
+    load: (target) => target.didDocument(),
+  });
 
   useEffect(() => {
     if (!auth && !hasAnyAccount) {
       router.push("/signUp");
     }
   }, [auth, hasAnyAccount, router]);
-
-  useEffect(() => {
-    if (!venue) return;
-    venue.didDocument().then(setDidDocument).catch(() => setDidDocError(true));
-  }, [venue]);
 
   const publicKeyHex = useMemo(() => {
     if (!auth || auth.type !== "keypair") return null;
@@ -183,9 +186,7 @@ export default function ProfilePage() {
                 </h3>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Venue DID</p>
-                  <code className="bg-muted block rounded-md px-3 py-2 text-xs font-mono break-all select-all">
-                    {venue.venueId}
-                  </code>
+                  <DidDisplay value={venue.venueId} chars="full" iconSize={20} />
                 </div>
                 <a
                   href={`${venue.baseUrl}/.well-known/did.json`}

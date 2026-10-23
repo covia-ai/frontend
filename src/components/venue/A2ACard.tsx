@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CopyField } from "@/components/CopyField";
@@ -9,6 +9,7 @@ import { TypeTile } from "@/components/TypeTile";
 import { adapterLookup } from "@/lib/adapter-icons";
 import type { Venue, AgentCard as AgentCardData } from "@covia/covia-sdk";
 import { copyDataToClipBoard } from "@/lib/utils";
+import { useVenueRead } from "@/hooks/use-venue-read";
 
 interface A2ACardProps {
   venue: Venue;
@@ -19,31 +20,22 @@ interface A2ACardProps {
 // state (not an error), so a failed fetch renders a quiet fallback rather
 // than a toast.
 export function A2ACard({ venue }: A2ACardProps) {
-  const [agentCard, setAgentCard] = useState<AgentCardData | null>(null);
-  const [available, setAvailable] = useState<boolean | null>(null);
+  // Read with the venue it answers for, so a venue switch never shows the
+  // previous venue's card. A venue without the A2A adapter answers non-OK:
+  // that is "no card", not a failure, so it doesn't trigger a venue recheck.
+  const { data: agentCard, loading } = useVenueRead<AgentCardData | null>({
+    venue,
+    initial: null,
+    notify: false,
+    failureTitle: "Unable to load the A2A agent card",
+    load: async (target) => {
+      const response = await fetch(`${target.baseUrl}/.well-known/agent-card.json`);
+      return response.ok ? ((await response.json()) as AgentCardData) : null;
+    },
+  });
+  // null while discovering, then whether the venue has a card.
+  const available = loading ? null : agentCard !== null;
   const [showRaw, setShowRaw] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    const fetchCard = async () => {
-      try {
-        const response = await fetch(`${venue.baseUrl}/.well-known/agent-card.json`);
-        if (!response.ok) throw new Error(`A2A card fetch failed: ${response.status}`);
-        const body = await response.json();
-        if (cancelled) return;
-        setAgentCard(body);
-        setAvailable(true);
-      } catch {
-        if (cancelled) return;
-        setAgentCard(null);
-        setAvailable(false);
-      }
-    };
-    fetchCard();
-    return () => {
-      cancelled = true;
-    };
-  }, [venue]);
 
   const endpointUrl = agentCard?.supportedInterfaces?.[0]?.url ?? agentCard?.url;
   const capabilities = agentCard?.capabilities ?? {};
@@ -57,7 +49,11 @@ export function A2ACard({ venue }: A2ACardProps) {
         <div>
           <h2 className="text-lg font-medium">A2A Agent Card</h2>
           <p className="text-sm text-muted-foreground">
-            {available ? "This venue's front-door Agent-to-Agent card" : "Discovering this venue's A2A support…"}
+            {available === null
+              ? "Discovering this venue's A2A support…"
+              : available
+                ? "This venue's front-door Agent-to-Agent card"
+                : "Agent-to-Agent card"}
           </p>
         </div>
       </div>
