@@ -190,11 +190,16 @@ function AddNewAgentForm({
         if (!active) return;
         setAvailableKeys(secrets);
         // Templates all default to OpenAI, but most users hold a different key.
-        // If the seeded provider has no key and another does, switch to a ready
+        // If the seeded provider has no key and another does, switch to that
         // one so "Use Template" just works instead of showing "No API key".
+        // Only a provider whose key is stored counts: one that needs no key
+        // (Ollama) is "ready" too, but switching to it would only move the
+        // problem to a model the venue may not run.
         const ready = (id: string) => isAgentProviderReady(id, secrets);
         if (preferAvailableProvider && !ready(initialProvider)) {
-          const pick = Object.keys(LLM_PROVIDERS).find(ready);
+          const pick = Object.keys(LLM_PROVIDERS).find(
+            (id) => LLM_PROVIDERS[id].requiresKey && ready(id),
+          );
           if (pick) {
             setLlmProvider(pick);
             setModel("");
@@ -223,6 +228,16 @@ function AddNewAgentForm({
 
   const isProviderReady = (providerId: string) =>
     isAgentProviderReady(providerId, availableKeys);
+
+  // Shared by the buttons' disabled state and the handlers' guards, so the two
+  // can't disagree. A key pasted inline counts: it is stored on create, so the
+  // provider only blocks Create while it has neither a stored nor a pasted key.
+  const provider = LLM_PROVIDERS[llmProvider];
+  const needsKey = !!provider?.requiresKey && !isProviderReady(llmProvider);
+  const keyMissing = needsKey && !apiKeyInput.trim();
+  const customOperationMissing =
+    llmProvider === CUSTOM_PROVIDER_OPTION && !customProviderOperation.trim();
+  const formIncomplete = !venue || !agentName.trim() || agentIdReserved || customOperationMissing;
 
   const buildAgentConfig = (): AgentConfigInput => {
     // Unticked capabilities mean "unrestricted", which is the absence of the
@@ -261,16 +276,14 @@ function AddNewAgentForm({
       notifyWarning("Please enter an agent name");
       return;
     }
-    if (llmProvider === CUSTOM_PROVIDER_OPTION && !customProviderOperation.trim()) {
+    if (customOperationMissing) {
       notifyWarning("Enter the custom provider operation path");
       return;
     }
-    const provider = LLM_PROVIDERS[llmProvider];
     // The provider needs a key it doesn't have. Accept one pasted inline rather
     // than making the user leave for the Secrets page.
-    const needsKey = !!provider?.requiresKey && !isProviderReady(llmProvider);
-    if (needsKey && !apiKeyInput.trim()) {
-      notifyWarning(`Enter an API key for ${provider.label}, or add one in Secrets`);
+    if (keyMissing) {
+      notifyWarning(`Enter an API key for ${provider?.label ?? "this provider"}, or add one in Secrets`);
       return;
     }
     if (agentIdReserved) {
@@ -279,8 +292,9 @@ function AddNewAgentForm({
     }
     setCreating(true);
     try {
-      // Store the pasted key first so the provider op can resolve it.
-      if (needsKey && apiKeyInput.trim()) {
+      // Store the pasted key first so the provider op can resolve it. Past the
+      // keyMissing guard, needing a key means one was pasted.
+      if (needsKey && provider) {
         await venue.secrets.set(provider.secretKey, apiKeyInput.trim());
       }
       const result = await venue.agents.create({
@@ -310,10 +324,7 @@ function AddNewAgentForm({
   };
 
   const handleSaveTemplate = async () => {
-    if (
-      !venue || !agentName.trim() || !resolvedAgentId || agentIdReserved ||
-      (llmProvider === CUSTOM_PROVIDER_OPTION && !customProviderOperation.trim())
-    ) return;
+    if (!venue || formIncomplete || !resolvedAgentId) return;
     const path = `w/templates/${resolvedAgentId}`;
     setSavingTemplate(true);
     try {
@@ -506,11 +517,7 @@ function AddNewAgentForm({
             variant="outline"
             data-testid="save-agent-template"
             onClick={handleSaveTemplate}
-            disabled={
-              savingTemplate || creating || !venue || !agentName.trim() ||
-              agentIdReserved ||
-              (llmProvider === CUSTOM_PROVIDER_OPTION && !customProviderOperation.trim())
-            }
+            disabled={savingTemplate || creating || formIncomplete}
             className="gap-2"
           >
             <BookmarkPlus size={16} />
@@ -521,11 +528,7 @@ function AddNewAgentForm({
             type="button"
             data-testid="create-agent"
             onClick={handleNewAgent}
-            disabled={
-              creating || savingTemplate || !venue || !agentName.trim() ||
-              !isProviderReady(llmProvider) || agentIdReserved ||
-              (llmProvider === CUSTOM_PROVIDER_OPTION && !customProviderOperation.trim())
-            }
+            disabled={creating || savingTemplate || formIncomplete || keyMissing}
           >
             {creating ? "Creating…" : submitLabel}
           </Button>

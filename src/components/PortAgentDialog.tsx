@@ -96,14 +96,17 @@ export function PortAgentDialog({
   return (
     <Dialog open={isOpen} onOpenChange={setOpen}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      {/* The form is mounted only while the dialog is open, so the seed props
-          apply on every open without an effect watching for the transition,
-          and closing discards the draft without anything resetting it. */}
-      <PortAgentForm
-        initialName={initialName}
-        initialSystemPrompt={initialSystemPrompt}
-        onClose={() => setOpen(false)}
-      />
+      {/* The form lives inside DialogContent, which Radix mounts only while the
+          dialog is open: the seed props apply on every open without an effect
+          watching for the transition, closing discards the draft without
+          anything resetting it, and nothing is read until the dialog opens. */}
+      <DialogContent className="max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden sm:max-w-2xl">
+        <PortAgentForm
+          initialName={initialName}
+          initialSystemPrompt={initialSystemPrompt}
+          onClose={() => setOpen(false)}
+        />
+      </DialogContent>
     </Dialog>
   );
 }
@@ -265,7 +268,7 @@ function PortAgentForm({ initialName, initialSystemPrompt, onClose }: PortAgentF
   };
 
   return (
-      <DialogContent className="max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden sm:max-w-2xl">
+      <>
         <DialogHeader className="border-b p-6">
           <DialogTitle className="flex items-center gap-2">
             <ArrowDownToLine size={18} className="text-primary" /> Port an agent
@@ -468,6 +471,6 @@ function PortAgentForm({ initialName, initialSystemPrompt, onClose }: PortAgentF
             Port agent
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </>
   );
 }

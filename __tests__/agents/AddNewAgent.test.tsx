@@ -58,6 +58,7 @@ const mockVenue = {
     // ANTHROPIC_API_KEY present so the default provider (anthropic) is
     // ready and the Create button isn't disabled by the key-readiness gate.
     list: jest.fn().mockResolvedValue(['ANTHROPIC_API_KEY']),
+    set: jest.fn().mockResolvedValue({}),
   },
   workspace: {
     read: jest.fn(defaultWorkspaceRead),
@@ -100,6 +101,7 @@ describe('AddNewAgent', () => {
     mockVenue.workspace.read.mockImplementation(defaultWorkspaceRead);
     mockVenue.workspace.write.mockResolvedValue({});
     mockVenue.skills.list.mockImplementation(defaultSkillsList);
+    mockVenue.secrets.list.mockResolvedValue(['ANTHROPIC_API_KEY']);
   });
 
   it('renders the trigger button', () => {
@@ -590,5 +592,40 @@ describe('AddNewAgent', () => {
     expect(mockVenue.agents.create.mock.calls[0][0].config).toMatchObject({
       skills: ['w/skills'],
     });
+  });
+
+  // A pasted key is stored on create, so it has to be able to enable Create:
+  // the button used to stay disabled until a key was *stored*, which made the
+  // inline field a dead end.
+  it('creates with a key pasted inline when the provider has none stored', async () => {
+    mockVenue.secrets.list.mockResolvedValue([]);
+    const user = await renderAndOpenDialog();
+    await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+    await waitFor(() => expect(mockVenue.secrets.list).toHaveBeenCalled());
+
+    expect(screen.getByTestId('create-agent')).toBeDisabled();
+    await fill(user, await screen.findByTestId('inline-api-key'), 'sk-test');
+    expect(screen.getByTestId('create-agent')).toBeEnabled();
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    expect(mockVenue.secrets.set).toHaveBeenCalledWith('ANTHROPIC_API_KEY', 'sk-test');
+    expect(mockVenue.secrets.set.mock.invocationCallOrder[0])
+      .toBeLessThan(mockVenue.agents.create.mock.invocationCallOrder[0]);
+    // With no key stored anywhere it stays on the template's provider rather
+    // than moving to one that merely needs no key.
+    expect(mockVenue.agents.create.mock.calls[0][0].config.llmOperation).toBe('v/ops/langchain/anthropic');
+  });
+
+  it('moves a keyless template to a provider whose key is stored', async () => {
+    mockVenue.secrets.list.mockResolvedValue(['OPENAI_API_KEY']);
+    const user = await renderAndOpenDialog();
+    await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+    await waitFor(() => expect(screen.getByTestId('create-agent')).toBeEnabled());
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    expect(mockVenue.secrets.set).not.toHaveBeenCalled();
+    expect(mockVenue.agents.create.mock.calls[0][0].config.llmOperation).toBe('v/ops/langchain/openai');
   });
 });
