@@ -15,17 +15,10 @@ jest.mock('@covia/covia-sdk', () => {
         public metadata: unknown,
       ) {}
     },
-    UnsupportedVenueFeatureError: class UnsupportedVenueFeatureError extends Error {
-      constructor(public readonly feature: string) {
-        super(`The connected venue cannot serve ${feature} without creating a job.`);
-        this.name = 'UnsupportedVenueFeatureError';
-      }
-    },
   };
 });
 
 import * as sdk from '@covia/covia-sdk';
-import { UnsupportedVenueFeatureError } from '@covia/covia-sdk';
 import {
   HITL_RESPOND_ADDRESS,
   countOpenHitlRequests,
@@ -161,16 +154,6 @@ describe('countOpenHitlRequests', () => {
     await expect(countOpenHitlRequests(venue)).resolves.toBe(0);
     aggregate.mockResolvedValueOnce({ exists: true, count: 3, groups: { answered: { count: 3 } } });
     await expect(countOpenHitlRequests(venue)).resolves.toBe(0);
-  });
-
-  it('falls back to the full listing on venues without aggregate', async () => {
-    const { venue, aggregate } = venueWithInbox({
-      a: request('a', { status: 'open' }),
-      b: request('b', { status: 'answered' }),
-    });
-    aggregate.mockRejectedValue(new UnsupportedVenueFeatureError('workspace aggregate reads'));
-
-    await expect(countOpenHitlRequests(venue)).resolves.toBe(1);
   });
 });
 

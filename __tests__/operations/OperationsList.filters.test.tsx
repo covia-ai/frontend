@@ -12,9 +12,6 @@ jest.mock('@/components/OperationCard', () => ({
     <div data-testid="asset-card">{asset.metadata?.name ?? asset.id}</div>
   ),
 }));
-jest.mock('@/components/PaginationHeader', () => ({
-  PaginationHeader: () => <div data-testid="pagination-header" />,
-}));
 jest.mock('@/components/admin-panel/TopBar', () => ({
   TopBar: () => <div data-testid="top-bar" />,
 }));

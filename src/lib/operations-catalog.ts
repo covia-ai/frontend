@@ -28,14 +28,14 @@ export function withToolToggled(tools: string[], op: CatalogOp, attached: boolea
 const operationMetadataCache = new WeakMap<Venue, Map<string, any>>();
 
 // Job-free read of a lattice path. `venue.workspace.read` routes through the
-// venue's GET /api/v1/values/read (no Job persisted) and, in the SDK, falls
-// back to the invoke-based covia:read only on pre-0.3 venues that lack the
-// route. Venue-version accommodation lives in the SDK, not here.
+// venue's GET /api/v1/values/read (no Job persisted); on a venue without
+// that route the SDK throws UnsupportedVenueFeatureError rather than invoke.
+// Venue-version accommodation lives in the SDK, not here.
 async function readValue(venue: Venue, path: string): Promise<any> {
   return (await venue.workspace.read(path)).value;
 }
 
-// Read a whole catalog sub-tree in a single covia:read and flatten it to
+// Read a whole catalog sub-tree in a single values read and flatten it to
 // {path, metadata} entries. Catalog entries are full inline asset metadata
 // (see OPERATIONS.md §5), so one read returns paths + metadata together —
 // no per-op round trip.
