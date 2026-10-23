@@ -11,7 +11,7 @@ Covia frontend — Next.js web UI for interacting with Covia venue servers via `
 ## Tech Stack
 
 - **Framework:** Next.js 16 (App Router, Turbopack)
-- **Language:** TypeScript 5.9+
+- **Language:** TypeScript 6
 - **React:** 19
 - **State Management:** Zustand 5 (with `persist` middleware for localStorage)
 - **Styling:** Tailwind CSS 4, shadcn/ui (Radix primitives under `components/ui/`)
@@ -46,8 +46,8 @@ src/
 ├── hooks/                  # Custom React hooks
 │   ├── use-auth.ts         # Auth state (Zustand store, localStorage)
 │   ├── use-authenticated-venue.ts  # Shared cached Venue instance per (venue, auth)
-│   ├── use-venue.ts        # Current venue state
-│   └── use-venues.ts       # Multi-venue management
+│   ├── use-resolved-venue.ts       # Venue for a routed page, or the selected one
+│   └── use-venues.ts       # Connected venues and the selected one
 ├── lib/                    # Utilities
 │   ├── auth-provider.ts    # Converts stored auth → SDK Auth objects
 │   └── utils.ts            # General helpers
