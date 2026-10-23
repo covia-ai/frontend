@@ -4,6 +4,7 @@ import { useTheme } from "next-themes";
 import { Moon,Sun } from "lucide-react";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { isEditingTarget } from "@/lib/keyboard";
 
 export function DarkLightToggle() {
   const { setTheme, resolvedTheme } = useTheme();
@@ -12,11 +13,14 @@ export function DarkLightToggle() {
   // class on <html> shows the right one.
   const toggle = () => setTheme(resolvedTheme === "dark" ? "light" : "dark");
 
+  // Ctrl/Cmd+X is also cut, so the shortcut only applies when there is
+  // nothing to cut: not while typing in a field, and not with text selected.
   const onKeyDown = useEffectEvent((e: KeyboardEvent) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'x') {
-      e.preventDefault();
-      toggle();
-    }
+    if (!(e.ctrlKey || e.metaKey) || e.key !== 'x' || e.defaultPrevented) return;
+    if (isEditingTarget(e.target)) return;
+    if (window.getSelection()?.isCollapsed === false) return;
+    e.preventDefault();
+    toggle();
   });
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => onKeyDown(e);
