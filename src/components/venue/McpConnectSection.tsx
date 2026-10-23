@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { adapterLookup } from "@/lib/adapter-icons";
 import type { Venue } from "@covia/covia-sdk";
 import { copyDataToClipBoard } from "@/lib/utils";
 import { useMcpDiscovery } from "@/hooks/use-mcp-discovery";
+import { useVenueRead } from "@/hooks/use-venue-read";
 
 interface McpConnectSectionProps {
   venue: Venue;
@@ -25,20 +26,16 @@ export function McpConnectSection({ venue, slug }: McpConnectSectionProps) {
   // Shared /.well-known/mcp discovery — one request even though the landing page
   // also consumes it (W4 4A).
   const venueMCPUrl = useMcpDiscovery(venue);
-  const [mcpTools, setMcpTools] = useState<{ name: string }[]>([]);
+  // Job-free native read via the SDK (covia-sdk#23), held with the venue it is
+  // for. A failure is non-fatal: the card just lists no tools.
+  const { data: mcpTools } = useVenueRead<{ name: string }[]>({
+    venue,
+    initial: [],
+    notify: false,
+    failureTitle: "Unable to list MCP tools",
+    load: async (target) => (await target.mcp.listTools()).tools,
+  });
   const [showClaudeSnippet, setShowClaudeSnippet] = useState(false);
-
-  useEffect(() => {
-    const fetchMcpTools = async () => {
-      try {
-        // Job-free native read via the SDK (covia-sdk#23).
-        setMcpTools((await venue.mcp.listTools()).tools);
-      } catch {
-        /* non-fatal */
-      }
-    };
-    fetchMcpTools();
-  }, [venue]);
 
   return (
     <Card className="p-6">
