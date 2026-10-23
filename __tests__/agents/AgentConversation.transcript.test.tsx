@@ -6,7 +6,11 @@ import "@testing-library/jest-dom";
 jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
 
 import { AgentConversation } from "@/components/AgentConversation";
+import { warmMarkdownPipeline } from "@test/lazy-boundaries";
 import type { Session } from "@/config/types";
+
+// Compile the lazy module before the clock starts — see @test/lazy-boundaries.
+beforeAll(warmMarkdownPipeline);
 
 // How a turn's content reaches the transcript. Copy affordances live in
 // AgentConversation.test.tsx.

@@ -19,7 +19,11 @@ const mockNotifySuccess = notifyMock.notifySuccess;
 const mockNotifyError = notifyMock.notifyError;
 
 import { AgentConversation } from "@/components/AgentConversation";
+import { warmMarkdownPipeline } from "@test/lazy-boundaries";
 import type { Session } from "@/config/types";
+
+// Compile the lazy module before the clock starts — see @test/lazy-boundaries.
+beforeAll(warmMarkdownPipeline);
 
 const session: Session = {
   sessionId: "s1",

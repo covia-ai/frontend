@@ -4,6 +4,10 @@ import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 
 import { MarkdownMessage } from "@/components/MarkdownMessage";
+import { warmShikiHighlighter } from "@test/lazy-boundaries";
+
+// Compile the lazy module before the clock starts — see @test/lazy-boundaries.
+beforeAll(warmShikiHighlighter("ts", "html"));
 
 describe("MarkdownMessage", () => {
   it("renders GFM structure without flattening it to plain text", () => {
@@ -54,10 +58,7 @@ describe("MarkdownMessage", () => {
 
     expect(screen.getByText("ts")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy code" })).toBeInTheDocument();
-    await waitFor(
-      () => expect(screen.getByTestId("highlighted-code-block")).toBeInTheDocument(),
-      { timeout: 10_000 },
-    );
+    await waitFor(() => expect(screen.getByTestId("highlighted-code-block")).toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: "Copy code" }));
     expect(writeText).toHaveBeenCalledWith("const answer: number = 42");
     expect(screen.getByRole("button", { name: "Copy code" })).toHaveTextContent("Copied");
@@ -68,10 +69,7 @@ describe("MarkdownMessage", () => {
       <MarkdownMessage>{"```html\n<img src=x onerror=alert(1)>\n```"}</MarkdownMessage>,
     );
 
-    await waitFor(
-      () => expect(screen.getByTestId("highlighted-code-block")).toBeInTheDocument(),
-      { timeout: 10_000 },
-    );
+    await waitFor(() => expect(screen.getByTestId("highlighted-code-block")).toBeInTheDocument());
     expect(container.querySelector("img")).not.toBeInTheDocument();
     expect(screen.getByTestId("highlighted-code-block")).toHaveTextContent("<img");
   });

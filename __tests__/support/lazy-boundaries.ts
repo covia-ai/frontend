@@ -20,7 +20,10 @@
  * machine or a bigger suite.
  *
  * Use these in a `beforeAll` of any suite that renders a lazy boundary and
- * then asserts on what is behind it.
+ * then asserts on what is behind it. The same goes for `next/dynamic`, which
+ * defers its import the same way. A suite reaches a boundary through whatever
+ * it renders, so the component under test need not be the lazy one: JobList
+ * reaches the sparkline through its stat tiles.
  */
 
 /** Behind `LazyMarkdownMessage` — the remark/rehype pipeline. */
@@ -31,4 +34,21 @@ export function warmMarkdownPipeline(): Promise<unknown> {
 /** Behind `StatTile`'s trend — the sparkline chart. */
 export function warmSparkline(): Promise<unknown> {
   return import("@/components/charts/Sparkline");
+}
+
+/** Behind the `next/dynamic` JSON views (schemas, typed results, workspace values). */
+export function warmThemedJsonEditor(): Promise<unknown> {
+  return import("@/components/ThemedJsonEditor");
+}
+
+/**
+ * Behind `ShikiCodeBlock` — the highlighter, and the grammar for each language
+ * named. Grammars are lazy imports of their own inside `@/lib/shiki`, so the
+ * highlighter is run once per language rather than only imported.
+ */
+export function warmShikiHighlighter(...languages: string[]): () => Promise<void> {
+  return async () => {
+    const { highlightCode } = await import("@/lib/shiki");
+    for (const language of languages) await highlightCode("", language);
+  };
 }
