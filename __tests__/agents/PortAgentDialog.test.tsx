@@ -122,4 +122,23 @@ describe("PortAgentDialog (Migrate → native)", () => {
     expect(notifyWarning).toHaveBeenCalled();
     expect(runMock).not.toHaveBeenCalled();
   });
+
+  // The form belongs inside DialogContent, which mounts only while open: a
+  // trigger-mode dialog reads nothing until it opens, and Cancel discards the
+  // draft rather than leaving it for the next open.
+  it("reads nothing until opened, and starts clean after Cancel", async () => {
+    const user = userEvent.setup({ delay: null });
+    mockVenue.secrets.list.mockClear();
+    render(<PortAgentDialog trigger={<button data-testid="port-trigger">Port</button>} />);
+    expect(mockVenue.secrets.list).not.toHaveBeenCalled();
+
+    await user.click(screen.getByTestId("port-trigger"));
+    await waitFor(() => expect(mockVenue.secrets.list).toHaveBeenCalled());
+    await user.type(screen.getByTestId("port-agent-name"), "Draft bot");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByTestId("port-agent-name")).not.toBeInTheDocument());
+
+    await user.click(screen.getByTestId("port-trigger"));
+    expect(await screen.findByTestId("port-agent-name")).toHaveValue("");
+  });
 });
