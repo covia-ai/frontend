@@ -40,8 +40,9 @@ export function toVenueDescriptor(venue: VenueLike): VenueDescriptor {
 }
 
 // Venues offered in every environment. venue-test leads because the first
-// reachable venue becomes a new user's default, and venue-1/venue-2 (stable
-// builds) currently 403 unauthenticated users.
+// reachable venue becomes a new user's default, and it is the one that admits
+// a new device key on first sign-in (`userAutoCreate`); venue-1 and venue-2,
+// the stable builds, serve signed-out reads but don't register new accounts.
 const commonVenueUrls = [
   "https://venue-test.covia.ai",
   "https://venue-1.covia.ai",

@@ -82,7 +82,13 @@
       "ignoreGhsas": [
         "GHSA-fvhg-p4hf-79x3"
       ]
-    }
+    },
+    "ignoredBuiltDependencies": [
+      "@parcel/watcher",
+      "canvas",
+      "core-js",
+      "unrs-resolver"
+    ]
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^16.4.3",
