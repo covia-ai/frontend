@@ -7,7 +7,8 @@ running jobs, managing agents, and exploring workspace data.
 
 Requirements:
 
-- Node.js 20+
+- Node.js 22, as CI uses (Next.js itself needs 20.9 or later, and Node 20
+  is past end of life)
 - pnpm 10
 - A reachable Covia venue (local development defaults to
   `http://127.0.0.1:8080`)
@@ -41,19 +42,29 @@ the D070 spec (identity is a hashed DID, and session replay stays off).
 
 Authentication belongs to each venue rather than to the Next.js application:
 
-- Device-key sign-in generates or imports an Ed25519 key in the browser.
+- Device-key sign-in generates or imports an Ed25519 key in the browser. The
+  key is kept per venue in local storage under `venue-auth` and survives
+  sign-out.
 - OAuth providers are discovered from the selected venue's job-free `/login`
-  page, so only providers configured by that venue are shown. OAuth redirects
-  through `/auth/{provider}` and returns a venue bearer token to
-  `/auth/callback`, which sends the user back to the page where sign-in began.
+  page, so only providers configured by that venue are shown. Sign-in goes to
+  the venue's `/auth/{provider}` with a per-tab state and an S256 PKCE
+  challenge; the venue returns a one-use code to `/auth/callback`, which
+  exchanges it at the venue's `/auth/exchange` for a bearer token and sends the
+  user back to the page where sign-in began. The bearer stays in memory only,
+  so it is gone after sign-out or a reload.
 
-Both modes are stored per venue in browser local storage under `venue-auth`.
+A venue that offers OAuth must accept this app's callback,
+`<frontend origin>/auth/callback`, as an exact redirect URI: covia's
+`auth.loginRedirectUris`, HTTPS except on loopback. The code exchange needs a
+venue at covia 0.9.12 or later.
+
 No NextAuth secret or Google/GitHub credentials are required by this project.
 
 ## Checks
 
 ```bash
 pnpm lint
+pnpm typecheck
 pnpm test
 pnpm test:coverage
 pnpm build
