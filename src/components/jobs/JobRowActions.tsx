@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { jobFailure, notifyError, notifySuccess } from "@/lib/notify";
 import { isJobCancellable } from "@/lib/job-history";
+import { useJobExecution } from "@/hooks/use-job-execution";
 import { abbreviateJobId } from "@/lib/job-visuals";
 
 interface JobRowActionsProps {
@@ -42,6 +43,7 @@ interface JobRowActionsProps {
  */
 export function JobRowActions({ job, venue, onChanged }: JobRowActionsProps) {
   const [busy, setBusy] = useState<null | "rerun" | "cancel" | "receipt">(null);
+  const { execute } = useJobExecution(venue);
   const [confirmCancel, setConfirmCancel] = useState(false);
 
   const jobId = job.id ?? "";
@@ -50,24 +52,29 @@ export function JobRowActions({ job, venue, onChanged }: JobRowActionsProps) {
   const rerun = async () => {
     setBusy("rerun");
     try {
-      // The list record is a summary; fetch the full job for its operation + input.
-      const full = await venue.jobs.get(jobId);
-      // `op` is the reference that was invoked (covia#499). A path is a mutable
-      // binding, so re-running it runs whatever sits there now — which is what
-      // "re-run" should mean. A pinned record carries a hash and re-runs that.
-      const operation = full.metadata.op;
-      if (!operation) throw new Error("This job has no operation reference to re-run.");
-      const newJob = await venue.operations.invoke(operation, full.metadata.input);
-      notifySuccess("Re-running operation", {
-        description: `New job ${abbreviateJobId(newJob.id)}`,
-        receiptHref: newJob.id
-          ? `/venues/${encodeURIComponent(venue.venueId)}/jobs/${newJob.id}`
-          : undefined,
+      // The same path as every other user-started run: the new job is watched
+      // for the ambient completion notification, and a failure names the job.
+      await execute({
+        action: async () => {
+          // The list record is a summary; fetch the full job for its operation + input.
+          const full = await venue.jobs.get(jobId);
+          // `op` is the reference that was invoked (covia#499). A path is a mutable
+          // binding, so re-running it runs whatever sits there now — which is what
+          // "re-run" should mean. A pinned record carries a hash and re-runs that.
+          const operation = full.metadata.op;
+          if (!operation) throw new Error("This job has no operation reference to re-run.");
+          return venue.operations.invoke(operation, full.metadata.input);
+        },
+        failureTitle: "Unable to re-run job",
+        navigate: false,
+        onSuccess: (newJobId) => {
+          notifySuccess("Re-running operation", {
+            description: `New job ${abbreviateJobId(newJobId)}`,
+            receiptHref: `/venues/${encodeURIComponent(venue.venueId)}/jobs/${newJobId}`,
+          });
+          onChanged?.();
+        },
       });
-      onChanged?.();
-    } catch (err) {
-      const { reason } = jobFailure(err, venue.venueId);
-      notifyError("Unable to re-run job", reason, venue.baseUrl);
     } finally {
       setBusy(null);
     }

@@ -180,6 +180,29 @@ describe('inline form', () => {
     });
   });
 
+  // A quick-answer card opened by a deep link shows the full form. Opening a
+  // different card collapses it without its own Cancel, and its quick buttons
+  // come back: the comment typed in the form must not go out with them.
+  it('does not send a comment typed in a card that another card collapsed', async () => {
+    const quickCard = req({ id: 'quick', asks: [approvalAsk] });
+    const formCard = req({
+      id: 'form', asks: [approvalAsk, { id: 'notes', type: 'text', prompt: 'Notes?' }],
+    });
+    withRequests([quickCard, formCard]);
+    render(<HitlInbox initialRequestId="quick" />);
+
+    await userEvent.type(
+      screen.getByPlaceholderText('Optional — the reason the requester sees when rejecting.'),
+      'typed then abandoned',
+    );
+    await userEvent.click(screen.getByTestId('hitl-respond-toggle')); // opens the other card
+    await userEvent.click(screen.getAllByTestId('hitl-quick-answer')[0]);
+
+    expect(mockRespond).toHaveBeenCalledWith(expect.anything(), {
+      id: 'quick', outcome: 'answer', answers: { approve: true },
+    });
+  });
+
   it('never fast-paths a request offering capability grants', () => {
     withRequests([req({
       asks: [{ ...approvalAsk, grants: [{ with: 'w/', can: 'write' }] }],

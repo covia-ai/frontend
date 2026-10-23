@@ -10,6 +10,7 @@ const invokeMock = jest.fn().mockResolvedValue({ id: "0xNEWJOB" });
 import { JobRowActions } from "@/components/jobs/JobRowActions";
 import { notifySuccess } from "@/lib/notify";
 import { RunStatus, type Venue } from "@covia/covia-sdk";
+import { useWatchedJobs } from "@/hooks/use-watched-jobs";
 
 // The venue arrives as a prop (the one the list is showing) — never from the
 // globally selected venue, which can differ on a /venues/<id>/jobs route.
@@ -48,6 +49,11 @@ describe("JobRowActions", () => {
       expect.objectContaining({
         receiptHref: "/venues/did%3Aweb%3Avenue.example/jobs/0xNEWJOB",
       }),
+    );
+    // Watched like every other user-started run, for the ambient completion
+    // notification (#241).
+    expect(useWatchedJobs.getState().jobs).toContainEqual(
+      expect.objectContaining({ venueId: "did:web:venue.example", jobId: "0xNEWJOB" }),
     );
   });
 

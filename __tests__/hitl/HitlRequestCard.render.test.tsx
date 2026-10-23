@@ -73,10 +73,12 @@ describe("HitlRequestCard render isolation (1C Gate B)", () => {
       await user.type(boxes[0], "hello");
     });
 
-    // Only card "a" re-rendered — its siblings' props never changed, so memo
-    // skipped them. Draft state is local, so it can't touch b or c.
-    expect(new Set(didRenders)).toEqual(new Set(["did:key:z6Mka"]));
+    // The draft lives in the expanded card's own form, so typing re-renders at
+    // most that card (in fact only its form, not the card body) and never its
+    // siblings, whose props never changed.
     expect(didRenders).not.toContain("did:key:z6Mkb");
     expect(didRenders).not.toContain("did:key:z6Mkc");
+    expect(boxes[0]).toHaveValue("hello");
+    expect(boxes[1]).toHaveValue("");
   });
 });
