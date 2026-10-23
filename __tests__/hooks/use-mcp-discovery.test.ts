@@ -1,4 +1,36 @@
-import { discoverMcpUrl } from "@/hooks/use-mcp-discovery";
+import { renderHook, waitFor } from "@testing-library/react";
+import type { Venue } from "@covia/covia-sdk";
+import { discoverMcpUrl, useMcpDiscovery } from "@/hooks/use-mcp-discovery";
+
+describe("useMcpDiscovery", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  // A Copy button reads this: after a venue switch it must never hand over the
+  // previous venue's URL, even while the new venue's discovery is in flight.
+  it("never reports the previous venue's URL after a switch", async () => {
+    let answerB: (value: unknown) => void = () => {};
+    global.fetch = jest.fn((url: string) =>
+      url.startsWith("https://switch-a.example")
+        ? Promise.resolve({ ok: true, json: async () => ({ server_url: "https://switch-a.example/mcp" }) })
+        : new Promise((resolve) => { answerB = resolve; }),
+    ) as unknown as typeof fetch;
+    const venueA = { venueId: "did:key:a", baseUrl: "https://switch-a.example" } as Venue;
+    const venueB = { venueId: "did:key:b", baseUrl: "https://switch-b.example" } as Venue;
+
+    const { result, rerender } = renderHook(({ venue }) => useMcpDiscovery(venue), {
+      initialProps: { venue: venueA },
+    });
+    await waitFor(() => expect(result.current).toBe("https://switch-a.example/mcp"));
+
+    rerender({ venue: venueB });
+    expect(result.current).toBe("Not Found");
+
+    answerB({ ok: true, json: async () => ({ server_url: "https://switch-b.example/mcp" }) });
+    await waitFor(() => expect(result.current).toBe("https://switch-b.example/mcp"));
+  });
+});
 
 // Distinct baseUrls per test so the module-level per-baseUrl memo doesn't leak
 // between cases.
