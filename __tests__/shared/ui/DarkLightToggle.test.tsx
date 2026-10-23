@@ -35,6 +35,29 @@ describe('DarkLightToggle', () => {
     expect(mockSetTheme).toHaveBeenLastCalledWith('light');
   });
 
+  // Ctrl/Cmd+X is cut: the shortcut must not take it from a field.
+  it('leaves Ctrl/Cmd+X to the browser while typing in a field', () => {
+    render(<><DarkLightToggle /><input data-testid="field" /></>);
+    const notPrevented = fireEvent.keyDown(screen.getByTestId('field'), { key: 'x', metaKey: true });
+
+    expect(notPrevented).toBe(true);
+    expect(mockSetTheme).not.toHaveBeenCalled();
+  });
+
+  it('leaves Ctrl/Cmd+X alone while text is selected', () => {
+    render(<><DarkLightToggle /><p data-testid="prose">some words</p></>);
+    const range = document.createRange();
+    range.selectNodeContents(screen.getByTestId('prose'));
+    window.getSelection()!.removeAllRanges();
+    window.getSelection()!.addRange(range);
+    try {
+      expect(fireEvent.keyDown(window, { key: 'x', ctrlKey: true })).toBe(true);
+      expect(mockSetTheme).not.toHaveBeenCalled();
+    } finally {
+      window.getSelection()!.removeAllRanges();
+    }
+  });
+
   // The server can't know the theme, so markup that varied with it could never
   // hydrate: CSS on the <html> theme class chooses what shows instead.
   it('renders the same markup whatever the theme', () => {

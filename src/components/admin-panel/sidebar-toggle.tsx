@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEffect } from "react";
+import { isEditingTarget } from "@/lib/keyboard";
 
 interface SidebarToggleProps {
   isOpen: boolean | undefined;
@@ -15,7 +16,8 @@ export function SidebarToggle({ isOpen, setIsOpen }: SidebarToggleProps) {
 
   useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+      // Ctrl/Cmd+B is also bold, so a field being typed in keeps it.
+      if ((e.ctrlKey || e.metaKey) && e.key === 'b' && !e.defaultPrevented && !isEditingTarget(e.target)) {
         e.preventDefault();
         setIsOpen?.()
       }
