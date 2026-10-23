@@ -86,17 +86,18 @@ type TestState =
 // button) — a check on page load would persist a job per service per visit,
 // which the reads-must-not-create-jobs rule forbids until the venue exposes a
 // job-free verify (covia#489). Not persisted: a fresh page load starts idle.
-// Stable empty values, so memoised derivations keyed on them don't re-run.
-const NO_NAMES: string[] = [];
-const NO_HEALTH: Record<string, HealthState> = {};
-// What per-venue state is filed under. One derivation for render and handlers
-// alike, so what a handler records is always what render looks up.
-const venueKeyOf = (venue: { venueId?: string } | null | undefined) => venue?.venueId ?? "";
-
 type HealthState =
   | { phase: "checking" }
   | { phase: "ok"; message: string; checkedAt: string }
   | { phase: "attention"; message: string; checkedAt: string };
+
+// Stable empty values, so memoised derivations keyed on them don't re-run.
+const NO_NAMES: string[] = [];
+const NO_HEALTH: Record<string, HealthState> = {};
+
+// What per-venue state is filed under. One derivation for render and handlers
+// alike, so what a handler records is always what render looks up.
+const venueKeyOf = (venue: { venueId?: string } | null | undefined) => venue?.venueId ?? "";
 
 type ConnectionCardProps = {
   service: ConnectionService;

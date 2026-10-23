@@ -12,7 +12,7 @@ describe("useMcpDiscovery", () => {
   it("never reports the previous venue's URL after a switch", async () => {
     let answerB: (value: unknown) => void = () => {};
     global.fetch = jest.fn((url: string) =>
-      url.startsWith("https://switch-a.example")
+      url === "https://switch-a.example/.well-known/mcp"
         ? Promise.resolve({ ok: true, json: async () => ({ server_url: "https://switch-a.example/mcp" }) })
         : new Promise((resolve) => { answerB = resolve; }),
     ) as unknown as typeof fetch;
