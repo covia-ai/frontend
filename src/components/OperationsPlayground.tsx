@@ -23,7 +23,7 @@ import { useWriteAccess } from "@/hooks/use-write-access";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useStoredValue } from "@/hooks/use-stored-value";
 import { resolveOperationByAddress } from "@/lib/operations-catalog";
-import { notifyError } from "@/lib/notify";
+import { useJobExecution } from "@/hooks/use-job-execution";
 
 type PlaygroundTab = "schema" | "json" | "test";
 
@@ -121,7 +121,9 @@ function PlaygroundForm({ initial, hydrated }: { initial: PlaygroundState; hydra
   const [inputText, setInputText] = useState<string>(initial.inputText);
   const [inputError, setInputError] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
-  const [invoking, setInvoking] = useState(false);
+  // The same path as every other user-started run: the job is watched for the
+  // ambient completion notification, and a failure names the job and venue.
+  const { execute, running: invoking } = useJobExecution(venue);
 
   function writeUrl(nextTab: PlaygroundTab, nextOp: string, nextInputText: string) {
     const params = new URLSearchParams();
@@ -166,19 +168,21 @@ function PlaygroundForm({ initial, hydrated }: { initial: PlaygroundState; hydra
       return;
     }
     setInputError(null);
-    setInvoking(true);
     setJobId(null);
     const op = findOp(tab, opValue);
-    try {
-      const operation = await resolveOperationByAddress(venue, op.address);
-      const job = await operation.invoke(parsed as Record<string, unknown>);
-      setJobId(job.id);
-      writeUrl(tab, opValue, inputText);
-    } catch (err) {
-      notifyError(`Unable to run ${op.label}`, err);
-    } finally {
-      setInvoking(false);
-    }
+    await execute({
+      action: async () => {
+        const operation = await resolveOperationByAddress(venue, op.address);
+        return operation.invoke(parsed as Record<string, unknown>);
+      },
+      failureTitle: `Unable to run ${op.label}`,
+      // The result renders in place below the form.
+      navigate: false,
+      onSuccess: (id) => {
+        setJobId(id);
+        writeUrl(tab, opValue, inputText);
+      },
+    });
   }
 
   return (

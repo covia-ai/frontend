@@ -232,8 +232,6 @@ function HitlRequestCardInner({
   onToggleExpanded,
   onAnswered,
 }: HitlRequestCardProps) {
-  const [answers, setAnswers] = useState<Record<string, HitlAnswer>>({});
-  const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
 
@@ -254,16 +252,17 @@ function HitlRequestCardInner({
   }, [expanded]);
 
   function toggle() {
-    // Local draft is discarded on every open/close, so reopening a card starts
-    // clean — and because it's local it can never reach another card.
-    setAnswers({});
-    setComment("");
     onToggleExpanded(request.id);
   }
 
-  async function send(outcome: "answer" | "reject", override?: Record<string, HitlAnswer>) {
+  // Everything sent is passed in: the quick bar passes its one answer and no
+  // comment, and only the expanded form has a draft to pass.
+  async function send(
+    outcome: "answer" | "reject",
+    body: Record<string, HitlAnswer> = {},
+    comment = "",
+  ) {
     if (!venue) return;
-    const body = override ?? answers;
     if (outcome === "answer") {
       const missing = missingRequiredAnswers(request.asks ?? [], body);
       if (missing.length > 0) {
@@ -280,8 +279,6 @@ function HitlRequestCardInner({
         ...(comment.trim() ? { comment: comment.trim() } : {}),
       });
       notifySuccess(outcome === "answer" ? "Response sent" : "Request rejected");
-      setAnswers({});
-      setComment("");
       onAnswered(request.id);
     } catch (err) {
       const { reason, jobHref } = jobFailure(err, venue.venueId);
@@ -436,49 +433,70 @@ function HitlRequestCardInner({
               onCancel={toggle}
             />
           ) : (
-            <div className="flex flex-col gap-4 border-t pt-3">
-              {asks.map((ask) => (
-                <div key={ask.id} className="flex flex-col gap-2">
-                  <Label className="text-sm">
-                    {ask.prompt}
-                    {ask.required && <span className="text-destructive"> *</span>}
-                  </Label>
-                  <AskControl
-                    ask={ask}
-                    value={answers[ask.id]}
-                    disabled={busy}
-                    onChange={(value) => setAnswers((prev) => ({ ...prev, [ask.id]: value }))}
-                  />
-                </div>
-              ))}
-
-              <div className="flex flex-col gap-2">
-                <Label className="text-sm">Comment</Label>
-                <Textarea
-                  value={comment}
-                  disabled={busy}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="Optional — the reason the requester sees when rejecting."
-                />
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <Button size="sm" data-testid="hitl-submit" disabled={busy} onClick={() => send("answer")}>
-                  {busy ? "Sending…" : "Send response"}
-                </Button>
-                <Button size="sm" variant="outline" data-testid="hitl-reject" disabled={busy} onClick={() => send("reject")}>
-                  Reject
-                </Button>
-                <div className="flex-1" />
-                <Button size="sm" variant="ghost" disabled={busy} onClick={toggle}>
-                  Cancel <ChevronUp size={14} className="ml-1" />
-                </Button>
-              </div>
-            </div>
+            <HitlAskForm asks={asks} busy={busy} onSend={send} onCancel={toggle} />
           )}
         </div>
       )}
     </Card>
+  );
+}
+
+type HitlAskFormProps = {
+  asks: HitlAsk[];
+  busy: boolean;
+  onSend: (outcome: "answer" | "reject", answers: Record<string, HitlAnswer>, comment: string) => void;
+  onCancel: () => void;
+};
+
+// The respond form owns its draft and exists only while its card is expanded,
+// so collapsing the card (its own Cancel, or the inbox expanding another card)
+// discards the draft: reopening starts clean, and nothing typed here can ride
+// along with a later quick answer from the collapsed card. A failed send keeps
+// the form, and the draft with it.
+function HitlAskForm({ asks, busy, onSend, onCancel }: HitlAskFormProps) {
+  const [answers, setAnswers] = useState<Record<string, HitlAnswer>>({});
+  const [comment, setComment] = useState("");
+
+  return (
+    <div className="flex flex-col gap-4 border-t pt-3">
+      {asks.map((ask) => (
+        <div key={ask.id} className="flex flex-col gap-2">
+          <Label className="text-sm">
+            {ask.prompt}
+            {ask.required && <span className="text-destructive"> *</span>}
+          </Label>
+          <AskControl
+            ask={ask}
+            value={answers[ask.id]}
+            disabled={busy}
+            onChange={(value) => setAnswers((prev) => ({ ...prev, [ask.id]: value }))}
+          />
+        </div>
+      ))}
+
+      <div className="flex flex-col gap-2">
+        <Label className="text-sm">Comment</Label>
+        <Textarea
+          value={comment}
+          disabled={busy}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="Optional — the reason the requester sees when rejecting."
+        />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" data-testid="hitl-submit" disabled={busy} onClick={() => onSend("answer", answers, comment)}>
+          {busy ? "Sending…" : "Send response"}
+        </Button>
+        <Button size="sm" variant="outline" data-testid="hitl-reject" disabled={busy} onClick={() => onSend("reject", {}, comment)}>
+          Reject
+        </Button>
+        <div className="flex-1" />
+        <Button size="sm" variant="ghost" disabled={busy} onClick={onCancel}>
+          Cancel <ChevronUp size={14} className="ml-1" />
+        </Button>
+      </div>
+    </div>
   );
 }
 

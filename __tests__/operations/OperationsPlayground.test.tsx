@@ -28,6 +28,7 @@ jest.mock("@/lib/operations-catalog", () => ({
 }));
 
 import { OperationsPlayground } from "@/components/OperationsPlayground";
+import { useWatchedJobs } from "@/hooks/use-watched-jobs";
 
 describe("OperationsPlayground", () => {
   it("locks the operation and tab pickers while a run is being submitted", async () => {
@@ -52,5 +53,10 @@ describe("OperationsPlayground", () => {
     expect(await screen.findByTestId("run-result")).toHaveTextContent("job-1");
     expect(picker).toBeEnabled();
     expect(otherTab).toBeEnabled();
+    // Watched like every other user-started run, for the ambient completion
+    // notification (#241).
+    expect(useWatchedJobs.getState().jobs).toContainEqual(
+      expect.objectContaining({ venueId: "did:web:venue.example", jobId: "job-1" }),
+    );
   });
 });

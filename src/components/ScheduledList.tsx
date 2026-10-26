@@ -24,6 +24,7 @@ import { notifyError, notifySuccess } from "@/lib/notify";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { VenueResolutionState } from "@/components/VenueResolutionState";
+import { operationPathSegments, venueScopedHref } from "@/lib/routes";
 import { CalendarClock, PlayCircle, Repeat, XCircle } from "lucide-react";
 
 interface ScheduledListProps {
@@ -64,11 +65,13 @@ export function ScheduledList({ venueId }: ScheduledListProps = {}) {
   // agent:trigger wake targets, since that lives in the event's `input`
   // which the list endpoint doesn't surface. So this always links the
   // operation itself; an agent wake links to the agent:trigger adapter.
+  // `op` may be a catalog path or a full DID URL; either way it goes into the
+  // catch-all route as encoded segments, never raw (frontend#382).
   const opHref = useCallback(
     (op: string) =>
       venueId
-        ? `/venues/${encodeURIComponent(venue?.venueId ?? "")}/operations/${op}`
-        : `/operation/${op}`,
+        ? venueScopedHref(venue?.venueId ?? "", "operations", op)
+        : `/operation/${operationPathSegments(op)}`,
     [venueId, venue],
   );
 
