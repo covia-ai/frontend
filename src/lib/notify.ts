@@ -2,6 +2,7 @@ import { toast } from "sonner";
 import { JobFailedError } from "@covia/covia-sdk";
 import { recordNotification } from "@/hooks/use-notification-log";
 import { writeTextToClipboard } from "@/lib/clipboard";
+import { jobPath } from "@/lib/routes";
 
 // Every user-facing notification goes through these helpers — never bare
 // sonner toast() (#204). The rules they encode:
@@ -70,7 +71,7 @@ export function jobFailure(err: unknown, venueId?: string): { reason: unknown; j
 
   const jobHref =
     failed.jobData.id && venueId
-      ? `/venues/${encodeURIComponent(venueId)}/jobs/${encodeURIComponent(failed.jobData.id)}`
+      ? jobPath(venueId, failed.jobData.id)
       : undefined;
   const reason =
     wrapped !== undefined ? err // already a clean Error — reuse it

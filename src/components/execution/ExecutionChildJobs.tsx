@@ -7,6 +7,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/StatusBadge";
+import { jobPath } from "@/lib/routes";
 
 type ChildJob = {
   id?: string;
@@ -38,7 +39,7 @@ export function ExecutionChildJobs({
               <TableCell className="text-muted-foreground">{index}</TableCell>
               <TableCell className="text-secondary font-mono underline">
                 <Link
-                  href={`/venues/${encodeURIComponent(venueId)}/jobs/${id}`}
+                  href={jobPath(venueId, id)}
                 >
                   {id}
                 </Link>

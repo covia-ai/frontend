@@ -5,6 +5,7 @@ import { sliceJobWindow, jobRecordsFromSlice } from "@/lib/job-history";
 import { listAllSkills } from "@/lib/skills";
 import { listHitlRequests } from "@/lib/hitl";
 import type { VenueDescriptor } from "@/hooks/use-venues";
+import { agentChatPath } from "@/lib/routes";
 
 export type PaletteItemKind =
   | "asset"
@@ -158,7 +159,7 @@ async function fetchAgentItems(
   const { agents } = await venue.agents.list();
   const venueName = descriptor.metadata.name ?? descriptor.venueId;
   return agents.map((agent) => {
-    const chatHref = `/agents/chat?agentId=${encodeURIComponent(agent.agentId)}`;
+    const chatHref = agentChatPath(agent.agentId);
     const viewHref = `/agents/agent/${encodeURIComponent(agent.agentId)}`;
     return {
       kind: "agent" as const,

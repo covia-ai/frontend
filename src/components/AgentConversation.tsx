@@ -16,6 +16,7 @@ import { writeTextToClipboard } from "@/lib/clipboard";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import type { Session } from "@/config/types";
 import type { PendingChat } from "@/hooks/use-pending-chats";
+import { jobPath } from "@/lib/routes";
 import {
   describeToolTurn,
   groupTranscript,
@@ -234,7 +235,7 @@ function AgentConversationBase({
                     </DropdownMenuItem>
                     {jobId && (
                       <DropdownMenuItem asChild data-testid="turn-job-link">
-                        <Link href={`/job/${encodeURIComponent(jobId)}`}>
+                        <Link href={jobPath(undefined, jobId)}>
                           <ExternalLink size={13} className="mr-1" /> Go to calling job
                         </Link>
                       </DropdownMenuItem>

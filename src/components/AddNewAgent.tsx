@@ -38,6 +38,7 @@ import { withToolToggled, type CatalogOp } from "@/lib/operations-catalog";
 import { withSkillToggled, type SkillSummary } from "@/lib/skills";
 import { cleanCaps, isAgentCap, type AgentCap } from "@/lib/agent-caps";
 import { isReservedAgentId, slugifyAgentId } from "@/lib/agent-id";
+import { agentChatPath } from "@/lib/routes";
 import {
   AGENT_TEMPLATES_CHANGED_EVENT,
   asSdkAgentConfig,
@@ -313,7 +314,7 @@ function AddNewAgentForm({
       gtmEvent.createAgent(result.agentId, llmProvider);
       // Closing unmounts this form, so its fields need no clearing here.
       onClose();
-      router.push(`/agents/chat?agentId=${encodeURIComponent(result.agentId)}`);
+      router.push(agentChatPath(result.agentId));
     } catch (err) {
       gtmEvent.createAgentFailed(resolvedAgentId, err instanceof Error ? err.message : undefined);
       const { reason, jobHref } = jobFailure(err, venue.venueId);

@@ -1,4 +1,4 @@
-import { operationPathSegments, venueScopedHref } from "@/lib/routes";
+import { agentChatPath, jobPath, operationPathSegments, venueScopedHref } from "@/lib/routes";
 
 const VENUE = "did:key:z6MkVenue";
 const HASH = "a".repeat(64);
@@ -27,5 +27,24 @@ describe("venueScopedHref", () => {
 
   it("falls back to the list for a bare DID", () => {
     expect(venueScopedHref(VENUE, "operations", VENUE)).toBe(`/venues/${encodeURIComponent(VENUE)}/operations`);
+  });
+});
+
+describe("jobPath", () => {
+  it("is venue-scoped when the venue is known, the global route otherwise", () => {
+    expect(jobPath(VENUE, "0xabc")).toBe(`/venues/${encodeURIComponent(VENUE)}/jobs/0xabc`);
+    expect(jobPath(undefined, "0xabc")).toBe("/job/0xabc");
+    // An unresolved venue is not a venue: no "/venues//jobs/…".
+    expect(jobPath("", "0xabc")).toBe("/job/0xabc");
+  });
+
+  it("encodes the id like any path segment", () => {
+    expect(jobPath(undefined, "a/b c")).toBe("/job/a%2Fb%20c");
+  });
+});
+
+describe("agentChatPath", () => {
+  it("encodes the agent id into the query", () => {
+    expect(agentChatPath("my agent&x")).toBe("/agents/chat?agentId=my%20agent%26x");
   });
 });

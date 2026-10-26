@@ -24,6 +24,7 @@ import { jobFailure, notifyError, notifySuccess } from "@/lib/notify";
 import { isJobCancellable } from "@/lib/job-history";
 import { useJobExecution } from "@/hooks/use-job-execution";
 import { abbreviateJobId } from "@/lib/job-visuals";
+import { jobPath } from "@/lib/routes";
 
 interface JobRowActionsProps {
   job: JobMetadata;
@@ -70,7 +71,7 @@ export function JobRowActions({ job, venue, onChanged }: JobRowActionsProps) {
         onSuccess: (newJobId) => {
           notifySuccess("Re-running operation", {
             description: `New job ${abbreviateJobId(newJobId)}`,
-            receiptHref: `/venues/${encodeURIComponent(venue.venueId)}/jobs/${newJobId}`,
+            receiptHref: jobPath(venue.venueId, newJobId),
           });
           onChanged?.();
         },

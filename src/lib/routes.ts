@@ -34,3 +34,17 @@ export function venueScopedHref(venueId: string, type: string, ref: string): str
   if (type !== "assets") return `${base}/${operationPathSegments(ref)}`;
   return `${base}/${assetHash(ref) ?? encodeURIComponent(address)}`;
 }
+
+/**
+ * A job's page: venue-scoped when the venue is known, else the venue-less
+ * `/job/[id]` route. The id is encoded like any other path segment.
+ */
+export function jobPath(venueId: string | undefined, jobId: string): string {
+  const id = encodeURIComponent(jobId);
+  return venueId ? `/venues/${encodeURIComponent(venueId)}/jobs/${id}` : `/job/${id}`;
+}
+
+/** An agent's chat page. */
+export function agentChatPath(agentId: string): string {
+  return `/agents/chat?agentId=${encodeURIComponent(agentId)}`;
+}

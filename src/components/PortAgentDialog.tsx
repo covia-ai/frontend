@@ -33,6 +33,7 @@ import { gtmEvent } from "@/lib/utils";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
 import { LLM_PROVIDERS } from "@/config/llm-providers";
 import { isReservedAgentId, slugifyAgentId } from "@/lib/agent-id";
+import { agentChatPath } from "@/lib/routes";
 import {
   AgentRuntimeFields,
   CUSTOM_PROVIDER_OPTION,
@@ -258,7 +259,7 @@ function PortAgentForm({ initialName, initialSystemPrompt, onClose }: PortAgentF
       });
       // Closing unmounts this form, so its fields need no clearing here.
       onClose();
-      router.push(`/agents/chat?agentId=${encodeURIComponent(createdId)}`);
+      router.push(agentChatPath(createdId));
     } catch (err) {
       const { reason, jobHref } = jobFailure(err, venue.venueId);
       notifyError("Unable to port agent", reason, venue.baseUrl, jobHref);

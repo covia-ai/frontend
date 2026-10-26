@@ -34,6 +34,7 @@ import { awaitingDescription, awaitingHref, awaitingTotal } from "@/lib/agent-aw
 import type { RosterAgent } from "@/hooks/use-agent-roster";
 import { AgentLiveActivity } from "./AgentLiveActivity";
 import { AgentIdenticon } from "./AgentIdenticon";
+import { agentChatPath } from "@/lib/routes";
 
 export function AgentRosterCard({
   agent,
@@ -76,7 +77,7 @@ export function AgentRosterCard({
     }
   };
 
-  const goChat = () => router.push(`/agents/chat?agentId=${encodeURIComponent(agentId)}`);
+  const goChat = () => router.push(agentChatPath(agentId));
   const goOpen = () => router.push(`/agents/agent/${encodeURIComponent(agentId)}`);
 
   const visibleSkills = skills.slice(0, 3);
