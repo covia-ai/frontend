@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Dialog,
@@ -34,6 +34,7 @@ import { DEFAULT_AGENT_ID } from "@/config/agents";
 import { LLM_PROVIDERS } from "@/config/llm-providers";
 import { isReservedAgentId, slugifyAgentId } from "@/lib/agent-id";
 import { agentChatPath } from "@/lib/routes";
+import { useSecretNames } from "@/hooks/use-secret-names";
 import {
   AgentRuntimeFields,
   CUSTOM_PROVIDER_OPTION,
@@ -135,7 +136,7 @@ function PortAgentForm({ initialName, initialSystemPrompt, onClose }: PortAgentF
   const [customModel, setCustomModel] = useState("");
   const [customProviderOperation, setCustomProviderOperation] = useState("");
   const [apiKeyInput, setApiKeyInput] = useState("");
-  const [availableKeys, setAvailableKeys] = useState<string[]>([]);
+  const { names: availableKeys } = useSecretNames(venue);
 
   const resolvedAgentId = slugifyAgentId(agentName);
   const provider = LLM_PROVIDERS[llmProvider];
@@ -143,17 +144,6 @@ function PortAgentForm({ initialName, initialSystemPrompt, onClose }: PortAgentF
   const isCustomProvider = llmProvider === CUSTOM_PROVIDER_OPTION;
   const providerReady = isAgentProviderReady(llmProvider, availableKeys);
   const needsKey = !!provider?.requiresKey && !providerReady;
-
-  // Load the venue's stored secret names so the model picker knows which
-  // providers already have a key.
-  useEffect(() => {
-    if (!venue) return;
-    let active = true;
-    venue.secrets.list()
-      .then((secrets: string[]) => { if (active) setAvailableKeys(secrets); })
-      .catch(() => { if (active) setAvailableKeys([]); });
-    return () => { active = false; };
-  }, [venue]);
 
   const handleProviderChange = (id: string) => {
     setLlmProvider(id);

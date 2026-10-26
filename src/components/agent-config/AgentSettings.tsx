@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AgentStatus } from "@covia/covia-sdk";
 import { TONE_STYLES } from "@/lib/status";
 import { AlertTriangle, Loader2, RotateCcw, Save, Wrench } from "lucide-react";
@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { withToolToggled, type CatalogOp } from "@/lib/operations-catalog";
 import { withSkillToggled, type SkillSummary } from "@/lib/skills";
 import { isMemoryContextEntry, withMemoryContextToggled } from "@/lib/agent-context";
+import { useSecretNames } from "@/hooks/use-secret-names";
 import {
   agentConfigUpdatePatch,
   configFromAgentSettingsDraft,
@@ -50,24 +51,9 @@ export function AgentSettings({ agent, onSave }: AgentSettingsProps) {
   // truth, refreshed after every successful save and on every conflict.
   const [baseline, setBaseline] = useState<Record<string, unknown>>(() => agent.config ?? {});
   const [draft, setDraft] = useState(() => createAgentSettingsDraft(baseline));
-  const [availableKeys, setAvailableKeys] = useState<string[]>([]);
+  const { names: availableKeys } = useSecretNames(venue);
   const [saving, setSaving] = useState(false);
   const [capabilitySaving, setCapabilitySaving] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    if (!venue) return;
-    void venue.secrets.list()
-      .then((keys: string[]) => {
-        if (active) setAvailableKeys(keys);
-      })
-      .catch(() => {
-        if (active) setAvailableKeys([]);
-      });
-    return () => {
-      active = false;
-    };
-  }, [venue]);
 
   const setField = <K extends keyof AgentSettingsDraft>(
     key: K,

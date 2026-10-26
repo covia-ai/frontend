@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import Link from "next/link";
 import type { Venue } from "@covia/covia-sdk";
 import { Plug, ExternalLink } from "lucide-react";
@@ -9,6 +9,7 @@ import { CONNECTIONS, type ConnectionService } from "@/config/connections";
 import { ConnectionLogo } from "@/components/ConnectionLogo";
 import { useToolSkillPickerData } from "@/hooks/use-tool-skill-picker-data";
 import type { SkillSummary } from "@/lib/skills";
+import { useSecretNames } from "@/hooks/use-secret-names";
 
 type Props = {
   venue: Venue | null | undefined;
@@ -28,27 +29,10 @@ const skillPath = (id: string) => `v/skills/connections/${id}`;
  */
 export function AgentConnectionsPicker({ venue, attachedSkills, onToggleSkill }: Props) {
   const { skills } = useToolSkillPickerData(venue ?? null, true, true);
-  const [connectedSecrets, setConnectedSecrets] = useState<Set<string>>(new Set());
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    if (!venue) return;
-    let cancelled = false;
-    venue.secrets
-      .list()
-      .then((names) => {
-        if (!cancelled) setConnectedSecrets(new Set(Array.isArray(names) ? names : []));
-      })
-      .catch(() => {
-        if (!cancelled) setConnectedSecrets(new Set());
-      })
-      .finally(() => {
-        if (!cancelled) setLoaded(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [venue]);
+  const { names, loading } = useSecretNames(venue);
+  const connectedSecrets = useMemo(() => new Set(names), [names]);
+  // No venue yet is still "loading", not "no connections".
+  const loaded = !!venue && !loading;
 
   /** Real SkillSummary if the venue has it installed, else a synthetic one that
    *  still references the canonical path (works before the skill PR merges). */
