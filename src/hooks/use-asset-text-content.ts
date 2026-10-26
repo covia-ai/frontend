@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import type { Venue } from "@covia/covia-sdk";
 import { useLatestQuery } from "@/hooks/use-latest-query";
+import { errorMessage } from "@/lib/errors";
 
 type TextContentState = {
   text: string;
@@ -34,10 +35,6 @@ type TextOutcome = {
   text: string;
   error: string | null;
 };
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 function stateFor(wanted: boolean, outcome: TextOutcome | null): TextContentState {
   if (!wanted) return EMPTY_TEXT_CONTENT;
@@ -89,7 +86,7 @@ export function useAssetTextContent(
         });
         return { source: venue, key: assetId, text, error: null };
       } catch (error: unknown) {
-        return { source: venue, key: assetId, text: "", error: errorMessage(error) };
+        return { source: venue, key: assetId, text: "", error: errorMessage(error, "Unable to load the content") };
       }
     });
     return () => {
@@ -125,7 +122,7 @@ export function useRemoteTextContent(
       } catch (error: unknown) {
         // An aborted request belongs to a consumer that has since closed; the
         // query has already moved on, so this outcome is never shown.
-        return { source: null, key: url, text: "", error: controller.signal.aborted ? null : errorMessage(error) };
+        return { source: null, key: url, text: "", error: controller.signal.aborted ? null : errorMessage(error, "Unable to load the content") };
       }
     });
     return () => controller.abort();

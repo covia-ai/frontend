@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import type { Venue } from "@covia/covia-sdk";
 import { readTextStream } from "@/hooks/use-asset-text-content";
 import { useLatestQuery } from "@/hooks/use-latest-query";
+import { errorMessage } from "@/lib/errors";
 
 // Preview-type dispatch by filename extension — mirrors DocumentViewer's
 // CONTENT_TYPE_TO_FILE_TYPE convention rather than inventing a new
@@ -61,10 +62,6 @@ type PreviewOutcome = {
   imageUrl: string | null;
   error: string | null;
 };
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 /**
  * Loads a DLFS file's preview content only for the two kinds that need it
@@ -124,7 +121,7 @@ export function useFilePreview(
         }
         return { ...base, text, displayText };
       } catch (error: unknown) {
-        return { ...base, error: errorMessage(error) };
+        return { ...base, error: errorMessage(error, "Unable to load the preview") };
       }
     });
 
