@@ -10,14 +10,13 @@ import { errorMessage, errorStatus, isAuthenticationRejectedError } from "@/lib/
 import { verifyVenueAccount } from "@/lib/venue-auth-probe";
 import {
   connectVenue,
-  evictVenueInstances,
   getVenueStatus,
   getVenueFor,
 } from "@/lib/venue-registry";
 import { applyVenueReplacement } from "@/lib/venue-replacement";
 import { publicCapsOf } from "@/lib/venue-public-caps";
 
-export { evictVenueInstances, getVenueFor };
+export { getVenueFor };
 
 const AUTH_VALIDATION_TIMEOUT_MS = 10_000;
 

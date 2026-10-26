@@ -6,11 +6,6 @@ import '@testing-library/jest-dom';
 jest.mock('@/components/admin-panel/TopBar', () => ({
   TopBar: () => <div data-testid="top-bar" />,
 }));
-jest.mock('@/components/PaginationHeader', () => ({
-  PaginationHeader: ({ currentPage, totalPages }: any) => (
-    <div data-testid="pagination">{currentPage}/{totalPages}</div>
-  ),
-}));
 
 // 998 jobs on the venue; the index serves windowed slices oldest-first.
 const TOTAL = 998;

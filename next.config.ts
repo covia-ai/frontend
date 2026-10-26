@@ -19,7 +19,8 @@ const securityHeaders = [
   // Legacy equivalent of frame-ancestors for browsers without CSP 2.
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
-  // Keeps /auth/callback?token=… out of the Referer on cross-origin requests.
+  // Keeps the path and query (e.g. /auth/callback's one-use code) out of the
+  // Referer on cross-origin requests.
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
   // Severs window.opener for cross-origin windows (e.g. a venue opened in a

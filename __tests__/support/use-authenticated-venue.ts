@@ -44,7 +44,6 @@ export const venueMock = {
   useValidateVenue: jest.fn(),
   useValidateVenueById: jest.fn(),
   revalidateVenueOnFailure: jest.fn(),
-  evictVenueInstances: jest.fn(),
   getVenueFor: jest.fn(() => venue),
 };
 
@@ -81,5 +80,4 @@ export function resetVenueMock(): void {
   venueMock.useValidateVenue.mockClear();
   venueMock.useValidateVenueById.mockClear();
   venueMock.revalidateVenueOnFailure.mockClear();
-  venueMock.evictVenueInstances.mockClear();
 }

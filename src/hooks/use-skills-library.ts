@@ -9,10 +9,10 @@ import { useVenueRead } from "@/hooks/use-venue-read";
 import { notifyError } from "@/lib/notify";
 import { listAllSkills, type SkillSummary } from "@/lib/skills";
 
-// Content is already inline in `skill.body` when the asset carries it that
-// way (covia-sdk#32's list() already fetched full metadata, and inline
-// content rides along with it) — this only fires for the rarer non-inline
-// (CAS/DLFS-backed) case, uniformly resolvable by path since covia#368.
+// Content is already inline in `skill.body` when the skill record carries it
+// that way (listAllSkills reads the skillset directories whole) — this only
+// fires for the rarer non-inline (CAS/DLFS-backed) case, uniformly resolvable
+// by path since covia#368.
 async function loadSkillBody(venue: Venue, skill: SkillSummary): Promise<SkillSummary> {
   if (skill.body !== null || !skill.hasContent) return skill;
   const stream = await venue.assets.getContent(skill.path);

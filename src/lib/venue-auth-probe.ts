@@ -5,9 +5,9 @@ export type AuthProbeResult =
   | { ok: false; kind: "rejected"; status: number; message: string }
   | { ok: false; kind: "unverified"; message: string };
 
-// Permission-neutral, authenticated identity check for current Covia venues.
-// Use the raw GET so this background/read-only probe can never take the SDK's
-// legacy invoke fallback and accidentally create a job.
+// Permission-neutral, authenticated identity check for current Covia venues:
+// a raw, job-free GET of the agent list, which the venue serves only to
+// callers it accepts.
 export async function verifyVenueAccount(venue: Venue): Promise<void> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -22,8 +22,7 @@ export async function verifyVenueAccount(venue: Venue): Promise<void> {
 // Checks whether a venue actually accepts a device key before the app commits
 // to signing in with it — a stored key can be unknown to a venue that
 // requires admission, and without this check the sign-in "succeeds" locally
-// and every later call 403s. The probe is secrets.list: an authenticated,
-// job-free GET the venue only serves to accepted callers.
+// and every later call 403s. The probe is verifyVenueAccount above.
 //
 // Only a definite 401/403 counts as rejection. Anything else (network
 // failure, older venue without the route) is "unverified" — the caller should
