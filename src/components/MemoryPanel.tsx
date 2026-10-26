@@ -22,6 +22,7 @@ import {
   AlertDialogTrigger,
 } from "./ui/alert-dialog";
 import { Brain, Check, Loader2, Lock, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { formatRelativeTime } from "@/lib/utils";
 
 const MEMORY_PATH = "w/memory";
 const MEMORY_OP = "v/ops/memory";
@@ -43,16 +44,7 @@ const NO_ENTRIES: MemoryEntry[] = [];
 function editedWhen(entry: MemoryEntry): { rel: string; abs: string } | null {
   const ms = entry.updated ?? entry.ts;
   if (!ms) return null;
-  const abs = new Date(ms).toLocaleString();
-  const sec = Math.round((Date.now() - ms) / 1000);
-  if (sec < 60) return { rel: "just now", abs };
-  const min = Math.round(sec / 60);
-  if (min < 60) return { rel: `${min}m ago`, abs };
-  const hr = Math.round(min / 60);
-  if (hr < 24) return { rel: `${hr}h ago`, abs };
-  const day = Math.round(hr / 24);
-  if (day < 7) return { rel: `${day}d ago`, abs };
-  return { rel: new Date(ms).toLocaleDateString(), abs };
+  return { rel: formatRelativeTime(ms), abs: new Date(ms).toLocaleString() };
 }
 
 export function MemoryPanel() {

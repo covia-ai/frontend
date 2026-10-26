@@ -184,7 +184,7 @@ export function ScheduledList({ venueId }: ScheduledListProps = {}) {
                           <TooltipContent>
                             {event.lastFired ? (
                               <>
-                                Last fired {formatRelativeTime(new Date(event.lastFired).toISOString())}
+                                Last fired {formatRelativeTime(event.lastFired)}
                                 {event.lastJob && (
                                   <>
                                     {" — "}

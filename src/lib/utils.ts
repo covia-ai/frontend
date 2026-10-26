@@ -20,33 +20,45 @@ export function getLicenseUrl(licenseName : string) {
   if(licenseName.trim() ==  "CC BY 4.0")
     return "https://creativecommons.org/licenses/by/4.0/"
 }
-export function getExecutionTime(date1:string, date2:string) {
-  const milliseconds1 = new Date(date1).getTime();
-  const milliseconds2 = new Date(date2).getTime();
-  const differenceInMilliseconds = milliseconds2 - milliseconds1;
-  const differenceInSeconds = differenceInMilliseconds / 1000;
-  const differenceInMinutes = differenceInMilliseconds / 60000;
-  const differenceInHours = differenceInMilliseconds / 3600000;
+// The hr/min/sec cascade every duration on screen shares: "2 hr 5 min",
+// "4 min 30 sec", "12 sec", and below a second "250 ms" unless
+// `wholeSeconds`. `days` adds a day unit above hours (schedule cadences).
+export function formatDurationMs(
+  ms: number,
+  { days = false, wholeSeconds = false }: { days?: boolean; wholeSeconds?: boolean } = {},
+): string {
+  const day = ms / 86400000;
+  const hour = ms / 3600000;
+  const min = ms / 60000;
+  const sec = ms / 1000;
+  if (days && day >= 1) {
+    const d = Math.floor(day);
+    const h = Math.round((day - d) * 24);
+    return h > 0 ? `${d} d ${h} hr` : `${d} d`;
+  }
+  if (hour >= 1) {
+    const h = Math.floor(hour);
+    const m = Math.round((hour - h) * 60);
+    return m > 0 ? `${h} hr ${m} min` : `${h} hr`;
+  }
+  if (min >= 1) {
+    const m = Math.floor(min);
+    const s = Math.round((min - m) * 60);
+    return s > 0 ? `${m} min ${s} sec` : `${m} min`;
+  }
+  if (sec >= 1 || wholeSeconds) return `${Math.round(sec)} sec`;
+  return `${Math.round(ms)} ms`;
+}
 
-  if(differenceInHours >= 1) {
-    const hours = Math.floor(differenceInHours);
-    const mins = Math.round((differenceInHours - hours) * 60);
-    return mins > 0 ? `${hours} hr ${mins} min` : `${hours} hr`;
-  }
-  if(differenceInMinutes >= 1) {
-    const mins = Math.floor(differenceInMinutes);
-    const secs = Math.round((differenceInMinutes - mins) * 60);
-    return secs > 0 ? `${mins} min ${secs} sec` : `${mins} min`;
-  }
-  if(differenceInSeconds >= 1)
-    return `${Math.round(differenceInSeconds)} sec`;
-  return `${Math.round(differenceInMilliseconds)} ms`;
+export function getExecutionTime(date1: string, date2: string) {
+  return formatDurationMs(new Date(date2).getTime() - new Date(date1).getTime());
 }
 
 // Scannable "3m ago" form for list views — pair with the exact timestamp in
 // a tooltip rather than showing it alone, since relative time alone loses
-// precision developers need for correlating with logs.
-export function formatRelativeTime(date: string): string {
+// precision developers need for correlating with logs. Takes whatever form the
+// time arrives in (ISO string, epoch ms, Date).
+export function formatRelativeTime(date: string | number | Date): string {
   const diffMs = Date.now() - new Date(date).getTime();
   const diffSec = Math.round(diffMs / 1000);
   if (diffSec < 5) return "just now";
@@ -60,28 +72,13 @@ export function formatRelativeTime(date: string): string {
   return new Date(date).toLocaleDateString();
 }
 
-// Countdown form for a future timestamp — "in 2 hr 15 min" style, mirroring
-// getExecutionTime's hr/min/sec cascade but counting down to a target instead
-// of a duration between two points. Pair with the exact fire time in an
-// adjacent cell, same rationale as formatRelativeTime above.
+// Countdown form for a future timestamp — "in 2 hr 15 min" style. Pair with
+// the exact fire time in an adjacent cell, same rationale as
+// formatRelativeTime above.
 export function formatCountdown(targetMs: number): string {
   const diffMs = targetMs - Date.now();
   if (diffMs <= 0) return "due now";
-  const diffSec = diffMs / 1000;
-  const diffMin = diffMs / 60000;
-  const diffHour = diffMs / 3600000;
-
-  if (diffHour >= 1) {
-    const hours = Math.floor(diffHour);
-    const mins = Math.round((diffHour - hours) * 60);
-    return mins > 0 ? `in ${hours} hr ${mins} min` : `in ${hours} hr`;
-  }
-  if (diffMin >= 1) {
-    const mins = Math.floor(diffMin);
-    const secs = Math.round((diffMin - mins) * 60);
-    return secs > 0 ? `in ${mins} min ${secs} sec` : `in ${mins} min`;
-  }
-  return `in ${Math.round(diffSec)} sec`;
+  return `in ${formatDurationMs(diffMs, { wholeSeconds: true })}`;
 }
 
 // Fixed-interval cadence for a recurring schedule's `repeat.every` — "every
@@ -89,27 +86,7 @@ export function formatCountdown(targetMs: number): string {
 // are hourly/daily/weekly); anything else falls back to the largest whole
 // unit plus a remainder in the next one down.
 export function formatInterval(ms: number): string {
-  const sec = ms / 1000;
-  const min = ms / 60000;
-  const hour = ms / 3600000;
-  const day = ms / 86400000;
-
-  if (day >= 1) {
-    const days = Math.floor(day);
-    const hours = Math.round((day - days) * 24);
-    return hours > 0 ? `every ${days} d ${hours} hr` : `every ${days} d`;
-  }
-  if (hour >= 1) {
-    const hours = Math.floor(hour);
-    const mins = Math.round((hour - hours) * 60);
-    return mins > 0 ? `every ${hours} hr ${mins} min` : `every ${hours} hr`;
-  }
-  if (min >= 1) {
-    const mins = Math.floor(min);
-    const secs = Math.round((min - mins) * 60);
-    return secs > 0 ? `every ${mins} min ${secs} sec` : `every ${mins} min`;
-  }
-  return `every ${Math.round(sec)} sec`;
+  return `every ${formatDurationMs(ms, { days: true, wholeSeconds: true })}`;
 }
 
 const DATE_TIME_FORMATTER = new Intl.DateTimeFormat(undefined, {

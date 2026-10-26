@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { useActiveJobsLive } from "@/hooks/use-active-jobs-live";
 import { isJobFinished, type JobMetadata, RunStatus } from "@covia/covia-sdk";
-import { getExecutionTime } from "@/lib/utils";
+import { formatDurationMs } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScheduledList } from "@/components/ScheduledList";
 import { FiltersSheet } from "@/components/FiltersSheet";
@@ -662,9 +662,8 @@ export function JobList({ venueId }: JobListProps = {}) {
 );
 }
 
-/** Format a millisecond duration using the same helper as the table cells. */
+/** Format a millisecond duration the way the table cells do. */
 function fmtDurationMs(ms: number | null): string {
-  if (ms == null) return "–";
-  return getExecutionTime("1970-01-01T00:00:00.000Z", new Date(ms).toISOString());
+  return ms == null ? "–" : formatDurationMs(ms);
 }
 

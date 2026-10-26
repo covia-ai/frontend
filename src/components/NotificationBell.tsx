@@ -138,7 +138,7 @@ export function NotificationBell() {
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1">
                       <time className="text-[10px] whitespace-nowrap text-muted-foreground">
-                        {formatRelativeTime(new Date(entry.at).toISOString())}
+                        {formatRelativeTime(entry.at)}
                       </time>
                       {!entry.read && (
                         <span
