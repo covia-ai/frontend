@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { LogInIcon, CircleUserRound, Key } from "lucide-react";
-import { FaGithub, FaGoogle, FaMicrosoft } from "react-icons/fa";
+import { PROVIDER_ICONS } from "@/components/OAuthSignInButtons";
 import { VenueAccessBadge } from "@/components/VenueAccessBadge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger }from "@/components/ui/dropdown-menu";
 import { abbreviateDid } from "@/lib/utils";
@@ -71,13 +71,7 @@ export function ChromeSignInButton(props: ChromeSignInButtonProps) {
   const storedAccounts = storedAccountsRaw ?? [];
   const oauthOptions = useOAuthSignInOptions(activeVenueId ?? undefined);
 
-  const {
-    dialogOpen, setDialogOpen, openDialog, step, setStep, deviceKey, deviceKeyDid,
-    isExisting, pastedKey, keyError, copied, checking, authError, storedKeys,
-    handleGenerate, handleProvideKey, handlePastedKeyChange,
-    handleSubmitProvidedKey, handleCopy, handleContinue,
-    handleUseStoredKey, handleUseDifferentKey,
-  } = useDeviceKeySignIn({ venueId: props.venueId });
+  const deviceKeySignIn = useDeviceKeySignIn({ venueId: props.venueId });
 
   if (!auth) {
     return (
@@ -119,11 +113,7 @@ export function ChromeSignInButton(props: ChromeSignInButtonProps) {
               </>
             )}
             {oauthOptions.map(({ provider, signIn }) => {
-              const ProviderIcon = provider === "google"
-                ? FaGoogle
-                : provider === "microsoft"
-                  ? FaMicrosoft
-                  : FaGithub;
+              const ProviderIcon = PROVIDER_ICONS[provider];
               return (
                 <DropdownMenuItem key={provider} onSelect={() => void signIn()}>
                   <ProviderIcon />
@@ -132,36 +122,14 @@ export function ChromeSignInButton(props: ChromeSignInButtonProps) {
               );
             })}
             {oauthOptions.length > 0 && <DropdownMenuSeparator />}
-            <DropdownMenuItem onSelect={openDialog}>
+            <DropdownMenuItem onSelect={deviceKeySignIn.openDialog}>
               <Key />
               Continue with a device key
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <DeviceKeyDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          step={step}
-          setStep={setStep}
-          deviceKey={deviceKey}
-          deviceKeyDid={deviceKeyDid}
-          isExisting={isExisting}
-          pastedKey={pastedKey}
-          onPastedKeyChange={handlePastedKeyChange}
-          keyError={keyError}
-          copied={copied}
-          checking={checking}
-          authError={authError}
-          storedKeys={storedKeys}
-          onGenerate={handleGenerate}
-          onProvideKey={handleProvideKey}
-          onSubmitProvidedKey={handleSubmitProvidedKey}
-          onCopy={handleCopy}
-          onContinue={handleContinue}
-          onUseStoredKey={handleUseStoredKey}
-          onUseDifferentKey={handleUseDifferentKey}
-        />
+        <DeviceKeyDialog signIn={deviceKeySignIn} />
       </div>
     )
   }

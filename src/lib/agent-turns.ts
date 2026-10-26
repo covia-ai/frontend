@@ -40,6 +40,21 @@ export function messageContentToString(c: unknown): string {
   return JSON.stringify(c, null, 2);
 }
 
+/**
+ * Whether the transcript holds a user turn with exactly `text` at or after
+ * index `since`: how a sent message is found once the venue has recorded it
+ * (the turn count at send marks where to start looking).
+ */
+export function hasUserTurnSince(
+  conversation: readonly Turn[] | undefined,
+  since: number,
+  text: string,
+): boolean {
+  return (conversation ?? [])
+    .slice(since)
+    .some((message) => message.role === "user" && messageContentToString(message.content) === text);
+}
+
 export type ContentSection = { label: string; text: string };
 
 // Delegation envelopes are not a fixed schema — a delegating agent improvises

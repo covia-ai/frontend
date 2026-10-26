@@ -97,6 +97,17 @@ describe("asset content lifecycle", () => {
     expect(cancel).toHaveBeenCalled();
   });
 
+  // An error with no message used to become error "" — falsy, so the preview
+  // showed empty content as if the load had worked.
+  it("reports a failure that carries no message as a failure", async () => {
+    const venue = {
+      assets: { getContent: jest.fn().mockRejectedValue(new Error("")) },
+    } as any;
+    const { result } = renderHook(() => useAssetTextContent(venue, "asset", true));
+
+    await waitFor(() => expect(result.current.error).toBeTruthy());
+  });
+
   it("aborts a remote text request when its consumer closes", async () => {
     let requestSignal: AbortSignal | undefined;
     const originalFetch = global.fetch;

@@ -21,7 +21,7 @@ import {
   usePendingChats,
 } from "@/hooks/use-pending-chats";
 import { normalizeAgentEntries } from "@/lib/agent-list";
-import { messageContentToString } from "@/lib/agent-turns";
+import { hasUserTurnSince } from "@/lib/agent-turns";
 import { agentSessionsToSessions } from "@/lib/agent-sessions";
 import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { agentConfigsEqual, type AgentConfigSaveOutcome } from "@/lib/agent-settings";
@@ -332,45 +332,35 @@ export function useAgentExplorer(
     [currentKey],
   );
 
-  const suspend = () => {
+  // Suspend and resume differ only in the call, the analytics events and the
+  // wording, so they share one path.
+  const changeLifecycle = (action: "suspend" | "resume") => {
     if (!agentHandle || !selectedAgentId) return;
-    agentHandle
-      .suspend()
+    const agentId = selectedAgentId;
+    const suspending = action === "suspend";
+    agentHandle[action]()
       .then(() => {
-        gtmEvent.suspendAgent(selectedAgentId);
-        notifySuccess("Agent suspended");
-        void refreshAgentDetail(selectedAgentId);
+        if (suspending) gtmEvent.suspendAgent(agentId);
+        else gtmEvent.resumeAgent(agentId);
+        notifySuccess(suspending ? "Agent suspended" : "Agent resumed");
+        void refreshAgentDetail(agentId);
         void refreshAgentList();
       })
       .catch((error: unknown) => {
-        gtmEvent.suspendAgentFailed(
-          selectedAgentId,
-          error instanceof Error ? error.message : undefined,
-        );
+        const detail = error instanceof Error ? error.message : undefined;
+        if (suspending) gtmEvent.suspendAgentFailed(agentId, detail);
+        else gtmEvent.resumeAgentFailed(agentId, detail);
         const { reason, jobHref } = jobFailure(error, venue?.venueId);
-        notifyError("Unable to suspend agent", reason, undefined, jobHref);
+        notifyError(
+          suspending ? "Unable to suspend agent" : "Unable to resume agent",
+          reason,
+          venue?.baseUrl,
+          jobHref,
+        );
       });
   };
-
-  const resume = () => {
-    if (!agentHandle || !selectedAgentId) return;
-    agentHandle
-      .resume()
-      .then(() => {
-        gtmEvent.resumeAgent(selectedAgentId);
-        notifySuccess("Agent resumed");
-        void refreshAgentDetail(selectedAgentId);
-        void refreshAgentList();
-      })
-      .catch((error: unknown) => {
-        gtmEvent.resumeAgentFailed(
-          selectedAgentId,
-          error instanceof Error ? error.message : undefined,
-        );
-        const { reason, jobHref } = jobFailure(error, venue?.venueId);
-        notifyError("Unable to resume agent", reason, undefined, jobHref);
-      });
-  };
+  const suspend = () => changeLifecycle("suspend");
+  const resume = () => changeLifecycle("resume");
 
   const deleteAgent = (remove: boolean) => {
     if (!agentHandle || !selectedAgentId) return;
@@ -652,13 +642,7 @@ export function useAgentExplorer(
         reason: failed.reason,
         // The venue recorded the message before the turn failed, so the
         // transcript already shows it and only the reply is missing.
-        recorded: (currentSession?.conversation ?? [])
-          .slice(failed.turnsAtSend)
-          .some(
-            (message) =>
-              message.role === "user" &&
-              messageContentToString(message.content) === failed.text,
-          ),
+        recorded: hasUserTurnSince(currentSession?.conversation, failed.turnsAtSend, failed.text),
       }
     : null;
 
@@ -685,13 +669,7 @@ export function useAgentExplorer(
     selectedAgentDetail.status !== AgentStatus.SUSPENDED;
   const echoAlreadyRecorded =
     !!pendingChat &&
-    (currentSession?.conversation ?? [])
-      .slice(pendingChat.turnsAtSend)
-      .some(
-        (message) =>
-          message.role === "user" &&
-          messageContentToString(message.content) === pendingChat.text,
-      );
+    hasUserTurnSince(currentSession?.conversation, pendingChat.turnsAtSend, pendingChat.text);
 
   return {
     agentList,

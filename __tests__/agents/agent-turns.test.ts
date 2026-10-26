@@ -1,6 +1,7 @@
 import {
   describeToolTurn,
   groupTranscript,
+  hasUserTurnSince,
   messageContentSections,
   messageContentToString,
   toolCallArgumentsById,
@@ -192,5 +193,25 @@ describe('tool-call credentials', () => {
   it('ignores unparseable string arguments', () => {
     const byId = toolCallArgumentsById([{ role: 'assistant', toolCalls: [{ id: 'x', arguments: '{not json' }] }]);
     expect(byId.get('x')).toBeUndefined();
+  });
+});
+
+describe('hasUserTurnSince', () => {
+  const conversation = [
+    { role: 'user', content: 'hello' },
+    { role: 'assistant', content: 'hi' },
+    { role: 'user', content: { message: 'second' } },
+  ];
+
+  it('finds a user turn with exactly that text at or after the index', () => {
+    expect(hasUserTurnSince(conversation, 0, 'hello')).toBe(true);
+    expect(hasUserTurnSince(conversation, 2, 'second')).toBe(true); // unwrapped envelope
+  });
+
+  it('ignores turns before the index, other roles, and near misses', () => {
+    expect(hasUserTurnSince(conversation, 1, 'hello')).toBe(false);
+    expect(hasUserTurnSince(conversation, 0, 'hi')).toBe(false);
+    expect(hasUserTurnSince(conversation, 0, 'hello ')).toBe(false);
+    expect(hasUserTurnSince(undefined, 0, 'hello')).toBe(false);
   });
 });

@@ -216,3 +216,7 @@ export function useDeviceKeySignIn(options: { trackSignUp?: boolean; venueId?: s
     handleUseStoredKey, handleUseDifferentKey,
   };
 }
+
+// Everything the device-key dialog needs, as one value: callers hold the hook's
+// result and hand it to DeviceKeyDialog whole.
+export type DeviceKeySignIn = ReturnType<typeof useDeviceKeySignIn>;
