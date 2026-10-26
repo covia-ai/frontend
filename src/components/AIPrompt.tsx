@@ -91,16 +91,7 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted, starters, variant = "pag
   const attachSessionId = usePendingChats((s) => s.attachSessionId);
   const clearPendingChat = usePendingChats((s) => s.clearPendingChat);
 
-  const {
-    dialogOpen: signInDialogOpen, setDialogOpen: setSignInDialogOpen, openDialog: openSignInDialog,
-    step: signInStep, setStep: setSignInStep, deviceKey: signInDeviceKey, deviceKeyDid: signInDeviceKeyDid,
-    isExisting: signInIsExisting, pastedKey: signInPastedKey, keyError: signInKeyError,
-    copied: signInCopied, checking: signInChecking, authError: signInAuthError, storedKeys: signInStoredKeys,
-    handleGenerate: handleSignInGenerate, handleProvideKey: handleSignInProvideKey,
-    handlePastedKeyChange: handleSignInPastedKeyChange, handleSubmitProvidedKey: handleSignInSubmitProvidedKey,
-    handleCopy: handleSignInCopy, handleContinue: handleSignInContinue,
-    handleUseStoredKey: handleSignInUseStoredKey, handleUseDifferentKey: handleSignInUseDifferentKey,
-  } = useDeviceKeySignIn();
+  const deviceKeySignIn = useDeviceKeySignIn();
 
   // Populates the picker's option list. Best-effort and separate from the
   // fresh venue.agents.list() call in handleMagicWand — that one drives the
@@ -255,7 +246,7 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted, starters, variant = "pag
   async function handleMagicWand() {
     if (!prompt.trim()) return;
     if (!isAuthenticated) {
-      openSignInDialog();
+      deviceKeySignIn.openDialog();
       return;
     }
     if (!venue) {
@@ -510,29 +501,7 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted, starters, variant = "pag
           </DialogContent>
         </Dialog>
 
-        <DeviceKeyDialog
-          open={signInDialogOpen}
-          onOpenChange={setSignInDialogOpen}
-          step={signInStep}
-          setStep={setSignInStep}
-          deviceKey={signInDeviceKey}
-          deviceKeyDid={signInDeviceKeyDid}
-          isExisting={signInIsExisting}
-          pastedKey={signInPastedKey}
-          onPastedKeyChange={handleSignInPastedKeyChange}
-          keyError={signInKeyError}
-          copied={signInCopied}
-          checking={signInChecking}
-          authError={signInAuthError}
-          storedKeys={signInStoredKeys}
-          onGenerate={handleSignInGenerate}
-          onProvideKey={handleSignInProvideKey}
-          onSubmitProvidedKey={handleSignInSubmitProvidedKey}
-          onCopy={handleSignInCopy}
-          onContinue={handleSignInContinue}
-          onUseStoredKey={handleSignInUseStoredKey}
-          onUseDifferentKey={handleSignInUseDifferentKey}
-        />
+        <DeviceKeyDialog signIn={deviceKeySignIn} />
 
       </div>
   );

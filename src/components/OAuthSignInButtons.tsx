@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { useOAuthSignInOptions } from "@/hooks/use-oauth-sign-in";
 import { OAUTH_PROVIDER_LABELS, type OAuthProvider } from "@/lib/oauth";
 
-const PROVIDER_ICONS = {
+// Exhaustive over OAuthProvider, so a new provider must be given its icon here
+// rather than silently borrowing another's.
+export const PROVIDER_ICONS = {
   google: FaGoogle,
   microsoft: FaMicrosoft,
   github: FaGithub,

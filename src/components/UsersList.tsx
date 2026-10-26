@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import type { AuthenticationKeysMap, StatusData, UserSummary } from "@covia/covia-sdk";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { useVenueRead } from "@/hooks/use-venue-read";
@@ -23,7 +23,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ChevronRight, Loader2, Lock, ShieldAlert, Search, Users as UsersIcon } from "lucide-react";
+import { ChevronRight, Loader2, Lock, ShieldAlert, Search, Users as UsersIcon, type LucideIcon } from "lucide-react";
 import { PaginationHeader } from "@/components/PaginationHeader";
 import { useClientPagination } from "@/hooks/use-pagination";
 import { userLook } from "@/lib/concept-icons";
@@ -58,11 +58,24 @@ function AccountTypeChip({ managed }: { managed: boolean }) {
   );
 }
 
-// Whether the signed-in caller can see the full users list: "checking" while
-// the first read is in flight, "forbidden" for a 403 (signed in, not an
-// operator — an expected, common outcome, not a failure to toast), "error"
-// for anything else (a real venue/auth problem).
-type ListState = "checking" | "ready" | "forbidden" | "error";
+// The one thing the page shows below its header: "resolving" until the venue
+// is known, "signed-out" with no account, "checking" while the first read is in
+// flight, "forbidden" for a 403 (signed in, not an operator — an expected,
+// common outcome, not a failure to toast), "error" for anything else (a real
+// venue/auth problem). One value, so no branch needs extra guards.
+type View = "resolving" | "signed-out" | "checking" | "forbidden" | "error" | "ready";
+
+function Notice({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: ReactNode }) {
+  return (
+    <div className="border border-border rounded-lg p-4 bg-muted/30 flex items-start gap-3">
+      <Icon size={16} className="text-muted-foreground mt-0.5 shrink-0" />
+      <div>
+        <p className="text-sm font-medium text-foreground">{title}</p>
+        <p className="text-xs text-muted-foreground mt-1">{children}</p>
+      </div>
+    </div>
+  );
+}
 
 // What the users read settles to. `forbidden` is an answer, not a failure: the
 // venue said no to this account, and the page shows the gate for it.
@@ -108,8 +121,10 @@ export function UsersList({ venueId }: UsersListProps) {
     },
   });
   const users = directory.users;
-  const listState: ListState =
-    !isAuthenticated || directory.forbidden ? "forbidden"
+  const view: View =
+    venueStatus !== "ready" ? "resolving"
+    : !isAuthenticated ? "signed-out"
+    : directory.forbidden ? "forbidden"
     : usersLoading ? "checking"
     : usersError ? "error"
     : "ready";
@@ -217,7 +232,7 @@ export function UsersList({ venueId }: UsersListProps) {
                 </p>
               </div>
             </div>
-            {listState === "ready" && (
+            {view === "ready" && (
               <div className="relative w-full sm:w-64">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -231,56 +246,32 @@ export function UsersList({ venueId }: UsersListProps) {
           </div>
         </Card>
 
-        {venueStatus !== "ready" && (
+        {(view === "resolving" || view === "checking") && (
           <div className="flex items-center justify-center py-16">
             <Spinner variant="ellipsis" className="text-primary" size={48} />
           </div>
         )}
 
-        {venueStatus === "ready" && !isAuthenticated && (
-          <div className="border border-border rounded-lg p-4 bg-muted/30 flex items-start gap-3">
-            <Lock size={16} className="text-muted-foreground mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-foreground">Authentication required</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Sign in to view registered users on this venue.
-              </p>
-            </div>
-          </div>
+        {view === "signed-out" && (
+          <Notice icon={Lock} title="Authentication required">
+            Sign in to view registered users on this venue.
+          </Notice>
         )}
 
-        {venueStatus === "ready" && isAuthenticated && listState === "checking" && (
-          <div className="flex items-center justify-center py-16">
-            <Spinner variant="ellipsis" className="text-primary" size={48} />
-          </div>
+        {view === "forbidden" && (
+          <Notice icon={ShieldAlert} title="Operator access required">
+            Viewing the full users list requires signing in as this venue&apos;s operator,
+            or holding a venue-issued delegation.
+          </Notice>
         )}
 
-        {venueStatus === "ready" && isAuthenticated && listState === "forbidden" && (
-          <div className="border border-border rounded-lg p-4 bg-muted/30 flex items-start gap-3">
-            <ShieldAlert size={16} className="text-muted-foreground mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-foreground">Operator access required</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Viewing the full users list requires signing in as this venue&apos;s operator,
-                or holding a venue-issued delegation.
-              </p>
-            </div>
-          </div>
+        {view === "error" && (
+          <Notice icon={ShieldAlert} title="Unable to load users">
+            Something went wrong reading the users list from this venue.
+          </Notice>
         )}
 
-        {venueStatus === "ready" && isAuthenticated && listState === "error" && (
-          <div className="border border-border rounded-lg p-4 bg-muted/30 flex items-start gap-3">
-            <ShieldAlert size={16} className="text-muted-foreground mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-foreground">Unable to load users</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Something went wrong reading the users list from this venue.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {venueStatus === "ready" && isAuthenticated && listState === "ready" && (
+        {view === "ready" && (
           <>
             {users.length > 0 && (
               <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by account type">

@@ -660,3 +660,42 @@ describe("useAgentExplorer — composer", () => {
     await waitFor(() => expect(result.current.echoAlreadyRecorded).toBe(true));
   });
 });
+
+describe("useAgentExplorer — suspend and resume", () => {
+  beforeEach(() => {
+    (notifyError as jest.Mock).mockReset();
+  });
+
+  const handles = () => mockVenue.agent.mock.results.map((r: { value: any }) => r.value);
+
+  it("suspends and resumes the open agent, then re-reads it", async () => {
+    mockVenue = makeVenue("venue-a", ["agent-a"]);
+    const { result } = renderHook(() => useAgentExplorer("agent-a"));
+    await waitFor(() => expect(result.current.selectedAgentDetail).not.toBeNull());
+    const infoCalls = mockVenue.agents.info.mock.calls.length;
+
+    act(() => result.current.suspend());
+    await waitFor(() => expect(handles().some((h: any) => h.suspend.mock.calls.length > 0)).toBe(true));
+    await waitFor(() => expect(mockVenue.agents.info.mock.calls.length).toBeGreaterThan(infoCalls));
+
+    act(() => result.current.resume());
+    await waitFor(() => expect(handles().some((h: any) => h.resume.mock.calls.length > 0)).toBe(true));
+    expect(notifyError).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed suspend against the venue it was sent to", async () => {
+    mockVenue = { ...makeVenue("venue-a", ["agent-a"]), baseUrl: "https://venue-a.example" };
+    mockVenue.agent.mockImplementation(() => ({
+      chatSession: jest.fn(),
+      update: jest.fn(),
+      suspend: jest.fn().mockRejectedValue(new Error("refused")),
+      resume: jest.fn(),
+    }));
+    const { result } = renderHook(() => useAgentExplorer("agent-a"));
+    await waitFor(() => expect(result.current.selectedAgentDetail).not.toBeNull());
+
+    act(() => result.current.suspend());
+    await waitFor(() => expect(notifyError).toHaveBeenCalled());
+    expect((notifyError as jest.Mock).mock.calls[0][2]).toBe("https://venue-a.example");
+  });
+});

@@ -298,13 +298,15 @@ export function ConnectionsList() {
     },
     [],
   );
-  const [query, setQuery] = useState("");
   // Category filter chip; null = All. Complements search (search wins).
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
-  // Quick-connect (paste any token → detect the service).
-  const [quick, setQuick] = useState("");
-  const detected = useMemo(() => detectService(quick), [quick]);
+  // The search box is one value: text that looks like a known service's token
+  // is a quick-connect (paste any token → detect the service), anything else a
+  // search over the catalogue.
+  const [text, setText] = useState("");
+  const detected = useMemo(() => detectService(text), [text]);
+  const query = detected ? "" : text;
 
   // Add dialog. `values` holds one entry per collected secret (keyed by its
   // s/<name>); single-value connections have exactly one.
@@ -518,6 +520,22 @@ export function ConnectionsList() {
     );
   }
 
+  // One card per service, drawn the same in every list. A plain function, not a
+  // component defined here, so React.memo on the card still skips unchanged
+  // cards and nothing remounts (frontend#344).
+  const renderCard = (s: ConnectionService) => (
+    <ConnectionCard
+      key={s.id}
+      service={s}
+      connected={connected.has(s.secretName)}
+      health={health[s.secretName]}
+      loading={loading}
+      onTest={checkHealth}
+      onOpenAdd={openAdd}
+      onDisconnect={disconnect}
+    />
+  );
+
   return (
     <div className="space-y-6">
       {/* KPI header — frames the whole set, consistent with Operations/Agents. */}
@@ -550,20 +568,15 @@ export function ConnectionsList() {
           <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={15} />
           <Input
             placeholder="Search services, or paste a token to auto-detect…"
-            value={quick || query}
-            onChange={(e) => {
-              const val = e.target.value;
-              // A pasted secret-looking value drives detection; plain text filters.
-              if (detectService(val)) { setQuick(val); setQuery(""); }
-              else { setQuery(val); setQuick(""); }
-            }}
-            onKeyDown={(e) => { if (e.key === "Enter" && detected) { openAdd(detected, quick); setQuick(""); } }}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && detected) { openAdd(detected, text); setText(""); } }}
             className="pl-9 font-normal"
           />
         </div>
         {detected && (
           <button
-            onClick={() => { openAdd(detected, quick); setQuick(""); }}
+            onClick={() => { openAdd(detected, text); setText(""); }}
             className="mt-2 flex w-full items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-left text-sm hover:bg-primary/10"
           >
             <Logo service={detected} size={22} />
@@ -616,18 +629,7 @@ export function ConnectionsList() {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((s) => (
-                <ConnectionCard
-                  key={s.id}
-                  service={s}
-                  connected={connected.has(s.secretName)}
-                  health={health[s.secretName]}
-                  loading={loading}
-                  onTest={checkHealth}
-                  onOpenAdd={openAdd}
-                  onDisconnect={disconnect}
-                />
-              ))}
+              {filtered.map(renderCard)}
             </div>
           )}
         </section>
@@ -640,18 +642,7 @@ export function ConnectionsList() {
                 Connected · {shownConnected.length}
               </h3>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {shownConnected.map((s) => (
-                  <ConnectionCard
-                    key={s.id}
-                    service={s}
-                    connected={connected.has(s.secretName)}
-                    health={health[s.secretName]}
-                    loading={loading}
-                    onTest={checkHealth}
-                    onOpenAdd={openAdd}
-                    onDisconnect={disconnect}
-                  />
-                ))}
+                {shownConnected.map(renderCard)}
               </div>
             </section>
           )}
@@ -660,18 +651,7 @@ export function ConnectionsList() {
             <section key={category}>
               <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{category}</h3>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {services.map((s) => (
-                  <ConnectionCard
-                    key={s.id}
-                    service={s}
-                    connected={connected.has(s.secretName)}
-                    health={health[s.secretName]}
-                    loading={loading}
-                    onTest={checkHealth}
-                    onOpenAdd={openAdd}
-                    onDisconnect={disconnect}
-                  />
-                ))}
+                {services.map(renderCard)}
               </div>
             </section>
           ))}

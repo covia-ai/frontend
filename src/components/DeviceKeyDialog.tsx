@@ -15,42 +15,25 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Identicon } from "@/components/Identicon";
 import { DidDisplay } from "@/components/DidDisplay";
 import { abbreviateDid } from "@/lib/utils";
-import type { DeviceKeyStep, StoredKeyOption } from "@/hooks/use-device-key-signin";
+import type { DeviceKeySignIn } from "@/hooks/use-device-key-signin";
 
 interface DeviceKeyDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  step: DeviceKeyStep;
-  setStep: (step: DeviceKeyStep) => void;
-  deviceKey: string | null;
-  deviceKeyDid: string | null;
-  isExisting: boolean;
-  pastedKey: string;
-  onPastedKeyChange: (value: string) => void;
-  keyError: string | null;
-  copied: boolean;
-  checking: boolean;
-  authError: string | null;
-  storedKeys: StoredKeyOption[];
-  onGenerate: () => void;
-  onProvideKey: () => void;
-  onSubmitProvidedKey: () => void;
-  onCopy: () => void;
-  onContinue: () => void;
-  onUseStoredKey: (hex: string) => void;
-  onUseDifferentKey: () => void;
+  /** The result of useDeviceKeySignIn, whose state and handlers drive the dialog. */
+  signIn: DeviceKeySignIn;
 }
 
 // The device-key sign-in dialog, shared by the signup page's and topbar's
 // sign-in buttons (see useDeviceKeySignIn). Continue probes the venue before
 // the login is recorded; a rejected key shows the error here with a path to
 // a different key rather than "succeeding" into a broken session.
-export function DeviceKeyDialog({
-  open, onOpenChange, step, setStep, deviceKey, deviceKeyDid, isExisting, pastedKey,
-  onPastedKeyChange, keyError, copied, checking, authError, storedKeys,
-  onGenerate, onProvideKey, onSubmitProvidedKey, onCopy, onContinue,
-  onUseStoredKey, onUseDifferentKey,
-}: DeviceKeyDialogProps) {
+export function DeviceKeyDialog({ signIn }: DeviceKeyDialogProps) {
+  const {
+    dialogOpen: open, setDialogOpen: onOpenChange, step, setStep, deviceKey, deviceKeyDid,
+    isExisting, pastedKey, handlePastedKeyChange: onPastedKeyChange, keyError, copied, checking,
+    authError, storedKeys, handleGenerate: onGenerate, handleProvideKey: onProvideKey,
+    handleSubmitProvidedKey: onSubmitProvidedKey, handleCopy: onCopy, handleContinue: onContinue,
+    handleUseStoredKey: onUseStoredKey, handleUseDifferentKey: onUseDifferentKey,
+  } = signIn;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-card text-card-foreground">
