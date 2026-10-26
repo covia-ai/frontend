@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from "react";
 
 type PageNumberOptions = {
   totalItems: number;
@@ -58,4 +58,54 @@ export function useClientPagination<T>({
   );
 
   return { ...page, pageItems };
+}
+
+/**
+ * A growing window over an in-memory list, for infinite scroll: the first
+ * `batchSize` items, then another batch each time the sentinel scrolls into
+ * view, or when `loadMore` is called (the "Load more" button, which also covers
+ * environments without IntersectionObserver, e.g. jsdom). The window is stored
+ * with the `resetKey` it was grown under, so a new search or filter starts from
+ * the first batch in the same render rather than an effect resetting it a
+ * frame late.
+ */
+export function useInfiniteWindow<T>(items: T[], resetKey: string, batchSize: number) {
+  const [shown, setShown] = useState({ resetKey, count: batchSize });
+  const visibleCount = shown.resetKey === resetKey ? shown.count : batchSize;
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  // Set the moment a grow is requested; cleared once the new slice renders, so
+  // a burst of intersection events can't stack multiple batches at once.
+  const growingRef = useRef(false);
+
+  const visibleItems = useMemo(() => items.slice(0, visibleCount), [items, visibleCount]);
+  const hasMore = visibleCount < items.length;
+
+  const loadMore = useCallback(() => {
+    if (growingRef.current) return;
+    growingRef.current = true;
+    setShown((previous) => ({
+      resetKey,
+      count: (previous.resetKey === resetKey ? previous.count : batchSize) + batchSize,
+    }));
+  }, [resetKey, batchSize]);
+
+  useEffect(() => {
+    growingRef.current = false;
+  }, [visibleItems.length]);
+
+  // Re-armed on every slice change so each batch can trigger the next.
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMore();
+      },
+      { rootMargin: "400px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, loadMore, visibleItems.length]);
+
+  return { visibleItems, hasMore, loadMore, sentinelRef };
 }
