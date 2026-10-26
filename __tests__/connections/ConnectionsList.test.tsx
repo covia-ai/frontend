@@ -199,6 +199,33 @@ describe("ConnectionsList", () => {
     await waitFor(() => expect(screen.queryByText("Connected · 1")).not.toBeInTheDocument());
   });
 
+  // Connections and health checks belong to a venue: after a switch, nothing
+  // the previous venue said may show under the new one's name, even while the
+  // new venue's list is still loading.
+  it("shows nothing from the previous venue after a venue switch", async () => {
+    const user = userEvent.setup();
+    mockVenue = { ...makeVenue(["GITHUB_TOKEN"]), venueId: "did:key:venue-a" };
+    mockVenue.operations.run.mockResolvedValue({ status: 401, body: '{"message":"Bad credentials"}' });
+    const { rerender } = render(<ConnectionsList />);
+    await screen.findByText("Connected · 1");
+    const findGithubCard = () => screen.getByText("GitHub").closest("div.rounded-xl") as HTMLElement;
+    await user.click(within(findGithubCard()).getByRole("button", { name: "Test GitHub connection" }));
+    await waitFor(() => expect(within(findGithubCard()).getByText("Needs attention")).toBeInTheDocument());
+
+    // Venue B holds the same secret name but hasn't answered yet.
+    let answerB: (names: string[]) => void = () => {};
+    mockVenue = { ...makeVenue([]), venueId: "did:key:venue-b" };
+    mockVenue.secrets.list.mockReturnValue(new Promise<string[]>((resolve) => { answerB = resolve; }));
+    rerender(<ConnectionsList />);
+    expect(screen.queryByText("Connected · 1")).not.toBeInTheDocument();
+
+    answerB(["GITHUB_TOKEN"]);
+    await screen.findByText("Connected · 1");
+    // B's GitHub card is connected, but A's failed check is not B's.
+    expect(within(findGithubCard()).queryByText("Needs attention")).not.toBeInTheDocument();
+    expect(within(findGithubCard()).queryByText(/Checked/)).not.toBeInTheDocument();
+  });
+
   describe("per-service health check (frontend#290)", () => {
     it("tests a connected service on demand and reports when it last checked out", async () => {
       const user = userEvent.setup();

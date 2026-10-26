@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  revalidateVenueOnFailure,
-  useAuthenticatedVenue,
-} from "@/hooks/use-authenticated-venue";
+import { useCallback, useMemo, useState } from "react";
+import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useVenueRead } from "@/hooks/use-venue-read";
+import { errorMessage } from "@/lib/errors";
 import { useCurrentAuth, useIsAuthenticated } from "@/hooks/use-auth";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { TONE_STYLES } from "@/lib/status";
@@ -91,6 +90,14 @@ type HealthState =
   | { phase: "checking" }
   | { phase: "ok"; message: string; checkedAt: string }
   | { phase: "attention"; message: string; checkedAt: string };
+
+// Stable empty values, so memoised derivations keyed on them don't re-run.
+const NO_NAMES: string[] = [];
+const NO_HEALTH: Record<string, HealthState> = {};
+
+// What per-venue state is filed under. One derivation for render and handlers
+// alike, so what a handler records is always what render looks up.
+const venueKeyOf = (venue: { venueId?: string } | null | undefined) => venue?.venueId ?? "";
 
 type ConnectionCardProps = {
   service: ConnectionService;
@@ -252,9 +259,45 @@ export function ConnectionsList() {
   const isAuthenticated = useIsAuthenticated();
   const auth = useCurrentAuth();
 
-  const [connected, setConnected] = useState<Set<string>>(new Set());
-  const [health, setHealth] = useState<Record<string, HealthState>>({});
-  const [loading, setLoading] = useState(true);
+  // The venue's stored secret names, held with the venue they answer for: a
+  // venue switch never shows the previous venue's connections, and a slow reply
+  // from it can't land on this one.
+  const { data: storedNames, loading } = useVenueRead<string[]>({
+    venue,
+    auth,
+    enabled: isAuthenticated,
+    initial: NO_NAMES,
+    failureTitle: "Unable to load connections",
+    load: async (target) => {
+      const names = await target.secrets.list();
+      return Array.isArray(names) ? names : [];
+    },
+  });
+  // Connects and disconnects made on this page, per venue, applied over the
+  // stored names; the last change to a name wins.
+  const [edits, setEdits] = useState<Record<string, Record<string, boolean>>>({});
+  // On-demand health, per venue then per secret name, so a check still running
+  // when the venue changes lands under the venue it was for.
+  const [healthByVenue, setHealthByVenue] = useState<Record<string, Record<string, HealthState>>>({});
+  const venueKey = venueKeyOf(venue);
+  const connected = useMemo(() => {
+    const names = new Set(storedNames);
+    for (const [name, on] of Object.entries(edits[venueKey] ?? {})) {
+      if (on) names.add(name);
+      else names.delete(name);
+    }
+    return names;
+  }, [storedNames, edits, venueKey]);
+  const health = healthByVenue[venueKey] ?? NO_HEALTH;
+  const markConnected = useCallback((venueId: string, name: string, on: boolean) => {
+    setEdits((prev) => ({ ...prev, [venueId]: { ...prev[venueId], [name]: on } }));
+  }, []);
+  const updateHealth = useCallback(
+    (venueId: string, update: (prev: Record<string, HealthState>) => Record<string, HealthState>) => {
+      setHealthByVenue((prev) => ({ ...prev, [venueId]: update(prev[venueId] ?? NO_HEALTH) }));
+    },
+    [],
+  );
   const [query, setQuery] = useState("");
   // Category filter chip; null = All. Complements search (search wins).
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -271,25 +314,6 @@ export function ConnectionsList() {
   const fields = useMemo(() => (active ? connectionSecrets(active) : []), [active]);
   const allFilled = fields.length > 0 && fields.every((f) => (values[f.name] ?? "").trim());
   const setField = (name: string, v: string) => setValues((prev) => ({ ...prev, [name]: v }));
-
-  const loadConnections = useCallback(() => {
-    if (!venue || !isAuthenticated) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    venue.secrets
-      .list()
-      .then((names) => setConnected(new Set(Array.isArray(names) ? names : [])))
-      .catch((err: unknown) => {
-        notifyError("Unable to load connections", err, venue.baseUrl);
-        revalidateVenueOnFailure(venue, auth, err);
-        setConnected(new Set());
-      })
-      .finally(() => setLoading(false));
-  }, [venue, isAuthenticated, auth]);
-
-  useEffect(() => loadConnections(), [loadConnections]);
 
   // useCallback so the handlers passed to every ConnectionCard keep a stable
   // identity across ConnectionsList re-renders (search keystrokes, health
@@ -320,11 +344,12 @@ export function ConnectionsList() {
     if (!venue || !active || !allFilled) return;
     const svc = active;
     const svcFields = connectionSecrets(svc);
+    const venueId = venueKeyOf(venue);
     setTest({ phase: "testing" });
     // A fresh save (including a Fix-triggered reconnect) supersedes whatever
     // an earlier health check said — clear it rather than show a stale
     // "Needs attention" next to a token that was just re-verified.
-    setHealth((prev) => {
+    updateHealth(venueId, (prev) => {
       const { [svc.secretName]: _drop, ...rest } = prev;
       return rest;
     });
@@ -336,7 +361,7 @@ export function ConnectionsList() {
       if (svc.verify) {
         try {
           const message = await runVerify(svc);
-          setConnected((prev) => new Set(prev).add(svc.secretName));
+          markConnected(venueId, svc.secretName, true);
           setTest({ phase: "ok", message });
         } catch (verifyErr: any) {
           const msg = String(verifyErr?.message ?? "");
@@ -348,7 +373,7 @@ export function ConnectionsList() {
             svc.auth === "url" &&
             (/bad uri/i.test(msg) || svcFields.some((f) => msg.includes(`{s/${f.name}}`)));
           if (placeholderGap) {
-            setConnected((prev) => new Set(prev).add(svc.secretName));
+            markConnected(venueId, svc.secretName, true);
             setTest({
               phase: "ok",
               message: `Saved. ${svc.name} verifies once your venue supports URL secrets (an upcoming release).`,
@@ -360,14 +385,14 @@ export function ConnectionsList() {
         }
       } else {
         // No generic verify (e.g. Jira's per-user host) — store and confirm.
-        setConnected((prev) => new Set(prev).add(svc.secretName));
+        markConnected(venueId, svc.secretName, true);
         setTest({ phase: "ok", message: "Saved. Validates on first use." });
       }
     } catch (err: unknown) {
       notifyError(`Unable to connect ${svc.name}`, err, venue?.baseUrl);
       setTest({ phase: "idle" });
     }
-  }, [venue, active, allFilled, values, runVerify]);
+  }, [venue, active, allFilled, values, runVerify, markConnected, updateHealth]);
 
   const finishOk = () => {
     if (active && test.phase === "ok") {
@@ -384,37 +409,30 @@ export function ConnectionsList() {
   const checkHealth = useCallback(
     async (service: ConnectionService) => {
       if (!venue) return;
-      setHealth((prev) => ({ ...prev, [service.secretName]: { phase: "checking" } }));
+      const venueId = venueKeyOf(venue);
+      const record = (state: HealthState) =>
+        updateHealth(venueId, (prev) => ({ ...prev, [service.secretName]: state }));
+      record({ phase: "checking" });
       const checkedAt = new Date().toISOString();
       try {
         const message = await runVerify(service);
-        setHealth((prev) => ({ ...prev, [service.secretName]: { phase: "ok", message, checkedAt } }));
+        record({ phase: "ok", message, checkedAt });
       } catch (err: unknown) {
-        setHealth((prev) => ({
-          ...prev,
-          [service.secretName]: {
-            phase: "attention",
-            message: err instanceof Error ? err.message : String(err),
-            checkedAt,
-          },
-        }));
+        record({ phase: "attention", message: errorMessage(err), checkedAt });
       }
     },
-    [venue, runVerify],
+    [venue, runVerify, updateHealth],
   );
 
   const disconnect = useCallback(
     (service: ConnectionService) => {
       if (!venue) return;
+      const venueId = venueKeyOf(venue);
       // Remove every value the connection stored, not just the primary.
       Promise.all(connectionSecrets(service).map((f) => venue.secrets.delete(f.name)))
         .then(() => {
-          setConnected((prev) => {
-            const next = new Set(prev);
-            next.delete(service.secretName);
-            return next;
-          });
-          setHealth((prev) => {
+          markConnected(venueId, service.secretName, false);
+          updateHealth(venueId, (prev) => {
             const { [service.secretName]: _drop, ...rest } = prev;
             return rest;
           });
@@ -424,7 +442,7 @@ export function ConnectionsList() {
           notifyError(`Unable to disconnect ${service.name}`, err, venue?.baseUrl),
         );
     },
-    [venue],
+    [venue, markConnected, updateHealth],
   );
 
   // Derivations memoised so a search keystroke or health update doesn't rescan
