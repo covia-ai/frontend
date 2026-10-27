@@ -2,6 +2,7 @@
 
 import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { AssetHeader } from "@/components/AssetHeader";
 import { AssetLoadState } from "@/components/AssetLoadState";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
@@ -13,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOperationAsset } from "@/hooks/use-operation-asset";
 import { useOperationInput } from "@/hooks/use-operation-input";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
+import { useMcpExposure } from "@/hooks/use-mcp-exposure";
 import {
   validateOperationInput,
   type OperationInputSchema,
@@ -22,6 +24,7 @@ import { useJobExecution } from "@/hooks/use-job-execution";
 import { OperationRunResult } from "@/components/execution/OperationRunResult";
 import { TypeTile } from "@/components/TypeTile";
 import { adapterLook, adapterOfMetadata, OperationSignature } from "@/components/operation-display";
+import { McpGlyph } from "@/components/adapter-glyphs";
 import { jobPath } from "@/lib/routes";
 
 const DiagramViewer = dynamic(
@@ -100,6 +103,9 @@ export function OperationViewer({
   const operation = asset?.metadata?.operation as any;
   const adapter = adapterOfMetadata(operation);
   const { Icon: AdapterIcon, tile: adapterTile } = adapterLook(adapter);
+  // The MCP tool serving this operation, when the venue names one (#361).
+  const mcpTools = useMcpExposure(venue, { enabled: !!operation });
+  const mcpTool = asset ? mcpTools.get(asset.id) : undefined;
 
   const runOperation = async () => {
     if (!asset || !venue) {
@@ -156,10 +162,21 @@ export function OperationViewer({
           <>
             {/* Signature hero — the operation's shape (in → out) at a glance. */}
             <div className="mb-3 flex w-full flex-col gap-3 rounded-xl border bg-card p-3 sm:flex-row sm:items-center">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <TypeTile Icon={AdapterIcon} tile={adapterTile} className="size-10" iconSize={20} />
                 {adapter && (
                   <span className="font-mono text-xs text-muted-foreground">{adapter} adapter</span>
+                )}
+                {mcpTool && venue && (
+                  <Link
+                    href={`/venues/${encodeURIComponent(venue.venueId)}/mcp`}
+                    data-testid="operation-mcp"
+                    data-tool={mcpTool}
+                    title="Also served over this venue's MCP endpoint"
+                    className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:border-accent hover:text-foreground"
+                  >
+                    <McpGlyph size={12} /> MCP tool <span className="font-mono">{mcpTool}</span>
+                  </Link>
                 )}
               </div>
               <div className="min-w-0 flex-1">

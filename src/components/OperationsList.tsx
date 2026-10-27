@@ -15,6 +15,7 @@ import { PlayCircle, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { listCatalogOperations } from "@/lib/operations-catalog";
 import { useVenueRead } from "@/hooks/use-venue-read";
+import { useMcpExposure } from "@/hooks/use-mcp-exposure";
 // A roomier grid than the shared 14rem density: operation cards now carry a
 // signature block, so they need width to breathe (concept-fidelity catalogue).
 const OPS_GRID_CLASS =
@@ -82,6 +83,9 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
       return sorted.map(op => new Operation(op.path, v, op.metadata));
     },
   });
+  // Separate from the catalogue read, so the cards never wait on it: a chip
+  // appears once the venue's MCP tool list is in.
+  const mcpTools = useMcpExposure(venue, { enabled: venueStatus === "ready" });
 
   const adapterOptions = useMemo(() => {
     const names = assetsMetadata
@@ -287,7 +291,13 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
           <>
             <div className={cn(OPS_GRID_CLASS, "mt-5")}>
               {visibleItems.map((asset) => (
-                <OperationCard key={asset.id} asset={asset} venue={venue ?? undefined} scoped={!!venueId}/>
+                <OperationCard
+                  key={asset.id}
+                  asset={asset}
+                  venue={venue ?? undefined}
+                  scoped={!!venueId}
+                  mcpTool={mcpTools.get(asset.id)}
+                />
               ))}
             </div>
 

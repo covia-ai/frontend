@@ -27,7 +27,11 @@ jest.mock('next/navigation', () => ({
   useSearchParams: () => ({ get: () => null }),
 }));
 
-const mockVenue: any = { venueId: 'venue-1', metadata: { name: 'Test Venue' } };
+const mockVenue: any = {
+  venueId: 'venue-1',
+  metadata: { name: 'Test Venue' },
+  mcp: { listAllTools: () => Promise.resolve([]) },
+};
 jest.mock('@/hooks/use-venues', () => ({
   useVenues: () => ({ venues: [mockVenue], addVenue: jest.fn() }),
 }));

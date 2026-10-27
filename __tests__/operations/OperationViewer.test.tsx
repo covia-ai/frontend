@@ -7,7 +7,13 @@ import '@testing-library/jest-dom';
 // operations reuses one OperationViewer instance. These tests pin the
 // run-in-place state to the asset it belongs to.
 
-const mockVenue: any = { venueId: 'venue-1', baseUrl: 'http://localhost:8080', metadata: { name: 'Test Venue' } };
+const mockListAllTools = jest.fn();
+const mockVenue: any = {
+  venueId: 'venue-1',
+  baseUrl: 'http://localhost:8080',
+  metadata: { name: 'Test Venue' },
+  mcp: { listAllTools: (...args: any[]) => mockListAllTools(...args) },
+};
 
 jest.mock('@/hooks/use-resolved-venue', () => ({
   useResolvedVenueContext: () => ({ venue: mockVenue, isAuthenticated: true }),
@@ -71,16 +77,41 @@ function assetFor(id: string) {
   };
 }
 
-describe('OperationViewer run-in-place', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockUseOperationAsset.mockImplementation((_venue: any, assetId: string) => ({
-      asset: assetFor(assetId),
-      errorMessage: '',
-      notFound: false,
-      loading: false,
-    }));
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockUseOperationAsset.mockImplementation((_venue: any, assetId: string) => ({
+    asset: assetFor(assetId),
+    errorMessage: '',
+    notFound: false,
+    loading: false,
+  }));
+  mockListAllTools.mockResolvedValue([]);
+});
+
+describe('OperationViewer MCP exposure (#361)', () => {
+  it("links to the venue's MCP tools when a tool serves this operation", async () => {
+    mockListAllTools.mockResolvedValue([
+      { name: 'http_get', inputSchema: {}, _meta: { 'ai.covia/operation': 'v/ops/http/get' } },
+    ]);
+    render(<OperationViewer assetId="v/ops/http/get" venueId="venue-1" />);
+
+    const chip = await screen.findByTestId('operation-mcp');
+    expect(chip).toHaveAttribute('data-tool', 'http_get');
+    expect(chip).toHaveAttribute('href', '/venues/venue-1/mcp');
   });
+
+  it('shows no MCP chip for an operation no tool serves', async () => {
+    mockListAllTools.mockResolvedValue([
+      { name: 'http_get', inputSchema: {}, _meta: { 'ai.covia/operation': 'v/ops/http/get' } },
+    ]);
+    render(<OperationViewer assetId="v/ops/http/post" venueId="venue-1" />);
+
+    await waitFor(() => expect(mockListAllTools).toHaveBeenCalled());
+    expect(screen.queryByTestId('operation-mcp')).not.toBeInTheDocument();
+  });
+});
+
+describe('OperationViewer run-in-place', () => {
 
   it('shows the inline result once a run returns a job id', async () => {
     render(<OperationViewer assetId="op-1" venueId="venue-1" />);

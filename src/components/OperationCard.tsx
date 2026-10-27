@@ -10,12 +10,17 @@ import { AssetInfoSheet } from "./AssetInfoSheet";
 import { ArrowUpRight, Workflow } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { adapterLook, adapterOfMetadata, OperationSignature } from "./operation-display";
+import { McpGlyph } from "./adapter-glyphs";
 
 interface OperationCardProps {
   asset: Asset;
   venue?: Venue;
   /** False outside a /venues/[slug] route — see AssetCard for the rationale. */
   scoped?: boolean;
+  /** The MCP tool that also serves this operation, when the venue says so
+   *  (useMcpExposure). REST and the SDK reach every operation, so only MCP
+   *  exposure is worth a chip (frontend#361). */
+  mcpTool?: string;
 }
 
 // Memoised: the catalogue filters search client-side, so a keystroke
@@ -23,7 +28,7 @@ interface OperationCardProps {
 // (asset, venue, scoped) are stable across those renders, so `memo` keeps each
 // card — and its per-render schema-signature parse — from re-running unless the
 // card actually changes.
-function OperationCardBase({ asset, venue: venueProp, scoped = true }: OperationCardProps) {
+function OperationCardBase({ asset, venue: venueProp, scoped = true, mcpTool }: OperationCardProps) {
   const fallbackVenue = useAuthenticatedVenue();
   const venue = venueProp ?? fallbackVenue;
   const router = useRouter();
@@ -90,6 +95,23 @@ function OperationCardBase({ asset, venue: venueProp, scoped = true }: Operation
               >
                 {adapter}
               </Badge>
+            )}
+            {mcpTool && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge
+                    data-testid="operation-mcp"
+                    data-tool={mcpTool}
+                    variant="outline"
+                    className="flex w-fit items-center gap-1 px-1.5 py-0 text-[10px] text-muted-foreground"
+                  >
+                    <McpGlyph size={10} /> MCP
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Also an MCP tool: <span className="font-mono">{mcpTool}</span>
+                </TooltipContent>
+              </Tooltip>
             )}
             {stepCount > 0 && (
               <Tooltip>
