@@ -9,6 +9,7 @@ import { useVenues } from "@/hooks/use-venues";
 import { getVenueFor } from "@/lib/venue-registry";
 import { notifySuccess, notifyError } from "@/lib/notify";
 import { isNotFoundError } from "@/lib/errors";
+import { jobPath } from "@/lib/routes";
 
 // How often the shared poller re-checks watched jobs. Only ticks while the
 // watch list is non-empty (mirrors JobList's "only poll when there are
@@ -60,10 +61,6 @@ export const useWatchedJobs = create<WatchedJobsState>()(
   ),
 );
 
-function jobReceiptHref(venueId: string, jobId: string): string {
-  return `/venues/${encodeURIComponent(venueId)}/jobs/${jobId}`;
-}
-
 /**
  * Owns the single background poll behind ambient job-completion
  * notifications (#241) — mounted once, alongside useHitlOpenCountPoll, in
@@ -112,7 +109,7 @@ export function useWatchedJobsPoll(): void {
           if (ignore || !job.isFinished) continue;
 
           const label = job.metadata.name ?? jobId;
-          const receiptHref = jobReceiptHref(venueId, jobId);
+          const receiptHref = jobPath(venueId, jobId);
           if (job.isComplete) {
             notifySuccess(`Job complete: ${label}`, {
               description: descriptor.metadata.name,

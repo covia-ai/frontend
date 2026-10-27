@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Asset, Operation }from "@covia/covia-sdk";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
@@ -23,6 +23,7 @@ import { FiltersSheet } from "./FiltersSheet";
 import { ListToolbar } from "./ListToolbar";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { VenueResolutionState } from "@/components/VenueResolutionState";
+import { useInfiniteWindow } from "@/hooks/use-pagination";
 
 // How many cards to reveal per infinite-scroll step. Operation cards are tall
 // (they carry the full IN→OUT signature), so viewport-fit pagination showed
@@ -168,54 +169,15 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
     });
   }, [assetsMetadata, selectedTags, searchInput]);
 
-  // Infinite scroll: how many of the (filtered) catalogue cards are currently
-  // shown. The full catalogue is already in memory (one catalog read per
-  // venue), so growing the window is a pure client-side slice — no refetch, and
-  // search/filter always apply to the complete list, not just a loaded window.
-  // The window is stored with the filter identity it was grown under, so a
-  // narrowed list (new search text or tags) starts from the first batch in the
-  // same render — no effect resetting it a frame late.
-  const resetKey = `${searchInput} ${selectedTags.join(" ")}`;
-  const [shown, setShown] = useState({ resetKey, count: BATCH_SIZE });
-  const visibleCount = shown.resetKey === resetKey ? shown.count : BATCH_SIZE;
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-  // Set the moment a grow is requested; cleared once the new slice renders, so
-  // a burst of intersection events can't stack multiple batches at once.
-  const growingRef = useRef(false);
-
-  const visibleItems = useMemo(
-    () => filteredAssets.slice(0, visibleCount),
-    [filteredAssets, visibleCount],
+  // Infinite scroll over the filtered catalogue. The full catalogue is already
+  // in memory (one catalog read per venue), so growing the window is a pure
+  // client-side slice: no refetch, and search/filter always apply to the
+  // complete list, not just a loaded window.
+  const { visibleItems, hasMore, loadMore, sentinelRef } = useInfiniteWindow(
+    filteredAssets,
+    `${searchInput} ${selectedTags.join(" ")}`,
+    BATCH_SIZE,
   );
-  const hasMore = visibleCount < filteredAssets.length;
-
-  // Grow the window by one batch. Guarded so scroll bursts don't stack batches.
-  const maybeLoadMore = useCallback(() => {
-    if (growingRef.current) return;
-    growingRef.current = true;
-    setShown((previous) => ({
-      resetKey,
-      count: (previous.resetKey === resetKey ? previous.count : BATCH_SIZE) + BATCH_SIZE,
-    }));
-  }, [resetKey]);
-
-  // Clear the grow guard once the new slice has rendered.
-  useEffect(() => { growingRef.current = false; }, [visibleItems.length]);
-
-  // Grow when the sentinel scrolls into view (viewport root). Guarded on
-  // hasMore, and re-armed on every slice change so each batch can trigger the
-  // next. Falls back to the manual "Load more" button when IntersectionObserver
-  // is unavailable (e.g. jsdom under test).
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el || !hasMore || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(
-      (entries) => { if (entries[0]?.isIntersecting) maybeLoadMore(); },
-      { rootMargin: "400px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [hasMore, maybeLoadMore, visibleItems.length]);
 
   if (venueStatus !== "ready") {
      return (
@@ -338,7 +300,7 @@ export function OperationsList({ venueId }: OperationsListProps = {}) {
                   variant="ghost"
                   size="sm"
                   className="gap-2 text-muted-foreground"
-                  onClick={maybeLoadMore}
+                  onClick={loadMore}
                 >
                   Load more operations
                 </Button>

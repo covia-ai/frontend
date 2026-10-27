@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Dialog,
@@ -25,6 +25,7 @@ import { ExternalLink, Info, KeyRound, Link2, Cable, Loader2 } from "lucide-reac
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { A2A_NAME_PATTERN, slugifyAgentName } from "@/lib/a2a";
+import { useSecretNames } from "@/hooks/use-secret-names";
 
 const A2A_DOCS_URL = "https://docs.covia.ai/docs/user-guide/agents";
 const NO_SECRET = "__none__";
@@ -59,23 +60,14 @@ export function ConnectAgentDialog({ trigger, open, onOpenChange }: ConnectAgent
   const [needsAuth, setNeedsAuth] = useState(false);
   const [secretName, setSecretName] = useState(NO_SECRET);
   const [scheme, setScheme] = useState("");
-  const [availableSecrets, setAvailableSecrets] = useState<string[]>([]);
+  // Stored secret names, so an authenticated endpoint can bind to one; read
+  // only while the dialog is open.
+  const { names: availableSecrets } = useSecretNames(venue, { enabled: isOpen });
   const [connecting, setConnecting] = useState(false);
 
   const resolvedName = slugifyAgentName(name);
   const nameValid = A2A_NAME_PATTERN.test(resolvedName);
   const targetProvided = source === "url" ? !!url.trim() : !!coviaAgent.trim();
-
-  // Load stored secret names so an authenticated endpoint can bind to one.
-  useEffect(() => {
-    if (!isOpen || !venue) return;
-    let active = true;
-    venue.secrets
-      .list()
-      .then((secrets: string[]) => { if (active) setAvailableSecrets(secrets); })
-      .catch(() => { if (active) setAvailableSecrets([]); });
-    return () => { active = false; };
-  }, [isOpen, venue]);
 
   const reset = () => {
     setName("");

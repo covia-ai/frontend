@@ -46,6 +46,7 @@ import { useDeviceKeySignIn } from "@/hooks/use-device-key-signin";
 import { DeviceKeyDialog } from "@/components/DeviceKeyDialog";
 import { dispatchAgentMessage } from "@/lib/agent-chat";
 import { revalidateVenueOnFailure } from "@/hooks/use-authenticated-venue";
+import { agentChatPath } from "@/lib/routes";
 
 // Sentinel picker value — never a real agentId — meaning "create a fresh,
 // distinctly-named agent" rather than targeting an existing one.
@@ -154,7 +155,7 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted, starters, variant = "pag
       .catch(() => undefined)
       .finally(() => clearPendingChat(chat));
     if (onChatStarted) onChatStarted(agentId);
-    else router.push(`/agents/chat?agentId=${encodeURIComponent(agentId)}`);
+    else router.push(agentChatPath(agentId));
   }
 
   async function proceedWithKey(secretName: string, agentId: string) {

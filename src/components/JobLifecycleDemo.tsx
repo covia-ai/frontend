@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { ArrowRight, Check, CircleAlert, ExternalLink, PlayCircle } from "lucide-react";
+import { jobPath } from "@/lib/routes";
 
 // The demo invokes the venue's bootstrap test operation v/test/ops/delay,
 // which waits `delay` ms and then runs another operation — here
@@ -159,7 +160,7 @@ export function JobLifecycleDemo() {
 
   const jobUrl =
     venue && jobId
-      ? `/venues/${encodeURIComponent(venue.venueId)}/jobs/${jobId}`
+      ? jobPath(venue.venueId, jobId)
       : null;
 
   const invokeSnippet = `const job = await op.invoke({

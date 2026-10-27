@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DataAsset, Venue } from "@covia/covia-sdk";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { usePinnedAssets } from "@/hooks/use-pinned-assets";
 import { useLatestQuery } from "@/hooks/use-latest-query";
+import { useInfiniteWindow } from "@/hooks/use-pagination";
 
 // How many cards to reveal per infinite-scroll step. The fetched catalogue is
 // held in memory, so growing the window is a pure client-side slice — no
@@ -98,50 +99,13 @@ export function useAssetCatalog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assets, searchInput, tagKey, pinnedIds]);
 
-  // Infinite scroll: how many of the (filtered) cards are shown. Growing the
-  // window is a client-side slice; search/filter always apply to the full list.
-  // The window is stored with the filter identity it was grown under, so a
-  // narrowed list (new search or tags) starts from the first batch in the same
-  // render — no effect resetting it a frame late.
-  const resetKey = `${searchInput} ${tagKey}`;
-  const [shown, setShown] = useState({ resetKey, count: BATCH_SIZE });
-  const visibleCount = shown.resetKey === resetKey ? shown.count : BATCH_SIZE;
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-  // Set the moment a grow is requested; cleared once the new slice renders, so a
-  // burst of intersection events can't stack multiple batches at once.
-  const growingRef = useRef(false);
-
-  const visibleItems = useMemo(() => filteredAssets.slice(0, visibleCount), [filteredAssets, visibleCount]);
-  const hasMore = visibleCount < filteredAssets.length;
-
-  const loadMore = useCallback(() => {
-    if (growingRef.current) return;
-    growingRef.current = true;
-    setShown((previous) => ({
-      resetKey,
-      count: (previous.resetKey === resetKey ? previous.count : BATCH_SIZE) + BATCH_SIZE,
-    }));
-  }, [resetKey]);
-
-  useEffect(() => {
-    growingRef.current = false;
-  }, [visibleItems.length]);
-
-  // Grow when the sentinel scrolls into view. Guarded on hasMore and re-armed on
-  // every slice change so each batch triggers the next; the manual "Load more"
-  // button covers environments without IntersectionObserver (e.g. jsdom).
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el || !hasMore || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) loadMore();
-      },
-      { rootMargin: "400px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [hasMore, loadMore, visibleItems.length]);
+  // Infinite scroll over the filtered cards: growing the window is a
+  // client-side slice, and search/filter always apply to the full list.
+  const { visibleItems, hasMore, loadMore, sentinelRef } = useInfiniteWindow(
+    filteredAssets,
+    `${searchInput} ${tagKey}`,
+    BATCH_SIZE,
+  );
 
   return {
     assets,

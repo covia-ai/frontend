@@ -6,6 +6,7 @@ import type { Job, Venue } from "@covia/covia-sdk";
 import { errorMessage } from "@/lib/errors";
 import { jobFailure, notifyError, notifyWarning } from "@/lib/notify";
 import { useWatchedJobs } from "@/hooks/use-watched-jobs";
+import { jobPath } from "@/lib/routes";
 
 type ExecuteJobOptions = {
   // Must start the job and hand it back — `invoke`, never `run`: `run` waits
@@ -50,7 +51,7 @@ export function useJobExecution(venue?: Venue | null) {
       // away before this job finishes — see use-watched-jobs.ts.
       useWatchedJobs.getState().watch(venue.venueId, result.id);
       if (navigate) {
-        router.push(`/venues/${encodeURIComponent(venue.venueId)}/jobs/${result.id}`);
+        router.push(jobPath(venue.venueId, result.id));
       }
       return result.id;
     } catch (error: unknown) {

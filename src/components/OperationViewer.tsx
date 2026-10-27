@@ -22,6 +22,7 @@ import { useJobExecution } from "@/hooks/use-job-execution";
 import { OperationRunResult } from "@/components/execution/OperationRunResult";
 import { TypeTile } from "@/components/TypeTile";
 import { adapterLook, adapterOfMetadata, OperationSignature } from "@/components/operation-display";
+import { jobPath } from "@/lib/routes";
 
 const DiagramViewer = dynamic(
   () =>
@@ -201,7 +202,7 @@ export function OperationViewer({
                     <OperationRunResult
                       jobId={run.jobId}
                       venueId={venue.venueId}
-                      jobHref={`/venues/${encodeURIComponent(venue.venueId)}/jobs/${run.jobId}`}
+                      jobHref={jobPath(venue.venueId, run.jobId)}
                     />
                   </div>
                 )}

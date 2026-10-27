@@ -19,6 +19,7 @@ import { notifyWarning } from "@/lib/notify";
 import { useJobExecution } from "@/hooks/use-job-execution";
 import { ListLoadError } from "@/components/ListLoadError";
 import { VenueResolutionState } from "@/components/VenueResolutionState";
+import { jobPath } from "@/lib/routes";
 
 interface McpTool {
   name: string;
@@ -305,7 +306,7 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
                     <span className="font-mono">{lastRun.jobId.slice(0, 12)}…</span>
                   </p>
                   <Link
-                    href={`/venues/${encodeURIComponent(venue.venueId)}/jobs/${lastRun.jobId}`}
+                    href={jobPath(venue.venueId, lastRun.jobId)}
                     className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
                   >
                     View job <ArrowRight size={12} />

@@ -24,7 +24,7 @@ import { notifyError, notifySuccess } from "@/lib/notify";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { VenueResolutionState } from "@/components/VenueResolutionState";
-import { operationPathSegments, venueScopedHref } from "@/lib/routes";
+import { jobPath, operationPathSegments, venueScopedHref } from "@/lib/routes";
 import { CalendarClock, PlayCircle, Repeat, XCircle } from "lucide-react";
 
 interface ScheduledListProps {
@@ -56,7 +56,7 @@ export function ScheduledList({ venueId }: ScheduledListProps = {}) {
 
   const jobHref = useCallback(
     (jobId: string) =>
-      venueId ? `/venues/${encodeURIComponent(venue?.venueId ?? "")}/jobs/${jobId}` : `/job/${jobId}`,
+      jobPath(venueId ? venue?.venueId : undefined, jobId),
     [venueId, venue],
   );
 
@@ -184,7 +184,7 @@ export function ScheduledList({ venueId }: ScheduledListProps = {}) {
                           <TooltipContent>
                             {event.lastFired ? (
                               <>
-                                Last fired {formatRelativeTime(new Date(event.lastFired).toISOString())}
+                                Last fired {formatRelativeTime(event.lastFired)}
                                 {event.lastJob && (
                                   <>
                                     {" — "}
