@@ -22,19 +22,27 @@ const config = {
     "!src/app/**/layout.tsx",
     "!src/app/**/page.tsx",
   ],
-  coverageProvider: "v8",
+  // Babel (istanbul), not v8. Collecting v8 coverage made the CI run about six
+  // times slower (a whole-suite run on 3 workers: 344 s against 57 s), since
+  // every file a test loads, node_modules included, is covered and then
+  // filtered; istanbul instruments only the files collectCoverageFrom names.
+  // Its counts are also exact and repeatable, where v8's vary with the code a
+  // run happens to execute.
+  coverageProvider: "babel",
   coveragePathIgnorePatterns: ["/node_modules/", "/.next/"],
   // A ratchet, not a target: set just under the coverage the suite actually
-  // had when this landed (82.77 / 80.26 / 72.16; raised to 87.36 / 82.19 / 76.00 / 87.36
-  // after the React Hooks cleanup), so an unrelated PR cannot
-  // quietly erode it. The small margin absorbs v8's run-to-run jitter. Raise
-  // these numbers as coverage climbs — never lower them to make a build pass.
+  // has, so an unrelated PR cannot quietly erode it. Istanbul counts
+  // statements and branches more finely than v8 did, so the move to it set
+  // these afresh from the suite's istanbul figures on 27 October 2026
+  // (82.50 / 73.92 / 76.52 / 84.70; under v8 the same suite read 89.22 /
+  // 83.34 / 77.83 / 89.22 against 85 / 80 / 74 / 85). Raise these numbers as
+  // coverage climbs — never lower them to make a build pass.
   coverageThreshold: {
     global: {
-      statements: 85,
-      branches: 80,
-      functions: 74,
-      lines: 85,
+      statements: 82,
+      branches: 73,
+      functions: 76,
+      lines: 84,
     },
   },
 };
