@@ -115,6 +115,27 @@ describe("AgentProfile", () => {
     expect(screen.queryByTestId("agent-awaiting")).not.toBeInTheDocument();
   });
 
+  it("says who suspended the agent, when and why (covia#590)", () => {
+    controller.selectedAgentDetail = {
+      ...(controller.selectedAgentDetail as object),
+      status: "SUSPENDED",
+      suspension: { by: "did:key:z6MkOwner", ts: Date.now() - 60_000, reason: "Rotating its key" },
+    };
+    render(<AgentProfile agentId="refund-bot" />);
+
+    expect(screen.getByTestId("agent-suspension-reason")).toHaveTextContent("Rotating its key");
+  });
+
+  it("shows no suspension record once the agent is no longer suspended", () => {
+    controller.selectedAgentDetail = {
+      ...(controller.selectedAgentDetail as object),
+      suspension: { by: "did:key:z6MkOwner", ts: Date.now() - 60_000 },
+    };
+    render(<AgentProfile agentId="refund-bot" />);
+
+    expect(screen.queryByTestId("agent-suspension")).not.toBeInTheDocument();
+  });
+
   it("pins the hook to the agent its URL names", () => {
     render(<AgentProfile agentId="refund-bot" />);
     expect(mockUseAgentExplorer).toHaveBeenCalledWith("refund-bot", { pinned: true });

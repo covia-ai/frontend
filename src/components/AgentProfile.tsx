@@ -29,6 +29,7 @@ import { AgentTimelineView } from "@/components/agent-explorer/AgentTimelineView
 import { AgentContextView } from "@/components/agent-explorer/AgentContextView";
 import { AgentSettings } from "@/components/agent-config/AgentSettings";
 import { AgentRuntimeSummary } from "@/components/agent-explorer/AgentRuntimeSummary";
+import { SuspensionNotice } from "@/components/agent-explorer/SuspensionNotice";
 import { ForkAgentDialog } from "@/components/agent-explorer/ForkAgentDialog";
 import { DeleteAgentDialog } from "@/components/agent-explorer/DeleteAgentDialog";
 import { SchedulePickerDialog } from "@/components/SchedulePickerDialog";
@@ -38,6 +39,7 @@ import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useAgentForkProvenance } from "@/hooks/use-agent-fork-provenance";
 import { agentDisplay, humanizeAgentId, shortRefLabel } from "@/lib/agent-display";
 import { awaitingDescription, awaitingHref, awaitingTotal, readAwaiting } from "@/lib/agent-awaiting";
+import { readSuspension } from "@/lib/agent-suspension";
 import { TONE_STYLES } from "@/lib/status";
 
 /**
@@ -87,6 +89,7 @@ export function AgentProfile({ agentId }: { agentId: string }) {
   const canSuspend = status === AgentStatus.RUNNING || status === AgentStatus.SLEEPING;
   const awaitingRaw = readAwaiting(agent);
   const awaiting = awaitingTotal(awaitingRaw) > 0 ? awaitingRaw : undefined;
+  const suspension = status === AgentStatus.SUSPENDED ? readSuspension(agent) : undefined;
 
   return (
     <div className="flex h-full flex-col">
@@ -178,6 +181,7 @@ export function AgentProfile({ agentId }: { agentId: string }) {
                   acts as <DidDisplay value={ownerDid} identicon chars={10} />
                 </div>
               )}
+              {suspension && <SuspensionNotice suspension={suspension} self={ownerDid} className="mt-2" />}
             </div>
 
             {/* Actions */}

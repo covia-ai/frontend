@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Venue } from "@covia/covia-sdk";
 import { normalizeAgentEntries } from "@/lib/agent-list";
 import { readAwaiting, awaitingTotal, type AgentAwaiting } from "@/lib/agent-awaiting";
+import { readSuspension, type AgentSuspension } from "@/lib/agent-suspension";
 import { errorMessage } from "@/lib/errors";
 
 const POLL_INTERVAL_MS = 3000;
@@ -51,6 +52,9 @@ export interface RosterAgent {
   nextWake?: number;
   /** Pending jobs paused on a person (covia#557). Absent on older venues. */
   awaiting?: AgentAwaiting;
+  /** Who stopped a suspended agent, when and why (covia#590). Absent for a
+   *  fault, and on venues before 0.10. */
+  suspension?: AgentSuspension;
 }
 
 export interface RosterCounts {
@@ -275,6 +279,9 @@ export function useAgentRoster(venue: Venue | null | undefined) {
           // The list is polled every 3s and carries `awaiting`, so it wins;
           // `info` is read only when the agent set changes.
           awaiting: readAwaiting(e) ?? info?.awaiting,
+          // From the polled list only: it follows the status, and resume
+          // clears it, so the slower `info` read would show it stale.
+          suspension: readSuspension(e),
           config: info?.config,
           runs: info?.runs,
           lastActive: sess?.lastActive,

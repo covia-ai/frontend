@@ -44,3 +44,21 @@ describe("AgentRosterCard waiting on a person (#364)", () => {
     expect(screen.queryByTestId("roster-awaiting")).not.toBeInTheDocument();
   });
 });
+
+describe("AgentRosterCard suspension record (covia#590)", () => {
+  it("shows when a suspended agent was stopped, with the reason in full on hover", () => {
+    renderCard({
+      status: "SUSPENDED",
+      suspension: { by: "did:key:z6MkA", ts: Date.now() - 5 * 60_000, reason: "Rotating its key" },
+    });
+
+    const line = screen.getByTestId("roster-suspension");
+    expect(line).toHaveTextContent("Rotating its key");
+    expect(line).toHaveAttribute("title", "Rotating its key");
+  });
+
+  it("shows nothing for an agent that isn't suspended", () => {
+    renderCard({ suspension: { by: "did:key:z6MkA", ts: Date.now() } });
+    expect(screen.queryByTestId("roster-suspension")).not.toBeInTheDocument();
+  });
+});
