@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { Key, Copy, Check, Plus, Import } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,9 +35,20 @@ export function DeviceKeyDialog({ signIn }: DeviceKeyDialogProps) {
     handleSubmitProvidedKey: onSubmitProvidedKey, handleCopy: onCopy, handleContinue: onContinue,
     handleUseStoredKey: onUseStoredKey, handleUseDifferentKey: onUseDifferentKey,
   } = signIn;
+  const continueRef = useRef<HTMLButtonElement>(null);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-card text-card-foreground">
+      <DialogContent
+        className="sm:max-w-md bg-card text-card-foreground"
+        onOpenAutoFocus={(event) => {
+          // Left to itself the dialog focuses its first tabbable element —
+          // on Welcome Back that is the DidDisplay trigger, whose tooltip
+          // then opens over the description. Continue is the step's action.
+          if (!continueRef.current) return;
+          event.preventDefault();
+          continueRef.current.focus();
+        }}
+      >
         {step === "choose" && (
           <>
             <DialogHeader>
@@ -182,7 +194,13 @@ export function DeviceKeyDialog({ signIn }: DeviceKeyDialogProps) {
               >
                 Use a different key
               </Button>
-              <Button onClick={onContinue} disabled={checking} className="w-full sm:w-auto" data-testid="devicekey-continue">
+              <Button
+                ref={continueRef}
+                onClick={onContinue}
+                disabled={checking}
+                className="w-full sm:w-auto"
+                data-testid="devicekey-continue"
+              >
                 {checking ? "Checking…" : authError ? "Try again" : "Continue"}
               </Button>
             </DialogFooter>
