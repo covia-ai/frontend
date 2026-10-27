@@ -37,6 +37,7 @@ export function AgentChat({ initialAgentId }: AgentChatProps) {
   const ownDid = useCurrentAuth()?.did ?? null;
   const transcriptRef = useRef<HTMLDivElement | null>(null);
   const {
+    isAuthenticated,
     agentList,
     selectedAgentId,
     setSelectedAgentId,
@@ -83,6 +84,25 @@ export function AgentChat({ initialAgentId }: AgentChatProps) {
   }
 
   if (!selectedAgentDetail || !selectedAgentId) {
+    // Signed out there is no account for "No agents yet" to be about — the
+    // venue may well have agents we simply cannot see (as AgentRoster, #423).
+    if (!isAuthenticated && !detailError) {
+      return (
+        <div className="flex min-h-[calc(100vh-9rem)] flex-col items-center justify-center px-6 text-center">
+          <div className="mb-4 flex size-12 items-center justify-center rounded-2xl border bg-card">
+            <Bot size={22} className="text-muted-foreground" />
+          </div>
+          <h1 className="text-xl font-semibold">Sign in to chat</h1>
+          <p
+            data-testid="agent-chat-signed-out"
+            className="mt-2 max-w-md text-sm text-muted-foreground"
+          >
+            Agents belong to an account, so there is nothing to chat with while
+            you are signed out.
+          </p>
+        </div>
+      );
+    }
     return (
       <div className="flex min-h-[calc(100vh-9rem)] flex-col items-center justify-center px-6 text-center">
         <div className="mb-4 flex size-12 items-center justify-center rounded-2xl border bg-card">
