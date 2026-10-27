@@ -39,17 +39,28 @@ function makeVenue(secretNames: string[]) {
   };
 }
 
+// This was the slowest suite by far (45 s on CI) for two reasons, both fixed
+// here: every action waited out userEvent's default inter-action delay, and
+// typing a field a key at a time re-rendered the 15-card catalogue per
+// character. No test here is about timing or per-keystroke behaviour.
+type User = ReturnType<typeof userEvent.setup>;
+const setupUser = (): User => userEvent.setup({ delay: null });
+
 // jsdom lays out nothing (every element reports a 0,0,0,0 rect), so
 // userEvent's coordinate-based hit-testing is unreliable across the 15
 // near-identical, stacked "Connect" buttons the unfiltered catalogue
 // renders. Searching down to the one target service first — same as a real
 // user would to find it — sidesteps the ambiguity entirely.
-async function openConnectDialog(user: ReturnType<typeof userEvent.setup>, serviceName: string) {
-  await user.type(
-    screen.getByPlaceholderText(/Search services, or paste a token/),
-    serviceName,
-  );
+async function openConnectDialog(user: User, serviceName: string) {
+  await enter(user, screen.getByPlaceholderText(/Search services, or paste a token/), serviceName);
   await user.click(await screen.findByText("Connect"));
+}
+
+// Fills a field in one paste, as tokens are entered in real use (the search
+// field's placeholder says as much).
+async function enter(user: User, field: HTMLElement, text: string) {
+  await user.click(field);
+  await user.paste(text);
 }
 
 describe("ConnectionsList", () => {
@@ -81,14 +92,11 @@ describe("ConnectionsList", () => {
   });
 
   it("filters the catalogue by search text", async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     render(<ConnectionsList />);
     await waitFor(() => expect(mockVenue.secrets.list).toHaveBeenCalled());
 
-    await user.type(
-      screen.getByPlaceholderText(/Search services, or paste a token/),
-      "notion",
-    );
+    await enter(user, screen.getByPlaceholderText(/Search services, or paste a token/), "notion");
 
     expect(await screen.findByText("1 result")).toBeInTheDocument();
     expect(screen.getByText("Notion")).toBeInTheDocument();
@@ -96,16 +104,16 @@ describe("ConnectionsList", () => {
   });
 
   it("auto-detects a service from a pasted token prefix and opens the add dialog on Enter", async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     render(<ConnectionsList />);
     await waitFor(() => expect(mockVenue.secrets.list).toHaveBeenCalled());
 
     const search = screen.getByPlaceholderText(/Search services, or paste a token/);
-    await user.type(search, "ghp_abcdef123456");
+    await enter(user, search, "ghp_abcdef123456");
 
     expect(await screen.findByText(/Looks like/)).toBeInTheDocument();
 
-    await user.type(search, "{Enter}");
+    await user.keyboard("{Enter}");
 
     expect(await screen.findByText("Connect GitHub")).toBeInTheDocument();
     // The detected token rides straight into the dialog's input.
@@ -113,7 +121,7 @@ describe("ConnectionsList", () => {
   });
 
   it("verifies the token before saving, then reports success and marks the service connected", async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     // The http op returns body as a JSON *string* — mirror that so this guards
     // the parse in runVerify (an object here would hide a real 200 regression).
     mockVenue.operations.run.mockResolvedValue({
@@ -126,7 +134,7 @@ describe("ConnectionsList", () => {
     await openConnectDialog(user, "github");
     expect(await screen.findByText("Connect GitHub")).toBeInTheDocument();
 
-    await user.type(screen.getByPlaceholderText(/github_pat_/), "github_pat_abc");
+    await enter(user, screen.getByPlaceholderText(/github_pat_/), "github_pat_abc");
     await user.click(screen.getByRole("button", { name: /Test & connect/ }));
 
     expect(await screen.findByText("Connected as @octocat")).toBeInTheDocument();
@@ -145,7 +153,7 @@ describe("ConnectionsList", () => {
   });
 
   it("deletes the unverifiable token and reports the failure, without marking the service connected", async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     mockVenue.operations.run.mockResolvedValue({
       status: 401,
       body: '{"message":"Bad credentials"}',
@@ -155,7 +163,7 @@ describe("ConnectionsList", () => {
 
     await openConnectDialog(user, "github");
     await screen.findByText("Connect GitHub");
-    await user.type(screen.getByPlaceholderText(/github_pat_/), "bad-token");
+    await enter(user, screen.getByPlaceholderText(/github_pat_/), "bad-token");
     await user.click(screen.getByRole("button", { name: /Test & connect/ }));
 
     expect(
@@ -167,7 +175,7 @@ describe("ConnectionsList", () => {
   });
 
   it("stores the token directly for a service with no live verify, and confirms without testing", async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     render(<ConnectionsList />);
     await waitFor(() => expect(mockVenue.secrets.list).toHaveBeenCalled());
 
@@ -175,7 +183,7 @@ describe("ConnectionsList", () => {
     await openConnectDialog(user, "jira");
     await screen.findByText("Connect Jira");
 
-    await user.type(screen.getByPlaceholderText(/Basic/), "Basic dGVzdA==");
+    await enter(user, screen.getByPlaceholderText(/Basic/), "Basic dGVzdA==");
     await user.click(screen.getByRole("button", { name: "Connect" }));
 
     expect(await screen.findByText("Saved. Validates on first use.")).toBeInTheDocument();
@@ -183,7 +191,7 @@ describe("ConnectionsList", () => {
   });
 
   it("disconnects a connected service after confirming, and clears its Connected state", async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     mockVenue = makeVenue(["GITHUB_TOKEN"]);
     render(<ConnectionsList />);
     await screen.findByText("Connected · 1");
@@ -203,7 +211,7 @@ describe("ConnectionsList", () => {
   // the previous venue said may show under the new one's name, even while the
   // new venue's list is still loading.
   it("shows nothing from the previous venue after a venue switch", async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     mockVenue = { ...makeVenue(["GITHUB_TOKEN"]), venueId: "did:key:venue-a" };
     mockVenue.operations.run.mockResolvedValue({ status: 401, body: '{"message":"Bad credentials"}' });
     const { rerender } = render(<ConnectionsList />);
@@ -228,7 +236,7 @@ describe("ConnectionsList", () => {
 
   describe("per-service health check (frontend#290)", () => {
     it("tests a connected service on demand and reports when it last checked out", async () => {
-      const user = userEvent.setup();
+      const user = setupUser();
       mockVenue = makeVenue(["GITHUB_TOKEN"]);
       mockVenue.operations.run.mockResolvedValue({ status: 200, body: '{"login":"octocat"}' });
       render(<ConnectionsList />);
@@ -250,7 +258,7 @@ describe("ConnectionsList", () => {
     });
 
     it("flips to Needs attention with the reason when the token no longer verifies, and Fix reopens the add dialog", async () => {
-      const user = userEvent.setup();
+      const user = setupUser();
       mockVenue = makeVenue(["GITHUB_TOKEN"]);
       mockVenue.operations.run.mockResolvedValue({
         status: 401,
@@ -276,7 +284,7 @@ describe("ConnectionsList", () => {
     });
 
     it("does not remount an unrelated card when another card's health state changes (frontend#344)", async () => {
-      const user = userEvent.setup();
+      const user = setupUser();
       mockVenue = makeVenue(["GITHUB_TOKEN", "NOTION_TOKEN"]);
       mockVenue.operations.run.mockResolvedValue({ status: 200, body: '{"login":"octocat"}' });
       render(<ConnectionsList />);
@@ -305,7 +313,7 @@ describe("ConnectionsList", () => {
     it.each(verifiable.map((s) => [s.id, s] as const))(
       "%s: a valid token verifies and marks the service connected",
       async (_id, service) => {
-        const user = userEvent.setup();
+        const user = setupUser();
         const fx = VERIFY_FIXTURES[service.id];
         mockVenue.operations.run.mockResolvedValue({ status: 200, body: fx.success });
         render(<ConnectionsList />);
@@ -316,7 +324,7 @@ describe("ConnectionsList", () => {
         await within(dialog).findByText(`Connect ${service.name}`);
         // Fill every collected value (one for single-secret, N for multi-value).
         for (const f of connectionSecrets(service)) {
-          await user.type(screen.getByPlaceholderText(f.placeholder ?? service.placeholder), `val-${f.name}`);
+          await enter(user, screen.getByPlaceholderText(f.placeholder ?? service.placeholder), `val-${f.name}`);
         }
         await user.click(screen.getByRole("button", { name: /Test & connect/ }));
 
@@ -331,7 +339,7 @@ describe("ConnectionsList", () => {
     it.each(verifiable.map((s) => [s.id, s] as const))(
       "%s: a bad token is rejected and the stored secret is removed",
       async (_id, service) => {
-        const user = userEvent.setup();
+        const user = setupUser();
         const fx = VERIFY_FIXTURES[service.id];
         mockVenue.operations.run.mockResolvedValue({ status: 401, body: fx.failure });
         render(<ConnectionsList />);
@@ -340,7 +348,7 @@ describe("ConnectionsList", () => {
         await openConnectDialog(user, service.name);
         await screen.findByText(`Connect ${service.name}`);
         for (const f of connectionSecrets(service)) {
-          await user.type(screen.getByPlaceholderText(f.placeholder ?? service.placeholder), `val-${f.name}`);
+          await enter(user, screen.getByPlaceholderText(f.placeholder ?? service.placeholder), `val-${f.name}`);
         }
         await user.click(screen.getByRole("button", { name: /Test & connect/ }));
 
@@ -352,13 +360,13 @@ describe("ConnectionsList", () => {
     );
 
     it("jira has no generic verify — it saves and validates on first use", async () => {
-      const user = userEvent.setup();
+      const user = setupUser();
       render(<ConnectionsList />);
       await waitFor(() => expect(mockVenue.secrets.list).toHaveBeenCalled());
 
       await openConnectDialog(user, "Jira");
       const dialog = await screen.findByRole("dialog");
-      await user.type(screen.getByPlaceholderText("Basic …"), "Basic abc123");
+      await enter(user, screen.getByPlaceholderText("Basic …"), "Basic abc123");
       await user.click(within(dialog).getByRole("button", { name: "Connect" }));
 
       expect(await screen.findByText(/Saved\. Validates on first use\./)).toBeInTheDocument();
@@ -367,7 +375,7 @@ describe("ConnectionsList", () => {
     });
 
     it("telegram on a venue without URL-secret support keeps the token and says so", async () => {
-      const user = userEvent.setup();
+      const user = setupUser();
       // The venue can't resolve {s/NAME} yet, so http/get fails building the URI.
       mockVenue.operations.run.mockRejectedValue(
         new Error(
@@ -379,7 +387,7 @@ describe("ConnectionsList", () => {
 
       await openConnectDialog(user, "Telegram");
       await screen.findByText("Connect Telegram");
-      await user.type(screen.getByPlaceholderText("123456789:AA…"), "123:AA-bot");
+      await enter(user, screen.getByPlaceholderText("123456789:AA…"), "123:AA-bot");
       await user.click(screen.getByRole("button", { name: /Test & connect/ }));
 
       expect(await screen.findByText(/verifies once your venue supports URL secrets/)).toBeInTheDocument();
