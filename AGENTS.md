@@ -176,6 +176,13 @@ whose loss matters (`venue-auth`, `venues`) also call `syncStoreAcrossTabs`.
 - **Location:** `__tests__/` directory at project root
 - **Naming:** `ComponentName.test.tsx` or `hook-name.test.ts`
 
+## Git workflow
+
+`develop` is protected: changes land through a PR once lint, build and test
+pass. Agents may merge their own PRs into `develop` when CI is green, without
+asking. Merges into `main`, releases and tags need explicit approval from a
+human maintainer.
+
 ## Dependencies on Other Repos
 
 - **@covia/covia-sdk** — Installed from npm (`@covia/covia-sdk`, pinned in `package.json`). Provides `Grid`, `Venue`, `Ed25519Auth`, `BearerAuth`, `generateKeyPair`, `privateKeyToHex`.
