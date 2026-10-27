@@ -44,6 +44,11 @@ export function jobPath(venueId: string | undefined, jobId: string): string {
   return venueId ? `/venues/${encodeURIComponent(venueId)}/jobs/${id}` : `/job/${id}`;
 }
 
+/** An agent's profile page, on the selected venue. */
+export function agentPath(agentId: string): string {
+  return `/agents/agent/${encodeURIComponent(agentId)}`;
+}
+
 /** An agent's chat page. */
 export function agentChatPath(agentId: string): string {
   return `/agents/chat?agentId=${encodeURIComponent(agentId)}`;
