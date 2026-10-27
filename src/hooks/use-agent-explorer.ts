@@ -672,6 +672,7 @@ export function useAgentExplorer(
     hasUserTurnSince(currentSession?.conversation, pendingChat.turnsAtSend, pendingChat.text);
 
   return {
+    isAuthenticated: auth !== null,
     agentList,
     selectedAgentId,
     setSelectedAgentId: setChosenAgentId,

@@ -16,6 +16,7 @@ const mockUseAgentExplorer = useAgentExplorer as jest.MockedFunction<
 
 function controller(overrides: Record<string, unknown> = {}) {
   return {
+    isAuthenticated: true,
     agentList: [{ agentId: "writer", status: "RUNNING" }],
     selectedAgentId: "writer",
     setSelectedAgentId: jest.fn(),
@@ -134,5 +135,27 @@ describe("AgentChat", () => {
       "href",
       "/agents/create",
     );
+  });
+
+  it("asks a signed-out visitor to sign in rather than claiming there are no agents", () => {
+    mockUseAgentExplorer.mockReturnValue(
+      controller({
+        isAuthenticated: false,
+        agentList: [],
+        selectedAgentId: null,
+        selectedAgentDetail: null,
+        sessions: [],
+        currentSession: null,
+        hasChatSession: false,
+        messageText: "",
+        canSend: false,
+      }),
+    );
+
+    render(<AgentChat />);
+
+    expect(screen.getByTestId("agent-chat-signed-out")).toBeInTheDocument();
+    expect(screen.queryByText("No agents yet")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Create an agent" })).not.toBeInTheDocument();
   });
 });
