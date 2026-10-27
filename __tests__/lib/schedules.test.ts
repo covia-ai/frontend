@@ -1,4 +1,18 @@
-import { wakeTargetAgent } from "@/lib/schedules";
+import { isAdapterOnlyOperation, wakeTargetAgent } from "@/lib/schedules";
+
+describe("isAdapterOnlyOperation", () => {
+  it("flags an operation named by its adapter, which venues cannot resolve", () => {
+    expect(isAdapterOnlyOperation("agent:trigger")).toBe(true);
+    expect(isAdapterOnlyOperation("llmagent:chat")).toBe(true);
+  });
+
+  it("passes catalogue paths, asset ids and DID URLs", () => {
+    expect(isAdapterOnlyOperation("v/ops/agent/trigger")).toBe(false);
+    expect(isAdapterOnlyOperation("w/ops/mine")).toBe(false);
+    expect(isAdapterOnlyOperation("a/0123abcd")).toBe(false);
+    expect(isAdapterOnlyOperation("did:key:z6MkVenue/v/ops/http/get")).toBe(false);
+  });
+});
 
 describe("wakeTargetAgent", () => {
   it("reads the agent from an agent:trigger wake, in either operation form", () => {

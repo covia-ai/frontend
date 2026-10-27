@@ -28,6 +28,15 @@ export type ScheduledEvent = {
 /** The venue refuses a longer description (covia's MAX_DESCRIPTION_CHARS). */
 export const MAX_SCHEDULE_DESCRIPTION = 500;
 
+// An operation named by its adapter ("agent:trigger") rather than by a
+// catalogue path or asset id. Venues resolve a scheduled operation as an
+// asset, so such an event is accepted but fails every time it fires ("Cannot
+// resolve operation") — as the agent page's wakes did until they switched to
+// "v/ops/agent/trigger".
+export function isAdapterOnlyOperation(op: string): boolean {
+  return /^[A-Za-z][\w-]*:[\w-]+$/.test(op);
+}
+
 // The agent a wake targets, read from the event's input — what an agent's
 // page schedules through SchedulePickerDialog. The venue lists that input only
 // when it resolves the operation, which "v/ops/agent/trigger" does and the bare
