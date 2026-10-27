@@ -19,7 +19,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { useLatestQuery } from "@/hooks/use-latest-query";
 import { useVenues } from "@/hooks/use-venues";
-import { listScheduledEvents, wakeTargetAgent, type ScheduledEvent } from "@/lib/schedules";
+import {
+  isAdapterOnlyOperation,
+  listScheduledEvents,
+  wakeTargetAgent,
+  type ScheduledEvent,
+} from "@/lib/schedules";
+import { TONE_STYLES } from "@/lib/status";
 import { cn, formatCountdown, formatDateTime, formatInterval, formatRelativeTime, gtmEvent } from "@/lib/utils";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
@@ -27,7 +33,7 @@ import { DidDisplay } from "@/components/DidDisplay";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { VenueResolutionState } from "@/components/VenueResolutionState";
 import { agentPath, jobPath, operationPathSegments, venueScopedHref } from "@/lib/routes";
-import { CalendarClock, PlayCircle, Repeat, XCircle } from "lucide-react";
+import { AlertTriangle, CalendarClock, PlayCircle, Repeat, XCircle } from "lucide-react";
 
 interface ScheduledListProps {
   venueId?: string;
@@ -217,6 +223,15 @@ export function ScheduledList({ venueId }: ScheduledListProps = {}) {
                             className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground"
                           >
                             scheduled by <DidDisplay value={event.by} chars={10} />
+                          </div>
+                        )}
+                        {isAdapterOnlyOperation(event.op) && (
+                          <div
+                            data-testid="schedule-unrunnable"
+                            className={cn("mt-0.5 flex items-center gap-1 text-xs", TONE_STYLES.attention.text)}
+                          >
+                            <AlertTriangle className="size-3.5 shrink-0" />
+                            Fails when it fires: venues find operations by path. Cancel it and schedule it again.
                           </div>
                         )}
                       </TableCell>

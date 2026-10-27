@@ -5,6 +5,7 @@ import '@testing-library/jest-dom';
 
 const mockFetchWithError = jest.fn();
 jest.mock('@covia/covia-sdk', () => ({
+  ...jest.requireActual('@covia/covia-sdk'),
   fetchWithError: (...args: unknown[]) => mockFetchWithError(...args),
 }));
 
@@ -147,6 +148,17 @@ describe('ScheduledList', () => {
       const byLines = screen.getAllByTestId('schedule-by');
       expect(byLines).toHaveLength(1);
       expect(byLines[0].closest('tr')).toHaveTextContent('v/ops/http/get');
+    });
+
+    it('warns on an event named by adapter, which fails each time it fires', async () => {
+      mockFetchWithError.mockResolvedValue({
+        events: [{ ...event('h5', 'agent:trigger', 20 * 60_000), description: 'Old wake' }, wake],
+      });
+      render(<ScheduledList />);
+
+      const warnings = await screen.findAllByTestId('schedule-unrunnable');
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0].closest('tr')).toHaveTextContent('Old wake');
     });
 
     it("leaves the agent unlinked when the list is another venue's", async () => {

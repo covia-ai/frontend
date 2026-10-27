@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AgentStatus } from "@covia/covia-sdk";
-import { ArrowUpRight, BellRing, CircleAlert, Cpu, GitFork, Loader2, Pause, Play, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, BellRing, CircleAlert, Cpu, GitFork, Loader2, Play, ShieldCheck } from "lucide-react";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import {
   AlertDialog,
@@ -32,6 +32,7 @@ import { AgentRuntimeSummary } from "@/components/agent-explorer/AgentRuntimeSum
 import { SuspensionNotice } from "@/components/agent-explorer/SuspensionNotice";
 import { ForkAgentDialog } from "@/components/agent-explorer/ForkAgentDialog";
 import { DeleteAgentDialog } from "@/components/agent-explorer/DeleteAgentDialog";
+import { SuspendAgentDialog } from "@/components/agent-explorer/SuspendAgentDialog";
 import { SchedulePickerDialog } from "@/components/SchedulePickerDialog";
 import { useAgentExplorer, type AgentExplorerController } from "@/hooks/use-agent-explorer";
 import { useCurrentAuth } from "@/hooks/use-auth";
@@ -232,11 +233,7 @@ export function AgentProfile({ agentId }: { agentId: string }) {
                 disabled={!venue || status === AgentStatus.SUSPENDED || status === AgentStatus.TERMINATED}
               />
               <ForkAgentDialog sourceAgentId={agent.agentId} forking={forking} onFork={forkAndOpen} />
-              {canSuspend && (
-                <Button variant="outline" size="sm" onClick={suspend}>
-                  <Pause size={14} className="mr-1" /> Suspend
-                </Button>
-              )}
+              {canSuspend && <SuspendAgentDialog agentId={agent.agentId} onSuspend={suspend} />}
               {status === AgentStatus.SUSPENDED && (
                 <Button variant="outline" size="sm" onClick={resume}>
                   <Play size={14} className="mr-1" /> Resume

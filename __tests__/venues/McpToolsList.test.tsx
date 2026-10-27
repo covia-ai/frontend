@@ -26,11 +26,12 @@ jest.mock("@/lib/utils", () => ({
 }));
 
 // Both halves of this page go through the SDK's MCP manager (covia-sdk#23):
-// the job-free `listTools()` read, and `callToolTracked()` for a user-driven
-// run, which returns the Job the result link points at. The operation
+// the job-free `listAllTools()` read (every page of tools/list), and
+// `callToolTracked()` for a user-driven run, which returns the Job the result
+// link points at. The operation
 // surfaces are mocked too, so a Run button wired back to the old
 // v/ops/mcp/tools-call path fails here instead of minting an untracked job.
-const listToolsMock = jest.fn();
+const listAllToolsMock = jest.fn();
 const callToolTrackedMock = jest.fn();
 const invokeMock = jest.fn();
 const runMock = jest.fn();
@@ -39,7 +40,7 @@ const mockVenue = {
   baseUrl: "https://venue.example",
   metadata: { name: "Test Venue" },
   operations: { invoke: invokeMock, run: runMock },
-  mcp: { listTools: listToolsMock, callToolTracked: callToolTrackedMock },
+  mcp: { listAllTools: listAllToolsMock, callToolTracked: callToolTrackedMock },
 };
 // The page takes the whole resolution, so it can render a failure state
 // instead of an endless "Loading…" (#428).
@@ -80,7 +81,7 @@ describe("McpToolsList (4D)", () => {
       status: "ready",
       error: null,
     };
-    listToolsMock.mockResolvedValue({ tools: [TOOL] });
+    listAllToolsMock.mockResolvedValue([TOOL]);
     callToolTrackedMock.mockResolvedValue({ id: "job-abc-123" });
   });
 
@@ -134,8 +135,30 @@ describe("McpToolsList (4D)", () => {
     expect(runMock).not.toHaveBeenCalled();
   });
 
+  // covia 0.10 names each tool's operation (covia#558).
+  it("links a tool to the operation it runs, when the venue names one", async () => {
+    listAllToolsMock.mockResolvedValue([
+      { ...TOOL, _meta: { "ai.covia/operation": "v/ops/test/echo" } },
+      { ...TOOL, name: "bridged" },
+    ]);
+    const user = userEvent.setup();
+    render(<McpToolsList venueId="did:web:venue.example" />);
+
+    await user.click(await screen.findByText("echo"));
+    const link = within(await screen.findByTestId("mcp-tool-operation")).getByRole("link");
+    expect(link).toHaveAttribute(
+      "href",
+      `/venues/${encodeURIComponent("did:web:venue.example")}/operations/v/ops/test/echo`,
+    );
+
+    // Opening the tool that names none closes echo and shows no operation.
+    await user.click(screen.getByText("bridged"));
+    await waitFor(() => expect(screen.queryByTestId("mcp-tool-operation")).not.toBeInTheDocument());
+    expect(await screen.findByRole("button", { name: /test tool/i })).toBeInTheDocument();
+  });
+
   it("shows a load error — not the empty state — when the tools read fails", async () => {
-    listToolsMock.mockRejectedValue(new Error("HTTP 503"));
+    listAllToolsMock.mockRejectedValue(new Error("HTTP 503"));
     render(<McpToolsList venueId="did:web:venue.example" />);
 
     expect(await screen.findByTestId("mcp-tools-load-error")).toBeInTheDocument();
@@ -164,7 +187,7 @@ describe("McpToolsList (4D)", () => {
     expect(display).toHaveTextContent("Venue identity changed at https://venue-3.covia.ai");
 
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
-    expect(listToolsMock).not.toHaveBeenCalled();
+    expect(listAllToolsMock).not.toHaveBeenCalled();
   });
 
   it("offers a sign-in gate when the venue requires auth", async () => {
@@ -180,6 +203,6 @@ describe("McpToolsList (4D)", () => {
     render(<McpToolsList venueId="did:key:zVenue" />);
 
     expect(await screen.findByTestId("venue-auth-required")).toBeInTheDocument();
-    expect(listToolsMock).not.toHaveBeenCalled();
+    expect(listAllToolsMock).not.toHaveBeenCalled();
   });
 });

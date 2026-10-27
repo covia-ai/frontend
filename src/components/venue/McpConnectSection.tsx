@@ -33,7 +33,7 @@ export function McpConnectSection({ venue, slug }: McpConnectSectionProps) {
     initial: [],
     notify: false,
     failureTitle: "Unable to list MCP tools",
-    load: async (target) => (await target.mcp.listTools()).tools,
+    load: (target) => target.mcp.listAllTools(),
   });
   const [showClaudeSnippet, setShowClaudeSnippet] = useState(false);
 
