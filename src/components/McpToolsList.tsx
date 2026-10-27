@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { MCPTool } from "@covia/covia-sdk";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { useVenueRead } from "@/hooks/use-venue-read";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
@@ -19,13 +20,10 @@ import { notifyWarning } from "@/lib/notify";
 import { useJobExecution } from "@/hooks/use-job-execution";
 import { ListLoadError } from "@/components/ListLoadError";
 import { VenueResolutionState } from "@/components/VenueResolutionState";
-import { jobPath } from "@/lib/routes";
+import { jobPath, venueScopedHref } from "@/lib/routes";
+import { mcpToolOperation } from "@/lib/mcp-exposure";
 
-interface McpTool {
-  name: string;
-  description?: string;
-  inputSchema?: any;
-}
+type McpTool = MCPTool;
 
 interface McpToolsListProps {
   venueId: string;
@@ -66,9 +64,10 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
     auth,
     initial: [],
     failureTitle: "Unable to load MCP tools",
-    // venue.mcp.listTools() is the SDK's job-free native read (covia-sdk#23);
+    // venue.mcp's tools/list is the SDK's job-free native read (covia-sdk#23);
     // the invoke-based v/ops/mcp/tools-list would persist a job per page load.
-    load: (v) => v.mcp.listTools().then((page) => page.tools),
+    // listAllTools drains the cursor, so a paged venue lists every tool.
+    load: (v) => v.mcp.listAllTools(),
   });
   const [selectedTool, setSelectedTool] = useState<McpTool | null>(null);
   const [toolArgs, setToolArgs] = useState("{}");
@@ -215,6 +214,8 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
                         </AccordionTrigger>
                         <AccordionContent>
                           <div className="flex flex-col gap-3 pb-2">
+                            {venue && <ToolOperation tool={tool} venueId={venue.venueId} />}
+
                             {/* Input schema */}
                             {tool.inputSchema && (
                               <div>
@@ -318,5 +319,24 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
         </SheetContent>
       </Sheet>
     </ContentLayout>
+  );
+}
+
+// The operation behind a tool, which covia 0.10 names (covia#558): its
+// catalogue page has the full description, run form and code. Nothing for a
+// tool that names none (older venues, bridged tools).
+function ToolOperation({ tool, venueId }: { tool: McpTool; venueId: string }) {
+  const operation = mcpToolOperation(tool);
+  if (!operation) return null;
+  return (
+    <p data-testid="mcp-tool-operation" className="text-xs text-muted-foreground">
+      Runs the operation{" "}
+      <Link
+        href={venueScopedHref(venueId, "operations", operation)}
+        className="font-mono text-primary hover:underline"
+      >
+        {operation}
+      </Link>
+    </p>
   );
 }

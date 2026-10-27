@@ -1,5 +1,5 @@
 import type { MCPTool } from "@covia/covia-sdk";
-import { MCP_OPERATION_META, mcpToolsByOperation } from "@/lib/mcp-exposure";
+import { MCP_OPERATION_META, mcpToolOperation, mcpToolsByOperation } from "@/lib/mcp-exposure";
 
 const tool = (name: string, meta?: unknown): MCPTool => ({
   name,
@@ -27,6 +27,14 @@ describe("mcpToolsByOperation (frontend#361, covia#558)", () => {
       tool("empty_ref", { [MCP_OPERATION_META]: "" }),
     ]);
     expect(byOperation.size).toBe(0);
+  });
+
+  it("reads one tool's operation, if it names one", () => {
+    expect(mcpToolOperation(tool("agent_create", { [MCP_OPERATION_META]: "v/ops/agent/create" }))).toBe(
+      "v/ops/agent/create",
+    );
+    expect(mcpToolOperation(tool("bridged"))).toBeUndefined();
+    expect(mcpToolOperation(undefined)).toBeUndefined();
   });
 
   it("keeps the first tool when two name the same operation", () => {
