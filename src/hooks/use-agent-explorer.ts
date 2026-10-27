@@ -334,11 +334,17 @@ export function useAgentExplorer(
 
   // Suspend and resume differ only in the call, the analytics events and the
   // wording, so they share one path.
-  const changeLifecycle = (action: "suspend" | "resume") => {
+  const changeLifecycle = (action: "suspend" | "resume", reason?: string) => {
     if (!agentHandle || !selectedAgentId) return;
     const agentId = selectedAgentId;
     const suspending = action === "suspend";
-    agentHandle[action]()
+    // The venue records a stop's reason (covia#590), but the SDK's suspend()
+    // sends none, so a stop with a reason calls the operation itself.
+    const call =
+      suspending && reason && venue
+        ? venue.operations.run("v/ops/agent/suspend", { agentId, reason })
+        : agentHandle[action]();
+    call
       .then(() => {
         if (suspending) gtmEvent.suspendAgent(agentId);
         else gtmEvent.resumeAgent(agentId);
@@ -359,7 +365,7 @@ export function useAgentExplorer(
         );
       });
   };
-  const suspend = () => changeLifecycle("suspend");
+  const suspend = (reason?: string) => changeLifecycle("suspend", reason?.trim() || undefined);
   const resume = () => changeLifecycle("resume");
 
   const deleteAgent = (remove: boolean) => {

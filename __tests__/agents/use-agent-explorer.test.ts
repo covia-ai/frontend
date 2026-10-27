@@ -683,6 +683,25 @@ describe("useAgentExplorer — suspend and resume", () => {
     expect(notifyError).not.toHaveBeenCalled();
   });
 
+  // The SDK's suspend() sends no reason, so a stop with one calls the
+  // operation directly (covia#590); a blank reason is no reason.
+  it("sends a suspend reason through the operation, and a blank one not at all", async () => {
+    const run = jest.fn().mockResolvedValue({ status: "SUSPENDED" });
+    mockVenue = { ...makeVenue("venue-a", ["agent-a"]), operations: { run } };
+    const { result } = renderHook(() => useAgentExplorer("agent-a"));
+    await waitFor(() => expect(result.current.selectedAgentDetail).not.toBeNull());
+
+    act(() => result.current.suspend("  Rotating its key "));
+    await waitFor(() =>
+      expect(run).toHaveBeenCalledWith("v/ops/agent/suspend", { agentId: "agent-a", reason: "Rotating its key" }),
+    );
+    expect(handles().every((h: any) => h.suspend.mock.calls.length === 0)).toBe(true);
+
+    act(() => result.current.suspend("   "));
+    await waitFor(() => expect(handles().some((h: any) => h.suspend.mock.calls.length > 0)).toBe(true));
+    expect(run).toHaveBeenCalledTimes(1);
+  });
+
   it("reports a failed suspend against the venue it was sent to", async () => {
     mockVenue = { ...makeVenue("venue-a", ["agent-a"]), baseUrl: "https://venue-a.example" };
     mockVenue.agent.mockImplementation(() => ({
