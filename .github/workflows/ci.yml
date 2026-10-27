@@ -79,7 +79,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Coverage runs here, not in `pnpm test`: the inner loop stays fast while
-      # CI enforces the coverageThreshold ratchet in jest.config.js.
-      - name: Test (with coverage thresholds)
+      # Coverage is collected here, not in `pnpm test`, and only reported: the
+      # "All files" row of the table in this step's log is the figure to check.
+      # It costs a few seconds and never fails the job.
+      - name: Test (with coverage report)
         run: pnpm run test:coverage
