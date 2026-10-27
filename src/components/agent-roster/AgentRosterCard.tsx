@@ -166,6 +166,19 @@ export function AgentRosterCard({
               down and reopened every few seconds. Renders nothing when the
               agent has no activity in flight. */}
           {live && <AgentLiveActivity venue={venue} agentId={agentId} />}
+          {isSuspended && agent.suspension && (
+            <span
+              data-testid="roster-suspension"
+              title={agent.suspension.reason}
+              className="inline-flex min-w-0 max-w-full items-center gap-1"
+            >
+              <Pause size={11} className="shrink-0" />
+              <span className="truncate">
+                suspended {relTime(agent.suspension.ts)}
+                {agent.suspension.reason && ` · ${agent.suspension.reason}`}
+              </span>
+            </span>
+          )}
           {!isRunning && agent.lastActive ? (
             <span>active {relTime(agent.lastActive)}</span>
           ) : null}

@@ -8,8 +8,8 @@ import '@testing-library/jest-dom';
 // The list renders OperationCard (the operations-specific capability card);
 // stub it to the same lightweight marker the assertions look for.
 jest.mock('@/components/OperationCard', () => ({
-  OperationCard: ({ asset }: any) => (
-    <div data-testid="asset-card">{asset.metadata?.name ?? asset.id}</div>
+  OperationCard: ({ asset, mcpTool }: any) => (
+    <div data-testid="asset-card" data-mcp-tool={mcpTool}>{asset.metadata?.name ?? asset.id}</div>
   ),
 }));
 jest.mock('@/components/admin-panel/TopBar', () => ({
@@ -32,7 +32,12 @@ jest.mock('next/navigation', () => ({
   useSearchParams: () => ({ get: (key: string) => (key === 'search' ? mockSearchParam : null) }),
 }));
 
-const mockVenue: any = { venueId: 'venue-1', metadata: { name: 'Test Venue' } };
+const mockListAllTools = jest.fn();
+const mockVenue: any = {
+  venueId: 'venue-1',
+  metadata: { name: 'Test Venue' },
+  mcp: { listAllTools: (...args: any[]) => mockListAllTools(...args) },
+};
 
 jest.mock('@/hooks/use-venues', () => ({
   useVenues: () => ({ venues: [mockVenue], addVenue: jest.fn() }),
@@ -56,6 +61,29 @@ describe('OperationsList', () => {
       { path: 'v/ops/llmagent/chat', metadata: { name: 'Alpha Chat' } },
       { path: 'v/ops/http/fetch', metadata: { name: 'Beta Fetch' } },
     ]);
+    mockListAllTools.mockResolvedValue([]);
+  });
+
+  // covia 0.10 names each MCP tool's operation (covia#558), so a card can say
+  // which operations are also MCP tools (#361).
+  it('passes each card the MCP tool that serves its operation', async () => {
+    mockListAllTools.mockResolvedValue([
+      { name: 'llmagent_chat', inputSchema: {}, _meta: { 'ai.covia/operation': 'v/ops/llmagent/chat' } },
+    ]);
+    render(<OperationsList />);
+
+    await waitFor(() =>
+      expect(screen.getByText('Alpha Chat')).toHaveAttribute('data-mcp-tool', 'llmagent_chat'),
+    );
+    expect(screen.getByText('Beta Fetch')).not.toHaveAttribute('data-mcp-tool');
+  });
+
+  it('still lists every operation when the MCP tool list cannot be read', async () => {
+    mockListAllTools.mockRejectedValue(new Error('no mcp'));
+    render(<OperationsList />);
+
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
+    for (const card of screen.getAllByTestId('asset-card')) expect(card).not.toHaveAttribute('data-mcp-tool');
   });
 
   it('loads and displays all operations once, unfiltered', async () => {

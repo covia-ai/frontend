@@ -55,7 +55,11 @@ jest.mock("@/components/agent-config/AgentSettings", () => ({
   AgentSettings: () => <div data-testid="settings-view" />,
 }));
 jest.mock("@/components/SchedulePickerDialog", () => ({
-  SchedulePickerDialog: () => <button type="button">Schedule wake</button>,
+  SchedulePickerDialog: ({ operation, input }: { operation: string; input: unknown }) => (
+    <button type="button" data-operation={operation} data-input={JSON.stringify(input)}>
+      Schedule wake
+    </button>
+  ),
 }));
 
 import { AgentProfile } from "@/components/AgentProfile";
@@ -113,6 +117,37 @@ describe("AgentProfile", () => {
   it("shows no waiting badge when nothing is pending or the venue predates it", () => {
     render(<AgentProfile agentId="refund-bot" />);
     expect(screen.queryByTestId("agent-awaiting")).not.toBeInTheDocument();
+  });
+
+  it("says who suspended the agent, when and why (covia#590)", () => {
+    controller.selectedAgentDetail = {
+      ...(controller.selectedAgentDetail as object),
+      status: "SUSPENDED",
+      suspension: { by: "did:key:z6MkOwner", ts: Date.now() - 60_000, reason: "Rotating its key" },
+    };
+    render(<AgentProfile agentId="refund-bot" />);
+
+    expect(screen.getByTestId("agent-suspension-reason")).toHaveTextContent("Rotating its key");
+  });
+
+  it("shows no suspension record once the agent is no longer suspended", () => {
+    controller.selectedAgentDetail = {
+      ...(controller.selectedAgentDetail as object),
+      suspension: { by: "did:key:z6MkOwner", ts: Date.now() - 60_000 },
+    };
+    render(<AgentProfile agentId="refund-bot" />);
+
+    expect(screen.queryByTestId("agent-suspension")).not.toBeInTheDocument();
+  });
+
+  // The venue lists a scheduled event's input (and so the agent it wakes) only
+  // for an operation it resolves: the catalogue path, not "agent:trigger".
+  it("schedules a wake through the catalogue path of agent:trigger", () => {
+    render(<AgentProfile agentId="refund-bot" />);
+
+    const wake = screen.getByRole("button", { name: /schedule wake/i });
+    expect(wake).toHaveAttribute("data-operation", "v/ops/agent/trigger");
+    expect(JSON.parse(wake.getAttribute("data-input")!)).toEqual({ agentId: "refund-bot", force: false, wait: false });
   });
 
   it("pins the hook to the agent its URL names", () => {

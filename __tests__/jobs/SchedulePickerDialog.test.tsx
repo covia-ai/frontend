@@ -77,6 +77,33 @@ describe('SchedulePickerDialog', () => {
     );
   });
 
+  it('sends a trimmed description when one is given (covia 0.10)', async () => {
+    const user = userEvent.setup();
+    render(<SchedulePickerDialog venue={mockVenue} operation="agent:trigger" input={{ agentId: 'a1' }} />);
+
+    await user.click(screen.getByRole('button', { name: /run on a schedule/i }));
+    await user.click(screen.getByRole('radio', { name: 'Daily' }));
+    await user.type(screen.getByTestId('schedule-description-input'), '  Morning summary ');
+    await user.click(screen.getByRole('button', { name: 'Schedule' }));
+
+    await waitFor(() =>
+      expect(mockRunOperation).toHaveBeenCalledWith('v/ops/scheduler/schedule', {
+        operation: 'agent:trigger',
+        input: { agentId: 'a1' },
+        repeat: { every: 86_400_000 },
+        description: 'Morning summary',
+      }),
+    );
+  });
+
+  it('caps the description at the length the venue accepts', async () => {
+    const user = userEvent.setup();
+    render(<SchedulePickerDialog venue={mockVenue} operation="v/ops/test/echo" input={{}} />);
+
+    await user.click(screen.getByRole('button', { name: /run on a schedule/i }));
+    expect(screen.getByTestId('schedule-description-input')).toHaveAttribute('maxLength', '500');
+  });
+
   it('does not offer a cron option', async () => {
     const user = userEvent.setup();
     render(<SchedulePickerDialog venue={mockVenue} operation="v/ops/test/echo" input={{}} />);

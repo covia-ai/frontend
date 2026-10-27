@@ -56,7 +56,7 @@ Authentication belongs to each venue rather than to the Next.js application:
 A venue that offers OAuth must accept this app's callback,
 `<frontend origin>/auth/callback`, as an exact redirect URI: covia's
 `auth.loginRedirectUris`, HTTPS except on loopback. The code exchange needs a
-venue at covia 0.9.12 or later.
+venue at covia 0.10.0 or later.
 
 No NextAuth secret or Google/GitHub credentials are required by this project.
 

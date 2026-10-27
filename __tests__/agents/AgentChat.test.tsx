@@ -96,6 +96,23 @@ describe("AgentChat", () => {
     expect(value.startNewChat).toHaveBeenCalledTimes(1);
   });
 
+  it("says who suspended the agent in the suspended banner (covia#590)", () => {
+    mockUseAgentExplorer.mockReturnValue(
+      controller({
+        selectedAgentDetail: {
+          agentId: "writer",
+          status: "SUSPENDED",
+          suspension: { by: "did:key:z6MkOperatorKey", ts: Date.now() - 60_000, reason: "Rotating its key" },
+        },
+        canSend: false,
+      }),
+    );
+
+    render(<AgentChat initialAgentId="writer" />);
+
+    expect(screen.getByTestId("agent-suspension-reason")).toHaveTextContent("Rotating its key");
+  });
+
   it("offers agent creation when the venue has no selectable agent", () => {
     mockUseAgentExplorer.mockReturnValue(
       controller({

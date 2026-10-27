@@ -7,6 +7,7 @@ import { ArrowUpRight, Bot, Cpu, Loader2, MessageSquarePlus, RotateCcw, Send } f
 
 import { AgentConversation } from "@/components/AgentConversation";
 import { AgentIdenticon } from "@/components/agent-roster/AgentIdenticon";
+import { SuspensionNotice } from "@/components/agent-explorer/SuspensionNotice";
 import { StatusBadge } from "@/components/StatusBadge";
 import { agentDisplay, humanizeAgentId } from "@/lib/agent-display";
 import { Button } from "@/components/ui/button";
@@ -19,8 +20,10 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAgentExplorer } from "@/hooks/use-agent-explorer";
+import { useCurrentAuth } from "@/hooks/use-auth";
 import { defaultSessionTitle, formatSessionLabel } from "@/lib/agent-sessions";
 import { agentSendingPlaceholder } from "@/lib/agent-chat";
+import { readSuspension } from "@/lib/agent-suspension";
 import { cn, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
 
 type AgentChatProps = {
@@ -31,6 +34,7 @@ const NEW_SESSION_VALUE = "__new__";
 
 export function AgentChat({ initialAgentId }: AgentChatProps) {
   const controller = useAgentExplorer(initialAgentId);
+  const ownDid = useCurrentAuth()?.did ?? null;
   const transcriptRef = useRef<HTMLDivElement | null>(null);
   const {
     agentList,
@@ -100,6 +104,7 @@ export function AgentChat({ initialAgentId }: AgentChatProps) {
   }
 
   const isSuspended = selectedAgentDetail.status === AgentStatus.SUSPENDED;
+  const suspension = isSuspended ? readSuspension(selectedAgentDetail) : undefined;
   const display = agentDisplay(selectedAgentDetail.config);
   const agentName = humanizeAgentId(selectedAgentId);
 
@@ -173,8 +178,12 @@ export function AgentChat({ initialAgentId }: AgentChatProps) {
       </header>
 
       {isSuspended && (
-        <div className="flex items-center justify-center gap-3 border-b bg-muted/40 px-4 py-2 text-sm">
-          <span className="text-muted-foreground">This agent is suspended.</span>
+        <div className="flex flex-wrap items-center justify-center gap-3 border-b bg-muted/40 px-4 py-2 text-sm">
+          {suspension ? (
+            <SuspensionNotice suspension={suspension} self={ownDid} className="text-sm" />
+          ) : (
+            <span className="text-muted-foreground">This agent is suspended.</span>
+          )}
           <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={resume}>
             <RotateCcw size={13} /> Resume
           </Button>

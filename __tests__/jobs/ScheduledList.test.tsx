@@ -18,15 +18,23 @@ const mockVenue: any = {
   operations: { run: mockRunOperation },
 };
 
+const mockOwnDid = 'did:key:z6MkSelf';
 jest.mock('@/hooks/use-resolved-venue', () => ({
   useResolvedVenueContext: () => ({
     descriptor: mockVenue,
     venue: mockVenue,
-    auth: { type: 'keypair' },
+    auth: { type: 'keypair', did: mockOwnDid },
     isAuthenticated: true,
     status: 'ready',
     error: null,
   }),
+}));
+
+let mockSelectedVenueId: string | null = 'venue-1';
+jest.mock('@/hooks/use-venues', () => ({
+  ...jest.requireActual('@/hooks/use-venues'),
+  useVenues: (select: (state: { selectedVenueId: string | null }) => unknown) =>
+    select({ selectedVenueId: mockSelectedVenueId }),
 }));
 
 import { ScheduledList } from '@/components/ScheduledList';
@@ -38,6 +46,7 @@ function event(handle: string, op: string, msFromNow: number) {
 describe('ScheduledList', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSelectedVenueId = 'venue-1';
     mockFetchWithError.mockResolvedValue({
       events: [
         // Padded well past the minute boundary so the countdown's floored
@@ -104,6 +113,50 @@ describe('ScheduledList', () => {
     await waitFor(() =>
       expect(mockRunOperation).toHaveBeenCalledWith('v/ops/scheduler/trigger', { handle: 'h1' }),
     );
+  });
+
+  // covia 0.10 (covia#583) lists who scheduled each event, its input and the
+  // scheduler's description.
+  describe('with 0.10 event details', () => {
+    const wake = {
+      ...event('h3', 'v/ops/agent/trigger', 30 * 60_000),
+      input: { agentId: 'reporter', force: false, wait: false },
+      description: 'Morning summary',
+      by: mockOwnDid,
+    };
+    const queuedByAgent = {
+      ...event('h4', 'v/ops/http/get', 40 * 60_000),
+      by: `${mockOwnDid}/g/reporter`,
+    };
+
+    beforeEach(() => {
+      mockFetchWithError.mockResolvedValue({ events: [wake, queuedByAgent] });
+    });
+
+    it('labels an event with its description and links an agent wake to its agent', async () => {
+      render(<ScheduledList />);
+
+      expect(await screen.findByTestId('schedule-description')).toHaveTextContent('Morning summary');
+      expect(screen.getByTestId('schedule-agent')).toHaveAttribute('href', '/agents/agent/reporter');
+    });
+
+    it('names the scheduler only when it is not the signed-in account', async () => {
+      render(<ScheduledList />);
+      await screen.findByTestId('schedule-description');
+
+      const byLines = screen.getAllByTestId('schedule-by');
+      expect(byLines).toHaveLength(1);
+      expect(byLines[0].closest('tr')).toHaveTextContent('v/ops/http/get');
+    });
+
+    it("leaves the agent unlinked when the list is another venue's", async () => {
+      mockSelectedVenueId = 'venue-2';
+      render(<ScheduledList venueId="venue-1" />);
+
+      const agent = await screen.findByTestId('schedule-agent');
+      expect(agent).not.toHaveAttribute('href');
+      expect(agent).toHaveTextContent('reporter');
+    });
   });
 
   it('shows a live next-run countdown derived from the fire time', async () => {

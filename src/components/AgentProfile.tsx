@@ -29,6 +29,7 @@ import { AgentTimelineView } from "@/components/agent-explorer/AgentTimelineView
 import { AgentContextView } from "@/components/agent-explorer/AgentContextView";
 import { AgentSettings } from "@/components/agent-config/AgentSettings";
 import { AgentRuntimeSummary } from "@/components/agent-explorer/AgentRuntimeSummary";
+import { SuspensionNotice } from "@/components/agent-explorer/SuspensionNotice";
 import { ForkAgentDialog } from "@/components/agent-explorer/ForkAgentDialog";
 import { DeleteAgentDialog } from "@/components/agent-explorer/DeleteAgentDialog";
 import { SchedulePickerDialog } from "@/components/SchedulePickerDialog";
@@ -38,6 +39,7 @@ import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useAgentForkProvenance } from "@/hooks/use-agent-fork-provenance";
 import { agentDisplay, humanizeAgentId, shortRefLabel } from "@/lib/agent-display";
 import { awaitingDescription, awaitingHref, awaitingTotal, readAwaiting } from "@/lib/agent-awaiting";
+import { readSuspension } from "@/lib/agent-suspension";
 import { TONE_STYLES } from "@/lib/status";
 
 /**
@@ -87,6 +89,7 @@ export function AgentProfile({ agentId }: { agentId: string }) {
   const canSuspend = status === AgentStatus.RUNNING || status === AgentStatus.SLEEPING;
   const awaitingRaw = readAwaiting(agent);
   const awaiting = awaitingTotal(awaitingRaw) > 0 ? awaitingRaw : undefined;
+  const suspension = status === AgentStatus.SUSPENDED ? readSuspension(agent) : undefined;
 
   return (
     <div className="flex h-full flex-col">
@@ -119,7 +122,9 @@ export function AgentProfile({ agentId }: { agentId: string }) {
           {/* Identity */}
           <div className="flex flex-wrap items-start gap-4 rounded-lg border bg-card p-4">
             <AgentIdenticon agentId={agent.agentId} className="size-14" />
-            <div className="min-w-0 flex-1">
+            {/* A floor on the identity column, so on a narrow page the actions
+                wrap below it rather than crushing it to a word per line. */}
+            <div className="min-w-[min(100%,16rem)] flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl font-semibold leading-tight">{humanizeAgentId(agent.agentId)}</h1>
                 <StatusBadge status={agent.status} kind="agent" as="pill" />
@@ -178,6 +183,7 @@ export function AgentProfile({ agentId }: { agentId: string }) {
                   acts as <DidDisplay value={ownerDid} identicon chars={10} />
                 </div>
               )}
+              {suspension && <SuspensionNotice suspension={suspension} self={ownerDid} className="mt-2" />}
             </div>
 
             {/* Actions */}
@@ -215,7 +221,10 @@ export function AgentProfile({ agentId }: { agentId: string }) {
               </AlertDialog>
               <SchedulePickerDialog
                 venue={venue}
-                operation="agent:trigger"
+                // The catalogue path, not the adapter's "agent:trigger": the
+                // venue lists a scheduled event's input only for an operation
+                // it can resolve, and the Scheduled list reads the agent from it.
+                operation="v/ops/agent/trigger"
                 input={{ agentId: agent.agentId, force: false, wait: false }}
                 triggerLabel="Schedule wake"
                 triggerSize="sm"

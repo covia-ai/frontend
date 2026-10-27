@@ -121,6 +121,21 @@ describe("useAgentRoster", () => {
     expect(result.current.roster[0].queued).toBe(2);
   });
 
+  // The record follows the status, which the polled list carries; `info` is
+  // read only when the agent set changes, so it would hold a cleared record.
+  it("takes the suspension record from the polled list, not from info", async () => {
+    const suspension = { by: "did:key:z6MkA", ts: 1_793_090_082_343, reason: "Rotating its key" };
+    const venue = makeVenue({
+      agents: {
+        list: jest.fn().mockResolvedValue({ agents: [{ agentId: "alpha", status: "SUSPENDED", suspension }] }),
+        info: jest.fn().mockResolvedValue({ agentId: "alpha", status: "SLEEPING" }),
+      },
+    });
+
+    const { result } = renderHook(() => useAgentRoster(venue));
+    await waitFor(() => expect(result.current.roster[0]?.suspension).toEqual(suspension));
+  });
+
   it("skips session reads for terminated agents", async () => {
     const listSessions = jest.fn().mockResolvedValue(sessionPage([]));
     const venue = makeVenue({
