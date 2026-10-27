@@ -68,10 +68,9 @@ export function ScheduledList({ venueId }: ScheduledListProps = {}) {
   );
 
   // The target `op` is a catalog path or asset id (per AssetCard's
-  // operations-link handling); an agent wake links to the agent:trigger
-  // adapter here, and to its agent separately from the event's `input`
-  // (covia 0.10 — older venues don't list the input, so they get the
-  // operation alone). `op` may be a catalog path or a full DID URL; either way
+  // operations-link handling); an agent wake links to v/ops/agent/trigger
+  // here, and to its agent separately from the event's `input` (covia 0.10 —
+  // older venues don't list the input, so they get the operation alone). `op` may be a catalog path or a full DID URL; either way
   // it goes into the catch-all route as encoded segments, never raw
   // (frontend#382).
   const opHref = useCallback(

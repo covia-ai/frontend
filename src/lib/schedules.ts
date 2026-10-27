@@ -28,8 +28,10 @@ export type ScheduledEvent = {
 /** The venue refuses a longer description (covia's MAX_DESCRIPTION_CHARS). */
 export const MAX_SCHEDULE_DESCRIPTION = 500;
 
-// The agent an agent:trigger wake targets, read from the event's input — what
-// SchedulePickerDialog sends from an agent's page. Only a bare id names an
+// The agent a wake targets, read from the event's input — what an agent's
+// page schedules through SchedulePickerDialog. The venue lists that input only
+// when it resolves the operation, which "v/ops/agent/trigger" does and the bare
+// adapter form "agent:trigger" (older wakes) does not. Only a bare id names an
 // agent of the caller's own; anything else is shown as the operation alone.
 export function wakeTargetAgent(event: Pick<ScheduledEvent, "op" | "input">): string | null {
   if (event.op !== "agent:trigger" && event.op !== "v/ops/agent/trigger") return null;

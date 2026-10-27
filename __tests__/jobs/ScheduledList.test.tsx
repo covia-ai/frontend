@@ -119,7 +119,7 @@ describe('ScheduledList', () => {
   // scheduler's description.
   describe('with 0.10 event details', () => {
     const wake = {
-      ...event('h3', 'agent:trigger', 30 * 60_000),
+      ...event('h3', 'v/ops/agent/trigger', 30 * 60_000),
       input: { agentId: 'reporter', force: false, wait: false },
       description: 'Morning summary',
       by: mockOwnDid,

@@ -55,7 +55,11 @@ jest.mock("@/components/agent-config/AgentSettings", () => ({
   AgentSettings: () => <div data-testid="settings-view" />,
 }));
 jest.mock("@/components/SchedulePickerDialog", () => ({
-  SchedulePickerDialog: () => <button type="button">Schedule wake</button>,
+  SchedulePickerDialog: ({ operation, input }: { operation: string; input: unknown }) => (
+    <button type="button" data-operation={operation} data-input={JSON.stringify(input)}>
+      Schedule wake
+    </button>
+  ),
 }));
 
 import { AgentProfile } from "@/components/AgentProfile";
@@ -134,6 +138,16 @@ describe("AgentProfile", () => {
     render(<AgentProfile agentId="refund-bot" />);
 
     expect(screen.queryByTestId("agent-suspension")).not.toBeInTheDocument();
+  });
+
+  // The venue lists a scheduled event's input (and so the agent it wakes) only
+  // for an operation it resolves: the catalogue path, not "agent:trigger".
+  it("schedules a wake through the catalogue path of agent:trigger", () => {
+    render(<AgentProfile agentId="refund-bot" />);
+
+    const wake = screen.getByRole("button", { name: /schedule wake/i });
+    expect(wake).toHaveAttribute("data-operation", "v/ops/agent/trigger");
+    expect(JSON.parse(wake.getAttribute("data-input")!)).toEqual({ agentId: "refund-bot", force: false, wait: false });
   });
 
   it("pins the hook to the agent its URL names", () => {

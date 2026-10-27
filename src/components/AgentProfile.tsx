@@ -122,7 +122,9 @@ export function AgentProfile({ agentId }: { agentId: string }) {
           {/* Identity */}
           <div className="flex flex-wrap items-start gap-4 rounded-lg border bg-card p-4">
             <AgentIdenticon agentId={agent.agentId} className="size-14" />
-            <div className="min-w-0 flex-1">
+            {/* A floor on the identity column, so on a narrow page the actions
+                wrap below it rather than crushing it to a word per line. */}
+            <div className="min-w-[min(100%,16rem)] flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl font-semibold leading-tight">{humanizeAgentId(agent.agentId)}</h1>
                 <StatusBadge status={agent.status} kind="agent" as="pill" />
@@ -219,7 +221,10 @@ export function AgentProfile({ agentId }: { agentId: string }) {
               </AlertDialog>
               <SchedulePickerDialog
                 venue={venue}
-                operation="agent:trigger"
+                // The catalogue path, not the adapter's "agent:trigger": the
+                // venue lists a scheduled event's input only for an operation
+                // it can resolve, and the Scheduled list reads the agent from it.
+                operation="v/ops/agent/trigger"
                 input={{ agentId: agent.agentId, force: false, wait: false }}
                 triggerLabel="Schedule wake"
                 triggerSize="sm"
