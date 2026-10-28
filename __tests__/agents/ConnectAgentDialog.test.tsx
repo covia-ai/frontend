@@ -64,7 +64,8 @@ describe("ConnectAgentDialog", () => {
     expect(pushMock).toHaveBeenCalledWith("/agents/connected?agent=support-bot");
   });
 
-  it("binds a stored secret when authentication is enabled", async () => {
+  // The venue takes exactly one of kind or scheme with the secret (#526).
+  it("binds a stored secret as Bearer when no scheme is given", async () => {
     renderOpen();
     await userEvent.type(screen.getByTestId("connect-agent-name"), "Private Bot");
     await userEvent.type(screen.getByTestId("connect-agent-url"), "https://agent.example.com");
@@ -80,7 +81,26 @@ describe("ConnectAgentDialog", () => {
     expect(importMock).toHaveBeenCalledWith({
       name: "private-bot",
       url: "https://agent.example.com",
-      auth: { secret: "s/REMOTE_TOKEN" },
+      auth: { secret: "s/REMOTE_TOKEN", kind: "bearer" },
+    });
+  });
+
+  it("binds a stored secret to the card scheme it names", async () => {
+    renderOpen();
+    await userEvent.type(screen.getByTestId("connect-agent-name"), "Private Bot");
+    await userEvent.type(screen.getByTestId("connect-agent-url"), "https://agent.example.com");
+    await userEvent.click(screen.getByTestId("connect-agent-needs-auth"));
+    await userEvent.click(screen.getByTestId("connect-agent-secret"));
+    await userEvent.click(await screen.findByText("s/REMOTE_TOKEN"));
+    await userEvent.type(screen.getByTestId("connect-agent-scheme"), "apiKey");
+
+    await userEvent.click(screen.getByTestId("connect-agent-submit"));
+
+    await waitFor(() => expect(importMock).toHaveBeenCalledTimes(1));
+    expect(importMock).toHaveBeenCalledWith({
+      name: "private-bot",
+      url: "https://agent.example.com",
+      auth: { secret: "s/REMOTE_TOKEN", scheme: "apiKey" },
     });
   });
 
