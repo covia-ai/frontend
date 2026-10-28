@@ -329,6 +329,30 @@ describe("ConnectedAgentTalk", () => {
     expect(screen.queryByTestId("connect-talk-cancel")).not.toBeInTheDocument();
   });
 
+  // The venue's job error is generic; the remote reason is on the status (#530).
+  it("shows the remote agent's own reason for a failed task", async () => {
+    const job = makeJob({
+      status: "PENDING",
+      output: {
+        id: "task-1",
+        status: {
+          state: "TASK_STATE_FAILED",
+          message: { role: "ROLE_AGENT", parts: [{ text: "Upstream quota exceeded." }] },
+        },
+      },
+    });
+    job.metadata.error = "Remote task FAILED";
+    job.script = ["STARTED", "FAILED"];
+    sendMock.mockResolvedValue(job);
+
+    render(<ConnectedAgentTalk agentName="venue-b-bot" />);
+    await say("fail");
+
+    await waitFor(() =>
+      expect(screen.getByText("Task FAILED: Upstream quota exceeded.")).toBeInTheDocument(),
+    );
+  });
+
   it("shows a failed task as an error", async () => {
     const job = makeJob({ status: "PENDING" });
     job.metadata.error = "boom";
