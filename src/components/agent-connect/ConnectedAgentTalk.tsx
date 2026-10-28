@@ -52,6 +52,7 @@ async function settleJob(
   job: Job,
   resumedFrom: string | undefined,
   onStatus: (status: string | null) => void,
+  signal?: AbortSignal,
 ): Promise<boolean> {
   const moved = () => resumedFrom === undefined || taskFingerprint(job) !== resumedFrom;
   const settled = () => (job.isFinished || job.isPaused) && moved();
@@ -66,17 +67,27 @@ async function settleJob(
     onStatus(moved() ? (job.metadata.status ?? null) : "STARTED");
   };
 
-  while (!settled() && Date.now() < deadline) {
+  while (!settled() && Date.now() < deadline && !signal?.aborted) {
+    // A quietly running Job keeps its stream open without sending anything,
+    // so each pass is cut off at the deadline (or on cancel) rather than
+    // waiting for the stream to end on its own.
+    const pass = new AbortController();
+    const stop = () => pass.abort();
+    const timer = setTimeout(stop, Math.max(0, deadline - Date.now()));
+    signal?.addEventListener("abort", stop);
     try {
-      for await (const _ev of job.stream()) {
+      for await (const _ev of job.stream({ signal: pass.signal })) {
         void _ev;
         await sync();
         if (settled()) break;
       }
     } catch {
-      // SSE unavailable — the poll below carries the turn instead.
+      // SSE unavailable or cut off — the poll below carries the turn instead.
+    } finally {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", stop);
     }
-    if (settled()) break;
+    if (settled() || signal?.aborted) break;
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
     await sync();
   }
@@ -112,6 +123,8 @@ export function ConnectedAgentTalk({ agentName }: ConnectedAgentTalkProps) {
   const contextId = useRef<string | undefined>(undefined);
   // A job left in INPUT_REQUIRED: the next user message is delivered to it.
   const [pendingInputJob, setPendingInputJob] = useState<Job | null>(null);
+  // The turn in flight, so Cancel can stop waiting on it and cancel its Job.
+  const turn = useRef<{ controller: AbortController; job?: Job } | null>(null);
 
   const agentPath = agentName ? `w/a2a/agents/${agentName}` : "";
   const add = (m: TalkMessage) => setMessages((prev) => [...prev, m]);
@@ -183,6 +196,9 @@ export function ConnectedAgentTalk({ agentName }: ConnectedAgentTalkProps) {
     setSending(true);
     setLiveStatus("PENDING");
     const message = { role: "user", parts: [{ type: "text", text }] };
+    const current: { controller: AbortController; job?: Job } = { controller: new AbortController() };
+    turn.current = current;
+    const { signal } = current.controller;
     try {
       let job: Job;
       let resumedFrom: string | undefined;
@@ -200,15 +216,45 @@ export function ConnectedAgentTalk({ agentName }: ConnectedAgentTalkProps) {
           taskId.current ? { taskId: taskId.current } : { contextId: contextId.current },
         );
       }
-      handleSettled(job, await settleJob(job, resumedFrom, setLiveStatus));
+      current.job = job;
+      if (signal.aborted) void job.cancel().catch(() => {});
+      const advanced = await settleJob(job, resumedFrom, setLiveStatus, signal);
+      if (signal.aborted) {
+        taskId.current = undefined;
+        add({ role: "agent", tone: "error", text: "Task cancelled." });
+      } else if (!job.isFinished && !job.isPaused) {
+        // Still running when Talk stopped waiting: leave it be, and let the
+        // next message start a new task in the same conversation.
+        const task = job.metadata.output as A2ATask | undefined;
+        taskId.current = undefined;
+        if (typeof task?.contextId === "string") contextId.current = task.contextId;
+        add({
+          role: "agent",
+          tone: "error",
+          text: "No reply yet: the agent is still working on this task. Send another message to start a new task, or follow this one in Jobs.",
+        });
+      } else {
+        handleSettled(job, advanced);
+      }
     } catch (err) {
       const { reason, jobHref } = jobFailure(err, venue.venueId);
       notifyError("Unable to reach agent", reason, venue.baseUrl, jobHref);
       add({ role: "agent", tone: "error", text: `Could not reach the agent: ${reason}` });
     } finally {
+      if (turn.current === current) turn.current = null;
       setSending(false);
       setLiveStatus(null);
     }
+  };
+
+  const cancel = () => {
+    const active = turn.current;
+    if (!active || active.controller.signal.aborted) return;
+    active.controller.abort();
+    void active.job?.cancel().catch((err) => {
+      const { reason, jobHref } = jobFailure(err, venue?.venueId);
+      notifyError("Unable to cancel the task", reason, venue?.baseUrl, jobHref);
+    });
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -277,6 +323,14 @@ export function ConnectedAgentTalk({ agentName }: ConnectedAgentTalkProps) {
           <div className="flex justify-start">
             <div className="flex items-center gap-2 rounded-2xl rounded-bl-sm border bg-background px-4 py-2 text-sm text-muted-foreground">
               <Loader2 size={14} className="animate-spin" /> {jobStatusLabel(liveStatus ?? undefined)}
+              <button
+                type="button"
+                onClick={cancel}
+                className="ml-1 text-xs font-medium text-foreground underline-offset-2 hover:underline"
+                data-testid="connect-talk-cancel"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         )}
