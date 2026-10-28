@@ -104,8 +104,11 @@ export function ConnectAgentDialog({ trigger, open, onOpenChange }: ConnectAgent
 
     setConnecting(true);
     try {
+      // The venue takes exactly one of a card scheme or kind; blank means Bearer.
       const auth = needsAuth
-        ? { secret: `s/${secretName}`, ...(scheme.trim() && { scheme: scheme.trim() }) }
+        ? scheme.trim()
+          ? { secret: `s/${secretName}`, scheme: scheme.trim() }
+          : { secret: `s/${secretName}`, kind: "bearer" as const }
         : undefined;
 
       const target =

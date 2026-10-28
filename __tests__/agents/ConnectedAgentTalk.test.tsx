@@ -36,9 +36,12 @@ function makeJob(initial: { status: string; output?: unknown }) {
   const job: {
     metadata: { status: string; output?: unknown; error?: string };
     script: Step[];
+    /** Hold the stream open after the script, like a quietly running Job. */
+    hang: boolean;
     sendMessage: jest.Mock;
     refresh: jest.Mock;
-    stream: () => AsyncGenerator<unknown>;
+    cancel: jest.Mock;
+    stream: (options?: { signal?: AbortSignal }) => AsyncGenerator<unknown>;
     readonly isFinished: boolean;
     readonly isPaused: boolean;
     readonly isComplete: boolean;
@@ -47,15 +50,26 @@ function makeJob(initial: { status: string; output?: unknown }) {
   } = {
     metadata: { status: initial.status, output: initial.output },
     script: [],
+    hang: false,
     sendMessage: jest.fn().mockResolvedValue({}),
     refresh: jest.fn().mockResolvedValue(undefined),
-    async *stream() {
+    cancel: jest.fn(async () => {
+      job.metadata.status = "CANCELLED";
+      return job.metadata;
+    }),
+    async *stream(options) {
       for (const s of job.script) {
         const step = typeof s === "string" ? { status: s } : s;
         job.metadata.status = step.status;
         if (typeof s !== "string" && "output" in s) job.metadata.output = s.output;
         yield { event: "message", data: "{}", json: () => ({}) };
       }
+      if (!job.hang) return;
+      await new Promise<void>((_, reject) => {
+        const signal = options?.signal;
+        if (signal?.aborted) return reject(new Error("aborted"));
+        signal?.addEventListener("abort", () => reject(new Error("aborted")));
+      });
     },
     get isFinished() {
       return TERMINAL.includes(job.metadata.status);
@@ -265,6 +279,54 @@ describe("ConnectedAgentTalk", () => {
       expect.objectContaining({ role: "user" }),
       { taskId: "task-1" },
     );
+  });
+
+  // A quietly running Job holds its stream open; Talk must still give up at
+  // the deadline rather than wait for the stream to end (#525).
+  it("stops waiting at the deadline when the task never finishes, and frees the input", async () => {
+    const job = makeJob({ status: "PENDING", output: { id: "task-1", contextId: "ctx-1" } });
+    job.script = ["STARTED"];
+    job.hang = true;
+    sendMock.mockResolvedValue(job);
+
+    render(<ConnectedAgentTalk agentName="venue-b-bot" />);
+    await say("do something slow");
+    expect(screen.getByTestId("connect-talk-input")).toBeDisabled();
+
+    await waitFor(
+      () => expect(screen.getByText(/the agent is still working on this task/)).toBeInTheDocument(),
+      { timeout: 8_000 },
+    );
+    expect(screen.getByTestId("connect-talk-input")).toBeEnabled();
+    expect(job.cancel).not.toHaveBeenCalled();
+
+    // The next message starts a new task in the same conversation.
+    const next = makeJob({ status: "PENDING", output: completedTask("Done now", "task-2") });
+    next.script = ["STARTED", "COMPLETE"];
+    sendMock.mockResolvedValue(next);
+    await say("anything?");
+    await waitFor(() => expect(screen.getByText("Done now")).toBeInTheDocument());
+    expect(sendMock).toHaveBeenLastCalledWith(
+      "w/a2a/agents/venue-b-bot",
+      expect.objectContaining({ role: "user" }),
+      { contextId: "ctx-1" },
+    );
+  }, 15_000);
+
+  it("cancels a running task from the status pill", async () => {
+    const job = makeJob({ status: "PENDING", output: { id: "task-1" } });
+    job.script = ["STARTED"];
+    job.hang = true;
+    sendMock.mockResolvedValue(job);
+
+    render(<ConnectedAgentTalk agentName="venue-b-bot" />);
+    await say("do something slow");
+    await userEvent.click(await screen.findByTestId("connect-talk-cancel"));
+
+    await waitFor(() => expect(screen.getByText("Task cancelled.")).toBeInTheDocument());
+    expect(job.cancel).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("connect-talk-input")).toBeEnabled();
+    expect(screen.queryByTestId("connect-talk-cancel")).not.toBeInTheDocument();
   });
 
   it("shows a failed task as an error", async () => {
