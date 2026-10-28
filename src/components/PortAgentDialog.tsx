@@ -152,22 +152,29 @@ function PortAgentForm({ initialName, initialSystemPrompt, onClose }: PortAgentF
     setCustomModel("");
   };
 
-  /** Parse one SKILL.md and stage it; returns whether it was added. */
-  const stageSkill = (text: string): boolean => {
+  /** Parse one SKILL.md, warning when it can't be staged. */
+  const parseSkill = (text: string): StagedSkill | null => {
     const trimmed = text.trim();
-    if (!trimmed) return false;
+    if (!trimmed) return null;
     const { name, description } = parseSkillFrontmatter(trimmed);
     if (!name || !description) {
       notifyWarning("That does not look like a SKILL.md", {
         description: "It needs a frontmatter block with a name and a description.",
       });
-      return false;
+      return null;
     }
     if (skills.some((s) => s.name === name)) {
       notifyWarning(`A skill named "${name}" is already staged`);
-      return false;
+      return null;
     }
-    setSkills((prev) => [...prev, { id: nextId.current++, name, description, text: trimmed }]);
+    return { id: nextId.current++, name, description, text: trimmed };
+  };
+
+  /** Parse one SKILL.md and stage it; returns whether it was added. */
+  const stageSkill = (text: string): boolean => {
+    const skill = parseSkill(text);
+    if (!skill) return false;
+    setSkills((prev) => [...prev, skill]);
     return true;
   };
 
@@ -203,7 +210,17 @@ function PortAgentForm({ initialName, initialSystemPrompt, onClose }: PortAgentF
       notifyWarning(`"${DEFAULT_AGENT_ID}" is reserved — pick another name`);
       return;
     }
-    if (skills.length === 0 && !systemPrompt.trim()) {
+    // A SKILL.md still in the box ports with the rest rather than being
+    // dropped; one that can't be staged stops the port with its warning.
+    let portSkills = skills;
+    if (draft.trim()) {
+      const pending = parseSkill(draft);
+      if (!pending) return;
+      portSkills = [...skills, pending];
+      setSkills(portSkills);
+      setDraft("");
+    }
+    if (portSkills.length === 0 && !systemPrompt.trim()) {
       notifyWarning("Add a system prompt or at least one skill to port");
       return;
     }
@@ -229,18 +246,22 @@ function PortAgentForm({ initialName, initialSystemPrompt, onClose }: PortAgentF
       const result = await venue.operations.run<FromSkillsResult>(FROM_SKILLS_OP, {
         agentId: resolvedAgentId,
         ...(systemPrompt.trim() && { systemPrompt: systemPrompt.trim() }),
-        skills: skills.map((s) => ({ text: s.text })),
+        skills: portSkills.map((s) => ({ text: s.text })),
         ...(usingProvider && llmOperation && { llmOperation }),
         ...(resolvedModel && { model: resolvedModel }),
       });
       const createdId = result?.agentId ?? resolvedAgentId;
-      const importedCount = result?.importedSkills?.length ?? skills.length;
+      const importedCount = result?.importedSkills?.length ?? portSkills.length;
 
-      // Fire-and-forget first task (wait:false), so a slow or failing task
-      // does not turn a successful port into a false error — it surfaces via
-      // normal job polling instead.
-      if (firstTask.trim()) {
-        await venue.agents.request(createdId, { task: firstTask.trim() }, false);
+      // The first task runs on its own, not awaited: the port has already
+      // succeeded, so a slow or failing task must not hold the dialog open or
+      // turn into a port error. Its outcome shows in the agent's chat.
+      const task = firstTask.trim();
+      if (task) {
+        void venue.agents.request(createdId, { task }, false).catch((err) => {
+          const { reason, jobHref } = jobFailure(err, venue.venueId);
+          notifyError(`Ported ${createdId}, but its first task failed`, reason, venue.baseUrl, jobHref);
+        });
       }
 
       gtmEvent.createAgent(createdId, "from-skills");
