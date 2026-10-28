@@ -16,6 +16,7 @@ export type AgentSettingsDraft = {
   customModel: string;
   toolsJson: string;
   skillsJson: string;
+  skillsetsJson: string;
   capsEnabled: boolean;
   caps: AgentCap[];
   contextJson: string;
@@ -44,6 +45,7 @@ const MANAGED_FIELDS = new Set([
   "model",
   "tools",
   "skills",
+  "skillsets",
   "caps",
   "context",
   "defaultTools",
@@ -71,6 +73,7 @@ export function createAgentSettingsDraft(
     ...model,
     toolsJson: prettyJson(config.tools),
     skillsJson: prettyJson(config.skills),
+    skillsetsJson: prettyJson(config.skillsets),
     capsEnabled: Array.isArray(config.caps),
     caps: Array.isArray(config.caps) ? config.caps.filter(isAgentCap) : [],
     contextJson: prettyJson(config.context),
@@ -128,6 +131,7 @@ export function configFromAgentSettingsDraft(
   for (const [key, label, text] of [
     ["tools", "Tools", draft.toolsJson],
     ["skills", "Skills", draft.skillsJson],
+    ["skillsets", "Skill sets", draft.skillsetsJson],
     ["context", "Context", draft.contextJson],
   ] as const) {
     if (!text.trim()) continue;

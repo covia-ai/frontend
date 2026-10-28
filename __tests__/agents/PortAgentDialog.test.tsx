@@ -34,7 +34,7 @@ jest.mock("@/hooks/use-authenticated-venue", () => ({
 }));
 
 import { PortAgentDialog } from "@/components/PortAgentDialog";
-import { notifySuccess, notifyWarning } from "@/lib/notify";
+import { notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 
 const SKILL = `---
 name: refund-policy
@@ -53,6 +53,8 @@ describe("PortAgentDialog (Migrate → native)", () => {
     pushMock.mockClear();
     (notifySuccess as jest.Mock).mockClear();
     (notifyWarning as jest.Mock).mockClear();
+    (notifyError as jest.Mock).mockClear();
+    mockVenue.agents.request.mockReset().mockResolvedValue({});
   });
 
   it("migrates: stages a pasted SKILL.md and calls agent:from-skills, then routes to chat", async () => {
@@ -91,6 +93,69 @@ describe("PortAgentDialog (Migrate → native)", () => {
       expect(pushMock).toHaveBeenCalledWith("/agents/chat?agentId=refund-bot"),
     );
     expect(notifySuccess).toHaveBeenCalled();
+  });
+
+  it("ports a SKILL.md left in the box without Add skill rather than dropping it", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderOpen();
+    await user.type(screen.getByTestId("port-agent-name"), "Refund bot");
+    await user.type(screen.getByTestId("port-agent-prompt"), "You are Acme support.");
+    await user.click(screen.getByTestId("port-skill-draft"));
+    await user.paste(SKILL);
+    await user.click(screen.getByTestId("port-agent-submit"));
+
+    await waitFor(() => expect(runMock).toHaveBeenCalledTimes(1));
+    expect(runMock.mock.calls[0][1]).toMatchObject({
+      skills: [{ text: expect.stringContaining("name: refund-policy") }],
+    });
+  });
+
+  it("stops the port when the SKILL.md left in the box is not valid", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderOpen();
+    await user.type(screen.getByTestId("port-agent-name"), "Refund bot");
+    await user.type(screen.getByTestId("port-agent-prompt"), "You are Acme support.");
+    await user.type(screen.getByTestId("port-skill-draft"), "just some text, no frontmatter");
+    await user.click(screen.getByTestId("port-agent-submit"));
+
+    expect(notifyWarning).toHaveBeenCalledWith(
+      "That does not look like a SKILL.md",
+      expect.anything(),
+    );
+    expect(runMock).not.toHaveBeenCalled();
+  });
+
+  it("still lands in the chat when the first task fails, and says so", async () => {
+    let failTask: (err: Error) => void = () => {};
+    mockVenue.agents.request.mockReturnValue(
+      new Promise((_, reject) => {
+        failTask = reject;
+      }),
+    );
+    const user = userEvent.setup({ delay: null });
+    renderOpen();
+    await user.type(screen.getByTestId("port-agent-name"), "Refund bot");
+    await user.type(screen.getByTestId("port-agent-prompt"), "You are Acme support.");
+    await user.type(screen.getByTestId("port-agent-first-task"), "Say hello");
+    await user.click(screen.getByTestId("port-agent-submit"));
+
+    // The port completes without waiting for the first task to finish.
+    await waitFor(() =>
+      expect(pushMock).toHaveBeenCalledWith("/agents/chat?agentId=refund-bot"),
+    );
+    expect(mockVenue.agents.request).toHaveBeenCalledWith("refund-bot", { task: "Say hello" }, false);
+    expect(notifySuccess).toHaveBeenCalled();
+
+    failTask(new Error("LLM call failed"));
+    await waitFor(() =>
+      expect(notifyError).toHaveBeenCalledWith(
+        "Ported refund-bot, but its first task failed",
+        expect.anything(),
+        "https://venue.example",
+        undefined,
+      ),
+    );
+    expect(notifyError).not.toHaveBeenCalledWith("Unable to port agent", expect.anything(), expect.anything(), expect.anything());
   });
 
   it("rejects a draft that is not a valid SKILL.md (no frontmatter)", async () => {
