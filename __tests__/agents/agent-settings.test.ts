@@ -34,6 +34,19 @@ describe("agent settings config", () => {
     });
   });
 
+  it("edits skillsets as their own field, not as additional configuration", () => {
+    const original = { skills: ["w/skills/tone"], skillsets: ["w/skills"] };
+    const draft = createAgentSettingsDraft(original);
+
+    expect(JSON.parse(draft.skillsetsJson)).toEqual(["w/skills"]);
+    expect(JSON.parse(draft.advancedJson)).toEqual({});
+    expect(configFromAgentSettingsDraft(draft, original).config).toEqual(original);
+
+    draft.skillsetsJson = "[]";
+    expect(agentConfigUpdatePatch(original, configFromAgentSettingsDraft(draft, original).config ?? {}))
+      .toEqual({ skillsets: [] });
+  });
+
   it("validates structured capability fields before saving", () => {
     const draft = createAgentSettingsDraft({});
     draft.toolsJson = '{ "not": "an array" }';

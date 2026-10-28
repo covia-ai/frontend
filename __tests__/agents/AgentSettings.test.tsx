@@ -265,3 +265,45 @@ describe("AgentSettings — concurrent-edit conflict on save", () => {
     expect(promptField).toHaveValue("keep me");
   });
 });
+
+describe("AgentSettings skill sets", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAccess.state = "connected";
+    mockVenue.secrets.list.mockResolvedValue([]);
+    mockVenue.skills.list.mockResolvedValue([]);
+  });
+
+  // A ported agent carries its skills as a skillset (agent:from-skills sets
+  // skillsets: ["w/skills"]), which the Skills field alone would hide (#523).
+  it("shows an agent's skillsets in their own field", async () => {
+    const user = userEvent.setup();
+    const agent: AgentDetail = { ...baseAgent, config: { skillsets: ["w/skills"] } };
+    render(<AgentSettings agent={agent} onSave={jest.fn()} />);
+    await user.click(screen.getByRole("tab", { name: "Capabilities" }));
+
+    expect(screen.getByLabelText("Skill sets")).toHaveValue('[\n  "w/skills"\n]');
+    expect(screen.getByLabelText("Skills")).toHaveValue("");
+  });
+
+  it("saves an edited skill set as a skillsets patch", async () => {
+    const user = userEvent.setup();
+    const onSave = jest.fn().mockResolvedValue({ status: "saved" });
+    const agent: AgentDetail = { ...baseAgent, config: { skillsets: ["w/skills"] } };
+    render(<AgentSettings agent={agent} onSave={onSave} />);
+    await user.click(screen.getByRole("tab", { name: "Capabilities" }));
+
+    const field = screen.getByLabelText("Skill sets");
+    await user.clear(field);
+    await user.click(field);
+    await user.paste('["w/skills", "v/skills/data"]');
+    await user.click(screen.getByTestId("save-agent-settings"));
+
+    await waitFor(() =>
+      expect(onSave).toHaveBeenCalledWith(
+        { skillsets: ["w/skills", "v/skills/data"] },
+        expect.any(Object),
+      ),
+    );
+  });
+});

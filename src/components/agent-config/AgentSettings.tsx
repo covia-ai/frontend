@@ -240,9 +240,17 @@ export function AgentSettings({ agent, onSave }: AgentSettingsProps) {
               <AgentJsonConfigField
                 id="agent-skills-json"
                 label="Skills"
-                description="Skill indexes available to the agent. Saving replaces the complete array. Or use Browse & attach above."
+                description="Individual skills available to the agent. Saving replaces the complete array. Or use Browse & attach above."
                 value={draft.skillsJson}
                 onChange={(value) => setField("skillsJson", value)}
+                placeholder={'[\n  "w/skills/refund-policy"\n]'}
+              />
+              <AgentJsonConfigField
+                id="agent-skillsets-json"
+                label="Skill sets"
+                description="Directories of skills the agent can load, such as w/skills for every skill in your workspace. Saving replaces the complete array."
+                value={draft.skillsetsJson}
+                onChange={(value) => setField("skillsetsJson", value)}
                 placeholder={'[\n  "w/skills"\n]'}
               />
               <AgentCapsEditor
