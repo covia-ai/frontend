@@ -29,7 +29,13 @@ export interface A2APart {
   kind?: string;
   text?: string;
   data?: unknown;
+  /** A pre-1.0 file part. */
   file?: A2AFileRef;
+  /** An A2A 1.0 file part is flat: content by `url` or `raw`, plus these. */
+  url?: string;
+  raw?: string;
+  filename?: string;
+  mediaType?: string;
 }
 
 /** One A2A message in a Task's history, or on its status. */
@@ -97,11 +103,12 @@ export const slugifyAgentName = (name: string): string =>
 /** Cap on how much of a structured data part is rendered inline. */
 const MAX_DATA_CHARS = 2000;
 
-/** Name a file part by filename and type, so it isn't dropped silently. */
+/** Name a file part by filename and type, and its link when it has one, so it isn't dropped silently. */
 function describeFilePart(file: A2AFileRef): string {
   const name = typeof file.name === "string" && file.name ? file.name : "file";
   const type = typeof file.mimeType === "string" && file.mimeType ? ` (${file.mimeType})` : "";
-  return `[${name}${type}]`;
+  const link = typeof file.uri === "string" && /^https?:\/\//.test(file.uri) ? ` ${file.uri}` : "";
+  return `[${name}${type}]${link}`;
 }
 
 /**
@@ -120,6 +127,9 @@ function textFromPart(part: A2APart): string {
   }
 
   if (part?.file && typeof part.file === "object") return describeFilePart(part.file);
+  if (typeof part?.url === "string" || typeof part?.raw === "string" || typeof part?.filename === "string") {
+    return describeFilePart({ name: part.filename, mimeType: part.mediaType, uri: part.url });
+  }
 
   if (data !== undefined && data !== null) {
     try {

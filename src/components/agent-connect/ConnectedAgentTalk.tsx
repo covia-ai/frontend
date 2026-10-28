@@ -174,7 +174,10 @@ export function ConnectedAgentTalk({ agentName }: ConnectedAgentTalkProps) {
     if (status === "COMPLETE") {
       add({ role: "agent", text: taskReplyText(task) || "(the agent returned no text)" });
     } else {
-      const reason = job.metadata.error ? `: ${job.metadata.error}` : "";
+      // The remote agent's own reason, when it gave one, says more than the
+      // venue's generic "Remote task FAILED".
+      const detail = taskStatusText(task) || job.metadata.error;
+      const reason = detail ? `: ${detail}` : "";
       add({ role: "agent", tone: "error", text: `Task ${status || "did not complete"}${reason}` });
     }
   };
