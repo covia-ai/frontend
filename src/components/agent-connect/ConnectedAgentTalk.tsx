@@ -95,8 +95,9 @@ interface ConnectedAgentTalkProps {
  * PENDING→STARTED→terminal, and the local Job's paused states surface the
  * remote A2A Task's interrupts — INPUT_REQUIRED (your next message is delivered
  * to the same job to continue the remote Task) and AUTH_REQUIRED (reconnect the
- * agent with a stored secret). A returned `taskId` threads later turns onto the
- * same remote conversation.
+ * agent with a stored secret). Later turns stay in the same remote
+ * conversation: an unfinished Task is continued by its `taskId`, but a finished
+ * Task is immutable, so the next turn starts a new Task on its `contextId`.
  */
 export function ConnectedAgentTalk({ agentName }: ConnectedAgentTalkProps) {
   const router = useRouter();
@@ -106,7 +107,9 @@ export function ConnectedAgentTalk({ agentName }: ConnectedAgentTalkProps) {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [liveStatus, setLiveStatus] = useState<string | null>(null);
+  // The remote Task to continue, while it is unfinished, and the conversation it is in.
   const taskId = useRef<string | undefined>(undefined);
+  const contextId = useRef<string | undefined>(undefined);
   // A job left in INPUT_REQUIRED: the next user message is delivered to it.
   const [pendingInputJob, setPendingInputJob] = useState<Job | null>(null);
 
@@ -116,7 +119,8 @@ export function ConnectedAgentTalk({ agentName }: ConnectedAgentTalkProps) {
   const handleSettled = (job: Job, advanced: boolean) => {
     const status = (job.metadata.status ?? "").toUpperCase();
     const task = job.metadata.output as A2ATask | undefined;
-    if (typeof task?.id === "string") taskId.current = task.id;
+    taskId.current = !job.isFinished && typeof task?.id === "string" ? task.id : undefined;
+    if (typeof task?.contextId === "string") contextId.current = task.contextId;
 
     if (!advanced) {
       // The reply was accepted locally but the remote Task never moved. Say so,
@@ -190,9 +194,11 @@ export function ConnectedAgentTalk({ agentName }: ConnectedAgentTalkProps) {
         await paused.sendMessage(message);
         job = paused;
       } else {
-        job = await venue.a2a.send(agentPath, message, {
-          ...(taskId.current && { taskId: taskId.current }),
-        });
+        job = await venue.a2a.send(
+          agentPath,
+          message,
+          taskId.current ? { taskId: taskId.current } : { contextId: contextId.current },
+        );
       }
       handleSettled(job, await settleJob(job, resumedFrom, setLiveStatus));
     } catch (err) {

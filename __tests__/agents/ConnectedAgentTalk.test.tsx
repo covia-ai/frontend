@@ -76,8 +76,9 @@ function makeJob(initial: { status: string; output?: unknown }) {
   return job;
 }
 
-const completedTask = (text: string) => ({
-  id: "task-1",
+const completedTask = (text: string, id = "task-1") => ({
+  id,
+  contextId: "ctx-1",
   status: { state: "TASK_STATE_COMPLETED" },
   artifacts: [{ parts: [{ type: "text", text }] }],
 });
@@ -220,6 +221,50 @@ describe("ConnectedAgentTalk", () => {
     await waitFor(() => expect(screen.getByText("Authentication required")).toBeInTheDocument());
     expect(screen.getByText(/Sign in to the billing API first\./)).toBeInTheDocument();
     expect(screen.getByText(/Reconnect it with a stored secret/)).toBeInTheDocument();
+  });
+
+  it("follows up a finished task as a new task in the same conversation", async () => {
+    const first = makeJob({ status: "PENDING", output: completedTask("Hello back") });
+    first.script = ["STARTED", "COMPLETE"];
+    const second = makeJob({ status: "PENDING", output: completedTask("Still here", "task-2") });
+    second.script = ["STARTED", "COMPLETE"];
+    sendMock.mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+
+    render(<ConnectedAgentTalk agentName="venue-b-bot" />);
+    await say("hi");
+    await waitFor(() => expect(screen.getByText("Hello back")).toBeInTheDocument());
+
+    // A finished Task is immutable: its taskId would be rejected as terminal.
+    await say("and again");
+    await waitFor(() => expect(screen.getByText("Still here")).toBeInTheDocument());
+    expect(sendMock).toHaveBeenLastCalledWith(
+      "w/a2a/agents/venue-b-bot",
+      expect.objectContaining({ role: "user" }),
+      { contextId: "ctx-1" },
+    );
+  });
+
+  it("continues an unfinished task by its taskId", async () => {
+    const first = makeJob({
+      status: "PENDING",
+      output: { id: "task-1", contextId: "ctx-1", status: { state: "TASK_STATE_AUTH_REQUIRED" } },
+    });
+    first.script = ["STARTED", "AUTH_REQUIRED"];
+    const second = makeJob({ status: "PENDING", output: completedTask("Charged") });
+    second.script = ["STARTED", "COMPLETE"];
+    sendMock.mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+
+    render(<ConnectedAgentTalk agentName="venue-b-bot" />);
+    await say("charge the card");
+    await waitFor(() => expect(screen.getByText("Authentication required")).toBeInTheDocument());
+
+    await say("done, try again");
+    await waitFor(() => expect(screen.getByText("Charged")).toBeInTheDocument());
+    expect(sendMock).toHaveBeenLastCalledWith(
+      "w/a2a/agents/venue-b-bot",
+      expect.objectContaining({ role: "user" }),
+      { taskId: "task-1" },
+    );
   });
 
   it("shows a failed task as an error", async () => {
