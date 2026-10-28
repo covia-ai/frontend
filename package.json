@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "jest --coverage=false",
     "test:coverage": "jest --coverage",
-    "jest:clear": "jest --clearCache"
+    "jest:clear": "jest --clearCache",
+    "mock:a2a": "node scripts/mock-a2a-agent.mjs"
   },
   "dependencies": {
     "@covia/covia-sdk": "^1.25.0",
