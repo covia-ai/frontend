@@ -37,6 +37,28 @@ export const CONSENT_KEY = 'covia-consent'
  */
 export const PRIVACY_POLICY_VERSION = '2026-09-29'
 
+/**
+ * Set on <html> before first paint when a current consent record is stored,
+ * so the server-rendered banner can be hidden by CSS until React takes over
+ * (frontend#474). CookieConsent removes it once hydrated.
+ */
+export const CONSENT_STORED_ATTRIBUTE = 'data-consent-stored'
+
+/**
+ * Inline script for <head>: the same check as `readConsent` (localStorage,
+ * then the cookie; well-formed; current policy version), cut down to run
+ * before React loads. A legacy-only decision isn't recognised here, so those
+ * visitors see the banner until hydration migrates it, once.
+ */
+export function consentPrepaintScript(): string {
+  const key = JSON.stringify(CONSENT_KEY)
+  return `(function(){try{var r=null;try{r=localStorage.getItem(${key})}catch(e){}` +
+    `if(!r){var m=document.cookie.match(/(?:^|; )${CONSENT_KEY}=([^;]*)/);r=m?decodeURIComponent(m[1]):null}` +
+    `var p=r&&JSON.parse(r);if(p&&p.categories&&typeof p.categories.analytics==='boolean'&&typeof p.categories.marketing==='boolean'` +
+    `&&p.version===${JSON.stringify(PRIVACY_POLICY_VERSION)}&&typeof p.givenAt==='string')` +
+    `document.documentElement.setAttribute(${JSON.stringify(CONSENT_STORED_ATTRIBUTE)},'')}catch(e){}})();`
+}
+
 /** Cookie written by the previous `react-cookie-consent` banner. */
 const LEGACY_COOKIE_NAME = 'yourAppCookieConsent'
 
