@@ -8,6 +8,7 @@ import { useStoredValue } from "@/hooks/use-stored-value";
 import {
   CONSENT_CHANGE_EVENT,
   DEFAULT_CATEGORIES,
+  CONSENT_STORED_ATTRIBUTE,
   OPEN_CONSENT_DRAWER_EVENT,
   readConsent,
   writeConsent,
@@ -45,14 +46,22 @@ const ESSENTIAL_ONLY: ConsentCategories = { essential: true, analytics: false, m
 
 export const CookieConsentComponent = () => {
   // The stored decision, read as the external state it is: undefined until
-  // hydration (so the server and the first client render agree on showing
-  // nothing), then the record or null. writeConsent announces every write, so
-  // this follows them without being told.
+  // hydration (so the server and the first client render agree), then the
+  // record or null. writeConsent announces every write, so this follows them
+  // without being told.
   const [stored] = useStoredValue(safeReadConsent, { events: [CONSENT_CHANGE_EVENT] });
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Closing the drawer without deciding puts the banner away too, until the
   // next visit.
   const [dismissed, setDismissed] = useState(false);
+
+  // Once the real value is read, this component decides; the pre-paint marker
+  // that hid the server-rendered banner for returning visitors has done its
+  // job. Not on the hydration render itself (still undefined), or the banner
+  // could show for a frame before the re-render removes it.
+  useEffect(() => {
+    if (stored !== undefined) document.documentElement.removeAttribute(CONSENT_STORED_ATTRIBUTE);
+  }, [stored]);
 
   // Anything can ask for the drawer — the privacy policy page does.
   useEffect(() => {
@@ -83,8 +92,10 @@ export const CookieConsentComponent = () => {
   }
 
   // No usable decision — a first visit, cleared storage or a superseded policy
-  // version — asks. Unknown (still hydrating) shows nothing yet.
-  if (stored !== null || dismissed) return null;
+  // version — asks. Unknown (the server render, and hydration) renders the
+  // banner too, so a first visit sees it at first paint; for a returning
+  // visitor the pre-paint marker keeps it hidden until this re-renders.
+  if (stored || dismissed) return null;
 
   return (
     <div
