@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { HoverPrefetchLink } from "@/components/admin-panel/hover-prefetch-link";
 import { ScrollText, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -32,7 +32,7 @@ export function SidebarLegalFooter({ isOpen }: SidebarLegalFooterProps) {
     <div className="shrink-0 flex items-center justify-center gap-1 border-t border-sidebar-border/60 bg-sidebar px-3 py-2">
       <Tooltip delayDuration={100}>
         <TooltipTrigger asChild>
-          <Link
+          <HoverPrefetchLink
             href="/privacypolicy"
             aria-label="Privacy Policy"
             className="flex items-center rounded-md px-1 py-1 text-xs text-sidebar-foreground/60 transition-colors hover:text-sidebar-foreground"
@@ -46,7 +46,7 @@ export function SidebarLegalFooter({ isOpen }: SidebarLegalFooterProps) {
             >
               Privacy
             </span>
-          </Link>
+          </HoverPrefetchLink>
         </TooltipTrigger>
         <TooltipContent side={isOpen === false ? "right" : "top"}>Privacy Policy</TooltipContent>
       </Tooltip>
@@ -61,7 +61,7 @@ export function SidebarLegalFooter({ isOpen }: SidebarLegalFooterProps) {
       </span>
       <Tooltip delayDuration={100}>
         <TooltipTrigger asChild>
-          <Link
+          <HoverPrefetchLink
             href="/terms"
             aria-label="Terms of Service"
             className="flex items-center rounded-md px-1 py-1 text-xs text-sidebar-foreground/60 transition-colors hover:text-sidebar-foreground"
@@ -75,7 +75,7 @@ export function SidebarLegalFooter({ isOpen }: SidebarLegalFooterProps) {
             >
               Terms
             </span>
-          </Link>
+          </HoverPrefetchLink>
         </TooltipTrigger>
         <TooltipContent side={isOpen === false ? "right" : "top"}>Terms of Service</TooltipContent>
       </Tooltip>
