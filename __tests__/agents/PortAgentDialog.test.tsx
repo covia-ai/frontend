@@ -125,7 +125,7 @@ describe("PortAgentDialog (Migrate → native)", () => {
     expect(runMock).not.toHaveBeenCalled();
   });
 
-  it("still lands in the chat when the first task fails, and says so", async () => {
+  it("still lands in the chat when the first task cannot be started, and says so", async () => {
     let failTask: (err: Error) => void = () => {};
     mockVenue.agents.request.mockReturnValue(
       new Promise((_, reject) => {
@@ -146,10 +146,10 @@ describe("PortAgentDialog (Migrate → native)", () => {
     expect(mockVenue.agents.request).toHaveBeenCalledWith("refund-bot", { task: "Say hello" }, false);
     expect(notifySuccess).toHaveBeenCalled();
 
-    failTask(new Error("LLM call failed"));
+    failTask(new Error("HTTP 403: Forbidden"));
     await waitFor(() =>
       expect(notifyError).toHaveBeenCalledWith(
-        "Ported refund-bot, but its first task failed",
+        "Ported refund-bot, but unable to start its first task",
         expect.anything(),
         "https://venue.example",
         undefined,
