@@ -255,12 +255,14 @@ function PortAgentForm({ initialName, initialSystemPrompt, onClose }: PortAgentF
 
       // The first task runs on its own, not awaited: the port has already
       // succeeded, so a slow or failing task must not hold the dialog open or
-      // turn into a port error. Its outcome shows in the agent's chat.
+      // turn into a port error. With wait=false the SDK (1.26+, covia-sdk#112)
+      // resolves once the task is submitted, so this only reports a task that
+      // could not be started (e.g. refused); how it runs shows in the chat.
       const task = firstTask.trim();
       if (task) {
         void venue.agents.request(createdId, { task }, false).catch((err) => {
           const { reason, jobHref } = jobFailure(err, venue.venueId);
-          notifyError(`Ported ${createdId}, but its first task failed`, reason, venue.baseUrl, jobHref);
+          notifyError(`Ported ${createdId}, but unable to start its first task`, reason, venue.baseUrl, jobHref);
         });
       }
 
