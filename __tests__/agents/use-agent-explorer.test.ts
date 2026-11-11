@@ -661,7 +661,7 @@ describe("useAgentExplorer — composer", () => {
 
     // The identical earlier "yes" is not this message.
     expect(result.current.pendingChat?.text).toBe("yes");
-    expect(result.current.echoAlreadyRecorded).toBe(false);
+    expect(result.current.pendingEchoes.map((chat) => chat.text)).toEqual(["yes"]);
 
     mockVenue.agents.listSessions.mockResolvedValue(
       sessionsPage([sessionEntry("sess-1", [...earlier, { role: "user", content: "yes", ts: 3 }])]),
@@ -670,7 +670,7 @@ describe("useAgentExplorer — composer", () => {
       jest.advanceTimersByTime(3100);
     });
 
-    await waitFor(() => expect(result.current.echoAlreadyRecorded).toBe(true));
+    await waitFor(() => expect(result.current.pendingEchoes).toEqual([]));
   });
 });
 

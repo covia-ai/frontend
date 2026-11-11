@@ -35,11 +35,10 @@ export function AgentChatSurface({ controller }: { controller: AgentExplorerCont
     currentSession,
     messageText,
     setMessageText,
-    pendingChat,
+    pendingEchoes,
     sending,
     activity,
     canSend,
-    echoAlreadyRecorded,
     failedSend,
     retrySend,
     editFailedSend,
@@ -192,8 +191,8 @@ export function AgentChatSurface({ controller }: { controller: AgentExplorerCont
         agentId={selectedAgentDetail.agentId}
         selectedSessionId={selectedSessionId}
         session={currentSession}
-        pendingChat={pendingChat}
-        echoAlreadyRecorded={echoAlreadyRecorded}
+        pendingEchoes={pendingEchoes}
+        waiting={sending}
         failedSend={failedSend}
         onRetry={canSend ? retrySend : undefined}
         onEditFailed={editFailedSend}
@@ -226,9 +225,11 @@ export function AgentChatSurface({ controller }: { controller: AgentExplorerCont
             // disabled:opacity-50 would fade that out further on top of the
             // already-dim SUGGESTION_PLACEHOLDER_CLASS right when it matters.
             className={cn("text-sm disabled:opacity-100", SUGGESTION_PLACEHOLDER_CLASS)}
-            disabled={sending || !canSend}
+            // Open while a reply is awaited: a follow-up is queued behind it,
+            // in the order typed (#541).
+            disabled={!canSend}
           />
-          {sending ? (
+          {sending && !messageText.trim() ? (
             // Stops only this page's wait: the agent keeps working and its
             // reply still lands in the session.
             <Tooltip>

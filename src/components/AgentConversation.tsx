@@ -39,8 +39,11 @@ type AgentConversationProps = {
   agentId: string;
   selectedSessionId: string | null;
   session: Session | null;
-  pendingChat: PendingChat | null;
-  echoAlreadyRecorded: boolean;
+  /** Messages this page is waiting on a reply to that the venue has not yet
+   *  recorded as turns, oldest first. */
+  pendingEchoes: PendingChat[];
+  /** Whether this page is waiting on any reply in this conversation. */
+  waiting: boolean;
   transcriptRef: RefObject<HTMLDivElement | null>;
   /** The agent's brief (system-prompt snippet) shown in the new-chat empty
    *  state for context. */
@@ -76,8 +79,8 @@ function AgentConversationBase({
   agentId,
   selectedSessionId,
   session,
-  pendingChat,
-  echoAlreadyRecorded,
+  pendingEchoes,
+  waiting,
   transcriptRef,
   agentBrief,
   onStarter,
@@ -88,12 +91,13 @@ function AgentConversationBase({
   // Messages the venue holds for this session with no reply yet: shown after a
   // reload, or once the user stopped waiting, until the agent takes them.
   const queued = useMemo(() => queuedSessionMessages(session), [session]);
-  // The local echo of the chat being waited for gives way to the venue's own
-  // record of it, once that has arrived.
-  const echoQueued =
-    !!pendingChat?.jobId && queued.some((message) => message.jobId === pendingChat.jobId);
+  // A local echo gives way to the venue's own record of the same chat, once
+  // that has arrived.
+  const echoes = pendingEchoes.filter(
+    (chat) => !chat.jobId || !queued.some((message) => message.jobId === chat.jobId),
+  );
   const hasConversation = Boolean(
-    session?.conversation.length || queued.length || pendingChat || failedSend,
+    session?.conversation.length || queued.length || waiting || failedSend,
   );
   const agentName = humanizeAgentId(agentId);
   // Grouping walks the whole transcript; memoise so it recomputes only when the
@@ -280,7 +284,7 @@ function AgentConversationBase({
             );
           })}
 
-        {failedSend && !pendingChat && (
+        {failedSend && !waiting && (
           <div data-testid="failed-send" className="mb-6 flex flex-col items-end gap-1.5">
             {!failedSend.recorded && (
               <div className="max-w-[85%] rounded-3xl rounded-br-md border border-destructive/50 bg-muted/60 px-4 py-2.5 text-[15px] leading-6 whitespace-pre-wrap break-words">
@@ -333,15 +337,15 @@ function AgentConversationBase({
           </div>
         ))}
 
-        {pendingChat && !echoAlreadyRecorded && !echoQueued && (
-          <div data-testid="pending-user-message" className="mb-6 flex justify-end">
+        {echoes.map((chat) => (
+          <div key={chat.id} data-testid="pending-user-message" className="mb-6 flex justify-end">
             <div className="max-w-[85%] rounded-3xl rounded-br-md bg-muted px-4 py-2.5 text-[15px] leading-6 whitespace-pre-wrap break-words">
-              {pendingChat.text}
+              {chat.text}
             </div>
           </div>
-        )}
+        ))}
 
-        {pendingChat && (
+        {waiting && (
           <div data-testid="agent-thinking" className="mb-8 flex items-center gap-3 text-muted-foreground">
             <AgentIdenticon agentId={agentId} className="size-7 shrink-0" />
             <Loader2 size={15} className="animate-spin" />
