@@ -66,6 +66,7 @@ function controller(overrides: Record<string, unknown> = {}) {
     startNewChat: jest.fn(),
     selectSession: jest.fn(),
     send: jest.fn(),
+    stopWaiting: jest.fn(),
     ...overrides,
   } as ReturnType<typeof useAgentExplorer>;
 }

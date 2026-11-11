@@ -1,6 +1,6 @@
 import { memo, useMemo, type RefObject } from "react";
 import Link from "next/link";
-import { AlertCircle, Copy, ExternalLink, Loader2, Pencil, RotateCcw } from "lucide-react";
+import { AlertCircle, Clock, Copy, ExternalLink, Loader2, Pencil, RotateCcw } from "lucide-react";
 
 import { AgentToolTurnGroup } from "@/components/AgentToolTurn";
 import { AgentIdenticon } from "@/components/agent-roster/AgentIdenticon";
@@ -17,6 +17,7 @@ import { notifyError, notifySuccess } from "@/lib/notify";
 import type { Session } from "@/config/types";
 import type { PendingChat } from "@/hooks/use-pending-chats";
 import { jobPath } from "@/lib/routes";
+import { queuedSessionMessages } from "@/lib/agent-sessions";
 import {
   describeToolTurn,
   groupTranscript,
@@ -84,7 +85,16 @@ function AgentConversationBase({
   onRetry,
   onEditFailed,
 }: AgentConversationProps) {
-  const hasConversation = Boolean(session?.conversation.length || pendingChat || failedSend);
+  // Messages the venue holds for this session with no reply yet: shown after a
+  // reload, or once the user stopped waiting, until the agent takes them.
+  const queued = useMemo(() => queuedSessionMessages(session), [session]);
+  // The local echo of the chat being waited for gives way to the venue's own
+  // record of it, once that has arrived.
+  const echoQueued =
+    !!pendingChat?.jobId && queued.some((message) => message.jobId === pendingChat.jobId);
+  const hasConversation = Boolean(
+    session?.conversation.length || queued.length || pendingChat || failedSend,
+  );
   const agentName = humanizeAgentId(agentId);
   // Grouping walks the whole transcript; memoise so it recomputes only when the
   // conversation itself changes, never on an unrelated parent re-render.
@@ -308,7 +318,22 @@ function AgentConversationBase({
           </div>
         )}
 
-        {pendingChat && !echoAlreadyRecorded && (
+        {queued.map((message, index) => (
+          <div
+            key={message.jobId ?? `queued-${index}`}
+            data-testid="queued-user-message"
+            className="mb-6 flex flex-col items-end gap-1.5"
+          >
+            <div className="max-w-[85%] rounded-3xl rounded-br-md bg-muted px-4 py-2.5 text-[15px] leading-6 whitespace-pre-wrap break-words">
+              {message.text}
+            </div>
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Clock size={12} aria-hidden="true" /> Waiting for a reply
+            </span>
+          </div>
+        ))}
+
+        {pendingChat && !echoAlreadyRecorded && !echoQueued && (
           <div data-testid="pending-user-message" className="mb-6 flex justify-end">
             <div className="max-w-[85%] rounded-3xl rounded-br-md bg-muted px-4 py-2.5 text-[15px] leading-6 whitespace-pre-wrap break-words">
               {pendingChat.text}

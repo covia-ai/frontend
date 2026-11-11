@@ -145,8 +145,28 @@ describe("AgentProfile runtime controls", () => {
 
     fireEvent.click(await screen.findByTestId("runtime-pending-toggle"));
 
-    expect(screen.getByText("Waiting for review")).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("agent-runtime-summary")).getByText("Waiting for review"),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("runtime-next-wake")).toBeInTheDocument();
+  });
+
+  // The venue's record of a chat no reply has answered: shown in the
+  // transcript, so a reload or a stopped wait does not lose it (#542).
+  it("shows a session's queued chat in the transcript as waiting for a reply", async () => {
+    venueWithAgent({ ...AGENT, status: "SLEEPING" }, [
+      sessionEntry("sess-1", 1000, [{ role: "assistant", content: "earlier reply", ts: 1 }], {
+        pending: [{ sessionId: "sess-1", jobId: "0xjob1", message: "are you there?" }],
+      }),
+    ]);
+    await renderProfile();
+
+    const queued = await screen.findByTestId("queued-user-message");
+    expect(queued).toHaveTextContent("are you there?");
+    expect(queued).toHaveTextContent("Waiting for a reply");
+    // Nothing on this page is waiting, so the composer is free.
+    expect(screen.getByTestId("composer-input")).not.toBeDisabled();
+    expect(screen.queryByTestId("agent-thinking")).not.toBeInTheDocument();
   });
 
   it("triggers a run only after the confirmation", async () => {
@@ -233,12 +253,17 @@ describe("AgentProfile with a chat in flight", () => {
 
   // Same mechanism, local origin: the composer publishes to the shared store
   // rather than keeping its own copy of the in-flight message.
+  // A chat that never settles — the agent is still thinking.
+  const chatNeverAnswered = () => {
+    mockVenue.operations = {
+      invoke: jest.fn().mockResolvedValue({ id: "0xjob1", result: () => new Promise(() => {}) }),
+    };
+    mockVenue.jobs = { get: jest.fn().mockResolvedValue({ metadata: { sessionId: "sess-1" } }) };
+  };
+
   it("echoes a message sent from the composer, and blocks a second send", async () => {
     venueWithAgent(AGENT, [sessionEntry("sess-1", 1000, [])]);
-    // A send that never settles — the agent is still thinking.
-    mockVenue.agent.mockReturnValue({
-      chatSession: (sessionId?: string) => ({ sessionId, send: () => new Promise(() => {}) }),
-    });
+    chatNeverAnswered();
     await renderProfile();
 
     const input = await screen.findByTestId("composer-input");
@@ -247,8 +272,43 @@ describe("AgentProfile with a chat in flight", () => {
 
     expect(await screen.findByTestId("pending-user-message")).toHaveTextContent("typed here");
     expect(screen.getByTestId("agent-thinking")).toBeInTheDocument();
-    expect(screen.getByTestId("composer-send")).toBeDisabled();
+    expect(screen.queryByTestId("composer-send")).not.toBeInTheDocument();
+    expect(screen.getByTestId("composer-stop")).toBeInTheDocument();
     expect(input).toBeDisabled();
+    expect(mockVenue.operations.invoke).toHaveBeenCalledWith("v/ops/agent/chat", {
+      agentId: AGENT.agentId,
+      message: "typed here",
+      sessionId: "sess-1",
+    });
+  });
+
+  // Stop waiting frees the composer without cancelling the agent's job; the
+  // venue's queued record of the message keeps it on screen (#542).
+  it("stops waiting without cancelling the chat, and frees the composer", async () => {
+    venueWithAgent(AGENT, [sessionEntry("sess-1", 1000, [])]);
+    chatNeverAnswered();
+    await renderProfile();
+
+    const input = await screen.findByTestId("composer-input");
+    fireEvent.change(input, { target: { value: "long job" } });
+    fireEvent.click(screen.getByTestId("composer-send"));
+    await screen.findByTestId("agent-thinking");
+
+    // The venue holds the message for the session until the agent takes it.
+    mockVenue.agents.listSessions.mockResolvedValue({
+      items: [sessionEntry("sess-1", 1000, [], {
+        pending: [{ sessionId: "sess-1", jobId: "0xjob1", message: "long job" }],
+      })],
+      total: 1, offset: 0, limit: 50,
+    });
+    fireEvent.click(screen.getByTestId("composer-stop"));
+
+    await waitFor(() => expect(screen.queryByTestId("agent-thinking")).not.toBeInTheDocument());
+    expect(screen.getByTestId("composer-send")).toBeInTheDocument();
+    expect(input).not.toBeDisabled();
+    expect(await screen.findByTestId("queued-user-message")).toHaveTextContent("long job");
+    expect(screen.queryByTestId("pending-user-message")).not.toBeInTheDocument();
+    expect(mockVenue.jobs.cancel).toBeUndefined();
   });
 
   // The venue mints the session server-side, so it does not exist while the

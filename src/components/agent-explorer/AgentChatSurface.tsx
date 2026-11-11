@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Loader2, MessageSquare, Pencil, Plus, Send, X } from "lucide-react";
+import { Check, MessageSquare, Pencil, Plus, Send, Square, X } from "lucide-react";
 import { AgentStatus } from "@covia/covia-sdk";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +47,7 @@ export function AgentChatSurface({ controller }: { controller: AgentExplorerCont
     startNewChat,
     selectSession,
     send,
+    stopWaiting,
   } = controller;
 
   const transcriptRef = useRef<HTMLDivElement | null>(null);
@@ -227,20 +228,39 @@ export function AgentChatSurface({ controller }: { controller: AgentExplorerCont
             className={cn("text-sm disabled:opacity-100", SUGGESTION_PLACEHOLDER_CLASS)}
             disabled={sending || !canSend}
           />
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                data-testid="composer-send"
-                aria-label="Send message"
-                size="sm"
-                onClick={send}
-                disabled={sending || !canSend || !messageText.trim()}
-              >
-                {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Send message</TooltipContent>
-          </Tooltip>
+          {sending ? (
+            // Stops only this page's wait: the agent keeps working and its
+            // reply still lands in the session.
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  data-testid="composer-stop"
+                  aria-label="Stop waiting for the reply"
+                  size="sm"
+                  variant="secondary"
+                  onClick={stopWaiting}
+                >
+                  <Square size={12} className="fill-current" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Stop waiting. The agent keeps working, and its reply will appear here.</TooltipContent>
+            </Tooltip>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  data-testid="composer-send"
+                  aria-label="Send message"
+                  size="sm"
+                  onClick={send}
+                  disabled={!canSend || !messageText.trim()}
+                >
+                  <Send size={14} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Send message</TooltipContent>
+            </Tooltip>
+          )}
         </div>
         {!canSend && selectedAgentDetail.status === AgentStatus.SUSPENDED && (
           <p className="text-xs text-muted-foreground">Resume the agent to send messages.</p>

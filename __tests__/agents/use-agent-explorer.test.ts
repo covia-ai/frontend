@@ -58,6 +58,21 @@ function makeVenue(venueId: string, agentIds: string[], configs: Record<string, 
 
 const { notifyError, notifyWarning } = jest.requireMock("@/lib/notify");
 
+// Chats go out as tracked jobs (sendAgentChat): invoke, a job read for a new
+// chat's session, then the job's result. `send` stands in for the job's
+// outcome and records the message it was given.
+function mockChat(send: (message: string) => Promise<unknown>, mintedSessionId?: string) {
+  mockVenue.operations = {
+    ...(mockVenue.operations ?? {}),
+    invoke: jest.fn().mockImplementation((_op: string, input: { message: string }) =>
+      Promise.resolve({ id: "0xjob", result: () => send(input.message) })),
+  };
+  mockVenue.jobs = {
+    get: jest.fn().mockResolvedValue({ metadata: mintedSessionId ? { sessionId: mintedSessionId } : {} }),
+  };
+}
+
+
 describe("useAgentExplorer — venue switch under an open agent", () => {
   beforeEach(() => {
     (notifyError as jest.Mock).mockReset();
@@ -527,9 +542,8 @@ describe("useAgentExplorer — composer", () => {
         sessionEntry(`sess-${agentId}`, [{ role: "assistant", content: `${agentId}-reply`, ts: 1 }]),
       ])),
     );
-    mockVenue.agent.mockReturnValue({
-      chatSession: (sessionId?: string) => ({ sessionId, send: () => send.promise }),
-    });
+    mockVenue.agent.mockReturnValue({ chatSession: (sessionId?: string) => ({ sessionId }) });
+    mockChat(() => send.promise);
     const { result } = renderHook(() => useAgentExplorer("agent-a"));
     await waitFor(() => expect(result.current.selectedSessionId).toBe("sess-agent-a"));
 
@@ -570,9 +584,8 @@ describe("useAgentExplorer — composer", () => {
       .fn()
       .mockRejectedValueOnce(new Error("upstream model unavailable"))
       .mockResolvedValueOnce({ response: "done", sessionId: "sess-1" });
-    mockVenue.agent.mockReturnValue({
-      chatSession: (sessionId?: string) => ({ sessionId, send }),
-    });
+    mockVenue.agent.mockReturnValue({ chatSession: (sessionId?: string) => ({ sessionId }) });
+    mockChat(send);
     const { result } = renderHook(() => useAgentExplorer("agent-a"));
     await waitFor(() => expect(result.current.selectedSessionId).toBe("sess-1"));
 
@@ -610,7 +623,8 @@ describe("useAgentExplorer — composer", () => {
       );
       return Promise.reject(new Error("tool loop failed"));
     });
-    mockVenue.agent.mockReturnValue({ chatSession: (sessionId?: string) => ({ sessionId, send }) });
+    mockVenue.agent.mockReturnValue({ chatSession: (sessionId?: string) => ({ sessionId }) });
+    mockChat(send);
     const { result } = renderHook(() => useAgentExplorer("agent-a"));
     await waitFor(() => expect(result.current.selectedSessionId).toBe("sess-1"));
 
@@ -637,9 +651,8 @@ describe("useAgentExplorer — composer", () => {
     mockVenue.agents.info.mockResolvedValue({ agentId: "agent-a", status: "RUNNING", config: {} });
     mockVenue.agents.listSessions.mockResolvedValue(sessionsPage([sessionEntry("sess-1", earlier)]));
     // A send that never settles — the agent is still thinking.
-    mockVenue.agent.mockReturnValue({
-      chatSession: (sessionId?: string) => ({ sessionId, send: () => new Promise(() => {}) }),
-    });
+    mockVenue.agent.mockReturnValue({ chatSession: (sessionId?: string) => ({ sessionId }) });
+    mockChat(() => new Promise(() => {}));
     const { result } = renderHook(() => useAgentExplorer("agent-a"));
     await waitFor(() => expect(result.current.currentSession?.conversation).toHaveLength(2));
 
