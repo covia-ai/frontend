@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { AgentStatus } from "@covia/covia-sdk";
-import { ArrowUpRight, Bot, Cpu, Loader2, MessageSquarePlus, RotateCcw, Send } from "lucide-react";
+import { ArrowUpRight, Bot, Cpu, Loader2, MessageSquarePlus, RotateCcw, Send, Square } from "lucide-react";
 
 import { AgentConversation } from "@/components/AgentConversation";
 import { AgentIdenticon } from "@/components/agent-roster/AgentIdenticon";
@@ -63,6 +63,7 @@ export function AgentChat({ initialAgentId }: AgentChatProps) {
     startNewChat,
     selectSession,
     send,
+    stopWaiting,
   } = controller;
 
   const hasFailedSend = failedSend !== null;
@@ -252,16 +253,32 @@ export function AgentChat({ initialAgentId }: AgentChatProps) {
             )}
           />
           <div className="flex items-center justify-end">
-            <Button
-              data-testid="clean-composer-send"
-              size="icon"
-              className="size-9 rounded-full"
-              aria-label="Send message"
-              onClick={send}
-              disabled={sending || !canSend || !messageText.trim()}
-            >
-              {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-            </Button>
+            {sending ? (
+              // Stops only this page's wait: the agent keeps working and its
+              // reply still lands in the session.
+              <Button
+                data-testid="clean-composer-stop"
+                size="icon"
+                variant="secondary"
+                className="size-9 rounded-full"
+                aria-label="Stop waiting for the reply"
+                title="Stop waiting. The agent keeps working, and its reply will appear here."
+                onClick={stopWaiting}
+              >
+                <Square size={14} className="fill-current" />
+              </Button>
+            ) : (
+              <Button
+                data-testid="clean-composer-send"
+                size="icon"
+                className="size-9 rounded-full"
+                aria-label="Send message"
+                onClick={send}
+                disabled={!canSend || !messageText.trim()}
+              >
+                <Send size={16} />
+              </Button>
+            )}
           </div>
         </div>
       </footer>

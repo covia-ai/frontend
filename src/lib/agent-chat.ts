@@ -1,4 +1,4 @@
-import { AgentStatus } from "@covia/covia-sdk";
+import { AgentStatus, type Venue } from "@covia/covia-sdk";
 import { errorMessage } from "@/lib/errors";
 import { jobFailure, notifyError, notifyWarning } from "@/lib/notify";
 import { gtmEvent } from "@/lib/utils";
@@ -10,6 +10,49 @@ export type AgentChatResult = {
   sessionId?: string;
   response?: unknown;
 };
+
+export const AGENT_CHAT_OPERATION = "v/ops/agent/chat";
+
+type ChatSendVenue = Pick<Venue, "operations" | "jobs">;
+
+type SendAgentChatOptions = {
+  agentId: string;
+  message: string;
+  /** The session to continue; omitted, the venue starts a new one. */
+  sessionId?: string | null;
+  /** The chat's job, as soon as the venue has it. */
+  onJob?: (jobId: string) => void;
+  /** A new chat's session, as soon as the venue has accepted the message:
+   *  well before the reply, so the conversation can be shown (and continued)
+   *  even if the client stops waiting for it. */
+  onSession?: (sessionId: string) => void;
+};
+
+/**
+ * Sends a chat as a tracked job and waits for its reply. Unlike
+ * `agents.chat()`, which hands back nothing until the reply, this reports the
+ * chat's job and session as soon as the venue accepts the message: the venue
+ * records the session on the job before the agent runs. Waiting can then be
+ * abandoned without losing the conversation; the job keeps running and its
+ * reply lands in the session either way.
+ */
+export async function sendAgentChat(
+  venue: ChatSendVenue,
+  { agentId, message, sessionId, onJob, onSession }: SendAgentChatOptions,
+): Promise<AgentChatResult> {
+  const job = await venue.operations.invoke(AGENT_CHAT_OPERATION, {
+    agentId,
+    message,
+    ...(sessionId ? { sessionId } : {}),
+  });
+  onJob?.(job.id);
+  if (!sessionId) {
+    const accepted = await venue.jobs.get(job.id).catch(() => null);
+    const minted = accepted?.metadata?.sessionId;
+    if (typeof minted === "string" && minted) onSession?.(minted);
+  }
+  return (await job.result()) as AgentChatResult;
+}
 
 /** Composer placeholder while a send is pending — reports the agent's live
  *  run-loop activity (from the venue's SSE tap) when available, falling
@@ -48,6 +91,10 @@ type DispatchAgentMessageOptions = {
   /** Job-free probe of the agent's runtime status, so the slow-reply warning
    *  can report the agent's actual state instead of guessing. */
   agentStatus?: () => Promise<string | undefined>;
+  /** True once the user has stopped waiting for this reply: the slow and
+   *  empty-reply warnings are then left out, since nobody is waiting. A
+   *  failure is still reported. */
+  stoppedWaiting?: () => boolean;
 };
 
 export async function dispatchAgentMessage({
@@ -58,6 +105,7 @@ export async function dispatchAgentMessage({
   send,
   slowAfterMs = AGENT_CHAT_SLOW_AFTER_MS,
   agentStatus,
+  stoppedWaiting = () => false,
 }: DispatchAgentMessageOptions): Promise<AgentChatResult> {
   const message = text.trim();
   // A slow reply is normal — a sleeping agent has to wake and run a full
@@ -66,6 +114,7 @@ export async function dispatchAgentMessage({
   // rejecting here just misreports a working agent (then invites a duplicate
   // send) while the eventual reply gets dropped.
   const slowTimer = setTimeout(() => {
+    if (stoppedWaiting()) return;
     void (async () => {
       const status = await agentStatus?.().catch(() => undefined);
       if (status === AgentStatus.SUSPENDED) {
@@ -84,7 +133,8 @@ export async function dispatchAgentMessage({
   try {
     const result = await send(message);
     const response = result?.response;
-    if (response == null || (typeof response === "string" && response.trim() === "")) {
+    const empty = response == null || (typeof response === "string" && response.trim() === "");
+    if (empty && !stoppedWaiting()) {
       notifyWarning("The agent sent an empty reply", {
         description: "It may have hit an error — check its session on the agent's page.",
       });

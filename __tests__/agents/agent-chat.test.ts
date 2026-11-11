@@ -7,7 +7,7 @@ jest.mock("@/lib/utils", () => ({
   },
 }));
 
-import { dispatchAgentMessage } from "@/lib/agent-chat";
+import { AGENT_CHAT_OPERATION, dispatchAgentMessage, sendAgentChat } from "@/lib/agent-chat";
 import { jobFailure, notifyError, notifyWarning } from "@/lib/notify";
 import { gtmEvent } from "@/lib/utils";
 
@@ -127,5 +127,87 @@ describe("dispatchAgentMessage", () => {
       common.venueBaseUrl,
       "/jobs/failed",
     );
+  });
+});
+
+// Stopping the wait (#542) silences the warnings meant for someone waiting,
+// never the failure.
+describe("dispatchAgentMessage after the user stopped waiting", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it("leaves out the slow-reply and empty-reply warnings", async () => {
+    jest.useFakeTimers();
+    let resolveSend!: (result: { response: string }) => void;
+    const pending = dispatchAgentMessage({
+      ...common,
+      text: "hi",
+      slowAfterMs: 10,
+      stoppedWaiting: () => true,
+      send: () => new Promise((resolve) => { resolveSend = resolve; }),
+    });
+    await jest.advanceTimersByTimeAsync(10);
+    resolveSend({ response: "" });
+    await pending;
+    expect(notifyWarning).not.toHaveBeenCalled();
+    jest.useRealTimers();
+  });
+
+  it("still reports a failure", async () => {
+    notifyMock.jobFailure.mockImplementation((error: unknown) => ({ reason: error, jobHref: undefined }));
+    await expect(dispatchAgentMessage({
+      ...common,
+      text: "hi",
+      stoppedWaiting: () => true,
+      send: () => Promise.reject(new Error("model down")),
+    })).rejects.toThrow("model down");
+    expect(notifyError).toHaveBeenCalled();
+  });
+});
+
+describe("sendAgentChat", () => {
+  const venueFor = (output: unknown, accepted: unknown = { metadata: { sessionId: "s-new" } }) => ({
+    operations: {
+      invoke: jest.fn().mockResolvedValue({ id: "0xjob", result: () => Promise.resolve(output) }),
+    },
+    jobs: { get: jest.fn().mockResolvedValue(accepted) },
+  });
+
+  it("reports a new chat's job and session before the reply, then returns the reply", async () => {
+    const venue = venueFor({ sessionId: "s-new", response: "hello" });
+    const onJob = jest.fn();
+    const onSession = jest.fn();
+
+    await expect(
+      sendAgentChat(venue as never, { agentId: "a1", message: "hi", onJob, onSession }),
+    ).resolves.toEqual({ sessionId: "s-new", response: "hello" });
+
+    expect(venue.operations.invoke).toHaveBeenCalledWith(AGENT_CHAT_OPERATION, { agentId: "a1", message: "hi" });
+    expect(onJob).toHaveBeenCalledWith("0xjob");
+    expect(venue.jobs.get).toHaveBeenCalledWith("0xjob");
+    expect(onSession).toHaveBeenCalledWith("s-new");
+  });
+
+  it("continues an existing session without reading the job for it", async () => {
+    const venue = venueFor({ sessionId: "s-1", response: "ok" });
+    const onSession = jest.fn();
+
+    await sendAgentChat(venue as never, { agentId: "a1", message: "hi", sessionId: "s-1", onSession });
+
+    expect(venue.operations.invoke).toHaveBeenCalledWith(AGENT_CHAT_OPERATION, {
+      agentId: "a1", message: "hi", sessionId: "s-1",
+    });
+    expect(venue.jobs.get).not.toHaveBeenCalled();
+    expect(onSession).not.toHaveBeenCalled();
+  });
+
+  it("still returns the reply when the job read fails or names no session", async () => {
+    const venue = venueFor({ sessionId: "s-new", response: "ok" });
+    venue.jobs.get.mockRejectedValue(new Error("blip"));
+    const onSession = jest.fn();
+
+    await expect(
+      sendAgentChat(venue as never, { agentId: "a1", message: "hi", onSession }),
+    ).resolves.toMatchObject({ response: "ok" });
+    expect(onSession).not.toHaveBeenCalled();
   });
 });

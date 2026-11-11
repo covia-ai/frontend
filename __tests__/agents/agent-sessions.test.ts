@@ -2,6 +2,7 @@ import {
   agentSessionsToSessions,
   defaultSessionTitle,
   formatSessionLabel,
+  queuedSessionMessages,
 } from "@/lib/agent-sessions";
 
 describe("agent session normalization", () => {
@@ -131,5 +132,31 @@ describe("defaultSessionTitle", () => {
         conversation: [{ role: "assistant", content: "only an assistant turn" }],
       }),
     ).toBeUndefined();
+  });
+});
+
+describe("queuedSessionMessages", () => {
+  it("reads the venue's pending chat envelopes as text with their job", () => {
+    const [session] = agentSessionsToSessions([{
+      id: "s-1",
+      metadata: {},
+      conversation: [],
+      pending: [
+        { sessionId: "s-1", jobId: "0xjob1", message: "plain text" },
+        { sessionId: "s-1", message: { content: "structured" } },
+        { sessionId: "s-1", message: "   " },
+        { sessionId: "s-1", input: { task: "not a chat" } },
+        null,
+      ],
+    }]);
+    expect(queuedSessionMessages(session)).toEqual([
+      { jobId: "0xjob1", text: "plain text" },
+      { text: "structured" },
+    ]);
+  });
+
+  it("is empty for no session or no pending list", () => {
+    expect(queuedSessionMessages(null)).toEqual([]);
+    expect(queuedSessionMessages({ sessionId: "s", conversation: [] } as never)).toEqual([]);
   });
 });

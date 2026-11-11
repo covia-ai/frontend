@@ -58,3 +58,26 @@ export function formatSessionLabel(session: Session): string {
   const turns = session.turns ?? 0;
   return `${created} · …${shortId} · ${turns} turn${turns === 1 ? "" : "s"}`;
 }
+
+/** A message the venue holds for a session that no reply has answered yet. */
+export type QueuedSessionMessage = {
+  /** The chat's job, when the venue's envelope names one. */
+  jobId?: string;
+  text: string;
+};
+
+// The venue's own record of chats still waiting for a reply: a session's
+// `pending` envelopes ({sessionId, message, jobId, …}). It outlives the page
+// that sent them, so the transcript can show them after the client stopped
+// waiting, or after a reload, until the agent takes them.
+export function queuedSessionMessages(session: Session | null | undefined): QueuedSessionMessage[] {
+  const pending = session?.pending;
+  if (!Array.isArray(pending)) return [];
+  return pending.flatMap((envelope): QueuedSessionMessage[] => {
+    if (!envelope || typeof envelope !== "object" || !("message" in envelope)) return [];
+    const { message, jobId } = envelope as { message?: unknown; jobId?: unknown };
+    const text = messageContentToString(message).trim();
+    if (!text) return [];
+    return [{ ...(typeof jobId === "string" && jobId ? { jobId } : {}), text }];
+  });
+}

@@ -18,6 +18,7 @@ import { useCurrentAuth } from "@/hooks/use-auth";
 import { revalidateVenueOnFailure, useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import {
   findPendingChat,
+  hasStoppedWaiting,
   usePendingChats,
 } from "@/hooks/use-pending-chats";
 import { normalizeAgentEntries } from "@/lib/agent-list";
@@ -26,7 +27,7 @@ import { agentSessionsToSessions } from "@/lib/agent-sessions";
 import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { agentConfigsEqual, type AgentConfigSaveOutcome } from "@/lib/agent-settings";
 import { gtmEvent } from "@/lib/utils";
-import { describeSendFailure, dispatchAgentMessage } from "@/lib/agent-chat";
+import { describeSendFailure, dispatchAgentMessage, sendAgentChat } from "@/lib/agent-chat";
 import { useAgentForkProvenance } from "@/hooks/use-agent-fork-provenance";
 import { useAgentLiveEvents } from "@/hooks/use-agent-live-events";
 
@@ -140,6 +141,8 @@ export function useAgentExplorer(
   const pendingChats = usePendingChats((state) => state.pendingChats);
   const startPendingChat = usePendingChats((state) => state.startPendingChat);
   const attachSessionId = usePendingChats((state) => state.attachSessionId);
+  const attachJobId = usePendingChats((state) => state.attachJobId);
+  const stopWaitingFor = usePendingChats((state) => state.stopWaiting);
   const clearPendingChat = usePendingChats((state) => state.clearPendingChat);
   const recordForkProvenance = useAgentForkProvenance((state) => state.record);
 
@@ -147,7 +150,7 @@ export function useAgentExplorer(
     !!selectedAgentId &&
     pendingChats.some(
       (chat) =>
-        chat.agentId === selectedAgentId && chat.sessionId === null,
+        chat.agentId === selectedAgentId && chat.sessionId === null && !chat.stoppedWaiting,
     );
 
   const refreshAgentList = useCallback(
@@ -578,8 +581,7 @@ export function useAgentExplorer(
     if (!venue || !agentHandle || !selectedAgentId || !currentKey) return;
     const agentId = selectedAgentId;
     const key = currentKey;
-    const session = chatSession ?? agentHandle.chatSession();
-    const sessionId = session.sessionId ?? null;
+    const sessionId = chatSession?.sessionId ?? null;
     const turnsAtSend = currentSession?.conversation.length ?? 0;
     setFailedSlot((previous) => (previous?.key === key ? null : previous));
     const chat = startPendingChat({
@@ -589,24 +591,47 @@ export function useAgentExplorer(
       turnsAtSend,
     });
 
+    // The session the message went to: known up front for an existing one, and
+    // as soon as the venue accepts it for a new one (see sendAgentChat).
+    let targetSessionId = sessionId;
+    // The conversation this message went to becomes the one shown — for this
+    // agent, while the user is still waiting on it. Another agent's chat, or a
+    // view the user moved to after they stopped waiting, is left alone.
+    const showTarget = () => {
+      if (!targetSessionId || hasStoppedWaiting(chat)) return;
+      const shown = agentHandle.chatSession(targetSessionId);
+      setChatSlot((previous) =>
+        previous && previous.key !== key ? previous : { key, session: shown, newChatRequested: false },
+      );
+    };
+
     void dispatchAgentMessage({
       agentId,
       text,
       venueId: venue.venueId,
       venueBaseUrl: venue.baseUrl,
-      send: (message) => session.send(message),
+      send: (message) =>
+        sendAgentChat(venue, {
+          agentId,
+          message,
+          sessionId,
+          onJob: (jobId) => attachJobId(chat, jobId),
+          onSession: (minted) => {
+            targetSessionId = minted;
+            attachSessionId(chat, minted);
+            showTarget();
+            void refreshSessions(agentId);
+          },
+        }),
       agentStatus: () => venue.agents.info(agentId).then((info) => info.status),
+      stoppedWaiting: () => hasStoppedWaiting(chat),
     })
       .then(async (result) => {
-        // The conversation this message went to becomes the one shown — for
-        // this agent. Another agent's chat, if the user has moved on, is left
-        // alone.
-        setChatSlot((previous) =>
-          previous && previous.key !== key ? previous : { key, session, newChatRequested: false },
-        );
-        if (sessionId === null && result?.sessionId) {
+        if (!targetSessionId && result?.sessionId) {
+          targetSessionId = result.sessionId;
           attachSessionId(chat, result.sessionId);
         }
+        showTarget();
         // Refreshes land only in slots still showing this agent.
         await refreshSessions(agentId);
         void refreshAgentDetail(agentId);
@@ -618,7 +643,7 @@ export function useAgentExplorer(
         // Edit — rather than silently dropping it back into the composer.
         setFailedSlot({
           key,
-          sessionId: session.sessionId ?? sessionId,
+          sessionId: targetSessionId,
           text,
           reason: describeSendFailure(error, venue.venueId),
           turnsAtSend,
@@ -628,6 +653,15 @@ export function useAgentExplorer(
         void refreshSessions(agentId);
       })
       .finally(() => clearPendingChat(chat));
+  };
+
+  // Stops waiting for the reply on screen without stopping the agent: the
+  // composer is free again at once, the chat's job runs on, and its reply
+  // lands in the session, which the transcript shows when it next refreshes.
+  const stopWaiting = () => {
+    if (!pendingChat) return;
+    stopWaitingFor(pendingChat);
+    void refreshSessions(pendingChat.agentId);
   };
 
   const send = () => {
@@ -712,6 +746,7 @@ export function useAgentExplorer(
     startNewChat,
     selectSession,
     send,
+    stopWaiting,
   };
 }
 
