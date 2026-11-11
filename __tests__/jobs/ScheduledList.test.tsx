@@ -116,18 +116,19 @@ describe('ScheduledList', () => {
     );
   });
 
-  // covia 0.10 (covia#583) lists who scheduled each event, its input and the
-  // scheduler's description.
+  // covia 0.10 (covia#583) lists who scheduled each event (as `caller` since
+  // 0.11), its input and the scheduler's description.
   describe('with 0.10 event details', () => {
     const wake = {
       ...event('h3', 'v/ops/agent/trigger', 30 * 60_000),
       input: { agentId: 'reporter', force: false, wait: false },
       description: 'Morning summary',
-      by: mockOwnDid,
+      caller: mockOwnDid,
     };
     const queuedByAgent = {
       ...event('h4', 'v/ops/http/get', 40 * 60_000),
-      by: `${mockOwnDid}/g/reporter`,
+      caller: `${mockOwnDid}/g/reporter`,
+      owner: mockOwnDid,
     };
 
     beforeEach(() => {

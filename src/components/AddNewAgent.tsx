@@ -36,7 +36,14 @@ import { AgentCapsEditor } from "@/components/agent-config/AgentCapsEditor";
 import { AgentConnectionsPicker } from "@/components/agent-config/AgentConnectionsPicker";
 import { withToolToggled, type CatalogOp } from "@/lib/operations-catalog";
 import { withSkillToggled, type SkillSummary } from "@/lib/skills";
-import { cleanCaps, isAgentCap, type AgentCap } from "@/lib/agent-caps";
+import {
+  capsListOf,
+  cleanCaps,
+  isUnrestrictedCaps,
+  UNRESTRICTED_CAPS,
+  type AgentCap,
+  type AgentCapsMode,
+} from "@/lib/agent-caps";
 import { isReservedAgentId, slugifyAgentId } from "@/lib/agent-id";
 import { agentChatPath } from "@/lib/routes";
 import {
@@ -162,16 +169,23 @@ function AddNewAgentForm({
     () => (Array.isArray(configPreview.skills) ? configPreview.skills : []),
   );
   const [touchedCapabilities, setTouchedCapabilities] = useState(false);
-  // Caps default absent (unrestricted). capsEnabled/caps seed from a cloned
-  // template so the editor honestly shows what's already there, but — same
-  // reasoning as touchedCapabilities for tools/skills — only touchedCaps
-  // (set on actual user interaction, not on seeding) decides whether the
-  // built config carries an override; otherwise an untouched clone would
-  // silently duplicate its own inherited caps layer.
-  const [capsEnabled, setCapsEnabled] = useState(() => Array.isArray(configPreview.caps));
-  const [caps, setCaps] = useState<AgentCap[]>(
-    () => (Array.isArray(configPreview.caps) ? configPreview.caps.filter(isAgentCap) : []),
+  // The agent's authority. The venue gives an agent created without caps none
+  // at all (covia 0.11), so the form always decides it: from a cloned
+  // template's own caps, else unrestricted. The exception is a config with a
+  // referenced layer this form cannot read, which may set caps itself (the
+  // reader template does): the mode stays null and the layer decides, until
+  // the user chooses. Same reasoning as touchedCapabilities for tools/skills —
+  // caps the inline config already states ride along on their own layer
+  // unless the user changes them.
+  const capsStated = Array.isArray(configPreview.caps) || isUnrestrictedCaps(configPreview.caps);
+  const hasReferenceLayer = (Array.isArray(initialConfig) ? initialConfig : [initialConfig])
+    .some((layer) => typeof layer === "string");
+  const [capsMode, setCapsMode] = useState<AgentCapsMode | null>(() =>
+    Array.isArray(configPreview.caps)
+      ? "restricted"
+      : capsStated || !hasReferenceLayer ? "unrestricted" : null,
   );
+  const [caps, setCaps] = useState<AgentCap[]>(() => capsListOf(configPreview.caps));
   const [touchedCaps, setTouchedCaps] = useState(false);
   // A key pasted inline when the chosen provider has none — stored on create
   // so you don't have to leave the dialog to add it in Secrets first.
@@ -241,12 +255,13 @@ function AddNewAgentForm({
   const formIncomplete = !venue || !agentName.trim() || agentIdReserved || customOperationMissing;
 
   const buildAgentConfig = (): AgentConfigInput => {
-    // Unticked capabilities mean "unrestricted", which is the absence of the
-    // key — an empty array would deny every tool call instead.
-    const capsCleared = touchedCaps && !capsEnabled;
+    // Caps are sent explicitly whenever the form decides them: unrestricted
+    // is the string "unrestricted", never the absence of the key, which the
+    // venue reads as no authority.
+    const sendCaps = capsMode !== null && (touchedCaps || !capsStated);
     const baseConfig = withoutAgentConfigFields(
       initialConfig,
-      ["llmOperation", "model", "systemPrompt", ...(capsCleared ? ["caps"] : [])],
+      ["llmOperation", "model", "systemPrompt", ...(sendCaps ? ["caps"] : [])],
     );
     // Undefined for the venue default, which is likewise the absence of the key.
     const llmOperation =
@@ -263,7 +278,9 @@ function AddNewAgentForm({
       // (inlineAgentConfigPreview can't see those), and forcing [] here would
       // silently strip them. Once touched, the picker owns the full array.
       ...(touchedCapabilities && { tools: stagedTools, skills: stagedSkills }),
-      ...(touchedCaps && capsEnabled && { caps: cleanCaps(caps) }),
+      ...(sendCaps && {
+        caps: capsMode === "unrestricted" ? UNRESTRICTED_CAPS : cleanCaps(caps),
+      }),
     };
     return withAgentConfigOverrides(baseConfig, overrides);
   };
@@ -455,9 +472,9 @@ function AddNewAgentForm({
             </div>
 
             <AgentCapsEditor
-              enabled={capsEnabled}
-              onEnabledChange={(next) => {
-                setCapsEnabled(next);
+              mode={capsMode}
+              onModeChange={(next) => {
+                setCapsMode(next);
                 setTouchedCaps(true);
               }}
               caps={caps}

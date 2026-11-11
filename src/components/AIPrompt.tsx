@@ -31,6 +31,7 @@ import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/not
 import { KNOWN_LLM_KEYS, LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
 import { normalizeAgentEntries } from "@/lib/agent-list";
+import { UNRESTRICTED_CAPS } from "@/lib/agent-caps";
 import {
   asSdkAgentConfig,
   normalizeAgentTemplate,
@@ -209,7 +210,13 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted, starters, variant = "pag
             // Drop any inline model tied to the template's former provider, but
             // preserve every other field and all ordered/reference layers.
             withoutAgentConfigFields(template.config, ["llmOperation", "model"]),
-            { llmOperation: provider.operation },
+            {
+              llmOperation: provider.operation,
+              // The venue gives an agent created without caps no authority
+              // (covia 0.11), and the skilled template sets none: the user's
+              // own assistant acts with their whole authority.
+              ...(template.preview.caps === undefined && { caps: UNRESTRICTED_CAPS }),
+            },
           ),
         ),
       });

@@ -284,6 +284,9 @@ describe('AIPrompt — default agent reuse vs creation', () => {
           // it was pinned for a different provider.
           llmOperation: 'v/ops/langchain/anthropic',
           systemPrompt: SKILLED_CONFIG.systemPrompt,
+          // The template sets no caps, which the venue reads as no authority
+          // (covia 0.11): the user's own assistant is unrestricted.
+          caps: 'unrestricted',
         },
       });
     });

@@ -52,3 +52,11 @@ export function isNotFoundError(error: unknown): boolean {
   }
   return candidate.cause !== error && isNotFoundError(candidate.cause);
 }
+
+// A job read that will never find the job: no such job (404), or an id the
+// venue cannot parse, which it answers with 400 since covia 0.11 ("Job request
+// requires a job ID as a valid hex string"). Only for job-by-id reads, where
+// the id is the only input a 400 can be about.
+export function isJobNotFoundError(error: unknown): boolean {
+  return isNotFoundError(error) || errorStatus(error) === 400;
+}

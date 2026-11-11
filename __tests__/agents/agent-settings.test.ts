@@ -76,3 +76,35 @@ describe("agent settings config", () => {
     });
   });
 });
+
+describe("agent settings caps (covia 0.11)", () => {
+  it("reads caps: \"unrestricted\" as unrestricted and writes it back explicitly", () => {
+    const original = { caps: "unrestricted" };
+    const draft = createAgentSettingsDraft(original);
+    expect(draft.capsMode).toBe("unrestricted");
+    expect(draft.caps).toEqual([]);
+    expect(configFromAgentSettingsDraft(draft, original).config).toEqual({ caps: "unrestricted" });
+    expect(agentConfigUpdatePatch(original, configFromAgentSettingsDraft(draft, original).config ?? {}))
+      .toEqual({});
+  });
+
+  it("never patches caps to null when an agent is switched to unrestricted", () => {
+    const original = { caps: [{ with: "w/", can: "crud/read" }] };
+    const draft = { ...createAgentSettingsDraft(original), capsMode: "unrestricted" as const };
+    expect(agentConfigUpdatePatch(original, configFromAgentSettingsDraft(draft, original).config ?? {}))
+      .toEqual({ caps: "unrestricted" });
+  });
+
+  it("keeps an empty list (no authority) as an empty list", () => {
+    const original = { caps: [] };
+    const draft = createAgentSettingsDraft(original);
+    expect(draft.capsMode).toBe("restricted");
+    expect(configFromAgentSettingsDraft(draft, original).config).toEqual({ caps: [] });
+  });
+
+  it("leaves a config that never had caps (a venue before 0.11) without them", () => {
+    const draft = createAgentSettingsDraft({});
+    expect(draft.capsMode).toBe("unrestricted");
+    expect(configFromAgentSettingsDraft(draft, {}).config).not.toHaveProperty("caps");
+  });
+});

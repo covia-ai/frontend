@@ -1,14 +1,15 @@
 import { Venue, fetchWithError } from "@covia/covia-sdk";
 
-// {handle, op, time, track, by?, input?, description?, created?, repeat?,
+// {handle, op, time, track, caller?, owner?, input?, description?, created?, repeat?,
 // lastFired?, lastJob?} — the grid scheduler's event shape (covia#408, with
 // the descriptive fields from covia 0.10, covia#583): `time` is the next fire
 // time in epoch ms; a recurring event also carries `repeat` (fixed interval
 // only — cron-style calendar expressions are still covia#408 stage 2),
 // `lastFired`, and, when tracked, `lastJob` (a Job id — read
 // GET /api/v1/jobs/{id} for that fire's outcome). One-shot events carry none
-// of the recurrence fields. `by` is whoever scheduled it (the account, or one
-// of its agents), `input` is shown with the operation's secret fields hidden,
+// of the recurrence fields. `caller` is whoever scheduled it (the account, or
+// one of its agents) and `owner` the namespace it acted in, present only when
+// it differs (covia 0.11, which renamed `by`). `input` is shown with the operation's secret fields hidden,
 // as job records show it, and `description` is the scheduler's own free text.
 // Venues before 0.10 send none of those four.
 export type ScheduledEvent = {
@@ -16,7 +17,8 @@ export type ScheduledEvent = {
   op: string;
   time: number;
   track: boolean;
-  by?: string;
+  caller?: string;
+  owner?: string;
   input?: unknown;
   description?: string;
   created?: number;

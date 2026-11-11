@@ -64,6 +64,17 @@ describe("useWorkspaceExplorer", () => {
     expect(mockVenue.workspace.read).not.toHaveBeenCalled();
   });
 
+  // covia 0.11 refuses to list "/": the root shows the known namespaces.
+  it("lists the root from the namespace catalogue without asking the venue", async () => {
+    const { result } = renderHook(() => useWorkspaceExplorer("/"));
+
+    await waitFor(() => expect(result.current.listingLoading).toBe(false));
+    expect(result.current.currentPath).toBe("/");
+    expect(mockVenue.workspace.list).not.toHaveBeenCalled();
+    const keys = result.current.entries.map((entry) => entry.key);
+    expect(keys).toEqual(["v", "w", "o", "a", "g", "j", "h", "s"]);
+  });
+
   it("loads only the child the user explicitly selects", async () => {
     mockVenue.workspace.list.mockImplementation((path: string) => {
       if (path === "w") {

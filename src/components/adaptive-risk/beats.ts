@@ -185,9 +185,10 @@ export function reconstructionCurl(
 
 export type RecordSummary = {
   status: string | null;
-  /** Present only when the acting principal differs from the owner. */
-  actor: string | null;
+  /** The principal that made the call (covia 0.11). */
   caller: string | null;
+  /** Its namespace, present only when it differs from `caller`. */
+  owner: string | null;
   error: string | null;
   /** How many predecessor states the record carries. */
   prevDepth: number;
@@ -210,8 +211,8 @@ export function summariseRecord(record: unknown): RecordSummary {
   }
   return {
     status: typeof top.status === "string" ? top.status : null,
-    actor: typeof top.actor === "string" ? top.actor : null,
     caller: typeof top.caller === "string" ? top.caller : null,
+    owner: typeof top.owner === "string" ? top.owner : null,
     error: typeof top.error === "string" ? top.error : null,
     prevDepth: depth,
     // Oldest first reads as a history rather than a stack.

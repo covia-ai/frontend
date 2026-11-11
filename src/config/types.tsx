@@ -4,7 +4,8 @@ export interface AgentDetail {
    tasks?: number;
    timelineLength?: number;
    config?: Record<string, any>;
-   unavailableTools?: unknown[];
+   // The principal whose authority the agent acts with (covia 0.11).
+   controller?: string;
    error?: string;
    state?: Record<string, any>;
    timeline?: any[];

@@ -1,7 +1,8 @@
-// Root-level lattice and virtual namespace keys. User namespace roots may not
-// materialise until they contain data; `v` is a venue-provided virtual view
-// and therefore does not appear in the caller's root listing either. Keep the
-// complete browser catalogue here, with one shared explanation for every UI.
+// The namespaces a path starts at. The venue lists no root (covia 0.11
+// refuses an empty path, "/" or a DID alone, naming these instead), so the
+// browser's root shows this catalogue, with one shared explanation for every
+// UI. `x/<adapter>` views, and a running agent's, session's or job's n, c and
+// t, are reached by path rather than browsed from here.
 export const ROOT_NAMESPACES = [
   {
     key: "v",
@@ -42,11 +43,6 @@ export const ROOT_NAMESPACES = [
     key: "s",
     label: "Secrets",
     description: "Encrypted credentials managed through the Secrets interface.",
-  },
-  {
-    key: "meta",
-    label: "Metadata",
-    description: "Account and namespace metadata maintained by the venue.",
   },
 ];
 
