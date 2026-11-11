@@ -84,8 +84,10 @@ export type HitlRequest = {
   id: string;
   title: string;
   status: HitlStatus;
-  /** DID of the requesting user — the agent's owner when `agent` is set. */
-  from?: string;
+  /** The principal that asked: a user, one of its agents or a delegate (covia 0.11). */
+  caller?: string;
+  /** The namespace the asker acted in — an agent's or delegate's user — when it differs from `caller`. */
+  owner?: string;
   /**
    * Id of the agent that raised the request, when one did. Absent for requests
    * raised directly by a person or a plain operation call.

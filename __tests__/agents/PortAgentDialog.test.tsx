@@ -84,6 +84,8 @@ describe("PortAgentDialog (Migrate → native)", () => {
       agentId: "refund-bot",
       systemPrompt: "You are Acme support. Follow the refund-policy skill.",
       skills: [{ text: expect.stringContaining("name: refund-policy") }],
+      // Without caps the venue gives the agent no authority (covia 0.11).
+      config: { caps: "unrestricted" },
     });
 
     // notifySuccess and router.push fire later in handlePort's async chain

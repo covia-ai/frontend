@@ -8,7 +8,7 @@ import { useAuthStore } from "@/hooks/use-auth";
 import { useVenues } from "@/hooks/use-venues";
 import { getVenueFor } from "@/lib/venue-registry";
 import { notifySuccess, notifyError } from "@/lib/notify";
-import { isNotFoundError } from "@/lib/errors";
+import { isJobNotFoundError } from "@/lib/errors";
 import { jobPath } from "@/lib/routes";
 
 // How often the shared poller re-checks watched jobs. Only ticks while the
@@ -126,7 +126,7 @@ export function useWatchedJobsPoll(): void {
           useWatchedJobs.getState().unwatch(venueId, jobId);
         } catch (err: unknown) {
           // A deleted job will never complete — nothing left to watch for.
-          if (isNotFoundError(err)) {
+          if (isJobNotFoundError(err)) {
             useWatchedJobs.getState().unwatch(venueId, jobId);
             continue;
           }

@@ -337,13 +337,18 @@ describe('reconstruction (beat 5)', () => {
     expect(summary.states).toEqual(['PENDING', 'STARTED', 'COMPLETE']);
     expect(summary.prevDepth).toBe(2);
     expect(summary.caller).toBe('did:key:zOwner');
-    // actor appears only when the acting principal differs from the owner.
-    expect(summary.actor).toBeNull();
+    // owner appears only when the caller acted in another namespace.
+    expect(summary.owner).toBeNull();
   });
 
-  it('reports an actor when the acting principal differs from the owner', () => {
-    expect(summariseRecord({ status: 'FAILED', actor: 'did:key:zOwner:g:rk-assessor' }).actor)
-      .toBe('did:key:zOwner:g:rk-assessor');
+  it('reports the owner when an agent made the call (covia 0.11)', () => {
+    const summary = summariseRecord({
+      status: 'FAILED',
+      caller: 'did:key:zOwner/g/rk-assessor',
+      owner: 'did:key:zOwner',
+    });
+    expect(summary.caller).toBe('did:key:zOwner/g/rk-assessor');
+    expect(summary.owner).toBe('did:key:zOwner');
   });
 
   it('never says "replay" — JOBS.md is reconstruct, never re-execute', () => {

@@ -119,15 +119,15 @@ export function ReconstructionPanel({
               <DidDisplay value={summary.caller} />
             </div>
           )}
-          {summary.actor ? (
+          {summary.owner ? (
             <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">actor</span>
-              <DidDisplay value={summary.actor} />
+              <span className="text-muted-foreground">owner</span>
+              <DidDisplay value={summary.owner} />
             </div>
           ) : (
-            <p className="text-muted-foreground" data-testid="ar-no-actor">
-              No <span className="font-mono">actor</span> field — it appears only
-              when the acting principal differs from the record&apos;s owner.
+            <p className="text-muted-foreground" data-testid="ar-no-owner">
+              No <span className="font-mono">owner</span> field — it appears only
+              when the caller acted in another principal&apos;s namespace.
             </p>
           )}
           {summary.error && (

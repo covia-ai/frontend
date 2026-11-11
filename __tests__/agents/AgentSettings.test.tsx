@@ -181,7 +181,7 @@ describe("AgentSettings — capabilities (caps) editor", () => {
     render(<AgentSettings agent={agent} onSave={jest.fn()} />);
     await user.click(screen.getByRole("tab", { name: "Capabilities" }));
 
-    expect(screen.getByRole("checkbox", { name: /capabilities \(optional\)/i })).toBeChecked();
+    expect(screen.getByLabelText("Only these capabilities")).toBeChecked();
     expect(screen.getByTestId("cap-with-0")).toHaveValue("w/notes/");
   });
 
@@ -204,7 +204,9 @@ describe("AgentSettings — capabilities (caps) editor", () => {
     );
   });
 
-  it("disabling a previously-enabled caps set clears it with a null patch", async () => {
+  // caps: null gives the agent no authority (covia 0.11), so choosing
+  // unrestricted sends the string.
+  it('choosing unrestricted sends caps: "unrestricted", never null', async () => {
     const user = userEvent.setup();
     const onSave = jest.fn().mockResolvedValue({ status: "saved" });
     const agent: AgentDetail = {
@@ -214,10 +216,30 @@ describe("AgentSettings — capabilities (caps) editor", () => {
     render(<AgentSettings agent={agent} onSave={onSave} />);
     await user.click(screen.getByRole("tab", { name: "Capabilities" }));
 
-    await user.click(screen.getByRole("checkbox", { name: /capabilities \(optional\)/i }));
+    await user.click(screen.getByLabelText("Unrestricted"));
     await user.click(screen.getByTestId("save-agent-settings"));
 
-    await waitFor(() => expect(onSave).toHaveBeenCalledWith({ caps: null }, expect.any(Object)));
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith({ caps: "unrestricted" }, expect.any(Object)));
+  });
+
+  it("shows an unrestricted agent as unrestricted and keeps it so on an unrelated save", async () => {
+    const user = userEvent.setup();
+    const onSave = jest.fn().mockResolvedValue({ status: "saved" });
+    const agent: AgentDetail = {
+      ...baseAgent,
+      config: { caps: "unrestricted", systemPrompt: "Old" },
+    };
+    render(<AgentSettings agent={agent} onSave={onSave} />);
+    await user.click(screen.getByRole("tab", { name: "Capabilities" }));
+    expect(screen.getByLabelText("Unrestricted")).toBeChecked();
+    expect(screen.queryByTestId("cap-with-0")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "General" }));
+    await user.clear(screen.getByLabelText("System prompt"));
+    await user.type(screen.getByLabelText("System prompt"), "New");
+    await user.click(screen.getByTestId("save-agent-settings"));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith({ systemPrompt: "New" }, expect.any(Object)));
   });
 });
 

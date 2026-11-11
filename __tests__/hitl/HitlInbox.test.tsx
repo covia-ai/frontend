@@ -41,7 +41,7 @@ beforeEach(() => mockRespond.mockClear());
 
 describe('requester attribution', () => {
   it('credits the agent and links to it', () => {
-    withRequests([req({ agent: 'guarded-writer', from: 'did:key:zOWNER' })]);
+    withRequests([req({ agent: 'guarded-writer', caller: 'did:key:zOWNER/g/guarded-writer', owner: 'did:key:zOWNER' })]);
     render(<HitlInbox />);
     expect(screen.getByTestId('hitl-view-agent'))
       .toHaveAttribute('href', '/agents/agent/guarded-writer');
@@ -55,7 +55,7 @@ describe('requester attribution', () => {
   });
 
   it('shows no agent link for a person-raised request', () => {
-    withRequests([req({ from: 'did:key:zSOMEONE' })]);
+    withRequests([req({ caller: 'did:key:zSOMEONE' })]);
     render(<HitlInbox />);
     expect(screen.queryByTestId('hitl-view-agent')).not.toBeInTheDocument();
   });

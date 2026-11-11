@@ -35,6 +35,7 @@ import { LLM_PROVIDERS } from "@/config/llm-providers";
 import { isReservedAgentId, slugifyAgentId } from "@/lib/agent-id";
 import { agentChatPath } from "@/lib/routes";
 import { useSecretNames } from "@/hooks/use-secret-names";
+import { UNRESTRICTED_CAPS } from "@/lib/agent-caps";
 import {
   AgentRuntimeFields,
   CUSTOM_PROVIDER_OPTION,
@@ -249,6 +250,10 @@ function PortAgentForm({ initialName, initialSystemPrompt, onClose }: PortAgentF
         skills: portSkills.map((s) => ({ text: s.text })),
         ...(usingProvider && llmOperation && { llmOperation }),
         ...(resolvedModel && { model: resolvedModel }),
+        // The venue gives an agent created without caps no authority (covia
+        // 0.11); a ported agent acts with its creator's whole authority, as
+        // the create form's default does.
+        config: { caps: UNRESTRICTED_CAPS },
       });
       const createdId = result?.agentId ?? resolvedAgentId;
       const importedCount = result?.importedSkills?.length ?? portSkills.length;
