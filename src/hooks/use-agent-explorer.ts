@@ -17,9 +17,11 @@ import type { AgentDetail, AgentListItem, Session } from "@/config/types";
 import { useCurrentAuth } from "@/hooks/use-auth";
 import { revalidateVenueOnFailure, useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import {
-  findPendingChat,
+  findWaitingChats,
   hasStoppedWaiting,
+  pendingChatSessionId,
   usePendingChats,
+  type PendingChat,
 } from "@/hooks/use-pending-chats";
 import { normalizeAgentEntries } from "@/lib/agent-list";
 import { hasUserTurnSince } from "@/lib/agent-turns";
@@ -321,12 +323,14 @@ export function useAgentExplorer(
       ) ?? null,
     [sessions, selectedSessionId],
   );
-  const pendingChat = findPendingChat(
-    pendingChats,
-    selectedAgentId,
-    selectedSessionId,
+  // Every chat on this transcript still waited for, oldest first: more than one
+  // once follow-ups are sent mid-reply (#541).
+  const waitingChats = useMemo(
+    () => findWaitingChats(pendingChats, selectedAgentId, selectedSessionId),
+    [pendingChats, selectedAgentId, selectedSessionId],
   );
-  const sending = pendingChat !== null;
+  const pendingChat: PendingChat | null = waitingChats[0] ?? null;
+  const sending = waitingChats.length > 0;
 
   const setMessageText = useCallback(
     (text: string) => {
@@ -582,6 +586,10 @@ export function useAgentExplorer(
     const agentId = selectedAgentId;
     const key = currentKey;
     const sessionId = chatSession?.sessionId ?? null;
+    // A follow-up to a new chat whose first message the venue has not yet
+    // accepted joins that chat's session: it is known by the time this send's
+    // turn to be handed over comes.
+    const leader = sessionId === null ? pendingChat : null;
     const turnsAtSend = currentSession?.conversation.length ?? 0;
     setFailedSlot((previous) => (previous?.key === key ? null : previous));
     const chat = startPendingChat({
@@ -614,7 +622,17 @@ export function useAgentExplorer(
         sendAgentChat(venue, {
           agentId,
           message,
-          sessionId,
+          sessionId: () => {
+            const joined = sessionId ?? (leader ? pendingChatSessionId(leader) : null);
+            if (joined && !targetSessionId) {
+              targetSessionId = joined;
+              attachSessionId(chat, joined);
+            }
+            return joined;
+          },
+          // In the order typed, each handed over once the one before it is
+          // accepted: never held back for a reply.
+          queue: `${venue.venueId}/${agentId}`,
           onJob: (jobId) => attachJobId(chat, jobId),
           onSession: (minted) => {
             targetSessionId = minted;
@@ -660,7 +678,7 @@ export function useAgentExplorer(
   // lands in the session, which the transcript shows when it next refreshes.
   const stopWaiting = () => {
     if (!pendingChat) return;
-    stopWaitingFor(pendingChat);
+    for (const chat of waitingChats) stopWaitingFor(chat);
     void refreshSessions(pendingChat.agentId);
   };
 
@@ -707,9 +725,11 @@ export function useAgentExplorer(
     !!selectedAgentDetail &&
     selectedAgentDetail.status !== AgentStatus.TERMINATED &&
     selectedAgentDetail.status !== AgentStatus.SUSPENDED;
-  const echoAlreadyRecorded =
-    !!pendingChat &&
-    hasUserTurnSince(currentSession?.conversation, pendingChat.turnsAtSend, pendingChat.text);
+  // The waited-for messages the venue has not yet recorded as turns, to echo
+  // straight away: the transcript shows each once the venue has it.
+  const pendingEchoes = waitingChats.filter(
+    (chat) => !hasUserTurnSince(currentSession?.conversation, chat.turnsAtSend, chat.text),
+  );
 
   return {
     isAuthenticated: auth !== null,
@@ -727,10 +747,10 @@ export function useAgentExplorer(
     messageText,
     setMessageText,
     pendingChat,
+    pendingEchoes,
     sending,
     activity,
     canSend,
-    echoAlreadyRecorded,
     failedSend,
     retrySend,
     editFailedSend,

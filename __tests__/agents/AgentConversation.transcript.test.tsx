@@ -20,8 +20,8 @@ function renderTranscript(conversation: Session["conversation"]) {
       agentId="agent-1"
       selectedSessionId="sess-1"
       session={{ sessionId: "sess-1", conversation }}
-      pendingChat={null}
-      echoAlreadyRecorded={false}
+      pendingEchoes={[]}
+      waiting={false}
       transcriptRef={React.createRef<HTMLDivElement>()}
       onStarter={jest.fn()}
     />,

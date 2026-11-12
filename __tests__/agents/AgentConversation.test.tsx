@@ -39,8 +39,8 @@ function renderConversation() {
       agentId="writer"
       selectedSessionId="s1"
       session={session}
-      pendingChat={null}
-      echoAlreadyRecorded={false}
+      pendingEchoes={[]}
+      waiting={false}
       transcriptRef={React.createRef<HTMLDivElement>()}
     />,
   );
@@ -128,8 +128,8 @@ describe("AgentConversation — failed send", () => {
         agentId="writer"
         selectedSessionId="s1"
         session={session}
-        pendingChat={null}
-        echoAlreadyRecorded={false}
+        pendingEchoes={[]}
+        waiting={false}
         transcriptRef={React.createRef<HTMLDivElement>()}
         failedSend={failedSend}
         onRetry={onRetry}

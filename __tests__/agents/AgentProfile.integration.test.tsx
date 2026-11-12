@@ -261,7 +261,7 @@ describe("AgentProfile with a chat in flight", () => {
     mockVenue.jobs = { get: jest.fn().mockResolvedValue({ metadata: { sessionId: "sess-1" } }) };
   };
 
-  it("echoes a message sent from the composer, and blocks a second send", async () => {
+  it("echoes a message sent from the composer, and keeps the composer open", async () => {
     venueWithAgent(AGENT, [sessionEntry("sess-1", 1000, [])]);
     chatNeverAnswered();
     await renderProfile();
@@ -272,14 +272,44 @@ describe("AgentProfile with a chat in flight", () => {
 
     expect(await screen.findByTestId("pending-user-message")).toHaveTextContent("typed here");
     expect(screen.getByTestId("agent-thinking")).toBeInTheDocument();
+    // Nothing typed: the control stops waiting. The box stays open for a
+    // follow-up (#541).
     expect(screen.queryByTestId("composer-send")).not.toBeInTheDocument();
     expect(screen.getByTestId("composer-stop")).toBeInTheDocument();
-    expect(input).toBeDisabled();
+    expect(input).not.toBeDisabled();
     expect(mockVenue.operations.invoke).toHaveBeenCalledWith("v/ops/agent/chat", {
       agentId: AGENT.agentId,
       message: "typed here",
       sessionId: "sess-1",
     });
+  });
+
+  // A follow-up typed mid-reply is queued, not refused: it goes to the same
+  // session as a chat of its own, after the first has been accepted (#541).
+  it("queues a follow-up typed mid-reply, in order, on the same session", async () => {
+    venueWithAgent(AGENT, [sessionEntry("sess-1", 1000, [])]);
+    chatNeverAnswered();
+    await renderProfile();
+
+    const input = await screen.findByTestId("composer-input");
+    fireEvent.change(input, { target: { value: "first" } });
+    fireEvent.click(screen.getByTestId("composer-send"));
+    await screen.findByTestId("agent-thinking");
+
+    fireEvent.change(input, { target: { value: "second" } });
+    // Text in the box: the control sends rather than stops.
+    fireEvent.click(screen.getByTestId("composer-send"));
+
+    await waitFor(() => expect(mockVenue.operations.invoke).toHaveBeenCalledTimes(2));
+    expect(mockVenue.operations.invoke.mock.calls.map((call: unknown[]) => call[1])).toEqual([
+      { agentId: AGENT.agentId, message: "first", sessionId: "sess-1" },
+      { agentId: AGENT.agentId, message: "second", sessionId: "sess-1" },
+    ]);
+    expect(screen.getAllByTestId("pending-user-message").map((el) => el.textContent)).toEqual([
+      "first",
+      "second",
+    ]);
+    expect(screen.getAllByTestId("agent-thinking")).toHaveLength(1);
   });
 
   // Stop waiting frees the composer without cancelling the agent's job; the

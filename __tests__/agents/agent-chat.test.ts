@@ -211,3 +211,72 @@ describe("sendAgentChat", () => {
     expect(onSession).not.toHaveBeenCalled();
   });
 });
+
+// Follow-ups typed mid-reply reach the venue in order (#541): each waits for
+// the one before it to be accepted, never for its reply.
+describe("sendAgentChat queue", () => {
+  it("hands a follow-up over once the first is accepted, without waiting for its reply", async () => {
+    let acceptFirst!: (job: unknown) => void;
+    let replyFirst!: (output: unknown) => void;
+    const firstReply = new Promise((resolve) => { replyFirst = resolve; });
+    const invoke = jest.fn()
+      .mockImplementationOnce(() => new Promise((resolve) => { acceptFirst = resolve; }))
+      .mockImplementationOnce(() => Promise.resolve({ id: "0xjob2", result: () => Promise.resolve({ response: "two" }) }));
+    const venue = { operations: { invoke }, jobs: { get: jest.fn() } };
+
+    const first = sendAgentChat(venue as never, { agentId: "a1", message: "one", sessionId: "s-1", queue: "q1" });
+    const second = sendAgentChat(venue as never, { agentId: "a1", message: "two", sessionId: "s-1", queue: "q1" });
+
+    await Promise.resolve();
+    expect(invoke).toHaveBeenCalledTimes(1);           // the follow-up waits its turn
+
+    acceptFirst({ id: "0xjob1", result: () => firstReply });
+    await expect(second).resolves.toEqual({ response: "two" });
+    expect(invoke.mock.calls.map((call) => call[1].message)).toEqual(["one", "two"]);
+
+    replyFirst({ response: "one" });                   // the first reply came last
+    await expect(first).resolves.toEqual({ response: "one" });
+  });
+
+  it("asks a follow-up's session only once the one ahead has its session", async () => {
+    let minted: string | null = null;
+    const invoke = jest.fn().mockImplementation(() =>
+      Promise.resolve({ id: "0xjob", result: () => new Promise(() => {}) }));
+    const venue = {
+      operations: { invoke },
+      jobs: { get: jest.fn().mockResolvedValue({ metadata: { sessionId: "s-new" } }) },
+    };
+
+    void sendAgentChat(venue as never, {
+      agentId: "a1", message: "one", queue: "q2", onSession: (s) => { minted = s; },
+    });
+    void sendAgentChat(venue as never, {
+      agentId: "a1", message: "two", queue: "q2", sessionId: () => minted,
+    });
+
+    await waitFor(() => expect(invoke).toHaveBeenCalledTimes(2));
+    expect(invoke.mock.calls[1][1]).toEqual({ agentId: "a1", message: "two", sessionId: "s-new" });
+  });
+
+  it("still hands a follow-up over when the send ahead of it failed", async () => {
+    const invoke = jest.fn()
+      .mockRejectedValueOnce(new Error("refused"))
+      .mockResolvedValueOnce({ id: "0xjob2", result: () => Promise.resolve({ response: "ok" }) });
+    const venue = { operations: { invoke }, jobs: { get: jest.fn() } };
+
+    const first = sendAgentChat(venue as never, { agentId: "a1", message: "one", sessionId: "s", queue: "q3" });
+    const second = sendAgentChat(venue as never, { agentId: "a1", message: "two", sessionId: "s", queue: "q3" });
+
+    await expect(first).rejects.toThrow("refused");
+    await expect(second).resolves.toEqual({ response: "ok" });
+  });
+});
+
+async function waitFor(check: () => void, tries = 50): Promise<void> {
+  for (let i = 0; ; i++) {
+    try { check(); return; } catch (error) {
+      if (i >= tries) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+  }
+}

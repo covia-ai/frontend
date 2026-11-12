@@ -85,20 +85,36 @@ export const usePendingChats = create<PendingChatsStore>((set) => ({
     })),
 }));
 
-// The chat being waited for on a given transcript: same agent, either bound to
-// the session in view or not yet bound to any, and still waited for.
+// The chats being waited for on a given transcript, oldest first: same agent,
+// either bound to the session in view or not yet bound to any, and still
+// waited for. Several at once when follow-ups were sent mid-reply (#541).
+export function findWaitingChats(
+  pendingChats: PendingChat[],
+  agentId: string | null,
+  sessionId: string | null
+): PendingChat[] {
+  if (!agentId) return [];
+  return pendingChats.filter(
+    (c) =>
+      c.agentId === agentId &&
+      !c.stoppedWaiting &&
+      (c.sessionId === null || c.sessionId === sessionId)
+  );
+}
+
+// The first of them: the chat being waited for longest.
 export function findPendingChat(
   pendingChats: PendingChat[],
   agentId: string | null,
   sessionId: string | null
 ): PendingChat | null {
-  if (!agentId) return null;
-  return pendingChats.find(
-    (c) =>
-      c.agentId === agentId &&
-      !c.stoppedWaiting &&
-      (c.sessionId === null || c.sessionId === sessionId)
-  ) ?? null;
+  return findWaitingChats(pendingChats, agentId, sessionId)[0] ?? null;
+}
+
+// The session a chat has been given so far, read at call time.
+export function pendingChatSessionId(chat: PendingChat): string | null {
+  return usePendingChats.getState().pendingChats.find((c) => c.id === chat.id)?.sessionId
+    ?? chat.sessionId;
 }
 
 // Whether the user has stopped waiting for this chat, read at call time: a

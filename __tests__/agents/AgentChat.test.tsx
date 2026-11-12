@@ -4,6 +4,7 @@ import "@testing-library/jest-dom";
 
 import { AgentChat } from "@/components/agent-chat/AgentChat";
 import { useAgentExplorer } from "@/hooks/use-agent-explorer";
+import type { PendingChat } from "@/hooks/use-pending-chats";
 import { warmMarkdownPipeline } from "@test/lazy-boundaries";
 
 jest.mock("@/hooks/use-agent-explorer", () => ({
@@ -49,11 +50,11 @@ function controller(overrides: Record<string, unknown> = {}) {
     },
     messageText: "Follow up",
     setMessageText: jest.fn(),
-    pendingChat: null,
+    pendingChat: null as PendingChat | null,
     sending: false,
     activity: null,
     canSend: true,
-    echoAlreadyRecorded: false,
+    pendingEchoes: [],
     suspend: jest.fn(),
     resume: jest.fn(),
     triggerAgent: jest.fn(),

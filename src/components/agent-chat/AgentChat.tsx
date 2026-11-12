@@ -51,11 +51,10 @@ export function AgentChat({ initialAgentId }: AgentChatProps) {
     currentSession,
     messageText,
     setMessageText,
-    pendingChat,
+    pendingEchoes,
     sending,
     activity,
     canSend,
-    echoAlreadyRecorded,
     failedSend,
     retrySend,
     editFailedSend,
@@ -215,8 +214,8 @@ export function AgentChat({ initialAgentId }: AgentChatProps) {
         agentId={selectedAgentId}
         selectedSessionId={selectedSessionId}
         session={currentSession}
-        pendingChat={pendingChat}
-        echoAlreadyRecorded={echoAlreadyRecorded}
+        pendingEchoes={pendingEchoes}
+        waiting={sending}
         failedSend={failedSend}
         onRetry={canSend ? retrySend : undefined}
         onEditFailed={editFailedSend}
@@ -245,7 +244,9 @@ export function AgentChat({ initialAgentId }: AgentChatProps) {
                 send();
               }
             }}
-            disabled={sending || !canSend}
+            // Open while a reply is awaited: a follow-up is queued behind it,
+            // in the order typed (#541).
+            disabled={!canSend}
             rows={1}
             className={cn(
               "max-h-40 min-h-10 resize-none border-0 bg-transparent px-0 py-2 text-[15px] leading-6 shadow-none focus-visible:ring-0 dark:bg-transparent disabled:opacity-100 md:text-[15px]",
@@ -253,7 +254,7 @@ export function AgentChat({ initialAgentId }: AgentChatProps) {
             )}
           />
           <div className="flex items-center justify-end">
-            {sending ? (
+            {sending && !messageText.trim() ? (
               // Stops only this page's wait: the agent keeps working and its
               // reply still lands in the session.
               <Button

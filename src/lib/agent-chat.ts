@@ -18,8 +18,14 @@ type ChatSendVenue = Pick<Venue, "operations" | "jobs">;
 type SendAgentChatOptions = {
   agentId: string;
   message: string;
-  /** The session to continue; omitted, the venue starts a new one. */
-  sessionId?: string | null;
+  /** The session to continue; omitted, the venue starts a new one. A function
+   *  is asked once the sends queued ahead have been accepted, so a follow-up
+   *  to a new chat can join the session that chat was given. */
+  sessionId?: string | null | (() => string | null);
+  /** Sends sharing a key reach the venue in the order they were made: each is
+   *  handed over once the one before it has been accepted, never after waiting
+   *  for its reply. */
+  queue?: string;
   /** The chat's job, as soon as the venue has it. */
   onJob?: (jobId: string) => void;
   /** A new chat's session, as soon as the venue has accepted the message:
@@ -38,20 +44,44 @@ type SendAgentChatOptions = {
  */
 export async function sendAgentChat(
   venue: ChatSendVenue,
-  { agentId, message, sessionId, onJob, onSession }: SendAgentChatOptions,
+  { agentId, message, sessionId, queue, onJob, onSession }: SendAgentChatOptions,
 ): Promise<AgentChatResult> {
-  const job = await venue.operations.invoke(AGENT_CHAT_OPERATION, {
-    agentId,
-    message,
-    ...(sessionId ? { sessionId } : {}),
-  });
-  onJob?.(job.id);
-  if (!sessionId) {
-    const accepted = await venue.jobs.get(job.id).catch(() => null);
-    const minted = accepted?.metadata?.sessionId;
-    if (typeof minted === "string" && minted) onSession?.(minted);
-  }
+  // Accepted: the venue has the chat's job and, for a new chat, its session.
+  const accept = async () => {
+    const target = typeof sessionId === "function" ? sessionId() : sessionId ?? null;
+    const job = await venue.operations.invoke(AGENT_CHAT_OPERATION, {
+      agentId,
+      message,
+      ...(target ? { sessionId: target } : {}),
+    });
+    onJob?.(job.id);
+    if (!target) {
+      const accepted = await venue.jobs.get(job.id).catch(() => null);
+      const minted = accepted?.metadata?.sessionId;
+      if (typeof minted === "string" && minted) onSession?.(minted);
+    }
+    return job;
+  };
+  const job = await (queue ? inTurn(queue, accept) : accept());
   return (await job.result()) as AgentChatResult;
+}
+
+// Native agents take several chats on one session, oldest first, each
+// answered by its own turn. Order on the venue is the order the chats were
+// accepted, so a send that waits for the one before it to be accepted keeps
+// the user's order without waiting for any reply.
+const intakeTails = new Map<string, Promise<unknown>>();
+
+function inTurn<T>(key: string, step: () => Promise<T>): Promise<T> {
+  const ahead = intakeTails.get(key) ?? Promise.resolve();
+  const mine = ahead.then(step, step);
+  const tail = mine.catch(() => undefined);
+  intakeTails.set(key, tail);
+  // Forget a settled queue rather than keep one entry per chat ever made.
+  void tail.then(() => {
+    if (intakeTails.get(key) === tail) intakeTails.delete(key);
+  });
+  return mine;
 }
 
 /** Composer placeholder while a send is pending — reports the agent's live
@@ -63,10 +93,9 @@ export function agentSendingPlaceholder(activity: AgentLiveActivity | null): str
   return "Waiting for the agent's reply…";
 }
 
-// The venue allows one chat in flight per session. The client normally
-// prevents a second send, but it loses track of an in-flight chat across a
-// reload or dropped request — translate the venue's raw rejection (which leads
-// with a hex session id) into something actionable.
+// An external agent (A2A, another venue) takes one turn per session and
+// rejects an overlapping one; native agents queue them. Translate the venue's
+// raw rejection (which leads with a hex session id) into something actionable.
 function friendlySendFailure(reason: unknown): unknown {
   return /already has an in-flight chat/i.test(errorMessage(reason))
     ? new Error(
