@@ -60,6 +60,21 @@ export function getVenueFor(
   return venue;
 }
 
+/**
+ * Drops every cached SDK client for these venues, so none keeps a forgotten
+ * credential in memory. Signed-out clients are recreated on next use.
+ */
+export function forgetVenueInstances(venueIds: string[]): void {
+  for (const venueId of venueIds) {
+    for (const { venue } of instances.get(venueId)?.values() ?? []) {
+      statusCache.delete(venue);
+      statusRequests.delete(venue);
+    }
+    instances.delete(venueId);
+    connections.delete(venueId);
+  }
+}
+
 export function adoptVenueInstance(
   venue: Venue,
   auth: VenueAuth | null = null,

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { LogInIcon, CircleUserRound, Key } from "lucide-react";
@@ -8,6 +9,7 @@ import { VenueAccessBadge } from "@/components/VenueAccessBadge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger }from "@/components/ui/dropdown-menu";
 import { abbreviateDid } from "@/lib/utils";
 import { DeviceKeyDialog } from "@/components/DeviceKeyDialog";
+import { ForgetAccountDialog } from "@/components/ForgetAccountDialog";
 import { Identicon } from "@/components/Identicon";
 import { useDeviceKeySignIn } from "@/hooks/use-device-key-signin";
 import { useAuthStore } from "@/hooks/use-auth";
@@ -72,6 +74,7 @@ export function ChromeSignInButton(props: ChromeSignInButtonProps) {
   const oauthOptions = useOAuthSignInOptions(activeVenueId ?? undefined);
 
   const deviceKeySignIn = useDeviceKeySignIn({ venueId: props.venueId });
+  const [forgetOpen, setForgetOpen] = useState(false);
 
   if (!auth) {
     return (
@@ -195,8 +198,26 @@ export function ChromeSignInButton(props: ChromeSignInButtonProps) {
             >
               Sign Out
             </DropdownMenuItem>
+            {/* OAuth tokens are never persisted, so Sign Out already forgets
+                them; only a device key outlives a sign-out (#436). */}
+            {auth.type === "keypair" && (
+              <DropdownMenuItem
+                data-testid="forget-account"
+                onSelect={() => setForgetOpen(true)}
+                className="items-start text-center text-destructive hover:bg-primary-vlight focus:text-destructive"
+              >
+                Sign out and forget…
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
+        {activeVenueId && (
+          <ForgetAccountDialog
+            venueId={activeVenueId}
+            open={forgetOpen}
+            onOpenChange={setForgetOpen}
+          />
+        )}
       </div>
     )
   }

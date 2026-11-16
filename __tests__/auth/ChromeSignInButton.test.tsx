@@ -21,6 +21,13 @@ jest.mock('@/lib/utils', () => ({
   abbreviateDid: (value: string) => value,
 }));
 
+// userEvent.setup() installs its own clipboard over navigator.clipboard, so
+// export assertions go through the app's clipboard helper instead.
+const mockCopy = jest.fn().mockResolvedValue(undefined);
+jest.mock('@/lib/clipboard', () => ({
+  writeTextToClipboard: (text: string) => mockCopy(text),
+}));
+
 jest.mock('@/hooks/use-venues', () => ({
   useVenues: Object.assign((selector: (state: any) => unknown) => selector({
     venues: [],
@@ -201,5 +208,82 @@ describe('ChromeSignInButton', () => {
       expect(screen.queryByTestId('switch-account')).not.toBeInTheDocument();
       expect(screen.queryByText('Switch account')).not.toBeInTheDocument();
     });
+  });
+});
+
+describe('ChromeSignInButton: sign out and forget (#436)', () => {
+  const VENUE = 'did:web:venue.example';
+  const keyAccount = { type: 'keypair' as const, privateKeyHex: 'a'.repeat(64), did: 'did:key:zForget' };
+
+  beforeEach(() => {
+    mockCopy.mockClear();
+    act(() => {
+      useAuthStore.setState({
+        authMap: { [VENUE]: keyAccount },
+        accountsMap: { [VENUE]: [keyAccount] },
+        deviceKeyHex: keyAccount.privateKeyHex,
+        deviceKeys: [keyAccount.privateKeyHex],
+      });
+    });
+  });
+
+  it('confirms, then deletes the device key and signs out', async () => {
+    const user = userEvent.setup();
+    render(<ChromeSignInButton />);
+
+    await user.click(screen.getByRole('button', { name: 'Account menu' }));
+    await user.click(await screen.findByTestId('forget-account'));
+
+    const dialog = await screen.findByTestId('forget-account-dialog');
+    expect(dialog).toHaveTextContent("can't be recovered unless you export it");
+    // Nothing is forgotten until the user confirms.
+    expect(useAuthStore.getState().deviceKeys).toEqual([keyAccount.privateKeyHex]);
+
+    await user.click(screen.getByTestId('forget-account-confirm'));
+
+    const state = useAuthStore.getState();
+    expect(state.deviceKeys).toEqual([]);
+    expect(state.deviceKeyHex).toBeNull();
+    expect(state.authMap).toEqual({});
+    expect(state.accountsMap).toEqual({});
+    expect(await screen.findByText('Sign In')).toBeInTheDocument();
+    expect(screen.queryByTestId('forget-account-dialog')).not.toBeInTheDocument();
+  });
+
+  it('exports the key from the dialog without forgetting it', async () => {
+    const user = userEvent.setup();
+    render(<ChromeSignInButton />);
+
+    await user.click(screen.getByRole('button', { name: 'Account menu' }));
+    await user.click(await screen.findByTestId('forget-account'));
+    await user.click(await screen.findByTestId('forget-account-export'));
+
+    await waitFor(() => expect(mockCopy).toHaveBeenCalledWith(keyAccount.privateKeyHex));
+    expect(useAuthStore.getState().deviceKeys).toEqual([keyAccount.privateKeyHex]);
+  });
+
+  it('cancel keeps the account', async () => {
+    const user = userEvent.setup();
+    render(<ChromeSignInButton />);
+
+    await user.click(screen.getByRole('button', { name: 'Account menu' }));
+    await user.click(await screen.findByTestId('forget-account'));
+    await user.click(await screen.findByRole('button', { name: 'Cancel' }));
+
+    expect(useAuthStore.getState().authMap[VENUE]).toEqual(keyAccount);
+  });
+
+  it('is not offered for OAuth accounts, whose sign-out already forgets the token', async () => {
+    act(() => {
+      useAuthStore.setState({
+        authMap: { [VENUE]: { type: 'bearer', token: 'tok', did: 'did:oauth:me' } },
+      });
+    });
+    const user = userEvent.setup();
+    render(<ChromeSignInButton />);
+
+    await user.click(screen.getByRole('button', { name: 'Account menu' }));
+    await screen.findByRole('menuitem', { name: 'Sign Out' });
+    expect(screen.queryByTestId('forget-account')).not.toBeInTheDocument();
   });
 });
