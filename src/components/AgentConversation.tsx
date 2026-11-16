@@ -18,6 +18,7 @@ import type { Session } from "@/config/types";
 import type { PendingChat } from "@/hooks/use-pending-chats";
 import { jobPath } from "@/lib/routes";
 import { queuedSessionMessages } from "@/lib/agent-sessions";
+import { TaskTypedResult } from "@/components/typed-result/TaskTypedResult";
 import {
   describeToolTurn,
   groupTranscript,
@@ -191,49 +192,50 @@ function AgentConversationBase({
               : null;
 
             return isUser ? (
-              <div className="mb-6 flex justify-end" key={index}>
-                <DropdownMenu>
-                  {/* Radix supplies this trigger's aria-haspopup and its
-                      Enter/Space/ArrowDown handling, but `asChild` over a plain
-                      div left it out of the tab order, so none of that keyboard
-                      behaviour could ever fire and the menu — Copy message, and
-                      Go to calling job — was mouse-only (frontend#243). The
-                      explicit tabIndex and role are what a real <button> would
-                      have given Radix; a button element can't be used here
-                      because the bubble renders block children.
+              <div key={index}>
+                <div className="mb-6 flex justify-end">
+                  <DropdownMenu>
+                    {/* Radix supplies this trigger's aria-haspopup and its
+                        Enter/Space/ArrowDown handling, but `asChild` over a plain
+                        div left it out of the tab order, so none of that keyboard
+                        behaviour could ever fire and the menu — Copy message, and
+                        Go to calling job — was mouse-only (frontend#243). The
+                        explicit tabIndex and role are what a real <button> would
+                        have given Radix; a button element can't be used here
+                        because the bubble renders block children.
 
-                      The ring is on `focus:`, not the `focus-visible:` every
-                      ui/ primitive uses — Chrome does not match :focus-visible
-                      on a div[tabindex] the way it does on a real button, so a
-                      focus-visible ring never renders here and a keyboard user
-                      gets no position cue. Ring tokens otherwise match
-                      ui/button.tsx. */}
-                  <DropdownMenuTrigger asChild>
-                    <div
-                      title={title}
-                      role="button"
-                      tabIndex={0}
-                      data-testid="user-turn-bubble"
-                      className="max-w-[85%] cursor-pointer rounded-3xl rounded-br-md bg-muted px-4 py-2.5 text-[15px] leading-6 whitespace-pre-wrap break-words outline-none focus:border-ring focus:ring-ring/50 focus:ring-[3px]"
-                    >
-                      {message.source === "request" && !sections && (
-                        <div
-                          data-testid="turn-source-label"
-                          className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-                        >
-                          Task
-                        </div>
-                      )}
-                      {sections ? (
-                        <div className="space-y-2" data-testid="turn-sections">
-                          {sections.map((section) => (
-                            <div key={section.label}>
-                              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                {section.label}
+                        The ring is on `focus:`, not the `focus-visible:` every
+                        ui/ primitive uses — Chrome does not match :focus-visible
+                        on a div[tabindex] the way it does on a real button, so a
+                        focus-visible ring never renders here and a keyboard user
+                        gets no position cue. Ring tokens otherwise match
+                        ui/button.tsx. */}
+                    <DropdownMenuTrigger asChild>
+                      <div
+                        title={title}
+                        role="button"
+                        tabIndex={0}
+                        data-testid="user-turn-bubble"
+                        className="max-w-[85%] cursor-pointer rounded-3xl rounded-br-md bg-muted px-4 py-2.5 text-[15px] leading-6 whitespace-pre-wrap break-words outline-none focus:border-ring focus:ring-ring/50 focus:ring-[3px]"
+                      >
+                        {message.source === "request" && !sections && (
+                          <div
+                            data-testid="turn-source-label"
+                            className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                          >
+                            Task
+                          </div>
+                        )}
+                        {sections ? (
+                          <div className="space-y-2" data-testid="turn-sections">
+                            {sections.map((section) => (
+                              <div key={section.label}>
+                                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                  {section.label}
+                                </div>
+                                {section.text}
                               </div>
-                              {section.text}
-                            </div>
-                          ))}
+                            ))}
                         </div>
                       ) : (
                         text
@@ -256,6 +258,12 @@ function AgentConversationBase({
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
+              </div>
+              {/* A request's typed result lives on its job, not in the
+                  transcript (#240); shown under the task it answers. */}
+              {message.source === "request" && jobId && (
+                <TaskTypedResult jobId={jobId} revision={conversation?.length ?? 0} />
+              )}
               </div>
             ) : (
               <div className="group mb-8 flex gap-3" key={index}>
