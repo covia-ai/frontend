@@ -9,6 +9,7 @@ import PageViewTracker from "@/components/PageViewTracker";
 import { Analytics } from "@/components/analytics/Analytics";
 import { VenueRuntimeProvider } from "@/components/VenueRuntimeProvider";
 import { Toaster } from "sonner";
+import { SiteNoticeBanner } from "@/components/SiteNoticeBanner";
 
 
 const { title, description } = siteConfig;
@@ -63,6 +64,9 @@ export default function RootLayout({
       <body
         className={`${aetherFont.className} ${aetherFont.variable} antialiased`}
       >
+          {/* Outage / maintenance notice (frontend#532): fixed at the top of
+              every page; the layout offsets itself by its height. */}
+          <SiteNoticeBanner />
           <ThemeProvider
             attribute="class"
             defaultTheme="dark"
