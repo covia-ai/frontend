@@ -14,7 +14,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "fixed top-0 left-0 z-20 flex flex-col text-sidebar-foreground text-md bg-linear-to-b from-sidebar from-60% via-primary-light via-75% to-secondary-light to-90% shadow-lg h-screen -translate-x-full lg:translate-x-0 transition-[width] ease-in-out duration-300",
+        "fixed top-[var(--site-notice-h,0px)] left-0 z-20 flex flex-col text-sidebar-foreground text-md bg-linear-to-b from-sidebar from-60% via-primary-light via-75% to-secondary-light to-90% shadow-lg h-[calc(100vh-var(--site-notice-h,0px))] -translate-x-full lg:translate-x-0 transition-[width] ease-in-out duration-300",
         isOpen ? "w-56" : "w-[90px]"
       )}
     >

@@ -181,6 +181,8 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* Room for the site notice banner while one shows (frontend#532). */
+    padding-top: var(--site-notice-h, 0px);
   }
 }
   @font-face {

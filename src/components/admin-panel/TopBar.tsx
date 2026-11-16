@@ -28,7 +28,7 @@ export function TopBar(props: TopBarProps) {
   const docsHref = docsLinkFor(pathname);
 
   return (
-    <header className="sticky top-0 z-10 w-full bg-background">
+    <header className="sticky top-[var(--site-notice-h,0px)] z-10 w-full bg-background">
       <div className=" flex h-14 items-center">
         <div className="flex items-center space-x-4 lg:space-x-0">
           <SheetMenu />
