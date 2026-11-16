@@ -84,4 +84,37 @@ describe("useOperationInput", () => {
     expect(result.current.input).toEqual({});
     expect(sessionStorage.getItem(key)).toBeNull();
   });
+
+  // frontend#553: booleans went out as the string "true".
+  it("sends a boolean as a real boolean and drops it when unset", async () => {
+    const { result } = renderHook(() =>
+      useOperationInput("did:venue:one", "v/ops/agent/request", {
+        properties: { strict: { type: "boolean" }, agentId: { type: "string" } },
+      }),
+    );
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    act(() => {
+      result.current.setValue("agentId", "helper");
+      result.current.setValue("strict", true);
+    });
+    expect(result.current.input).toEqual({ agentId: "helper", strict: true });
+
+    act(() => result.current.setValue("strict", undefined));
+    expect(result.current.input).toEqual({ agentId: "helper" });
+  });
+
+  it("re-coerces a string to a boolean when the type changes to boolean", async () => {
+    const { result } = renderHook(() =>
+      useOperationInput("did:venue:one", "v/ops/example", schema),
+    );
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    act(() => {
+      result.current.setValue("flag", "true");
+      result.current.setRawValue("flag", "true");
+    });
+    act(() => result.current.setType("flag", "boolean"));
+    expect((result.current.input as Record<string, unknown>).flag).toBe(true);
+  });
 });
