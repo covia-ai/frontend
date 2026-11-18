@@ -46,6 +46,8 @@ const ThemedJsonEditor = dynamic(
 const INPUT_TYPES = [
   "string",
   "number",
+  "integer",
+  "boolean",
   "json",
   "object",
   "any",
@@ -230,6 +232,34 @@ function InputEditor({
     </Select>
   );
 
+  if (type === "boolean") {
+    // A select rather than a checkbox: an optional boolean can also be left
+    // unset, so the operation's own default applies (frontend#553).
+    const NOT_SET = "__unset__";
+    return (
+      <div className="flex flex-row flex-wrap gap-2 items-center">
+        <Select
+          value={currentRawValue === "true" || currentRawValue === "false" ? currentRawValue : NOT_SET}
+          onValueChange={(next) => updateValue(next === NOT_SET ? "" : next)}
+        >
+          <SelectTrigger
+            className="flex-1 min-w-0 sm:min-w-64 max-w-112"
+            aria-label={`${fieldKey} value`}
+            data-testid={`boolean-input-${fieldKey}`}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NOT_SET}>(not set)</SelectItem>
+            <SelectItem value="true">true</SelectItem>
+            <SelectItem value="false">false</SelectItem>
+          </SelectContent>
+        </Select>
+        {typeSelector}
+      </div>
+    );
+  }
+
   if (type === "asset") {
     return (
       <div className="flex flex-row flex-wrap gap-2 items-center">
@@ -262,7 +292,8 @@ function InputEditor({
     <div className="flex flex-row flex-wrap gap-2 items-center">
       <Input
         {...commonProps}
-        type={isSecret ? "password" : type === "number" ? "number" : "text"}
+        type={isSecret ? "password" : type === "number" || type === "integer" ? "number" : "text"}
+        step={type === "integer" ? 1 : undefined}
       />
       {typeSelector}
     </div>

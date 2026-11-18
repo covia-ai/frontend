@@ -45,6 +45,43 @@ describe("operation input conversion", () => {
   });
 });
 
+describe("boolean inputs (frontend#553)", () => {
+  it("parses true and false to real booleans, and empty to not set", () => {
+    expect(parseOperationInput("true", "boolean")).toBe(true);
+    expect(parseOperationInput("false", "boolean")).toBe(false);
+    expect(parseOperationInput(" TRUE ", "boolean")).toBe(true);
+    expect(parseOperationInput("", "boolean")).toBeUndefined();
+  });
+
+  it("rejects anything else rather than sending it", () => {
+    expect(() => parseOperationInput("yes", "boolean")).toThrow(/true or false/);
+    expect(() => parseOperationInput("1", "boolean")).toThrow();
+  });
+
+  it("prints booleans and leaves anything else as not set", () => {
+    expect(printOperationInput(true, "boolean")).toBe("true");
+    expect(printOperationInput(false, "boolean")).toBe("false");
+    expect(printOperationInput("true", "boolean")).toBe("true");
+    expect(printOperationInput(undefined, "boolean")).toBe("");
+    expect(printOperationInput("maybe", "boolean")).toBe("");
+  });
+
+  it("keeps a boolean schema default, including false", () => {
+    expect(
+      defaultsFromOperationSchema({ properties: { strict: { type: "boolean", default: false } } }),
+    ).toEqual({ input: { strict: false }, types: { strict: "boolean" } });
+  });
+});
+
+describe("integer inputs", () => {
+  it("parses whole numbers and rejects fractions or text", () => {
+    expect(parseOperationInput("90000", "integer")).toBe(90000);
+    expect(() => parseOperationInput("1.5", "integer")).toThrow(/whole number/);
+    expect(() => parseOperationInput("soon", "integer")).toThrow();
+    expect(printOperationInput(5000, "integer")).toBe("5000");
+  });
+});
+
 describe("operation input validation", () => {
   it("accepts an empty object when the schema has no required fields", () => {
     expect(validateOperationInput({}, { type: "object" })).toBeNull();
