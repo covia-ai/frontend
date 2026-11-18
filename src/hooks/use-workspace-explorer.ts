@@ -35,8 +35,8 @@ export function normalizeWorkspacePath(path?: string): string {
 }
 
 // Root namespace keys (see workspace-namespaces.ts) are venue-managed —
-// jobs, agents, secrets, assets, operations, inbox, and account metadata are
-// all written through their own proper lifecycles, not this raw explorer.
+// jobs, agents, secrets, assets, operations and the inbox are all written
+// through their own proper lifecycles, not this raw explorer.
 // Only "w" (the free-form user workspace) is safe to edit/delete here.
 export function isMutableWorkspacePath(path: string): boolean {
   const [root] = normalizeWorkspacePath(path).split("/");
@@ -83,19 +83,6 @@ export function parseWorkspaceDraft(text: string, loaded: unknown): unknown {
   const parsed = parseWorkspaceInput(text);
   if (typeof loaded !== "string") return parsed;
   return typeof parsed === "object" && parsed !== null ? parsed : text;
-}
-
-// The backend only reports root namespaces that already have data under
-// them. Every venue supports the full fixed set regardless, so the root
-// listing always shows all of them — with any extra keys the backend does
-// report (a namespace not in the fixed set) appended after.
-function withFixedRootNamespaces(keys: string[]): WorkspaceEntry[] {
-  const known = new Set(ROOT_NAMESPACES.map((n) => n.key));
-  const extras = keys.filter((key) => !known.has(key));
-  return [
-    ...ROOT_NAMESPACES.map(({ key }) => ({ key })),
-    ...extras.map((key) => ({ key })),
-  ];
 }
 
 function workspaceValue(result: WorkspaceReadResult): WorkspaceValue {
@@ -215,12 +202,12 @@ export function useWorkspaceExplorer(initialPath?: string) {
       let listed: WorkspaceEntry[] = [];
       await runListing(
         async () => {
-          const result = await venue.workspace.list(normalizedPath);
-          const keys = result.keys ?? [];
+          // The root is not a path the venue lists: since covia 0.11 every
+          // path starts at a namespace, so the root shows the known ones.
           listed =
             normalizedPath === "/"
-              ? withFixedRootNamespaces(keys)
-              : keys.map((key) => ({ key }));
+              ? ROOT_NAMESPACES.map(({ key }) => ({ key }))
+              : ((await venue.workspace.list(normalizedPath)).keys ?? []).map((key) => ({ key }));
           cache.set(normalizedPath, listed);
           return listed;
         },

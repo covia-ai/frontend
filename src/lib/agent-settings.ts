@@ -6,7 +6,13 @@ import {
   providerSelectionForOperation,
   resolvedModelId,
 } from "@/lib/agent-config";
-import { cleanCaps, isAgentCap, type AgentCap } from "@/lib/agent-caps";
+import {
+  capsListOf,
+  cleanCaps,
+  UNRESTRICTED_CAPS,
+  type AgentCap,
+  type AgentCapsMode,
+} from "@/lib/agent-caps";
 
 export type AgentSettingsDraft = {
   systemPrompt: string;
@@ -16,7 +22,8 @@ export type AgentSettingsDraft = {
   customModel: string;
   toolsJson: string;
   skillsJson: string;
-  capsEnabled: boolean;
+  skillsetsJson: string;
+  capsMode: AgentCapsMode;
   caps: AgentCap[];
   contextJson: string;
   defaultTools: boolean;
@@ -44,6 +51,7 @@ const MANAGED_FIELDS = new Set([
   "model",
   "tools",
   "skills",
+  "skillsets",
   "caps",
   "context",
   "defaultTools",
@@ -71,8 +79,11 @@ export function createAgentSettingsDraft(
     ...model,
     toolsJson: prettyJson(config.tools),
     skillsJson: prettyJson(config.skills),
-    capsEnabled: Array.isArray(config.caps),
-    caps: Array.isArray(config.caps) ? config.caps.filter(isAgentCap) : [],
+    skillsetsJson: prettyJson(config.skillsets),
+    // A config with no caps at all comes only from a venue before 0.11, where
+    // that meant unrestricted.
+    capsMode: Array.isArray(config.caps) ? "restricted" : "unrestricted",
+    caps: capsListOf(config.caps),
     contextJson: prettyJson(config.context),
     defaultTools: config.defaultTools === true,
     advancedJson: prettyJson(advanced) || "{}",
@@ -128,6 +139,7 @@ export function configFromAgentSettingsDraft(
   for (const [key, label, text] of [
     ["tools", "Tools", draft.toolsJson],
     ["skills", "Skills", draft.skillsJson],
+    ["skillsets", "Skill sets", draft.skillsetsJson],
     ["context", "Context", draft.contextJson],
   ] as const) {
     if (!text.trim()) continue;
@@ -136,7 +148,14 @@ export function configFromAgentSettingsDraft(
     config[key] = parsed.value;
   }
 
-  if (draft.capsEnabled) config.caps = cleanCaps(draft.caps);
+  // Always explicit: agent:update reads caps: null, which a field dropped from
+  // the form becomes in the patch, as no authority (covia 0.11). Only a config
+  // that never had caps (a venue before 0.11) is left without them.
+  if (draft.capsMode === "restricted") {
+    config.caps = cleanCaps(draft.caps);
+  } else if (Object.hasOwn(originalConfig, "caps")) {
+    config.caps = UNRESTRICTED_CAPS;
+  }
 
   if (draft.defaultTools || Object.hasOwn(originalConfig, "defaultTools")) {
     config.defaultTools = draft.defaultTools;

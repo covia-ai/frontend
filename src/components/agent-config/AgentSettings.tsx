@@ -12,6 +12,7 @@ import {
   AgentSystemPromptField,
 } from "@/components/agent-config/AgentConfigEditor";
 import { ToolSkillPicker } from "@/components/agent-config/ToolSkillPicker";
+import { DidDisplay } from "@/components/DidDisplay";
 import { AgentCapsEditor } from "@/components/agent-config/AgentCapsEditor";
 import { AgentConnectionsPicker } from "@/components/agent-config/AgentConnectionsPicker";
 import { ConfigFields } from "@/components/agent-explorer/ConfigFields";
@@ -64,9 +65,8 @@ export function AgentSettings({ agent, onSave }: AgentSettingsProps) {
   const patch = result.config ? agentConfigUpdatePatch(baseline, result.config) : {};
   const dirty = Object.keys(patch).length > 0;
   const running = agent.status === AgentStatus.RUNNING;
-  const unavailableTools = Array.isArray(agent.unavailableTools)
-    ? agent.unavailableTools
-    : [];
+  // The principal whose authority the agent acts with (covia 0.11).
+  const controller = typeof agent.controller === "string" ? agent.controller : "";
 
   const reset = () => setDraft(createAgentSettingsDraft(baseline));
 
@@ -240,14 +240,22 @@ export function AgentSettings({ agent, onSave }: AgentSettingsProps) {
               <AgentJsonConfigField
                 id="agent-skills-json"
                 label="Skills"
-                description="Skill indexes available to the agent. Saving replaces the complete array. Or use Browse & attach above."
+                description="Individual skills available to the agent. Saving replaces the complete array. Or use Browse & attach above."
                 value={draft.skillsJson}
                 onChange={(value) => setField("skillsJson", value)}
+                placeholder={'[\n  "w/skills/refund-policy"\n]'}
+              />
+              <AgentJsonConfigField
+                id="agent-skillsets-json"
+                label="Skill sets"
+                description="Directories of skills the agent can load, such as w/skills for every skill in your workspace. Saving replaces the complete array."
+                value={draft.skillsetsJson}
+                onChange={(value) => setField("skillsetsJson", value)}
                 placeholder={'[\n  "w/skills"\n]'}
               />
               <AgentCapsEditor
-                enabled={draft.capsEnabled}
-                onEnabledChange={(next) => setField("capsEnabled", next)}
+                mode={draft.capsMode}
+                onModeChange={(next) => setField("capsMode", next)}
                 caps={draft.caps}
                 onCapsChange={(next) => setField("caps", next)}
               />
@@ -314,22 +322,22 @@ export function AgentSettings({ agent, onSave }: AgentSettingsProps) {
                 <AlertDescription>{agent.error}</AlertDescription>
               </Alert>
             )}
-            {unavailableTools.length > 0 && (
-              <Alert>
-                <AlertTriangle />
-                <AlertTitle>Unavailable configured tools</AlertTitle>
-                <AlertDescription>
-                  <pre className="mt-2 overflow-x-auto whitespace-pre-wrap font-mono text-xs">
-                    {JSON.stringify(unavailableTools, null, 2)}
-                  </pre>
-                </AlertDescription>
-              </Alert>
-            )}
             <div className="grid gap-4 sm:grid-cols-3">
               <Diagnostic label="Status" value={agent.status} />
               <Diagnostic label="Pending tasks" value={String(agent.tasks ?? 0)} />
               <Diagnostic label="Completed runs" value={String(agent.timelineLength ?? agent.timeline?.length ?? 0)} />
             </div>
+            {controller && (
+              <div className="rounded-md border p-4" data-testid="agent-controller">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Controller</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  The agent acts with this principal&apos;s authority, narrowed by its capabilities.
+                </p>
+                <div className="mt-2">
+                  <DidDisplay value={controller} chars="full" />
+                </div>
+              </div>
+            )}
             <div>
               <h5 className="mb-3 font-semibold">Canonical configuration</h5>
               {agent.config ? (

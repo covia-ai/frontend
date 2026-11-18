@@ -181,6 +181,8 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* Room for the site notice banner while one shows (frontend#532). */
+    padding-top: var(--site-notice-h, 0px);
   }
 }
   @font-face {
@@ -208,3 +210,9 @@
       white-space: pre-wrap;
       overflow-wrap: anywhere;
     }
+
+/* The consent banner is server-rendered (frontend#474); a stored decision,
+   detected by the inline script in layout.tsx, hides it until hydration. */
+html[data-consent-stored] #cookie_consent {
+  display: none;
+}

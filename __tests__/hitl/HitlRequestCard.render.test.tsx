@@ -23,7 +23,7 @@ function textRequest(id: string): HitlRequest {
     id,
     title: `Request ${id}`,
     status: "open",
-    from: `did:key:z6Mk${id}`,
+    caller: `did:key:z6Mk${id}`,
     created: 1_700_000_000_000,
     asks: [{ id: "note", type: "text", prompt: "Say something", required: false }],
   } as unknown as HitlRequest;

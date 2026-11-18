@@ -11,7 +11,7 @@ import {
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { resolveOperationByAddress } from "@/lib/operations-catalog";
 import { notifyError, notifySuccess } from "@/lib/notify";
-import { errorMessage, isNotFoundError } from "@/lib/errors";
+import { errorMessage, isJobNotFoundError } from "@/lib/errors";
 
 const POLL_INTERVAL_MS = 1000;
 
@@ -34,6 +34,9 @@ type Lifecycle = {
   jobId: string;
   job?: JobMetadata;
   error: string | null;
+  /** The read found no such job: decided from the error itself, which `error`
+   *  keeps only the message of (a malformed id's 400 names no status). */
+  notFound: boolean;
   streaming: boolean;
 };
 
@@ -86,12 +89,12 @@ export function useExecutionLifecycle({
 
     // Every publication is filed under this effect's job, so it can only ever
     // update the entry the page is currently reading.
-    const publish = (patch: Partial<Pick<Lifecycle, "job" | "error" | "streaming">>) =>
+    const publish = (patch: Partial<Pick<Lifecycle, "job" | "error" | "notFound" | "streaming">>) =>
       setLifecycle((previous) => {
         const base =
           previous && previous.venue === venue && previous.jobId === jobId
             ? previous
-            : { venue, jobId, job: undefined, error: null, streaming: false };
+            : { venue, jobId, job: undefined, error: null, notFound: false, streaming: false };
         return { ...base, ...patch };
       });
 
@@ -110,7 +113,7 @@ export function useExecutionLifecycle({
     const applyMetadata = (metadata: JobMetadata) => {
       if (!ownsLifecycle()) return;
       hasLoaded = true;
-      publish({ job: metadata, error: null });
+      publish({ job: metadata, error: null, notFound: false });
       if (
         metadata.status &&
         isJobFinished(metadata.status as RunStatus)
@@ -132,9 +135,10 @@ export function useExecutionLifecycle({
         if (!ownsLifecycle()) return;
         // A missing job will not start existing: stop, rather than re-asking
         // every second for as long as the page stays open.
-        if (isNotFoundError(fetchError)) settle();
+        const missing = isJobNotFoundError(fetchError);
+        if (missing) settle();
         if (hasLoaded) return;
-        publish({ error: errorMessage(fetchError, "Unable to load job") });
+        publish({ error: errorMessage(fetchError, "Unable to load job"), notFound: missing });
       } finally {
         pollInFlight = false;
       }
@@ -262,7 +266,7 @@ export function useExecutionLifecycle({
     }
   }, [jobId, message, venue]);
 
-  const notFound = isNotFoundError(error);
+  const notFound = current?.notFound ?? false;
   return {
     venue,
     job,

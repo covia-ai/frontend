@@ -57,7 +57,7 @@
 // No em dashes in the copy below (house style). Edit the markdown to change
 // the page.
 export const PRIVACY_POLICY_MD = `
-**Effective date: 29 September 2026** · Version 1.3
+**Effective date: 12 November 2026** · Version 1.3.1
 
 ## Introduction
 
@@ -150,7 +150,7 @@ The venue runtime (EPL-2.0) and SDKs (Apache-2.0) are free software you can run 
 
 ## Security
 
-Ed25519 signatures for identity; capability-based authorisation (UCAN) with least privilege by default; per-user encrypted secret storage; TLS for all data in transit; and secret redaction in audit records by design. Data at rest on our hosted venues is protected by the cloud providers' infrastructure-level encryption and access controls; the runtime additionally offers application-level store encryption, which operators of any venue (including ours) can enable, and which we are evaluating for our hosted venues. If a breach affects your personal data we will notify the PDPC and/or the relevant supervisory authority and affected users within the legally required windows (72 hours where GDPR applies; as required under the PDPA's data-breach-notification obligation).
+Ed25519 signatures for identity; capability-based authorisation (UCAN) with limits you set for each agent; per-user encrypted secret storage; TLS for all data in transit; and secret redaction in audit records by design. Data at rest on our hosted venues is protected by the cloud providers' infrastructure-level encryption and access controls; the runtime additionally offers application-level store encryption, which operators of any venue (including ours) can enable, and which we are evaluating for our hosted venues. If a breach affects your personal data we will notify the PDPC and/or the relevant supervisory authority and affected users within the legally required windows (72 hours where GDPR applies; as required under the PDPA's data-breach-notification obligation).
 
 ## Children
 

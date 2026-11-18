@@ -1,4 +1,5 @@
 import { RunStatus, isJobFinished, isJobPaused, type JobMetadata, type Venue } from "@covia/covia-sdk";
+import { normalizeJobId } from "@/lib/job-tree";
 
 export type JobWindow = {
   count: number;
@@ -37,7 +38,8 @@ export function jobRecordsFromSlice(values: unknown[]): JobMetadata[] {
     if (!record.value) continue;
     records.push({
       ...record.value,
-      id: record.value.id ?? `0x${String(record.key ?? "")}`,
+      // The slice key is 0x-prefixed since covia 0.11 and bare before it.
+      id: record.value.id ?? `0x${normalizeJobId(record.key)}`,
     });
   }
   return records.reverse();

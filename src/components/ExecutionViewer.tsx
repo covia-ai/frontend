@@ -34,6 +34,7 @@ import { ExecutionToolbar } from "@/components/ExecutionToolbar";
 import { ExecutionChildJobs } from "@/components/execution/ExecutionChildJobs";
 import { ExecutionDataTable } from "@/components/execution/ExecutionDataTable";
 import { TypedResultRenderer } from "@/components/typed-result/TypedResultRenderer";
+import { declaredResponseSchema, requestResultValue } from "@/lib/response-schema";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
@@ -97,6 +98,9 @@ export function ExecutionViewer({
   const { venue, job, operationAsset } = execution;
   const resolvedVenueId = venue?.venueId ?? venueId ?? "";
   const operationSchema = operationAsset?.metadata?.operation;
+  const declared = declaredResponseSchema(job?.input);
+  // The settled value, unwrapped from the request's completion envelope.
+  const typedValue = declared ? requestResultValue(job?.output) : undefined;
 
   useEffect(() => {
     if (execution.notFound) onNotFound?.();
@@ -214,8 +218,8 @@ export function ExecutionViewer({
               </Panel>
             ) : (
               <Panel icon={FileOutput} title="Output">
-                {job.responseSchema ? (
-                  <TypedResultRenderer value={job.output} schema={job.responseSchema} strict={job.strict === true} />
+                {declared && typedValue !== undefined ? (
+                  <TypedResultRenderer value={typedValue} schema={declared.schema} strict={declared.strict} />
                 ) : (
                   <ExecutionDataTable value={job.output} schema={operationSchema?.output} direction="output" />
                 )}

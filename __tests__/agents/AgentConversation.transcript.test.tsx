@@ -4,6 +4,12 @@ import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 
 jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
+// The typed result reads its job from the venue; here only where it is placed matters.
+jest.mock("@/components/typed-result/TaskTypedResult", () => ({
+  TaskTypedResult: ({ jobId, revision }: { jobId: string; revision: number }) => (
+    <div data-testid="task-typed-result-slot" data-job={jobId} data-revision={revision} />
+  ),
+}));
 
 import { AgentConversation } from "@/components/AgentConversation";
 import { warmMarkdownPipeline } from "@test/lazy-boundaries";
@@ -20,8 +26,8 @@ function renderTranscript(conversation: Session["conversation"]) {
       agentId="agent-1"
       selectedSessionId="sess-1"
       session={{ sessionId: "sess-1", conversation }}
-      pendingChat={null}
-      echoAlreadyRecorded={false}
+      pendingEchoes={[]}
+      waiting={false}
       transcriptRef={React.createRef<HTMLDivElement>()}
       onStarter={jest.fn()}
     />,
@@ -97,5 +103,25 @@ describe("AgentConversation transcript rendering", () => {
 
     await screen.findByTestId("turn-copy");
     expect(screen.queryByTestId("turn-job-link")).not.toBeInTheDocument();
+  });
+});
+
+describe("AgentConversation typed task results (#240)", () => {
+  it("places the request job's typed result under its Task turn", () => {
+    renderTranscript([
+      { role: "user", source: "request", content: "rank them", ts: 1, jobId: "019ffef67fdc00006a41dc5777d5c63e" },
+      { role: "assistant", content: "Done.", ts: 2 },
+    ]);
+    const slot = screen.getByTestId("task-typed-result-slot");
+    expect(slot).toHaveAttribute("data-job", "0x019ffef67fdc00006a41dc5777d5c63e");
+    expect(slot).toHaveAttribute("data-revision", "2");
+  });
+
+  it("adds no result slot to chat turns or requests without a job", () => {
+    renderTranscript([
+      { role: "user", source: "chat", content: "hi", ts: 1, jobId: "019ffef67fdc00006a41dc5777d5c63e" },
+      { role: "user", source: "request", content: "rank them", ts: 2 },
+    ]);
+    expect(screen.queryByTestId("task-typed-result-slot")).not.toBeInTheDocument();
   });
 });

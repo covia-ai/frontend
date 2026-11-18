@@ -45,3 +45,22 @@ export function isAgentCap(value: unknown): value is AgentCap {
 export function cleanCaps(caps: AgentCap[]): AgentCap[] {
   return caps.filter((cap) => cap.with.trim() || cap.can.trim());
 }
+
+// An agent's authority (covia 0.11, UCAN.md §5.4): it acts with its
+// controller's authority narrowed by `caps`. `caps: "unrestricted"` is the
+// controller's whole authority; a list narrows it, and an empty list leaves
+// none. An agent created without `caps`, or given `caps: null`, has no
+// authority at all, so a form must always send one or the other explicitly.
+// `agent:info` shows an unrestricted agent as `caps: "unrestricted"`.
+export const UNRESTRICTED_CAPS = "unrestricted";
+
+export type AgentCapsMode = "unrestricted" | "restricted";
+
+export function isUnrestrictedCaps(value: unknown): value is typeof UNRESTRICTED_CAPS {
+  return value === UNRESTRICTED_CAPS;
+}
+
+/** The caps list a config holds, or [] for "unrestricted" or none. */
+export function capsListOf(value: unknown): AgentCap[] {
+  return Array.isArray(value) ? value.filter(isAgentCap) : [];
+}

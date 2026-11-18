@@ -86,6 +86,30 @@ describe("taskReplyText", () => {
     expect(taskReplyText(task)).toBe("[notes.txt]");
   });
 
+  // A2A 1.0 file parts are flat — url/raw with filename and mediaType (#529).
+  it("names an A2A 1.0 file part and links it when it has a url", () => {
+    const task: A2ATask = {
+      artifacts: [
+        {
+          parts: [
+            { text: "Here is your report." },
+            { url: "http://localhost:8095/files/report.csv", filename: "report.csv", mediaType: "text/csv" },
+          ],
+        },
+      ],
+    };
+    expect(taskReplyText(task)).toBe(
+      "Here is your report.\n[report.csv (text/csv)] http://localhost:8095/files/report.csv",
+    );
+  });
+
+  it("names an inline A2A 1.0 file part without a link", () => {
+    const task: A2ATask = {
+      artifacts: [{ parts: [{ raw: "b3JkZXIsYW1vdW50", filename: "orders.csv" }] }],
+    };
+    expect(taskReplyText(task)).toBe("[orders.csv]");
+  });
+
   it("renders a structured data part as JSON", () => {
     const task: A2ATask = {
       artifacts: [{ parts: [{ kind: "data", data: { total: 42 } }] }],

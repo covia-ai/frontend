@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { HoverPrefetchLink } from "@/components/admin-panel/hover-prefetch-link";
 import { ChevronDown, ChevronRight, Ellipsis } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -74,7 +74,7 @@ function MenuItemRow({
               className={cn("justify-start h-8 mb-0 relative", showChildren ? "flex-1" : "w-full")}
               asChild
             >
-              <Link href={href}>
+              <HoverPrefetchLink href={href}>
                 <span className={cn(isOpen === false ? "" : "mr-2")}>
                   <Icon size={18} />
                 </span>
@@ -115,7 +115,7 @@ function MenuItemRow({
                     </span>
                   )
                 )}
-              </Link>
+              </HoverPrefetchLink>
             </Button>
           </TooltipTrigger>
           {isOpen === false && (

@@ -1,4 +1,4 @@
-import { sliceJobWindow, jobTrendFromRecords, isJobLive, isJobCancellable } from "@/lib/job-history";
+import { sliceJobWindow, jobTrendFromRecords, isJobLive, isJobCancellable, jobRecordsFromSlice } from "@/lib/job-history";
 import { RunStatus, type JobMetadata } from "@covia/covia-sdk";
 
 // The venue rejects a single values response over ~1MB with this error shape;
@@ -169,5 +169,17 @@ describe("job status groupings", () => {
   it("treats a missing status as neither", () => {
     expect(isJobLive(undefined)).toBe(false);
     expect(isJobCancellable(undefined)).toBe(false);
+  });
+});
+
+describe("jobRecordsFromSlice ids", () => {
+  // covia 0.11 spells a slice key as 0x hex; 0.10 wrote it bare.
+  it("prefixes a record's key once, whichever form the venue sent", () => {
+    const records = jobRecordsFromSlice([
+      { key: "0xABCD", value: { status: "COMPLETE" } },
+      { key: "abcd", value: { status: "COMPLETE" } },
+      { key: "0x1234", value: { id: "0x1234", status: "FAILED" } },
+    ] as unknown[]);
+    expect(records.map((r) => r.id)).toEqual(["0x1234", "0xabcd", "0xabcd"]);
   });
 });

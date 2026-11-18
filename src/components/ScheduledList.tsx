@@ -217,12 +217,12 @@ export function ScheduledList({ venueId }: ScheduledListProps = {}) {
                             </>
                           )}
                         </div>
-                        {event.by && event.by !== ownDid && (
+                        {event.caller && event.caller !== ownDid && (
                           <div
                             data-testid="schedule-by"
                             className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground"
                           >
-                            scheduled by <DidDisplay value={event.by} chars={10} />
+                            scheduled by <DidDisplay value={event.caller} chars={10} />
                           </div>
                         )}
                         {isAdapterOnlyOperation(event.op) && (

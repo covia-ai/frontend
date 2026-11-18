@@ -48,7 +48,6 @@ import { normalizeAgentEntries } from "@/lib/agent-list";
 import {
   errorMessage,
   errorStatus,
-  isAuthenticationRejectedError,
 } from "@/lib/errors";
 import { notifyError } from "@/lib/notify";
 import { TONE_STYLES } from "@/lib/status";
@@ -73,7 +72,10 @@ export function AgentCreate() {
 
   const handleAgentError = useCallback((title: string, error: unknown) => {
     if (!venue) return;
-    if (auth && isAuthenticationRejectedError(error)) {
+    // Only a 401 says the credential itself is refused. A 403 here can be a
+    // missing grant (listing agents needs crud/read on g/ since covia 0.11);
+    // whether the venue admits the account is the auth probe's call.
+    if (auth && errorStatus(error) === 401) {
       reportVenueAuthHealth(venue.venueId, auth, {
         state: "rejected",
         detail: errorMessage(error, "This venue rejected the stored account"),

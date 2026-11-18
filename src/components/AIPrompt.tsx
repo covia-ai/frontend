@@ -25,12 +25,13 @@ import { EllipsisVertical, Loader2 } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useVenueRead } from "@/hooks/use-venue-read";
-import { usePendingChats } from "@/hooks/use-pending-chats";
+import { hasStoppedWaiting, usePendingChats } from "@/hooks/use-pending-chats";
 import type { AgentListItem } from "@/config/types";
 import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { KNOWN_LLM_KEYS, LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
 import { normalizeAgentEntries } from "@/lib/agent-list";
+import { UNRESTRICTED_CAPS } from "@/lib/agent-caps";
 import {
   asSdkAgentConfig,
   normalizeAgentTemplate,
@@ -44,7 +45,7 @@ import { cn, gtmEvent, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
 import { useCurrentAuth, useIsAuthenticated } from "@/hooks/use-auth";
 import { useDeviceKeySignIn } from "@/hooks/use-device-key-signin";
 import { DeviceKeyDialog } from "@/components/DeviceKeyDialog";
-import { dispatchAgentMessage } from "@/lib/agent-chat";
+import { dispatchAgentMessage, sendAgentChat } from "@/lib/agent-chat";
 import { revalidateVenueOnFailure } from "@/hooks/use-authenticated-venue";
 import { agentChatPath } from "@/lib/routes";
 
@@ -89,6 +90,7 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted, starters, variant = "pag
   const auth = useCurrentAuth();
   const startPendingChat = usePendingChats((s) => s.startPendingChat);
   const attachSessionId = usePendingChats((s) => s.attachSessionId);
+  const attachJobId = usePendingChats((s) => s.attachJobId);
   const clearPendingChat = usePendingChats((s) => s.clearPendingChat);
 
   const deviceKeySignIn = useDeviceKeySignIn();
@@ -128,7 +130,7 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted, starters, variant = "pag
   // agent_chat as a plain string message, not an agent_request task envelope:
   // a person typing here is starting a conversation, and an agent that judges
   // the work deserves a durable, tracked job can spawn one itself (the
-  // manager-template pattern). chat() blocks until the agent replies, so the
+  // manager-template pattern). The send waits for the agent's reply, so the
   // promise is deliberately left un-awaited — we publish the message as a
   // pending chat first so the chat surface can echo it straight
   // away, then poll up the recorded turn and the eventual reply. Failures and
@@ -138,19 +140,30 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted, starters, variant = "pag
   function sendPrompt(agentId: string) {
     if (!venue) return;
     const text = prompt.trim();
-    // No session id — chat() with none makes the venue mint a fresh session,
-    // and it only comes back with the reply.
+    // No session id: the venue starts a fresh session and names it as soon as
+    // it accepts the message, so the chat surface can show it before the reply.
     const chat = startPendingChat({ agentId, sessionId: null, text, turnsAtSend: 0 });
+    let named = false;
     void dispatchAgentMessage({
       agentId,
       text,
       venueId: venue.venueId,
       venueBaseUrl: venue.baseUrl,
-      send: (message) => venue.agents.chat(agentId, message),
+      send: (message) =>
+        sendAgentChat(venue, {
+          agentId,
+          message,
+          onJob: (jobId) => attachJobId(chat, jobId),
+          onSession: (sessionId) => {
+            named = true;
+            attachSessionId(chat, sessionId);
+          },
+        }),
       agentStatus: () => venue.agents.info(agentId).then((info) => info.status),
+      stoppedWaiting: () => hasStoppedWaiting(chat),
     })
       .then((result) => {
-        if (result?.sessionId) attachSessionId(chat, result.sessionId);
+        if (!named && result?.sessionId) attachSessionId(chat, result.sessionId);
       })
       .catch(() => undefined)
       .finally(() => clearPendingChat(chat));
@@ -209,7 +222,13 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted, starters, variant = "pag
             // Drop any inline model tied to the template's former provider, but
             // preserve every other field and all ordered/reference layers.
             withoutAgentConfigFields(template.config, ["llmOperation", "model"]),
-            { llmOperation: provider.operation },
+            {
+              llmOperation: provider.operation,
+              // The venue gives an agent created without caps no authority
+              // (covia 0.11), and the skilled template sets none: the user's
+              // own assistant acts with their whole authority.
+              ...(template.preview.caps === undefined && { caps: UNRESTRICTED_CAPS }),
+            },
           ),
         ),
       });

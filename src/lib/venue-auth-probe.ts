@@ -5,18 +5,19 @@ export type AuthProbeResult =
   | { ok: false; kind: "rejected"; status: number; message: string }
   | { ok: false; kind: "unverified"; message: string };
 
-// Permission-neutral, authenticated identity check for current Covia venues:
-// a raw, job-free GET of the agent list, which the venue serves only to
-// callers it accepts.
+// Permission-neutral, authenticated identity check: a raw, job-free GET of
+// /api/v1/status with the credential. Status is a discovery route, which
+// authenticates a presented credential and admits its user (401 for a bad
+// credential, 403 for a user the venue does not admit) but checks no
+// permission. Listings are no use for this since covia 0.11: GET
+// /api/v1/agents needs crud/read on g/, and a credential without it gets 403
+// though the venue accepts the account.
 export async function verifyVenueAccount(venue: Venue): Promise<void> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
   await venue.auth.apply(headers, venue.venueId);
-  await fetchWithError(
-    `${venue.baseUrl}/api/v1/agents?includeTerminated=false`,
-    { headers },
-  );
+  await fetchWithError(`${venue.baseUrl}/api/v1/status`, { headers });
 }
 
 // Checks whether a venue actually accepts a device key before the app commits

@@ -336,6 +336,7 @@ describe('AddNewAgent', () => {
               operation: 'v/ops/llmagent/chat',
               llmOperation: 'v/ops/langchain/anthropic',
               systemPrompt: 'Help customers clearly.',
+              caps: 'unrestricted',
             },
           },
         },
@@ -412,29 +413,32 @@ describe('AddNewAgent', () => {
     expect(mockVenue.agents.create).toHaveBeenCalledTimes(1);
   });
 
-  it('omits caps from the agent config by default (unrestricted)', async () => {
+  // The venue gives an agent created without caps no authority (covia 0.11),
+  // so unrestricted is sent as the string, never as the absence of the key.
+  it('sends caps: "unrestricted" by default', async () => {
     const user = await renderAndOpenDialog();
     await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+    expect(screen.getByLabelText('Unrestricted')).toBeChecked();
     await user.click(screen.getByTestId('create-agent'));
 
     await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
-    expect(mockVenue.agents.create.mock.calls[0][0].config).not.toHaveProperty('caps');
+    expect(mockVenue.agents.create.mock.calls[0][0].config.caps).toBe('unrestricted');
   });
 
-  it('enabling capabilities seeds one empty row and warns on an empty caps array', async () => {
+  it('choosing capabilities seeds one empty row and warns on an empty list', async () => {
     const user = await renderAndOpenDialog();
-    await user.click(screen.getByLabelText('Capabilities (optional)'));
+    await user.click(screen.getByLabelText('Only these capabilities'));
 
     expect(screen.getByTestId('cap-with-0')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Remove capability 1' }));
-    expect(screen.getByText(/denies every tool call/)).toBeInTheDocument();
+    expect(screen.getByText(/every tool call will be refused/)).toBeInTheDocument();
   });
 
   it('sends a filled-in capability in the agent config, using the curated ability list', async () => {
     const user = await renderAndOpenDialog();
     await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
-    await user.click(screen.getByLabelText('Capabilities (optional)'));
+    await user.click(screen.getByLabelText('Only these capabilities'));
 
     await fill(user, screen.getByTestId('cap-with-0'), 'w/notes/');
     await user.click(screen.getByTestId('cap-can-0'));
@@ -450,7 +454,7 @@ describe('AddNewAgent', () => {
   it('supports a custom-typed ability outside the curated list', async () => {
     const user = await renderAndOpenDialog();
     await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
-    await user.click(screen.getByLabelText('Capabilities (optional)'));
+    await user.click(screen.getByLabelText('Only these capabilities'));
 
     await fill(user, screen.getByTestId('cap-with-0'), 'w/');
     await user.click(screen.getByTestId('cap-can-0'));
@@ -467,7 +471,7 @@ describe('AddNewAgent', () => {
   it('drops a blank unfinished row instead of sending it', async () => {
     const user = await renderAndOpenDialog();
     await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
-    await user.click(screen.getByLabelText('Capabilities (optional)'));
+    await user.click(screen.getByLabelText('Only these capabilities'));
     // Seeded row is left blank; add a second, filled-in row.
     await user.click(screen.getByRole('button', { name: /Add capability/ }));
     await fill(user, screen.getByTestId('cap-with-1'), 'w/');
@@ -481,21 +485,19 @@ describe('AddNewAgent', () => {
     expect(config.caps).toEqual([{ with: 'w/', can: 'crud/read' }]);
   });
 
-  // Unticked means unrestricted, which is the absence of the key — an empty
-  // array would create an agent that is denied every tool call.
-  it('omits caps when capabilities are ticked and then unticked', async () => {
+  it('sends "unrestricted" when capabilities are chosen and then unchosen', async () => {
     const user = await renderAndOpenDialog();
     await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
-    await user.click(screen.getByLabelText('Capabilities (optional)'));
-    await user.click(screen.getByLabelText('Capabilities (optional)'));
+    await user.click(screen.getByLabelText('Only these capabilities'));
+    await user.click(screen.getByLabelText('Unrestricted'));
 
     await user.click(screen.getByTestId('create-agent'));
 
     await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
-    expect(mockVenue.agents.create.mock.calls[0][0].config).not.toHaveProperty('caps');
+    expect(mockVenue.agents.create.mock.calls[0][0].config.caps).toBe('unrestricted');
   });
 
-  it("drops a cloned agent's caps when capabilities are unticked", async () => {
+  it("replaces a cloned agent's caps with \"unrestricted\" when chosen", async () => {
     const user = userEvent.setup({ delay: null });
     render(
       <AddNewAgent
@@ -508,15 +510,54 @@ describe('AddNewAgent', () => {
       />,
     );
     await user.click(screen.getByTestId('create-agent-trigger'));
+    expect(screen.getByLabelText('Only these capabilities')).toBeChecked();
     expect(screen.getByTestId('cap-with-0')).toHaveValue('w/results/');
-    await user.click(screen.getByLabelText('Capabilities (optional)'));
+    await user.click(screen.getByLabelText('Unrestricted'));
 
     await user.click(screen.getByTestId('create-agent'));
 
     await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
     const config = mockVenue.agents.create.mock.calls[0][0].config;
-    expect(config).not.toHaveProperty('caps');
+    expect(config.caps).toBe('unrestricted');
     expect(config).toMatchObject({ customSetting: 'preserve-me' });
+  });
+
+  it('keeps an unrestricted clone unrestricted', async () => {
+    const user = userEvent.setup({ delay: null });
+    render(
+      <AddNewAgent
+        initialAgentName="admin copy"
+        initialConfig={{ operation: 'v/ops/llmagent/chat', caps: 'unrestricted' }}
+      />,
+    );
+    await user.click(screen.getByTestId('create-agent-trigger'));
+    expect(screen.getByLabelText('Unrestricted')).toBeChecked();
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    expect(mockVenue.agents.create.mock.calls[0][0].config.caps).toBe('unrestricted');
+  });
+
+  // A referenced layer the form cannot read may set caps itself (the reader
+  // template does), so an untouched choice is left to it.
+  it('leaves caps to a referenced template layer until the user chooses', async () => {
+    const user = userEvent.setup({ delay: null });
+    render(
+      <AddNewAgent
+        initialAgentName="reader copy"
+        initialConfig={['v/agents/templates/reader', { systemPrompt: 'Read only' }]}
+      />,
+    );
+    await user.click(screen.getByTestId('create-agent-trigger'));
+    expect(screen.getByTestId('caps-inherited')).toBeInTheDocument();
+    expect(screen.getByLabelText('Unrestricted')).not.toBeChecked();
+    expect(screen.getByLabelText('Only these capabilities')).not.toBeChecked();
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    const layers = mockVenue.agents.create.mock.calls[0][0].config as unknown[];
+    expect(layers[0]).toBe('v/agents/templates/reader');
+    expect(layers.some((layer) => typeof layer === 'object' && layer && 'caps' in layer)).toBe(false);
   });
 
   it('keeps a custom provider operation when seeded from a clone', async () => {

@@ -27,7 +27,7 @@ const STATUS_OPTIONS = [
 
 function matchesQuery(request: HitlRequest, needle: string): boolean {
   if (!needle) return true;
-  const hay = `${request.title ?? ""} ${request.description ?? ""} ${request.agent ?? ""} ${request.from ?? ""}`;
+  const hay = `${request.title ?? ""} ${request.description ?? ""} ${request.agent ?? ""} ${request.caller ?? ""} ${request.owner ?? ""}`;
   return hay.toLowerCase().includes(needle);
 }
 

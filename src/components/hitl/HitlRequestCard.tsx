@@ -84,13 +84,13 @@ function askGlyph(request: HitlRequest): AskGlyph {
   return { Icon: ListChecks, tile: secondary, label: "Multiple asks" };
 }
 
-// Who raised this. An agent request still carries its owner's DID in `from`,
-// but the agent is the useful attribution — a raw owner DID tells you nothing
+// Who raised this. An agent request names the agent's principal as `caller`
+// and its user as `owner`, but the agent's name is the useful attribution — a raw owner DID tells you nothing
 // about which of your agents is blocked waiting on you.
 function Requester({ request, selfDid }: { request: HitlRequest; selfDid?: string }) {
   if (request.agent) {
     return (
-      <div className="flex items-center gap-2 min-w-0 text-xs" title={request.from}>
+      <div className="flex items-center gap-2 min-w-0 text-xs" title={request.caller}>
         <Bot size={14} className="text-muted-foreground shrink-0" />
         <span className="truncate">
           Agent <span className="font-medium">{request.agent}</span>
@@ -105,13 +105,13 @@ function Requester({ request, selfDid }: { request: HitlRequest; selfDid?: strin
       </div>
     );
   }
-  const isSelf = !!selfDid && selfDid === request.from;
-  if (!request.from) {
+  const isSelf = !!selfDid && selfDid === request.caller;
+  if (!request.caller) {
     return <span className="text-xs text-muted-foreground">unknown sender</span>;
   }
   return (
     <div className="flex items-center gap-1.5 min-w-0 text-xs text-muted-foreground">
-      <DidDisplay value={request.from} chars={18} />
+      <DidDisplay value={request.caller} chars={18} />
       {isSelf && <span className="shrink-0">(you)</span>}
     </div>
   );

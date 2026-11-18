@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { siteConfig } from "@/config/site";
 import { CookieConsentComponent } from "@/components/CookieConsent";
+import { consentPrepaintScript } from "@/lib/consent";
 import localFont from 'next/font/local';
 import { ThemeProvider } from "@/components/ThemeProvider";
 import PageViewTracker from "@/components/PageViewTracker";
 import { Analytics } from "@/components/analytics/Analytics";
 import { VenueRuntimeProvider } from "@/components/VenueRuntimeProvider";
 import { Toaster } from "sonner";
+import { SiteNoticeBanner } from "@/components/SiteNoticeBanner";
 
 
 const { title, description } = siteConfig;
@@ -51,10 +53,20 @@ export default function RootLayout({
             __html: `window.dataLayer=window.dataLayer||[];window.gtag=window.gtag||function(){window.dataLayer.push(arguments)};window.gtag('consent','default',{analytics_storage:'denied',ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',wait_for_update:500});`,
           }}
         />
+        {/*
+          The consent banner is in the static HTML so a first visit sees it at
+          first paint, not after hydration (frontend#474). This marks <html>
+          when a decision is already stored, so CSS hides the banner for
+          returning visitors before it can flash.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: consentPrepaintScript() }} />
       </head>
       <body
         className={`${aetherFont.className} ${aetherFont.variable} antialiased`}
       >
+          {/* Outage / maintenance notice (frontend#532): fixed at the top of
+              every page; the layout offsets itself by its height. */}
+          <SiteNoticeBanner />
           <ThemeProvider
             attribute="class"
             defaultTheme="dark"
