@@ -48,11 +48,14 @@ function readStoredInput(storageKey: string): StoredOperationInput {
   }
 }
 
+// `undefined` removes the field, so a value left unset (an optional boolean)
+// is omitted from the payload rather than sent empty.
 function withValue(input: unknown, key: string, value: unknown): unknown {
   if (key === TOP_LEVEL_INPUT_KEY) return value;
-  return typeof input === "object" && input !== null
-    ? { ...input, [key]: value }
-    : { [key]: value };
+  const fields = typeof input === "object" && input !== null ? { ...input } : {};
+  if (value === undefined) delete (fields as Record<string, unknown>)[key];
+  else (fields as Record<string, unknown>)[key] = value;
+  return fields;
 }
 
 export function useOperationInput(
