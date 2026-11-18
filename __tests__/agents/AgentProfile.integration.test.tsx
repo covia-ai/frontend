@@ -195,6 +195,19 @@ describe("AgentProfile runtime controls", () => {
 // can mount mid-send with no send state of its own, and a user can navigate
 // away from one and back while an agent is still thinking.
 describe("AgentProfile with a chat in flight", () => {
+  it("matches mixed session/job IDs without duplicating the queued message", async () => {
+    usePendingChats.getState().startPendingChat({
+      agentId: AGENT.agentId, sessionId: "0XAB12", jobId: "CD34", text: "queued work", turnsAtSend: 0,
+    });
+    venueWithAgent(AGENT, [sessionEntry("ab12", 1000, [], {
+      pending: [{ sessionId: "0xab12", jobId: "0xcd34", message: "queued work" }],
+    })]);
+    await renderProfile();
+    expect(await screen.findByTestId("agent-thinking")).toBeInTheDocument();
+    expect(screen.getByTestId("queued-user-message")).toHaveTextContent("queued work");
+    expect(screen.queryByTestId("pending-user-message")).not.toBeInTheDocument();
+  });
+
   const pending = (sessionId: string | null, text: string, agentId = AGENT.agentId) =>
     usePendingChats.getState().startPendingChat({ agentId, sessionId, text, turnsAtSend: 0 });
 
@@ -364,6 +377,30 @@ describe("AgentProfile with a chat in flight", () => {
 // auto-select resolves, and "the user asked for a fresh chat", which it must
 // not. Conflating them made New chat snap straight back to the newest session.
 describe("AgentProfile session selection", () => {
+  it.each(["ab12", "0xab12", "0XAB12"])("shows a newly accepted %s session and continues it", async (wireId) => {
+    venueWithAgent(AGENT);
+    mockVenue.jobs = { get: jest.fn().mockResolvedValue({ metadata: { sessionId: wireId } }) };
+    mockVenue.operations = {
+      invoke: jest.fn().mockImplementation(async () => {
+        mockVenue.agents.listSessions.mockResolvedValue(sessionsPage([
+          sessionEntry("ab12", 1000, [{ role: "assistant", content: "New session reply" }]),
+        ]));
+        return { id: "0xcd34", result: async () => ({ sessionId: wireId, response: "New session reply" }) };
+      }),
+    };
+    await renderProfile();
+    const input = await screen.findByTestId("composer-input");
+    fireEvent.change(input, { target: { value: "hello" } });
+    fireEvent.click(screen.getByTestId("composer-send"));
+    expect(await screen.findByText("New session reply")).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: "follow up" } });
+    fireEvent.click(screen.getByTestId("composer-send"));
+    await waitFor(() => expect(mockVenue.operations.invoke).toHaveBeenLastCalledWith(
+      "v/ops/agent/chat", { agentId: AGENT.agentId, message: "follow up", sessionId: "ab12" },
+    ));
+  });
+
   const older = sessionEntry("sess-1", 1000, [{ role: "assistant", content: "older-session-reply", ts: 1 }]);
   const newer = sessionEntry("sess-2", 2000, [{ role: "assistant", content: "newer-session-reply", ts: 2 }]);
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { normalizeCoviaId, sameCoviaId } from "@/lib/covia-ids";
+
 import {
   useCallback,
   useEffect,
@@ -315,11 +317,11 @@ export function useAgentExplorer(
   }
   const chatSession = chat?.session ?? null;
 
-  const selectedSessionId = chatSession?.sessionId ?? null;
+  const selectedSessionId = chatSession?.sessionId ? normalizeCoviaId(chatSession.sessionId) : null;
   const currentSession = useMemo(
     () =>
       sessions.find(
-        (session) => session.sessionId === selectedSessionId,
+        (session) => sameCoviaId(session.sessionId, selectedSessionId),
       ) ?? null,
     [sessions, selectedSessionId],
   );
@@ -691,7 +693,7 @@ export function useAgentExplorer(
 
   // The failed message for the conversation on screen, if any.
   const failed =
-    failedSlot && failedSlot.key === currentKey && failedSlot.sessionId === selectedSessionId
+    failedSlot && failedSlot.key === currentKey && sameCoviaId(failedSlot.sessionId, selectedSessionId)
       ? failedSlot
       : null;
   const failedSend = failed

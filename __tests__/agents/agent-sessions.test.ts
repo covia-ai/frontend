@@ -6,6 +6,10 @@ import {
 } from "@/lib/agent-sessions";
 
 describe("agent session normalization", () => {
+  it.each(["ab12", "0xab12", "0XAB12"])("reads session ID %s in the same selection form", (id) => {
+    expect(agentSessionsToSessions([{ id, conversation: [] }])[0].sessionId).toBe("ab12");
+  });
+
   it("uses SDK transcripts and sorts newest sessions first", () => {
     const sessions = agentSessionsToSessions([
       {

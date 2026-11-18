@@ -9,15 +9,20 @@ import { Venue, fetchWithError } from "@covia/covia-sdk";
 // GET /api/v1/jobs/{id} for that fire's outcome). One-shot events carry none
 // of the recurrence fields. `caller` is whoever scheduled it (the account, or
 // one of its agents) and `owner` the namespace it acted in, present only when
-// it differs (covia 0.11, which renamed `by`). `input` is shown with the operation's secret fields hidden,
+// it differs (covia 0.11, which renamed `by`). From 0.12 `owner` is omitted
+// and `id` identifies the schedule capability resource. `input` is shown with the operation's secret fields hidden,
 // as job records show it, and `description` is the scheduler's own free text.
 // Venues before 0.10 send none of those four.
 export type ScheduledEvent = {
+  /** Capability resource id, provided by venues from 0.12. */
+  id?: string;
   handle: string;
   op: string;
   time: number;
   track: boolean;
   caller?: string;
+  /** Caller spelling on venues before 0.11. */
+  by?: string;
   owner?: string;
   input?: unknown;
   description?: string;
@@ -47,7 +52,7 @@ export function isAdapterOnlyOperation(op: string): boolean {
 export function wakeTargetAgent(event: Pick<ScheduledEvent, "op" | "input">): string | null {
   if (event.op !== "agent:trigger" && event.op !== "v/ops/agent/trigger") return null;
   const agentId = (event.input as { agentId?: unknown } | null | undefined)?.agentId;
-  return typeof agentId === "string" && agentId !== "" && !agentId.includes("/") ? agentId : null;
+  return typeof agentId === "string" && agentId !== "" && !/[/:]/.test(agentId) ? agentId : null;
 }
 
 // Fixed-interval cadence presets offered by SchedulePickerDialog, in
@@ -75,5 +80,5 @@ export async function listScheduledEvents(venue: Venue): Promise<ScheduledEvent[
     `${venue.baseUrl}/api/v1/schedules`,
     { headers },
   );
-  return data.events ?? [];
+  return (data.events ?? []).map((event) => ({ ...event, caller: event.caller ?? event.by }));
 }

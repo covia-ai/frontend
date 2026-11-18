@@ -1,4 +1,5 @@
 import { memo, useMemo, type RefObject } from "react";
+import { sameCoviaId } from "@/lib/covia-ids";
 import Link from "next/link";
 import { AlertCircle, Clock, Copy, ExternalLink, Loader2, Pencil, RotateCcw } from "lucide-react";
 
@@ -95,7 +96,7 @@ function AgentConversationBase({
   // A local echo gives way to the venue's own record of the same chat, once
   // that has arrived.
   const echoes = pendingEchoes.filter(
-    (chat) => !chat.jobId || !queued.some((message) => message.jobId === chat.jobId),
+    (chat) => !chat.jobId || !queued.some((message) => sameCoviaId(message.jobId, chat.jobId)),
   );
   const hasConversation = Boolean(
     session?.conversation.length || queued.length || waiting || failedSend,
@@ -188,7 +189,7 @@ function AgentConversationBase({
               ? sections.map((s) => `${s.label}:\n${s.text}`).join("\n\n")
               : text;
             const jobId = typeof message.jobId === "string" && message.jobId
-              ? (message.jobId.startsWith("0x") ? message.jobId : `0x${message.jobId}`)
+              ? (/^0x/i.test(message.jobId) ? `0x${message.jobId.slice(2)}` : `0x${message.jobId}`)
               : null;
 
             return isUser ? (

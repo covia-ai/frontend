@@ -107,7 +107,7 @@ export const ExecutionToolbar = ({ jobData, venue }: ExecutionToolBarProps) => {
             icon={<StopCircle />}
             irreversible
             onConfirm={act("Cancel Job", "Unable to cancel job", (v, id) => v.jobs.cancel(id),
-              () => notifySuccess("Job cancelled"))}
+              () => notifySuccess("Cancellation requested"))}
           />
           {isPaused ? (
             <ConfirmedAction
@@ -115,14 +115,14 @@ export const ExecutionToolbar = ({ jobData, venue }: ExecutionToolBarProps) => {
               icon={<PlayCircle />}
               className="bg-primary"
               onConfirm={act("Resume Job", "Unable to resume job", (v, id) => v.jobs.resume(id),
-                () => notifySuccess("Job resumed"))}
+                () => notifySuccess("Resume requested"))}
             />
           ) : (
             <ConfirmedAction
               verb="pause"
               icon={<PauseCircleIcon />}
               onConfirm={act("Pause Job", "Unable to pause job", (v, id) => v.jobs.pause(id),
-                () => notifySuccess("Job paused"))}
+                () => notifySuccess("Pause requested"))}
             />
           )}
         </>

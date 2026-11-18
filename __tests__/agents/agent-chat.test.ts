@@ -210,6 +210,13 @@ describe("sendAgentChat", () => {
     ).resolves.toMatchObject({ response: "ok" });
     expect(onSession).not.toHaveBeenCalled();
   });
+
+  it.each(["ab12", "0xab12", "0XAB12"])("normalizes reply session %s even without an acceptance snapshot", async (sessionId) => {
+    const venue = venueFor({ sessionId, response: "reply" });
+    venue.jobs.get.mockRejectedValue(new Error("snapshot unavailable"));
+    await expect(sendAgentChat(venue as never, { agentId: "a1", message: "hi" }))
+      .resolves.toEqual({ sessionId: "ab12", response: "reply" });
+  });
 });
 
 // Follow-ups typed mid-reply reach the venue in order (#541): each waits for

@@ -91,7 +91,7 @@ async function settleJob(
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
     await sync();
   }
-  await job.refresh().catch(() => {});
+  if (!signal?.aborted) await job.refresh().catch(() => {});
   return moved();
 }
 
@@ -124,7 +124,7 @@ export function ConnectedAgentTalk({ agentName }: ConnectedAgentTalkProps) {
   // A job left in INPUT_REQUIRED: the next user message is delivered to it.
   const [pendingInputJob, setPendingInputJob] = useState<Job | null>(null);
   // The turn in flight, so Cancel can stop waiting on it and cancel its Job.
-  const turn = useRef<{ controller: AbortController; job?: Job } | null>(null);
+  const turn = useRef<{ controller: AbortController } | null>(null);
 
   const agentPath = agentName ? `w/a2a/agents/${agentName}` : "";
   const add = (m: TalkMessage) => setMessages((prev) => [...prev, m]);
@@ -199,7 +199,7 @@ export function ConnectedAgentTalk({ agentName }: ConnectedAgentTalkProps) {
     setSending(true);
     setLiveStatus("PENDING");
     const message = { role: "user", parts: [{ type: "text", text }] };
-    const current: { controller: AbortController; job?: Job } = { controller: new AbortController() };
+    const current = { controller: new AbortController() };
     turn.current = current;
     const { signal } = current.controller;
     try {
@@ -219,12 +219,22 @@ export function ConnectedAgentTalk({ agentName }: ConnectedAgentTalkProps) {
           taskId.current ? { taskId: taskId.current } : { contextId: contextId.current },
         );
       }
-      current.job = job;
-      if (signal.aborted) void job.cancel().catch(() => {});
       const advanced = await settleJob(job, resumedFrom, setLiveStatus, signal);
       if (signal.aborted) {
         taskId.current = undefined;
-        add({ role: "agent", tone: "error", text: "Task cancelled." });
+        const task = job.metadata.output as A2ATask | undefined;
+        if (typeof task?.contextId === "string") contextId.current = task.contextId;
+        try {
+          // 0.12 returns {id, accepted}, older venues return metadata. Use
+          // the manager: SDK 1.29's Job.cancel() overwrites the Job's cached
+          // metadata with that acknowledgement, losing its status/output.
+          await venue.jobs.cancel(job.id);
+          add({ role: "agent", tone: "error", text: "Cancellation requested. Follow the task in Jobs." });
+        } catch (err) {
+          const { reason, jobHref } = jobFailure(err, venue.venueId);
+          notifyError("Unable to cancel the task", reason, venue.baseUrl, jobHref);
+          add({ role: "agent", tone: "error", text: "Stopped waiting, but cancellation failed. Check the task in Jobs." });
+        }
       } else if (!job.isFinished && !job.isPaused) {
         // Still running when Talk stopped waiting: leave it be, and let the
         // next message start a new task in the same conversation.
@@ -254,10 +264,6 @@ export function ConnectedAgentTalk({ agentName }: ConnectedAgentTalkProps) {
     const active = turn.current;
     if (!active || active.controller.signal.aborted) return;
     active.controller.abort();
-    void active.job?.cancel().catch((err) => {
-      const { reason, jobHref } = jobFailure(err, venue?.venueId);
-      notifyError("Unable to cancel the task", reason, venue?.baseUrl, jobHref);
-    });
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

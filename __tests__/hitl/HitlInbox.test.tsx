@@ -39,6 +39,16 @@ const withRequests = (requests: unknown[]) =>
 
 beforeEach(() => mockRespond.mockClear());
 
+it('opens and closes a prefixed request from an older bare-ID deep link', async () => {
+  withRequests([req({ id: '0xab12', asks: [
+    { id: 'notes', type: 'text', prompt: 'Provide details', required: true },
+  ] })]);
+  render(<HitlInbox initialRequestId="AB12" />);
+  expect(screen.getByText('Provide details')).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(screen.queryByText('Provide details')).not.toBeInTheDocument();
+});
+
 describe('requester attribution', () => {
   it('credits the agent and links to it', () => {
     withRequests([req({ agent: 'guarded-writer', caller: 'did:key:zOWNER/g/guarded-writer', owner: 'did:key:zOWNER' })]);

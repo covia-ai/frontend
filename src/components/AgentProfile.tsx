@@ -85,6 +85,8 @@ export function AgentProfile({ agentId }: { agentId: string }) {
   };
 
   const agent = selectedAgentDetail;
+  // Older venues omit controller; their agents acted with their owner's authority.
+  const authorityDid = agent?.controller ?? ownerDid;
   const display = agent ? agentDisplay(agent.config) : null;
   const status = agent?.status;
   const canSuspend = status === AgentStatus.RUNNING || status === AgentStatus.SLEEPING;
@@ -179,9 +181,9 @@ export function AgentProfile({ agentId }: { agentId: string }) {
                   </button>
                 )}
               </div>
-              {ownerDid && (
-                <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-                  acts as <DidDisplay value={ownerDid} identicon chars={10} />
+              {authorityDid && (
+                <div data-testid="agent-authority" className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                  controller <DidDisplay value={authorityDid} identicon chars={10} />
                 </div>
               )}
               {suspension && <SuspensionNotice suspension={suspension} self={ownerDid} className="mt-2" />}

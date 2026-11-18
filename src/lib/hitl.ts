@@ -25,7 +25,7 @@ export type HitlTokenSpec = {
   caps: HitlCap[];
   /** Requested lifetime hint (seconds); the responder sets the real expiry. */
   exp?: number;
-  /** DID the signed token must be audienced to; defaults to the request's `from`. */
+  /** DID the signed token must be audienced to; defaults to the request's caller. */
   audience?: string;
   /** Target venue — informational, for the responder's UI. */
   venue?: string;
@@ -86,7 +86,9 @@ export type HitlRequest = {
   status: HitlStatus;
   /** The principal that asked: a user, one of its agents or a delegate (covia 0.11). */
   caller?: string;
-  /** The namespace the asker acted in — an agent's or delegate's user — when it differs from `caller`. */
+  /** Legacy caller field, before venue 0.11. */
+  from?: string;
+  /** Legacy namespace attribution (0.11); 0.12 records only the caller. */
   owner?: string;
   /**
    * Id of the agent that raised the request, when one did. Absent for requests
@@ -123,7 +125,7 @@ export const HITL_RESPOND_ADDRESS = "v/ops/hitl/respond";
 // `v/ops/hitl/list` operation returns the same summaries but mints a Job on
 // every call — unacceptable for a page load or a poll (AGENTS.md), which is
 // why the lattice is read directly here.
-export async function listHitlRequests(venue: Venue): Promise<HitlRequest[]> {
+export async function listHitlRequests(venue: Venue, inboxOwner?: string): Promise<HitlRequest[]> {
   // An inbox that has never received a request resolves to Nil (exists:false)
   // rather than throwing, so anything thrown here is a genuine failure — a 403
   // because the selected venue isn't the one holding your requests, an expired
@@ -143,6 +145,10 @@ export async function listHitlRequests(venue: Venue): Promise<HitlRequest[]> {
     .filter((value): value is HitlRequest =>
       !!value && typeof value === "object" && !!(value as HitlRequest).id,
     )
+    // Since 0.12, a caller equal to the account holding h/ is omitted in
+    // stored records. The account comes from the authenticated reader, never
+    // the venue DID. Keep the pre-0.11 `from` spelling readable too.
+    .map((request) => ({ ...request, caller: request.caller ?? request.from ?? inboxOwner }))
     .sort((a, b) => (b.created ?? 0) - (a.created ?? 0));
 }
 
