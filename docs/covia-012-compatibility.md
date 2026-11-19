@@ -15,6 +15,9 @@ reported rather than retried with broader authority.
   lowercase hex. Comparisons also accept `0x` and `0X` prefixes. Pending chat
   echoes, watched jobs and inbox deep links match either spelling. Opaque IDs
   retain their spelling; external A2A task/context IDs are passed through.
+  Operation asset lookups and adapter icons also accept either prefix case,
+  including hashes within `a/` references; abbreviated job labels show one
+  prefix even when the server sends `0X`.
 - Job controls accept both older metadata responses and 0.12 acknowledgements.
   Connected-agent cancellation uses `venue.jobs.cancel(id)`, avoiding SDK
   1.29's `Job.cancel()` metadata replacement. The UI reports acceptance rather
@@ -38,7 +41,7 @@ reported rather than retried with broader authority.
 Regression fixtures cover both ID spellings, new-session follow-up, pending
 message deduplication, cancellation acknowledgements/refusals, implicit and
 legacy inbox callers, and controller attribution. Local validation passed:
-`pnpm lint`, `pnpm typecheck`, `pnpm test --runInBand` (242 suites, 2,057 tests)
+`pnpm lint`, `pnpm typecheck`, `pnpm test --runInBand` (242 suites, 2,061 tests)
 and `pnpm build`. No local venue was listening on port 8080, so live venue
 checks remain outstanding.
 

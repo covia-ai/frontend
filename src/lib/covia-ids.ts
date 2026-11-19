@@ -1,5 +1,5 @@
 /**
- * Covia job, task and session IDs may be bare hex or 0x-prefixed (venue
+ * Covia asset, job, task and session IDs may be bare hex or 0x-prefixed (venue
  * 0.12). Keep one comparison/selection form across SDK and wire responses.
  * Opaque IDs, including external A2A identifiers, must retain their spelling.
  */

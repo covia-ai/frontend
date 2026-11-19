@@ -36,11 +36,11 @@ describe("resolveOperationByAddress — a job record's bare-hash op (covia#499)"
     expect(getAsset).toHaveBeenCalledWith(`did:key:z6MkVenue/a/${HASH}`);
   });
 
-  it("strips a 0x prefix before qualifying", async () => {
+  it.each([`0x${HASH}`, `0X${HASH.toUpperCase()}`, `a/0X${HASH.toUpperCase()}`])("normalizes %s before qualifying", async (ref) => {
     const getAsset = jest.fn(async (id: string) => ({ id }));
     const venue = { venueId: "did:key:z6MkVenue", getAsset } as never;
 
-    await resolveOperationByAddress(venue, `0x${HASH}`);
+    await resolveOperationByAddress(venue, ref);
 
     expect(getAsset).toHaveBeenCalledWith(`did:key:z6MkVenue/a/${HASH}`);
   });
