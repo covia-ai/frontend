@@ -43,6 +43,9 @@ type Lifecycle = {
 /** The operation schema resolved for one job's `op` on one venue. */
 type ResolvedOperation = { venue: Venue | undefined; op: string; asset?: Asset };
 
+type MessageTarget = { venue: Venue; jobId: string };
+type MessageDraft = { venue: Venue | undefined; jobId: string; text: string };
+
 export function useExecutionLifecycle({
   venueId,
   jobId,
@@ -53,11 +56,11 @@ export function useExecutionLifecycle({
   const { venue } = useResolvedVenueContext(venueId);
   const [lifecycle, setLifecycle] = useState<Lifecycle | null>(null);
   const [resolved, setResolved] = useState<ResolvedOperation | null>(null);
-  const [message, setMessage] = useState("");
-  const [sendingMessage, setSendingMessage] = useState(false);
+  const [draft, setDraft] = useState<MessageDraft | null>(null);
+  const [pendingMessages, setPendingMessages] = useState<MessageTarget[]>([]);
+  const pendingSendsRef = useRef<MessageTarget[]>([]);
   const lifecycleGeneration = useRef(0);
   const assetGeneration = useRef(0);
-  const sendGeneration = useRef(0);
   const refreshRef = useRef<(() => Promise<void>) | null>(null);
 
   const current =
@@ -69,6 +72,11 @@ export function useExecutionLifecycle({
   const loading = !!venue && !!jobId && job === undefined && error === null;
   const operationAsset =
     resolved && resolved.venue === venue && resolved.op === job?.op ? resolved.asset : undefined;
+  const message = draft?.venue === venue && draft?.jobId === jobId ? draft.text : "";
+  const sendingMessage = pendingMessages.some((target) => target.venue === venue && target.jobId === jobId);
+  const setMessage = useCallback((text: string) => {
+    setDraft({ venue, jobId, text });
+  }, [venue, jobId]);
 
   useEffect(() => {
     const lifecycleGen = lifecycleGeneration;
@@ -241,30 +249,28 @@ export function useExecutionLifecycle({
     };
   }, [op, venue]);
 
-  useEffect(
-    () => () => {
-      ++sendGeneration.current;
-    },
-    [jobId, venue],
-  );
-
   const sendMessage = useCallback(async () => {
     if (!venue || !message.trim()) return;
-    const generation = ++sendGeneration.current;
-    setSendingMessage(true);
+    if (pendingSendsRef.current.some((target) => target.venue === venue && target.jobId === jobId)) return;
+    const request = { venue, jobId };
+    pendingSendsRef.current = [...pendingSendsRef.current, request];
+    setPendingMessages(pendingSendsRef.current);
+    // Capture this job's refresh. A late send must not refresh whichever job
+    // the viewer happens to show after navigation.
+    const refresh = refreshRef.current;
     try {
       await venue.jobs.sendMessage(jobId, parseJobMessage(message));
       notifySuccess("Message sent");
-      if (sendGeneration.current === generation) setMessage("");
-      await refreshRef.current?.();
+      // Clear only the submitted draft, preserving edits made while waiting.
+      setDraft((currentDraft) => currentDraft === draft ? null : currentDraft);
+      await refresh?.();
     } catch (err) {
       notifyError("Unable to send message", err, venue.baseUrl);
     } finally {
-      if (sendGeneration.current === generation) {
-        setSendingMessage(false);
-      }
+      pendingSendsRef.current = pendingSendsRef.current.filter((target) => target !== request);
+      setPendingMessages(pendingSendsRef.current);
     }
-  }, [jobId, message, venue]);
+  }, [draft, jobId, message, venue]);
 
   const notFound = current?.notFound ?? false;
   return {

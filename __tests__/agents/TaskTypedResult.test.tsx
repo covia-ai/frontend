@@ -1,10 +1,10 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { RunStatus } from '@covia/covia-sdk';
 
 const mockGet = jest.fn();
-const mockVenue = { venueId: 'did:web:venue.example', jobs: { get: mockGet } };
+let mockVenue: { venueId: string; jobs: { get: jest.Mock } } | null;
 jest.mock('@/hooks/use-authenticated-venue', () => ({
   useAuthenticatedVenue: () => mockVenue,
 }));
@@ -29,12 +29,53 @@ const job = (overrides: Record<string, unknown>) => ({
   },
 });
 
-// Each test uses its own job id: finished jobs are cached per (venue, job).
+// Each test uses its own job id and authenticated Venue instance.
 let seq = 0;
 const nextId = () => `0xjob${++seq}`;
 
 describe('TaskTypedResult', () => {
-  beforeEach(() => mockGet.mockReset());
+  beforeEach(() => {
+    mockGet.mockReset();
+    mockVenue = { venueId: 'did:web:venue.example', jobs: { get: mockGet } };
+  });
+
+  it('does not reuse a finished result after switching accounts on the same venue', async () => {
+    mockGet.mockResolvedValue(job({}));
+    const id = nextId();
+    const { rerender } = render(<TaskTypedResult jobId={id} revision={1} />);
+    await screen.findByText('Ada');
+    const otherGet = jest.fn().mockRejectedValue(new Error('HTTP 403'));
+    mockVenue = { venueId: 'did:web:venue.example', jobs: { get: otherGet } };
+    rerender(<TaskTypedResult jobId={id} revision={1} />);
+    expect(screen.queryByText('Ada')).not.toBeInTheDocument();
+    await waitFor(() => expect(otherGet).toHaveBeenCalledWith(id));
+    expect(screen.queryByTestId('task-typed-result')).not.toBeInTheDocument();
+  });
+
+  it('does not publish an old account result when its read finishes after switching accounts', async () => {
+    let finish!: (value: ReturnType<typeof job>) => void;
+    mockGet.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    const id = nextId();
+    const { rerender } = render(<TaskTypedResult jobId={id} revision={1} />);
+    const otherGet = jest.fn().mockResolvedValue(job({ output: envelope([{ name: 'Grace', score: 4 }]) }));
+    mockVenue = { venueId: 'did:web:venue.example', jobs: { get: otherGet } };
+    rerender(<TaskTypedResult jobId={id} revision={1} />);
+    await screen.findByText('Grace');
+    await act(async () => { finish(job({})); });
+    rerender(<TaskTypedResult jobId={id} revision={2} />);
+    expect(screen.queryByText('Ada')).not.toBeInTheDocument();
+    expect(screen.getByText('Grace')).toBeInTheDocument();
+  });
+
+  it('hides a loaded result while no authenticated venue is available', async () => {
+    mockGet.mockResolvedValue(job({}));
+    const id = nextId();
+    const { rerender } = render(<TaskTypedResult jobId={id} revision={1} />);
+    await screen.findByText('Ada');
+    mockVenue = null;
+    rerender(<TaskTypedResult jobId={id} revision={1} />);
+    expect(screen.queryByTestId('task-typed-result')).not.toBeInTheDocument();
+  });
 
   it('renders a completed typed request as a table with the validated badge', async () => {
     mockGet.mockResolvedValue(job({}));
@@ -44,7 +85,9 @@ describe('TaskTypedResult', () => {
     expect(await screen.findByTestId('task-typed-result')).toBeInTheDocument();
     expect(screen.getByRole('table')).toBeInTheDocument();
     expect(screen.getByText('Ada')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /open job/i })).toHaveAttribute('href', expect.stringContaining(id));
+    expect(screen.getByRole('link', { name: /open job/i })).toHaveAttribute(
+      'href', `/venues/${encodeURIComponent('did:web:venue.example')}/jobs/${id}`,
+    );
     expect(mockGet).toHaveBeenCalledWith(id);
   });
 
