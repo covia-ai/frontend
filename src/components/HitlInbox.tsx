@@ -12,6 +12,7 @@ import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useAuthStore } from "@/hooks/use-auth";
 import { useHitlRequests } from "@/hooks/use-hitl";
 import type { HitlRequest } from "@/lib/hitl";
+import { sameCoviaId } from "@/lib/covia-ids";
 import { Inbox, RefreshCw, Search, X } from "lucide-react";
 
 // Empty selection means "no filter" (show every status) — same convention as
@@ -77,8 +78,8 @@ export function HitlInbox({
         (agentFilter === null || r.agent === agentFilter) &&
         matchesQuery(r, needle),
     );
-    if (!justAnsweredId || base.some((r) => r.id === justAnsweredId)) return base;
-    const pinned = requests.find((r) => r.id === justAnsweredId);
+    if (!justAnsweredId || base.some((r) => sameCoviaId(r.id, justAnsweredId))) return base;
+    const pinned = requests.find((r) => sameCoviaId(r.id, justAnsweredId));
     return pinned ? [pinned, ...base] : base;
   }, [requests, statusFilter, agentFilter, query, justAnsweredId]);
 
@@ -92,7 +93,7 @@ export function HitlInbox({
   // touch the others, and expanding one card re-renders only it and the one it
   // replaced.
   const handleToggleExpanded = useCallback((id: string) => {
-    setExpandedId((prev) => (prev === id ? null : id));
+    setExpandedId((prev) => (sameCoviaId(prev, id) ? null : id));
   }, []);
   const handleAnswered = useCallback(
     (id: string) => {
@@ -211,7 +212,7 @@ export function HitlInbox({
               selfDid={credsForVenue?.did}
               venue={venue}
               signingKeyHex={signingKeyHex}
-              expanded={expandedId === request.id}
+              expanded={sameCoviaId(expandedId, request.id)}
               onToggleExpanded={handleToggleExpanded}
               onAnswered={handleAnswered}
             />

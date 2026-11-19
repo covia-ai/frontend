@@ -14,6 +14,7 @@ import { RunStatus, type JobMetadata } from "@covia/covia-sdk";
 import { toneForRunStatus, TONE_STYLES, MAGNITUDE_FILL, type StatusTone } from "@/lib/status";
 import { adapterLookup, ADAPTER_FALLBACK } from "@/lib/adapter-icons";
 import type { IconCmp } from "@/lib/file-type-look";
+import { normalizeCoviaId } from "@/lib/covia-ids";
 
 /**
  * Visual identity for a job's operation: an icon and a colour, keyed by the
@@ -156,7 +157,7 @@ export function operationVisual(
 /** `0x01a05fa1d467…62a2fd9` — enough of each end to recognise, no wall of hex. */
 export function abbreviateJobId(id?: string): string {
   if (!id) return "--";
-  const hex = id.startsWith("0x") ? id.slice(2) : id;
+  const hex = normalizeCoviaId(id);
   if (hex.length <= 14) return id;
   return `0x${hex.slice(0, 6)}…${hex.slice(-4)}`;
 }

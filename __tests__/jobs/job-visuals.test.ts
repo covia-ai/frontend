@@ -95,6 +95,8 @@ describe("operationVisual — richer name fallback", () => {
 describe("abbreviateJobId", () => {
   it("elides long hex ids keeping both ends", () => {
     expect(abbreviateJobId("0x01a05fa1d46700006d964feca62a2fd9")).toBe("0x01a05f…2fd9");
+    expect(abbreviateJobId("0X01A05FA1D46700006D964FECA62A2FD9")).toBe("0x01a05f…2fd9");
+    expect(abbreviateJobId("01a05fa1d46700006d964feca62a2fd9")).toBe("0x01a05f…2fd9");
   });
   it("passes short ids through and handles undefined", () => {
     expect(abbreviateJobId("0x0123")).toBe("0x0123");

@@ -33,6 +33,18 @@ function job(overrides: { isFinished: boolean; isComplete?: boolean; status?: Ru
 }
 
 describe("useWatchedJobs store", () => {
+  it("deduplicates and removes both hex spellings, keeping other venues separate", () => {
+    const { watch, unwatch } = useWatchedJobs.getState();
+    watch("v1", "0XAB12");
+    watch("v1", "ab12");
+    watch("v2", "ab12");
+    expect(useWatchedJobs.getState().jobs).toHaveLength(2);
+    unwatch("v1", "0xab12");
+    expect(useWatchedJobs.getState().jobs).toEqual([
+      expect.objectContaining({ venueId: "v2", jobId: "ab12" }),
+    ]);
+  });
+
   beforeEach(() => {
     act(() => useWatchedJobs.setState({ jobs: [] }));
   });

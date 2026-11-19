@@ -31,5 +31,5 @@ The app starts on **http://localhost:3000**.
 | Issue | Fix |
 |-------|-----|
 | Port 3000 in use | Kill the process or use `pnpm dev -- -p 3001` |
-| SDK import errors | Run `pnpm install` — the SDK is fetched from GitHub |
+| SDK import errors | Run `pnpm install` — the SDK comes from npm |
 | Venue connection fails | Ensure venue is running on port 8080 |

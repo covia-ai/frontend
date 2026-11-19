@@ -14,10 +14,12 @@ jest.mock("@/lib/a2a", () => ({
 jest.mock("next/navigation", () => ({ useRouter: () => ({ push: jest.fn() }) }));
 
 const sendMock = jest.fn();
+const cancelMock = jest.fn();
 const mockVenue = {
   venueId: "venue-1",
   baseUrl: "https://venue.example",
   a2a: { send: sendMock },
+  jobs: { cancel: cancelMock },
 };
 jest.mock("@/hooks/use-authenticated-venue", () => ({
   ...require("@test/use-authenticated-venue").venueMock,
@@ -34,6 +36,7 @@ function makeJob(initial: { status: string; output?: unknown }) {
   const TERMINAL = ["COMPLETE", "FAILED", "CANCELLED", "REJECTED", "TIMEOUT"];
   const PAUSED = ["PAUSED", "INPUT_REQUIRED", "AUTH_REQUIRED"];
   const job: {
+    id: string;
     metadata: { status: string; output?: unknown; error?: string };
     script: Step[];
     /** Hold the stream open after the script, like a quietly running Job. */
@@ -48,6 +51,7 @@ function makeJob(initial: { status: string; output?: unknown }) {
     readonly needsInput: boolean;
     readonly needsAuth: boolean;
   } = {
+    id: "0xab12",
     metadata: { status: initial.status, output: initial.output },
     script: [],
     hang: false,
@@ -104,7 +108,10 @@ async function say(text: string) {
 }
 
 describe("ConnectedAgentTalk", () => {
-  beforeEach(() => sendMock.mockReset());
+  beforeEach(() => {
+    sendMock.mockReset();
+    cancelMock.mockReset().mockResolvedValue({ id: "0xab12", accepted: true });
+  });
 
   it("streams a turn and renders the agent's reply", async () => {
     const job = makeJob({ status: "PENDING", output: completedTask("Hello back") });
@@ -313,7 +320,11 @@ describe("ConnectedAgentTalk", () => {
     );
   }, 15_000);
 
-  it("cancels a running task from the status pill", async () => {
+  it.each([
+    { id: "0xab12", accepted: true },
+    { id: "ab12", status: "CANCELLED" },
+  ])("cancels through the manager with response %j", async (response) => {
+    cancelMock.mockResolvedValue(response);
     const job = makeJob({ status: "PENDING", output: { id: "task-1" } });
     job.script = ["STARTED"];
     job.hang = true;
@@ -323,13 +334,44 @@ describe("ConnectedAgentTalk", () => {
     await say("do something slow");
     await userEvent.click(await screen.findByTestId("connect-talk-cancel"));
 
-    await waitFor(() => expect(screen.getByText("Task cancelled.")).toBeInTheDocument());
-    expect(job.cancel).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.getByText(/Cancellation requested/)).toBeInTheDocument());
+    expect(cancelMock).toHaveBeenCalledTimes(1);
+    expect(cancelMock).toHaveBeenCalledWith(job.id);
+    expect(job.cancel).not.toHaveBeenCalled();
+    expect(job.metadata).toMatchObject({ status: "STARTED", output: { id: "task-1" } });
     expect(screen.getByTestId("connect-talk-input")).toBeEnabled();
     expect(screen.queryByTestId("connect-talk-cancel")).not.toBeInTheDocument();
   });
 
   // The venue's job error is generic; the remote reason is on the status (#530).
+  it("cancels once when clicked before the venue returns the job", async () => {
+    const job = makeJob({ status: "STARTED" });
+    let accept!: (job: ReturnType<typeof makeJob>) => void;
+    sendMock.mockImplementation(() => new Promise((resolve) => { accept = resolve; }));
+    render(<ConnectedAgentTalk agentName="venue-b-bot" />);
+    await say("slow acceptance");
+    await userEvent.click(await screen.findByTestId("connect-talk-cancel"));
+    expect(cancelMock).not.toHaveBeenCalled();
+    accept(job);
+    expect(await screen.findByText(/Cancellation requested/)).toBeInTheDocument();
+    expect(cancelMock).toHaveBeenCalledTimes(1);
+    expect(cancelMock).toHaveBeenCalledWith(job.id);
+    expect(job.cancel).not.toHaveBeenCalled();
+  });
+
+  it("does not claim cancellation succeeded when the venue refuses it", async () => {
+    const job = makeJob({ status: "STARTED" });
+    job.hang = true;
+    sendMock.mockResolvedValue(job);
+    cancelMock.mockRejectedValue(new Error("requires job/manage"));
+    render(<ConnectedAgentTalk agentName="venue-b-bot" />);
+    await say("slow task");
+    await userEvent.click(await screen.findByTestId("connect-talk-cancel"));
+    expect(await screen.findByText(/cancellation failed/)).toBeInTheDocument();
+    expect(screen.queryByText(/Cancellation requested/)).not.toBeInTheDocument();
+    expect(job.metadata.status).toBe("STARTED");
+  });
+
   it("shows the remote agent's own reason for a failed task", async () => {
     const job = makeJob({
       status: "PENDING",

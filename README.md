@@ -73,3 +73,6 @@ pnpm build
 Reads used for rendering and polling must remain job-free. Use the SDK read
 surfaces (`workspace`, assets, jobs, status), native `/mcp`, or `/.well-known`
 endpoints. Reserve operation invocation for explicit user actions.
+
+Upcoming venue changes and transitional response handling are tracked in
+[Covia 0.12 compatibility](docs/covia-012-compatibility.md).

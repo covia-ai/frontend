@@ -1,6 +1,7 @@
 import type { AgentSession } from "@covia/covia-sdk";
 import type { Session } from "@/config/types";
 import { messageContentToString } from "@/lib/agent-turns";
+import { normalizeCoviaId } from "@/lib/covia-ids";
 
 export function agentSessionsToSessions(items: unknown): Session[] {
   if (!Array.isArray(items)) return [];
@@ -13,7 +14,7 @@ export function agentSessionsToSessions(items: unknown): Session[] {
       const conversation = Array.isArray(session.conversation) ? session.conversation : [];
 
       return {
-        sessionId: String(session.id ?? ""),
+        sessionId: normalizeCoviaId(String(session.id ?? "")),
         created: metadata.created,
         parties: metadata.parties,
         turns: metadata.turns ?? metadata.turnCount,

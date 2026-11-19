@@ -1,4 +1,5 @@
 import { assetHash, didUrl, Namespace, Operation, Venue } from "@covia/covia-sdk";
+import { normalizeCoviaId } from "@/lib/covia-ids";
 
 // An operation discovered in the venue catalog, identified by its resolvable
 // catalog path (e.g. "v/ops/agent/suspend"), not a content hash.
@@ -100,7 +101,7 @@ export async function listCatalogOperations(
 // A job record's `op` is a bare hash when the caller pinned a definition, and
 // on every record written before venue 0.9.9 (covia#499). Both read as an
 // asset, so give them the "a/" namespace the asset branch below expects.
-const BARE_HASH = /^(0x)?[0-9a-fA-F]{64}$/;
+const BARE_HASH = /^(0x)?[0-9a-f]{64}$/i;
 
 // Resolve an operation from its namespace-explicit URL address:
 //  - "a/<hash>", or a bare hash  → content-addressed asset (getAsset)
@@ -108,7 +109,7 @@ const BARE_HASH = /^(0x)?[0-9a-fA-F]{64}$/;
 // Returns an Operation whose id is the address it was resolved from.
 export async function resolveOperationByAddress(venue: Venue, address: string): Promise<Operation> {
   if (BARE_HASH.test(address)) {
-    address = `a/${address.replace(/^0x/, "")}`;
+    address = `a/${normalizeCoviaId(address)}`;
   }
   if (address.startsWith("a/")) {
     // GET /api/v1/assets/<id> only resolves the fully DID-qualified form —
@@ -117,7 +118,7 @@ export async function resolveOperationByAddress(venue: Venue, address: string): 
     // don't match server behaviour). Qualify with this venue's own DID
     // before asking, same as the address AssetHeader would render back
     // (frontend#341).
-    const qualified = didUrl(venue.venueId, Namespace.ASSET, address.slice(2));
+    const qualified = didUrl(venue.venueId, Namespace.ASSET, normalizeCoviaId(address.slice(2)));
     return (await venue.getAsset(qualified)) as Operation;
   }
   let meta = operationMetadataCache.get(venue)?.get(address);
@@ -153,10 +154,12 @@ export type OperationAdapterIndex = {
   byPath: Map<string, string>;
 };
 
-// Mirrors the SDK's own hash normalisation so `0x`-prefixed / upper-case refs
-// key the same entry as the bare lower-case hash a job record carries.
-const normaliseHash = (hash: string): string =>
-  (hash.startsWith("0x") ? hash.slice(2) : hash).toLowerCase();
+// SDK 1.29 recognises only lowercase `0x` on bare hashes. Normalise before
+// parsing those refs and after extracting hashes from namespace/DID paths.
+const normalisedAssetHash = (ref: string): string | null => {
+  const hash = assetHash(normalizeCoviaId(ref));
+  return hash ? normalizeCoviaId(hash) : null;
+};
 
 export async function buildOperationAdapterIndex(
   venue: Venue,
@@ -180,8 +183,8 @@ export async function buildOperationAdapterIndex(
   for (const item of assets?.items ?? []) {
     const adapter = item.metadata?.operation?.adapter;
     if (typeof adapter !== "string" || !adapter) continue;
-    const hash = assetHash(item.id);
-    if (hash) byHash.set(normaliseHash(hash), adapter);
+    const hash = normalisedAssetHash(item.id);
+    if (hash) byHash.set(hash, adapter);
   }
 
   return { byHash, byPath };
@@ -197,7 +200,7 @@ export function adapterForOp(
   op?: string,
 ): string | undefined {
   if (!index || !op) return undefined;
-  const hash = assetHash(op);
-  if (hash) return index.byHash.get(normaliseHash(hash));
+  const hash = normalisedAssetHash(op);
+  if (hash) return index.byHash.get(hash);
   return index.byPath.get(op);
 }

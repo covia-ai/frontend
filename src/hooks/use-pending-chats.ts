@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { sameCoviaId } from "@/lib/covia-ids";
 
 // Chats that have been dispatched but not yet answered, so any screen showing
 // a transcript can echo the user's own message and a "thinking" indicator
@@ -98,7 +99,7 @@ export function findWaitingChats(
     (c) =>
       c.agentId === agentId &&
       !c.stoppedWaiting &&
-      (c.sessionId === null || c.sessionId === sessionId)
+      (c.sessionId === null || sameCoviaId(c.sessionId, sessionId))
   );
 }
 

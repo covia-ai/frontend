@@ -29,6 +29,14 @@ function mockVenue(overrides: Record<string, unknown> = {}) {
 }
 
 describe("buildOperationAdapterIndex", () => {
+  it.each([`0X${HASH_A.toUpperCase()}`, `${DID}/a/0X${HASH_A.toUpperCase()}`])("indexes mixed-case asset reference %s", async (id) => {
+    const venue = mockVenue({ listAssets: jest.fn().mockResolvedValue({
+      items: [{ id, metadata: { operation: { adapter: "http:get" } } }],
+    }) });
+    const index = await buildOperationAdapterIndex(venue);
+    expect(adapterForOp(index, HASH_A)).toBe("http:get");
+  });
+
   it("keys operation hashes and catalog paths to their adapter (job-free)", async () => {
     const venue = mockVenue();
     const index = await buildOperationAdapterIndex(venue);
@@ -62,6 +70,8 @@ describe("adapterForOp", () => {
   it("resolves a bare hash op, tolerating a 0x prefix", () => {
     expect(adapterForOp(index, HASH_A)).toBe("jvm:stringConcat");
     expect(adapterForOp(index, "0x" + HASH_A)).toBe("jvm:stringConcat");
+    expect(adapterForOp(index, "0X" + HASH_A.toUpperCase())).toBe("jvm:stringConcat");
+    expect(adapterForOp(index, `${DID}/a/0X${HASH_A.toUpperCase()}`)).toBe("jvm:stringConcat");
   });
 
   it("resolves a catalog-path op", () => {

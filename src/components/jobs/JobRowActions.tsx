@@ -85,7 +85,7 @@ export function JobRowActions({ job, venue, onChanged }: JobRowActionsProps) {
     setBusy("cancel");
     try {
       await venue.jobs.cancel(jobId);
-      notifySuccess(`Cancelled job ${abbreviateJobId(jobId)}`);
+      notifySuccess(`Cancellation requested for job ${abbreviateJobId(jobId)}`);
       onChanged?.();
     } catch (err) {
       const { reason } = jobFailure(err, venue.venueId);

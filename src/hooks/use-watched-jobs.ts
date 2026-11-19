@@ -10,6 +10,7 @@ import { getVenueFor } from "@/lib/venue-registry";
 import { notifySuccess, notifyError } from "@/lib/notify";
 import { isJobNotFoundError } from "@/lib/errors";
 import { jobPath } from "@/lib/routes";
+import { sameCoviaId } from "@/lib/covia-ids";
 
 // How often the shared poller re-checks watched jobs. Only ticks while the
 // watch list is non-empty (mirrors JobList's "only poll when there are
@@ -44,14 +45,14 @@ export const useWatchedJobs = create<WatchedJobsState>()(
       jobs: [],
       watch: (venueId, jobId) =>
         set((state) => {
-          if (state.jobs.some((j) => j.venueId === venueId && j.jobId === jobId)) return state;
+          if (state.jobs.some((j) => j.venueId === venueId && sameCoviaId(j.jobId, jobId))) return state;
           return {
             jobs: [...state.jobs, { venueId, jobId, addedAt: Date.now() }].slice(-MAX_WATCHED_JOBS),
           };
         }),
       unwatch: (venueId, jobId) =>
         set((state) => ({
-          jobs: state.jobs.filter((j) => !(j.venueId === venueId && j.jobId === jobId)),
+          jobs: state.jobs.filter((j) => !(j.venueId === venueId && sameCoviaId(j.jobId, jobId))),
         })),
     }),
     {

@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
-import { RunStatus, type JobMetadata } from "@covia/covia-sdk";
+import { RunStatus, type JobMetadata, type Venue } from "@covia/covia-sdk";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useLatestQuery } from "@/hooks/use-latest-query";
 import { TypedResultRenderer } from "@/components/typed-result/TypedResultRenderer";
@@ -14,15 +14,16 @@ import {
   valueFitsShape,
 } from "@/lib/response-schema";
 import { jobPath } from "@/lib/routes";
+import { normalizeCoviaId } from "@/lib/covia-ids";
 
-// A finished job never changes, so its record is read once per venue and
-// reused for every later render of the transcript.
-const finishedJobs = new Map<string, JobMetadata>();
+// A Venue instance is scoped to both venue and credentials. Never reuse a
+// private result by venue DID alone after switching accounts or signing out.
+const finishedJobs = new WeakMap<Venue, Map<string, JobMetadata>>();
 
 const isFinished = (status: unknown) =>
   status === RunStatus.COMPLETE || status === RunStatus.FAILED || status === RunStatus.CANCELLED;
 
-type Loaded = { key: string; job: JobMetadata | null };
+type Loaded = { venue: Venue; key: string; job: JobMetadata };
 
 /**
  * The typed result of an agent request, shown under its Task turn in the chat
@@ -38,21 +39,26 @@ type Loaded = { key: string; job: JobMetadata | null };
  */
 export function TaskTypedResult({ jobId, revision }: { jobId: string; revision: number }) {
   const venue = useAuthenticatedVenue();
-  const key = venue ? `${venue.venueId}:${jobId}` : null;
+  const key = normalizeCoviaId(jobId);
   const query = useLatestQuery<Loaded | null>(null);
   const { run } = query;
 
   useEffect(() => {
     if (!venue || !key) return;
-    if (finishedJobs.has(key)) return;
+    if (finishedJobs.get(venue)?.has(key)) return;
     void run(async () => {
       const { metadata } = await venue.jobs.get(jobId);
-      if (isFinished(metadata.status)) finishedJobs.set(key, metadata);
-      return { key, job: metadata };
+      if (isFinished(metadata.status)) {
+        const cache = finishedJobs.get(venue) ?? new Map<string, JobMetadata>();
+        cache.set(key, metadata);
+        finishedJobs.set(venue, cache);
+      }
+      return { venue, key, job: metadata };
     });
   }, [venue, key, jobId, revision, run]);
 
-  const job = (key && finishedJobs.get(key)) || (query.data?.key === key ? query.data.job : null);
+  const job = (venue && finishedJobs.get(venue)?.get(key)) ||
+    (query.data?.venue === venue && query.data?.key === key ? query.data.job : null);
   if (!job || job.status !== RunStatus.COMPLETE) return null;
   const declared = declaredResponseSchema(job.input);
   if (!declared) return null;
@@ -66,7 +72,7 @@ export function TaskTypedResult({ jobId, revision }: { jobId: string; revision: 
           Task result
         </span>
         <Link
-          href={jobPath(undefined, jobId)}
+          href={jobPath(venue?.venueId, jobId)}
           className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
         >
           <ExternalLink size={12} /> Open job

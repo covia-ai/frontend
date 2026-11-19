@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { create } from "zustand";
 import type { Venue } from "@covia/covia-sdk";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
-import { useIsAuthenticated } from "@/hooks/use-auth";
+import { useAuthStore, useIsAuthenticated } from "@/hooks/use-auth";
 import { useVenueRead } from "@/hooks/use-venue-read";
 import { countOpenHitlRequests, listHitlRequests, type HitlRequest } from "@/lib/hitl";
 
@@ -70,8 +70,8 @@ export function useHitlOpenCountPoll(): void {
 
 const NO_REQUESTS: HitlRequest[] = [];
 
-async function readInbox(venue: Venue): Promise<HitlRequest[]> {
-  const list = await listHitlRequests(venue);
+async function readInbox(venue: Venue, inboxOwner?: string): Promise<HitlRequest[]> {
+  const list = await listHitlRequests(venue, inboxOwner);
   // The page has the freshest view of the inbox — publish it so the indicators
   // drop the moment a request is answered, without waiting for the next poll.
   publishOpenCount(list);
@@ -81,6 +81,7 @@ async function readInbox(venue: Venue): Promise<HitlRequest[]> {
 /** The signed-in user's HITL inbox, newest first. */
 export function useHitlRequests() {
   const venue = useAuthenticatedVenue();
+  const auth = useAuthStore((state) => venue ? state.authMap[venue.venueId] : undefined);
   const isAuthenticated = useIsAuthenticated();
   const { data: requests, loading, error, reload } = useVenueRead<HitlRequest[]>({
     venue,
@@ -90,7 +91,7 @@ export function useHitlRequests() {
     // The page shows a failed read in place — an error must never look like an
     // empty inbox — so there is no toast on top of it.
     notify: false,
-    load: readInbox,
+    load: (target) => readInbox(target, auth?.did),
   });
 
   return { requests, loading, error, refresh: reload };

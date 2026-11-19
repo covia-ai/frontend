@@ -126,8 +126,8 @@ export function ReconstructionPanel({
             </div>
           ) : (
             <p className="text-muted-foreground" data-testid="ar-no-owner">
-              No <span className="font-mono">owner</span> field — it appears only
-              when the caller acted in another principal&apos;s namespace.
+              No <span className="font-mono">owner</span> field. Covia 0.12 names
+              the caller alone; older venues include an owner when it differs.
             </p>
           )}
           {summary.error && (

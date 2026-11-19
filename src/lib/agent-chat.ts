@@ -3,6 +3,7 @@ import { errorMessage } from "@/lib/errors";
 import { jobFailure, notifyError, notifyWarning } from "@/lib/notify";
 import { gtmEvent } from "@/lib/utils";
 import type { AgentLiveActivity } from "@/hooks/use-agent-live-events";
+import { normalizeCoviaId } from "@/lib/covia-ids";
 
 export const AGENT_CHAT_SLOW_AFTER_MS = 30_000;
 
@@ -58,12 +59,15 @@ export async function sendAgentChat(
     if (!target) {
       const accepted = await venue.jobs.get(job.id).catch(() => null);
       const minted = accepted?.metadata?.sessionId;
-      if (typeof minted === "string" && minted) onSession?.(minted);
+      if (typeof minted === "string" && minted) onSession?.(normalizeCoviaId(minted));
     }
     return job;
   };
   const job = await (queue ? inTurn(queue, accept) : accept());
-  return (await job.result()) as AgentChatResult;
+  const result = (await job.result()) as AgentChatResult;
+  return typeof result?.sessionId === "string"
+    ? { ...result, sessionId: normalizeCoviaId(result.sessionId) }
+    : result;
 }
 
 // Native agents take several chats on one session, oldest first, each

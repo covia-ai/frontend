@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
 // A minimal controller — AgentProfile composes tested views, so we stub the
@@ -88,7 +88,8 @@ describe("AgentProfile", () => {
     expect(screen.getByText("refund-policy")).toBeInTheDocument();
     expect(screen.getByText("governed")).toBeInTheDocument();
     // Acts-as owner identity
-    expect(screen.getByText("acts as")).toBeInTheDocument();
+    expect(within(screen.getByTestId("agent-authority")).getByTestId("did-display"))
+      .toHaveAttribute("data-value", "did:key:z6MkOwner");
     // Actions
     expect(screen.getByRole("button", { name: /trigger now/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /schedule wake/i })).toBeInTheDocument();
@@ -112,6 +113,15 @@ describe("AgentProfile", () => {
     expect(badge).toHaveTextContent(/Waiting on you/);
     expect(badge).toHaveAttribute("href", "/inbox?agent=refund-bot");
     expect(badge).toHaveAttribute("title", "1 request needs input");
+  });
+
+  it("shows the reported controller instead of assuming the signed-in owner", () => {
+    controller.selectedAgentDetail = {
+      ...(controller.selectedAgentDetail as object), controller: "did:web:other.example:u:alice",
+    };
+    render(<AgentProfile agentId="refund-bot" />);
+    expect(within(screen.getByTestId("agent-authority")).getByTestId("did-display"))
+      .toHaveAttribute("data-value", "did:web:other.example:u:alice");
   });
 
   it("shows no waiting badge when nothing is pending or the venue predates it", () => {

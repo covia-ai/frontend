@@ -66,6 +66,27 @@ const request = (id: string, over: Record<string, unknown> = {}) => ({
 beforeEach(() => runMock.mockClear());
 
 describe('listHitlRequests', () => {
+  it('uses explicit, legacy or implicit self callers without substituting the venue DID', async () => {
+    const { venue } = venueWithInbox({
+      self: request('0xab12'),
+      agent: request('cd34', { caller: 'did:key:agent', from: 'did:key:old' }),
+      legacy: request('ef56', { from: 'did:key:legacy' }),
+    });
+    const out = await listHitlRequests(venue, 'did:key:inbox-owner');
+    expect(out.map(({ caller }) => caller)).toEqual([
+      'did:key:inbox-owner', 'did:key:agent', 'did:key:legacy',
+    ]);
+    expect(out.map(({ id }) => id)).toEqual(['0xab12', 'cd34', 'ef56']);
+  });
+
+  it('restores an omitted caller on the paged inbox path too', async () => {
+    const { venue } = venueWithInbox({ self: request('ab12') },
+      jest.fn().mockResolvedValue({ exists: true, truncated: true }));
+    await expect(listHitlRequests(venue, 'did:key:self')).resolves.toEqual([
+      expect.objectContaining({ id: 'ab12', caller: 'did:key:self' }),
+    ]);
+  });
+
   it('reads the whole h/ inbox in one job-free values read, newest first', async () => {
     const { venue, read, run } = venueWithInbox({
       old: request('old', { created: 1000 }),
