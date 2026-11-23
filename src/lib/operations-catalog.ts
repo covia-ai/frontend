@@ -1,4 +1,5 @@
-import { didUrl, Namespace, Operation, Venue } from "@covia/covia-sdk";
+import { assetHash, didUrl, Namespace, Operation, Venue } from "@covia/covia-sdk";
+import { normalizeCoviaId } from "@/lib/covia-ids";
 
 // An operation discovered in the venue catalog, identified by its resolvable
 // catalog path (e.g. "v/ops/agent/suspend"), not a content hash.
@@ -28,14 +29,14 @@ export function withToolToggled(tools: string[], op: CatalogOp, attached: boolea
 const operationMetadataCache = new WeakMap<Venue, Map<string, any>>();
 
 // Job-free read of a lattice path. `venue.workspace.read` routes through the
-// venue's GET /api/v1/values/read (no Job persisted) and, in the SDK, falls
-// back to the invoke-based covia:read only on pre-0.3 venues that lack the
-// route. Venue-version accommodation lives in the SDK, not here.
+// venue's GET /api/v1/values/read (no Job persisted); on a venue without
+// that route the SDK throws UnsupportedVenueFeatureError rather than invoke.
+// Venue-version accommodation lives in the SDK, not here.
 async function readValue(venue: Venue, path: string): Promise<any> {
   return (await venue.workspace.read(path)).value;
 }
 
-// Read a whole catalog sub-tree in a single covia:read and flatten it to
+// Read a whole catalog sub-tree in a single values read and flatten it to
 // {path, metadata} entries. Catalog entries are full inline asset metadata
 // (see OPERATIONS.md §5), so one read returns paths + metadata together —
 // no per-op round trip.
@@ -44,25 +45,28 @@ async function readValue(venue: Venue, path: string): Promise<any> {
 // rather than at a fixed depth. Venues mix depths: most ops are
 // v/ops/<adapter>/<op>, but some (v/ops/skills, v/ops/memory) sit directly
 // under the root, and the previous hard-coded depth silently dropped those.
-// An operation node is a leaf and is never descended into, so its own
-// input/output schemas can't be mistaken for nested entries.
+//
+// An operation node can also hold operations beneath it: hosted venues still
+// carry the retired `v/ops/skills` umbrella with skills/list, read, parse and
+// import nested under it (#421). So the walk continues below an operation,
+// but never into its `operation` field, so its own input/output schemas can't
+// be mistaken for nested entries.
+//
+// A missing sub-tree reads as an empty value, not an error — so a rejection
+// here is a real failure (unreachable venue, rejected auth) and propagates.
 async function readCatalog(venue: Venue, base: string): Promise<CatalogOp[]> {
-  let tree: any;
-  try {
-    tree = await readValue(venue, base);
-  } catch {
-    return [];
-  }
+  const tree = await readValue(venue, base);
   if (!tree || typeof tree !== "object") return [];
 
   const out: CatalogOp[] = [];
   const walk = (node: any, path: string) => {
-    if (!node || typeof node !== "object") return;
-    if (node.operation) {
-      out.push({ path, metadata: node });
-      return;
+    if (!node || typeof node !== "object" || Array.isArray(node)) return;
+    const isOperation = node.operation != null && typeof node.operation === "object";
+    if (isOperation) out.push({ path, metadata: node });
+    for (const key of Object.keys(node)) {
+      if (isOperation && key === "operation") continue;
+      walk(node[key], `${path}/${key}`);
     }
-    for (const key of Object.keys(node)) walk(node[key], `${path}/${key}`);
   };
   walk(tree, base);
   return out;
@@ -78,9 +82,14 @@ export async function listCatalogOperations(
   venue: Venue,
   options: { includeUserOps?: boolean } = {},
 ): Promise<CatalogOp[]> {
-  const bases = ["v/ops", "v/test/ops"];
-  if (options.includeUserOps) bases.push("w/ops");
-  const trees = await Promise.all(bases.map((base) => readCatalog(venue, base)));
+  // v/ops IS the catalogue: failing to read it fails the listing, so callers
+  // can show an error instead of an empty venue. The other sub-trees are
+  // extras a venue may not serve to this caller; losing one only narrows the list.
+  const extras = ["v/test/ops", ...(options.includeUserOps ? ["w/ops"] : [])];
+  const trees = await Promise.all([
+    readCatalog(venue, "v/ops"),
+    ...extras.map((base) => readCatalog(venue, base).catch(() => [] as CatalogOp[])),
+  ]);
   const operations = trees.flat();
   operationMetadataCache.set(
     venue,
@@ -89,11 +98,19 @@ export async function listCatalogOperations(
   return operations;
 }
 
+// A job record's `op` is a bare hash when the caller pinned a definition, and
+// on every record written before venue 0.9.9 (covia#499). Both read as an
+// asset, so give them the "a/" namespace the asset branch below expects.
+const BARE_HASH = /^(0x)?[0-9a-f]{64}$/i;
+
 // Resolve an operation from its namespace-explicit URL address:
-//  - "a/<hash>"  → content-addressed asset (getAsset)
+//  - "a/<hash>", or a bare hash  → content-addressed asset (getAsset)
 //  - "v/ops/...", "v/test/ops/...", "o/..."  → catalog/workspace path via covia:read
 // Returns an Operation whose id is the address it was resolved from.
 export async function resolveOperationByAddress(venue: Venue, address: string): Promise<Operation> {
+  if (BARE_HASH.test(address)) {
+    address = `a/${normalizeCoviaId(address)}`;
+  }
   if (address.startsWith("a/")) {
     // GET /api/v1/assets/<id> only resolves the fully DID-qualified form —
     // a bare hash or a bare "a/<hash>" both 404 on live venues (verified
@@ -101,7 +118,7 @@ export async function resolveOperationByAddress(venue: Venue, address: string): 
     // don't match server behaviour). Qualify with this venue's own DID
     // before asking, same as the address AssetHeader would render back
     // (frontend#341).
-    const qualified = didUrl(venue.venueId, Namespace.ASSET, address.slice(2));
+    const qualified = didUrl(venue.venueId, Namespace.ASSET, normalizeCoviaId(address.slice(2)));
     return (await venue.getAsset(qualified)) as Operation;
   }
   let meta = operationMetadataCache.get(venue)?.get(address);
@@ -117,4 +134,73 @@ export async function resolveOperationByAddress(venue: Venue, address: string): 
     throw new Error(`No operation found at ${address}`);
   }
   return new Operation(address, venue, meta);
+}
+
+// A job record's `op` is usually a content hash, not a catalog path (covia#322,
+// covia#499) — a bare hash carries no adapter the way `v/ops/<adapter>/<op>`
+// does, so the Jobs list used to fall back to the generic tile for most rows.
+// This index resolves a job's adapter *without* a per-row asset fetch, from two
+// job-free reads the app already does:
+//   • the asset list (`listAssets`, one GET) keys each operation asset's content
+//     hash → its `operation.adapter` (dispatch form, e.g. `jvm:stringConcat`);
+//   • the op catalogue (`listCatalogOperations`) keys each op path the same way,
+//     covering jobs whose `op` is a path (incl. `w/ops/…` / `o/…` user ops a
+//     bare path parse can't classify).
+// It is built once per venue and cached by the caller (see use-operation-adapters).
+export type OperationAdapterIndex = {
+  /** Normalised content hash → `operation.adapter`. */
+  byHash: Map<string, string>;
+  /** Catalog path → `operation.adapter`. */
+  byPath: Map<string, string>;
+};
+
+// SDK 1.29 recognises only lowercase `0x` on bare hashes. Normalise before
+// parsing those refs and after extracting hashes from namespace/DID paths.
+const normalisedAssetHash = (ref: string): string | null => {
+  const hash = assetHash(normalizeCoviaId(ref));
+  return hash ? normalizeCoviaId(hash) : null;
+};
+
+export async function buildOperationAdapterIndex(
+  venue: Venue,
+  options: { includeUserOps?: boolean } = {},
+): Promise<OperationAdapterIndex> {
+  // Independent, both job-free; one failing (e.g. a venue that rejects the
+  // read) must not blank out the other's contribution.
+  const [ops, assets] = await Promise.all([
+    listCatalogOperations(venue, options).catch(() => [] as CatalogOp[]),
+    // Only operation assets carry an adapter, so the venue can drop the rest.
+    venue.listAssets({ expand: "metadata", kind: "operation" }).catch(() => null),
+  ]);
+
+  const byPath = new Map<string, string>();
+  for (const op of ops) {
+    const adapter = op.metadata?.operation?.adapter;
+    if (typeof adapter === "string" && adapter) byPath.set(op.path, adapter);
+  }
+
+  const byHash = new Map<string, string>();
+  for (const item of assets?.items ?? []) {
+    const adapter = item.metadata?.operation?.adapter;
+    if (typeof adapter !== "string" || !adapter) continue;
+    const hash = normalisedAssetHash(item.id);
+    if (hash) byHash.set(hash, adapter);
+  }
+
+  return { byHash, byPath };
+}
+
+// The `operation.adapter` (dispatch form, e.g. `http:get`) for a job's `op`
+// reference, resolved from the cached index: by content hash when `op` is a
+// hash (the common case), else by catalog path. Undefined when the op isn't in
+// the catalogue (e.g. an inline, never-registered definition); the caller's
+// name fallback then applies.
+export function adapterForOp(
+  index: OperationAdapterIndex | null | undefined,
+  op?: string,
+): string | undefined {
+  if (!index || !op) return undefined;
+  const hash = normalisedAssetHash(op);
+  if (hash) return index.byHash.get(hash);
+  return index.byPath.get(op);
 }

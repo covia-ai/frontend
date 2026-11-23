@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useIsAuthenticated } from "@/hooks/use-auth";
+import { useVenueRead } from "@/hooks/use-venue-read";
 import { CONNECTIONS } from "@/config/connections";
 
 /**
@@ -15,28 +15,18 @@ import { CONNECTIONS } from "@/config/connections";
 export function useConnectionCount(): number {
   const venue = useAuthenticatedVenue();
   const isAuthenticated = useIsAuthenticated();
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    if (!venue || !isAuthenticated) {
-      setCount(0);
-      return;
-    }
-    let ignore = false;
-    venue.secrets
-      .list()
-      .then((names) => {
-        if (ignore) return;
-        const present = new Set(Array.isArray(names) ? names : []);
-        setCount(CONNECTIONS.filter((c) => present.has(c.secretName)).length);
-      })
-      .catch(() => {
-        if (!ignore) setCount(0);
-      });
-    return () => {
-      ignore = true;
-    };
-  }, [venue, isAuthenticated]);
-
+  const { data: count } = useVenueRead<number>({
+    venue,
+    enabled: isAuthenticated,
+    initial: 0,
+    failureTitle: "Unable to count connections",
+    // A sidebar badge, not a page: a failed read shows no count, without a toast.
+    notify: false,
+    load: async (target) => {
+      const names = await target.secrets.list();
+      const present = new Set(Array.isArray(names) ? names : []);
+      return CONNECTIONS.filter((c) => present.has(c.secretName)).length;
+    },
+  });
   return count;
 }

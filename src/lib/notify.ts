@@ -1,6 +1,8 @@
 import { toast } from "sonner";
 import { JobFailedError } from "@covia/covia-sdk";
 import { recordNotification } from "@/hooks/use-notification-log";
+import { writeTextToClipboard } from "@/lib/clipboard";
+import { jobPath } from "@/lib/routes";
 
 // Every user-facing notification goes through these helpers — never bare
 // sonner toast() (#204). The rules they encode:
@@ -69,7 +71,7 @@ export function jobFailure(err: unknown, venueId?: string): { reason: unknown; j
 
   const jobHref =
     failed.jobData.id && venueId
-      ? `/venues/${encodeURIComponent(venueId)}/jobs/${failed.jobData.id}`
+      ? jobPath(venueId, failed.jobData.id)
       : undefined;
   const reason =
     wrapped !== undefined ? err // already a clean Error — reuse it
@@ -85,6 +87,12 @@ export function jobFailure(err: unknown, venueId?: string): { reason: unknown; j
 // page (e.g. JobFailedError) — the description is truncated to a preview
 // and a "View job" action links there instead of dumping the full message
 // inline; "Copy" still copies the untruncated text.
+function copyText(text: string): void {
+  void writeTextToClipboard(text).catch((error: unknown) =>
+    notifyError("Unable to copy to clipboard", error),
+  );
+}
+
 export function notifyError(
   title: string,
   err?: unknown,
@@ -114,17 +122,9 @@ export function notifyError(
     closeButton: true,
     action: jobHref
       ? { label: "View job", onClick: () => { window.location.href = jobHref; } }
-      : {
-          label: "Copy",
-          onClick: () =>
-            navigator.clipboard.writeText(detail ? `${title}: ${detail}` : title),
-        },
+      : { label: "Copy", onClick: () => copyText(detail ? `${title}: ${detail}` : title) },
     cancel: jobHref && detail
-      ? {
-          label: "Copy",
-          onClick: () =>
-            navigator.clipboard.writeText(`${title}: ${detail}`),
-        }
+      ? { label: "Copy", onClick: () => copyText(`${title}: ${detail}`) }
       : undefined,
   });
 }

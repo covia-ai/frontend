@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { sameCoviaId } from "@/lib/covia-ids";
 
 // Chats that have been dispatched but not yet answered, so any screen showing
 // a transcript can echo the user's own message and a "thinking" indicator
@@ -9,9 +10,9 @@ import { create } from "zustand";
 // to the agent explorer, and a user can navigate away from a transcript and
 // back mid-send. Component-local state loses the message in both cases.
 //
-// Deliberately not persisted — an in-flight send dies with the page, and
-// resurrecting one after a reload would show a spinner for a reply that is
-// never coming.
+// Deliberately not persisted. The venue keeps its own record of a chat still
+// waiting for a reply (the session's `pending` envelopes), and the transcript
+// shows those, so a reload loses nothing: it only drops this page's wait.
 export type PendingChat = {
   // Stable identity: the session id is filled in later, so callers need
   // something that survives that update to clear the right record.
@@ -22,6 +23,18 @@ export type PendingChat = {
   // agent is in view, since the one it belongs to does not exist yet.
   sessionId: string | null;
   text: string;
+  // How many turns the target session held when this was sent (0 for a session
+  // that does not exist yet). The venue's record of this message can only land
+  // after them, so an identical earlier turn — "yes", "continue" — is never
+  // mistaken for it.
+  turnsAtSend: number;
+  // The chat's job on the venue, once the venue has it. A venue's pending
+  // envelope for this chat carries the same id.
+  jobId?: string;
+  // The user stopped waiting: the chat no longer holds the composer or shows
+  // the thinking indicator, but its job runs on and the reply still lands in
+  // the session.
+  stoppedWaiting?: boolean;
 };
 
 type PendingChatsStore = {
@@ -30,6 +43,8 @@ type PendingChatsStore = {
   // settling after later ones cannot disturb them.
   startPendingChat: (chat: Omit<PendingChat, "id">) => PendingChat;
   attachSessionId: (chat: PendingChat, sessionId: string) => void;
+  attachJobId: (chat: PendingChat, jobId: string) => void;
+  stopWaiting: (chat: PendingChat) => void;
   clearPendingChat: (chat: PendingChat) => void;
 };
 
@@ -51,21 +66,62 @@ export const usePendingChats = create<PendingChatsStore>((set) => ({
       ),
     })),
 
+  attachJobId: (chat, jobId) =>
+    set((state) => ({
+      pendingChats: state.pendingChats.map((c) =>
+        c.id === chat.id ? { ...c, jobId } : c
+      ),
+    })),
+
+  stopWaiting: (chat) =>
+    set((state) => ({
+      pendingChats: state.pendingChats.map((c) =>
+        c.id === chat.id ? { ...c, stoppedWaiting: true } : c
+      ),
+    })),
+
   clearPendingChat: (chat) =>
     set((state) => ({
       pendingChats: state.pendingChats.filter((c) => c.id !== chat.id),
     })),
 }));
 
-// The chat to echo on a given transcript: same agent, and either bound to the
-// session in view or not yet bound to any.
+// The chats being waited for on a given transcript, oldest first: same agent,
+// either bound to the session in view or not yet bound to any, and still
+// waited for. Several at once when follow-ups were sent mid-reply (#541).
+export function findWaitingChats(
+  pendingChats: PendingChat[],
+  agentId: string | null,
+  sessionId: string | null
+): PendingChat[] {
+  if (!agentId) return [];
+  return pendingChats.filter(
+    (c) =>
+      c.agentId === agentId &&
+      !c.stoppedWaiting &&
+      (c.sessionId === null || sameCoviaId(c.sessionId, sessionId))
+  );
+}
+
+// The first of them: the chat being waited for longest.
 export function findPendingChat(
   pendingChats: PendingChat[],
   agentId: string | null,
   sessionId: string | null
 ): PendingChat | null {
-  if (!agentId) return null;
-  return pendingChats.find(
-    (c) => c.agentId === agentId && (c.sessionId === null || c.sessionId === sessionId)
-  ) ?? null;
+  return findWaitingChats(pendingChats, agentId, sessionId)[0] ?? null;
+}
+
+// The session a chat has been given so far, read at call time.
+export function pendingChatSessionId(chat: PendingChat): string | null {
+  return usePendingChats.getState().pendingChats.find((c) => c.id === chat.id)?.sessionId
+    ?? chat.sessionId;
+}
+
+// Whether the user has stopped waiting for this chat, read at call time: a
+// send's callbacks outlive the render they were created in.
+export function hasStoppedWaiting(chat: PendingChat): boolean {
+  return usePendingChats.getState().pendingChats.some(
+    (c) => c.id === chat.id && c.stoppedWaiting === true
+  );
 }

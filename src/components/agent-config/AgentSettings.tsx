@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { AgentStatus } from "@covia/covia-sdk";
-import { AlertTriangle, ArrowLeft, Loader2, RotateCcw, Save, Wrench } from "lucide-react";
+import { TONE_STYLES } from "@/lib/status";
+import { AlertTriangle, Loader2, RotateCcw, Save, Wrench } from "lucide-react";
 import type { AgentDetail } from "@/config/types";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import {
@@ -11,6 +12,7 @@ import {
   AgentSystemPromptField,
 } from "@/components/agent-config/AgentConfigEditor";
 import { ToolSkillPicker } from "@/components/agent-config/ToolSkillPicker";
+import { DidDisplay } from "@/components/DidDisplay";
 import { AgentCapsEditor } from "@/components/agent-config/AgentCapsEditor";
 import { AgentConnectionsPicker } from "@/components/agent-config/AgentConnectionsPicker";
 import { ConfigFields } from "@/components/agent-explorer/ConfigFields";
@@ -22,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { withToolToggled, type CatalogOp } from "@/lib/operations-catalog";
 import { withSkillToggled, type SkillSummary } from "@/lib/skills";
 import { isMemoryContextEntry, withMemoryContextToggled } from "@/lib/agent-context";
+import { useSecretNames } from "@/hooks/use-secret-names";
 import {
   agentConfigUpdatePatch,
   configFromAgentSettingsDraft,
@@ -36,51 +39,36 @@ function stringArray(value: unknown): string[] {
 
 type AgentSettingsProps = {
   agent: AgentDetail;
-  onBack: () => void;
-  onSave: (config: Record<string, unknown>) => Promise<AgentConfigSaveOutcome>;
+  /** `baseline` is the config the patch was computed against (#161). */
+  onSave: (
+    config: Record<string, unknown>,
+    baseline: Record<string, unknown>,
+  ) => Promise<AgentConfigSaveOutcome>;
 };
 
-export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
+export function AgentSettings({ agent, onSave }: AgentSettingsProps) {
   const venue = useAuthenticatedVenue();
-  const initialConfig = useRef<Record<string, unknown>>(agent.config ?? {});
-  const [draft, setDraft] = useState(() =>
-    createAgentSettingsDraft(initialConfig.current),
-  );
-  const [availableKeys, setAvailableKeys] = useState<string[]>([]);
+  // The config the draft and its patch are computed against: the last saved
+  // truth, refreshed after every successful save and on every conflict.
+  const [baseline, setBaseline] = useState<Record<string, unknown>>(() => agent.config ?? {});
+  const [draft, setDraft] = useState(() => createAgentSettingsDraft(baseline));
+  const { names: availableKeys } = useSecretNames(venue);
   const [saving, setSaving] = useState(false);
   const [capabilitySaving, setCapabilitySaving] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    if (!venue) return;
-    void venue.secrets.list()
-      .then((keys: string[]) => {
-        if (active) setAvailableKeys(keys);
-      })
-      .catch(() => {
-        if (active) setAvailableKeys([]);
-      });
-    return () => {
-      active = false;
-    };
-  }, [venue]);
 
   const setField = <K extends keyof AgentSettingsDraft>(
     key: K,
     value: AgentSettingsDraft[K],
   ) => setDraft((current) => ({ ...current, [key]: value }));
 
-  const result = configFromAgentSettingsDraft(draft, initialConfig.current);
-  const patch = result.config
-    ? agentConfigUpdatePatch(initialConfig.current, result.config)
-    : {};
+  const result = configFromAgentSettingsDraft(draft, baseline);
+  const patch = result.config ? agentConfigUpdatePatch(baseline, result.config) : {};
   const dirty = Object.keys(patch).length > 0;
   const running = agent.status === AgentStatus.RUNNING;
-  const unavailableTools = Array.isArray(agent.unavailableTools)
-    ? agent.unavailableTools
-    : [];
+  // The principal whose authority the agent acts with (covia 0.11).
+  const controller = typeof agent.controller === "string" ? agent.controller : "";
 
-  const reset = () => setDraft(createAgentSettingsDraft(initialConfig.current));
+  const reset = () => setDraft(createAgentSettingsDraft(baseline));
 
   // Picker toggles bypass the draft/JSON save path entirely: each is a narrow
   // { tools } or { skills } patch computed from the last-saved config, sent
@@ -88,11 +76,9 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
   // race with an unrelated in-progress Advanced-JSON edit. On success both
   // the saved baseline and the JSON field are refreshed so the two views of
   // tools/skills never visibly disagree.
-  const attachedTools = stringArray(initialConfig.current.tools);
-  const attachedSkills = stringArray(initialConfig.current.skills);
-  const attachedContext = Array.isArray(initialConfig.current.context)
-    ? initialConfig.current.context
-    : [];
+  const attachedTools = stringArray(baseline.tools);
+  const attachedSkills = stringArray(baseline.skills);
+  const attachedContext = Array.isArray(baseline.context) ? baseline.context : [];
   const hasMemoryContext = attachedContext.some(isMemoryContextEntry);
 
   const saveCapability = async (
@@ -101,9 +87,9 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
   ) => {
     setCapabilitySaving(true);
     try {
-      const outcome = await onSave({ [key]: nextValue });
+      const outcome = await onSave({ [key]: nextValue }, baseline);
       if (outcome.status === "saved") {
-        initialConfig.current = { ...initialConfig.current, [key]: nextValue };
+        setBaseline((current) => ({ ...current, [key]: nextValue }));
         const jsonField =
           key === "tools" ? "toolsJson" : key === "skills" ? "skillsJson" : "contextJson";
         setField(jsonField, JSON.stringify(nextValue, null, 2));
@@ -111,7 +97,7 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
         // The server config moved since this editor loaded — rebase the
         // whole draft onto the fresh truth rather than reapplying just this
         // one toggle against a config we now know is stale.
-        initialConfig.current = outcome.freshConfig;
+        setBaseline(outcome.freshConfig);
         setDraft(createAgentSettingsDraft(outcome.freshConfig));
       }
     } finally {
@@ -133,12 +119,12 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
     if (!result.config || !dirty) return;
     setSaving(true);
     try {
-      const outcome = await onSave(patch);
+      const outcome = await onSave(patch, baseline);
       if (outcome.status === "saved") {
-        initialConfig.current = result.config;
+        setBaseline(result.config);
         setDraft(createAgentSettingsDraft(result.config));
       } else if (outcome.status === "conflict") {
-        initialConfig.current = outcome.freshConfig;
+        setBaseline(outcome.freshConfig);
         setDraft(createAgentSettingsDraft(outcome.freshConfig));
       }
     } finally {
@@ -149,9 +135,6 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
   return (
     <div data-testid="agent-settings" className="flex min-h-0 flex-1 flex-col">
       <div className="border-b px-6 py-4">
-        <Button variant="ghost" size="sm" className="mb-4 gap-2" onClick={onBack}>
-          <ArrowLeft size={15} /> Chat
-        </Button>
         <div>
           <h4 className="font-semibold">Agent settings</h4>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -186,6 +169,7 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
                 </p>
               </div>
               <AgentRuntimeFields
+                venue={venue}
                 providerId={draft.providerId}
                 onProviderChange={(providerId) => {
                   setDraft((current) => ({
@@ -256,14 +240,22 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
               <AgentJsonConfigField
                 id="agent-skills-json"
                 label="Skills"
-                description="Skill indexes available to the agent. Saving replaces the complete array. Or use Browse & attach above."
+                description="Individual skills available to the agent. Saving replaces the complete array. Or use Browse & attach above."
                 value={draft.skillsJson}
                 onChange={(value) => setField("skillsJson", value)}
+                placeholder={'[\n  "w/skills/refund-policy"\n]'}
+              />
+              <AgentJsonConfigField
+                id="agent-skillsets-json"
+                label="Skill sets"
+                description="Directories of skills the agent can load, such as w/skills for every skill in your workspace. Saving replaces the complete array."
+                value={draft.skillsetsJson}
+                onChange={(value) => setField("skillsetsJson", value)}
                 placeholder={'[\n  "w/skills"\n]'}
               />
               <AgentCapsEditor
-                enabled={draft.capsEnabled}
-                onEnabledChange={(next) => setField("capsEnabled", next)}
+                mode={draft.capsMode}
+                onModeChange={(next) => setField("capsMode", next)}
                 caps={draft.caps}
                 onCapsChange={(next) => setField("caps", next)}
               />
@@ -280,6 +272,24 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
                     <Label htmlFor="agent-default-tools">Include platform default tools</Label>
                     <p className="mt-1 text-sm text-muted-foreground">
                       Adds the venue&apos;s standard tool set alongside the explicit list above.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-md border p-4">
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="agent-accept-tasks"
+                    checked={draft.acceptTasks}
+                    onCheckedChange={(checked) =>
+                      setField("acceptTasks", checked === true)
+                    }
+                  />
+                  <div>
+                    <Label htmlFor="agent-accept-tasks">Takes tasks</Label>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Lets you, other agents and workflows send this agent tasks. Without it the
+                      venue refuses every task; chat still works.
                     </p>
                   </div>
                 </div>
@@ -330,22 +340,22 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
                 <AlertDescription>{agent.error}</AlertDescription>
               </Alert>
             )}
-            {unavailableTools.length > 0 && (
-              <Alert>
-                <AlertTriangle />
-                <AlertTitle>Unavailable configured tools</AlertTitle>
-                <AlertDescription>
-                  <pre className="mt-2 overflow-x-auto whitespace-pre-wrap font-mono text-xs">
-                    {JSON.stringify(unavailableTools, null, 2)}
-                  </pre>
-                </AlertDescription>
-              </Alert>
-            )}
             <div className="grid gap-4 sm:grid-cols-3">
               <Diagnostic label="Status" value={agent.status} />
               <Diagnostic label="Pending tasks" value={String(agent.tasks ?? 0)} />
               <Diagnostic label="Completed runs" value={String(agent.timelineLength ?? agent.timeline?.length ?? 0)} />
             </div>
+            {controller && (
+              <div className="rounded-md border p-4" data-testid="agent-controller">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Controller</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  The agent acts with this principal&apos;s authority, narrowed by its capabilities.
+                </p>
+                <div className="mt-2">
+                  <DidDisplay value={controller} chars="full" />
+                </div>
+              </div>
+            )}
             <div>
               <h5 className="mb-3 font-semibold">Canonical configuration</h5>
               {agent.config ? (
@@ -363,7 +373,7 @@ export function AgentSettings({ agent, onBack, onSave }: AgentSettingsProps) {
           {result.error ? (
             <p className="text-sm text-destructive">{result.error}</p>
           ) : running ? (
-            <p className="text-sm text-amber-600 dark:text-amber-400">
+            <p className={`text-sm ${TONE_STYLES.attention.text}`}>
               Saving will suspend the running agent, apply the change, and resume it.
             </p>
           ) : (

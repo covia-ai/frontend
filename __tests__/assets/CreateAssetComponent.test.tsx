@@ -160,6 +160,25 @@ describe('CreateAssetComponent', () => {
     );
   });
 
+  // W3 defect fix: the component used to bind a global window keydown that
+  // called preventDefault() and opened the dialog on Cmd/Ctrl+A — hijacking
+  // select-all page-wide whenever it was mounted. It must not touch that key.
+  it('does not hijack Ctrl/Cmd+A (native select-all preserved, dialog stays closed)', () => {
+    const venue = { venueId: 'did:web:venue-test.covia.ai', assets: { register: jest.fn() } } as any;
+    render(<CreateAssetComponent venue={venue} />);
+    expect(screen.queryByRole('button', { name: 'upload' })).not.toBeInTheDocument();
+
+    for (const mods of [{ ctrlKey: true }, { metaKey: true }]) {
+      const event = new KeyboardEvent('keydown', { key: 'a', cancelable: true, bubbles: true, ...mods });
+      window.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(false);
+    }
+
+    // The Create dialog never opened (no upload step present), trigger still shows.
+    expect(screen.queryByRole('button', { name: 'upload' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('create-asset-trigger')).toBeInTheDocument();
+  });
+
   it('fast path "Edit details" reaches the full metadata form', async () => {
     const user = userEvent.setup();
     const venue = {

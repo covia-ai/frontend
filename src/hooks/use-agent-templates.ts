@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import type { Venue } from "@covia/covia-sdk";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useVenueRead } from "@/hooks/use-venue-read";
 import {
   AGENT_TEMPLATES_CHANGED_EVENT,
   normalizeAgentTemplate,
@@ -19,53 +21,45 @@ function orderRank(key: string): number {
   return i === -1 ? PREFERRED_ORDER.length : i;
 }
 
+const NO_TEMPLATES: AgentTemplate[] = [];
+
 // Reads the venue's agent templates from v/agents/templates — job-free, one
 // values read, the same way the operations catalog reads v/ops. Replaces the
 // old hardcoded list so the templates track the platform instead of drifting.
+async function readTemplates(venue: Venue): Promise<AgentTemplate[]> {
+  const [venueResult, workspaceResult] = await Promise.all([
+    venue.workspace.read("v/agents/templates"),
+    // A workspace without templates is the common case, not a failure.
+    venue.workspace.read("w/templates").catch(() => ({ value: null })),
+  ]);
+  const venueTree = (venueResult as { value?: Record<string, unknown> })?.value;
+  const workspaceTree = (workspaceResult as { value?: Record<string, unknown> })?.value;
+  // User workspace templates take precedence over venue templates with the
+  // same ID, making a local customisation the version the user sees.
+  const tree = {
+    ...(venueTree && typeof venueTree === "object" ? venueTree : {}),
+    ...(workspaceTree && typeof workspaceTree === "object" ? workspaceTree : {}),
+  };
+  return Object.entries(tree)
+    .map(([key, value]) => normalizeAgentTemplate(key, value))
+    .filter((template): template is AgentTemplate => template !== null)
+    .sort((a, b) => orderRank(a.key) - orderRank(b.key) || a.key.localeCompare(b.key));
+}
+
 export function useAgentTemplates() {
   const venue = useAuthenticatedVenue();
-  const [templates, setTemplates] = useState<AgentTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: templates, loading, reload } = useVenueRead<AgentTemplate[]>({
+    venue,
+    initial: NO_TEMPLATES,
+    failureTitle: "Unable to load agent templates",
+    load: readTemplates,
+  });
 
+  // Authoring a template elsewhere announces it; re-read so the picker shows it.
   useEffect(() => {
-    if (!venue) {
-      setTemplates([]);
-      setLoading(false);
-      return;
-    }
-    let ignore = false;
-    const loadTemplates = () => {
-      setLoading(true);
-      void Promise.all([
-        venue.workspace.read("v/agents/templates"),
-        venue.workspace.read("w/templates").catch(() => ({ value: null })),
-      ])
-      .then(([venueResult, workspaceResult]) => {
-        if (ignore) return;
-        const venueTree = (venueResult as { value?: Record<string, unknown> })?.value;
-        const workspaceTree = (workspaceResult as { value?: Record<string, unknown> })?.value;
-        // User workspace templates take precedence over venue templates with
-        // the same ID, making a local customisation the version the user sees.
-        const tree = {
-          ...(venueTree && typeof venueTree === "object" ? venueTree : {}),
-          ...(workspaceTree && typeof workspaceTree === "object" ? workspaceTree : {}),
-        };
-        const list = Object.entries(tree)
-                .map(([key, value]) => normalizeAgentTemplate(key, value))
-                .filter((template): template is AgentTemplate => template !== null)
-                .sort((a, b) => orderRank(a.key) - orderRank(b.key) || a.key.localeCompare(b.key));
-        setTemplates(list);
-      })
-      .catch(() => { if (!ignore) setTemplates([]); })
-      .finally(() => { if (!ignore) setLoading(false); });
-    };
-    loadTemplates();
-    window.addEventListener(AGENT_TEMPLATES_CHANGED_EVENT, loadTemplates);
-    return () => {
-      ignore = true;
-      window.removeEventListener(AGENT_TEMPLATES_CHANGED_EVENT, loadTemplates);
-    };
-  }, [venue]);
+    window.addEventListener(AGENT_TEMPLATES_CHANGED_EVENT, reload);
+    return () => window.removeEventListener(AGENT_TEMPLATES_CHANGED_EVENT, reload);
+  }, [reload]);
 
   return { templates, loading };
 }

@@ -46,6 +46,8 @@ const ThemedJsonEditor = dynamic(
 const INPUT_TYPES = [
   "string",
   "number",
+  "integer",
+  "boolean",
   "json",
   "object",
   "any",
@@ -202,7 +204,9 @@ function InputEditor({
   };
 
   const commonProps = {
-    className: "flex-1 placeholder:text-muted-foreground min-w-64 max-w-112",
+    // min-w-0 (not min-w-64) so the field can shrink on a phone instead of
+    // forcing the input+type-selector row past the viewport; the row wraps too.
+    className: "flex-1 placeholder:text-muted-foreground min-w-0 sm:min-w-64 max-w-112",
     value: currentRawValue,
     placeholder: example === undefined ? "" : `e.g. ${String(example)}`,
     onChange: (
@@ -228,9 +232,37 @@ function InputEditor({
     </Select>
   );
 
+  if (type === "boolean") {
+    // A select rather than a checkbox: an optional boolean can also be left
+    // unset, so the operation's own default applies (frontend#553).
+    const NOT_SET = "__unset__";
+    return (
+      <div className="flex flex-row flex-wrap gap-2 items-center">
+        <Select
+          value={currentRawValue === "true" || currentRawValue === "false" ? currentRawValue : NOT_SET}
+          onValueChange={(next) => updateValue(next === NOT_SET ? "" : next)}
+        >
+          <SelectTrigger
+            className="flex-1 min-w-0 sm:min-w-64 max-w-112"
+            aria-label={`${fieldKey} value`}
+            data-testid={`boolean-input-${fieldKey}`}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NOT_SET}>(not set)</SelectItem>
+            <SelectItem value="true">true</SelectItem>
+            <SelectItem value="false">false</SelectItem>
+          </SelectContent>
+        </Select>
+        {typeSelector}
+      </div>
+    );
+  }
+
   if (type === "asset") {
     return (
-      <div className="flex flex-row space-x-2 items-center">
+      <div className="flex flex-row flex-wrap gap-2 items-center">
         <Input {...commonProps} type={isSecret ? "password" : "text"} />
         <AssetLookup sendAssetIdBackToForm={updateValue} />
         {typeSelector}
@@ -240,7 +272,7 @@ function InputEditor({
 
   if (type === "json" || type === "object" || type === "any" || type === "array") {
     return (
-      <div className="flex flex-row space-x-2 items-center">
+      <div className="flex flex-row flex-wrap gap-2 items-center">
         <Textarea
           {...commonProps}
           rows={5}
@@ -257,10 +289,11 @@ function InputEditor({
   }
 
   return (
-    <div className="flex flex-row space-x-2 items-center">
+    <div className="flex flex-row flex-wrap gap-2 items-center">
       <Input
         {...commonProps}
-        type={isSecret ? "password" : type === "number" ? "number" : "text"}
+        type={isSecret ? "password" : type === "number" || type === "integer" ? "number" : "text"}
+        step={type === "integer" ? 1 : undefined}
       />
       {typeSelector}
     </div>
@@ -301,7 +334,7 @@ export function OperationInputForm({
           </div>
         </div>
         {errorMessage && <ErrorDisplay error={errorMessage} className="mb-4" />}
-        <div className="flex flex-row space-x-2 items-center justify-center py-2">
+        <div className="flex flex-row flex-wrap gap-2 items-center justify-center py-2">
           <OperationActions
             loading={loading}
             confirmationRequired={confirmationRequired}
@@ -319,7 +352,7 @@ export function OperationInputForm({
   }
 
   return (
-    <Card className="bg-background border-muted w-full my-2 rounded-md">
+    <Card className="bg-background border-muted w-full my-2">
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-[min-content_1fr_1fr] md:gap-4 py-2">
           {Object.entries(properties).map(([key, property]) => (
@@ -345,7 +378,7 @@ export function OperationInputForm({
         </div>
 
         {errorMessage && <ErrorDisplay error={errorMessage} className="mb-4" />}
-        <div className="flex flex-row space-x-2 items-center justify-center py-2">
+        <div className="flex flex-row flex-wrap gap-2 items-center justify-center py-2">
           <OperationActions
             loading={loading}
             confirmationRequired={confirmationRequired}

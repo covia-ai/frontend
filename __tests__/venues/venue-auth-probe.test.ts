@@ -23,7 +23,7 @@ describe("probeDeviceKeyAuth", () => {
     ).resolves.toEqual({ ok: true });
 
     const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
-    expect(url).toBe(`${BASE_URL}/api/v1/agents?includeTerminated=false`);
+    expect(url).toBe(`${BASE_URL}/api/v1/status`);
     expect(init.headers.Authorization).toMatch(/^Bearer /);
   });
 

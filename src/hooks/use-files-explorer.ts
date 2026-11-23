@@ -16,6 +16,9 @@ export function normalizeFilesPath(path?: string): string {
   return path?.split("/").filter(Boolean).join("/") ?? "";
 }
 
+/** A selected file, remembered with the listing it was picked from. */
+type Selection = { drive: string; path: string; entry: DLFSEntry };
+
 export function useFilesExplorer(initialDrive?: string, initialPath?: string) {
   const venue = useAuthenticatedVenue();
   const {
@@ -32,13 +35,41 @@ export function useFilesExplorer(initialDrive?: string, initialPath?: string) {
     reset: resetEntries,
   } = useLatestQuery<DLFSEntry[]>([]);
 
-  const [drive, setDriveState] = useState<string | null>(initialDrive ?? null);
+  // The drive the user picked; until then the default below applies.
+  const [chosenDrive, setChosenDrive] = useState<string | null>(null);
   const [path, setPath] = useState(normalizeFilesPath(initialPath));
-  const [selectedEntry, setSelectedEntry] = useState<DLFSEntry | null>(null);
+  const [selection, setSelection] = useState<Selection | null>(null);
 
-  const listingCache = useRef(new Map<string, DLFSEntry[]>());
-  const venueRef = useRef<Venue | null | undefined>(venue);
-  venueRef.current = venue;
+  // One listing cache per Venue instance, so a reply that arrives after a
+  // venue switch is filed under the venue it came from and never shown for
+  // another.
+  const listingCaches = useRef(new WeakMap<Venue, Map<string, DLFSEntry[]>>());
+  const cacheFor = (target: Venue) => {
+    let cache = listingCaches.current.get(target);
+    if (!cache) {
+      cache = new Map();
+      listingCaches.current.set(target, cache);
+    }
+    return cache;
+  };
+
+  // The drive the user picked, if this venue has it; else the requested drive,
+  // if it exists; else the first — and only once the drive list has actually
+  // loaded, never guessing ahead of the real list. Checking the pick against
+  // the list is what keeps a pick made on one venue from being listed on
+  // another that lacks it.
+  const drive =
+    drives.length === 0
+      ? null
+      : chosenDrive && drives.includes(chosenDrive)
+        ? chosenDrive
+        : initialDrive && drives.includes(initialDrive)
+          ? initialDrive
+          : drives[0];
+  // A selection belongs to the listing it was made in; leaving that listing
+  // deselects without anything having to be reset.
+  const selectedEntry =
+    selection && selection.drive === drive && selection.path === path ? selection.entry : null;
 
   const loadDrives = useCallback(async () => {
     if (!venue) return;
@@ -50,23 +81,15 @@ export function useFilesExplorer(initialDrive?: string, initialPath?: string) {
 
   useEffect(() => {
     void loadDrives();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [venue]);
-
-  // Default to the requested drive (if it exists) or the first one, once the
-  // drive list has actually loaded — never guess ahead of the real list.
-  useEffect(() => {
-    if (drive || drives.length === 0) return;
-    setDriveState(initialDrive && drives.includes(initialDrive) ? initialDrive : drives[0]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drives]);
+  }, [loadDrives]);
 
   const loadListing = useCallback(
     async (d: string, p: string, force = false) => {
       if (!venue) return;
+      const cache = cacheFor(venue);
       const cacheKey = `${d}:${p}`;
       if (!force) {
-        const cached = listingCache.current.get(cacheKey);
+        const cached = cache.get(cacheKey);
         if (cached) {
           resetEntries(cached);
           return;
@@ -76,7 +99,7 @@ export function useFilesExplorer(initialDrive?: string, initialPath?: string) {
         async () => {
           const result = await venue.dlfs.list(d, p || undefined);
           const listed = result.entries ?? [];
-          if (venueRef.current === venue) listingCache.current.set(cacheKey, listed);
+          cache.set(cacheKey, listed);
           return listed;
         },
         { clear: true },
@@ -87,15 +110,13 @@ export function useFilesExplorer(initialDrive?: string, initialPath?: string) {
 
   useEffect(() => {
     if (!drive) return;
-    setSelectedEntry(null);
     void loadListing(drive, path);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drive, path]);
+  }, [drive, path, loadListing]);
 
   const selectDrive = useCallback((next: string) => {
-    setDriveState(next);
+    setChosenDrive(next);
     setPath("");
-    setSelectedEntry(null);
+    setSelection(null);
   }, []);
 
   const navigateTo = useCallback((nextPath: string) => {
@@ -106,14 +127,14 @@ export function useFilesExplorer(initialDrive?: string, initialPath?: string) {
     (entry: DLFSEntry) => {
       if (entry.type === "directory") {
         navigateTo(path ? `${path}/${entry.name}` : entry.name);
-      } else {
-        setSelectedEntry(entry);
+      } else if (drive) {
+        setSelection({ drive, path, entry });
       }
     },
-    [navigateTo, path],
+    [drive, navigateTo, path],
   );
 
-  const clearSelection = useCallback(() => setSelectedEntry(null), []);
+  const clearSelection = useCallback(() => setSelection(null), []);
 
   const pathSegments = path.split("/").filter(Boolean);
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { VenueAuth } from "@/hooks/use-auth";
 import { identityTokenFor, IDENTITY_TOKEN_LIFETIMES } from "@/lib/identity-token";
 import { MintTokenDialog } from "@/components/MintTokenDialog";
+import { writeTextToClipboard } from "@/lib/clipboard";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { abbreviateDid } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,7 @@ async function copyIdentityToken(
 ): Promise<void> {
   try {
     const token = identityTokenFor(account, venueId, lifetimeSeconds);
-    await navigator.clipboard.writeText(token);
+    await writeTextToClipboard(token);
     notifySuccess("Identity token copied", {
       description:
         account.type === "keypair"

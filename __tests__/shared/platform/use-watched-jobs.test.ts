@@ -4,16 +4,14 @@ import { RunStatus } from "@covia/covia-sdk";
 
 const mockJobsGet = jest.fn();
 const mockGetVenueFor = jest.fn((..._args: unknown[]) => ({ jobs: { get: mockJobsGet } }));
-const mockNotifySuccess = jest.fn((..._args: unknown[]) => {});
-const mockNotifyError = jest.fn((..._args: unknown[]) => {});
 
 jest.mock("@/lib/venue-registry", () => ({
   getVenueFor: (...args: unknown[]) => mockGetVenueFor(...args),
 }));
-jest.mock("@/lib/notify", () => ({
-  notifySuccess: (...args: unknown[]) => mockNotifySuccess(...args),
-  notifyError: (...args: unknown[]) => mockNotifyError(...args),
-}));
+jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
+import { notifyMock } from "@test/notify";
+const mockNotifySuccess = notifyMock.notifySuccess;
+const mockNotifyError = notifyMock.notifyError;
 jest.mock("@/hooks/use-venues", () => ({
   useVenues: {
     getState: () => ({
@@ -22,6 +20,7 @@ jest.mock("@/hooks/use-venues", () => ({
   },
 }));
 jest.mock("@/hooks/use-auth", () => ({
+  ...require("@test/use-auth").authMock,
   useAuthStore: { getState: () => ({ authMap: {} }) },
 }));
 
@@ -34,6 +33,18 @@ function job(overrides: { isFinished: boolean; isComplete?: boolean; status?: Ru
 }
 
 describe("useWatchedJobs store", () => {
+  it("deduplicates and removes both hex spellings, keeping other venues separate", () => {
+    const { watch, unwatch } = useWatchedJobs.getState();
+    watch("v1", "0XAB12");
+    watch("v1", "ab12");
+    watch("v2", "ab12");
+    expect(useWatchedJobs.getState().jobs).toHaveLength(2);
+    unwatch("v1", "0xab12");
+    expect(useWatchedJobs.getState().jobs).toEqual([
+      expect.objectContaining({ venueId: "v2", jobId: "ab12" }),
+    ]);
+  });
+
   beforeEach(() => {
     act(() => useWatchedJobs.setState({ jobs: [] }));
   });
@@ -145,5 +156,58 @@ describe("useWatchedJobsPoll", () => {
 
     expect(mockJobsGet).not.toHaveBeenCalled();
     expect(useWatchedJobs.getState().jobs).toHaveLength(0);
+  });
+
+  it("unwatches a job the venue no longer has, instead of re-reading it forever", async () => {
+    mockJobsGet.mockRejectedValue(Object.assign(new Error("Job not found"), { status: 404 }));
+    act(() => useWatchedJobs.getState().watch("v1", "j1"));
+
+    renderHook(() => useWatchedJobsPoll());
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(useWatchedJobs.getState().jobs).toHaveLength(0);
+  });
+
+  it("keeps watching through a transient read failure", async () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    mockJobsGet.mockRejectedValue(new Error("Failed to fetch"));
+    act(() => useWatchedJobs.getState().watch("v1", "j1"));
+
+    renderHook(() => useWatchedJobsPoll());
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(useWatchedJobs.getState().jobs).toHaveLength(1);
+    warn.mockRestore();
+  });
+
+  it("stops watching an entry older than a day without reading it", async () => {
+    const twoDaysAgo = Date.now() - 2 * 24 * 60 * 60 * 1000;
+    act(() => useWatchedJobs.setState({ jobs: [{ venueId: "v1", jobId: "j-old", addedAt: twoDaysAgo }] }));
+
+    renderHook(() => useWatchedJobsPoll());
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mockJobsGet).not.toHaveBeenCalled();
+    expect(useWatchedJobs.getState().jobs).toHaveLength(0);
+  });
+
+  it("does not start a second pass while a slow one is still reading", async () => {
+    mockJobsGet.mockReturnValue(new Promise(() => {})); // never settles
+    act(() => useWatchedJobs.getState().watch("v1", "j1"));
+
+    renderHook(() => useWatchedJobsPoll());
+    await act(async () => {
+      jest.advanceTimersByTime(30_000);
+    });
+
+    expect(mockJobsGet).toHaveBeenCalledTimes(1);
   });
 });

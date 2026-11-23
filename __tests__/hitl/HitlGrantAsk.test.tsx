@@ -16,7 +16,7 @@ import type { HitlAsk, HitlRequest } from '@/lib/hitl';
 
 const venue = {} as any;
 const baseReq = (ask: HitlAsk): HitlRequest => ({
-  id: 'r1', title: 'req', status: 'open', from: 'did:key:zAGENT', asks: [ask],
+  id: 'r1', title: 'req', status: 'open', caller: 'did:key:zAGENT', asks: [ask],
 });
 
 beforeEach(() => { respondToHitl.mockClear(); signAccessToken.mockClear(); });
@@ -35,7 +35,7 @@ describe('HitlGrantAsk — token (COG-19)', () => {
 
     expect(signAccessToken).toHaveBeenCalledWith(expect.objectContaining({
       privateKeyHex: 'deadbeef',
-      audience: 'did:key:zAGENT',        // defaults to the request's from
+      audience: 'did:key:zAGENT',        // defaults to the request's caller
       caps: [{ with: 'w/reports/', can: 'crud/read' }],
     }));
     expect(respondToHitl).toHaveBeenCalledWith(venue, {

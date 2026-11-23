@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { Key, Copy, Check, Plus, Import } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,45 +16,39 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Identicon } from "@/components/Identicon";
 import { DidDisplay } from "@/components/DidDisplay";
 import { abbreviateDid } from "@/lib/utils";
-import type { DeviceKeyStep, StoredKeyOption } from "@/hooks/use-device-key-signin";
+import type { DeviceKeySignIn } from "@/hooks/use-device-key-signin";
 
 interface DeviceKeyDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  step: DeviceKeyStep;
-  setStep: (step: DeviceKeyStep) => void;
-  deviceKey: string | null;
-  deviceKeyDid: string | null;
-  isExisting: boolean;
-  pastedKey: string;
-  onPastedKeyChange: (value: string) => void;
-  keyError: string | null;
-  copied: boolean;
-  checking: boolean;
-  authError: string | null;
-  storedKeys: StoredKeyOption[];
-  onGenerate: () => void;
-  onProvideKey: () => void;
-  onSubmitProvidedKey: () => void;
-  onCopy: () => void;
-  onContinue: () => void;
-  onUseStoredKey: (hex: string) => void;
-  onUseDifferentKey: () => void;
+  /** The result of useDeviceKeySignIn, whose state and handlers drive the dialog. */
+  signIn: DeviceKeySignIn;
 }
 
 // The device-key sign-in dialog, shared by the signup page's and topbar's
 // sign-in buttons (see useDeviceKeySignIn). Continue probes the venue before
 // the login is recorded; a rejected key shows the error here with a path to
 // a different key rather than "succeeding" into a broken session.
-export function DeviceKeyDialog({
-  open, onOpenChange, step, setStep, deviceKey, deviceKeyDid, isExisting, pastedKey,
-  onPastedKeyChange, keyError, copied, checking, authError, storedKeys,
-  onGenerate, onProvideKey, onSubmitProvidedKey, onCopy, onContinue,
-  onUseStoredKey, onUseDifferentKey,
-}: DeviceKeyDialogProps) {
+export function DeviceKeyDialog({ signIn }: DeviceKeyDialogProps) {
+  const {
+    dialogOpen: open, setDialogOpen: onOpenChange, step, setStep, deviceKey, deviceKeyDid,
+    isExisting, pastedKey, handlePastedKeyChange: onPastedKeyChange, keyError, copied, checking,
+    authError, storedKeys, handleGenerate: onGenerate, handleProvideKey: onProvideKey,
+    handleSubmitProvidedKey: onSubmitProvidedKey, handleCopy: onCopy, handleContinue: onContinue,
+    handleUseStoredKey: onUseStoredKey, handleUseDifferentKey: onUseDifferentKey,
+  } = signIn;
+  const continueRef = useRef<HTMLButtonElement>(null);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-card text-card-foreground">
+      <DialogContent
+        className="sm:max-w-md bg-card text-card-foreground"
+        onOpenAutoFocus={(event) => {
+          // Left to itself the dialog focuses its first tabbable element —
+          // on Welcome Back that is the DidDisplay trigger, whose tooltip
+          // then opens over the description. Continue is the step's action.
+          if (!continueRef.current) return;
+          event.preventDefault();
+          continueRef.current.focus();
+        }}
+      >
         {step === "choose" && (
           <>
             <DialogHeader>
@@ -152,7 +147,10 @@ export function DeviceKeyDialog({
                   : "Your device key is stored in your browser — as long as you don't clear your browser data, we'll read it from there automatically."}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-3">
+            {/* min-w-0: DialogContent is a grid, and a rejected key's error
+                carries an unbroken did:key, so without it the track grows to
+                that word's width and break-words never wraps it. */}
+            <div className="min-w-0 space-y-3">
               {isExisting && deviceKeyDid ? (
                 <div className="flex flex-col gap-1">
                   <p className="text-sm text-muted-foreground">You&apos;ll sign in as:</p>
@@ -170,7 +168,7 @@ export function DeviceKeyDialog({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button variant="outline" size="icon" onClick={onCopy} aria-label="Copy device key" className="shrink-0">
-                          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                          {copied ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" /> : <Copy className="h-4 w-4" />}
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>{copied ? "Copied!" : "Copy device key"}</TooltipContent>
@@ -196,7 +194,13 @@ export function DeviceKeyDialog({
               >
                 Use a different key
               </Button>
-              <Button onClick={onContinue} disabled={checking} className="w-full sm:w-auto" data-testid="devicekey-continue">
+              <Button
+                ref={continueRef}
+                onClick={onContinue}
+                disabled={checking}
+                className="w-full sm:w-auto"
+                data-testid="devicekey-continue"
+              >
                 {checking ? "Checking…" : authError ? "Try again" : "Continue"}
               </Button>
             </DialogFooter>

@@ -1,19 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Info } from "lucide-react";
+import type { Venue } from "@covia/covia-sdk";
 import { LLM_PROVIDERS } from "@/config/llm-providers";
+import { useModelOptions } from "@/hooks/use-model-options";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
+import { TONE_STYLES } from "@/lib/status";
 import {
   CUSTOM_MODEL_OPTION,
   CUSTOM_PROVIDER_OPTION,
@@ -106,6 +111,8 @@ export function AgentJsonConfigField({
 }
 
 type AgentRuntimeFieldsProps = {
+  /** The venue the agent runs on, whose model catalogue the picker lists. */
+  venue?: Venue | null;
   providerId: string;
   onProviderChange: (providerId: string) => void;
   model: string;
@@ -121,6 +128,7 @@ type AgentRuntimeFieldsProps = {
 };
 
 export function AgentRuntimeFields({
+  venue,
   providerId,
   onProviderChange,
   model,
@@ -136,6 +144,14 @@ export function AgentRuntimeFields({
 }: AgentRuntimeFieldsProps) {
   const provider = LLM_PROVIDERS[providerId];
   const providerReady = isAgentProviderReady(providerId, availableKeys);
+  const models = useModelOptions(venue, providerId);
+  // A configured id the list doesn't carry (one typed in, or a model the venue
+  // has since dropped) is still offered, so the Select can show it selected.
+  const unlisted =
+    model && model !== CUSTOM_MODEL_OPTION &&
+    !models.current.includes(model) && !models.previous.includes(model)
+      ? model
+      : null;
 
   return (
     <>
@@ -169,7 +185,7 @@ export function AgentRuntimeFields({
         )}
         {!providerReady && provider?.requiresKey && (
           <div className="space-y-2">
-            <p className="flex items-center gap-1 text-sm text-amber-500">
+            <p className={cn("flex items-center gap-1 text-sm", TONE_STYLES.attention.text)}>
               <AlertTriangle size={14} />
               No {provider.label} key. {onApiKeyChange ? "Paste one below or " : ""}
               <Link href="/secrets" className="underline">add it in Secrets</Link>.
@@ -190,6 +206,18 @@ export function AgentRuntimeFields({
             )}
           </div>
         )}
+        {providerId === DEFAULT_PROVIDER_OPTION && (
+          <p
+            className="flex items-center gap-1 text-sm text-muted-foreground"
+            data-testid="venue-default-key-notice"
+          >
+            <Info size={14} className="shrink-0" />
+            This venue&apos;s default model can&apos;t be checked from here. If it needs a
+            key you haven&apos;t stored, the agent is created but its first task fails —{" "}
+            <Link href="/secrets" className="underline">add a key in Secrets</Link> or pick a
+            specific provider above.
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -203,9 +231,18 @@ export function AgentRuntimeFields({
           <SelectTrigger data-testid="model-select"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value={DEFAULT_MODEL_OPTION}>Venue default</SelectItem>
-            {(provider?.models ?? []).map((modelId) => (
+            {unlisted && <SelectItem value={unlisted}>{unlisted}</SelectItem>}
+            {models.current.map((modelId) => (
               <SelectItem key={modelId} value={modelId}>{modelId}</SelectItem>
             ))}
+            {models.previous.length > 0 && (
+              <SelectGroup data-testid="previous-models">
+                <SelectLabel>Previous models</SelectLabel>
+                {models.previous.map((modelId) => (
+                  <SelectItem key={modelId} value={modelId}>{modelId}</SelectItem>
+                ))}
+              </SelectGroup>
+            )}
             <SelectItem value={CUSTOM_MODEL_OPTION}>Custom…</SelectItem>
           </SelectContent>
         </Select>
@@ -213,7 +250,7 @@ export function AgentRuntimeFields({
           <Input
             data-testid="model-custom-input"
             className={SUGGESTION_PLACEHOLDER_CLASS}
-            placeholder="e.g. claude-opus-4-8"
+            placeholder={models.current[0] ? `e.g. ${models.current[0]}` : "Model id"}
             value={customModel}
             onChange={(event) => onCustomModelChange(event.target.value)}
           />

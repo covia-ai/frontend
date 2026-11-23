@@ -1,13 +1,12 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import type { AuthenticationKeysMap, StatusData, UserSummary } from "@covia/covia-sdk";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
-import { revalidateVenueOnFailure } from "@/hooks/use-authenticated-venue";
+import { useVenueRead } from "@/hooks/use-venue-read";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
@@ -24,76 +23,156 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ChevronRight, Loader2, Lock, ShieldAlert, Search, Users as UsersIcon } from "lucide-react";
+import { ChevronRight, Loader2, Lock, ShieldAlert, Search, Users as UsersIcon, type LucideIcon } from "lucide-react";
+import { PaginationHeader } from "@/components/PaginationHeader";
+import { useClientPagination } from "@/hooks/use-pagination";
+import { userLook } from "@/lib/concept-icons";
+import type { IconCmp } from "@/lib/file-type-look";
+import { TONE_STYLES } from "@/lib/status";
 import { getVenueStatus } from "@/lib/venue-registry";
 import { errorStatus } from "@/lib/errors";
-import { formatDateTime } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
 import { jobFailure, notifyError, notifySuccess } from "@/lib/notify";
 
 interface UsersListProps {
   venueId: string;
 }
 
-// Whether the signed-in caller can see the full users list: "checking" while
-// the first read is in flight, "forbidden" for a 403 (signed in, not an
-// operator — an expected, common outcome, not a failure to toast), "error"
-// for anything else (a real venue/auth problem).
-type ListState = "checking" | "ready" | "forbidden" | "error";
+// Which account types the list is narrowed to.
+type TypeFilter = "all" | "managed" | "external";
+
+// Page size for the client-side pager — a large operator directory used to
+// render in full (W4 4E).
+const PAGE_SIZE = 20;
+
+// The account-type mark for a row: the same shield (managed) / user (external)
+// glyph the facet filter uses, as a tinted pill instead of a plain outline
+// badge, so the type reads at a glance.
+function AccountTypeChip({ managed }: { managed: boolean }) {
+  const look = userLook(managed);
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ${look.tile}`}>
+      <look.Icon size={14} strokeWidth={1.9} />
+      {look.label}
+    </span>
+  );
+}
+
+// The one thing the page shows below its header: "resolving" until the venue
+// is known, "signed-out" with no account, "checking" while the first read is in
+// flight, "forbidden" for a 403 (signed in, not an operator — an expected,
+// common outcome, not a failure to toast), "error" for anything else (a real
+// venue/auth problem). One value, so no branch needs extra guards.
+type View = "resolving" | "signed-out" | "checking" | "forbidden" | "error" | "ready";
+
+function Notice({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: ReactNode }) {
+  return (
+    <div className="border border-border rounded-lg p-4 bg-muted/30 flex items-start gap-3">
+      <Icon size={16} className="text-muted-foreground mt-0.5 shrink-0" />
+      <div>
+        <p className="text-sm font-medium text-foreground">{title}</p>
+        <p className="text-xs text-muted-foreground mt-1">{children}</p>
+      </div>
+    </div>
+  );
+}
+
+// What the users read settles to. `forbidden` is an answer, not a failure: the
+// venue said no to this account, and the page shows the gate for it.
+type Directory = { users: UserSummary[]; forbidden: boolean };
+const NO_DIRECTORY: Directory = { users: [], forbidden: false };
 
 export function UsersList({ venueId }: UsersListProps) {
   const { venue, isAuthenticated, auth, status: venueStatus } = useResolvedVenueContext(venueId);
-  const [users, setUsers] = useState<UserSummary[]>([]);
-  const [listState, setListState] = useState<ListState>("checking");
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<StatusData | undefined>(undefined);
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [authenticators, setAuthenticators] = useState<Record<string, AuthenticationKeysMap>>({});
   const [authLoading, setAuthLoading] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!venue) return;
-    let ignore = false;
-    getVenueStatus(venue).then((s) => { if (!ignore) setStatus(s); });
-    return () => { ignore = true; };
-  }, [venue]);
+  // The admission-policy line comes from the venue's status (job-free). A
+  // venue that cannot answer just shows the policy as unavailable.
+  const { data: status } = useVenueRead<StatusData | undefined>({
+    venue,
+    auth,
+    initial: undefined,
+    failureTitle: "Unable to read venue status",
+    notify: false,
+    load: (target) => getVenueStatus(target),
+  });
 
-  useEffect(() => {
-    if (!venue) return;
-    if (!isAuthenticated) {
-      setListState("forbidden");
-      return;
-    }
-    let ignore = false;
-    setListState("checking");
-    venue.users
-      .list()
-      .then((result) => {
-        if (ignore) return;
-        setUsers(result.users ?? []);
-        setListState("ready");
-      })
-      .catch((err) => {
-        if (ignore) return;
-        if (errorStatus(err) === 403) {
-          // Signed in, just not an operator — a gated view, not a broken page.
-          setListState("forbidden");
-          return;
-        }
-        notifyError("Unable to load users", err, venue.baseUrl);
-        revalidateVenueOnFailure(venue, auth, err);
-        setListState("error");
-      });
-    return () => { ignore = true; };
-  }, [venue, isAuthenticated, auth]);
+  // A 403 is a gated view, not a broken page: signed in, just not an operator,
+  // so it settles as `forbidden` without a toast. Anything else is a real
+  // venue/auth problem, toasted and followed by a venue recheck.
+  const { data: directory, loading: usersLoading, error: usersError } = useVenueRead<Directory>({
+    venue,
+    auth,
+    enabled: isAuthenticated,
+    initial: NO_DIRECTORY,
+    failureTitle: "Unable to load users",
+    load: async (target) => {
+      try {
+        const result = await target.users.list();
+        return { users: result.users ?? [], forbidden: false };
+      } catch (err) {
+        if (errorStatus(err) === 403) return { users: [], forbidden: true };
+        throw err;
+      }
+    },
+  });
+  const users = directory.users;
+  const view: View =
+    venueStatus !== "ready" ? "resolving"
+    : !isAuthenticated ? "signed-out"
+    : directory.forbidden ? "forbidden"
+    : usersLoading ? "checking"
+    : usersError ? "error"
+    : "ready";
 
-  const filteredUsers = useMemo(() => {
+  // Search (DID substring) then the account-type facet compose: the facet
+  // counts are taken over the search-filtered set, so Managed + External always
+  // sum to All for whatever the search currently shows.
+  const searchFiltered = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return users;
     return users.filter((u) => u.did.toLowerCase().includes(term));
   }, [users, search]);
 
+  const managedCount = useMemo(
+    () => searchFiltered.filter((u) => u.managed).length,
+    [searchFiltered],
+  );
+  const externalCount = searchFiltered.length - managedCount;
+
+  const typeFiltered = useMemo(() => {
+    if (typeFilter === "all") return searchFiltered;
+    const wantManaged = typeFilter === "managed";
+    return searchFiltered.filter((u) => Boolean(u.managed) === wantManaged);
+  }, [searchFiltered, typeFilter]);
+
+  const { currentPage, setCurrentPage, totalPages, pageItems } = useClientPagination({
+    items: typeFiltered,
+    pageSize: PAGE_SIZE,
+    resetKey: `${search}|${typeFilter}`,
+  });
+
+  const facets: { key: TypeFilter; label: string; Icon?: IconCmp; count: number }[] = [
+    { key: "all", label: "All", count: searchFiltered.length },
+    { key: "managed", label: "Managed", Icon: userLook(true).Icon, count: managedCount },
+    { key: "external", label: "External", Icon: userLook(false).Icon, count: externalCount },
+  ];
+
   function loadAuthenticators(did: string) {
     if (!venue || authenticators[did]) return;
+    // Authenticators are a venue-managed-account concept: the venue rejects the
+    // lookup for a plain external DID (HTTP 400). Skip the call for those and
+    // record an empty map, so the row shows the "authenticators only apply to
+    // managed accounts" note instead of an error toast (W4 4E).
+    const user = users.find((u) => u.did === did);
+    if (user && !user.managed) {
+      setAuthenticators((prev) => ({ ...prev, [did]: {} }));
+      return;
+    }
     setAuthLoading(did);
     venue.users
       .listAuthenticators(did)
@@ -153,7 +232,7 @@ export function UsersList({ venueId }: UsersListProps) {
                 </p>
               </div>
             </div>
-            {listState === "ready" && (
+            {view === "ready" && (
               <div className="relative w-full sm:w-64">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -167,64 +246,74 @@ export function UsersList({ venueId }: UsersListProps) {
           </div>
         </Card>
 
-        {venueStatus !== "ready" && (
+        {(view === "resolving" || view === "checking") && (
           <div className="flex items-center justify-center py-16">
             <Spinner variant="ellipsis" className="text-primary" size={48} />
           </div>
         )}
 
-        {venueStatus === "ready" && !isAuthenticated && (
-          <div className="border border-border rounded-lg p-4 bg-muted/30 flex items-start gap-3">
-            <Lock size={16} className="text-muted-foreground mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-foreground">Authentication required</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Sign in to view registered users on this venue.
-              </p>
-            </div>
-          </div>
+        {view === "signed-out" && (
+          <Notice icon={Lock} title="Authentication required">
+            Sign in to view registered users on this venue.
+          </Notice>
         )}
 
-        {venueStatus === "ready" && isAuthenticated && listState === "checking" && (
-          <div className="flex items-center justify-center py-16">
-            <Spinner variant="ellipsis" className="text-primary" size={48} />
-          </div>
+        {view === "forbidden" && (
+          <Notice icon={ShieldAlert} title="Operator access required">
+            Viewing the full users list requires signing in as this venue&apos;s operator,
+            or holding a venue-issued delegation.
+          </Notice>
         )}
 
-        {venueStatus === "ready" && isAuthenticated && listState === "forbidden" && (
-          <div className="border border-border rounded-lg p-4 bg-muted/30 flex items-start gap-3">
-            <ShieldAlert size={16} className="text-muted-foreground mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-foreground">Operator access required</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Viewing the full users list requires signing in as this venue&apos;s operator,
-                or holding a venue-issued delegation.
-              </p>
-            </div>
-          </div>
+        {view === "error" && (
+          <Notice icon={ShieldAlert} title="Unable to load users">
+            Something went wrong reading the users list from this venue.
+          </Notice>
         )}
 
-        {venueStatus === "ready" && isAuthenticated && listState === "error" && (
-          <div className="border border-border rounded-lg p-4 bg-muted/30 flex items-start gap-3">
-            <ShieldAlert size={16} className="text-muted-foreground mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-foreground">Unable to load users</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Something went wrong reading the users list from this venue.
-              </p>
-            </div>
-          </div>
-        )}
+        {view === "ready" && (
+          <>
+            {users.length > 0 && (
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by account type">
+                {facets.map((f) => (
+                  <Button
+                    key={f.key}
+                    variant={typeFilter === f.key ? "default" : "outline"}
+                    size="sm"
+                    className="gap-1.5"
+                    aria-pressed={typeFilter === f.key}
+                    onClick={() => setTypeFilter(f.key)}
+                  >
+                    {f.Icon && <f.Icon size={14} strokeWidth={1.9} />}
+                    {f.label}
+                    <span className="tabular-nums opacity-70">{f.count}</span>
+                  </Button>
+                ))}
+              </div>
+            )}
 
-        {venueStatus === "ready" && isAuthenticated && listState === "ready" && (
-          <Card>
+            <Card>
             <CardHeader className="px-2">
-              <CardTitle className="text-base font-medium">
-                {filteredUsers.length} user{filteredUsers.length !== 1 ? "s" : ""}
-              </CardTitle>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <CardTitle className="text-base font-medium">
+                  {typeFiltered.length} user{typeFiltered.length !== 1 ? "s" : ""}
+                </CardTitle>
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <PaginationHeader
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={setCurrentPage}
+                    />
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="p-0">
-              {filteredUsers.length === 0 ? (
+              {typeFiltered.length === 0 ? (
                 <p className="text-sm text-muted-foreground px-6 py-10 text-center">
                   {users.length === 0 ? "No registered users on this venue." : "No users match your filter."}
                 </p>
@@ -237,14 +326,18 @@ export function UsersList({ venueId }: UsersListProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredUsers.map((user) => {
+                    {pageItems.map((user) => {
                       const isExpanded = expanded === user.did;
                       const keys = authenticators[user.did];
                       return (
                         <Fragment key={user.did}>
                           <TableRow className="cursor-pointer" onClick={() => toggleExpand(user.did)}>
-                            <TableCell className="font-mono">
-                              <span className="inline-flex items-center gap-1.5">
+                            {/* max-w-0 w-full makes the DID the flexible column that
+                                shrinks (DidDisplay truncates its own text), so the
+                                Account type column stays visible at every width
+                                instead of the table overflowing on mobile. */}
+                            <TableCell className="font-mono max-w-0 w-full">
+                              <span className="flex items-center gap-1.5 min-w-0">
                                 <ChevronRight
                                   size={14}
                                   className={`shrink-0 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`}
@@ -252,18 +345,18 @@ export function UsersList({ venueId }: UsersListProps) {
                                 {/* DidDisplay is itself a dropdown trigger (Copy menu) — stop the
                                     click from also toggling row expand, so the two interactions
                                     (copy vs. expand) never fire together from one click. */}
-                                <span onClick={(e) => e.stopPropagation()}>
-                                  <DidDisplay value={user.did} chars={20} />
+                                <span onClick={(e) => e.stopPropagation()} className="min-w-0 flex-1">
+                                  <DidDisplay value={user.did} className="w-full" />
                                 </span>
                               </span>
                             </TableCell>
                             <TableCell>
-                              <Badge variant="outline">{user.managed ? "Managed" : "External"}</Badge>
+                              <AccountTypeChip managed={Boolean(user.managed)} />
                             </TableCell>
                           </TableRow>
                           {isExpanded && (
                             <TableRow className="hover:bg-transparent bg-muted/30">
-                              <TableCell colSpan={2} className="py-3">
+                              <TableCell colSpan={2} className="py-3 whitespace-normal break-words">
                                 {authLoading === user.did && (
                                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                     <Loader2 className="animate-spin" size={14} /> Loading authenticators…
@@ -281,9 +374,18 @@ export function UsersList({ venueId }: UsersListProps) {
                                     {Object.entries(keys).map(([key, entry]) => (
                                       <li key={key} className="flex flex-wrap items-center gap-2 text-xs">
                                         <DidDisplay value={key} chars={20} />
-                                        <Badge variant={entry.status === "active" ? "outline" : "secondary"}>
+                                        {/* Status tone, on the app's shared palette (lib/status):
+                                            an active key uses the "active" (live) tone; a revoked key
+                                            the neutral grey tone — never the cerulean brand colour,
+                                            which stays reserved for brand, not status. */}
+                                        <span
+                                          className={cn(
+                                            "rounded-full px-2 py-0.5 font-medium",
+                                            TONE_STYLES[entry.status === "active" ? "active" : "neutral"].pill,
+                                          )}
+                                        >
                                           {entry.status}
-                                        </Badge>
+                                        </span>
                                         <span className="text-muted-foreground">
                                           added {formatDateTime(entry.addedAt)}
                                           {entry.status === "revoked" && entry.revokedAt
@@ -296,7 +398,7 @@ export function UsersList({ venueId }: UsersListProps) {
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                className="h-6 px-2 text-red-600 hover:text-red-700"
+                                                className="h-6 px-2 text-destructive hover:text-destructive/80"
                                                 onClick={(e) => e.stopPropagation()}
                                               >
                                                 Revoke
@@ -332,8 +434,18 @@ export function UsersList({ venueId }: UsersListProps) {
                   </TableBody>
                 </Table>
               )}
+              {totalPages > 1 && (
+                <div className="flex justify-end border-t px-4 py-3">
+                  <PaginationHeader
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
+                </div>
+              )}
             </CardContent>
-          </Card>
+            </Card>
+          </>
         )}
       </div>
     </ContentLayout>

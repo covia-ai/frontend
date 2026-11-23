@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { HoverPrefetchLink } from "@/components/admin-panel/hover-prefetch-link";
 import { ChevronDown, ChevronRight, Ellipsis } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -24,10 +24,18 @@ interface MenuProps {
   isOpen: boolean | undefined;
 }
 
-function isItemActive(item: Pick<MenuItem, "href" | "match">, pathname: string): boolean {
-  return item.match === "exact"
-    ? pathname === item.href
-    : pathname === item.href || pathname.startsWith(`${item.href}/`);
+function isItemActive(
+  item: Pick<MenuItem, "href" | "match" | "activePrefixes">,
+  pathname: string,
+): boolean {
+  const base =
+    item.match === "exact"
+      ? pathname === item.href
+      : pathname === item.href || pathname.startsWith(`${item.href}/`);
+  if (base) return true;
+  return (
+    item.activePrefixes?.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ?? false
+  );
 }
 
 function MenuItemRow({
@@ -66,7 +74,7 @@ function MenuItemRow({
               className={cn("justify-start h-8 mb-0 relative", showChildren ? "flex-1" : "w-full")}
               asChild
             >
-              <Link href={href}>
+              <HoverPrefetchLink href={href}>
                 <span className={cn(isOpen === false ? "" : "mr-2")}>
                   <Icon size={18} />
                 </span>
@@ -107,7 +115,7 @@ function MenuItemRow({
                     </span>
                   )
                 )}
-              </Link>
+              </HoverPrefetchLink>
             </Button>
           </TooltipTrigger>
           {isOpen === false && (

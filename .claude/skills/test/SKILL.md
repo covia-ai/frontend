@@ -16,10 +16,17 @@ Run from this repo root — stop on first failure:
 pnpm lint
 ```
 
-2. **Type-check (via build):**
+2. **Type-check:**
 ```bash
-pnpm build
+pnpm typecheck
 ```
+
+   Covers `__tests__/`, which `next build` does not. It does *not* cover App
+   Router page/layout/route signatures: those live in `.next/types/`, which is
+   gitignored, so on a fresh checkout that part of `tsconfig.json`'s `include`
+   matches nothing. CI's `build` job (`pnpm build`) is what validates them —
+   don't run `pnpm build` here to close the gap, it corrupts the `.next` cache
+   of a dev server already running on port 3000.
 
 3. **Unit tests:**
 ```bash

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { JSON_EDITOR_DIALOG_CLASS, JSON_EDITOR_MAX_WIDTH } from "@/lib/dialog-sizes";
 import { cn } from "@/lib/utils";
+import { TONE_STYLES } from "@/lib/status";
 
 const ThemedJsonEditor = dynamic(
   () => import("@/components/ThemedJsonEditor").then((module) => module.ThemedJsonEditor),
@@ -24,7 +25,7 @@ export function StrictValidatedBadge({ schema }: { schema: unknown }) {
           variant="outline"
           size="sm"
           data-testid="strict-validated-badge"
-          className="gap-1.5 text-emerald-700 dark:text-emerald-400 border-emerald-600/40"
+          className={cn("gap-1.5", TONE_STYLES.success.text, TONE_STYLES.success.tint)}
         >
           <BadgeCheck size={14} />
           Validated against schema

@@ -23,13 +23,17 @@ export const SCOPE_LABELS: Record<ContextScope, string> = {
   "shared-venue": "Shared — venue",
 };
 
-// Tailwind classes per scope, reused by the badge so the four categories
-// stay visually distinct without inventing a new color per tier.
-export const SCOPE_BADGE_CLASSES: Record<ContextScope, string> = {
-  private: "border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  agent: "border-purple-500/30 bg-purple-500/10 text-purple-600 dark:text-purple-400",
-  session: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  "shared-venue": "border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400",
+// One theme-aware token tint per scope, from the app's categorical tile palette
+// (the same tints TypeTile / concept-icons use) — NOT the semantic status tones
+// (scopes are categories, and "agent" has no status tone). Shared by each tier's
+// TypeTile and its scope chip so a scope reads as one colour: private = secondary
+// (yours), agent = violet, session = accent/amber (ephemeral), shared-venue =
+// neutral (read-only, de-emphasised).
+export const SCOPE_TILE: Record<ContextScope, string> = {
+  private: "bg-secondary/15 text-secondary",
+  agent: "bg-icon-violet/15 text-icon-violet",
+  session: "bg-accent/25 text-accent-foreground",
+  "shared-venue": "bg-muted text-muted-foreground",
 };
 
 export const CONTEXT_TIERS: ContextTier[] = [

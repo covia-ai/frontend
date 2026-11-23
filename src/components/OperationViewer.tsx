@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { AssetHeader } from "@/components/AssetHeader";
 import { AssetLoadState } from "@/components/AssetLoadState";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
@@ -13,12 +14,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOperationAsset } from "@/hooks/use-operation-asset";
 import { useOperationInput } from "@/hooks/use-operation-input";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
+import { useMcpExposure } from "@/hooks/use-mcp-exposure";
 import {
   validateOperationInput,
   type OperationInputSchema,
 } from "@/lib/operation-input";
 import { gtmEvent } from "@/lib/utils";
 import { useJobExecution } from "@/hooks/use-job-execution";
+import { OperationRunResult } from "@/components/execution/OperationRunResult";
+import { TypeTile } from "@/components/TypeTile";
+import { adapterLook, adapterOfMetadata, OperationSignature } from "@/components/operation-display";
+import { McpGlyph } from "@/components/adapter-glyphs";
+import { jobPath } from "@/lib/routes";
 
 const DiagramViewer = dynamic(
   () =>
@@ -28,10 +35,20 @@ const DiagramViewer = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-100 animate-pulse rounded-md bg-muted" />
+      <div className="w-full h-100 animate-pulse rounded-xl bg-muted" />
     ),
   },
 );
+
+// Run-in-place: the last job this page kicked off (streamed inline below the
+// form, with a link out to the full job), the validation message and the
+// confirmation step.
+type RunState = {
+  jobId: string | null;
+  invocationError: string;
+  confirmationRequired: boolean;
+};
+const IDLE_RUN: RunState = { jobId: null, invocationError: "", confirmationRequired: false };
 
 type OperationViewerProps = {
   assetId: string;
@@ -54,9 +71,11 @@ export function OperationViewer({
     assetId,
   );
 
+  // Told once, when the operation turns out not to exist — an Effect Event, so
+  // a new `onNotFound` identity does not fire it again.
+  const reportNotFound = useEffectEvent(() => onNotFound?.());
   useEffect(() => {
-    if (notFound) onNotFound?.();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (notFound) reportNotFound();
   }, [notFound]);
   const schema = useMemo(
     () =>
@@ -66,33 +85,52 @@ export function OperationViewer({
     [asset],
   );
   const inputController = useOperationInput(venue?.venueId, assetId, schema);
-  const [invocationError, setInvocationError] = useState("");
   const { execute: executeJob, running: loading } = useJobExecution(venue);
-  const [confirmationRequired, setConfirmationRequired] = useState(false);
+
+  // Every operation shares one route, so jumping between operations (the
+  // command palette, a catalogue link) reuses this component instance. The run
+  // state is stored with the operation it belongs to, so the previous
+  // operation's result panel and validation state can never show under the new
+  // operation's form — a run that completes after the switch stays filed under
+  // the operation that started it. `inputController` is already keyed on the
+  // asset.
+  const runKey = `${venue?.venueId ?? ""}/${assetId}`;
+  const [storedRun, setStoredRun] = useState<RunState & { key: string }>({ key: runKey, ...IDLE_RUN });
+  const run = storedRun.key === runKey ? storedRun : IDLE_RUN;
+  const updateRun = (patch: Partial<RunState>) =>
+    setStoredRun((previous) => ({ ...(previous.key === runKey ? previous : IDLE_RUN), ...patch, key: runKey }));
+
+  const operation = asset?.metadata?.operation as any;
+  const adapter = adapterOfMetadata(operation);
+  const { Icon: AdapterIcon, tile: adapterTile } = adapterLook(adapter);
+  // The MCP tool serving this operation, when the venue names one (#361).
+  const mcpTools = useMcpExposure(venue, { enabled: !!operation });
+  const mcpTool = asset ? mcpTools.get(asset.id) : undefined;
 
   const runOperation = async () => {
     if (!asset || !venue) {
-      setInvocationError("This asset is not an operation and cannot be invoked");
+      updateRun({ invocationError: "This asset is not an operation and cannot be invoked" });
       return;
     }
 
-    setConfirmationRequired(false);
+    updateRun({ confirmationRequired: false, jobId: null });
     await executeJob({
       action: () => asset.invoke(inputController.input),
       failureTitle: "Unable to run operation",
-      onError: setInvocationError,
+      onError: (message) => updateRun({ invocationError: message }),
+      navigate: false,
+      onSuccess: (id) => updateRun({ jobId: id }),
     });
   };
 
   const requestRun = () => {
-    if (!confirmationRequired) {
+    if (!run.confirmationRequired) {
       const validationError = validateOperationInput(
         inputController.input,
         schema,
       );
       if (validationError) {
-        setInvocationError(validationError);
-        setConfirmationRequired(true);
+        updateRun({ invocationError: validationError, confirmationRequired: true });
         return;
       }
     }
@@ -119,53 +157,98 @@ export function OperationViewer({
         />
 
         {asset && <AssetHeader asset={asset} />}
-        {asset && <MetadataViewer asset={asset} venue={venue} isAuthenticated={isAuthenticated} />}
+
         {asset?.metadata?.operation && (
-          <Tabs defaultValue="run" className="w-full">
-            <TabsList>
-              <TabsTrigger value="run">Run</TabsTrigger>
-              <TabsTrigger value="code" data-testid="operation-code-tab">Code</TabsTrigger>
-            </TabsList>
-            <TabsContent value="run">
-              {inputController.ready ? (
-                <OperationInputForm
-                  schema={schema}
-                  outputSchema={asset.metadata.operation.output}
-                  controller={inputController}
-                  errorMessage={invocationError}
-                  loading={loading}
-                  confirmationRequired={confirmationRequired}
-                  isAuthenticated={isAuthenticated}
-                  onRun={requestRun}
-                  scheduleTarget={
-                    venue ? { venue, operation: asset.id, input: inputController.input } : undefined
-                  }
-                />
-              ) : (
-                <div className="my-2 h-32 w-full animate-pulse rounded-md bg-muted" />
-              )}
-              {asset.metadata.operation.steps && (
-                <DiagramViewer metadata={asset.metadata} />
-              )}
-            </TabsContent>
-            <TabsContent value="code">
-              {venue && (
-                <OperationCodeSnippets
-                  baseUrl={venue.baseUrl}
-                  assetId={asset.id}
-                  schema={schema}
-                  liveInput={inputController.input}
-                />
-              )}
-            </TabsContent>
-          </Tabs>
+          <>
+            {/* Signature hero — the operation's shape (in → out) at a glance. */}
+            <div className="mb-3 flex w-full flex-col gap-3 rounded-xl border bg-card p-3 sm:flex-row sm:items-center">
+              <div className="flex flex-wrap items-center gap-3">
+                <TypeTile Icon={AdapterIcon} tile={adapterTile} className="size-10" iconSize={20} />
+                {adapter && (
+                  <span className="font-mono text-xs text-muted-foreground">{adapter} adapter</span>
+                )}
+                {mcpTool && venue && (
+                  <Link
+                    href={`/venues/${encodeURIComponent(venue.venueId)}/mcp`}
+                    data-testid="operation-mcp"
+                    data-tool={mcpTool}
+                    title="Also served over this venue's MCP endpoint"
+                    className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:border-accent hover:text-foreground"
+                  >
+                    <McpGlyph size={12} /> MCP tool <span className="font-mono">{mcpTool}</span>
+                  </Link>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <OperationSignature operation={operation} max={8} />
+              </div>
+            </div>
+
+            <Tabs defaultValue="run" className="w-full">
+              <TabsList>
+                <TabsTrigger value="run">Run</TabsTrigger>
+                <TabsTrigger value="code" data-testid="operation-code-tab">Code</TabsTrigger>
+                <TabsTrigger value="details">Details</TabsTrigger>
+              </TabsList>
+              <TabsContent value="run">
+                {inputController.ready ? (
+                  <OperationInputForm
+                    schema={schema}
+                    outputSchema={asset.metadata.operation.output}
+                    controller={inputController}
+                    errorMessage={run.invocationError}
+                    loading={loading}
+                    confirmationRequired={run.confirmationRequired}
+                    isAuthenticated={isAuthenticated}
+                    onRun={requestRun}
+                    scheduleTarget={
+                      venue ? { venue, operation: asset.id, input: inputController.input } : undefined
+                    }
+                  />
+                ) : (
+                  <div className="my-2 h-32 w-full animate-pulse rounded-xl bg-muted" />
+                )}
+                {asset.metadata.operation.steps && (
+                  <DiagramViewer metadata={asset.metadata} />
+                )}
+                {run.jobId && venue && (
+                  <div
+                    className="mt-4 rounded-xl border bg-card p-4"
+                    data-testid="operation-inline-result"
+                  >
+                    <OperationRunResult
+                      jobId={run.jobId}
+                      venueId={venue.venueId}
+                      jobHref={jobPath(venue.venueId, run.jobId)}
+                    />
+                  </div>
+                )}
+              </TabsContent>
+              <TabsContent value="code">
+                {venue && (
+                  <OperationCodeSnippets
+                    baseUrl={venue.baseUrl}
+                    assetId={asset.id}
+                    schema={schema}
+                    liveInput={inputController.input}
+                  />
+                )}
+              </TabsContent>
+              <TabsContent value="details">
+                <MetadataViewer asset={asset} venue={venue} isAuthenticated={isAuthenticated} bare />
+              </TabsContent>
+            </Tabs>
+          </>
         )}
         {asset && !asset.metadata?.operation && (
-          <div className="text-center p-4">
-            <p className="text-destructive">
-              This asset is not an operation and cannot be executed.
-            </p>
-          </div>
+          <>
+            <MetadataViewer asset={asset} venue={venue} isAuthenticated={isAuthenticated} />
+            <div className="text-center p-4">
+              <p className="text-destructive">
+                This asset is not an operation and cannot be executed.
+              </p>
+            </div>
+          </>
         )}
       </div>
     </ContentLayout>

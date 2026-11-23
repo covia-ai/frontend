@@ -11,21 +11,36 @@ import {
 
 describe("operationVisual — operation → icon identity", () => {
   it("reads the v/ops/<adapter>/<op> form", () => {
-    expect(operationVisual({ operation: "v/ops/http/get" }).kind).toBe("http");
-    expect(operationVisual({ operation: "v/ops/secret/set" }).kind).toBe("secret");
-    expect(operationVisual({ operation: "v/ops/agent/create" }).kind).toBe("agent");
+    expect(operationVisual({ op: "v/ops/http/get" }).kind).toBe("http");
+    expect(operationVisual({ op: "v/ops/secret/set" }).kind).toBe("secret");
+    expect(operationVisual({ op: "v/ops/agent/create" }).kind).toBe("agent");
   });
 
   it("reads the v/<adapter>/ops/<op> form (e.g. test ops)", () => {
-    expect(operationVisual({ operation: "v/test/ops/echo" }).kind).toBe("test");
-    expect(operationVisual({ operation: "v/test/ops/error" }).kind).toBe("test");
+    expect(operationVisual({ op: "v/test/ops/echo" }).kind).toBe("test");
+    expect(operationVisual({ op: "v/test/ops/error" }).kind).toBe("test");
   });
 
   it("handles DID-scoped and model paths, and bare shorthand", () => {
-    expect(operationVisual({ operation: "did:key:z6Mk/v/test/ops/echo" }).kind).toBe("test");
-    expect(operationVisual({ operation: "did:key:z6Mk/v/ops/http/get" }).kind).toBe("http");
-    expect(operationVisual({ operation: "v/models/anthropic/claude-sonnet-5" }).kind).toBe("model");
-    expect(operationVisual({ operation: "agent:create" }).kind).toBe("agent");
+    expect(operationVisual({ op: "did:key:z6Mk/v/test/ops/echo" }).kind).toBe("test");
+    expect(operationVisual({ op: "did:key:z6Mk/v/ops/http/get" }).kind).toBe("http");
+    expect(operationVisual({ op: "v/models/anthropic/claude-sonnet-5" }).kind).toBe("model");
+    expect(operationVisual({ op: "agent:create" }).kind).toBe("agent");
+  });
+
+  it("reads the adapter off the resolved asset when op is a bare hash", () => {
+    const hash = "0x" + "a".repeat(64);
+    // Without the asset, a hash has no path to parse and the name decides.
+    expect(operationVisual({ op: hash, name: "Echo Operation" }).kind).toBe("operation");
+    // The venue's dispatch form is adapter:subop — only the adapter counts.
+    expect(operationVisual({ op: hash, name: "Echo Operation" }, "test:echo").kind).toBe("test");
+    expect(operationVisual({ op: hash }, "http:get").kind).toBe("http");
+    expect(operationVisual({ op: hash }, "secret").kind).toBe("secret");
+  });
+
+  it("prefers the operation path over the asset adapter, and ignores an unknown one", () => {
+    expect(operationVisual({ op: "v/ops/http/get" }, "secret:set").kind).toBe("http");
+    expect(operationVisual({ op: "0x" + "b".repeat(64), name: "Set Secret" }, "nosuch").kind).toBe("secret");
   });
 
   it("falls back to the job name when there is no operation path", () => {
@@ -40,15 +55,48 @@ describe("operationVisual — operation → icon identity", () => {
   });
 
   it("always returns an icon and a class", () => {
-    const v = operationVisual({ operation: "v/ops/http/get" });
+    const v = operationVisual({ op: "v/ops/http/get" });
     expect(v.Icon).toBeDefined();
     expect(typeof v.className).toBe("string");
+  });
+
+  it("renders real icons for adapters outside ADAPTER_KIND via the shared directory", () => {
+    const hash = "0x" + "c".repeat(64);
+    // covia / venue carry their own marks in adapter-icons but aren't curated
+    // job families; the adapter still resolves to a real (non-generic) icon,
+    // with the family name standing in as the kind.
+    const covia = operationVisual({ op: hash }, "covia:read");
+    expect(covia.kind).toBe("covia");
+    expect(covia.className).not.toBe(operationVisual({}).className);
+    expect(operationVisual({ op: hash }, "venue:status").kind).toBe("venue");
+    // `json` is an alias of schema in the directory — it resolves to an icon
+    // (kind is the raw family) rather than falling through to generic.
+    expect(operationVisual({ op: hash }, "json:merge").kind).toBe("json");
+    expect(operationVisual({ op: hash }, "lattice:read").kind).toBe("lattice");
+  });
+});
+
+describe("operationVisual — richer name fallback", () => {
+  // Fallback only: no operation path and no resolved asset adapter.
+  it("maps descriptive names to their family", () => {
+    expect(operationVisual({ name: "Validate Value" }).kind).toBe("schema");
+    expect(operationVisual({ name: "Store Asset" }).kind).toBe("asset");
+    expect(operationVisual({ name: "Read/List Lattice Value" }).kind).toBe("lattice");
+    expect(operationVisual({ name: "Delay Operation" }).kind).toBe("test");
+    expect(operationVisual({ name: "Random Data Generator" }).kind).toBe("test");
+  });
+
+  it("keeps weak signals generic", () => {
+    // A bare "echo"/"operation" is too ambiguous to key an icon off the name.
+    expect(operationVisual({ name: "Echo Operation" }).kind).toBe("operation");
   });
 });
 
 describe("abbreviateJobId", () => {
   it("elides long hex ids keeping both ends", () => {
     expect(abbreviateJobId("0x01a05fa1d46700006d964feca62a2fd9")).toBe("0x01a05f…2fd9");
+    expect(abbreviateJobId("0X01A05FA1D46700006D964FECA62A2FD9")).toBe("0x01a05f…2fd9");
+    expect(abbreviateJobId("01a05fa1d46700006d964feca62a2fd9")).toBe("0x01a05f…2fd9");
   });
   it("passes short ids through and handles undefined", () => {
     expect(abbreviateJobId("0x0123")).toBe("0x0123");

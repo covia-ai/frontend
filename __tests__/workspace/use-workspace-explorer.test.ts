@@ -1,5 +1,9 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { useWorkspaceExplorer } from "@/hooks/use-workspace-explorer";
+import {
+  parseWorkspaceDraft,
+  useWorkspaceExplorer,
+  workspaceDraftText,
+} from "@/hooks/use-workspace-explorer";
 
 type Deferred<T> = {
   promise: Promise<T>;
@@ -18,18 +22,14 @@ let mockAuthenticated = false;
 let mockVenue: any;
 
 jest.mock("@/hooks/use-authenticated-venue", () => ({
+  ...require("@test/use-authenticated-venue").venueMock,
   useAuthenticatedVenue: () => mockVenue,
 }));
 jest.mock("@/hooks/use-auth", () => ({
+  ...require("@test/use-auth").authMock,
   useIsAuthenticated: () => mockAuthenticated,
 }));
-jest.mock("@/lib/notify", () => ({
-  notifySuccess: jest.fn(),
-  notifyError: jest.fn(),
-  notifyWarning: jest.fn(),
-  notifyInfo: jest.fn(),
-  jobFailure: (err: unknown) => ({ reason: err, jobHref: undefined }),
-}));
+jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
 
 function createVenue() {
   return {
@@ -62,6 +62,17 @@ describe("useWorkspaceExplorer", () => {
     expect(mockVenue.workspace.list).toHaveBeenCalledTimes(1);
     expect(mockVenue.workspace.list).toHaveBeenCalledWith("w");
     expect(mockVenue.workspace.read).not.toHaveBeenCalled();
+  });
+
+  // covia 0.11 refuses to list "/": the root shows the known namespaces.
+  it("lists the root from the namespace catalogue without asking the venue", async () => {
+    const { result } = renderHook(() => useWorkspaceExplorer("/"));
+
+    await waitFor(() => expect(result.current.listingLoading).toBe(false));
+    expect(result.current.currentPath).toBe("/");
+    expect(mockVenue.workspace.list).not.toHaveBeenCalled();
+    const keys = result.current.entries.map((entry) => entry.key);
+    expect(keys).toEqual(["v", "w", "o", "a", "g", "j", "h", "s"]);
   });
 
   it("loads only the child the user explicitly selects", async () => {
@@ -193,7 +204,7 @@ describe("useWorkspaceExplorer", () => {
 
     await act(async () => {
       expect(await result.current.create("key", '{"value":1}')).toBe(false);
-      expect(await result.current.save()).toBe(false);
+      expect(await result.current.save("changed")).toBe(false);
       expect(await result.current.remove()).toBe(false);
     });
 
@@ -217,7 +228,7 @@ describe("useWorkspaceExplorer", () => {
     await waitFor(() => expect(result.current.valueLoading).toBe(false));
 
     await act(async () => {
-      expect(await result.current.save()).toBe(false);
+      expect(await result.current.save("changed")).toBe(false);
       expect(await result.current.remove()).toBe(false);
       expect(await result.current.create("key", "value")).toBe(false);
     });
@@ -240,7 +251,7 @@ describe("useWorkspaceExplorer", () => {
     await waitFor(() => expect(result.current.valueLoading).toBe(false));
 
     await act(async () => {
-      expect(await result.current.save()).toBe(false);
+      expect(await result.current.save("changed")).toBe(false);
       expect(await result.current.remove()).toBe(false);
     });
 
@@ -263,10 +274,54 @@ describe("useWorkspaceExplorer", () => {
     await waitFor(() => expect(result.current.valueLoading).toBe(false));
 
     await act(async () => {
-      expect(await result.current.save()).toBe(true);
+      expect(await result.current.save("v2")).toBe(true);
     });
 
-    expect(mockVenue.workspace.write).toHaveBeenCalledWith("w/notes", "v");
+    expect(mockVenue.workspace.write).toHaveBeenCalledWith("w/notes", "v2");
+  });
+
+  it("does not write — every write is a job — when the value is unchanged", async () => {
+    mockAuthenticated = true;
+    mockVenue.workspace.read.mockResolvedValue({
+      exists: true,
+      value: { a: 1, nested: { b: [2] } },
+      type: "map",
+    });
+    const { result } = renderHook(() => useWorkspaceExplorer());
+    await waitFor(() => expect(result.current.listingLoading).toBe(false));
+
+    act(() => result.current.selectPath("w/notes"));
+    await waitFor(() => expect(result.current.valueLoading).toBe(false));
+
+    await act(async () => {
+      // An equal value, not the same reference — what blurring out of an
+      // untouched editor hands back.
+      expect(await result.current.save({ a: 1, nested: { b: [2] } })).toBe(false);
+    });
+
+    expect(mockVenue.workspace.write).not.toHaveBeenCalled();
+  });
+
+  it("never writes back a value the venue only returned part of", async () => {
+    mockAuthenticated = true;
+    mockVenue.workspace.read.mockResolvedValue({
+      exists: true,
+      value: "the first part of a very long",
+      type: "string",
+      truncated: true,
+    });
+    const { result } = renderHook(() => useWorkspaceExplorer());
+    await waitFor(() => expect(result.current.listingLoading).toBe(false));
+
+    act(() => result.current.selectPath("w/big"));
+    await waitFor(() => expect(result.current.valueLoading).toBe(false));
+    expect(result.current.selectedValue.truncated).toBe(true);
+
+    await act(async () => {
+      expect(await result.current.save("an edit")).toBe(false);
+    });
+
+    expect(mockVenue.workspace.write).not.toHaveBeenCalled();
   });
 
   it("does not refresh an old directory when its create completes after navigation", async () => {
@@ -306,5 +361,29 @@ describe("useWorkspaceExplorer", () => {
       "w",
       "w/other",
     ]);
+  });
+});
+
+describe("workspace scalar draft", () => {
+  it("round-trips every scalar through its editor text", () => {
+    for (const value of ["plain text", "123", "true", 42, 1.05, false, null]) {
+      expect(parseWorkspaceDraft(workspaceDraftText(value), value)).toEqual(value);
+    }
+  });
+
+  it("keeps a value loaded as a string a string, however numeric the text looks", () => {
+    expect(parseWorkspaceDraft("1234", "123")).toBe("1234");
+    expect(parseWorkspaceDraft("null", "none")).toBe("null");
+  });
+
+  it("lets a string be replaced by structured JSON, which cannot be mistaken for text", () => {
+    expect(parseWorkspaceDraft('{"a":1}', "old")).toEqual({ a: 1 });
+    expect(parseWorkspaceDraft("[1,2]", "old")).toEqual([1, 2]);
+  });
+
+  it("parses a non-string value's text as JSON, falling back to a string", () => {
+    expect(parseWorkspaceDraft("1.05", 1)).toBe(1.05);
+    expect(parseWorkspaceDraft('"5"', 5)).toBe("5");
+    expect(parseWorkspaceDraft("not json", 5)).toBe("not json");
   });
 });

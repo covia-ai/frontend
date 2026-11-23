@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { VenueAuth } from "@/hooks/use-auth";
 import { identityTokenFor, MAX_IDENTITY_TOKEN_LIFETIME_SECONDS } from "@/lib/identity-token";
+import { writeTextToClipboard } from "@/lib/clipboard";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { TONE_STYLES } from "@/lib/status";
 import { Button } from "@/components/ui/button";
@@ -69,7 +70,7 @@ export function MintTokenDialog({ venueId, account, open, onOpenChange }: MintTo
   const copy = async () => {
     if (!minted) return;
     try {
-      await navigator.clipboard.writeText(minted.token);
+      await writeTextToClipboard(minted.token);
       notifySuccess("Identity token copied");
     } catch (err) {
       notifyError("Unable to copy identity token", err);
@@ -135,7 +136,7 @@ export function MintTokenDialog({ venueId, account, open, onOpenChange }: MintTo
               </p>
             )}
             {longLived && (
-              <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
+              <p className={`text-xs ${TONE_STYLES.attention.text} mt-1`}>
                 Long-lived token: anyone holding it can act as you until it
                 expires. Treat it like a password.
               </p>

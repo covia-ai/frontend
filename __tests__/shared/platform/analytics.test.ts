@@ -56,7 +56,6 @@ function grantConsent(analytics = true) {
 function freshAnalytics(): Analytics {
   let mod!: Analytics;
   jest.isolateModules(() => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     mod = require('@/lib/analytics');
   });
   return mod;
@@ -391,7 +390,6 @@ describe('analytics', () => {
 
       let mod!: Analytics;
       jest.isolateModules(() => {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
         mod = require('@/lib/analytics');
       });
 

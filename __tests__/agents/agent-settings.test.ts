@@ -25,13 +25,26 @@ describe("agent settings config", () => {
 
     expect(draft.providerId).toBe(CUSTOM_PROVIDER_OPTION);
     expect(draft.customProviderOperation).toBe("w/ops/private/model");
-    expect(draft.customModel).toBe("private-v2");
+    expect(draft.model).toBe("private-v2");
     expect(configFromAgentSettingsDraft(draft).config).toMatchObject({
       operation: "v/ops/llmagent/chat",
       llmOperation: "w/ops/private/model",
       model: "private-v2",
       systemPrompt: "Be precise.",
     });
+  });
+
+  it("edits skillsets as their own field, not as additional configuration", () => {
+    const original = { skills: ["w/skills/tone"], skillsets: ["w/skills"] };
+    const draft = createAgentSettingsDraft(original);
+
+    expect(JSON.parse(draft.skillsetsJson)).toEqual(["w/skills"]);
+    expect(JSON.parse(draft.advancedJson)).toEqual({});
+    expect(configFromAgentSettingsDraft(draft, original).config).toEqual(original);
+
+    draft.skillsetsJson = "[]";
+    expect(agentConfigUpdatePatch(original, configFromAgentSettingsDraft(draft, original).config ?? {}))
+      .toEqual({ skillsets: [] });
   });
 
   it("validates structured capability fields before saving", () => {
@@ -61,5 +74,61 @@ describe("agent settings config", () => {
       model: null,
       tools: [],
     });
+  });
+});
+
+describe("agent settings caps (covia 0.11)", () => {
+  it("reads caps: \"unrestricted\" as unrestricted and writes it back explicitly", () => {
+    const original = { caps: "unrestricted" };
+    const draft = createAgentSettingsDraft(original);
+    expect(draft.capsMode).toBe("unrestricted");
+    expect(draft.caps).toEqual([]);
+    expect(configFromAgentSettingsDraft(draft, original).config).toEqual({ caps: "unrestricted" });
+    expect(agentConfigUpdatePatch(original, configFromAgentSettingsDraft(draft, original).config ?? {}))
+      .toEqual({});
+  });
+
+  it("never patches caps to null when an agent is switched to unrestricted", () => {
+    const original = { caps: [{ with: "w/", can: "crud/read" }] };
+    const draft = { ...createAgentSettingsDraft(original), capsMode: "unrestricted" as const };
+    expect(agentConfigUpdatePatch(original, configFromAgentSettingsDraft(draft, original).config ?? {}))
+      .toEqual({ caps: "unrestricted" });
+  });
+
+  it("keeps an empty list (no authority) as an empty list", () => {
+    const original = { caps: [] };
+    const draft = createAgentSettingsDraft(original);
+    expect(draft.capsMode).toBe("restricted");
+    expect(configFromAgentSettingsDraft(draft, original).config).toEqual({ caps: [] });
+  });
+
+  it("leaves a config that never had caps (a venue before 0.11) without them", () => {
+    const draft = createAgentSettingsDraft({});
+    expect(draft.capsMode).toBe("unrestricted");
+    expect(configFromAgentSettingsDraft(draft, {}).config).not.toHaveProperty("caps");
+  });
+});
+
+describe("agent settings acceptTasks (covia 0.12)", () => {
+  it("turns acceptTasks on for an agent created before 0.12 with a one-field patch", () => {
+    const original = { operation: "v/ops/llmagent/chat", caps: "unrestricted" };
+    const draft = createAgentSettingsDraft(original);
+    expect(draft.acceptTasks).toBe(false);
+    const next = configFromAgentSettingsDraft({ ...draft, acceptTasks: true }, original).config ?? {};
+    expect(agentConfigUpdatePatch(original, next)).toEqual({ acceptTasks: true });
+  });
+
+  it("keeps acceptTasks out of the additional JSON and leaves an unset one unset", () => {
+    const draft = createAgentSettingsDraft({ acceptTasks: true, custom: 1 });
+    expect(draft.acceptTasks).toBe(true);
+    expect(JSON.parse(draft.advancedJson)).toEqual({ custom: 1 });
+    expect(configFromAgentSettingsDraft(createAgentSettingsDraft({}), {}).config).not.toHaveProperty("acceptTasks");
+  });
+
+  it("writes false, not null, when acceptTasks is turned off", () => {
+    const original = { acceptTasks: true };
+    const draft = { ...createAgentSettingsDraft(original), acceptTasks: false };
+    expect(agentConfigUpdatePatch(original, configFromAgentSettingsDraft(draft, original).config ?? {}))
+      .toEqual({ acceptTasks: false });
   });
 });

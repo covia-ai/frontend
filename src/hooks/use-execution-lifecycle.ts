@@ -6,11 +6,12 @@ import {
   type Asset,
   type JobMetadata,
   type RunStatus,
+  type Venue,
 } from "@covia/covia-sdk";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { resolveOperationByAddress } from "@/lib/operations-catalog";
 import { notifyError, notifySuccess } from "@/lib/notify";
-import { errorMessage, isNotFoundError } from "@/lib/errors";
+import { errorMessage, isJobNotFoundError } from "@/lib/errors";
 
 const POLL_INTERVAL_MS = 1000;
 
@@ -22,6 +23,29 @@ function parseJobMessage(raw: string): unknown {
   }
 }
 
+/**
+ * What the transport has established about one job on one venue. Stored with
+ * that identity and read back only while it is the one being viewed, so a
+ * route change shows a fresh, loading job in the same render — nothing has to
+ * be reset — and a late reply for the previous job has nowhere visible to land.
+ */
+type Lifecycle = {
+  venue: Venue | undefined;
+  jobId: string;
+  job?: JobMetadata;
+  error: string | null;
+  /** The read found no such job: decided from the error itself, which `error`
+   *  keeps only the message of (a malformed id's 400 names no status). */
+  notFound: boolean;
+  streaming: boolean;
+};
+
+/** The operation schema resolved for one job's `op` on one venue. */
+type ResolvedOperation = { venue: Venue | undefined; op: string; asset?: Asset };
+
+type MessageTarget = { venue: Venue; jobId: string };
+type MessageDraft = { venue: Venue | undefined; jobId: string; text: string };
+
 export function useExecutionLifecycle({
   venueId,
   jobId,
@@ -30,55 +54,79 @@ export function useExecutionLifecycle({
   jobId: string;
 }) {
   const { venue } = useResolvedVenueContext(venueId);
-  const [job, setJob] = useState<JobMetadata>();
-  const [operationAsset, setOperationAsset] = useState<Asset>();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [streaming, setStreaming] = useState(false);
-  const [message, setMessage] = useState("");
-  const [sendingMessage, setSendingMessage] = useState(false);
+  const [lifecycle, setLifecycle] = useState<Lifecycle | null>(null);
+  const [resolved, setResolved] = useState<ResolvedOperation | null>(null);
+  const [draft, setDraft] = useState<MessageDraft | null>(null);
+  const [pendingMessages, setPendingMessages] = useState<MessageTarget[]>([]);
+  const pendingSendsRef = useRef<MessageTarget[]>([]);
   const lifecycleGeneration = useRef(0);
   const assetGeneration = useRef(0);
-  const sendGeneration = useRef(0);
   const refreshRef = useRef<(() => Promise<void>) | null>(null);
 
+  const current =
+    lifecycle && lifecycle.venue === venue && lifecycle.jobId === jobId ? lifecycle : null;
+  const job = current?.job;
+  const error = current?.error ?? null;
+  const streaming = current?.streaming ?? false;
+  // Loading until the first metadata or the first failure lands for this job.
+  const loading = !!venue && !!jobId && job === undefined && error === null;
+  const operationAsset =
+    resolved && resolved.venue === venue && resolved.op === job?.op ? resolved.asset : undefined;
+  const message = draft?.venue === venue && draft?.jobId === jobId ? draft.text : "";
+  const sendingMessage = pendingMessages.some((target) => target.venue === venue && target.jobId === jobId);
+  const setMessage = useCallback((text: string) => {
+    setDraft({ venue, jobId, text });
+  }, [venue, jobId]);
+
   useEffect(() => {
-    const lifecycle = lifecycleGeneration;
-    const generation = ++lifecycle.current;
+    const lifecycleGen = lifecycleGeneration;
+    const generation = ++lifecycleGen.current;
     let active = true;
     let pollTimer: ReturnType<typeof setInterval> | null = null;
     let pollInFlight = false;
     let updateVersion = 0;
     let hasLoaded = false;
-    let finished = false;
-
-    setJob(undefined);
-    setOperationAsset(undefined);
-    setLoading(true);
-    setError(null);
-    setStreaming(false);
+    // Nothing more can change: a terminal status, or a job that does not exist.
+    let settled = false;
+    // Aborting is what closes the SSE connection; a flag checked on the next
+    // event would leave a quiet (e.g. PAUSED) job's stream open after unmount.
+    const stream = new AbortController();
 
     const ownsLifecycle = () =>
-      active && lifecycle.current === generation;
+      active && lifecycleGen.current === generation;
+
+    // Every publication is filed under this effect's job, so it can only ever
+    // update the entry the page is currently reading.
+    const publish = (patch: Partial<Pick<Lifecycle, "job" | "error" | "notFound" | "streaming">>) =>
+      setLifecycle((previous) => {
+        const base =
+          previous && previous.venue === venue && previous.jobId === jobId
+            ? previous
+            : { venue, jobId, job: undefined, error: null, notFound: false, streaming: false };
+        return { ...base, ...patch };
+      });
 
     const stopTransport = () => {
       if (pollTimer) clearInterval(pollTimer);
       pollTimer = null;
-      if (ownsLifecycle()) setStreaming(false);
+      stream.abort();
+      if (ownsLifecycle()) publish({ streaming: false });
+    };
+
+    const settle = () => {
+      settled = true;
+      stopTransport();
     };
 
     const applyMetadata = (metadata: JobMetadata) => {
       if (!ownsLifecycle()) return;
       hasLoaded = true;
-      setJob(metadata);
-      setLoading(false);
-      setError(null);
+      publish({ job: metadata, error: null, notFound: false });
       if (
         metadata.status &&
         isJobFinished(metadata.status as RunStatus)
       ) {
-        finished = true;
-        stopTransport();
+        settle();
       }
     };
 
@@ -92,9 +140,13 @@ export function useExecutionLifecycle({
         ++updateVersion;
         applyMetadata(result.metadata);
       } catch (fetchError: unknown) {
-        if (!ownsLifecycle() || hasLoaded) return;
-        setLoading(false);
-        setError(errorMessage(fetchError, "Unable to load job"));
+        if (!ownsLifecycle()) return;
+        // A missing job will not start existing: stop, rather than re-asking
+        // every second for as long as the page stays open.
+        const missing = isJobNotFoundError(fetchError);
+        if (missing) settle();
+        if (hasLoaded) return;
+        publish({ error: errorMessage(fetchError, "Unable to load job"), notFound: missing });
       } finally {
         pollInFlight = false;
       }
@@ -102,7 +154,6 @@ export function useExecutionLifecycle({
     refreshRef.current = fetchStatus;
 
     if (!venue || !jobId) {
-      setLoading(false);
       return () => {
         active = false;
         refreshRef.current = null;
@@ -112,8 +163,8 @@ export function useExecutionLifecycle({
     void fetchStatus();
 
     const startPolling = () => {
-      if (pollTimer || finished || !ownsLifecycle()) return;
-      setStreaming(false);
+      if (pollTimer || settled || !ownsLifecycle()) return;
+      publish({ streaming: false });
       pollTimer = setInterval(() => {
         void fetchStatus();
       }, POLL_INTERVAL_MS);
@@ -128,11 +179,11 @@ export function useExecutionLifecycle({
     const openStream = async (isRetry: boolean) => {
       try {
         let gotEvent = false;
-        for await (const event of venue.jobs.stream(jobId)) {
+        for await (const event of venue.jobs.stream(jobId, { signal: stream.signal })) {
           if (!ownsLifecycle()) return;
           if (!gotEvent) {
             gotEvent = true;
-            setStreaming(true);
+            publish({ streaming: true });
           }
           try {
             const data = event.json() as any;
@@ -141,19 +192,19 @@ export function useExecutionLifecycle({
           } catch {
             // Ignore malformed stream events; a later event can still recover.
           }
-          if (finished || !ownsLifecycle()) return;
+          if (settled || !ownsLifecycle()) return;
         }
       } catch {
         // Fall through to the reattach/fallback logic below.
       }
-      if (!ownsLifecycle() || finished) return;
-      setStreaming(false);
+      if (!ownsLifecycle() || settled) return;
+      publish({ streaming: false });
       if (isRetry) {
         startPolling();
         return;
       }
       await fetchStatus();
-      if (!ownsLifecycle() || finished) return;
+      if (!ownsLifecycle() || settled) return;
       void openStream(true);
     };
 
@@ -161,31 +212,31 @@ export function useExecutionLifecycle({
 
     return () => {
       active = false;
-      ++lifecycle.current;
-      if (pollTimer) clearInterval(pollTimer);
+      ++lifecycleGen.current;
+      stopTransport();
       refreshRef.current = null;
     };
   }, [jobId, venue]);
 
+  const op = job?.op;
   useEffect(() => {
     const assetRequests = assetGeneration;
     const generation = ++assetRequests.current;
     let active = true;
-    setOperationAsset(undefined);
-    if (!venue || !job?.operation) {
+    if (!venue || !op) {
       return () => {
         active = false;
         ++assetRequests.current;
       };
     }
 
-    void resolveOperationByAddress(venue, job.operation)
+    void resolveOperationByAddress(venue, op)
       .then((asset) => {
         if (
           active &&
           assetRequests.current === generation
         ) {
-          setOperationAsset(asset);
+          setResolved({ venue, op, asset });
         }
       })
       .catch(() => {
@@ -196,34 +247,32 @@ export function useExecutionLifecycle({
       active = false;
       ++assetRequests.current;
     };
-  }, [job?.operation, venue]);
-
-  useEffect(
-    () => () => {
-      ++sendGeneration.current;
-    },
-    [jobId, venue],
-  );
+  }, [op, venue]);
 
   const sendMessage = useCallback(async () => {
     if (!venue || !message.trim()) return;
-    const generation = ++sendGeneration.current;
-    setSendingMessage(true);
+    if (pendingSendsRef.current.some((target) => target.venue === venue && target.jobId === jobId)) return;
+    const request = { venue, jobId };
+    pendingSendsRef.current = [...pendingSendsRef.current, request];
+    setPendingMessages(pendingSendsRef.current);
+    // Capture this job's refresh. A late send must not refresh whichever job
+    // the viewer happens to show after navigation.
+    const refresh = refreshRef.current;
     try {
       await venue.jobs.sendMessage(jobId, parseJobMessage(message));
       notifySuccess("Message sent");
-      if (sendGeneration.current === generation) setMessage("");
-      await refreshRef.current?.();
+      // Clear only the submitted draft, preserving edits made while waiting.
+      setDraft((currentDraft) => currentDraft === draft ? null : currentDraft);
+      await refresh?.();
     } catch (err) {
       notifyError("Unable to send message", err, venue.baseUrl);
     } finally {
-      if (sendGeneration.current === generation) {
-        setSendingMessage(false);
-      }
+      pendingSendsRef.current = pendingSendsRef.current.filter((target) => target !== request);
+      setPendingMessages(pendingSendsRef.current);
     }
-  }, [jobId, message, venue]);
+  }, [draft, jobId, message, venue]);
 
-  const notFound = isNotFoundError(error);
+  const notFound = current?.notFound ?? false;
   return {
     venue,
     job,

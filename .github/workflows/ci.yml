@@ -1,9 +1,10 @@
 name: CI
 
 # Build-and-test quality gate. Runs on every pull request and on pushes to
-# the long-lived branches. Pair this with a required-status-check branch
-# protection rule on develop/main — the workflow alone reports status but
-# does not block a merge on its own.
+# the long-lived branches. Pair this with required-status-check branch
+# protection rules on develop/main for the "lint", "build", and "test" jobs
+# below — the workflow alone reports status but does not block a merge on
+# its own.
 
 on:
   pull_request:
@@ -21,15 +22,15 @@ permissions:
   contents: read
 
 jobs:
-  build-and-test:
+  lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # pnpm version comes from the "packageManager" field in package.json.
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: pnpm
@@ -40,8 +41,46 @@ jobs:
       - name: Lint
         run: pnpm run lint
 
+      # `next build` only type-checks the app graph, so nothing was checking
+      # __tests__/ — which is how three type errors accumulated there unseen.
+      - name: Type-check
+        run: pnpm run typecheck
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Build (also type-checks)
         run: pnpm run build
 
-      - name: Test
-        run: pnpm test
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Coverage is collected here, not in `pnpm test`, and only reported: the
+      # "All files" row of the table in this step's log is the figure to check.
+      # It costs a few seconds and never fails the job.
+      - name: Test (with coverage report)
+        run: pnpm run test:coverage

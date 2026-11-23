@@ -1,38 +1,20 @@
 import {
   AlertCircle,
-  Archive,
   Ban,
-  BookOpen,
-  Bot,
-  Boxes,
-  Braces,
-  Brain,
-  Cable,
   CheckCircle2,
   Clock,
-  Cpu,
-  Database,
-  FlaskConical,
-  FolderOpen,
-  Globe,
   HelpCircle,
-  KeyRound,
   Loader,
-  Network,
-  Package,
   PauseCircle,
-  Plug,
-  Radio,
-  ShieldCheck,
-  Sparkles,
-  UserPlus,
-  Workflow,
   XCircle,
   Zap,
   type LucideIcon,
 } from "lucide-react";
 import { RunStatus, type JobMetadata } from "@covia/covia-sdk";
-import { toneForRunStatus, TONE_STYLES, type StatusTone } from "@/lib/status";
+import { toneForRunStatus, TONE_STYLES, MAGNITUDE_FILL, type StatusTone } from "@/lib/status";
+import { adapterLookup, ADAPTER_FALLBACK } from "@/lib/adapter-icons";
+import type { IconCmp } from "@/lib/file-type-look";
+import { normalizeCoviaId } from "@/lib/covia-ids";
 
 /**
  * Visual identity for a job's operation: an icon and a colour, keyed by the
@@ -41,59 +23,89 @@ import { toneForRunStatus, TONE_STYLES, type StatusTone } from "@/lib/status";
  * carries success/failure), so the two never fight for the same meaning.
  */
 export interface OperationVisual {
-  Icon: LucideIcon;
+  Icon: IconCmp;
   /** Tailwind classes for the icon tile (text + subtle background). */
   className: string;
   /** The adapter family, e.g. "http", "secret", "agent". */
   kind: string;
 }
 
-const ADAPTER_VISUALS: Record<string, OperationVisual> = {
-  http:        { Icon: Globe,      className: "text-cyan-600 dark:text-cyan-400 bg-cyan-500/10",       kind: "http" },
-  secret:      { Icon: KeyRound,   className: "text-amber-600 dark:text-amber-400 bg-amber-500/10",    kind: "secret" },
-  agent:       { Icon: Bot,        className: "text-primary bg-primary/10",                             kind: "agent" },
-  llmagent:    { Icon: Bot,        className: "text-primary bg-primary/10",                             kind: "agent" },
-  goaltree:    { Icon: Bot,        className: "text-primary bg-primary/10",                             kind: "agent" },
-  connections: { Icon: Cable,      className: "text-violet-600 dark:text-violet-400 bg-violet-500/10",  kind: "connections" },
-  skills:      { Icon: BookOpen,   className: "text-fuchsia-600 dark:text-fuchsia-400 bg-fuchsia-500/10", kind: "skills" },
-  dlfs:        { Icon: FolderOpen, className: "text-blue-600 dark:text-blue-400 bg-blue-500/10",        kind: "files" },
-  file:        { Icon: FolderOpen, className: "text-blue-600 dark:text-blue-400 bg-blue-500/10",        kind: "files" },
-  vault:       { Icon: FolderOpen, className: "text-blue-600 dark:text-blue-400 bg-blue-500/10",        kind: "files" },
-  grid:        { Icon: Network,    className: "text-teal-600 dark:text-teal-400 bg-teal-500/10",        kind: "grid" },
-  mcp:         { Icon: Boxes,      className: "text-indigo-600 dark:text-indigo-400 bg-indigo-500/10",  kind: "mcp" },
-  schema:      { Icon: Braces,     className: "text-sky-600 dark:text-sky-400 bg-sky-500/10",           kind: "schema" },
-  convex:      { Icon: Database,   className: "text-blue-600 dark:text-blue-400 bg-blue-500/10",        kind: "convex" },
-  scheduler:   { Icon: Clock,      className: "text-orange-600 dark:text-orange-400 bg-orange-500/10",  kind: "scheduler" },
-  ucan:        { Icon: ShieldCheck,className: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10", kind: "ucan" },
-  memory:      { Icon: Brain,      className: "text-pink-600 dark:text-pink-400 bg-pink-500/10",        kind: "memory" },
-  a2a:         { Icon: Radio,      className: "text-teal-600 dark:text-teal-400 bg-teal-500/10",        kind: "a2a" },
-  hitl:        { Icon: HelpCircle, className: "text-amber-600 dark:text-amber-400 bg-amber-500/10",     kind: "human" },
-  orchestrator:{ Icon: Workflow,   className: "text-indigo-600 dark:text-indigo-400 bg-indigo-500/10",  kind: "orchestrator" },
-  asset:       { Icon: Package,    className: "text-blue-600 dark:text-blue-400 bg-blue-500/10",        kind: "asset" },
-  jvm:         { Icon: Cpu,        className: "text-slate-600 dark:text-slate-400 bg-slate-500/10",     kind: "jvm" },
-  langchain:   { Icon: Sparkles,   className: "text-primary bg-primary/10",                             kind: "model" },
-  oauth:       { Icon: Plug,       className: "text-violet-600 dark:text-violet-400 bg-violet-500/10",  kind: "oauth" },
-  user:        { Icon: UserPlus,   className: "text-cyan-600 dark:text-cyan-400 bg-cyan-500/10",        kind: "user" },
-  archive:     { Icon: Archive,    className: "text-blue-600 dark:text-blue-400 bg-blue-500/10",        kind: "archive" },
-  test:        { Icon: FlaskConical,className: "text-muted-foreground bg-muted",                        kind: "test" },
+// The adapter family (`kind`) each adapter reports — a stable grouping key
+// (asserted by the tests, and used by the name-keyword fallback). The icon +
+// tint no longer live here: they come from the single adapter directory
+// (lib/adapter-icons.ts), the same source the Operations catalogue uses, so the
+// two surfaces can never drift. Only the family label is job-specific.
+const ADAPTER_KIND: Record<string, string> = {
+  http: "http", secret: "secret", vault: "files",
+  agent: "agent", llmagent: "agent", goaltree: "agent",
+  connections: "connections", skills: "skills",
+  dlfs: "files", file: "files",
+  grid: "grid", mcp: "mcp", schema: "schema", convex: "convex",
+  scheduler: "scheduler", ucan: "ucan", memory: "memory", a2a: "a2a",
+  hitl: "human", orchestrator: "orchestrator", asset: "asset", jvm: "jvm",
+  langchain: "model", oauth: "oauth", user: "user", archive: "archive", test: "test",
 };
+
+// Built once at module load — a static merged map, so lookup stays O(1) with no
+// per-render work.
+const ADAPTER_VISUALS: Record<string, OperationVisual> = Object.fromEntries(
+  Object.entries(ADAPTER_KIND).map(([key, kind]) => {
+    const { Icon, tile } = adapterLookup(key);
+    return [key, { Icon, className: tile, kind }];
+  }),
+);
 
 const GENERIC_VISUAL: OperationVisual = {
   Icon: Zap,
-  className: "text-muted-foreground bg-muted",
+  className: "bg-muted text-muted-foreground",
   kind: "operation",
 };
 
-/** Keyword fallback when a job has a display name but no resolvable operation path. */
+// The visual for an adapter dispatch string (`http:get`) or bare family
+// (`http`). Curated families (ADAPTER_KIND) keep their asserted `kind` and
+// brand tile; any other family the shared directory recognises — aliases like
+// `json`→schema, and marks like `covia`/`venue`/`lattice`/`connector` that
+// aren't in ADAPTER_KIND — still renders its real icon, with the family name
+// standing in as the `kind`. Unknown families return undefined so the caller
+// can try its next candidate.
+function visualForAdapter(adapter?: string): OperationVisual | undefined {
+  if (!adapter) return undefined;
+  const family = adapter.split(":")[0];
+  const known = ADAPTER_VISUALS[family];
+  if (known) return known;
+  const look = adapterLookup(family);
+  if (look !== ADAPTER_FALLBACK) {
+    return { Icon: look.Icon, className: look.tile, kind: family };
+  }
+  return undefined;
+}
+
+// Keyword fallback when a job has a display name but no resolvable operation
+// adapter (an inline definition never registered in the catalogue). Ordered
+// most-specific first; each value is an adapter family resolved through
+// visualForAdapter. Intentionally conservative — "echo"/"operation" stay
+// generic, as a bare "echo" is too weak a signal on its own.
 const NAME_KEYWORDS: [RegExp, string][] = [
-  [/http|fetch|url|get|post/i, "http"],
-  [/secret|credential|token|key/i, "secret"],
-  [/agent|chat/i, "agent"],
+  [/http|fetch|\burl\b|rest|webhook/i, "http"],
+  [/secret|credential|token|api[\s-]?key|password/i, "secret"],
+  [/\bagent\b|assistant|\bchat\b/i, "agent"],
   [/connect/i, "connections"],
   [/skill/i, "skills"],
-  [/file|dlfs|vault|upload/i, "dlfs"],
-  [/schema/i, "schema"],
-  [/schedule/i, "scheduler"],
+  [/\bfile\b|dlfs|upload|download|directory|\bdrive\b/i, "dlfs"],
+  [/vault/i, "vault"],
+  [/schema|validat|\binfer\b/i, "schema"],
+  [/\bstore\b|register|\basset\b|\bpin\b/i, "asset"],
+  // Lattice always wears its own grid mark, never the Convex hexagon.
+  [/lattice/i, "lattice"],
+  [/convex|append|slice|aggregate|inspect/i, "convex"],
+  [/memory|recall|remember/i, "memory"],
+  [/schedul|\bcron\b|timer/i, "scheduler"],
+  [/\bmcp\b/i, "mcp"],
+  [/orchestrat|workflow|pipeline/i, "orchestrator"],
+  [/archive/i, "archive"],
+  [/delay|random|generat|sample|\bnoop\b|\bsleep\b/i, "test"],
+  [/\bmodel\b|\bllm\b|completion|embedding|\bprompt\b/i, "langchain"],
+  [/\bgrid\b/i, "grid"],
 ];
 
 /**
@@ -118,12 +130,26 @@ function adapterFromOperation(operation?: string): string | undefined {
   return undefined;
 }
 
-export function operationVisual(job: Pick<JobMetadata, "operation" | "name">): OperationVisual {
-  const adapter = adapterFromOperation(job.operation);
-  if (adapter && ADAPTER_VISUALS[adapter]) return ADAPTER_VISUALS[adapter];
+export function operationVisual(
+  job: Pick<JobMetadata, "op" | "name">,
+  /** `operation.adapter` off the resolved operation asset, in the venue's
+   *  `adapter:subop` dispatch form. A job invoked by hash — a pinned
+   *  definition, or any record written before venue 0.9.9 — has no path in
+   *  `op` to parse, and the asset carries the adapter that the hash cannot
+   *  (#322). Callers holding the asset should pass it; the list does not. */
+  assetAdapter?: string,
+): OperationVisual {
+  const candidates = [adapterFromOperation(job.op), assetAdapter];
+  for (const adapter of candidates) {
+    const visual = visualForAdapter(adapter);
+    if (visual) return visual;
+  }
   const name = job.name ?? "";
   for (const [re, key] of NAME_KEYWORDS) {
-    if (re.test(name) && ADAPTER_VISUALS[key]) return ADAPTER_VISUALS[key];
+    if (re.test(name)) {
+      const visual = visualForAdapter(key);
+      if (visual) return visual;
+    }
   }
   return GENERIC_VISUAL;
 }
@@ -131,7 +157,7 @@ export function operationVisual(job: Pick<JobMetadata, "operation" | "name">): O
 /** `0x01a05fa1d467…62a2fd9` — enough of each end to recognise, no wall of hex. */
 export function abbreviateJobId(id?: string): string {
   if (!id) return "--";
-  const hex = id.startsWith("0x") ? id.slice(2) : id;
+  const hex = normalizeCoviaId(id);
   if (hex.length <= 14) return id;
   return `0x${hex.slice(0, 6)}…${hex.slice(-4)}`;
 }
@@ -155,12 +181,14 @@ export function percentile(values: number[], p: number): number | null {
   return sorted[lo] + (sorted[hi] - sorted[lo]) * (rank - lo);
 }
 
-/** Absolute latency band → a fill colour, so a slow outlier reads at a glance. */
+/** Absolute latency band → a magnitude fill, so a slow outlier reads at a
+ *  glance. A band index into the shared `MAGNITUDE_FILL` ramp (not a status
+ *  tone — magnitude, not success/failure). */
 export function durationFillClass(ms: number): string {
-  if (ms < 500) return "bg-green-500 dark:bg-green-400";
-  if (ms < 2000) return "bg-cyan-500 dark:bg-cyan-400";
-  if (ms < 8000) return "bg-amber-500 dark:bg-amber-400";
-  return "bg-destructive";
+  if (ms < 500) return MAGNITUDE_FILL[0];
+  if (ms < 2000) return MAGNITUDE_FILL[1];
+  if (ms < 8000) return MAGNITUDE_FILL[2];
+  return MAGNITUDE_FILL[3];
 }
 
 const STATUS_ICONS: Partial<Record<RunStatus, { Icon: LucideIcon; spin?: boolean }>> = {

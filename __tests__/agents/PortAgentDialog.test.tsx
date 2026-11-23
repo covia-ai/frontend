@@ -1,0 +1,240 @@
+import { render, screen, waitFor } from "@testing-library/react";
+import { JobFailedError } from "@covia/covia-sdk";
+import userEvent from "@testing-library/user-event";
+
+jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
+
+const pushMock = jest.fn();
+jest.mock("next/navigation", () => ({ useRouter: () => ({ push: pushMock }) }));
+
+// Stub the runtime (provider/model) fields — not under test here, and they
+// otherwise pull the whole LLM-provider catalogue into the render.
+jest.mock("@/components/agent-config/AgentConfigEditor", () => ({
+  AgentRuntimeFields: () => <div data-testid="runtime-fields" />,
+  DEFAULT_PROVIDER_OPTION: "venue-default",
+  CUSTOM_PROVIDER_OPTION: "custom",
+  isAgentProviderReady: () => true,
+  resolvedModelId: () => "",
+}));
+
+const runMock = jest.fn().mockResolvedValue({
+  agentId: "refund-bot",
+  skillset: "w/skills",
+  importedSkills: ["w/skills/refund-policy"],
+});
+const mockVenue = {
+  venueId: "venue-1",
+  baseUrl: "https://venue.example",
+  operations: { run: runMock },
+  agents: { request: jest.fn().mockResolvedValue({}) },
+  jobs: { get: jest.fn() },
+  secrets: { list: jest.fn().mockResolvedValue([]) },
+};
+jest.mock("@/hooks/use-authenticated-venue", () => ({
+  ...require("@test/use-authenticated-venue").venueMock,
+  useAuthenticatedVenue: () => mockVenue,
+}));
+
+import { PortAgentDialog } from "@/components/PortAgentDialog";
+import { notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
+
+const SKILL = `---
+name: refund-policy
+description: How to handle customer refund requests within the 30-day window.
+---
+
+# Refund policy
+
+Refunds are allowed within 30 days of purchase.`;
+
+const renderOpen = () => render(<PortAgentDialog open onOpenChange={() => {}} />);
+
+describe("PortAgentDialog (Migrate → native)", () => {
+  beforeEach(() => {
+    runMock.mockClear();
+    pushMock.mockClear();
+    (notifySuccess as jest.Mock).mockClear();
+    (notifyWarning as jest.Mock).mockClear();
+    (notifyError as jest.Mock).mockClear();
+    mockVenue.agents.request.mockReset().mockResolvedValue({});
+    mockVenue.jobs.get.mockReset();
+  });
+
+  it("migrates: stages a pasted SKILL.md and calls agent:from-skills, then routes to chat", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderOpen();
+    await user.type(screen.getByTestId("port-agent-name"), "Refund bot");
+    await user.type(
+      screen.getByTestId("port-agent-prompt"),
+      "You are Acme support. Follow the refund-policy skill.",
+    );
+    // Paste the SKILL.md rather than typing it key-by-key — it matches the real
+    // "paste a SKILL.md" flow and keeps the test fast enough not to blow the
+    // per-test timeout when the CI machine is under heavy load.
+    await user.click(screen.getByTestId("port-skill-draft"));
+    await user.paste(SKILL);
+    await user.click(screen.getByTestId("port-skill-add"));
+
+    // The staged skill previews from its frontmatter.
+    expect(screen.getByText("refund-policy")).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("port-agent-submit"));
+
+    await waitFor(() => expect(runMock).toHaveBeenCalledTimes(1));
+    const [op, input] = runMock.mock.calls[0];
+    expect(op).toBe("v/ops/agent/from-skills");
+    expect(input).toMatchObject({
+      agentId: "refund-bot",
+      systemPrompt: "You are Acme support. Follow the refund-policy skill.",
+      skills: [{ text: expect.stringContaining("name: refund-policy") }],
+      // Without caps the venue gives the agent no authority (covia 0.11).
+      config: { caps: "unrestricted", acceptTasks: true },
+    });
+
+    // notifySuccess and router.push fire later in handlePort's async chain
+    // (after run resolves), so wait for the final observable effect — the
+    // route change — rather than asserting synchronously right after `run`.
+    await waitFor(() =>
+      expect(pushMock).toHaveBeenCalledWith("/agents/chat?agentId=refund-bot"),
+    );
+    expect(notifySuccess).toHaveBeenCalled();
+  });
+
+  it("ports a SKILL.md left in the box without Add skill rather than dropping it", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderOpen();
+    await user.type(screen.getByTestId("port-agent-name"), "Refund bot");
+    await user.type(screen.getByTestId("port-agent-prompt"), "You are Acme support.");
+    await user.click(screen.getByTestId("port-skill-draft"));
+    await user.paste(SKILL);
+    await user.click(screen.getByTestId("port-agent-submit"));
+
+    await waitFor(() => expect(runMock).toHaveBeenCalledTimes(1));
+    expect(runMock.mock.calls[0][1]).toMatchObject({
+      skills: [{ text: expect.stringContaining("name: refund-policy") }],
+    });
+  });
+
+  it("stops the port when the SKILL.md left in the box is not valid", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderOpen();
+    await user.type(screen.getByTestId("port-agent-name"), "Refund bot");
+    await user.type(screen.getByTestId("port-agent-prompt"), "You are Acme support.");
+    await user.type(screen.getByTestId("port-skill-draft"), "just some text, no frontmatter");
+    await user.click(screen.getByTestId("port-agent-submit"));
+
+    expect(notifyWarning).toHaveBeenCalledWith(
+      "That does not look like a SKILL.md",
+      expect.anything(),
+    );
+    expect(runMock).not.toHaveBeenCalled();
+  });
+
+  it("still lands in the chat when the first task cannot be started, and says so", async () => {
+    let failTask: (err: Error) => void = () => {};
+    mockVenue.agents.request.mockReturnValue(
+      new Promise((_, reject) => {
+        failTask = reject;
+      }),
+    );
+    const user = userEvent.setup({ delay: null });
+    renderOpen();
+    await user.type(screen.getByTestId("port-agent-name"), "Refund bot");
+    await user.type(screen.getByTestId("port-agent-prompt"), "You are Acme support.");
+    await user.type(screen.getByTestId("port-agent-first-task"), "Say hello");
+    await user.click(screen.getByTestId("port-agent-submit"));
+
+    // The port completes without waiting for the first task to finish.
+    await waitFor(() =>
+      expect(pushMock).toHaveBeenCalledWith("/agents/chat?agentId=refund-bot"),
+    );
+    expect(mockVenue.agents.request).toHaveBeenCalledWith("refund-bot", { task: "Say hello" }, false);
+    expect(notifySuccess).toHaveBeenCalled();
+
+    failTask(new Error("HTTP 403: Forbidden"));
+    await waitFor(() =>
+      expect(notifyError).toHaveBeenCalledWith(
+        "Ported refund-bot, but unable to start its first task",
+        expect.anything(),
+        "https://venue.example",
+        undefined,
+      ),
+    );
+    expect(notifyError).not.toHaveBeenCalledWith("Unable to port agent", expect.anything(), expect.anything(), expect.anything());
+  });
+
+  it("reports a first task the venue refuses after accepting the submission", async () => {
+    const refusal = new JobFailedError({
+      id: "0xjob",
+      error: "Agent refund-bot does not take tasks: its config does not set acceptTasks",
+    });
+    mockVenue.agents.request.mockResolvedValue({ id: "0xjob", status: "PENDING", agentId: "refund-bot" });
+    mockVenue.jobs.get.mockResolvedValue({ wait: jest.fn().mockRejectedValue(refusal) });
+    const user = userEvent.setup({ delay: null });
+    renderOpen();
+    await user.type(screen.getByTestId("port-agent-name"), "Refund bot");
+    await user.type(screen.getByTestId("port-agent-prompt"), "You are Acme support.");
+    await user.type(screen.getByTestId("port-agent-first-task"), "Say hello");
+    await user.click(screen.getByTestId("port-agent-submit"));
+
+    await waitFor(() =>
+      expect(notifyError).toHaveBeenCalledWith(
+        "Ported refund-bot, but unable to start its first task",
+        expect.anything(),
+        "https://venue.example",
+        undefined,
+      ),
+    );
+    expect(mockVenue.jobs.get).toHaveBeenCalledWith("0xjob");
+    expect(pushMock).toHaveBeenCalledWith("/agents/chat?agentId=refund-bot");
+  });
+
+  it("rejects a draft that is not a valid SKILL.md (no frontmatter)", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderOpen();
+    await user.type(screen.getByTestId("port-skill-draft"), "just some text, no frontmatter");
+    await user.click(screen.getByTestId("port-skill-add"));
+    expect(notifyWarning).toHaveBeenCalled();
+    expect(screen.queryByTestId("port-skill-list")).not.toBeInTheDocument();
+  });
+
+  it("warns instead of porting when there's no name", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderOpen();
+    await user.type(
+      screen.getByTestId("port-agent-prompt"),
+      "You are a support agent.",
+    );
+    await user.click(screen.getByTestId("port-agent-submit"));
+    expect(notifyWarning).toHaveBeenCalled();
+    expect(runMock).not.toHaveBeenCalled();
+  });
+
+  it("warns when there's neither a system prompt nor any skill", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderOpen();
+    await user.type(screen.getByTestId("port-agent-name"), "Empty bot");
+    await user.click(screen.getByTestId("port-agent-submit"));
+    expect(notifyWarning).toHaveBeenCalled();
+    expect(runMock).not.toHaveBeenCalled();
+  });
+
+  // The form belongs inside DialogContent, which mounts only while open: a
+  // trigger-mode dialog reads nothing until it opens, and Cancel discards the
+  // draft rather than leaving it for the next open.
+  it("reads nothing until opened, and starts clean after Cancel", async () => {
+    const user = userEvent.setup({ delay: null });
+    mockVenue.secrets.list.mockClear();
+    render(<PortAgentDialog trigger={<button data-testid="port-trigger">Port</button>} />);
+    expect(mockVenue.secrets.list).not.toHaveBeenCalled();
+
+    await user.click(screen.getByTestId("port-trigger"));
+    await waitFor(() => expect(mockVenue.secrets.list).toHaveBeenCalled());
+    await user.type(screen.getByTestId("port-agent-name"), "Draft bot");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByTestId("port-agent-name")).not.toBeInTheDocument());
+
+    await user.click(screen.getByTestId("port-trigger"));
+    expect(await screen.findByTestId("port-agent-name")).toHaveValue("");
+  });
+});

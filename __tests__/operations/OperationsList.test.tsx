@@ -5,13 +5,12 @@ import '@testing-library/jest-dom';
 
 // Mock heavy child components so this test stays focused on OperationsList's
 // own fetch-once / client-side-filter / clear-button logic (issue #184).
-jest.mock('@/components/AssetCard', () => ({
-  AssetCard: ({ asset }: any) => (
-    <div data-testid="asset-card">{asset.metadata?.name ?? asset.id}</div>
+// The list renders OperationCard (the operations-specific capability card);
+// stub it to the same lightweight marker the assertions look for.
+jest.mock('@/components/OperationCard', () => ({
+  OperationCard: ({ asset, mcpTool }: any) => (
+    <div data-testid="asset-card" data-mcp-tool={mcpTool}>{asset.metadata?.name ?? asset.id}</div>
   ),
-}));
-jest.mock('@/components/PaginationHeader', () => ({
-  PaginationHeader: () => <div data-testid="pagination-header" />,
 }));
 jest.mock('@/components/admin-panel/TopBar', () => ({
   TopBar: () => <div data-testid="top-bar" />,
@@ -33,7 +32,12 @@ jest.mock('next/navigation', () => ({
   useSearchParams: () => ({ get: (key: string) => (key === 'search' ? mockSearchParam : null) }),
 }));
 
-const mockVenue: any = { venueId: 'venue-1', metadata: { name: 'Test Venue' } };
+const mockListAllTools = jest.fn();
+const mockVenue: any = {
+  venueId: 'venue-1',
+  metadata: { name: 'Test Venue' },
+  mcp: { listAllTools: (...args: any[]) => mockListAllTools(...args) },
+};
 
 jest.mock('@/hooks/use-venues', () => ({
   useVenues: () => ({ venues: [mockVenue], addVenue: jest.fn() }),
@@ -57,6 +61,29 @@ describe('OperationsList', () => {
       { path: 'v/ops/llmagent/chat', metadata: { name: 'Alpha Chat' } },
       { path: 'v/ops/http/fetch', metadata: { name: 'Beta Fetch' } },
     ]);
+    mockListAllTools.mockResolvedValue([]);
+  });
+
+  // covia 0.10 names each MCP tool's operation (covia#558), so a card can say
+  // which operations are also MCP tools (#361).
+  it('passes each card the MCP tool that serves its operation', async () => {
+    mockListAllTools.mockResolvedValue([
+      { name: 'llmagent_chat', inputSchema: {}, _meta: { 'ai.covia/operation': 'v/ops/llmagent/chat' } },
+    ]);
+    render(<OperationsList />);
+
+    await waitFor(() =>
+      expect(screen.getByText('Alpha Chat')).toHaveAttribute('data-mcp-tool', 'llmagent_chat'),
+    );
+    expect(screen.getByText('Beta Fetch')).not.toHaveAttribute('data-mcp-tool');
+  });
+
+  it('still lists every operation when the MCP tool list cannot be read', async () => {
+    mockListAllTools.mockRejectedValue(new Error('no mcp'));
+    render(<OperationsList />);
+
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
+    for (const card of screen.getAllByTestId('asset-card')) expect(card).not.toHaveAttribute('data-mcp-tool');
   });
 
   it('loads and displays all operations once, unfiltered', async () => {
@@ -111,5 +138,35 @@ describe('OperationsList', () => {
     mockSearchParam = 'beta';
     render(<OperationsList />);
     expect(await screen.findByPlaceholderText('Type keyword to search…')).toHaveValue('beta');
+  });
+
+  // Infinite scroll replaced the page-fit pagination: the first batch (24) is
+  // shown up front, "Load more operations" appends the next batch, and "End of
+  // results" marks the bottom once everything is visible. (IntersectionObserver
+  // is unavailable under jsdom, so the manual button fallback is what drives
+  // the grow here — exactly the path that keeps the list reachable without JS
+  // observer support.)
+  it('reveals operations a batch at a time via infinite scroll', async () => {
+    const user = userEvent.setup();
+    const many = Array.from({ length: 30 }, (_, i) => ({
+      path: `v/ops/demo/op${i}`,
+      metadata: { name: `Op ${String(i).padStart(2, '0')}` },
+    }));
+    mockListCatalogOperations.mockResolvedValue(many);
+
+    render(<OperationsList />);
+    // First batch of 24 is shown; the rest wait behind "Load more".
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(24));
+    expect(screen.getByRole('button', { name: /load more operations/i })).toBeInTheDocument();
+    expect(screen.queryByText('End of results')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /load more operations/i }));
+
+    // All 30 now shown, the button is gone, and the end marker appears.
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(30));
+    expect(screen.queryByRole('button', { name: /load more operations/i })).not.toBeInTheDocument();
+    expect(screen.getByText('End of results')).toBeInTheDocument();
+    // Revealing more cards must never refetch the catalogue.
+    expect(mockListCatalogOperations).toHaveBeenCalledTimes(1);
   });
 });

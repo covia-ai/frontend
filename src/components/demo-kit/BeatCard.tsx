@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { notifyError } from "@/lib/notify";
 import { verbatimVenueError } from "./seeding";
+import { jobPath } from "@/lib/routes";
 
 /** The narration a beat renders. Demos define their own beat lists. */
 export type DemoBeat = { id: string; title: string; narration: string; watch: string };
@@ -144,7 +145,7 @@ export function BeatCard({
                   <Link
                     className="inline-flex items-center gap-1 text-xs underline underline-offset-2"
                     data-testid={`job-link-${beat.id}`}
-                    href={`/venues/${encodeURIComponent(venue.venueId)}/jobs/${job.jobId}`}
+                    href={jobPath(venue.venueId, job.jobId)}
                   >
                     open in Jobs <ExternalLink className="size-3" />
                   </Link>

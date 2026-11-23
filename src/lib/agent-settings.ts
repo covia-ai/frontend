@@ -3,9 +3,16 @@ import {
   CUSTOM_PROVIDER_OPTION,
   DEFAULT_PROVIDER_OPTION,
   modelSelectionFromId,
+  providerSelectionForOperation,
   resolvedModelId,
 } from "@/lib/agent-config";
-import { cleanCaps, isAgentCap, type AgentCap } from "@/lib/agent-caps";
+import {
+  capsListOf,
+  cleanCaps,
+  UNRESTRICTED_CAPS,
+  type AgentCap,
+  type AgentCapsMode,
+} from "@/lib/agent-caps";
 
 export type AgentSettingsDraft = {
   systemPrompt: string;
@@ -15,10 +22,12 @@ export type AgentSettingsDraft = {
   customModel: string;
   toolsJson: string;
   skillsJson: string;
-  capsEnabled: boolean;
+  skillsetsJson: string;
+  capsMode: AgentCapsMode;
   caps: AgentCap[];
   contextJson: string;
   defaultTools: boolean;
+  acceptTasks: boolean;
   advancedJson: string;
 };
 
@@ -43,36 +52,22 @@ const MANAGED_FIELDS = new Set([
   "model",
   "tools",
   "skills",
+  "skillsets",
   "caps",
   "context",
   "defaultTools",
+  "acceptTasks",
 ]);
 
 function prettyJson(value: unknown): string {
   return value === undefined ? "" : JSON.stringify(value, null, 2);
 }
 
-function providerSelection(operation: unknown): {
-  providerId: string;
-  customProviderOperation: string;
-} {
-  if (typeof operation !== "string" || !operation) {
-    return { providerId: DEFAULT_PROVIDER_OPTION, customProviderOperation: "" };
-  }
-  const known = Object.entries(LLM_PROVIDERS).find(
-    ([, provider]) => provider.operation === operation,
-  );
-  return known
-    ? { providerId: known[0], customProviderOperation: "" }
-    : { providerId: CUSTOM_PROVIDER_OPTION, customProviderOperation: operation };
-}
-
 export function createAgentSettingsDraft(
   config: Record<string, unknown> = {},
 ): AgentSettingsDraft {
-  const provider = providerSelection(config.llmOperation);
+  const provider = providerSelectionForOperation(config.llmOperation);
   const model = modelSelectionFromId(
-    provider.providerId,
     typeof config.model === "string" ? config.model : "",
   );
   const advanced = Object.fromEntries(
@@ -86,10 +81,14 @@ export function createAgentSettingsDraft(
     ...model,
     toolsJson: prettyJson(config.tools),
     skillsJson: prettyJson(config.skills),
-    capsEnabled: Array.isArray(config.caps),
-    caps: Array.isArray(config.caps) ? config.caps.filter(isAgentCap) : [],
+    skillsetsJson: prettyJson(config.skillsets),
+    // A config with no caps at all comes only from a venue before 0.11, where
+    // that meant unrestricted.
+    capsMode: Array.isArray(config.caps) ? "restricted" : "unrestricted",
+    caps: capsListOf(config.caps),
     contextJson: prettyJson(config.context),
     defaultTools: config.defaultTools === true,
+    acceptTasks: config.acceptTasks === true,
     advancedJson: prettyJson(advanced) || "{}",
   };
 }
@@ -143,6 +142,7 @@ export function configFromAgentSettingsDraft(
   for (const [key, label, text] of [
     ["tools", "Tools", draft.toolsJson],
     ["skills", "Skills", draft.skillsJson],
+    ["skillsets", "Skill sets", draft.skillsetsJson],
     ["context", "Context", draft.contextJson],
   ] as const) {
     if (!text.trim()) continue;
@@ -151,10 +151,20 @@ export function configFromAgentSettingsDraft(
     config[key] = parsed.value;
   }
 
-  if (draft.capsEnabled) config.caps = cleanCaps(draft.caps);
+  // Always explicit: agent:update reads caps: null, which a field dropped from
+  // the form becomes in the patch, as no authority (covia 0.11). Only a config
+  // that never had caps (a venue before 0.11) is left without them.
+  if (draft.capsMode === "restricted") {
+    config.caps = cleanCaps(draft.caps);
+  } else if (Object.hasOwn(originalConfig, "caps")) {
+    config.caps = UNRESTRICTED_CAPS;
+  }
 
   if (draft.defaultTools || Object.hasOwn(originalConfig, "defaultTools")) {
     config.defaultTools = draft.defaultTools;
+  }
+  if (draft.acceptTasks || Object.hasOwn(originalConfig, "acceptTasks")) {
+    config.acceptTasks = draft.acceptTasks;
   }
   return { config, error: null };
 }
@@ -175,9 +185,9 @@ function equal(left: unknown, right: unknown): boolean {
   return JSON.stringify(stable(left)) === JSON.stringify(stable(right));
 }
 
-// Order-independent deep equality for agent config objects — used both to
+// Order-independent deep equality for agent config values — used both to
 // compute the update patch below and, in use-agent-explorer.ts, to detect a
-// concurrent edit by comparing a freshly re-fetched config against the one
+// concurrent edit by comparing each freshly re-fetched field against the one
 // this editing session started from (see covia-ai/frontend#161).
 export const agentConfigsEqual = equal;
 

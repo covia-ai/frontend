@@ -1,26 +1,24 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
-import { LogInIcon, Globe, Lock, CircleUserRound, Key } from "lucide-react";
-import { FaGithub, FaGoogle, FaMicrosoft } from "react-icons/fa";
-import { Badge } from "@/components/ui/badge";
+import { LogInIcon, CircleUserRound, Key } from "lucide-react";
+import { PROVIDER_ICONS } from "@/components/OAuthSignInButtons";
+import { VenueAccessBadge } from "@/components/VenueAccessBadge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger }from "@/components/ui/dropdown-menu";
 import { abbreviateDid } from "@/lib/utils";
 import { DeviceKeyDialog } from "@/components/DeviceKeyDialog";
+import { ForgetAccountDialog } from "@/components/ForgetAccountDialog";
 import { Identicon } from "@/components/Identicon";
 import { useDeviceKeySignIn } from "@/hooks/use-device-key-signin";
 import { useAuthStore } from "@/hooks/use-auth";
 import { useVenues } from "@/hooks/use-venues";
-import { useVenueAccess } from "@/hooks/use-venue-access";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useOAuthSignInOptions } from "@/hooks/use-oauth-sign-in";
 import { OAUTH_PROVIDER_LABELS } from "@/lib/oauth";
 
 type ChromeSignInButtonProps = {
-  index?: string | number;
-  isOpen?: boolean;
   venueId?: string;
 };
 
@@ -73,41 +71,17 @@ export function ChromeSignInButton(props: ChromeSignInButtonProps) {
     activeVenueId ? state.accountsMap[activeVenueId] : undefined,
   );
   const storedAccounts = storedAccountsRaw ?? [];
-  const activeBaseUrl = useVenues((state) =>
-    activeVenueId ? state.venues.find((v) => v.venueId === activeVenueId)?.baseUrl : undefined,
-  );
-  const access = useVenueAccess(activeBaseUrl, activeVenueId ?? undefined);
   const oauthOptions = useOAuthSignInOptions(activeVenueId ?? undefined);
 
-  const {
-    dialogOpen, setDialogOpen, openDialog, step, setStep, deviceKey, deviceKeyDid,
-    isExisting, pastedKey, keyError, copied, checking, authError, storedKeys,
-    handleGenerate, handleProvideKey, handlePastedKeyChange,
-    handleSubmitProvidedKey, handleCopy, handleContinue,
-    handleUseStoredKey, handleUseDifferentKey,
-  } = useDeviceKeySignIn({ venueId: props.venueId });
+  const deviceKeySignIn = useDeviceKeySignIn({ venueId: props.venueId });
+  const [forgetOpen, setForgetOpen] = useState(false);
 
   if (!auth) {
-    // Only assert "Public" once a real anonymous read has confirmed it — a
-    // private venue that hasn't finished being probed yet shows neither
-    // badge rather than briefly claiming public access it doesn't have.
-    const accessBadge =
-      access.state === "public"
-        ? { icon: Globe, label: "Public" }
-        : access.state === "signed-out"
-          ? { icon: Lock, label: "Sign-in required" }
-          : null;
     return (
-      <div className="flex items-center gap-2" key={props.index}>
-        {accessBadge && (
-          <Badge
-            variant="outline"
-            className="h-9 px-3 gap-1.5 text-sm bg-muted text-muted-foreground hidden sm:flex items-center font-normal"
-          >
-            <accessBadge.icon size={14} />
-            {accessBadge.label}
-          </Badge>
-        )}
+      <div className="flex items-center gap-2">
+        {/* Inline from sm up; below that the same state is a row in the
+            topbar's overflow menu, where it does not compete for width. */}
+        <VenueAccessBadge venueId={props.venueId} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -115,12 +89,7 @@ export function ChromeSignInButton(props: ChromeSignInButtonProps) {
               className="justify-center h-8 my-5 text-sm hover:bg-primary-vlight hover:text-foreground"
             >
               <LogInIcon />
-              <span
-                className={cn(
-                  "whitespace-nowrap hidden md:block lg:block",
-                  props.isOpen === false ? "opacity-0 hidden" : "opacity-100"
-                )}
-              >
+              <span className="whitespace-nowrap hidden md:block lg:block">
                 Sign In
               </span>
             </Button>
@@ -146,52 +115,24 @@ export function ChromeSignInButton(props: ChromeSignInButtonProps) {
                 <DropdownMenuSeparator />
               </>
             )}
-            {oauthOptions.map(({ provider, href }) => {
-              const ProviderIcon = provider === "google"
-                ? FaGoogle
-                : provider === "microsoft"
-                  ? FaMicrosoft
-                  : FaGithub;
+            {oauthOptions.map(({ provider, signIn }) => {
+              const ProviderIcon = PROVIDER_ICONS[provider];
               return (
-                <DropdownMenuItem key={provider} asChild>
-                  <a href={href}>
-                    <ProviderIcon />
-                    Continue with {OAUTH_PROVIDER_LABELS[provider]}
-                  </a>
+                <DropdownMenuItem key={provider} onSelect={() => void signIn()}>
+                  <ProviderIcon />
+                  Continue with {OAUTH_PROVIDER_LABELS[provider]}
                 </DropdownMenuItem>
               );
             })}
             {oauthOptions.length > 0 && <DropdownMenuSeparator />}
-            <DropdownMenuItem onSelect={openDialog}>
+            <DropdownMenuItem onSelect={deviceKeySignIn.openDialog}>
               <Key />
               Continue with a device key
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <DeviceKeyDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          step={step}
-          setStep={setStep}
-          deviceKey={deviceKey}
-          deviceKeyDid={deviceKeyDid}
-          isExisting={isExisting}
-          pastedKey={pastedKey}
-          onPastedKeyChange={handlePastedKeyChange}
-          keyError={keyError}
-          copied={copied}
-          checking={checking}
-          authError={authError}
-          storedKeys={storedKeys}
-          onGenerate={handleGenerate}
-          onProvideKey={handleProvideKey}
-          onSubmitProvidedKey={handleSubmitProvidedKey}
-          onCopy={handleCopy}
-          onContinue={handleContinue}
-          onUseStoredKey={handleUseStoredKey}
-          onUseDifferentKey={handleUseDifferentKey}
-        />
+        <DeviceKeyDialog signIn={deviceKeySignIn} />
       </div>
     )
   }
@@ -257,8 +198,26 @@ export function ChromeSignInButton(props: ChromeSignInButtonProps) {
             >
               Sign Out
             </DropdownMenuItem>
+            {/* OAuth tokens are never persisted, so Sign Out already forgets
+                them; only a device key outlives a sign-out (#436). */}
+            {auth.type === "keypair" && (
+              <DropdownMenuItem
+                data-testid="forget-account"
+                onSelect={() => setForgetOpen(true)}
+                className="items-start text-center text-destructive hover:bg-primary-vlight focus:text-destructive"
+              >
+                Sign out and forget…
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
+        {activeVenueId && (
+          <ForgetAccountDialog
+            venueId={activeVenueId}
+            open={forgetOpen}
+            onOpenChange={setForgetOpen}
+          />
+        )}
       </div>
     )
   }

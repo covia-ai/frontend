@@ -3,7 +3,7 @@ import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -24,11 +24,14 @@ import { MagicWandIcon } from "@radix-ui/react-icons";
 import { EllipsisVertical, Loader2 } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
-import { usePendingChats } from "@/hooks/use-pending-chats";
+import { useVenueRead } from "@/hooks/use-venue-read";
+import { hasStoppedWaiting, usePendingChats } from "@/hooks/use-pending-chats";
+import type { AgentListItem } from "@/config/types";
 import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { KNOWN_LLM_KEYS, LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
 import { normalizeAgentEntries } from "@/lib/agent-list";
+import { UNRESTRICTED_CAPS } from "@/lib/agent-caps";
 import {
   asSdkAgentConfig,
   normalizeAgentTemplate,
@@ -39,15 +42,18 @@ import { AgentStatus } from "@covia/covia-sdk";
 import { useRouter } from "next/navigation";
 import { PageHeading } from "./PageHeading";
 import { cn, gtmEvent, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
-import { useIsAuthenticated } from "@/hooks/use-auth";
+import { useCurrentAuth, useIsAuthenticated } from "@/hooks/use-auth";
 import { useDeviceKeySignIn } from "@/hooks/use-device-key-signin";
 import { DeviceKeyDialog } from "@/components/DeviceKeyDialog";
-import { dispatchAgentMessage } from "@/lib/agent-chat";
+import { dispatchAgentMessage, sendAgentChat } from "@/lib/agent-chat";
 import { revalidateVenueOnFailure } from "@/hooks/use-authenticated-venue";
+import { agentChatPath } from "@/lib/routes";
 
 // Sentinel picker value — never a real agentId — meaning "create a fresh,
 // distinctly-named agent" rather than targeting an existing one.
 const NEW_AGENT_OPTION = "__new__";
+
+const NO_AGENT_OPTIONS: AgentListItem[] = [];
 
 function makeWorkspaceAgentId(): string {
   return `workspace-agent-${Date.now().toString(36)}`;
@@ -56,9 +62,17 @@ function makeWorkspaceAgentId(): string {
 type AIPromptProps = {
   fixedAgentId?: string;
   onChatStarted?: (agentId: string) => void;
+  /** Starter-prompt chips shown under the composer; clicking one fills the
+   *  prompt (never auto-sends) so the person can edit before running. Home
+   *  passes these to remove the blank-page problem; other callers omit them. */
+  starters?: string[];
+  /** "page" (default) fills the viewport and vertically centres the composer —
+   *  the standalone Home of old. "launchpad" tops the composer so the Home
+   *  launchpad can render Jump-back-in / Quick actions / Venue pulse beneath it. */
+  variant?: "page" | "launchpad";
 };
 
-export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) => {
+export const AIPrompt = ({ fixedAgentId, onChatStarted, starters, variant = "page" }: AIPromptProps = {}) => {
   const [prompt, setPrompt] = useState('')
   const [checking, setChecking] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -68,46 +82,32 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) =>
   const [showPickerDialog, setShowPickerDialog] = useState(false)
   const [detectedKeys, setDetectedKeys] = useState<string[]>([])
   const [selectedSecretName, setSelectedSecretName] = useState('')
-  const [agentOptions, setAgentOptions] = useState<{ agentId: string; status?: string }[]>([])
   const [selectedAgentId, setSelectedAgentId] = useState<string>(fixedAgentId ?? DEFAULT_AGENT_ID)
   const [pendingAgentId, setPendingAgentId] = useState<string>(fixedAgentId ?? DEFAULT_AGENT_ID)
   const venue = useAuthenticatedVenue();
   const router = useRouter();
   const isAuthenticated = useIsAuthenticated();
+  const auth = useCurrentAuth();
   const startPendingChat = usePendingChats((s) => s.startPendingChat);
   const attachSessionId = usePendingChats((s) => s.attachSessionId);
+  const attachJobId = usePendingChats((s) => s.attachJobId);
   const clearPendingChat = usePendingChats((s) => s.clearPendingChat);
 
-  const {
-    dialogOpen: signInDialogOpen, setDialogOpen: setSignInDialogOpen, openDialog: openSignInDialog,
-    step: signInStep, setStep: setSignInStep, deviceKey: signInDeviceKey, deviceKeyDid: signInDeviceKeyDid,
-    isExisting: signInIsExisting, pastedKey: signInPastedKey, keyError: signInKeyError,
-    copied: signInCopied, checking: signInChecking, authError: signInAuthError, storedKeys: signInStoredKeys,
-    handleGenerate: handleSignInGenerate, handleProvideKey: handleSignInProvideKey,
-    handlePastedKeyChange: handleSignInPastedKeyChange, handleSubmitProvidedKey: handleSignInSubmitProvidedKey,
-    handleCopy: handleSignInCopy, handleContinue: handleSignInContinue,
-    handleUseStoredKey: handleSignInUseStoredKey, handleUseDifferentKey: handleSignInUseDifferentKey,
-  } = useDeviceKeySignIn();
+  const deviceKeySignIn = useDeviceKeySignIn();
 
   // Populates the picker's option list. Best-effort and separate from the
   // fresh venue.agents.list() call in handleMagicWand — that one drives the
   // actual resume/create/send decision, this one only feeds the dropdown, so
   // it being briefly stale (until the next refresh) never causes a bad send.
-  async function refreshAgentOptions() {
-    if (fixedAgentId) return;
-    if (!venue) { setAgentOptions([]); return; }
-    try {
-      const { agents } = await venue.agents.list();
-      setAgentOptions(normalizeAgentEntries(agents));
-    } catch {
-      // Non-fatal — picker just falls back to Assistant / New agent.
-    }
-  }
-
-  useEffect(() => {
-    refreshAgentOptions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [venue, fixedAgentId]);
+  // A failed read is non-fatal: the picker falls back to Assistant / New agent.
+  const { data: agentOptions, reload: refreshAgentOptions } = useVenueRead<AgentListItem[]>({
+    venue,
+    enabled: !fixedAgentId,
+    initial: NO_AGENT_OPTIONS,
+    failureTitle: "Unable to list agents",
+    notify: false,
+    load: async (target) => normalizeAgentEntries((await target.agents.list()).agents),
+  });
 
   const { defaultAgentLabel, otherAgents } = useMemo(() => {
     const hasDefault = agentOptions.some((a) => a.agentId === DEFAULT_AGENT_ID);
@@ -130,7 +130,7 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) =>
   // agent_chat as a plain string message, not an agent_request task envelope:
   // a person typing here is starting a conversation, and an agent that judges
   // the work deserves a durable, tracked job can spawn one itself (the
-  // manager-template pattern). chat() blocks until the agent replies, so the
+  // manager-template pattern). The send waits for the agent's reply, so the
   // promise is deliberately left un-awaited — we publish the message as a
   // pending chat first so the chat surface can echo it straight
   // away, then poll up the recorded turn and the eventual reply. Failures and
@@ -140,24 +140,35 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) =>
   function sendPrompt(agentId: string) {
     if (!venue) return;
     const text = prompt.trim();
-    // No session id — chat() with none makes the venue mint a fresh session,
-    // and it only comes back with the reply.
-    const chat = startPendingChat({ agentId, sessionId: null, text });
+    // No session id: the venue starts a fresh session and names it as soon as
+    // it accepts the message, so the chat surface can show it before the reply.
+    const chat = startPendingChat({ agentId, sessionId: null, text, turnsAtSend: 0 });
+    let named = false;
     void dispatchAgentMessage({
       agentId,
       text,
       venueId: venue.venueId,
       venueBaseUrl: venue.baseUrl,
-      send: (message) => venue.agents.chat(agentId, message),
+      send: (message) =>
+        sendAgentChat(venue, {
+          agentId,
+          message,
+          onJob: (jobId) => attachJobId(chat, jobId),
+          onSession: (sessionId) => {
+            named = true;
+            attachSessionId(chat, sessionId);
+          },
+        }),
       agentStatus: () => venue.agents.info(agentId).then((info) => info.status),
+      stoppedWaiting: () => hasStoppedWaiting(chat),
     })
       .then((result) => {
-        if (result?.sessionId) attachSessionId(chat, result.sessionId);
+        if (!named && result?.sessionId) attachSessionId(chat, result.sessionId);
       })
       .catch(() => undefined)
       .finally(() => clearPendingChat(chat));
     if (onChatStarted) onChatStarted(agentId);
-    else router.push(`/agents/chat?agentId=${encodeURIComponent(agentId)}`);
+    else router.push(agentChatPath(agentId));
   }
 
   async function proceedWithKey(secretName: string, agentId: string) {
@@ -211,7 +222,13 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) =>
             // Drop any inline model tied to the template's former provider, but
             // preserve every other field and all ordered/reference layers.
             withoutAgentConfigFields(template.config, ["llmOperation", "model"]),
-            { llmOperation: provider.operation },
+            {
+              llmOperation: provider.operation,
+              // The venue gives an agent created without caps no authority
+              // (covia 0.11), and the skilled template sets none: the user's
+              // own assistant acts with their whole authority.
+              ...(template.preview.caps === undefined && { caps: UNRESTRICTED_CAPS }),
+            },
           ),
         ),
       });
@@ -248,7 +265,7 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) =>
   async function handleMagicWand() {
     if (!prompt.trim()) return;
     if (!isAuthenticated) {
-      openSignInDialog();
+      deviceKeySignIn.openDialog();
       return;
     }
     if (!venue) {
@@ -295,7 +312,7 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) =>
       // Venue-level failures (unreachable, stale identity after a venue
       // restart, rejected auth) surface here first — recheck so the app
       // converges on the real venue state instead of repeating this error.
-      revalidateVenueOnFailure(venue, null, err);
+      revalidateVenueOnFailure(venue, auth, err);
     } finally {
       setChecking(false);
     }
@@ -327,7 +344,13 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) =>
   const busy = checking || creating || savingKey;
 
   return (
-    <div data-testid="chat-container" className="flex min-h-[calc(100vh-9rem)] flex-col items-center justify-center px-4 py-10 sm:px-10">
+    <div
+      data-testid="chat-container"
+      className={cn(
+        "flex flex-col items-center px-4 sm:px-10",
+        variant === "launchpad" ? "pt-8 pb-4" : "min-h-[calc(100vh-9rem)] justify-center py-10",
+      )}
+    >
         <PageHeading
           text={fixedAgentId ? "How can I" : "Do anything on"}
           highlight={fixedAgentId ? "help?" : "the Grid"}
@@ -413,6 +436,23 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) =>
           </p>
         )}
 
+        {starters && starters.length > 0 && (
+          <div className="mt-4 flex w-full max-w-3xl flex-wrap items-center justify-center gap-2">
+            {starters.map((s) => (
+              <button
+                key={s}
+                type="button"
+                data-testid="home-starter"
+                onClick={() => setPrompt(s)}
+                disabled={busy}
+                className="rounded-full border bg-card px-3.5 py-1.5 text-sm text-muted-foreground transition-colors hover:border-accent hover:text-foreground disabled:opacity-50"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Picker dialog — shown when multiple LLM keys are detected */}
         <Dialog open={showPickerDialog} onOpenChange={setShowPickerDialog}>
           <DialogContent data-testid="chat-picker-dialog" className="flex flex-col items-center justify-center bg-card text-card-foreground gap-4">
@@ -480,29 +520,7 @@ export const AIPrompt = ({ fixedAgentId, onChatStarted }: AIPromptProps = {}) =>
           </DialogContent>
         </Dialog>
 
-        <DeviceKeyDialog
-          open={signInDialogOpen}
-          onOpenChange={setSignInDialogOpen}
-          step={signInStep}
-          setStep={setSignInStep}
-          deviceKey={signInDeviceKey}
-          deviceKeyDid={signInDeviceKeyDid}
-          isExisting={signInIsExisting}
-          pastedKey={signInPastedKey}
-          onPastedKeyChange={handleSignInPastedKeyChange}
-          keyError={signInKeyError}
-          copied={signInCopied}
-          checking={signInChecking}
-          authError={signInAuthError}
-          storedKeys={signInStoredKeys}
-          onGenerate={handleSignInGenerate}
-          onProvideKey={handleSignInProvideKey}
-          onSubmitProvidedKey={handleSignInSubmitProvidedKey}
-          onCopy={handleSignInCopy}
-          onContinue={handleSignInContinue}
-          onUseStoredKey={handleSignInUseStoredKey}
-          onUseDifferentKey={handleSignInUseDifferentKey}
-        />
+        <DeviceKeyDialog signIn={deviceKeySignIn} />
 
       </div>
   );

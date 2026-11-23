@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Sheet,
   SheetContent,
@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Filter, Search, X } from "lucide-react";
+import type { IconCmp } from "@/lib/file-type-look";
 
 interface FilterOption {
   value: string;
@@ -22,6 +23,10 @@ interface FilterOption {
   /** Optional sub-heading (e.g. "Adapter" vs "Keyword") for options that
    * share one selection array but read better split into labeled sections. */
   groupTag?: string;
+  /** Optional glyph rendered before the label — opt-in per option, so a caller
+   * can show icons for concept-backed rows (e.g. adapters) and leave free-form
+   * rows (keywords) icon-less. Inherits currentColor to match the facet pills. */
+  icon?: IconCmp;
 }
 
 interface FilterGroup {
@@ -42,6 +47,15 @@ interface FiltersSheetProps {
   description?: string;
   search?: SearchFilter;
   groups: FilterGroup[];
+  /** Trigger label. Defaults to "Filters"; a page that also shows a facet row
+   * of its own should say "All filters", so the button reads as the superset
+   * of those chips rather than a parallel control (frontend#398). */
+  triggerLabel?: string;
+  /** Optional controlled open state, so something outside the sheet — an
+   * overflow chip at the end of a facet row — can open it. Omit both to keep
+   * the sheet self-managed. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 // Side-panel filter form (mirrors studio.lyzr.ai's "Filter Traces" sheet):
@@ -53,20 +67,55 @@ export function FiltersSheet({
   description = "Apply filters to narrow down your job results",
   search,
   groups,
+  triggerLabel = "Filters",
+  open: openProp,
+  onOpenChange,
 }: FiltersSheetProps) {
-  const [open, setOpen] = useState(false);
-  const [draftSearch, setDraftSearch] = useState(search?.value ?? "");
-  const [draftGroups, setDraftGroups] = useState<string[][]>(() => groups.map((g) => g.selected));
-
-  useEffect(() => {
-    if (!open) return;
-    setDraftSearch(search?.value ?? "");
-    setDraftGroups(groups.map((g) => g.selected));
-    // Re-sync drafts only when the sheet opens, not on every parent re-render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = openProp ?? uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    if (openProp === undefined) setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  };
 
   const activeCount = groups.reduce((sum, g) => sum + g.selected.length, 0) + (search?.value.trim() ? 1 : 0);
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="outline" className="shrink-0 gap-2" data-testid="filters-trigger">
+          <Filter size={14} />
+          {triggerLabel}
+          {activeCount > 0 && (
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{activeCount}</Badge>
+          )}
+        </Button>
+      </SheetTrigger>
+      <SheetContent data-testid="filters-sheet" className="flex flex-col sm:max-w-md">
+        <SheetHeader>
+          <SheetTitle>{title}</SheetTitle>
+          <SheetDescription>{description}</SheetDescription>
+        </SheetHeader>
+        {/* Mounted only while the sheet is open, so the drafts start from the
+            committed filters on every open without an effect re-syncing them —
+            and are left alone while it stays open, whatever the parent re-renders. */}
+        <FiltersForm search={search} groups={groups} onClose={() => setOpen(false)} />
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function FiltersForm({
+  search,
+  groups,
+  onClose,
+}: {
+  search?: SearchFilter;
+  groups: FilterGroup[];
+  onClose: () => void;
+}) {
+  const [draftSearch, setDraftSearch] = useState(search?.value ?? "");
+  const [draftGroups, setDraftGroups] = useState<string[][]>(() => groups.map((g) => g.selected));
 
   const toggleDraft = (groupIndex: number, value: string) => {
     setDraftGroups((prev) =>
@@ -81,7 +130,7 @@ export function FiltersSheet({
   const applyFilters = () => {
     search?.onChange(draftSearch);
     groups.forEach((g, i) => g.onChange(draftGroups[i] ?? []));
-    setOpen(false);
+    onClose();
   };
 
   const clearAll = () => {
@@ -92,80 +141,66 @@ export function FiltersSheet({
   };
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button variant="outline" className="shrink-0 gap-2" data-testid="filters-trigger">
-          <Filter size={14} />
-          Filters
-          {activeCount > 0 && (
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{activeCount}</Badge>
-          )}
-        </Button>
-      </SheetTrigger>
-      <SheetContent data-testid="filters-sheet" className="flex flex-col sm:max-w-md">
-        <SheetHeader>
-          <SheetTitle>{title}</SheetTitle>
-          <SheetDescription>{description}</SheetDescription>
-        </SheetHeader>
+    <>
+      <div className="flex-1 overflow-y-auto px-4 flex flex-col gap-6">
+        {search && (
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium">Search</label>
+            <div className="relative">
+              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder={search.placeholder ?? "Search..."}
+                className="pl-8"
+                value={draftSearch}
+                onChange={(e) => setDraftSearch(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
 
-        <div className="flex-1 overflow-y-auto px-4 flex flex-col gap-6">
-          {search && (
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium">Search</label>
-              <div className="relative">
-                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder={search.placeholder ?? "Search..."}
-                  className="pl-8"
-                  value={draftSearch}
-                  onChange={(e) => setDraftSearch(e.target.value)}
-                />
+        {groups.map((group, i) => {
+          // Partition by groupTag, preserving option order — an options
+          // list with no tags collapses to one untitled section, so this
+          // renders identically to a flat list when groupTag is unused.
+          const sections = new Map<string, FilterOption[]>();
+          for (const option of group.options) {
+            const tag = option.groupTag ?? "";
+            if (!sections.has(tag)) sections.set(tag, []);
+            sections.get(tag)!.push(option);
+          }
+
+          return (
+            <div key={group.label} className="flex flex-col gap-2">
+              <label className="text-sm font-medium">{group.label}</label>
+              <div className="flex flex-col gap-3">
+                {[...sections.entries()].map(([tag, options]) => (
+                  <div key={tag || "_default"} className="flex flex-col gap-2">
+                    {tag && <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{tag}</span>}
+                    {options.map((option) => {
+                      const checked = draftGroups[i]?.includes(option.value) ?? false;
+                      const Icon = option.icon;
+                      return (
+                        <label key={option.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <Checkbox checked={checked} onCheckedChange={() => toggleDraft(i, option.value)} />
+                          {Icon && <Icon size={15} strokeWidth={1.9} className="shrink-0 text-muted-foreground" />}
+                          {option.label}
+                        </label>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             </div>
-          )}
+          );
+        })}
+      </div>
 
-          {groups.map((group, i) => {
-            // Partition by groupTag, preserving option order — an options
-            // list with no tags collapses to one untitled section, so this
-            // renders identically to a flat list when groupTag is unused.
-            const sections = new Map<string, FilterOption[]>();
-            for (const option of group.options) {
-              const tag = option.groupTag ?? "";
-              if (!sections.has(tag)) sections.set(tag, []);
-              sections.get(tag)!.push(option);
-            }
-
-            return (
-              <div key={group.label} className="flex flex-col gap-2">
-                <label className="text-sm font-medium">{group.label}</label>
-                <div className="flex flex-col gap-3">
-                  {[...sections.entries()].map(([tag, options]) => (
-                    <div key={tag || "_default"} className="flex flex-col gap-2">
-                      {tag && <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{tag}</span>}
-                      {options.map((option) => {
-                        const checked = draftGroups[i]?.includes(option.value) ?? false;
-                        return (
-                          <label key={option.value} className="flex items-center gap-2 text-sm cursor-pointer">
-                            <Checkbox checked={checked} onCheckedChange={() => toggleDraft(i, option.value)} />
-                            {option.label}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <SheetFooter className="flex-row justify-end gap-2">
-          <Button variant="outline" onClick={clearAll} className="gap-1">
-            <X size={14} /> Clear All
-          </Button>
-          <Button onClick={applyFilters}>Apply Filters</Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+      <SheetFooter className="flex-row justify-end gap-2">
+        <Button variant="outline" onClick={clearAll} className="gap-1">
+          <X size={14} /> Clear All
+        </Button>
+        <Button onClick={applyFilters}>Apply Filters</Button>
+      </SheetFooter>
+    </>
   );
 }

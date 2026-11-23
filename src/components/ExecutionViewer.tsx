@@ -8,7 +8,9 @@ import {
   FileInput,
   FileOutput,
   Fingerprint,
+  GitFork,
   Hash,
+  KeyRound,
   Layers,
   Link2,
   MessageSquare,
@@ -19,10 +21,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { JobStateTimeline } from "@/components/jobs/JobStateTimeline";
+import { JobTreePanel } from "@/components/jobs/JobTree";
 import { didUrl, Namespace } from "@covia/covia-sdk";
 import { RunStatus, isJobFinished } from "@covia/covia-sdk";
 import { AssetLoadState } from "@/components/AssetLoadState";
 import { DidDisplay } from "@/components/DidDisplay";
+import { CredentialBadges } from "@/components/CredentialBadges";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { StatusBadge } from "@/components/StatusBadge";
 import { TopBar } from "@/components/admin-panel/TopBar";
@@ -30,19 +34,21 @@ import { ExecutionToolbar } from "@/components/ExecutionToolbar";
 import { ExecutionChildJobs } from "@/components/execution/ExecutionChildJobs";
 import { ExecutionDataTable } from "@/components/execution/ExecutionDataTable";
 import { TypedResultRenderer } from "@/components/typed-result/TypedResultRenderer";
+import { declaredResponseSchema, requestResultValue } from "@/lib/response-schema";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { useExecutionLifecycle } from "@/hooks/use-execution-lifecycle";
-import { cn, copyDataToClipBoard, formatDateTime, getExecutionTime } from "@/lib/utils";
+import { cn, copyDataToClipBoard, formatDateTime } from "@/lib/utils";
+import { TONE_STYLES } from "@/lib/status";
 import {
   operationVisual,
   statusVisual,
   abbreviateJobId,
-  jobDurationMs,
-  durationFillClass,
 } from "@/lib/job-visuals";
+import { JobDuration } from "@/components/jobs/JobDuration";
+import { credentialUsesOf } from "@/lib/credential-refs";
 
 /** A small labelled fact tile for the at-a-glance strip. */
 function MetaTile({ icon: Icon, label, children, spin }: {
@@ -92,15 +98,18 @@ export function ExecutionViewer({
   const { venue, job, operationAsset } = execution;
   const resolvedVenueId = venue?.venueId ?? venueId ?? "";
   const operationSchema = operationAsset?.metadata?.operation;
+  const declared = declaredResponseSchema(job?.input);
+  // The settled value, unwrapped from the request's completion envelope.
+  const typedValue = declared ? requestResultValue(job?.output) : undefined;
 
   useEffect(() => {
     if (execution.notFound) onNotFound?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [execution.notFound]);
 
-  const op = job ? operationVisual(job) : null;
+  const op = job ? operationVisual(job, operationSchema?.adapter) : null;
   const sv = job ? statusVisual(job.status) : null;
-  const ms = job ? jobDurationMs(job) : null;
+  const credentials = credentialUsesOf(job?.input);
   const failed = job?.status === RunStatus.FAILED;
   const finished = job?.status ? isJobFinished(job.status) : false;
 
@@ -134,13 +143,13 @@ export function ExecutionViewer({
                     <h1 className="truncate text-xl font-semibold">{job.name ?? "Operation"}</h1>
                     <StatusBadge status={job.status} kind="job" />
                     {execution.streaming && (
-                      <span className="flex items-center gap-1.5 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-950 dark:text-green-300">
-                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" /> Streaming
+                      <span className={cn("flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium", TONE_STYLES.active.pill)}>
+                        <span className={cn("h-1.5 w-1.5 animate-pulse rounded-full", TONE_STYLES.active.dot)} /> Streaming
                       </span>
                     )}
                   </div>
-                  {job.operation && (
-                    <div className="mt-1 truncate font-mono text-xs text-muted-foreground">{job.operation}</div>
+                  {job.op && (
+                    <div className="mt-1 truncate font-mono text-xs text-muted-foreground">{job.op}</div>
                   )}
                   <button
                     type="button"
@@ -162,16 +171,7 @@ export function ExecutionViewer({
               <span className={cn("capitalize", sv.textClass)}>{(job.status ?? "unknown").toLowerCase()}</span>
             </MetaTile>
             <MetaTile icon={Timer} label="Duration">
-              {ms != null ? (
-                <span className="flex items-center gap-2">
-                  <span className={cn("inline-block size-2 rounded-full", durationFillClass(ms))} />
-                  {getExecutionTime(job.created ?? "", job.updated ?? "")}
-                </span>
-              ) : finished ? "—" : (
-                <span className="italic text-muted-foreground">
-                  {job.created ? `${getExecutionTime(job.created, new Date().toISOString())} so far` : "running"}
-                </span>
-              )}
+              <JobDuration job={job} maxMs={0} isTerminal={finished} compact />
             </MetaTile>
             <MetaTile icon={Clock} label="Started">{job.created ? formatDateTime(job.created) : "—"}</MetaTile>
             <MetaTile icon={CalendarClock} label="Updated">{job.updated ? formatDateTime(job.updated) : "—"}</MetaTile>
@@ -179,8 +179,8 @@ export function ExecutionViewer({
 
           {/* Awaiting input */}
           {job.status === RunStatus.INPUT_REQUIRED && (
-            <div className="flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-700 dark:bg-amber-950">
-              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
+            <div className={cn("flex flex-col gap-3 rounded-xl px-4 py-3", TONE_STYLES.attention.banner)}>
+              <div className={cn("flex items-center gap-2", TONE_STYLES.attention.text)}>
                 <MessageSquare size={18} />
                 <span className="text-sm font-semibold">This job is waiting on you to continue</span>
               </div>
@@ -218,14 +218,22 @@ export function ExecutionViewer({
               </Panel>
             ) : (
               <Panel icon={FileOutput} title="Output">
-                {job.responseSchema ? (
-                  <TypedResultRenderer value={job.output} schema={job.responseSchema} strict={job.strict === true} />
+                {declared && typedValue !== undefined ? (
+                  <TypedResultRenderer value={typedValue} schema={declared.schema} strict={declared.strict} />
                 ) : (
                   <ExecutionDataTable value={job.output} schema={operationSchema?.output} direction="output" />
                 )}
               </Panel>
             )}
           </div>
+
+          {/* Job tree — rebuilt from parent links; absent for a standalone job */}
+          <JobTreePanel
+            venue={venue}
+            venueId={resolvedVenueId}
+            job={job}
+            wrap={(tree) => <Panel icon={GitFork} title="Job tree">{tree}</Panel>}
+          />
 
           {/* State history — reconstructed from the job's prev chain */}
           <Panel icon={History} title="State history">
@@ -266,11 +274,18 @@ export function ExecutionViewer({
                   <TooltipContent>Copy reference</TooltipContent>
                 </Tooltip>
               </div>
-              {job.operation && (
+              {job.op && (
                 <div className="flex items-start gap-3">
                   <Layers size={15} className="mt-0.5 shrink-0 text-muted-foreground" />
                   <span className="w-24 shrink-0 text-muted-foreground">Operation</span>
-                  <span className="min-w-0 flex-1 break-all font-mono text-xs text-primary">{job.operation}</span>
+                  <span className="min-w-0 flex-1 break-all font-mono text-xs text-primary">{job.op}</span>
+                </div>
+              )}
+              {credentials.length > 0 && (
+                <div className="flex items-start gap-3">
+                  <KeyRound size={15} className="mt-0.5 shrink-0 text-muted-foreground" />
+                  <span className="w-24 shrink-0 text-muted-foreground">Credential</span>
+                  <CredentialBadges uses={credentials} className="min-w-0 flex-1" />
                 </div>
               )}
               <p className="pt-1 text-xs text-muted-foreground">

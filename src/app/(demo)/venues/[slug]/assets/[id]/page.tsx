@@ -1,15 +1,18 @@
 
 import { AssetViewer } from "@/components/AssetViewer";
+import { routeParam } from "@/lib/route-params";
 
 export default async function Page({
   params,
 }: {
   params: Promise<{ id: string, slug:string }>
 }) {
-  const { id } = await params
-  const { slug } = await params
+  const { id, slug } = await params
 
+  // [id] is a single segment: a bare content hash for the usual CAS asset, or
+  // a percent-encoded lattice address for the rare non-hash one — see
+  // AssetCard's scopedHref. Decode before handing it to the viewer.
   return (
-          <AssetViewer assetId={id} venueId={decodeURIComponent(slug)}></AssetViewer>
+          <AssetViewer assetId={routeParam(id)} venueId={routeParam(slug)}></AssetViewer>
   )
 }

@@ -1,7 +1,8 @@
 "use client";
 
-import { FolderRoot } from "lucide-react";
 import { ROOT_NAMESPACES } from "@/lib/workspace-namespaces";
+import { TypeTile } from "@/components/TypeTile";
+import { namespaceLook } from "@/lib/workspace-look";
 
 type WorkspaceNamespacePaneProps = {
   activeNamespace: string | null;
@@ -22,6 +23,7 @@ export function WorkspaceNamespacePane({
       <nav aria-label="Workspace namespaces" className="min-h-0 flex-1 overflow-y-auto p-2">
         {ROOT_NAMESPACES.map((namespace) => {
           const active = namespace.key === activeNamespace;
+          const look = namespaceLook(namespace.key);
           return (
             <div
               key={namespace.key}
@@ -34,11 +36,11 @@ export function WorkspaceNamespacePane({
               <button
                 type="button"
                 aria-current={active ? "page" : undefined}
-                className="flex min-w-0 flex-1 items-center gap-2 px-2 py-2 text-left"
+                className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left"
                 onClick={() => onSelect(namespace.key)}
                 title={namespace.description}
               >
-                <FolderRoot size={15} className="shrink-0" />
+                <TypeTile Icon={look.Icon} tile={look.tile} className="size-7" iconSize={15} />
                 <span className="min-w-0 flex-1 truncate text-sm font-medium">
                   {namespace.label}
                 </span>

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
+import { TONE_STYLES } from "@/lib/status";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
@@ -12,11 +13,14 @@ import { DidDisplay } from "@/components/DidDisplay";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCurrentAuth, useAuthStore } from "@/hooks/use-auth";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useVenueRead } from "@/hooks/use-venue-read";
 import { Ed25519Auth, type DIDDocument } from "@covia/covia-sdk";
 import { PageHeading } from "@/components/PageHeading";
+import { ShikiCodeBlock } from "@/components/ShikiCodeBlock";
 import { AccountsPanel } from "@/components/AccountsPanel";
 import { IdentityTokenButton } from "@/components/IdentityTokenButton";
 import { KeysPanel } from "@/components/KeysPanel";
+import { useCopyFeedback } from "@/hooks/use-copy-feedback";
 import { NotificationLog } from "@/components/NotificationLog";
 
 function toHex(bytes: Uint8Array): string {
@@ -27,13 +31,8 @@ function toHex(bytes: Uint8Array): string {
 // explicitly revealed. Copy works without revealing (clipboard gets the real
 // value), so the common path never puts the key on screen.
 function SecretCopyField({ label, value }: { label: string; value: string }) {
-  const [copied, setCopied] = useState(false);
+  const { copied, copy } = useCopyFeedback(`Unable to copy ${label.toLowerCase()}`);
   const [revealed, setRevealed] = useState(false);
-  const copy = () => {
-    navigator.clipboard.writeText(value);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
   return (
     <div>
       <p className="text-sm text-muted-foreground mb-1">{label}</p>
@@ -58,8 +57,8 @@ function SecretCopyField({ label, value }: { label: string; value: string }) {
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="outline" size="icon" onClick={copy} aria-label="Copy private key" className="shrink-0">
-              {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+            <Button variant="outline" size="icon" onClick={() => void copy(value)} aria-label="Copy private key" className="shrink-0">
+              {copied ? <Check className={`h-4 w-4 ${TONE_STYLES.success.text}`} /> : <Copy className="h-4 w-4" />}
             </Button>
           </TooltipTrigger>
           <TooltipContent>{copied ? "Copied!" : "Copy private key"}</TooltipContent>
@@ -85,19 +84,21 @@ export default function ProfilePage() {
       state.deviceKeys.length > 0,
   );
 
-  const [didDocument, setDidDocument] = useState<DIDDocument | null>(null);
-  const [didDocError, setDidDocError] = useState(false);
+  // Read with the venue it answers for, so a venue switch never shows the
+  // previous venue's document or its stale failure under the new name.
+  const { data: didDocument, error: didDocError } = useVenueRead<DIDDocument | null>({
+    venue,
+    initial: null,
+    notify: false,
+    failureTitle: "Unable to load the venue DID document",
+    load: (target) => target.didDocument(),
+  });
 
   useEffect(() => {
     if (!auth && !hasAnyAccount) {
       router.push("/signUp");
     }
   }, [auth, hasAnyAccount, router]);
-
-  useEffect(() => {
-    if (!venue) return;
-    venue.didDocument().then(setDidDocument).catch(() => setDidDocError(true));
-  }, [venue]);
 
   const publicKeyHex = useMemo(() => {
     if (!auth || auth.type !== "keypair") return null;
@@ -185,9 +186,7 @@ export default function ProfilePage() {
                 </h3>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Venue DID</p>
-                  <code className="bg-muted block rounded-md px-3 py-2 text-xs font-mono break-all select-all">
-                    {venue.venueId}
-                  </code>
+                  <DidDisplay value={venue.venueId} chars="full" iconSize={20} />
                 </div>
                 <a
                   href={`${venue.baseUrl}/.well-known/did.json`}
@@ -206,9 +205,14 @@ export default function ProfilePage() {
                       DID Document
                     </CollapsibleTrigger>
                     <CollapsibleContent>
-                      <pre className="bg-muted mt-2 rounded-md p-3 text-xs font-mono overflow-x-auto">
-                        {JSON.stringify(didDocument, null, 2)}
-                      </pre>
+                      {/* A proper JSON viewer (Shiki highlight + copy) rather than
+                          a raw <pre> — the DID document is structured data (W5B). */}
+                      <ShikiCodeBlock
+                        code={JSON.stringify(didDocument, null, 2)}
+                        language="json"
+                        wrapLongLines
+                        className="mt-2"
+                      />
                     </CollapsibleContent>
                   </Collapsible>
                 )}

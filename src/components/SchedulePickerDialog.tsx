@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CADENCE_PRESETS, type CadencePreset } from "@/lib/schedules";
+import { CADENCE_PRESETS, MAX_SCHEDULE_DESCRIPTION, type CadencePreset } from "@/lib/schedules";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { cn, gtmEvent } from "@/lib/utils";
 
@@ -45,15 +45,13 @@ interface SchedulePickerDialogProps {
   // Input passed to the operation when it fires.
   input: unknown;
   triggerLabel?: string;
-  triggerVariant?: "default" | "outline";
   triggerSize?: "default" | "sm";
   triggerClassName?: string;
   disabled?: boolean;
-  onScheduled?: () => void;
 }
 
 // Shared cadence picker mounted from both the operation run sheet
-// (OperationInputForm) and the agent detail page (AgentChatPanel) — see
+// (OperationInputForm) and the agent detail page (AgentProfile) — see
 // covia-ai/frontend#230. No cron option: the venue doesn't support it yet
 // (covia#408 stage 2, unscheduled) — don't build UI for a capability the
 // backend can't fulfill, even as a disabled placeholder.
@@ -62,27 +60,31 @@ export function SchedulePickerDialog({
   operation,
   input,
   triggerLabel = "Run on a schedule",
-  triggerVariant = "outline",
   triggerSize = "default",
   triggerClassName = "w-auto whitespace-nowrap",
   disabled,
-  onScheduled,
 }: SchedulePickerDialogProps) {
   const [open, setOpen] = useState(false);
   const [cadence, setCadence] = useState<Cadence>("once");
   const [atTime, setAtTime] = useState("");
+  const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   const reset = () => {
     setCadence("once");
     setAtTime("");
+    setDescription("");
     setError("");
   };
 
   function handleSubmit() {
     if (!venue) return;
     const payload: Record<string, unknown> = { operation, input };
+    // Display text for the Scheduled list (covia 0.10); nothing interprets
+    // it. Sent only when given, so a schedule without one is the 0.9 call.
+    const label = description.trim();
+    if (label) payload.description = label;
 
     if (cadence === "once") {
       const time = atTime ? new Date(atTime).getTime() : NaN;
@@ -104,7 +106,6 @@ export function SchedulePickerDialog({
         notifySuccess("Schedule created", { receiptHref: "/jobs?tab=scheduled" });
         setOpen(false);
         reset();
-        onScheduled?.();
       })
       .catch((err) => notifyError("Unable to create schedule", err))
       .finally(() => setSubmitting(false));
@@ -120,7 +121,7 @@ export function SchedulePickerDialog({
     >
       <DialogTrigger asChild>
         <Button
-          variant={triggerVariant}
+          variant="outline"
           size={triggerSize}
           type="button"
           className={cn("gap-1.5", triggerClassName)}
@@ -164,6 +165,18 @@ export function SchedulePickerDialog({
             First fire one interval from now, then every {CADENCE_INTERVAL_NOUN[cadence]}.
           </p>
         )}
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="schedule-description">Description (optional)</Label>
+          <Input
+            id="schedule-description"
+            data-testid="schedule-description-input"
+            value={description}
+            maxLength={MAX_SCHEDULE_DESCRIPTION}
+            placeholder="What this schedule is for"
+            onChange={(event) => setDescription(event.target.value)}
+          />
+        </div>
 
         {error && <p className="text-sm text-destructive">{error}</p>}
 

@@ -5,8 +5,9 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { Venue } from "@covia/covia-sdk";
 import { reportVenueHealth } from "@/hooks/use-venue-health";
-import { browserStorage } from "@/lib/persist-storage";
+import { browserStorage, syncStoreAcrossTabs } from "@/lib/persist-storage";
 import { connectVenue } from "@/lib/venue-registry";
+import { publicCapsOf } from "@/lib/venue-public-caps";
 
 export type VenueDescriptor = {
   venueId: string;
@@ -39,8 +40,9 @@ export function toVenueDescriptor(venue: VenueLike): VenueDescriptor {
 }
 
 // Venues offered in every environment. venue-test leads because the first
-// reachable venue becomes a new user's default, and venue-1/venue-2 (stable
-// builds) currently 403 unauthenticated users.
+// reachable venue becomes a new user's default, and it is the one that admits
+// a new device key on first sign-in (`userAutoCreate`); venue-1 and venue-2,
+// the stable builds, serve signed-out reads but don't register new accounts.
 const commonVenueUrls = [
   "https://venue-test.covia.ai",
   "https://venue-1.covia.ai",
@@ -65,9 +67,10 @@ async function connectToDefaultVenues(): Promise<Venue[]> {
         const venue = await connectVenue(url);
         const version = venue.lastKnownStatus?.version;
         const publicAccess = venue.lastKnownStatus !== undefined;
-        reportVenueHealth(venue.baseUrl, { state: "connected", version, publicAccess });
+        const publicCaps = publicCapsOf(venue.lastKnownStatus);
+        reportVenueHealth(venue.baseUrl, { state: "connected", version, publicAccess, publicCaps });
         if (venue.baseUrl !== url) {
-          reportVenueHealth(url, { state: "connected", version, publicAccess });
+          reportVenueHealth(url, { state: "connected", version, publicAccess, publicCaps });
         }
         return venue;
       } catch (error: unknown) {
@@ -141,7 +144,8 @@ export const useVenues = create(
       name: "venues",
       storage: createJSONStorage(browserStorage),
       merge: (persisted, current) => {
-        const saved = persisted as Partial<VenuesStore>;
+        // Undefined on a first visit — see the matching note in use-auth.
+        const saved = (persisted ?? {}) as Partial<VenuesStore>;
         const venues = (saved.venues ?? [])
           .filter(
             (venue) =>
@@ -163,6 +167,8 @@ export const useVenues = create(
     },
   ),
 );
+
+syncStoreAcrossTabs(useVenues);
 
 // Storage reads are synchronous, but persist still defers `hasHydrated()`
 // through a microtask, so the very first render of anything reading this

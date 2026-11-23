@@ -1,11 +1,13 @@
 "use client";
 
-import { Database, Globe } from "lucide-react";
+import { ChevronLeft, Database, Globe } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useWorkspaceExplorer } from "@/hooks/use-workspace-explorer";
 import { WorkspaceBrowserPane } from "@/components/workspace/WorkspaceBrowserPane";
 import { WorkspaceNamespacePane } from "@/components/workspace/WorkspaceNamespacePane";
 import { WorkspaceValuePane } from "@/components/workspace/WorkspaceValuePane";
 import { workspaceNamespaceForPath } from "@/lib/workspace-namespaces";
+import { useWriteAccess } from "@/hooks/use-write-access";
 
 interface WorkspaceExplorerProps {
   // Seeds the explorer's starting location (e.g. from a ?path= query param
@@ -15,7 +17,17 @@ interface WorkspaceExplorerProps {
 
 export function WorkspaceExplorer({ initialPath }: WorkspaceExplorerProps = {}) {
   const explorer = useWorkspaceExplorer(initialPath);
+  const write = useWriteAccess({ signedIn: explorer.isAuthenticated });
   const activeNamespace = workspaceNamespaceForPath(explorer.currentPath)?.key ?? null;
+
+  // The three panes are a Miller-column layout that only fits side-by-side from
+  // md up. Below md we drill down one pane at a time: Namespaces → Keys → Value,
+  // driven by the same selection state, with a back bar to step back up.
+  const mobileLevel = explorer.selectedPath ? 2 : activeNamespace ? 1 : 0;
+  const goBack = () => {
+    if (mobileLevel === 2) explorer.clearSelection();
+    else if (mobileLevel === 1) explorer.navigateTo("/");
+  };
 
   if (!explorer.venue) {
     return (
@@ -40,15 +52,28 @@ export function WorkspaceExplorer({ initialPath }: WorkspaceExplorerProps = {}) 
         </div>
       )}
 
-      <div className="grid h-[600px] w-full grid-cols-[10.5rem_17rem_minmax(0,1fr)] overflow-hidden rounded-lg border border-border shadow-sm">
-        <div className="min-w-0 border-r border-border">
+      {/* Mobile-only back bar: steps up the drill-down. Hidden from md, where
+          all three panes are visible at once. */}
+      {mobileLevel > 0 && (
+        <button
+          type="button"
+          onClick={goBack}
+          className="mb-2 flex w-full items-center gap-1.5 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground hover:text-foreground md:hidden"
+        >
+          <ChevronLeft size={16} className="shrink-0" />
+          Back to {mobileLevel === 2 ? "keys" : "namespaces"}
+        </button>
+      )}
+
+      <div className="grid h-[calc(100vh-14rem)] min-h-[26rem] w-full grid-cols-1 overflow-hidden rounded-lg border border-border shadow-sm md:grid-cols-[10rem_16rem_minmax(0,1fr)] lg:grid-cols-[10.5rem_17rem_minmax(0,1fr)]">
+        <div className={cn("min-w-0 border-r border-border", mobileLevel === 0 ? "block" : "hidden", "md:block")}>
           <WorkspaceNamespacePane
             activeNamespace={activeNamespace}
             onSelect={explorer.navigateTo}
           />
         </div>
 
-        <div className="min-w-0 border-r border-border">
+        <div className={cn("min-w-0 border-r border-border", mobileLevel === 1 ? "block" : "hidden", "md:block")}>
           <WorkspaceBrowserPane
             entries={explorer.entries}
             loading={explorer.listingLoading}
@@ -56,7 +81,7 @@ export function WorkspaceExplorer({ initialPath }: WorkspaceExplorerProps = {}) 
             currentPath={explorer.currentPath}
             pathSegments={explorer.pathSegments}
             selectedPath={explorer.selectedPath}
-            isAuthenticated={explorer.isAuthenticated}
+            canWrite={write.canWrite}
             pendingMutation={explorer.pendingMutation}
             refreshing={explorer.namespaceRefreshing}
             onNavigate={explorer.navigateTo}
@@ -65,7 +90,7 @@ export function WorkspaceExplorer({ initialPath }: WorkspaceExplorerProps = {}) 
             onResync={explorer.refreshNamespace}
           />
         </div>
-        <div data-testid="workspace-content-pane" className="flex min-w-0 flex-col overflow-y-auto">
+        <div data-testid="workspace-content-pane" className={cn("min-w-0 flex-col overflow-y-auto", mobileLevel === 2 ? "flex" : "hidden", "md:flex")}>
           <WorkspaceValuePane
             key={explorer.selectedPath ?? "empty"}
             selectedPath={explorer.selectedPath}
@@ -79,10 +104,9 @@ export function WorkspaceExplorer({ initialPath }: WorkspaceExplorerProps = {}) 
             selectedValue={explorer.selectedValue}
             loading={explorer.valueLoading}
             error={explorer.valueError}
-            editedData={explorer.editedData}
-            isAuthenticated={explorer.isAuthenticated}
+            canWrite={write.canWrite}
+            writeLockTitle={write.lockedTitle}
             pendingMutation={explorer.pendingMutation}
-            onEditedDataChange={explorer.setEditedData}
             onSave={explorer.save}
             onDelete={explorer.remove}
           />

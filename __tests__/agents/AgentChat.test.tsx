@@ -4,6 +4,8 @@ import "@testing-library/jest-dom";
 
 import { AgentChat } from "@/components/agent-chat/AgentChat";
 import { useAgentExplorer } from "@/hooks/use-agent-explorer";
+import type { PendingChat } from "@/hooks/use-pending-chats";
+import { warmMarkdownPipeline } from "@test/lazy-boundaries";
 
 jest.mock("@/hooks/use-agent-explorer", () => ({
   useAgentExplorer: jest.fn(),
@@ -15,10 +17,14 @@ const mockUseAgentExplorer = useAgentExplorer as jest.MockedFunction<
 
 function controller(overrides: Record<string, unknown> = {}) {
   return {
+    isAuthenticated: true,
     agentList: [{ agentId: "writer", status: "RUNNING" }],
     selectedAgentId: "writer",
     setSelectedAgentId: jest.fn(),
     selectedAgentDetail: { agentId: "writer", status: "RUNNING" },
+    failedSend: null,
+    retrySend: jest.fn(),
+    editFailedSend: jest.fn(),
     loading: false,
     detailLoading: false,
     detailError: false,
@@ -44,11 +50,11 @@ function controller(overrides: Record<string, unknown> = {}) {
     },
     messageText: "Follow up",
     setMessageText: jest.fn(),
-    pendingChat: null,
+    pendingChat: null as PendingChat | null,
     sending: false,
     activity: null,
     canSend: true,
-    echoAlreadyRecorded: false,
+    pendingEchoes: [],
     suspend: jest.fn(),
     resume: jest.fn(),
     triggerAgent: jest.fn(),
@@ -61,12 +67,16 @@ function controller(overrides: Record<string, unknown> = {}) {
     startNewChat: jest.fn(),
     selectSession: jest.fn(),
     send: jest.fn(),
+    stopWaiting: jest.fn(),
     ...overrides,
   } as ReturnType<typeof useAgentExplorer>;
 }
 
+// Compile the lazy module before the clock starts — see @test/lazy-boundaries.
+beforeAll(warmMarkdownPipeline);
+
 describe("AgentChat", () => {
-  it("renders a focused conversation and sends from the multiline composer", () => {
+  it("renders a focused conversation and sends from the multiline composer", async () => {
     const value = controller();
     mockUseAgentExplorer.mockReturnValue(value);
 
@@ -75,10 +85,9 @@ describe("AgentChat", () => {
     expect(mockUseAgentExplorer).toHaveBeenCalledWith("writer");
     expect(screen.getByTestId("agent-transcript")).toBeInTheDocument();
     expect(screen.getByText("Draft a launch post")).toBeInTheDocument();
-    expect(screen.getByText("Here is a concise first draft.").parentElement?.parentElement).toHaveClass(
-      "text-[15px]",
-      "leading-6",
-    );
+    // Markdown loads on first use (#473); the reply is a <p> once it has.
+    const reply = await screen.findByText("Here is a concise first draft.", { selector: "p" });
+    expect(reply.parentElement?.parentElement).toHaveClass("text-[15px]", "leading-6");
 
     fireEvent.keyDown(screen.getByTestId("clean-composer-input"), {
       key: "Enter",
@@ -90,13 +99,21 @@ describe("AgentChat", () => {
     expect(value.startNewChat).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps the assistant identity fixed on the home-style surface", () => {
-    mockUseAgentExplorer.mockReturnValue(controller());
+  it("says who suspended the agent in the suspended banner (covia#590)", () => {
+    mockUseAgentExplorer.mockReturnValue(
+      controller({
+        selectedAgentDetail: {
+          agentId: "writer",
+          status: "SUSPENDED",
+          suspension: { by: "did:key:z6MkOperatorKey", ts: Date.now() - 60_000, reason: "Rotating its key" },
+        },
+        canSend: false,
+      }),
+    );
 
-    render(<AgentChat initialAgentId="writer" fixedAgent />);
+    render(<AgentChat initialAgentId="writer" />);
 
-    expect(screen.getByText("writer")).toBeInTheDocument();
-    expect(screen.queryByRole("combobox", { name: "Agent" })).not.toBeInTheDocument();
+    expect(screen.getByTestId("agent-suspension-reason")).toHaveTextContent("Rotating its key");
   });
 
   it("offers agent creation when the venue has no selectable agent", () => {
@@ -120,5 +137,27 @@ describe("AgentChat", () => {
       "href",
       "/agents/create",
     );
+  });
+
+  it("asks a signed-out visitor to sign in rather than claiming there are no agents", () => {
+    mockUseAgentExplorer.mockReturnValue(
+      controller({
+        isAuthenticated: false,
+        agentList: [],
+        selectedAgentId: null,
+        selectedAgentDetail: null,
+        sessions: [],
+        currentSession: null,
+        hasChatSession: false,
+        messageText: "",
+        canSend: false,
+      }),
+    );
+
+    render(<AgentChat />);
+
+    expect(screen.getByTestId("agent-chat-signed-out")).toBeInTheDocument();
+    expect(screen.queryByText("No agents yet")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Create an agent" })).not.toBeInTheDocument();
   });
 });

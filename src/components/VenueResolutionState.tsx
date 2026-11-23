@@ -1,6 +1,6 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
+import type { ComponentType } from "react";
 import { Lock } from "lucide-react";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
@@ -10,7 +10,9 @@ import type { ResolvedVenueContext } from "@/hooks/use-resolved-venue";
 type VenueResolutionStateProps = {
   status: ResolvedVenueContext["status"];
   error?: string | null;
-  icon: LucideIcon;
+  // Any glyph that takes a size and a class — Lucide icons and the brand
+  // glyphs in adapter-glyphs.tsx alike.
+  icon: ComponentType<{ size?: number; className?: string }>;
   subject: string;
   venueId?: string;
 };

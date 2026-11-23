@@ -6,11 +6,6 @@ import '@testing-library/jest-dom';
 jest.mock('@/components/admin-panel/TopBar', () => ({
   TopBar: () => <div data-testid="top-bar" />,
 }));
-jest.mock('@/components/PaginationHeader', () => ({
-  PaginationHeader: ({ currentPage, totalPages }: any) => (
-    <div data-testid="pagination">{currentPage}/{totalPages}</div>
-  ),
-}));
 
 // 998 jobs on the venue; the index serves windowed slices oldest-first.
 const TOTAL = 998;
@@ -41,12 +36,13 @@ const mockVenue: any = {
   jobs: { list: jest.fn(), get: jest.fn() },
 };
 
+let mockAuthenticated = true;
 jest.mock('@/hooks/use-resolved-venue', () => ({
   useResolvedVenueContext: () => ({
     descriptor: mockVenue,
     venue: mockVenue,
     auth: { type: 'keypair' },
-    isAuthenticated: true,
+    isAuthenticated: mockAuthenticated,
   }),
 }));
 jest.mock('@/hooks/use-venues', () => ({
@@ -54,6 +50,10 @@ jest.mock('@/hooks/use-venues', () => ({
 }));
 
 import { JobList } from '@/components/JobList';
+import { warmSparkline } from '@test/lazy-boundaries';
+
+// Compile the lazy module before the clock starts — see @test/lazy-boundaries.
+beforeAll(warmSparkline);
 
 describe('JobList windowed fetching', () => {
   beforeEach(() => {
@@ -120,6 +120,29 @@ describe('JobList windowed fetching', () => {
     // The window fetch reuses the count learned by the initial page slice —
     // no second list() probe.
     expect(mockVenue.workspace.list).toHaveBeenCalledTimes(1);
+  });
+
+  describe('?status= deep link (#364)', () => {
+    afterEach(() => window.history.replaceState({}, '', '/'));
+
+    it('starts filtered to the status the link names', async () => {
+      window.history.replaceState({}, '', '/jobs?status=AUTH_REQUIRED');
+      render(<JobList />);
+
+      // A filter reads one FILTER_WINDOW window, and every fixture job is COMPLETE.
+      await waitFor(() => {
+        expect(mockVenue.workspace.slice).toHaveBeenCalledWith('j', TOTAL - 100, 100);
+      });
+      expect(await screen.findByText(/Showing 0 of/)).toBeInTheDocument();
+    });
+
+    it('ignores a status it does not know', async () => {
+      window.history.replaceState({}, '', '/jobs?status=BOGUS');
+      render(<JobList />);
+
+      expect((await screen.findAllByText('job-997')).length).toBeGreaterThan(0);
+      expect(mockVenue.workspace.slice).not.toHaveBeenCalledWith('j', TOTAL - 100, 100);
+    });
   });
 
   it('recovers from a stale count between list() and slice() (#193)', async () => {
@@ -201,5 +224,80 @@ describe('JobList trend sparklines (#225)', () => {
       expect(screen.getByText('Latency (p50)')).toBeInTheDocument();
     });
     expect(screen.getByText('Failures')).toBeInTheDocument();
+  });
+});
+
+describe('JobList does not assert zeros before the count is known (#419)', () => {
+  beforeEach(() => {
+    mockVenue.workspace.list.mockClear();
+    mockVenue.workspace.slice.mockClear();
+  });
+
+  it('holds the total and the summary until a read lands, then shows them', async () => {
+    // Nothing resolves yet: the component is in exactly the state a user sees
+    // in the first seconds of a cold load.
+    let releaseList: (v: any) => void = () => {};
+    let releaseSlice: (v: any) => void = () => {};
+    mockVenue.workspace.list.mockReturnValueOnce(
+      new Promise((resolve) => { releaseList = resolve; }));
+    mockVenue.workspace.slice.mockReturnValueOnce(
+      new Promise((resolve) => { releaseSlice = resolve; }));
+
+    render(<JobList />);
+
+    // The bug: "Showing 0 of 0" and a Total Jobs of 0 — a definite claim that
+    // this venue has no jobs, made before anything was read.
+    await screen.findByText(/Counting jobs/i);
+    expect(screen.queryByText(/Showing 0 of 0/)).not.toBeInTheDocument();
+
+    releaseList({ exists: true, count: TOTAL, keys: [] });
+    releaseSlice({
+      exists: true,
+      count: TOTAL,
+      values: Array.from({ length: 10 }, (_, i) => ({
+        key: String(988 + i).padStart(4, '0'),
+        value: record(988 + i),
+      })),
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(/Showing 10 of 998/)).toBeInTheDocument());
+    expect(screen.queryByText(/Counting jobs/i)).not.toBeInTheDocument();
+  });
+
+  it('still reports a genuinely empty venue as zero', async () => {
+    mockVenue.workspace.list.mockResolvedValueOnce({ exists: true, count: 0, keys: [] });
+    mockVenue.workspace.slice.mockResolvedValueOnce({ exists: true, count: 0, values: [] });
+
+    render(<JobList />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Showing 0 of 0/)).toBeInTheDocument());
+  });
+});
+
+// The count is always the caller's own jobs, never the venue's — venue-3 read
+// 311 under "across this venue" while the venue itself held ~35,000 (#422).
+describe('JobList scopes the Total Jobs caption to the caller', () => {
+  beforeEach(() => {
+    mockVenue.workspace.list.mockClear();
+    mockVenue.workspace.slice.mockClear();
+    mockAuthenticated = true;
+  });
+  afterAll(() => { mockAuthenticated = true; });
+
+  it('says "for this user" when signed in', async () => {
+    render(<JobList />);
+    await waitFor(() => expect(screen.getByText('for this user')).toBeInTheDocument());
+    expect(screen.queryByText(/across this venue/i)).not.toBeInTheDocument();
+  });
+
+  it('does not claim the venue-wide total when signed out', async () => {
+    mockAuthenticated = false;
+    render(<JobList />);
+
+    await waitFor(() =>
+      expect(screen.getByText('for signed-out callers')).toBeInTheDocument());
+    expect(screen.queryByText(/across this venue/i)).not.toBeInTheDocument();
   });
 });

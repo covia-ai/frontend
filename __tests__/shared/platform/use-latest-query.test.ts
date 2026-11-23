@@ -83,3 +83,80 @@ describe("useLatestQuery", () => {
     expect(result.current.data).toEqual(["reset"]);
   });
 });
+
+describe("useLatestQuery settled", () => {
+  it("is false before any answer, so a placeholder zero is not mistaken for one", () => {
+    const { result } = renderHook(() => useLatestQuery({ total: 0 }));
+    expect(result.current.settled).toBe(false);
+    expect(result.current.data).toEqual({ total: 0 });
+  });
+
+  it("stays false while the first read is in flight", async () => {
+    const first = deferred<{ total: number }>();
+    const { result } = renderHook(() => useLatestQuery({ total: 0 }));
+
+    act(() => { void result.current.run(async () => first.promise); });
+    expect(result.current.loading).toBe(true);
+    expect(result.current.settled).toBe(false);
+
+    await act(async () => { first.resolve({ total: 311 }); await first.promise; });
+    await waitFor(() => expect(result.current.settled).toBe(true));
+    expect(result.current.data).toEqual({ total: 311 });
+  });
+
+  it("settles on a genuinely empty answer", async () => {
+    const { result } = renderHook(() => useLatestQuery({ total: 0 }));
+    await act(async () => { await result.current.run(async () => ({ total: 0 })); });
+    expect(result.current.settled).toBe(true);
+  });
+
+  it("settles on an incremental publish", async () => {
+    const done = deferred<string[]>();
+    const { result } = renderHook(() => useLatestQuery<string[]>([]));
+
+    act(() => {
+      void result.current.run(async (publish) => {
+        publish(["partial"]);
+        return done.promise;
+      });
+    });
+    await waitFor(() => expect(result.current.settled).toBe(true));
+    await act(async () => { done.resolve(["final"]); await done.promise; });
+  });
+
+  it("does not settle on a first-load failure — the error shows, not a zero", async () => {
+    const { result } = renderHook(() => useLatestQuery({ total: 0 }));
+    await act(async () => {
+      await result.current.run(async () => { throw new Error("venue unreachable"); });
+    });
+    expect(result.current.error).toBe("venue unreachable");
+    expect(result.current.settled).toBe(false);
+  });
+
+  it("keeps a previous answer through a refresh, and drops it when cleared", async () => {
+    const { result } = renderHook(() => useLatestQuery({ total: 0 }));
+    await act(async () => { await result.current.run(async () => ({ total: 311 })); });
+    expect(result.current.settled).toBe(true);
+
+    const refresh = deferred<{ total: number }>();
+    act(() => { void result.current.run(async () => refresh.promise); });
+    expect(result.current.settled).toBe(true); // stale-while-refresh keeps the answer
+    await act(async () => { refresh.resolve({ total: 312 }); await refresh.promise; });
+
+    const cleared = deferred<{ total: number }>();
+    act(() => { void result.current.run(async () => cleared.promise, { clear: true }); });
+    expect(result.current.settled).toBe(false);
+    await act(async () => { cleared.resolve({ total: 5 }); await cleared.promise; });
+  });
+
+  it("unsettles on reset, and settles when reset supplies data", async () => {
+    const { result } = renderHook(() => useLatestQuery({ total: 0 }));
+    await act(async () => { await result.current.run(async () => ({ total: 311 })); });
+
+    act(() => { result.current.reset(); });
+    expect(result.current.settled).toBe(false);
+
+    act(() => { result.current.reset({ total: 7 }); });
+    expect(result.current.settled).toBe(true);
+  });
+});

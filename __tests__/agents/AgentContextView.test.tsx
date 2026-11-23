@@ -36,7 +36,6 @@ describe('AgentContextView', () => {
         agentId="agent-1"
         sessions={sessions}
         initialSessionId="session-1"
-        onBack={jest.fn()}
       />,
     );
     expect(mockRunOperation).not.toHaveBeenCalled();
@@ -50,7 +49,6 @@ describe('AgentContextView', () => {
         agentId="agent-1"
         sessions={sessions}
         initialSessionId="session-1"
-        onBack={jest.fn()}
       />,
     );
 
@@ -73,7 +71,6 @@ describe('AgentContextView', () => {
         agentId="agent-1"
         sessions={sessions}
         initialSessionId="session-1"
-        onBack={jest.fn()}
       />,
     );
 
@@ -95,7 +92,6 @@ describe('AgentContextView', () => {
         agentId="agent-1"
         sessions={sessions}
         initialSessionId="session-1"
-        onBack={jest.fn()}
       />,
     );
 

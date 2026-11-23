@@ -1,11 +1,8 @@
 import { act, renderHook } from "@testing-library/react";
 
 jest.mock("next/navigation", () => ({ useRouter: jest.fn() }));
-jest.mock("@/lib/notify", () => ({
-  notifyError: jest.fn(),
-  notifyWarning: jest.fn(),
-  jobFailure: jest.fn((error: unknown) => ({ reason: error, jobHref: "/job/failed" })),
-}));
+jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
+import { notifyMock } from "@test/notify";
 const mockWatch = jest.fn();
 jest.mock("@/hooks/use-watched-jobs", () => ({
   useWatchedJobs: { getState: () => ({ watch: mockWatch }) },
@@ -26,6 +23,11 @@ const venue = {
 describe("useJobExecution", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // This suite asserts the job link reaches notifyError.
+    notifyMock.jobFailure.mockImplementation((error: unknown) => ({
+      reason: error,
+      jobHref: "/job/failed",
+    }));
     mockUseRouter.mockReturnValue({ push } as unknown as ReturnType<typeof useRouter>);
   });
 
@@ -64,7 +66,8 @@ describe("useJobExecution", () => {
 
     await act(async () => {
       await result.current.execute({
-        action: async () => ({}),
+        // A result, not a Job — what `operations.run` would hand back.
+        action: async () => ({}) as never,
         failureTitle: "Unable to run tool",
         missingJobMessage: "The tool completed without returning a job ID",
         onError,

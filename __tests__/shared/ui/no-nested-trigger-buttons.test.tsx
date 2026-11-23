@@ -9,15 +9,11 @@ import '@testing-library/jest-dom';
 jest.mock('@/hooks/use-venues', () => ({
   useVenues: () => ({ venues: [], removeVenue: jest.fn() }),
 }));
-const mockVenue: any = { venueId: 'venue-1', metadata: { name: 'V' } };
-jest.mock('@/hooks/use-authenticated-venue', () => ({
-  useAuthenticatedVenue: () => mockVenue,
-}));
 
 import { AssetInfoSheet } from '@/components/AssetInfoSheet';
 import { RemoveVenueModal } from '@/components/RemoveVenueModal';
 import { ExecutionToolbar } from '@/components/ExecutionToolbar';
-import { SmartBreadcrumb } from '@/components/smartbreadcrumb2';
+import { SmartBreadcrumb } from '@/components/SmartBreadcrumb';
 
 const opAsset: any = {
   id: 'v/ops/test/echo',

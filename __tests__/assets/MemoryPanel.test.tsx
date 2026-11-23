@@ -2,37 +2,32 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 
-jest.mock("@/lib/notify", () => ({
-  notifySuccess: jest.fn(),
-  notifyError: jest.fn(),
-}));
+jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
+jest.mock("@/hooks/use-auth", () => require("@test/use-auth").authMock);
+jest.mock("@/hooks/use-authenticated-venue", () =>
+  require("@test/use-authenticated-venue").venueMock);
 
-let mockAuthenticated = true;
-jest.mock("@/hooks/use-auth", () => ({
-  useIsAuthenticated: () => mockAuthenticated,
-}));
-
-const mockVenue: any = {
-  baseUrl: "https://venue.example",
-  workspace: { read: jest.fn() },
-  operations: { run: jest.fn() },
-};
-jest.mock("@/hooks/use-authenticated-venue", () => ({
-  useAuthenticatedVenue: () => mockVenue,
-}));
+import { sampleKeypairAuth, setCurrentAuth } from "@test/use-auth";
+import { setVenue } from "@test/use-authenticated-venue";
+import { resetSupportMocks } from "@test/reset";
 
 import { MemoryPanel } from "@/components/MemoryPanel";
 
+let mockVenue: any;
+
 describe("MemoryPanel", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockAuthenticated = true;
-    mockVenue.workspace.read.mockResolvedValue({ exists: false, value: null });
-    mockVenue.operations.run.mockResolvedValue({});
+    resetSupportMocks();
+    setCurrentAuth(sampleKeypairAuth);
+    mockVenue = setVenue({
+      baseUrl: "https://venue.example",
+      workspace: { read: jest.fn().mockResolvedValue({ exists: false, value: null }) },
+      operations: { run: jest.fn().mockResolvedValue({}) },
+    });
   });
 
   it("requires authentication", async () => {
-    mockAuthenticated = false;
+    setCurrentAuth(null);
     render(<MemoryPanel />);
     expect(await screen.findByText(/authentication required/i)).toBeInTheDocument();
     expect(mockVenue.workspace.read).not.toHaveBeenCalled();
@@ -86,6 +81,40 @@ describe("MemoryPanel", () => {
     await user.click(screen.getByRole("button", { name: "Forget item 2" }));
     await user.click(await screen.findByRole("button", { name: /^forget$/i }));
 
+    await waitFor(() =>
+      expect(mockVenue.operations.run).toHaveBeenCalledWith("v/ops/memory", { command: "forget", n: 2 }),
+    );
+  });
+
+  it("surfaces each entry's timestamp (2B R-4 — loaded but previously dropped)", async () => {
+    const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000;
+    mockVenue.workspace.read.mockResolvedValue({
+      exists: true,
+      value: [{ text: "Prefers dark mode", updated: twoHoursAgo }],
+    });
+    render(<MemoryPanel />);
+    const when = await screen.findByText("2h ago");
+    // the absolute time rides along as the hover title
+    expect(when).toHaveAttribute("title", new Date(twoHoursAgo).toLocaleString());
+  });
+
+  it("search filters the list but forget still keys off the true 1-based index (2B R-5)", async () => {
+    const user = userEvent.setup();
+    mockVenue.workspace.read.mockResolvedValue({
+      exists: true,
+      value: [{ text: "Apple" }, { text: "Banana" }],
+    });
+    render(<MemoryPanel />);
+    await screen.findByText("Banana");
+
+    await user.type(screen.getByRole("textbox", { name: /search memory/i }), "ban");
+    expect(screen.queryByText("Apple")).not.toBeInTheDocument();
+    expect(screen.getByText("Banana")).toBeInTheDocument();
+
+    // Banana is the 2nd entry; forgetting it from the filtered view must still
+    // pass n:2, not n:1 (its position in the filtered view).
+    await user.click(screen.getByRole("button", { name: "Forget item 2" }));
+    await user.click(await screen.findByRole("button", { name: /^forget$/i }));
     await waitFor(() =>
       expect(mockVenue.operations.run).toHaveBeenCalledWith("v/ops/memory", { command: "forget", n: 2 }),
     );

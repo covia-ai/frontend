@@ -24,14 +24,16 @@ jest.mock("@/config/connections", () => {
 });
 
 let mockAuthenticated = true;
-jest.mock("@/hooks/use-auth", () => ({ useIsAuthenticated: () => mockAuthenticated }));
+jest.mock("@/hooks/use-auth", () => ({
+  ...require("@test/use-auth").authMock, useIsAuthenticated: () => mockAuthenticated }));
 
 let mockVenue: any;
 jest.mock("@/hooks/use-authenticated-venue", () => ({
+  ...require("@test/use-authenticated-venue").venueMock,
   useAuthenticatedVenue: () => mockVenue,
   revalidateVenueOnFailure: jest.fn(),
 }));
-jest.mock("@/lib/notify", () => ({ notifyError: jest.fn(), notifySuccess: jest.fn() }));
+jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
 
 import { ConnectionsList } from "@/components/ConnectionsList";
 

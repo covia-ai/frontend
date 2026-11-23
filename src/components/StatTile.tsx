@@ -1,9 +1,18 @@
 "use client";
 
-import { ComponentType } from "react";
+import { ComponentType, lazy, Suspense } from "react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Sparkline, type TrendPoint } from "@/components/charts/Sparkline";
+import type { TrendPoint } from "@/components/charts/Sparkline";
+
+// recharts is ~100 KB gzip (#476) and only the trend line needs it, so load it
+// with the first tile that has one rather than with every page using StatTile.
+// The placeholder holds the line's height so the tile doesn't grow when it lands.
+const Sparkline = lazy(() =>
+  import("@/components/charts/Sparkline").then((m) => ({ default: m.Sparkline })),
+);
+
+const SPARKLINE_HEIGHT = 28;
 
 interface StatTileProps {
   icon: ComponentType<{ size?: number; className?: string }>;
@@ -30,11 +39,14 @@ export function StatTile({ icon: Icon, label, value, caption, iconClassName, tre
       <div className="text-2xl font-semibold text-foreground">{value}</div>
       {caption && <div className="text-xs text-muted-foreground">{caption}</div>}
       {trend && (
-        <Sparkline
-          data={trend.data}
-          formatValue={trend.formatValue}
-          ariaLabel={`${label} trend`}
-        />
+        <Suspense fallback={<div aria-hidden style={{ height: SPARKLINE_HEIGHT }} />}>
+          <Sparkline
+            data={trend.data}
+            formatValue={trend.formatValue}
+            height={SPARKLINE_HEIGHT}
+            ariaLabel={`${label} trend`}
+          />
+        </Suspense>
       )}
     </Card>
   );

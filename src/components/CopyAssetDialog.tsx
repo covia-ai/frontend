@@ -132,7 +132,7 @@ export function CopyAssetDialog({ asset, venue, isAuthenticated }: CopyAssetDial
               data={baseData}
               setData={setJsonData}
               rootName="metadata"
-              rootFontSize="1em"
+              baseFontSize="1em"
               collapse={false}
               maxWidth={JSON_EDITOR_MAX_WIDTH}
               minWidth="50vw"
@@ -142,7 +142,7 @@ export function CopyAssetDialog({ asset, venue, isAuthenticated }: CopyAssetDial
               data={jsonData}
               setData={setJsonData}
               rootName="metadata"
-              rootFontSize="1em"
+              baseFontSize="1em"
               collapse={false}
               maxWidth={JSON_EDITOR_MAX_WIDTH}
               minWidth="50vw"

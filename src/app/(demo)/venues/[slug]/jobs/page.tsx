@@ -3,6 +3,7 @@
 
 import { use } from "react";
 import { JobList } from "@/components/JobList";
+import { routeParam } from "@/lib/route-params";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -10,5 +11,5 @@ interface Props {
 
 export default function JobPage({ params }: Props) {
   const { slug } = use(params);
-  return <JobList venueId={decodeURIComponent(slug)} />
+  return <JobList venueId={routeParam(slug)} />
 }

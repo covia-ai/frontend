@@ -1,19 +1,17 @@
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { ExecutionViewer } from "@/components/ExecutionViewer";
+import { routeParam } from "@/lib/route-params";
 
 export default async function Page({
   params,
 }: {
-  params: Promise<{ id: string, slug:string }>
+  params: Promise<{ id: string; slug: string }>;
 }) {
-  const { id } = await params
-  const { slug } = await params
-   
- 
-  return (
+  const { id, slug } = await params;
 
-     <ContentLayout>            
-           <ExecutionViewer jobId={id} venueId={decodeURIComponent(slug)}></ExecutionViewer>
-      </ContentLayout>
-  )
+  return (
+    <ContentLayout>
+      <ExecutionViewer jobId={routeParam(id)} venueId={routeParam(slug)} />
+    </ContentLayout>
+  );
 }

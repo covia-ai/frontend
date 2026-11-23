@@ -50,6 +50,7 @@ export function AgentRuntimeSummary({ sessions }: { sessions: Session[] }) {
         {pending.length > 0 && (
           <button
             type="button"
+            data-testid="runtime-pending-toggle"
             className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
             aria-expanded={expanded}
             onClick={() => setExpanded((value) => !value)}
@@ -60,7 +61,10 @@ export function AgentRuntimeSummary({ sessions }: { sessions: Session[] }) {
           </button>
         )}
         {nextWakeTime !== null && (
-          <span className="flex items-center gap-1.5 text-muted-foreground">
+          <span
+            data-testid="runtime-next-wake"
+            className="flex items-center gap-1.5 text-muted-foreground"
+          >
             <AlarmClock size={14} aria-hidden="true" />
             Next wake: {formatWakeTime(nextWakeTime)}
           </span>

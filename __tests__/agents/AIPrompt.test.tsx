@@ -17,7 +17,11 @@ jest.mock('@/lib/notify', () => ({
 }));
 
 const mockUseAuthenticatedVenue = jest.fn();
+// The complete double underneath: the agent-picker read revalidates the venue
+// on failure, which a mock that only provides useAuthenticatedVenue would leave
+// undefined.
 jest.mock('@/hooks/use-authenticated-venue', () => ({
+  ...require('@test/use-authenticated-venue').venueMock,
   useAuthenticatedVenue: () => mockUseAuthenticatedVenue(),
 }));
 
@@ -25,6 +29,7 @@ jest.mock('@/hooks/use-authenticated-venue', () => ({
 // defaults to authenticated — only the sign-in-gate suite flips it to false.
 const mockUseIsAuthenticated = jest.fn();
 jest.mock('@/hooks/use-auth', () => ({
+  ...require('@test/use-auth').authMock,
   useIsAuthenticated: () => mockUseIsAuthenticated(),
 }));
 
@@ -80,7 +85,7 @@ function makeVenue(overrides: {
   const agents = rawAgents.map((a) =>
     typeof a === 'string' ? { agentId: a, status: agentStatus, tasks: 0 } : { tasks: 0, ...a }
   );
-  return {
+  const venue = {
     agents: {
       // Mirrors the real venue: list() hides TERMINATED agents unless
       // includeTerminated is explicitly true — a caller that forgets the
@@ -103,7 +108,18 @@ function makeVenue(overrides: {
         overrides.templateRead ?? { exists: true, value: SKILLED_TEMPLATE },
       ),
     },
+    // The prompt sends its chat as a tracked job (sendAgentChat): invoke, a job
+    // read for the new session, then the job's result. `agents.chat` stands in
+    // for that outcome, so tests set and check it as the chat itself.
+    operations: {
+      invoke: jest.fn().mockImplementation((_op: string, input: { agentId: string; message: string }) =>
+        Promise.resolve({ id: '0xjob', result: () => venue.agents.chat(input.agentId, input.message) })),
+    },
+    jobs: {
+      get: jest.fn().mockResolvedValue({ metadata: { sessionId: 's-1' } }),
+    },
   };
+  return venue;
 }
 
 // Opens the "⋮" agent picker menu and clicks the option with the given visible text.
@@ -279,6 +295,9 @@ describe('AIPrompt — default agent reuse vs creation', () => {
           // it was pinned for a different provider.
           llmOperation: 'v/ops/langchain/anthropic',
           systemPrompt: SKILLED_CONFIG.systemPrompt,
+          // The template sets no caps, which the venue reads as no authority
+          // (covia 0.11): the user's own assistant is unrestricted.
+          caps: 'unrestricted',
         },
       });
     });

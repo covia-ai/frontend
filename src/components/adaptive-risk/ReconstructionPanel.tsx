@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DidDisplay } from "@/components/DidDisplay";
 import { useAuthStore } from "@/hooks/use-auth";
+import { writeTextToClipboard } from "@/lib/clipboard";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import {
   JOBS_MD_RULE,
@@ -65,7 +66,7 @@ export function ReconstructionPanel({
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(curl);
+      await writeTextToClipboard(curl);
       notifySuccess("Copied", { description: "Paste it into a terminal." });
     } catch (err) {
       notifyError("Unable to copy the command", err);
@@ -118,15 +119,15 @@ export function ReconstructionPanel({
               <DidDisplay value={summary.caller} />
             </div>
           )}
-          {summary.actor ? (
+          {summary.owner ? (
             <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">actor</span>
-              <DidDisplay value={summary.actor} />
+              <span className="text-muted-foreground">owner</span>
+              <DidDisplay value={summary.owner} />
             </div>
           ) : (
-            <p className="text-muted-foreground" data-testid="ar-no-actor">
-              No <span className="font-mono">actor</span> field — it appears only
-              when the acting principal differs from the record&apos;s owner.
+            <p className="text-muted-foreground" data-testid="ar-no-owner">
+              No <span className="font-mono">owner</span> field. Covia 0.12 names
+              the caller alone; older venues include an owner when it differs.
             </p>
           )}
           {summary.error && (

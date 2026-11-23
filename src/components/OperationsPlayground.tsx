@@ -1,15 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Lock } from "lucide-react";
-import { RunStatus } from "@covia/covia-sdk";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { PageHeading } from "@/components/PageHeading";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
-import { StatusBadge } from "@/components/StatusBadge";
-import { ExecutionDataTable } from "@/components/execution/ExecutionDataTable";
+import { OperationRunResult } from "@/components/execution/OperationRunResult";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -21,12 +19,11 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Spinner } from "@/components/ui/shadcn-io/spinner";
-import { useIsAuthenticated } from "@/hooks/use-auth";
+import { useWriteAccess } from "@/hooks/use-write-access";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
-import { useExecutionLifecycle } from "@/hooks/use-execution-lifecycle";
+import { useStoredValue } from "@/hooks/use-stored-value";
 import { resolveOperationByAddress } from "@/lib/operations-catalog";
-import { notifyError } from "@/lib/notify";
+import { useJobExecution } from "@/hooks/use-job-execution";
 
 type PlaygroundTab = "schema" | "json" | "test";
 
@@ -68,44 +65,65 @@ function findOp(tab: PlaygroundTab, opValue: string): OpDef {
   return TAB_OPS[tab].find((op) => op.value === opValue) ?? TAB_OPS[tab][0];
 }
 
+type PlaygroundState = { tab: PlaygroundTab; opValue: string; inputText: string };
+
+const placeholderText = (tab: PlaygroundTab, opValue: string) =>
+  JSON.stringify(findOp(tab, opValue).placeholder, null, 2);
+
+/** The tab, operation and input a shared link carries; defaults without one. */
+function restoreFromSearch(search: string | undefined): PlaygroundState {
+  const params = new URLSearchParams(search ?? "");
+  const tab = isPlaygroundTab(params.get("tab")) ? (params.get("tab") as PlaygroundTab) : "schema";
+  const urlOp = params.get("op");
+  const opValue = urlOp && TAB_OPS[tab].some((op) => op.value === urlOp) ? urlOp : TAB_OPS[tab][0].value;
+  let inputText = placeholderText(tab, opValue);
+  const urlInput = params.get("input");
+  if (urlInput) {
+    try {
+      inputText = JSON.stringify(JSON.parse(urlInput), null, 2);
+    } catch {
+      // Fall back to the sub-op's placeholder rather than a broken link.
+    }
+  }
+  return { tab, opValue, inputText };
+}
+
+const readSearch = () => window.location.search;
+
 export function OperationsPlayground() {
+  // The share link's state, read as the browser state it is: undefined on the
+  // server and during hydration, then the query string. window.location rather
+  // than useSearchParams keeps this route static — same rationale as JobList's
+  // ?tab= restore.
+  const [search] = useStoredValue(readSearch);
+  const restored = useMemo(() => restoreFromSearch(search), [search]);
+
+  // Until the URL is known the form runs on defaults; once it is, the form
+  // remounts seeded from the link — once, at hydration, before anything can
+  // have been typed. Later URL writes come from the form itself.
+  return (
+    <PlaygroundForm
+      key={search === undefined ? "defaults" : "restored"}
+      initial={restored}
+      hydrated={search !== undefined}
+    />
+  );
+}
+
+function PlaygroundForm({ initial, hydrated }: { initial: PlaygroundState; hydrated: boolean }) {
   const venue = useAuthenticatedVenue();
-  const isAuthenticated = useIsAuthenticated();
+  const write = useWriteAccess({ anonymous: true });
   const router = useRouter();
   const pathname = usePathname();
 
-  const [tab, setTab] = useState<PlaygroundTab>("schema");
-  const [opValue, setOpValue] = useState<string>(TAB_OPS.schema[0].value);
-  const [inputText, setInputText] = useState<string>(() => JSON.stringify(TAB_OPS.schema[0].placeholder, null, 2));
+  const [tab, setTab] = useState<PlaygroundTab>(initial.tab);
+  const [opValue, setOpValue] = useState<string>(initial.opValue);
+  const [inputText, setInputText] = useState<string>(initial.inputText);
   const [inputError, setInputError] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
-  const [invoking, setInvoking] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
-
-  // Restore tab/op/input from a shared link once on mount. Reading
-  // window.location directly rather than useSearchParams keeps this route
-  // static — same rationale as JobList's ?tab= restore.
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const restoredTab = isPlaygroundTab(params.get("tab")) ? (params.get("tab") as PlaygroundTab) : "schema";
-    const urlOp = params.get("op");
-    const restoredOp = urlOp && TAB_OPS[restoredTab].some((op) => op.value === urlOp)
-      ? urlOp
-      : TAB_OPS[restoredTab][0].value;
-    const urlInput = params.get("input");
-    let restoredInputText = JSON.stringify(findOp(restoredTab, restoredOp).placeholder, null, 2);
-    if (urlInput) {
-      try {
-        restoredInputText = JSON.stringify(JSON.parse(urlInput), null, 2);
-      } catch {
-        // Fall back to the sub-op's placeholder rather than a broken link.
-      }
-    }
-    setTab(restoredTab);
-    setOpValue(restoredOp);
-    setInputText(restoredInputText);
-    setHydrated(true);
-  }, []);
+  // The same path as every other user-started run: the job is watched for the
+  // ambient completion notification, and a failure names the job and venue.
+  const { execute, running: invoking } = useJobExecution(venue);
 
   function writeUrl(nextTab: PlaygroundTab, nextOp: string, nextInputText: string) {
     const params = new URLSearchParams();
@@ -122,7 +140,7 @@ export function OperationsPlayground() {
   function handleTabChange(nextTabValue: string) {
     if (!isPlaygroundTab(nextTabValue)) return;
     const nextOp = TAB_OPS[nextTabValue][0];
-    const nextInputText = JSON.stringify(nextOp.placeholder, null, 2);
+    const nextInputText = placeholderText(nextTabValue, nextOp.value);
     setTab(nextTabValue);
     setOpValue(nextOp.value);
     setInputText(nextInputText);
@@ -132,8 +150,7 @@ export function OperationsPlayground() {
   }
 
   function handleOpChange(nextOpValue: string) {
-    const nextOp = findOp(tab, nextOpValue);
-    const nextInputText = JSON.stringify(nextOp.placeholder, null, 2);
+    const nextInputText = placeholderText(tab, nextOpValue);
     setOpValue(nextOpValue);
     setInputText(nextInputText);
     setInputError(null);
@@ -142,7 +159,7 @@ export function OperationsPlayground() {
   }
 
   async function handleRun() {
-    if (!venue || !isAuthenticated) return;
+    if (!venue || !write.canWrite) return;
     let parsed: unknown;
     try {
       parsed = JSON.parse(inputText);
@@ -151,19 +168,21 @@ export function OperationsPlayground() {
       return;
     }
     setInputError(null);
-    setInvoking(true);
     setJobId(null);
     const op = findOp(tab, opValue);
-    try {
-      const operation = await resolveOperationByAddress(venue, op.address);
-      const job = await operation.invoke(parsed as Record<string, unknown>);
-      setJobId(job.id);
-      writeUrl(tab, opValue, inputText);
-    } catch (err) {
-      notifyError(`Unable to run ${op.label}`, err);
-    } finally {
-      setInvoking(false);
-    }
+    await execute({
+      action: async () => {
+        const operation = await resolveOperationByAddress(venue, op.address);
+        return operation.invoke(parsed as Record<string, unknown>);
+      },
+      failureTitle: `Unable to run ${op.label}`,
+      // The result renders in place below the form.
+      navigate: false,
+      onSuccess: (id) => {
+        setJobId(id);
+        writeUrl(tab, opValue, inputText);
+      },
+    });
   }
 
   return (
@@ -177,8 +196,11 @@ export function OperationsPlayground() {
 
         <Tabs value={tab} onValueChange={handleTabChange}>
           <TabsList>
+            {/* Locked while a run is being submitted, like the operation picker
+                below: switching clears the result pane, and the in-flight
+                invoke would then fill it under the wrong operation. */}
             {TABS.map((t) => (
-              <TabsTrigger key={t} value={t}>{TAB_LABELS[t]}</TabsTrigger>
+              <TabsTrigger key={t} value={t} disabled={invoking}>{TAB_LABELS[t]}</TabsTrigger>
             ))}
           </TabsList>
 
@@ -187,7 +209,7 @@ export function OperationsPlayground() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 <Card>
                   <CardContent className="pt-6 space-y-4">
-                    <Select value={opValue} onValueChange={handleOpChange}>
+                    <Select value={opValue} onValueChange={handleOpChange} disabled={invoking}>
                       <SelectTrigger className="w-full">
                         <SelectValue />
                       </SelectTrigger>
@@ -205,14 +227,21 @@ export function OperationsPlayground() {
                       data-testid="playground-input"
                     />
                     {inputError && <ErrorDisplay error={inputError} />}
-                    {isAuthenticated ? (
-                      <Button onClick={() => void handleRun()} disabled={!venue || invoking}>
-                        {invoking ? "Running…" : "Run"}
-                      </Button>
+                    {write.canWrite ? (
+                      <>
+                        <Button onClick={() => void handleRun()} disabled={!venue || invoking} data-testid="playground-run">
+                          {invoking ? "Running…" : "Run"}
+                        </Button>
+                        {write.anonymousNote && (
+                          <p className="text-xs text-muted-foreground" data-testid="playground-anonymous-note">
+                            {write.anonymousNote}
+                          </p>
+                        )}
+                      </>
                     ) : (
-                      <Button variant="outline" disabled className="gap-2 text-muted-foreground">
+                      <Button variant="outline" disabled className="gap-2 text-muted-foreground" title={write.lockedTitle}>
                         <Lock size={14} />
-                        Sign in to run operations
+                        {write.lockedLabel("run operations")}
                       </Button>
                     )}
                   </CardContent>
@@ -221,7 +250,7 @@ export function OperationsPlayground() {
                 <Card className="min-h-[240px]">
                   <CardContent className="pt-6">
                     {jobId && venue ? (
-                      <PlaygroundResult jobId={jobId} venueId={venue.venueId} />
+                      <OperationRunResult jobId={jobId} venueId={venue.venueId} />
                     ) : (
                       <p className="text-sm text-muted-foreground">Run an operation to see the result here.</p>
                     )}
@@ -233,46 +262,5 @@ export function OperationsPlayground() {
         </Tabs>
       </div>
     </ContentLayout>
-  );
-}
-
-// A trimmed-down sibling of ExecutionViewer's job-detail rendering — reuses
-// the same lifecycle hook (polling/streaming) but skips ExecutionViewer's
-// own TopBar/ExecutionHeader chrome, which assumes it owns the whole page
-// rather than sitting inline in a split pane.
-function PlaygroundResult({ jobId, venueId }: { jobId: string; venueId: string }) {
-  const execution = useExecutionLifecycle({ jobId, venueId });
-  const { job, operationAsset, loading, error, streaming } = execution;
-
-  if (loading) {
-    return (
-      <div className="flex h-32 w-full items-center justify-center">
-        <Spinner variant="ellipsis" className="text-primary" size={32} />
-      </div>
-    );
-  }
-  if (error) return <ErrorDisplay error={error} />;
-  if (!job) return null;
-
-  const operationSchema = operationAsset?.metadata?.operation;
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <StatusBadge status={job.status} kind="job" />
-        {streaming && (
-          <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300 text-xs font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-            Streaming
-          </span>
-        )}
-      </div>
-
-      {job.status === RunStatus.FAILED && job.error ? (
-        <ErrorDisplay error={job.error} />
-      ) : (
-        <ExecutionDataTable value={job.output} schema={operationSchema?.output} direction="output" />
-      )}
-    </div>
   );
 }

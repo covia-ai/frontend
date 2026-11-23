@@ -1,48 +1,94 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useResolvedVenue } from "@/hooks/use-resolved-venue";
+import { useState } from "react";
+import type { MCPTool } from "@covia/covia-sdk";
+import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
+import { useVenueRead } from "@/hooks/use-venue-read";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
-import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
-import { Copy, Play, Wrench } from "lucide-react";
-import { notifyError, notifyWarning } from "@/lib/notify";
+import { copyDataToClipBoard } from "@/lib/utils";
+import { ArrowRight, CheckCircle2, Copy, Play } from "lucide-react";
+import Link from "next/link";
+import { McpGlyph } from "@/components/adapter-glyphs";
+import { notifyWarning } from "@/lib/notify";
 import { useJobExecution } from "@/hooks/use-job-execution";
+import { ListLoadError } from "@/components/ListLoadError";
+import { VenueResolutionState } from "@/components/VenueResolutionState";
+import { jobPath, venueScopedHref } from "@/lib/routes";
+import { mcpToolOperation } from "@/lib/mcp-exposure";
 
-interface McpTool {
-  name: string;
-  description?: string;
-  inputSchema?: any;
-}
+type McpTool = MCPTool;
 
 interface McpToolsListProps {
   venueId: string;
 }
 
+// Seed a JSON-Schema property with a type-appropriate empty value, so the test
+// panel starts with args that are valid for the tool's schema instead of every
+// field being an empty string (W4 4D).
+function seedArgValue(prop: any): unknown {
+  const type = Array.isArray(prop?.type) ? prop.type[0] : prop?.type;
+  switch (type) {
+    case "number":
+    case "integer":
+      return 0;
+    case "boolean":
+      return false;
+    case "array":
+      return [];
+    case "object":
+      return {};
+    default:
+      return "";
+  }
+}
+
+function seedArgs(inputSchema: any): Record<string, unknown> {
+  const properties = inputSchema?.properties;
+  if (!properties) return {};
+  return Object.fromEntries(Object.keys(properties).map((key) => [key, seedArgValue(properties[key])]));
+}
+
 export function McpToolsList({ venueId }: McpToolsListProps) {
-  const venue = useResolvedVenue(venueId);
-  const [tools, setTools] = useState<McpTool[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Take the whole resolution, not just the Venue: a definitive failure must
+  // be shown, not swallowed into an endless "Loading…" (#428).
+  const { venue, auth, descriptor, status: venueStatus, error: venueError } = useResolvedVenueContext(venueId);
+  const { data: tools, loading, error, reload } = useVenueRead<McpTool[]>({
+    venue,
+    auth,
+    initial: [],
+    failureTitle: "Unable to load MCP tools",
+    // venue.mcp's tools/list is the SDK's job-free native read (covia-sdk#23);
+    // the invoke-based v/ops/mcp/tools-list would persist a job per page load.
+    // listAllTools drains the cursor, so a paged venue lists every tool.
+    load: (v) => v.mcp.listAllTools(),
+  });
   const [selectedTool, setSelectedTool] = useState<McpTool | null>(null);
   const [toolArgs, setToolArgs] = useState("{}");
+  // The most recent run, shown inline so you can invoke a tool and reach its
+  // result without leaving the catalogue (W4 4D — Run used to navigate away).
+  const [lastRun, setLastRun] = useState<{ tool: string; jobId: string } | null>(null);
   const { execute: executeJob, running } = useJobExecution(venue);
 
-  useEffect(() => {
-    if (!venue) return;
-    setLoading(true);
-    listMcpTools(venue.baseUrl)
-      .then((tools) => setTools(tools))
-      .catch((err) => {
-        notifyError("Unable to load MCP tools", err, venue.baseUrl);
-        setTools([]);
-      })
-      .finally(() => setLoading(false));
-  }, [venue]);
+  // Picking a tool opens the test drawer (a right-side Sheet) with its args
+  // seeded by type — visible in place at any width, no page scroll.
+  const selectTool = (tool: McpTool) => {
+    setSelectedTool(tool);
+    setToolArgs(JSON.stringify(seedArgs(tool.inputSchema), null, 2));
+    setLastRun(null);
+  };
+
+  const closeTestPanel = () => {
+    setSelectedTool(null);
+    setToolArgs("{}");
+    setLastRun(null);
+  };
 
   const handleRunTool = async () => {
     if (!venue || !selectedTool) return;
@@ -53,15 +99,19 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
       notifyWarning("Arguments must be valid JSON");
       return;
     }
-    await executeJob({
-      action: () => venue.operations.run("v/ops/mcp/tools-call", {
-        server: venue.baseUrl,
-        toolName: selectedTool.name,
-        arguments: args,
-      }),
+    setLastRun(null);
+    const jobId = await executeJob({
+      // Tracked on purpose: this is a user-driven run, and the Job is what the
+      // result link below points at. `server` defaults to this venue, so the
+      // caller no longer needs to know the catalog path or the loopback trick.
+      action: () => venue.mcp.callToolTracked(selectedTool.name, args),
       failureTitle: "Unable to run tool",
       missingJobMessage: "The tool completed without returning a job ID",
+      // Stay on the catalogue and surface the result inline + a job link,
+      // instead of navigating away (the job is watched either way).
+      navigate: false,
     });
+    if (jobId) setLastRun({ tool: selectedTool.name, jobId });
   };
 
   const mcpUrl = venue ? `${venue.baseUrl}/mcp` : "";
@@ -78,6 +128,20 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
       2
     );
 
+  if (venueStatus !== "ready")
+    return (
+      <ContentLayout>
+        <TopBar venueId={venueId} venueName={descriptor?.metadata.name} />
+        <VenueResolutionState
+          status={venueStatus}
+          error={venueError}
+          icon={McpGlyph}
+          subject="MCP Tools"
+          venueId={venueId}
+        />
+      </ContentLayout>
+    );
+
   return (
     <ContentLayout>
       <TopBar venueId={venueId} venueName={venue?.metadata.name} />
@@ -88,12 +152,16 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
               <div className="bg-primary-vlight p-3 rounded-lg">
-                <Wrench size={28} className="text-primary" />
+                <McpGlyph size={28} className="text-primary" />
               </div>
               <div>
                 <h1 className="text-2xl font-thin">MCP Tools</h1>
                 <p className="text-sm text-muted-foreground">
-                  {loading ? "Loading…" : `${tools.length} tool${tools.length !== 1 ? "s" : ""} available`}
+                  {loading
+                    ? "Loading…"
+                    : error
+                      ? "Unavailable"
+                      : `${tools.length} tool${tools.length !== 1 ? "s" : ""} available`}
                 </p>
               </div>
             </div>
@@ -110,21 +178,23 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Tools table */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base font-medium">Tool Catalog</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
+        {/* Tool catalog — full width; testing a tool opens in a right drawer. */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base font-medium">Tool Catalog</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
                 {loading && (
                   <div className="flex items-center justify-center py-16">
                     <Spinner variant="ellipsis" className="text-primary" size={48} />
                   </div>
                 )}
 
-                {!loading && tools.length === 0 && (
+                {!loading && error && (
+                  <ListLoadError error={error} onRetry={reload} data-testid="mcp-tools-load-error" />
+                )}
+
+                {!loading && !error && tools.length === 0 && (
                   <p className="text-sm text-muted-foreground px-6 py-10 text-center">
                     No MCP tools found on this venue.
                   </p>
@@ -144,6 +214,8 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
                         </AccordionTrigger>
                         <AccordionContent>
                           <div className="flex flex-col gap-3 pb-2">
+                            {venue && <ToolOperation tool={tool} venueId={venue.venueId} />}
+
                             {/* Input schema */}
                             {tool.inputSchema && (
                               <div>
@@ -174,15 +246,7 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
                               size="sm"
                               variant="secondary"
                               className="w-fit"
-                              onClick={() => {
-                                setSelectedTool(tool);
-                                const defaults = tool.inputSchema?.properties
-                                  ? Object.fromEntries(
-                                      Object.keys(tool.inputSchema.properties).map((k) => [k, ""])
-                                    )
-                                  : {};
-                                setToolArgs(JSON.stringify(defaults, null, 2));
-                              }}
+                              onClick={() => selectTool(tool)}
                             >
                               <Play size={13} className="mr-1" /> Test Tool
                             </Button>
@@ -193,65 +257,86 @@ export function McpToolsList({ venueId }: McpToolsListProps) {
                   </Accordion>
                 )}
               </CardContent>
-            </Card>
-          </div>
-
-          {/* Test panel */}
-          <div className="lg:col-span-1">
-            <Card className="sticky top-4">
-              <CardHeader>
-                <CardTitle className="text-base font-medium flex items-center gap-2">
-                  <Play size={15} /> Test Tool
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-4">
-                {!selectedTool ? (
-                  <p className="text-sm text-muted-foreground">
-                    Select a tool from the catalog and click <strong>Test Tool</strong> to invoke it here.
-                  </p>
-                ) : (
-                  <>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Selected tool</p>
-                      <p className="font-mono text-sm font-semibold">{selectedTool.name}</p>
-                      {selectedTool.description && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{selectedTool.description}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Arguments (JSON)</p>
-                      <Textarea
-                        className="font-mono text-xs"
-                        rows={8}
-                        value={toolArgs}
-                        onChange={(e) => setToolArgs(e.target.value)}
-                        placeholder="{}"
-                      />
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button
-                        className="flex-1"
-                        onClick={handleRunTool}
-                        disabled={running}
-                      >
-                        {running ? "Running…" : "Run"}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        onClick={() => { setSelectedTool(null); setToolArgs("{}"); }}
-                      >
-                        Clear
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        </Card>
       </div>
+
+      {/* Test drawer — opens on "Test Tool" at any width; no page scroll, and
+          the tool you clicked stays in context behind it. */}
+      <Sheet open={!!selectedTool} onOpenChange={(open) => { if (!open) closeTestPanel(); }}>
+        <SheetContent side="right" className="w-full gap-0 overflow-y-auto sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Play size={16} /> Test Tool
+            </SheetTitle>
+            {selectedTool && (
+              <SheetDescription className="font-mono text-foreground">{selectedTool.name}</SheetDescription>
+            )}
+          </SheetHeader>
+          {selectedTool && (
+            <div className="flex flex-col gap-4 px-4 pb-6">
+              {selectedTool.description && (
+                <p className="text-xs text-muted-foreground">{selectedTool.description}</p>
+              )}
+
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Arguments (JSON)</p>
+                <Textarea
+                  className="font-mono text-xs"
+                  rows={10}
+                  value={toolArgs}
+                  onChange={(e) => setToolArgs(e.target.value)}
+                  placeholder="{}"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button className="flex-1" onClick={handleRunTool} disabled={running}>
+                  {running ? "Running…" : "Run"}
+                </Button>
+                <Button variant="ghost" onClick={closeTestPanel}>Clear</Button>
+              </div>
+
+              {/* Inline run result — the job link opens the full output. */}
+              {lastRun && venue && (
+                <div className="rounded-lg border border-border bg-muted/40 p-3" data-testid="mcp-run-result">
+                  <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <CheckCircle2 size={15} className="shrink-0 text-primary" /> Run started
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    <span className="font-mono">{lastRun.tool}</span> created job{" "}
+                    <span className="font-mono">{lastRun.jobId.slice(0, 12)}…</span>
+                  </p>
+                  <Link
+                    href={jobPath(venue.venueId, lastRun.jobId)}
+                    className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                  >
+                    View job <ArrowRight size={12} />
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </ContentLayout>
+  );
+}
+
+// The operation behind a tool, which covia 0.10 names (covia#558): its
+// catalogue page has the full description, run form and code. Nothing for a
+// tool that names none (older venues, bridged tools).
+function ToolOperation({ tool, venueId }: { tool: McpTool; venueId: string }) {
+  const operation = mcpToolOperation(tool);
+  if (!operation) return null;
+  return (
+    <p data-testid="mcp-tool-operation" className="text-xs text-muted-foreground">
+      Runs the operation{" "}
+      <Link
+        href={venueScopedHref(venueId, "operations", operation)}
+        className="font-mono text-primary hover:underline"
+      >
+        {operation}
+      </Link>
+    </p>
   );
 }

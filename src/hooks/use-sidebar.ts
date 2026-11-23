@@ -1,50 +1,31 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { produce } from "immer";
 import { browserStorage } from "@/lib/persist-storage";
 
-type SidebarSettings = { disabled: boolean; isHoverOpen: boolean };
 type SidebarStore = {
   isOpen: boolean;
-  isHover: boolean;
-  settings: SidebarSettings;
   toggleOpen: () => void;
-  setIsOpen: (isOpen: boolean) => void;
-  setIsHover: (isHover: boolean) => void;
-  getOpenState: () => boolean;
-  setSettings: (settings: Partial<SidebarSettings>) => void;
 };
 
+// Safe to read during render without a hydration guard: on the server and for
+// the hydration render zustand serves the initial state (`isOpen: true`), then
+// re-renders with the persisted value.
 export const useSidebar = create(
-  persist<SidebarStore>(
+  persist<SidebarStore, [], [], Pick<SidebarStore, "isOpen">>(
     (set, get) => ({
       isOpen: true,
-      isHover: false,
-      settings: { disabled: false, isHoverOpen: false },
-      toggleOpen: () => {
-        set({ isOpen: !get().isOpen });
-      },
-      setIsOpen: (isOpen: boolean) => {
-        set({ isOpen });
-      },
-      setIsHover: (isHover: boolean) => {
-        set({ isHover });
-      },
-      getOpenState: () => {
-        const state = get();
-        return state.isOpen || (state.settings.isHoverOpen && state.isHover);
-      },
-      setSettings: (settings: Partial<SidebarSettings>) => {
-        set(
-          produce((state: SidebarStore) => {
-            state.settings = { ...state.settings, ...settings };
-          })
-        );
-      }
+      toggleOpen: () => set({ isOpen: !get().isOpen }),
     }),
     {
       name: "sidebar",
-      storage: createJSONStorage(browserStorage)
-    }
-  )
+      storage: createJSONStorage(browserStorage),
+      partialize: ({ isOpen }) => ({ isOpen }),
+      // Earlier versions persisted hover and settings state under this key;
+      // take only what is still meaningful.
+      merge: (persisted, current) => {
+        const saved = persisted as { isOpen?: unknown } | undefined;
+        return { ...current, isOpen: typeof saved?.isOpen === "boolean" ? saved.isOpen : current.isOpen };
+      },
+    },
+  ),
 );

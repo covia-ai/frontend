@@ -11,7 +11,7 @@ import ConstNode from '@/components/diagram/ConstNode';
 import CustomEdge from '@/components/diagram/CustomEdge';
 import OutputNode from '@/components/diagram/OutputNode';
 import { parseOpMetadata } from '@/lib/diagramutils';
-import { useTheme } from 'next-themes';
+import { useResolvedTheme } from '@/hooks/use-resolved-theme';
 
 const nodeTypes = {
   TaskNode: TaskNode,
@@ -28,7 +28,7 @@ export const DiagramViewer = (props:any) => {
        const parseJson = parseOpMetadata(props.metadata);
        const [nodes, _setNodes, onNodesChange] = useNodesState(parseJson[0]);
        const [edges, _setEdges, onEdgesChange] = useEdgesState(parseJson[1]);
-       const { theme  } = useTheme();
+       const theme = useResolvedTheme();
 
       const defaultViewport = { x: 0, y: 0, zoom: 1.5 };
        return (

@@ -1,0 +1,409 @@
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
+jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
+
+// Real helpers, but timings shrunk so the continuation paths don't idle in tests.
+jest.mock("@/lib/a2a", () => ({
+  ...jest.requireActual("@/lib/a2a"),
+  SETTLE_TIMEOUT_MS: 5_000,
+  RESUME_TIMEOUT_MS: 200,
+  POLL_INTERVAL_MS: 10,
+}));
+
+jest.mock("next/navigation", () => ({ useRouter: () => ({ push: jest.fn() }) }));
+
+const sendMock = jest.fn();
+const cancelMock = jest.fn();
+const mockVenue = {
+  venueId: "venue-1",
+  baseUrl: "https://venue.example",
+  a2a: { send: sendMock },
+  jobs: { cancel: cancelMock },
+};
+jest.mock("@/hooks/use-authenticated-venue", () => ({
+  ...require("@test/use-authenticated-venue").venueMock,
+  useAuthenticatedVenue: () => mockVenue,
+}));
+
+import { ConnectedAgentTalk } from "@/components/agent-connect/ConnectedAgentTalk";
+
+/** One scripted status transition, optionally swapping the Job's output with it. */
+type Step = string | { status: string; output?: unknown };
+
+/** A minimal fake SDK Job driven by a mutable status script. */
+function makeJob(initial: { status: string; output?: unknown }) {
+  const TERMINAL = ["COMPLETE", "FAILED", "CANCELLED", "REJECTED", "TIMEOUT"];
+  const PAUSED = ["PAUSED", "INPUT_REQUIRED", "AUTH_REQUIRED"];
+  const job: {
+    id: string;
+    metadata: { status: string; output?: unknown; error?: string };
+    script: Step[];
+    /** Hold the stream open after the script, like a quietly running Job. */
+    hang: boolean;
+    sendMessage: jest.Mock;
+    refresh: jest.Mock;
+    cancel: jest.Mock;
+    stream: (options?: { signal?: AbortSignal }) => AsyncGenerator<unknown>;
+    readonly isFinished: boolean;
+    readonly isPaused: boolean;
+    readonly isComplete: boolean;
+    readonly needsInput: boolean;
+    readonly needsAuth: boolean;
+  } = {
+    id: "0xab12",
+    metadata: { status: initial.status, output: initial.output },
+    script: [],
+    hang: false,
+    sendMessage: jest.fn().mockResolvedValue({}),
+    refresh: jest.fn().mockResolvedValue(undefined),
+    cancel: jest.fn(async () => {
+      job.metadata.status = "CANCELLED";
+      return job.metadata;
+    }),
+    async *stream(options) {
+      for (const s of job.script) {
+        const step = typeof s === "string" ? { status: s } : s;
+        job.metadata.status = step.status;
+        if (typeof s !== "string" && "output" in s) job.metadata.output = s.output;
+        yield { event: "message", data: "{}", json: () => ({}) };
+      }
+      if (!job.hang) return;
+      await new Promise<void>((_, reject) => {
+        const signal = options?.signal;
+        if (signal?.aborted) return reject(new Error("aborted"));
+        signal?.addEventListener("abort", () => reject(new Error("aborted")));
+      });
+    },
+    get isFinished() {
+      return TERMINAL.includes(job.metadata.status);
+    },
+    get isPaused() {
+      return PAUSED.includes(job.metadata.status);
+    },
+    get isComplete() {
+      return job.metadata.status === "COMPLETE";
+    },
+    get needsInput() {
+      return job.metadata.status === "INPUT_REQUIRED";
+    },
+    get needsAuth() {
+      return job.metadata.status === "AUTH_REQUIRED";
+    },
+  };
+  return job;
+}
+
+const completedTask = (text: string, id = "task-1") => ({
+  id,
+  contextId: "ctx-1",
+  status: { state: "TASK_STATE_COMPLETED" },
+  artifacts: [{ parts: [{ type: "text", text }] }],
+});
+
+/** Type into the composer and send. */
+async function say(text: string) {
+  await userEvent.type(screen.getByTestId("connect-talk-input"), text);
+  await userEvent.click(screen.getByTestId("connect-talk-send"));
+}
+
+describe("ConnectedAgentTalk", () => {
+  beforeEach(() => {
+    sendMock.mockReset();
+    cancelMock.mockReset().mockResolvedValue({ id: "0xab12", accepted: true });
+  });
+
+  it("streams a turn and renders the agent's reply", async () => {
+    const job = makeJob({ status: "PENDING", output: completedTask("Hello back") });
+    job.script = ["STARTED", "COMPLETE"];
+    sendMock.mockResolvedValue(job);
+
+    render(<ConnectedAgentTalk agentName="venue-b-bot" />);
+    await say("hi");
+
+    await waitFor(() => expect(screen.getByText("Hello back")).toBeInTheDocument());
+    expect(sendMock).toHaveBeenCalledWith(
+      "w/a2a/agents/venue-b-bot",
+      expect.objectContaining({ role: "user" }),
+      expect.anything(),
+    );
+  });
+
+  it("surfaces an INPUT_REQUIRED interrupt and delivers the reply to the same job", async () => {
+    const job = makeJob({
+      status: "PENDING",
+      output: { id: "task-1", artifacts: [{ parts: [{ text: "Which order number?" }] }] },
+    });
+    job.script = ["STARTED", "INPUT_REQUIRED"];
+    sendMock.mockResolvedValue(job);
+
+    render(<ConnectedAgentTalk agentName="venue-b-bot" />);
+    await say("I want a refund");
+
+    await waitFor(() => expect(screen.getByText("Needs your input")).toBeInTheDocument());
+    expect(screen.getByText("Which order number?")).toBeInTheDocument();
+
+    // The reply continues the SAME job via sendMessage — not a fresh invoke.
+    job.script = ["STARTED", { status: "COMPLETE", output: completedTask("Refund approved") }];
+    await say("Order 123");
+
+    await waitFor(() => expect(screen.getByText("Refund approved")).toBeInTheDocument());
+    expect(job.sendMessage).toHaveBeenCalledTimes(1);
+    expect(sendMock).toHaveBeenCalledTimes(1); // only the first turn invoked
+  });
+
+  it("prefers the question on the task status over its artifacts", async () => {
+    const job = makeJob({
+      status: "PENDING",
+      output: {
+        id: "task-1",
+        status: {
+          state: "TASK_STATE_INPUT_REQUIRED",
+          message: { role: "agent", parts: [{ text: "Which order number?" }] },
+        },
+        artifacts: [{ parts: [{ text: "partial draft" }] }],
+      },
+    });
+    job.script = ["STARTED", "INPUT_REQUIRED"];
+    sendMock.mockResolvedValue(job);
+
+    render(<ConnectedAgentTalk agentName="venue-b-bot" />);
+    await say("I want a refund");
+
+    await waitFor(() => expect(screen.getByText("Which order number?")).toBeInTheDocument());
+    expect(screen.queryByText("partial draft")).not.toBeInTheDocument();
+  });
+
+  it("does not re-render the interrupt while a continued task is still catching up", async () => {
+    const interrupt = { id: "task-1", artifacts: [{ parts: [{ text: "Which order number?" }] }] };
+    const job = makeJob({ status: "PENDING", output: interrupt });
+    job.script = ["STARTED", "INPUT_REQUIRED"];
+    sendMock.mockResolvedValue(job);
+
+    render(<ConnectedAgentTalk agentName="venue-b-bot" />);
+    await say("I want a refund");
+    await waitFor(() => expect(screen.getByText("Needs your input")).toBeInTheDocument());
+
+    // The venue reports the job as still INPUT_REQUIRED on the unchanged snapshot
+    // before the remote picks the reply up. That must not settle the turn.
+    job.script = [
+      "INPUT_REQUIRED",
+      "STARTED",
+      { status: "COMPLETE", output: completedTask("Refund approved") },
+    ];
+    await say("Order 123");
+
+    await waitFor(() => expect(screen.getByText("Refund approved")).toBeInTheDocument());
+    expect(screen.getAllByText("Needs your input")).toHaveLength(1);
+  });
+
+  it("says so when a continued task never advances", async () => {
+    const interrupt = { id: "task-1", artifacts: [{ parts: [{ text: "Which order number?" }] }] };
+    const job = makeJob({ status: "PENDING", output: interrupt });
+    job.script = ["STARTED", "INPUT_REQUIRED"];
+    sendMock.mockResolvedValue(job);
+
+    render(<ConnectedAgentTalk agentName="venue-b-bot" />);
+    await say("I want a refund");
+    await waitFor(() => expect(screen.getByText("Needs your input")).toBeInTheDocument());
+
+    // The reply is accepted but the remote task never moves (covia#507).
+    job.script = ["INPUT_REQUIRED"];
+    await say("Order 123");
+
+    await waitFor(() => expect(screen.getByText(/hasn't responded/)).toBeInTheDocument(), {
+      timeout: 3000,
+    });
+    // The old prompt is not repeated, and the reply can be retried.
+    expect(screen.getAllByText("Needs your input")).toHaveLength(1);
+    expect(screen.getByTestId("connect-talk-input")).toHaveAttribute(
+      "placeholder",
+      "The agent is waiting for your reply…",
+    );
+  });
+
+  it("renders an AUTH_REQUIRED interrupt with the agent's own message", async () => {
+    const job = makeJob({
+      status: "PENDING",
+      output: {
+        id: "task-1",
+        status: {
+          state: "TASK_STATE_AUTH_REQUIRED",
+          message: { role: "agent", parts: [{ text: "Sign in to the billing API first." }] },
+        },
+      },
+    });
+    job.script = ["STARTED", "AUTH_REQUIRED"];
+    sendMock.mockResolvedValue(job);
+
+    render(<ConnectedAgentTalk agentName="venue-b-bot" />);
+    await say("charge the card");
+
+    await waitFor(() => expect(screen.getByText("Authentication required")).toBeInTheDocument());
+    expect(screen.getByText(/Sign in to the billing API first\./)).toBeInTheDocument();
+    expect(screen.getByText(/Reconnect it with a stored secret/)).toBeInTheDocument();
+  });
+
+  it("follows up a finished task as a new task in the same conversation", async () => {
+    const first = makeJob({ status: "PENDING", output: completedTask("Hello back") });
+    first.script = ["STARTED", "COMPLETE"];
+    const second = makeJob({ status: "PENDING", output: completedTask("Still here", "task-2") });
+    second.script = ["STARTED", "COMPLETE"];
+    sendMock.mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+
+    render(<ConnectedAgentTalk agentName="venue-b-bot" />);
+    await say("hi");
+    await waitFor(() => expect(screen.getByText("Hello back")).toBeInTheDocument());
+
+    // A finished Task is immutable: its taskId would be rejected as terminal.
+    await say("and again");
+    await waitFor(() => expect(screen.getByText("Still here")).toBeInTheDocument());
+    expect(sendMock).toHaveBeenLastCalledWith(
+      "w/a2a/agents/venue-b-bot",
+      expect.objectContaining({ role: "user" }),
+      { contextId: "ctx-1" },
+    );
+  });
+
+  it("continues an unfinished task by its taskId", async () => {
+    const first = makeJob({
+      status: "PENDING",
+      output: { id: "task-1", contextId: "ctx-1", status: { state: "TASK_STATE_AUTH_REQUIRED" } },
+    });
+    first.script = ["STARTED", "AUTH_REQUIRED"];
+    const second = makeJob({ status: "PENDING", output: completedTask("Charged") });
+    second.script = ["STARTED", "COMPLETE"];
+    sendMock.mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+
+    render(<ConnectedAgentTalk agentName="venue-b-bot" />);
+    await say("charge the card");
+    await waitFor(() => expect(screen.getByText("Authentication required")).toBeInTheDocument());
+
+    await say("done, try again");
+    await waitFor(() => expect(screen.getByText("Charged")).toBeInTheDocument());
+    expect(sendMock).toHaveBeenLastCalledWith(
+      "w/a2a/agents/venue-b-bot",
+      expect.objectContaining({ role: "user" }),
+      { taskId: "task-1" },
+    );
+  });
+
+  // A quietly running Job holds its stream open; Talk must still give up at
+  // the deadline rather than wait for the stream to end (#525).
+  it("stops waiting at the deadline when the task never finishes, and frees the input", async () => {
+    const job = makeJob({ status: "PENDING", output: { id: "task-1", contextId: "ctx-1" } });
+    job.script = ["STARTED"];
+    job.hang = true;
+    sendMock.mockResolvedValue(job);
+
+    render(<ConnectedAgentTalk agentName="venue-b-bot" />);
+    await say("do something slow");
+    expect(screen.getByTestId("connect-talk-input")).toBeDisabled();
+
+    await waitFor(
+      () => expect(screen.getByText(/the agent is still working on this task/)).toBeInTheDocument(),
+      { timeout: 8_000 },
+    );
+    expect(screen.getByTestId("connect-talk-input")).toBeEnabled();
+    expect(job.cancel).not.toHaveBeenCalled();
+
+    // The next message starts a new task in the same conversation.
+    const next = makeJob({ status: "PENDING", output: completedTask("Done now", "task-2") });
+    next.script = ["STARTED", "COMPLETE"];
+    sendMock.mockResolvedValue(next);
+    await say("anything?");
+    await waitFor(() => expect(screen.getByText("Done now")).toBeInTheDocument());
+    expect(sendMock).toHaveBeenLastCalledWith(
+      "w/a2a/agents/venue-b-bot",
+      expect.objectContaining({ role: "user" }),
+      { contextId: "ctx-1" },
+    );
+  }, 15_000);
+
+  it.each([
+    { id: "0xab12", accepted: true },
+    { id: "ab12", status: "CANCELLED" },
+  ])("cancels through the manager with response %j", async (response) => {
+    cancelMock.mockResolvedValue(response);
+    const job = makeJob({ status: "PENDING", output: { id: "task-1" } });
+    job.script = ["STARTED"];
+    job.hang = true;
+    sendMock.mockResolvedValue(job);
+
+    render(<ConnectedAgentTalk agentName="venue-b-bot" />);
+    await say("do something slow");
+    await userEvent.click(await screen.findByTestId("connect-talk-cancel"));
+
+    await waitFor(() => expect(screen.getByText(/Cancellation requested/)).toBeInTheDocument());
+    expect(cancelMock).toHaveBeenCalledTimes(1);
+    expect(cancelMock).toHaveBeenCalledWith(job.id);
+    expect(job.cancel).not.toHaveBeenCalled();
+    expect(job.metadata).toMatchObject({ status: "STARTED", output: { id: "task-1" } });
+    expect(screen.getByTestId("connect-talk-input")).toBeEnabled();
+    expect(screen.queryByTestId("connect-talk-cancel")).not.toBeInTheDocument();
+  });
+
+  // The venue's job error is generic; the remote reason is on the status (#530).
+  it("cancels once when clicked before the venue returns the job", async () => {
+    const job = makeJob({ status: "STARTED" });
+    let accept!: (job: ReturnType<typeof makeJob>) => void;
+    sendMock.mockImplementation(() => new Promise((resolve) => { accept = resolve; }));
+    render(<ConnectedAgentTalk agentName="venue-b-bot" />);
+    await say("slow acceptance");
+    await userEvent.click(await screen.findByTestId("connect-talk-cancel"));
+    expect(cancelMock).not.toHaveBeenCalled();
+    accept(job);
+    expect(await screen.findByText(/Cancellation requested/)).toBeInTheDocument();
+    expect(cancelMock).toHaveBeenCalledTimes(1);
+    expect(cancelMock).toHaveBeenCalledWith(job.id);
+    expect(job.cancel).not.toHaveBeenCalled();
+  });
+
+  it("does not claim cancellation succeeded when the venue refuses it", async () => {
+    const job = makeJob({ status: "STARTED" });
+    job.hang = true;
+    sendMock.mockResolvedValue(job);
+    cancelMock.mockRejectedValue(new Error("requires job/manage"));
+    render(<ConnectedAgentTalk agentName="venue-b-bot" />);
+    await say("slow task");
+    await userEvent.click(await screen.findByTestId("connect-talk-cancel"));
+    expect(await screen.findByText(/cancellation failed/)).toBeInTheDocument();
+    expect(screen.queryByText(/Cancellation requested/)).not.toBeInTheDocument();
+    expect(job.metadata.status).toBe("STARTED");
+  });
+
+  it("shows the remote agent's own reason for a failed task", async () => {
+    const job = makeJob({
+      status: "PENDING",
+      output: {
+        id: "task-1",
+        status: {
+          state: "TASK_STATE_FAILED",
+          message: { role: "ROLE_AGENT", parts: [{ text: "Upstream quota exceeded." }] },
+        },
+      },
+    });
+    job.metadata.error = "Remote task FAILED";
+    job.script = ["STARTED", "FAILED"];
+    sendMock.mockResolvedValue(job);
+
+    render(<ConnectedAgentTalk agentName="venue-b-bot" />);
+    await say("fail");
+
+    await waitFor(() =>
+      expect(screen.getByText("Task FAILED: Upstream quota exceeded.")).toBeInTheDocument(),
+    );
+  });
+
+  it("shows a failed task as an error", async () => {
+    const job = makeJob({ status: "PENDING" });
+    job.metadata.error = "boom";
+    job.script = ["STARTED", "FAILED"];
+    sendMock.mockResolvedValue(job);
+
+    render(<ConnectedAgentTalk agentName="venue-b-bot" />);
+    await say("hi");
+
+    await waitFor(() => expect(screen.getByText(/Task FAILED: boom/)).toBeInTheDocument());
+  });
+});

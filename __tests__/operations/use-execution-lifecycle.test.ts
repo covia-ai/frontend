@@ -72,11 +72,12 @@ const mockVenue: any = {
   getAsset: jest.fn(),
 };
 let mockAuth: any = { type: "keypair" };
+let mockResolvedVenue = mockVenue;
 
 jest.mock("@/hooks/use-resolved-venue", () => ({
   useResolvedVenueContext: () => ({
-    descriptor: mockVenue,
-    venue: mockVenue,
+    descriptor: mockResolvedVenue,
+    venue: mockResolvedVenue,
     auth: mockAuth,
     isAuthenticated: mockAuth !== null,
   }),
@@ -87,10 +88,91 @@ describe("useExecutionLifecycle", () => {
     jest.clearAllMocks();
     jest.useFakeTimers();
     mockAuth = { type: "keypair" };
+    mockResolvedVenue = mockVenue;
   });
 
   afterEach(() => {
     jest.useRealTimers();
+  });
+
+  it.each(["job", "venue"])("isolates drafts and pending sends when switching %s", async (target) => {
+    const sent = deferred<void>();
+    mockVenue.jobs.sendMessage.mockReturnValue(sent.promise);
+    mockVenue.jobs.get.mockImplementation(async (id: string) => ({ metadata: { id, status: "INPUT_REQUIRED" } }));
+    mockVenue.jobs.stream.mockImplementation(() => fakeStream().generator);
+    const { result, rerender } = renderHook(
+      ({ jobId }) => useExecutionLifecycle({ jobId }),
+      { initialProps: { jobId: "job-old" } },
+    );
+    await waitFor(() => expect(result.current.job?.id).toBe("job-old"));
+    act(() => result.current.setMessage("answer for old job"));
+    let send!: Promise<void>;
+    act(() => { send = result.current.sendMessage(); });
+    expect(result.current.sendingMessage).toBe(true);
+
+    const nextJob = target === "job" ? "job-new" : "job-old";
+    if (target === "venue") mockResolvedVenue = { ...mockVenue, venueId: "did:venue:other", baseUrl: "https://other.test" };
+    rerender({ jobId: nextJob });
+    await waitFor(() => expect(result.current.job?.id).toBe(nextJob));
+    expect(result.current.message).toBe("");
+    expect(result.current.sendingMessage).toBe(false);
+    act(() => result.current.setMessage("new draft"));
+    const reads = mockVenue.jobs.get.mock.calls.length;
+    await act(async () => { sent.resolve(); await send; });
+    expect(result.current.message).toBe("new draft");
+    expect(result.current.sendingMessage).toBe(false);
+    expect(mockVenue.jobs.get).toHaveBeenCalledTimes(reads);
+    expect(mockVenue.jobs.sendMessage).toHaveBeenCalledWith("job-old", "answer for old job");
+  });
+
+  it("does not erase a draft edited while a response is being sent", async () => {
+    const sent = deferred<void>();
+    mockVenue.jobs.sendMessage.mockReturnValue(sent.promise);
+    mockVenue.jobs.get.mockResolvedValue({ metadata: { id: "job-1", status: "INPUT_REQUIRED" } });
+    mockVenue.jobs.stream.mockImplementation(() => fakeStream().generator);
+    const { result } = renderHook(() => useExecutionLifecycle({ jobId: "job-1" }));
+    await waitFor(() => expect(result.current.job).toBeDefined());
+    act(() => result.current.setMessage("first answer"));
+    let send!: Promise<void>;
+    act(() => { send = result.current.sendMessage(); });
+    act(() => result.current.setMessage("next answer"));
+    await act(async () => { sent.resolve(); await send; });
+    expect(result.current.message).toBe("next answer");
+    expect(result.current.sendingMessage).toBe(false);
+  });
+
+  it("keeps a newer job's send pending when the previous job's send completes", async () => {
+    const oldSent = deferred<void>();
+    const newSent = deferred<void>();
+    mockVenue.jobs.sendMessage.mockImplementation((id: string) => id === "job-old" ? oldSent.promise : newSent.promise);
+    mockVenue.jobs.get.mockImplementation(async (id: string) => ({ metadata: { id, status: "INPUT_REQUIRED" } }));
+    mockVenue.jobs.stream.mockImplementation(() => fakeStream().generator);
+    const { result, rerender } = renderHook(
+      ({ jobId }) => useExecutionLifecycle({ jobId }),
+      { initialProps: { jobId: "job-old" } },
+    );
+    act(() => result.current.setMessage("old answer"));
+    let oldSend!: Promise<void>;
+    act(() => { oldSend = result.current.sendMessage(); });
+    rerender({ jobId: "job-new" });
+    act(() => result.current.setMessage('{"answer":42}'));
+    let newSend!: Promise<void>;
+    act(() => { newSend = result.current.sendMessage(); });
+    rerender({ jobId: "job-old" });
+    expect(result.current.sendingMessage).toBe(true);
+    act(() => result.current.setMessage("duplicate old answer"));
+    await act(async () => { await result.current.sendMessage(); });
+    expect(mockVenue.jobs.sendMessage).toHaveBeenCalledTimes(2);
+    rerender({ jobId: "job-new" });
+    act(() => result.current.setMessage('{"answer":42}'));
+    await act(async () => { oldSent.resolve(); await oldSend; });
+    expect(result.current.sendingMessage).toBe(true);
+    expect(result.current.message).toBe('{"answer":42}');
+    await act(async () => { newSent.resolve(); await newSend; });
+    expect(result.current.sendingMessage).toBe(false);
+    // A re-entered draft is a later edit even if its text matches the send.
+    expect(result.current.message).toBe('{"answer":42}');
+    expect(mockVenue.jobs.sendMessage).toHaveBeenLastCalledWith("job-new", { answer: 42 });
   });
 
   it("streams job updates for an authenticated session and stops at a terminal state", async () => {
@@ -256,5 +338,43 @@ describe("useExecutionLifecycle", () => {
       await initial.promise;
     });
     expect(result.current.job?.status).toBe("COMPLETE");
+  });
+
+  it("stops — does not poll every second forever — when the job does not exist", async () => {
+    mockVenue.jobs.stream.mockImplementation(() => {
+      throw new Error("HTTP 404");
+    });
+    mockVenue.jobs.get.mockRejectedValue(
+      Object.assign(new Error("Job not found"), { status: 404 }),
+    );
+
+    const { result } = renderHook(() =>
+      useExecutionLifecycle({ jobId: "job-gone" }),
+    );
+    await waitFor(() => expect(result.current.notFound).toBe(true));
+    const reads = mockVenue.jobs.get.mock.calls.length;
+
+    await act(async () => {
+      jest.advanceTimersByTime(10_000);
+    });
+    expect(mockVenue.jobs.get).toHaveBeenCalledTimes(reads);
+  });
+
+  it("aborts the job stream on unmount, so a quiet job cannot hold its connection open", async () => {
+    const stream = fakeStream();
+    mockVenue.jobs.stream.mockReturnValue(stream.generator);
+    mockVenue.jobs.get.mockResolvedValue({
+      metadata: { id: "job-1", status: "PAUSED" },
+    });
+
+    const { result, unmount } = renderHook(() =>
+      useExecutionLifecycle({ jobId: "job-1" }),
+    );
+    await waitFor(() => expect(result.current.job?.status).toBe("PAUSED"));
+    const { signal } = mockVenue.jobs.stream.mock.calls[0][1];
+    expect(signal.aborted).toBe(false);
+
+    unmount();
+    expect(signal.aborted).toBe(true);
   });
 });

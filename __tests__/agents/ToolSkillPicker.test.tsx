@@ -12,6 +12,7 @@ jest.mock("@/hooks/use-venue-access", () => ({
 }));
 
 jest.mock("@/hooks/use-auth", () => ({
+  ...require("@test/use-auth").authMock,
   useIsAuthenticated: () => true,
 }));
 
@@ -31,16 +32,24 @@ const mockVenue: any = {
           },
         });
       }
+      if (path === "v/skills") {
+        return Promise.resolve({
+          exists: true,
+          // v/skills holds skillsets; skills sit one level down (frontend#482).
+          value: {
+            root: {
+              summarizer: {
+                name: "Summarizer",
+                description: "Summarize text",
+                content: { inline: "Do the thing" },
+                skill: {},
+              },
+            },
+          },
+        });
+      }
       return Promise.resolve({ exists: false, value: null });
     }),
-  },
-  skills: {
-    list: jest.fn((path: string) => Promise.resolve(path === "v/skills"
-      ? [{
-          id: "v/skills/summarizer",
-          metadata: { name: "Summarizer", description: "Summarize text", content: { inline: "Do the thing" } },
-        }]
-      : [])),
   },
 };
 
@@ -106,7 +115,7 @@ describe("ToolSkillPicker", () => {
   });
 
   it("lists skills with a source badge and reflects attached skills, toggling calls onToggleSkill", async () => {
-    const { user, onToggleSkill } = await openSheet({ attachedSkills: ["v/skills/summarizer"] });
+    const { user, onToggleSkill } = await openSheet({ attachedSkills: ["v/skills/root/summarizer"] });
     await user.click(screen.getByRole("tab", { name: /^Skills/ }));
 
     expect(await screen.findByText("Summarizer")).toBeInTheDocument();
@@ -115,7 +124,7 @@ describe("ToolSkillPicker", () => {
 
     await user.click(screen.getByRole("checkbox", { name: "Attach Summarizer" }));
     expect(onToggleSkill).toHaveBeenCalledWith(
-      expect.objectContaining({ path: "v/skills/summarizer" }),
+      expect.objectContaining({ path: "v/skills/root/summarizer" }),
       false,
     );
   });
@@ -138,7 +147,6 @@ describe("ToolSkillPicker", () => {
     expect(screen.getByTestId("chrome-sign-in-button")).toBeInTheDocument();
     expect(screen.queryByTestId("tool-picker-row")).not.toBeInTheDocument();
     expect(mockVenue.workspace.read).not.toHaveBeenCalled();
-    expect(mockVenue.skills.list).not.toHaveBeenCalled();
   });
 
   it("disables checkboxes while a caller-driven save is in flight", async () => {

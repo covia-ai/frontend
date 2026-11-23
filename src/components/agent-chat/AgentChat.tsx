@@ -3,9 +3,13 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { AgentStatus } from "@covia/covia-sdk";
-import { Bot, Loader2, MessageSquarePlus, RotateCcw, Send } from "lucide-react";
+import { ArrowUpRight, Bot, Cpu, Loader2, MessageSquarePlus, RotateCcw, Send, Square } from "lucide-react";
 
 import { AgentConversation } from "@/components/AgentConversation";
+import { AgentIdenticon } from "@/components/agent-roster/AgentIdenticon";
+import { SuspensionNotice } from "@/components/agent-explorer/SuspensionNotice";
+import { StatusBadge } from "@/components/StatusBadge";
+import { agentDisplay, humanizeAgentId } from "@/lib/agent-display";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -16,21 +20,24 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAgentExplorer } from "@/hooks/use-agent-explorer";
+import { useCurrentAuth } from "@/hooks/use-auth";
 import { defaultSessionTitle, formatSessionLabel } from "@/lib/agent-sessions";
 import { agentSendingPlaceholder } from "@/lib/agent-chat";
+import { readSuspension } from "@/lib/agent-suspension";
 import { cn, SUGGESTION_PLACEHOLDER_CLASS } from "@/lib/utils";
 
 type AgentChatProps = {
   initialAgentId?: string;
-  fixedAgent?: boolean;
 };
 
 const NEW_SESSION_VALUE = "__new__";
 
-export function AgentChat({ initialAgentId, fixedAgent = false }: AgentChatProps) {
+export function AgentChat({ initialAgentId }: AgentChatProps) {
   const controller = useAgentExplorer(initialAgentId);
+  const ownDid = useCurrentAuth()?.did ?? null;
   const transcriptRef = useRef<HTMLDivElement | null>(null);
   const {
+    isAuthenticated,
     agentList,
     selectedAgentId,
     setSelectedAgentId,
@@ -44,21 +51,25 @@ export function AgentChat({ initialAgentId, fixedAgent = false }: AgentChatProps
     currentSession,
     messageText,
     setMessageText,
-    pendingChat,
+    pendingEchoes,
     sending,
     activity,
     canSend,
-    echoAlreadyRecorded,
+    failedSend,
+    retrySend,
+    editFailedSend,
     resume,
     startNewChat,
     selectSession,
     send,
+    stopWaiting,
   } = controller;
 
+  const hasFailedSend = failedSend !== null;
   useEffect(() => {
     const transcript = transcriptRef.current;
     if (transcript) transcript.scrollTop = transcript.scrollHeight;
-  }, [currentSession?.conversation.length, sending]);
+  }, [currentSession?.conversation.length, sending, hasFailedSend]);
 
   const sessionLabel = (session: (typeof sessions)[number]) =>
     session.title ?? defaultSessionTitle(session) ?? formatSessionLabel(session);
@@ -73,6 +84,25 @@ export function AgentChat({ initialAgentId, fixedAgent = false }: AgentChatProps
   }
 
   if (!selectedAgentDetail || !selectedAgentId) {
+    // Signed out there is no account for "No agents yet" to be about — the
+    // venue may well have agents we simply cannot see (as AgentRoster, #423).
+    if (!isAuthenticated && !detailError) {
+      return (
+        <div className="flex min-h-[calc(100vh-9rem)] flex-col items-center justify-center px-6 text-center">
+          <div className="mb-4 flex size-12 items-center justify-center rounded-2xl border bg-card">
+            <Bot size={22} className="text-muted-foreground" />
+          </div>
+          <h1 className="text-xl font-semibold">Sign in to chat</h1>
+          <p
+            data-testid="agent-chat-signed-out"
+            className="mt-2 max-w-md text-sm text-muted-foreground"
+          >
+            Agents belong to an account, so there is nothing to chat with while
+            you are signed out.
+          </p>
+        </div>
+      );
+    }
     return (
       <div className="flex min-h-[calc(100vh-9rem)] flex-col items-center justify-center px-6 text-center">
         <div className="mb-4 flex size-12 items-center justify-center rounded-2xl border bg-card">
@@ -94,33 +124,45 @@ export function AgentChat({ initialAgentId, fixedAgent = false }: AgentChatProps
   }
 
   const isSuspended = selectedAgentDetail.status === AgentStatus.SUSPENDED;
+  const suspension = isSuspended ? readSuspension(selectedAgentDetail) : undefined;
+  const display = agentDisplay(selectedAgentDetail.config);
+  const agentName = humanizeAgentId(selectedAgentId);
 
   return (
     <div className="mx-auto flex h-[calc(100vh-8rem)] min-h-[36rem] w-full max-w-6xl flex-col overflow-hidden rounded-xl border bg-background shadow-sm">
       <header className="flex min-h-14 flex-wrap items-center gap-2 border-b px-3 py-2 sm:px-5">
-        {fixedAgent ? (
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="flex size-7 shrink-0 items-center justify-center rounded-full border bg-card">
-              <Bot size={15} className="text-primary" />
+        <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
+          <SelectTrigger
+            aria-label="Agent"
+            className="h-10 w-auto gap-2 border-0 bg-transparent px-1.5 shadow-none"
+          >
+            <div className="flex min-w-0 items-center gap-2.5">
+              <AgentIdenticon agentId={selectedAgentId} className="size-8" />
+              <span className="truncate text-sm font-semibold">{agentName}</span>
             </div>
-            <span className="truncate text-sm font-medium">{selectedAgentId}</span>
-          </div>
-        ) : (
-          <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
-            <SelectTrigger className="h-9 w-[11rem] border-0 bg-transparent shadow-none sm:w-[14rem]">
-              <SelectValue aria-label="Agent" />
-            </SelectTrigger>
-            <SelectContent>
-              {agentList.map((agent) => (
-                <SelectItem key={agent.agentId} value={agent.agentId}>
-                  {agent.agentId}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+          </SelectTrigger>
+          <SelectContent>
+            {agentList.map((agent) => (
+              <SelectItem key={agent.agentId} value={agent.agentId}>
+                <span className="flex items-center gap-2">
+                  <AgentIdenticon agentId={agent.agentId} className="size-5" />
+                  {humanizeAgentId(agent.agentId)}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <StatusBadge status={selectedAgentDetail.status} kind="agent" as="pill" />
+        <span className="hidden items-center gap-1 rounded-md border bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground sm:inline-flex">
+          <Cpu size={11} /> {display.model || display.providerLabel}
+        </span>
 
         <div className="ml-auto flex min-w-0 items-center gap-1.5">
+          <Button asChild variant="ghost" size="sm" className="gap-1 text-muted-foreground">
+            <Link href={`/agents/agent/${encodeURIComponent(selectedAgentId)}`}>
+              Profile <ArrowUpRight size={13} />
+            </Link>
+          </Button>
           <Select
             value={selectedSessionId ?? NEW_SESSION_VALUE}
             onValueChange={(value) =>
@@ -156,8 +198,12 @@ export function AgentChat({ initialAgentId, fixedAgent = false }: AgentChatProps
       </header>
 
       {isSuspended && (
-        <div className="flex items-center justify-center gap-3 border-b bg-muted/40 px-4 py-2 text-sm">
-          <span className="text-muted-foreground">This agent is suspended.</span>
+        <div className="flex flex-wrap items-center justify-center gap-3 border-b bg-muted/40 px-4 py-2 text-sm">
+          {suspension ? (
+            <SuspensionNotice suspension={suspension} self={ownDid} className="text-sm" />
+          ) : (
+            <span className="text-muted-foreground">This agent is suspended.</span>
+          )}
           <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={resume}>
             <RotateCcw size={13} /> Resume
           </Button>
@@ -168,9 +214,14 @@ export function AgentChat({ initialAgentId, fixedAgent = false }: AgentChatProps
         agentId={selectedAgentId}
         selectedSessionId={selectedSessionId}
         session={currentSession}
-        pendingChat={pendingChat}
-        echoAlreadyRecorded={echoAlreadyRecorded}
+        pendingEchoes={pendingEchoes}
+        waiting={sending}
+        failedSend={failedSend}
+        onRetry={canSend ? retrySend : undefined}
+        onEditFailed={editFailedSend}
         transcriptRef={transcriptRef}
+        agentBrief={display.brief}
+        onStarter={setMessageText}
       />
 
       <footer className="bg-gradient-to-t from-background via-background to-transparent px-3 pb-4 pt-2 sm:px-6 sm:pb-6">
@@ -193,7 +244,9 @@ export function AgentChat({ initialAgentId, fixedAgent = false }: AgentChatProps
                 send();
               }
             }}
-            disabled={sending || !canSend}
+            // Open while a reply is awaited: a follow-up is queued behind it,
+            // in the order typed (#541).
+            disabled={!canSend}
             rows={1}
             className={cn(
               "max-h-40 min-h-10 resize-none border-0 bg-transparent px-0 py-2 text-[15px] leading-6 shadow-none focus-visible:ring-0 dark:bg-transparent disabled:opacity-100 md:text-[15px]",
@@ -201,16 +254,32 @@ export function AgentChat({ initialAgentId, fixedAgent = false }: AgentChatProps
             )}
           />
           <div className="flex items-center justify-end">
-            <Button
-              data-testid="clean-composer-send"
-              size="icon"
-              className="size-9 rounded-full"
-              aria-label="Send message"
-              onClick={send}
-              disabled={sending || !canSend || !messageText.trim()}
-            >
-              {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-            </Button>
+            {sending && !messageText.trim() ? (
+              // Stops only this page's wait: the agent keeps working and its
+              // reply still lands in the session.
+              <Button
+                data-testid="clean-composer-stop"
+                size="icon"
+                variant="secondary"
+                className="size-9 rounded-full"
+                aria-label="Stop waiting for the reply"
+                title="Stop waiting. The agent keeps working, and its reply will appear here."
+                onClick={stopWaiting}
+              >
+                <Square size={14} className="fill-current" />
+              </Button>
+            ) : (
+              <Button
+                data-testid="clean-composer-send"
+                size="icon"
+                className="size-9 rounded-full"
+                aria-label="Send message"
+                onClick={send}
+                disabled={!canSend || !messageText.trim()}
+              >
+                <Send size={16} />
+              </Button>
+            )}
           </div>
         </div>
       </footer>

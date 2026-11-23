@@ -2,14 +2,16 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
-jest.mock('json-edit-react', () => ({
-  JsonEditor: ({ data }: { data: unknown }) => (
+// Both of json-edit-react 2's entry points render the value; which one the
+// pane picks (the editor when the user may edit, the viewer otherwise) is not
+// what these tests are about.
+jest.mock('json-edit-react', () => {
+  const JsonContent = ({ data }: { data: unknown }) => (
     <pre data-testid="workspace-json-content">{JSON.stringify(data)}</pre>
-  ),
-  githubDarkTheme: {},
-  githubLightTheme: {},
-}));
-jest.mock('next-themes', () => ({ useTheme: () => ({ theme: 'light' }) }));
+  );
+  return { JsonEditor: JsonContent, JsonViewer: JsonContent };
+});
+jest.mock('next-themes', () => ({ useTheme: () => ({ resolvedTheme: 'light' }) }));
 
 const mockVenue: any = {
   venueId: 'venue-1',
@@ -26,10 +28,15 @@ jest.mock('@/hooks/use-authenticated-venue', () => ({
   useAuthenticatedVenue: () => mockVenue,
 }));
 jest.mock('@/hooks/use-auth', () => ({
+  ...require('@test/use-auth').authMock,
   useIsAuthenticated: () => false,
 }));
 
 import { WorkspaceExplorer } from '@/components/WorkspaceExplorer';
+import { warmThemedJsonEditor } from '@test/lazy-boundaries';
+
+// Compile the lazy module before the clock starts — see @test/lazy-boundaries.
+beforeAll(warmThemedJsonEditor);
 
 describe('WorkspaceExplorer job-free reads', () => {
   beforeEach(() => {

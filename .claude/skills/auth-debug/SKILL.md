@@ -11,13 +11,17 @@ Inspect and diagnose the frontend authentication state.
 
 ### 1. Auth Store State
 
-The auth state is persisted in localStorage under key `"venue-auth"`. Read and display:
+The auth store (`useAuth`) persists to localStorage under key `"venue-auth"`,
+but only its device-key entries: OAuth bearer entries live in memory in the
+current tab and never reach storage. Read and display:
 
-- `deviceKeyHex` — The Ed25519 private key hex (present if device key was ever generated). This persists across logouts.
-- `activeVenueId` — Currently active venue
-- `authMap` — Per-venue auth entries:
+- `deviceKeyHex` — the default Ed25519 private key hex; `deviceKeys` — all
+  known device keys. These persist across logouts.
+- `authMap` — the active account per venue:
   - `type: "keypair"` → Device key auth (has `privateKeyHex` and `did`)
-  - `type: "bearer"` → OAuth auth (has `token` and `did`)
+  - `type: "bearer"` → OAuth auth (has `token` and `did`); visible only in the
+    live store of the tab that signed in, not in localStorage
+- `accountsMap` — recent accounts per venue, most recent first
 
 ### 2. Token Analysis
 

@@ -24,6 +24,7 @@ function stubVenue(overrides: {
   const writes: Array<{ path: string; value: unknown }> = [];
   const deletes: string[] = [];
   const created: string[] = [];
+  const agentConfig: Record<string, Record<string, unknown>> = {};
   const venue = {
     venueId: 'did:key:zTestVenue',
     baseUrl: 'http://venue.test',
@@ -52,14 +53,21 @@ function stubVenue(overrides: {
       }),
     },
     agents: {
+      // An agent named in existingAgents was seeded before covia 0.12: its
+      // config has no acceptTasks.
       info: jest.fn(async (id: string) => {
-        if (existingAgents.has(id)) return { agentId: id, status: 'SLEEPING' };
+        if (existingAgents.has(id)) return { agentId: id, status: 'SLEEPING', config: agentConfig[id] ?? {} };
         throw new Error('404');
       }),
-      create: jest.fn(async (input: { agentId: string }) => {
+      create: jest.fn(async (input: { agentId: string; config: Record<string, unknown> }) => {
         created.push(input.agentId);
         existingAgents.add(input.agentId);
+        agentConfig[input.agentId] = input.config;
         return { agentId: input.agentId, status: 'SLEEPING', created: true };
+      }),
+      update: jest.fn(async (input: { agentId: string; config: Record<string, unknown> }) => {
+        agentConfig[input.agentId] = { ...agentConfig[input.agentId], ...input.config };
+        return { agentId: input.agentId, status: 'SLEEPING' };
       }),
       delete: jest.fn(async () => ({})),
     },
@@ -130,6 +138,27 @@ describe('seedAdaptiveRisk', () => {
     );
     expect(second.ok).toBe(true);
     expect(second.report.items.filter((i) => i.status === 'created')).toHaveLength(0);
+    expect(second.report.items.filter((i) => i.status === 'updated')).toHaveLength(0);
+  });
+
+  it('seeds agents that take tasks, which covia 0.12 requires for every beat', async () => {
+    const agents = agentConfigs(DEFAULT_ADDRESSES);
+    expect(agents.sentinel.config.acceptTasks).toBe(true);
+    expect(agents.assessor.config.acceptTasks).toBe(true);
+  });
+
+  it('turns on acceptTasks for agents seeded before covia 0.12, leaving the rest as they are', async () => {
+    const { venue } = stubVenue({ existingAgents: new Set(['rk-sentinel', 'rk-assessor']) });
+    const outcome = await seedAdaptiveRisk(venue, DEFAULT_ADDRESSES);
+    expect(outcome.ok).toBe(true);
+    const agentItems = outcome.report.items.filter((i) => i.kind === 'agent');
+    expect(agentItems.map((i) => i.status)).toEqual(['updated', 'updated']);
+    const stub = venue as unknown as { agents: { update: jest.Mock; create: jest.Mock } };
+    expect(stub.agents.create).not.toHaveBeenCalled();
+    expect(stub.agents.update.mock.calls.map(([input]) => input)).toEqual([
+      { agentId: 'rk-sentinel', config: { acceptTasks: true } },
+      { agentId: 'rk-assessor', config: { acceptTasks: true } },
+    ]);
   });
 
   it('uses a caller-supplied policy address instead of registering', async () => {

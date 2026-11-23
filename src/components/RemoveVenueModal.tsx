@@ -1,3 +1,5 @@
+"use client";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -8,52 +10,50 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { useState } from "react"
-import { useVenues } from "@/hooks/use-venues";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+} from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { X } from "lucide-react";
 import { gtmEvent } from "@/lib/utils";
-import { evictVenueInstances } from "@/hooks/use-authenticated-venue";
+import { forgetVenue } from "@/lib/venue-replacement";
 
-export const RemoveVenueModal = (props:any) => {
-    const [open, setOpen] = useState(false)
-    const { removeVenue } = useVenues();
-    const handleRemoveVenue = (e: React.MouseEvent) => {
-                e.stopPropagation();
-                removeVenue(props.venueId);
-                evictVenueInstances(props.venueId);
-                gtmEvent.removeVenue(props.venueId);
-     };
+export function RemoveVenueModal({ venueId }: { venueId: string }) {
+  const handleRemoveVenue = (event: React.MouseEvent) => {
+    // The card behind the dialog is itself clickable.
+    event.stopPropagation();
+    forgetVenue(venueId);
+    gtmEvent.removeVenue(venueId);
+  };
 
-
-    return (
-        <AlertDialog data-testid="remove-venue" open={open} onOpenChange={setOpen}>
-                    {/* Single <button> (AlertDialogTrigger's) — TooltipTrigger
-                        adopts it via asChild; nested trigger buttons are invalid
-                        HTML and break hydration. */}
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <AlertDialogTrigger className="flex flex-row ">
-                                <X className="" size={16} data-testid="remove_btn"/>
-                            </AlertDialogTrigger>
-                        </TooltipTrigger>
-                        <TooltipContent data-testid="btn-tootip">Remove Venue</TooltipContent>
-                    </Tooltip>
-                    <AlertDialogContent className="bg-card text-card-foreground">
-
-                        <AlertDialogHeader>
-                            <AlertDialogTitle data-testid="remove-title">Are you sure you want to disconnect this venue?</AlertDialogTitle>
-                            <AlertDialogDescription data-testid="remove-desc">
-                                This action cannot be undone. 
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>No</AlertDialogCancel>
-                            <AlertDialogAction onClick={(e) => handleRemoveVenue(e)}>Yes</AlertDialogAction>
-                        </AlertDialogFooter>
-
-                    </AlertDialogContent>
-         </AlertDialog>   
-    )
+  return (
+    <AlertDialog>
+      {/* Single <button> (AlertDialogTrigger's) — TooltipTrigger adopts it via
+          asChild; nested trigger buttons are invalid HTML and break
+          hydration. */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <AlertDialogTrigger className="flex flex-row" aria-label="Remove venue">
+            <X size={16} data-testid="remove_btn" />
+          </AlertDialogTrigger>
+        </TooltipTrigger>
+        <TooltipContent data-testid="btn-tootip">Remove Venue</TooltipContent>
+      </Tooltip>
+      <AlertDialogContent className="bg-card text-card-foreground">
+        <AlertDialogHeader>
+          <AlertDialogTitle data-testid="remove-title">
+            Are you sure you want to disconnect this venue?
+          </AlertDialogTitle>
+          <AlertDialogDescription data-testid="remove-desc">
+            This also signs you out of it and forgets its saved accounts on this
+            browser. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel data-testid="remove-cancel">No</AlertDialogCancel>
+          <AlertDialogAction data-testid="remove-confirm" onClick={handleRemoveVenue}>
+            Yes
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 }

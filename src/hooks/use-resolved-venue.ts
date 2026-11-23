@@ -64,7 +64,3 @@ export function useResolvedVenueContext(
     error: resolution.error,
   };
 }
-
-export function useResolvedVenue(routeVenueId?: string): Venue | undefined {
-  return useResolvedVenueContext(routeVenueId).venue;
-}

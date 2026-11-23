@@ -16,6 +16,7 @@ import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
+import { TONE_STYLES } from "@/lib/status";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { LLM_PROVIDERS } from "@/config/llm-providers";
 import { DEFAULT_AGENT_ID } from "@/config/agents";
@@ -35,7 +36,17 @@ import { AgentCapsEditor } from "@/components/agent-config/AgentCapsEditor";
 import { AgentConnectionsPicker } from "@/components/agent-config/AgentConnectionsPicker";
 import { withToolToggled, type CatalogOp } from "@/lib/operations-catalog";
 import { withSkillToggled, type SkillSummary } from "@/lib/skills";
-import { cleanCaps, emptyCap, isAgentCap, type AgentCap } from "@/lib/agent-caps";
+import {
+  capsListOf,
+  cleanCaps,
+  isUnrestrictedCaps,
+  UNRESTRICTED_CAPS,
+  type AgentCap,
+  type AgentCapsMode,
+} from "@/lib/agent-caps";
+import { isReservedAgentId, slugifyAgentId } from "@/lib/agent-id";
+import { agentChatPath } from "@/lib/routes";
+import { acceptTasksOverride, watchSubmittedTask } from "@/lib/agent-tasks";
 import {
   AGENT_TEMPLATES_CHANGED_EVENT,
   asSdkAgentConfig,
@@ -55,6 +66,8 @@ interface AddNewAgentProps {
   initialAgentName?: string;
   initialSystemPrompt?: string;
   initialProvider?: string;
+  /** The operation path when `initialProvider` is the custom option. */
+  initialCustomProviderOperation?: string;
   initialModel?: string;
   preferAvailableProvider?: boolean;
   /** Exact template/clone config: an inline map, reference, or ordered layers. */
@@ -63,271 +76,18 @@ interface AddNewAgentProps {
   initialConfigPreview?: AgentConfigMap;
 }
 
-const slugify = (name: string) =>
-  name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
-
 export function AddNewAgent({
   trigger,
   open: controlledOpen,
   onOpenChange,
   dialogTitle = "Create a new agent",
-  submitLabel = "Create",
-  initialAgentName = "",
-  initialSystemPrompt = "",
-  initialProvider = "anthropic",
-  initialModel = "",
-  preferAvailableProvider = true,
-  initialConfig,
-  initialConfigPreview,
+  ...form
 }: AddNewAgentProps = {}) {
-  const router = useRouter();
-  const [agentName, setAgentName] = useState(initialAgentName);
-  const [agentId, setAgentId] = useState("");
-  const [agentIdEdited, setAgentIdEdited] = useState(false);
-  const [llmProvider, setLlmProvider] = useState(initialProvider);
-  const [customProviderOperation, setCustomProviderOperation] = useState("");
-  // "" = venue default (model omitted from config); CUSTOM_MODEL_OPTION shows
-  // a free-text input for ids not in the curated list.
-  const [model, setModel] = useState("");
-  const [customModel, setCustomModel] = useState("");
-  const [systemPrompt, setSystemPrompt] = useState(initialSystemPrompt);
-  const [initialCommand, setInitialCommand] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [savingTemplate, setSavingTemplate] = useState(false);
   const [internalOpen, setInternalOpen] = useState(false);
-  const [availableKeys, setAvailableKeys] = useState<string[]>([]);
-  // Staged tools/skills: there's no agentId to call agent:update against
-  // until creation completes, so the picker only edits this local state and
-  // it rides along in buildAgentConfig()'s overrides at submit time.
-  const [stagedTools, setStagedTools] = useState<string[]>([]);
-  const [stagedSkills, setStagedSkills] = useState<string[]>([]);
-  const [touchedCapabilities, setTouchedCapabilities] = useState(false);
-  // Caps default absent (unrestricted). capsEnabled/caps seed from a cloned
-  // template so the editor honestly shows what's already there, but — same
-  // reasoning as touchedCapabilities for tools/skills — only touchedCaps
-  // (set on actual user interaction, not on seeding) decides whether the
-  // built config carries an override; otherwise an untouched clone would
-  // silently duplicate its own inherited caps layer.
-  const [capsEnabled, setCapsEnabled] = useState(false);
-  const [caps, setCaps] = useState<AgentCap[]>([]);
-  const [touchedCaps, setTouchedCaps] = useState(false);
-  // A key pasted inline when the chosen provider has none — stored on create
-  // so you don't have to leave the dialog to add it in Secrets first.
-  const [apiKeyInput, setApiKeyInput] = useState("");
-
-
-  const venue = useAuthenticatedVenue();
   const open = controlledOpen ?? internalOpen;
   const setOpen = (nextOpen: boolean) => {
     if (controlledOpen === undefined) setInternalOpen(nextOpen);
     onOpenChange?.(nextOpen);
-  };
-
-  const resolvedAgentId = agentId.trim() || slugify(agentName);
-  const isReservedAgentId = resolvedAgentId === DEFAULT_AGENT_ID;
-
-  useEffect(() => {
-    if (!open) return;
-    setAgentName(initialAgentName);
-    setAgentId(slugify(initialAgentName));
-    setAgentIdEdited(false);
-    setSystemPrompt(initialSystemPrompt);
-    setLlmProvider(initialProvider);
-    setCustomProviderOperation("");
-    const modelSelection = modelSelectionFromId(initialProvider, initialModel);
-    setModel(modelSelection.model);
-    setCustomModel(modelSelection.customModel);
-    setInitialCommand("");
-    setApiKeyInput("");
-    const preview = initialConfigPreview ?? (
-      initialConfig === undefined ? {} : inlineAgentConfigPreview(initialConfig)
-    );
-    setStagedTools(Array.isArray(preview.tools) ? preview.tools : []);
-    setStagedSkills(Array.isArray(preview.skills) ? preview.skills : []);
-    setTouchedCapabilities(false);
-    const previewCaps = Array.isArray(preview.caps) ? preview.caps.filter(isAgentCap) : [];
-    setCaps(previewCaps);
-    setCapsEnabled(Array.isArray(preview.caps));
-    setTouchedCaps(false);
-    if (!venue) return;
-    venue.secrets
-      .list()
-      .then((secrets: string[]) => {
-        setAvailableKeys(secrets);
-        // Templates all default to OpenAI, but most users hold a different key.
-        // If the seeded provider has no key and another does, switch to a ready
-        // one so "Use Template" just works instead of showing "No API key".
-        const ready = (id: string) => {
-          const p = LLM_PROVIDERS[id];
-          return !!p && (!p.requiresKey || secrets.includes(p.secretKey));
-        };
-        if (preferAvailableProvider && !ready(initialProvider)) {
-          const pick = Object.keys(LLM_PROVIDERS).find(ready);
-          if (pick) {
-            setLlmProvider(pick);
-            setModel("");
-            setCustomModel("");
-          }
-        }
-      })
-      .catch(() => setAvailableKeys([]));
-    // initialConfig/initialConfigPreview intentionally excluded: they seed
-    // the staged tools/skills only on the open transition, same as every
-    // other field here — adding them would refire this reset (wiping
-    // in-progress edits) whenever a caller passes a fresh inline object.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    open,
-    venue,
-    initialAgentName,
-    initialSystemPrompt,
-    initialProvider,
-    initialModel,
-    preferAvailableProvider,
-  ]);
-
-  // The model actually sent in the agent config; "" means omit (venue default).
-  const resolvedModel = resolvedModelId(model, customModel);
-
-  const handleProviderChange = (providerId: string) => {
-    setLlmProvider(providerId);
-    if (providerId !== CUSTOM_PROVIDER_OPTION) setCustomProviderOperation("");
-    // Model ids are provider-specific — a Claude id is meaningless on OpenAI.
-    setModel("");
-    setCustomModel("");
-  };
-
-  const isProviderReady = (providerId: string) =>
-    isAgentProviderReady(providerId, availableKeys);
-
-  const buildAgentConfig = (): AgentConfigInput => {
-    const provider = LLM_PROVIDERS[llmProvider];
-    const baseConfig = withoutAgentConfigFields(
-      initialConfig,
-      ["llmOperation", "model", "systemPrompt"],
-    );
-    const overrides: AgentConfigMap = {
-      ...(initialConfig === undefined ? { operation: "v/ops/llmagent/chat" } : {}),
-      llmOperation:
-        llmProvider === CUSTOM_PROVIDER_OPTION
-          ? customProviderOperation.trim()
-          : provider.operation,
-      ...(resolvedModel && { model: resolvedModel }),
-      ...(systemPrompt.trim() && { systemPrompt: systemPrompt.trim() }),
-      // Only override tools/skills once the picker's actually been touched —
-      // an untouched template may carry them on an unresolved reference layer
-      // (inlineAgentConfigPreview can't see those), and forcing [] here would
-      // silently strip them. Once touched, the picker owns the full array.
-      ...(touchedCapabilities && { tools: stagedTools, skills: stagedSkills }),
-      ...(touchedCaps && { caps: cleanCaps(caps) }),
-    };
-    return withAgentConfigOverrides(baseConfig, overrides);
-  };
-
-  const handleNewAgent = async () => {
-    if (!venue) {
-      notifyWarning("Please connect to a venue first");
-      return;
-    }
-    if (!agentName.trim()) {
-      notifyWarning("Please enter an agent name");
-      return;
-    }
-    if (llmProvider === CUSTOM_PROVIDER_OPTION && !customProviderOperation.trim()) {
-      notifyWarning("Enter the custom provider operation path");
-      return;
-    }
-    const provider = LLM_PROVIDERS[llmProvider];
-    // The provider needs a key it doesn't have. Accept one pasted inline rather
-    // than making the user leave for the Secrets page.
-    const needsKey = !!provider?.requiresKey && !isProviderReady(llmProvider);
-    if (needsKey && !apiKeyInput.trim()) {
-      notifyWarning(`Enter an API key for ${provider.label}, or add one in Secrets`);
-      return;
-    }
-    if (isReservedAgentId) {
-      notifyWarning(`"${DEFAULT_AGENT_ID}" is reserved for the workspace prompt bar — pick another id`);
-      return;
-    }
-    setCreating(true);
-    try {
-      // Store the pasted key first so the provider op can resolve it.
-      if (needsKey && apiKeyInput.trim()) {
-        await venue.secrets.set(provider.secretKey, apiKeyInput.trim());
-      }
-      const result = await venue.agents.create({
-        agentId: resolvedAgentId,
-        config: asSdkAgentConfig(buildAgentConfig()),
-      });
-
-      if (initialCommand.trim()) {
-        // Fire-and-forget (wait:false): without it the SDK blocks until the
-        // initial task reaches a terminal state, so a failed task would surface
-        // below as a false "Unable to create agent" even though creation already
-        // succeeded. Task failures instead show up via normal job polling (#142).
-        await venue.agents.request(result.agentId, { task: initialCommand.trim() }, false);
-      }
-
-      gtmEvent.createAgent(result.agentId, llmProvider);
-      setAgentName("");
-      setAgentId("");
-      setAgentIdEdited(false);
-      setSystemPrompt("");
-      setCustomProviderOperation("");
-      setInitialCommand("");
-      setOpen(false);
-      router.push(`/agents/chat?agentId=${encodeURIComponent(result.agentId)}`);
-    } catch (err) {
-      gtmEvent.createAgentFailed(resolvedAgentId, err instanceof Error ? err.message : undefined);
-      const { reason, jobHref } = jobFailure(err, venue.venueId);
-      notifyError("Unable to create agent", reason, venue.baseUrl, jobHref);
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  const handleSaveTemplate = async () => {
-    if (
-      !venue || !agentName.trim() || !resolvedAgentId || isReservedAgentId ||
-      (llmProvider === CUSTOM_PROVIDER_OPTION && !customProviderOperation.trim())
-    ) return;
-    const path = `w/templates/${resolvedAgentId}`;
-    setSavingTemplate(true);
-    try {
-      const existing = await venue.workspace.read(path);
-      if (existing?.exists) {
-        notifyWarning("A template with this ID already exists", { description: path });
-        return;
-      }
-      await venue.workspace.write(path, {
-        name: agentName.trim(),
-        agent: { config: buildAgentConfig() },
-      });
-      window.dispatchEvent(new Event(AGENT_TEMPLATES_CHANGED_EVENT));
-      notifySuccess("Template saved", { description: path });
-    } catch (error) {
-      notifyError("Unable to save agent template", error, venue.baseUrl);
-    } finally {
-      setSavingTemplate(false);
-    }
-  };
-
-  const configPreview = initialConfigPreview ?? (
-    initialConfig === undefined ? {} : inlineAgentConfigPreview(initialConfig)
-  );
-  const capabilitiesSummary = [
-    stagedSkills.length ? `a skills index (${stagedSkills.join(", ")})` : "",
-    stagedTools.length ? `${stagedTools.length} tool${stagedTools.length === 1 ? "" : "s"}` : "",
-    configPreview.defaultTools ? "the platform default tools" : "",
-  ].filter(Boolean);
-
-  const handleToggleTool = (op: CatalogOp, attached: boolean) => {
-    setStagedTools((current) => withToolToggled(current, op, attached));
-    setTouchedCapabilities(true);
-  };
-  const handleToggleSkill = (skill: SkillSummary, attached: boolean) => {
-    setStagedSkills((current) => withSkillToggled(current, skill, attached));
-    setTouchedCapabilities(true);
   };
 
   return (
@@ -349,7 +109,289 @@ export function AddNewAgent({
             Define the agent, then create it now or save the configuration as a template.
           </DialogDescription>
         </DialogHeader>
+        {/* The form is mounted only while the dialog is open, so every open
+            starts from the seed props without an effect re-seeding a dozen
+            fields on the transition — and closing discards the draft without
+            anything having to clear it. */}
+        <AddNewAgentForm {...form} onClose={() => setOpen(false)} />
+      </DialogContent>
+    </Dialog>
+  );
+}
 
+type AddNewAgentFormProps = Omit<
+  AddNewAgentProps,
+  "trigger" | "open" | "onOpenChange" | "dialogTitle"
+> & {
+  onClose: () => void;
+};
+
+function AddNewAgentForm({
+  submitLabel = "Create",
+  initialAgentName = "",
+  initialSystemPrompt = "",
+  initialProvider = "anthropic",
+  initialCustomProviderOperation = "",
+  initialModel = "",
+  preferAvailableProvider = true,
+  initialConfig,
+  initialConfigPreview,
+  onClose,
+}: AddNewAgentFormProps) {
+  const router = useRouter();
+  const venue = useAuthenticatedVenue();
+  // Resolved inline fields of the seed config, for the staged capabilities and
+  // the summary line. The state initialisers below read it once, on mount.
+  const configPreview = initialConfigPreview ?? (
+    initialConfig === undefined ? {} : inlineAgentConfigPreview(initialConfig)
+  );
+  const seededModel = modelSelectionFromId(initialModel);
+  const [agentName, setAgentName] = useState(initialAgentName);
+  const [agentId, setAgentId] = useState(() => slugifyAgentId(initialAgentName));
+  const [agentIdEdited, setAgentIdEdited] = useState(false);
+  const [llmProvider, setLlmProvider] = useState(initialProvider);
+  const [customProviderOperation, setCustomProviderOperation] = useState(initialCustomProviderOperation);
+  // "" = venue default (model omitted from config); CUSTOM_MODEL_OPTION shows
+  // a free-text input for an id the picker doesn't list.
+  const [model, setModel] = useState(seededModel.model);
+  const [customModel, setCustomModel] = useState(seededModel.customModel);
+  const [systemPrompt, setSystemPrompt] = useState(initialSystemPrompt);
+  const [initialCommand, setInitialCommand] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [availableKeys, setAvailableKeys] = useState<string[]>([]);
+  // Staged tools/skills: there's no agentId to call agent:update against
+  // until creation completes, so the picker only edits this local state and
+  // it rides along in buildAgentConfig()'s overrides at submit time.
+  const [stagedTools, setStagedTools] = useState<string[]>(
+    () => (Array.isArray(configPreview.tools) ? configPreview.tools : []),
+  );
+  const [stagedSkills, setStagedSkills] = useState<string[]>(
+    () => (Array.isArray(configPreview.skills) ? configPreview.skills : []),
+  );
+  const [touchedCapabilities, setTouchedCapabilities] = useState(false);
+  // The agent's authority. The venue gives an agent created without caps none
+  // at all (covia 0.11), so the form always decides it: from a cloned
+  // template's own caps, else unrestricted. The exception is a config with a
+  // referenced layer this form cannot read, which may set caps itself (the
+  // reader template does): the mode stays null and the layer decides, until
+  // the user chooses. Same reasoning as touchedCapabilities for tools/skills —
+  // caps the inline config already states ride along on their own layer
+  // unless the user changes them.
+  const capsStated = Array.isArray(configPreview.caps) || isUnrestrictedCaps(configPreview.caps);
+  const hasReferenceLayer = (Array.isArray(initialConfig) ? initialConfig : [initialConfig])
+    .some((layer) => typeof layer === "string");
+  const [capsMode, setCapsMode] = useState<AgentCapsMode | null>(() =>
+    Array.isArray(configPreview.caps)
+      ? "restricted"
+      : capsStated || !hasReferenceLayer ? "unrestricted" : null,
+  );
+  const [caps, setCaps] = useState<AgentCap[]>(() => capsListOf(configPreview.caps));
+  const [touchedCaps, setTouchedCaps] = useState(false);
+  // A key pasted inline when the chosen provider has none — stored on create
+  // so you don't have to leave the dialog to add it in Secrets first.
+  const [apiKeyInput, setApiKeyInput] = useState("");
+
+  const resolvedAgentId = agentId.trim() || slugifyAgentId(agentName);
+  const agentIdReserved = isReservedAgentId(resolvedAgentId);
+
+  // The venue's stored secret names, so the model picker knows which
+  // providers already have a key.
+  useEffect(() => {
+    if (!venue) return;
+    let active = true;
+    venue.secrets
+      .list()
+      .then((secrets: string[]) => {
+        if (!active) return;
+        setAvailableKeys(secrets);
+        // Templates all default to OpenAI, but most users hold a different key.
+        // If the seeded provider has no key and another does, switch to that
+        // one so "Use Template" just works instead of showing "No API key".
+        // Only a provider whose key is stored counts: one that needs no key
+        // (Ollama) is "ready" too, but switching to it would only move the
+        // problem to a model the venue may not run.
+        const ready = (id: string) => isAgentProviderReady(id, secrets);
+        if (preferAvailableProvider && !ready(initialProvider)) {
+          const pick = Object.keys(LLM_PROVIDERS).find(
+            (id) => LLM_PROVIDERS[id].requiresKey && ready(id),
+          );
+          if (pick) {
+            setLlmProvider(pick);
+            setModel("");
+            setCustomModel("");
+          }
+        }
+      })
+      .catch(() => {
+        if (active) setAvailableKeys([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [venue, preferAvailableProvider, initialProvider]);
+
+  // The model actually sent in the agent config; "" means omit (venue default).
+  const resolvedModel = resolvedModelId(model, customModel);
+
+  const handleProviderChange = (providerId: string) => {
+    setLlmProvider(providerId);
+    if (providerId !== CUSTOM_PROVIDER_OPTION) setCustomProviderOperation("");
+    // Model ids are provider-specific — a Claude id is meaningless on OpenAI.
+    setModel("");
+    setCustomModel("");
+  };
+
+  const isProviderReady = (providerId: string) =>
+    isAgentProviderReady(providerId, availableKeys);
+
+  // Shared by the buttons' disabled state and the handlers' guards, so the two
+  // can't disagree. A key pasted inline counts: it is stored on create, so the
+  // provider only blocks Create while it has neither a stored nor a pasted key.
+  const provider = LLM_PROVIDERS[llmProvider];
+  const needsKey = !!provider?.requiresKey && !isProviderReady(llmProvider);
+  const keyMissing = needsKey && !apiKeyInput.trim();
+  const customOperationMissing =
+    llmProvider === CUSTOM_PROVIDER_OPTION && !customProviderOperation.trim();
+  const formIncomplete = !venue || !agentName.trim() || agentIdReserved || customOperationMissing;
+
+  const buildAgentConfig = (): AgentConfigInput => {
+    // Caps are sent explicitly whenever the form decides them: unrestricted
+    // is the string "unrestricted", never the absence of the key, which the
+    // venue reads as no authority.
+    const sendCaps = capsMode !== null && (touchedCaps || !capsStated);
+    const baseConfig = withoutAgentConfigFields(
+      initialConfig,
+      ["llmOperation", "model", "systemPrompt", ...(sendCaps ? ["caps"] : [])],
+    );
+    // Undefined for the venue default, which is likewise the absence of the key.
+    const llmOperation =
+      llmProvider === CUSTOM_PROVIDER_OPTION
+        ? customProviderOperation.trim()
+        : LLM_PROVIDERS[llmProvider]?.operation;
+    const overrides: AgentConfigMap = {
+      ...(initialConfig === undefined ? { operation: "v/ops/llmagent/chat" } : {}),
+      ...(llmOperation && { llmOperation }),
+      ...(resolvedModel && { model: resolvedModel }),
+      ...(systemPrompt.trim() && { systemPrompt: systemPrompt.trim() }),
+      // Only override tools/skills once the picker's actually been touched —
+      // an untouched template may carry them on an unresolved reference layer
+      // (inlineAgentConfigPreview can't see those), and forcing [] here would
+      // silently strip them. Once touched, the picker owns the full array.
+      ...(touchedCapabilities && { tools: stagedTools, skills: stagedSkills }),
+      ...(sendCaps && {
+        caps: capsMode === "unrestricted" ? UNRESTRICTED_CAPS : cleanCaps(caps),
+      }),
+      // The form sends this agent tasks (its first command, then the chat's
+      // requests), which a venue from 0.12 refuses unless acceptTasks is set.
+      ...acceptTasksOverride(initialConfig),
+    };
+    return withAgentConfigOverrides(baseConfig, overrides);
+  };
+
+  const handleNewAgent = async () => {
+    if (!venue) {
+      notifyWarning("Please connect to a venue first");
+      return;
+    }
+    if (!agentName.trim()) {
+      notifyWarning("Please enter an agent name");
+      return;
+    }
+    if (customOperationMissing) {
+      notifyWarning("Enter the custom provider operation path");
+      return;
+    }
+    // The provider needs a key it doesn't have. Accept one pasted inline rather
+    // than making the user leave for the Secrets page.
+    if (keyMissing) {
+      notifyWarning(`Enter an API key for ${provider?.label ?? "this provider"}, or add one in Secrets`);
+      return;
+    }
+    if (agentIdReserved) {
+      notifyWarning(`"${DEFAULT_AGENT_ID}" is reserved for the workspace prompt bar — pick another id`);
+      return;
+    }
+    setCreating(true);
+    try {
+      // Store the pasted key first so the provider op can resolve it. Past the
+      // keyMissing guard, needing a key means one was pasted.
+      if (needsKey && provider) {
+        await venue.secrets.set(provider.secretKey, apiKeyInput.trim());
+      }
+      const result = await venue.agents.create({
+        agentId: resolvedAgentId,
+        config: asSdkAgentConfig(buildAgentConfig()),
+      });
+
+      if (initialCommand.trim()) {
+        // Fire-and-forget (wait:false): the SDK (1.26+, covia-sdk#112) returns
+        // once the task is submitted instead of blocking until it is terminal,
+        // so a failed task cannot surface below as a false "Unable to create
+        // agent".
+        const submitted = await venue.agents.request(result.agentId, { task: initialCommand.trim() }, false);
+        // The snapshot is PENDING even for a task the venue then refuses, so
+        // check the job separately; the form has closed by the time it fails.
+        const createdId = result.agentId;
+        void watchSubmittedTask(venue, submitted.id, (err) => {
+          const { reason, jobHref } = jobFailure(err, venue.venueId);
+          notifyError(`Created ${createdId}, but its first task failed`, reason, venue.baseUrl, jobHref);
+        });
+      }
+
+      gtmEvent.createAgent(result.agentId, llmProvider);
+      // Closing unmounts this form, so its fields need no clearing here.
+      onClose();
+      router.push(agentChatPath(result.agentId));
+    } catch (err) {
+      gtmEvent.createAgentFailed(resolvedAgentId, err instanceof Error ? err.message : undefined);
+      const { reason, jobHref } = jobFailure(err, venue.venueId);
+      notifyError("Unable to create agent", reason, venue.baseUrl, jobHref);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!venue || formIncomplete || !resolvedAgentId) return;
+    const path = `w/templates/${resolvedAgentId}`;
+    setSavingTemplate(true);
+    try {
+      const existing = await venue.workspace.read(path);
+      if (existing?.exists) {
+        notifyWarning("A template with this ID already exists", { description: path });
+        return;
+      }
+      await venue.workspace.write(path, {
+        name: agentName.trim(),
+        agent: { config: buildAgentConfig() },
+      });
+      window.dispatchEvent(new Event(AGENT_TEMPLATES_CHANGED_EVENT));
+      notifySuccess("Template saved", { description: path });
+    } catch (error) {
+      notifyError("Unable to save agent template", error, venue.baseUrl);
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  const capabilitiesSummary = [
+    stagedSkills.length ? `a skills index (${stagedSkills.join(", ")})` : "",
+    stagedTools.length ? `${stagedTools.length} tool${stagedTools.length === 1 ? "" : "s"}` : "",
+    configPreview.defaultTools ? "the platform default tools" : "",
+  ].filter(Boolean);
+
+  const handleToggleTool = (op: CatalogOp, attached: boolean) => {
+    setStagedTools((current) => withToolToggled(current, op, attached));
+    setTouchedCapabilities(true);
+  };
+  const handleToggleSkill = (skill: SkillSummary, attached: boolean) => {
+    setStagedSkills((current) => withSkillToggled(current, skill, attached));
+    setTouchedCapabilities(true);
+  };
+
+  return (
+    <>
         <div className="grid min-h-0 overflow-y-auto lg:grid-cols-2">
           <section
             data-testid="agent-identity-column"
@@ -365,7 +407,7 @@ export function AddNewAgent({
                 value={agentName}
                 onChange={(e) => {
                   setAgentName(e.target.value);
-                  if (!agentIdEdited) setAgentId(slugify(e.target.value));
+                  if (!agentIdEdited) setAgentId(slugifyAgentId(e.target.value));
                 }}
               />
             </div>
@@ -382,8 +424,8 @@ export function AddNewAgent({
                   setAgentIdEdited(true);
                 }}
               />
-              {isReservedAgentId ? (
-                <p className="flex items-center gap-1 text-sm text-amber-500">
+              {agentIdReserved ? (
+                <p className={`flex items-center gap-1 text-sm ${TONE_STYLES.attention.text}`}>
                   <AlertTriangle size={14} />
                   &quot;{DEFAULT_AGENT_ID}&quot; is reserved. Choose another ID.
                 </p>
@@ -441,11 +483,10 @@ export function AddNewAgent({
             </div>
 
             <AgentCapsEditor
-              enabled={capsEnabled}
-              onEnabledChange={(next) => {
-                setCapsEnabled(next);
+              mode={capsMode}
+              onModeChange={(next) => {
+                setCapsMode(next);
                 setTouchedCaps(true);
-                if (next && caps.length === 0) setCaps([emptyCap()]);
               }}
               caps={caps}
               onCapsChange={(next) => {
@@ -461,6 +502,7 @@ export function AddNewAgent({
             />
 
             <AgentRuntimeFields
+              venue={venue}
               providerId={llmProvider}
               onProviderChange={handleProviderChange}
               model={model}
@@ -472,6 +514,7 @@ export function AddNewAgent({
               onApiKeyChange={setApiKeyInput}
               customProviderOperation={customProviderOperation}
               onCustomProviderOperationChange={setCustomProviderOperation}
+              allowVenueDefaultProvider
             />
 
             <div className="space-y-2">
@@ -489,7 +532,7 @@ export function AddNewAgent({
             </div>
 
             {!venue && (
-              <p className="flex items-center gap-1 text-sm text-amber-500">
+              <p className={`flex items-center gap-1 text-sm ${TONE_STYLES.attention.text}`}>
                 <AlertTriangle size={14} /> No venue connected.{" "}
                 <Link href="/venues" className="underline">Connect one in Venues</Link>.
               </p>
@@ -503,11 +546,7 @@ export function AddNewAgent({
             variant="outline"
             data-testid="save-agent-template"
             onClick={handleSaveTemplate}
-            disabled={
-              savingTemplate || creating || !venue || !agentName.trim() ||
-              isReservedAgentId ||
-              (llmProvider === CUSTOM_PROVIDER_OPTION && !customProviderOperation.trim())
-            }
+            disabled={savingTemplate || creating || formIncomplete}
             className="gap-2"
           >
             <BookmarkPlus size={16} />
@@ -518,16 +557,11 @@ export function AddNewAgent({
             type="button"
             data-testid="create-agent"
             onClick={handleNewAgent}
-            disabled={
-              creating || savingTemplate || !venue || !agentName.trim() ||
-              !isProviderReady(llmProvider) || isReservedAgentId ||
-              (llmProvider === CUSTOM_PROVIDER_OPTION && !customProviderOperation.trim())
-            }
+            disabled={creating || savingTemplate || formIncomplete || keyMissing}
           >
             {creating ? "Creating…" : submitLabel}
           </Button>
         </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </>
   );
 }

@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Wrench, Copy, ChevronDown, ChevronUp, ArrowRight } from "lucide-react";
+import { Copy, ChevronDown, ChevronUp, ArrowRight } from "lucide-react";
+import { McpGlyph } from "@/components/adapter-glyphs";
+import { TypeTile } from "@/components/TypeTile";
+import { adapterLookup } from "@/lib/adapter-icons";
 import type { Venue } from "@covia/covia-sdk";
-import { copyDataToClipBoard, listMcpTools } from "@/lib/utils";
+import { copyDataToClipBoard } from "@/lib/utils";
+import { useMcpDiscovery } from "@/hooks/use-mcp-discovery";
+import { useVenueRead } from "@/hooks/use-venue-read";
 
 interface McpConnectSectionProps {
   venue: Venue;
@@ -18,38 +23,24 @@ interface McpConnectSectionProps {
 // (#258) render the same fetch/snippet logic without duplicating it.
 export function McpConnectSection({ venue, slug }: McpConnectSectionProps) {
   const router = useRouter();
-  const [venueMCPUrl, setVenueMCPURL] = useState("Not Found");
-  const [mcpTools, setMcpTools] = useState<{ name: string }[]>([]);
+  // Shared /.well-known/mcp discovery — one request even though the landing page
+  // also consumes it (W4 4A).
+  const venueMCPUrl = useMcpDiscovery(venue);
+  // Job-free native read via the SDK (covia-sdk#23), held with the venue it is
+  // for. A failure is non-fatal: the card just lists no tools.
+  const { data: mcpTools } = useVenueRead<{ name: string }[]>({
+    venue,
+    initial: [],
+    notify: false,
+    failureTitle: "Unable to list MCP tools",
+    load: (target) => target.mcp.listAllTools(),
+  });
   const [showClaudeSnippet, setShowClaudeSnippet] = useState(false);
-
-  useEffect(() => {
-    const fetchMCP = async () => {
-      try {
-        const response = await fetch(`${venue.baseUrl}/.well-known/mcp`);
-        if (!response.ok) throw new Error(`MCP discovery failed: ${response.status}`);
-        const body = await response.json();
-        setVenueMCPURL(body?.error ? "Not Available" : body?.server_url ?? "Not Available");
-      } catch {
-        setVenueMCPURL("Not Available");
-      }
-    };
-    const fetchMcpTools = async () => {
-      try {
-        setMcpTools(await listMcpTools(venue.baseUrl));
-      } catch {
-        /* non-fatal */
-      }
-    };
-    fetchMCP();
-    fetchMcpTools();
-  }, [venue]);
 
   return (
     <Card className="p-6">
       <div className="flex items-center gap-3 mb-4">
-        <div className="bg-primary-vlight p-2 rounded-lg">
-          <Wrench size={20} className="text-primary" />
-        </div>
+        <TypeTile {...adapterLookup("mcp")} className="size-10 rounded-lg" iconSize={20} />
         <div>
           <h2 className="text-lg font-medium">MCP Integration</h2>
           <p className="text-sm text-muted-foreground">
@@ -89,7 +80,7 @@ export function McpConnectSection({ venue, slug }: McpConnectSectionProps) {
           onClick={() => router.push(`/venues/${slug}/mcp`)}
           className="flex items-center gap-2"
         >
-          <Wrench size={14} /> MCP Tools
+          <McpGlyph size={14} /> MCP Tools
           <ArrowRight size={14} />
         </Button>
       </div>

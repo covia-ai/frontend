@@ -39,23 +39,33 @@ const withRequests = (requests: unknown[]) =>
 
 beforeEach(() => mockRespond.mockClear());
 
+it('opens and closes a prefixed request from an older bare-ID deep link', async () => {
+  withRequests([req({ id: '0xab12', asks: [
+    { id: 'notes', type: 'text', prompt: 'Provide details', required: true },
+  ] })]);
+  render(<HitlInbox initialRequestId="AB12" />);
+  expect(screen.getByText('Provide details')).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(screen.queryByText('Provide details')).not.toBeInTheDocument();
+});
+
 describe('requester attribution', () => {
   it('credits the agent and links to it', () => {
-    withRequests([req({ agent: 'guarded-writer', from: 'did:key:zOWNER' })]);
+    withRequests([req({ agent: 'guarded-writer', caller: 'did:key:zOWNER/g/guarded-writer', owner: 'did:key:zOWNER' })]);
     render(<HitlInbox />);
     expect(screen.getByTestId('hitl-view-agent'))
-      .toHaveAttribute('href', '/agents/view?agentId=guarded-writer');
+      .toHaveAttribute('href', '/agents/agent/guarded-writer');
   });
 
   it('encodes an agent id that is not URL-safe', () => {
     withRequests([req({ agent: 'team/writer bot' })]);
     render(<HitlInbox />);
     expect(screen.getByTestId('hitl-view-agent'))
-      .toHaveAttribute('href', '/agents/view?agentId=team%2Fwriter%20bot');
+      .toHaveAttribute('href', '/agents/agent/team%2Fwriter%20bot');
   });
 
   it('shows no agent link for a person-raised request', () => {
-    withRequests([req({ from: 'did:key:zSOMEONE' })]);
+    withRequests([req({ caller: 'did:key:zSOMEONE' })]);
     render(<HitlInbox />);
     expect(screen.queryByTestId('hitl-view-agent')).not.toBeInTheDocument();
   });
@@ -180,6 +190,29 @@ describe('inline form', () => {
     });
   });
 
+  // A quick-answer card opened by a deep link shows the full form. Opening a
+  // different card collapses it without its own Cancel, and its quick buttons
+  // come back: the comment typed in the form must not go out with them.
+  it('does not send a comment typed in a card that another card collapsed', async () => {
+    const quickCard = req({ id: 'quick', asks: [approvalAsk] });
+    const formCard = req({
+      id: 'form', asks: [approvalAsk, { id: 'notes', type: 'text', prompt: 'Notes?' }],
+    });
+    withRequests([quickCard, formCard]);
+    render(<HitlInbox initialRequestId="quick" />);
+
+    await userEvent.type(
+      screen.getByPlaceholderText('Optional — the reason the requester sees when rejecting.'),
+      'typed then abandoned',
+    );
+    await userEvent.click(screen.getByTestId('hitl-respond-toggle')); // opens the other card
+    await userEvent.click(screen.getAllByTestId('hitl-quick-answer')[0]);
+
+    expect(mockRespond).toHaveBeenCalledWith(expect.anything(), {
+      id: 'quick', outcome: 'answer', answers: { approve: true },
+    });
+  });
+
   it('never fast-paths a request offering capability grants', () => {
     withRequests([req({
       asks: [{ ...approvalAsk, grants: [{ with: 'w/', can: 'write' }] }],
@@ -248,5 +281,32 @@ describe('resolved requests show the outcome', () => {
     expect(await screen.findByTestId('hitl-result')).toBeInTheDocument();
     expect(screen.queryByTestId('hitl-quick-answer')).not.toBeInTheDocument();
     expect(screen.queryByTestId('hitl-respond-toggle')).not.toBeInTheDocument();
+  });
+});
+
+describe('agent deep link (#364)', () => {
+  const requests = [
+    req({ id: 'a', title: 'From bot', agent: 'bot' }),
+    req({ id: 'b', title: 'From bot-2', agent: 'bot-2' }),
+    req({ id: 'c', title: 'Old bot ask', agent: 'bot', status: 'answered' }),
+  ];
+
+  it("narrows to that agent's open requests, by exact id", () => {
+    withRequests(requests);
+    render(<HitlInbox initialAgent="bot" />);
+
+    expect(screen.getByText('From bot')).toBeInTheDocument();
+    expect(screen.queryByText('From bot-2')).not.toBeInTheDocument();
+    expect(screen.queryByText('Old bot ask')).not.toBeInTheDocument();
+    expect(screen.getByTestId('hitl-agent-filter')).toHaveTextContent('bot');
+  });
+
+  it('drops the agent filter from its chip', async () => {
+    withRequests(requests);
+    render(<HitlInbox initialAgent="bot" />);
+
+    await userEvent.click(screen.getByRole('button', { name: /every agent/i }));
+    expect(screen.queryByTestId('hitl-agent-filter')).not.toBeInTheDocument();
+    expect(screen.getByText('From bot-2')).toBeInTheDocument();
   });
 });

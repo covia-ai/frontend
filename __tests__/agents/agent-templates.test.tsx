@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom';
 import { render, renderHook, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { setVenue } from '@test/use-authenticated-venue';
 
 const read = jest.fn();
 const mockVenue = {
@@ -11,9 +12,12 @@ const mockVenue = {
   // venue.skills.list(...) eagerly on mount (#295).
   skills: { list: jest.fn().mockResolvedValue([]) },
 };
-jest.mock('@/hooks/use-authenticated-venue', () => ({
-  useAuthenticatedVenue: () => mockVenue,
-}));
+// The complete double: a failed read also calls revalidateVenueOnFailure, which a
+// hand-written mock that only provides useAuthenticatedVenue would leave undefined.
+jest.mock('@/hooks/use-authenticated-venue', () =>
+  require('@test/use-authenticated-venue').venueMock);
+jest.mock('@/lib/notify', () => require('@test/notify').notifyMock);
+setVenue(mockVenue);
 jest.mock('@/hooks/use-auth', () => ({
   useIsAuthenticated: () => true,
   // AddNewAgent now renders ToolSkillPicker, which reads venue access via

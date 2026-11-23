@@ -1,9 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { isJobFinished, type JobMetadata, type RunStatus } from "@covia/covia-sdk";
 
 /** Minimal shape we need — the resolved venue's per-job SSE stream. */
 interface StreamVenue {
-  jobs: { stream: (jobId: string) => AsyncGenerator<{ json: () => unknown }> };
+  jobs: {
+    stream: (
+      jobId: string,
+      options?: { signal?: AbortSignal },
+    ) => AsyncGenerator<{ json: () => unknown }>;
+  };
+}
+
+// Aborting — not a flag checked on the next event — is what closes a quiet
+// stream: a PAUSED job may not emit anything for hours.
+function closeStreams(open: Map<string, AbortController>): void {
+  for (const controller of open.values()) controller.abort();
+  open.clear();
 }
 
 /**
@@ -11,32 +23,51 @@ interface StreamVenue {
  * `venue.jobs.stream(id)` per active job (the same auth-carrying SSE the detail
  * view uses) and returns a map of the latest streamed metadata, so active rows
  * flip the instant the venue reports a change instead of waiting for the list's
- * poll. Streams close when a job reaches a terminal state or the active set
- * changes; if SSE is unavailable the list's existing poll still updates rows.
+ * poll. A stream is aborted when its job reaches a terminal state, leaves the
+ * active set, or the hook unmounts; if SSE is unavailable the list's existing
+ * poll still updates rows.
  */
 export function useActiveJobsLive(
   venue: StreamVenue | null | undefined,
   activeIds: string[],
 ): Record<string, JobMetadata> {
+  // Everything ever streamed, by job id. Which of it is reported is decided
+  // below from the active set, so a change to that set needs no reset here.
   const [live, setLive] = useState<Record<string, JobMetadata>>({});
   // A stable primitive dep: the sorted set of active ids.
   const key = [...activeIds].sort().join(",");
+  // Open streams by job id. Kept across renders so a change to the active set
+  // only opens and closes the streams that actually differ — each one holds a
+  // connection, and browsers cap those per host.
+  const streams = useRef({ venue, open: new Map<string, AbortController>() });
 
   useEffect(() => {
-    const ids = key ? key.split(",") : [];
+    const { open } = streams.current;
+    if (streams.current.venue !== venue) {
+      closeStreams(open);
+      streams.current.venue = venue;
+    }
+
+    const ids = venue && key ? key.split(",") : [];
     if (!venue || ids.length === 0) {
-      // Clear only when there's something to clear — returning the same object
-      // lets React bail out, so an unstable `venue` ref can't cause a loop.
-      setLive((prev) => (Object.keys(prev).length ? {} : prev));
+      closeStreams(open);
       return;
     }
-    let cancelled = false;
+
+    for (const [id, controller] of open) {
+      if (ids.includes(id)) continue;
+      controller.abort();
+      open.delete(id);
+    }
 
     for (const id of ids) {
+      if (open.has(id)) continue;
+      const controller = new AbortController();
+      open.set(id, controller);
       void (async () => {
         try {
-          for await (const event of venue.jobs.stream(id)) {
-            if (cancelled) return;
+          for await (const event of venue.jobs.stream(id, { signal: controller.signal })) {
+            if (controller.signal.aborted) return;
             let meta: JobMetadata | undefined;
             try {
               const data = event.json() as { metadata?: JobMetadata } & JobMetadata;
@@ -49,15 +80,26 @@ export function useActiveJobsLive(
             if (meta.status && isJobFinished(meta.status as RunStatus)) return; // terminal → close
           }
         } catch {
-          // SSE unavailable / dropped — the list's poll still refreshes this row.
+          // SSE unavailable / dropped / aborted — the list's poll still refreshes this row.
+        } finally {
+          if (open.get(id) === controller) open.delete(id);
         }
       })();
     }
-
-    return () => {
-      cancelled = true;
-    };
   }, [venue, key]);
 
-  return live;
+  useEffect(() => {
+    const { open } = streams.current;
+    return () => closeStreams(open);
+  }, []);
+
+  // Only the jobs currently active are reported; a job that left the set (or
+  // belonged to a previous venue) simply stops being looked up.
+  return useMemo(() => {
+    const visible: Record<string, JobMetadata> = {};
+    for (const id of key ? key.split(",") : []) {
+      if (live[id]) visible[id] = live[id];
+    }
+    return visible;
+  }, [live, key]);
 }

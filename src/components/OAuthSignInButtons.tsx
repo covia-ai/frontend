@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { useOAuthSignInOptions } from "@/hooks/use-oauth-sign-in";
 import { OAUTH_PROVIDER_LABELS, type OAuthProvider } from "@/lib/oauth";
 
-const PROVIDER_ICONS = {
+// Exhaustive over OAuthProvider, so a new provider must be given its icon here
+// rather than silently borrowing another's.
+export const PROVIDER_ICONS = {
   google: FaGoogle,
   microsoft: FaMicrosoft,
   github: FaGithub,
@@ -17,14 +19,12 @@ export function OAuthSignInButtons({ venueId }: { venueId?: string }) {
 
   return (
     <div className="flex w-64 flex-col gap-2" aria-label="OAuth sign-in options">
-      {options.map(({ provider, href }) => {
+      {options.map(({ provider, signIn }) => {
         const Icon = PROVIDER_ICONS[provider];
         return (
-          <Button key={provider} asChild variant="outline" className="w-full justify-center gap-2">
-            <a href={href}>
-              <Icon className="size-4" />
-              Continue with {OAUTH_PROVIDER_LABELS[provider]}
-            </a>
+          <Button key={provider} onClick={() => void signIn()} variant="outline" className="w-full justify-center gap-2">
+            <Icon className="size-4" />
+            Continue with {OAUTH_PROVIDER_LABELS[provider]}
           </Button>
         );
       })}

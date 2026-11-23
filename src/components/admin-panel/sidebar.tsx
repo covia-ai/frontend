@@ -4,29 +4,22 @@ import { SidebarLegalFooter } from "@/components/admin-panel/sidebar-legal-foote
 import { SidebarToggle } from "@/components/admin-panel/sidebar-toggle";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/hooks/use-sidebar";
-import { useStore } from "@/hooks/use-store";
 import { cn } from "@/lib/utils";
-import { useTheme } from "next-themes";
 import Image from "next/image";
 import Link from "next/link";
 export function Sidebar() {
-  const sidebar = useStore(useSidebar, (x) => x);
-  const { theme } = useTheme();
-  if (!sidebar) return null;
-  const { isOpen, toggleOpen, getOpenState, setIsHover, settings } = sidebar;
+  const isOpen = useSidebar((state) => state.isOpen);
+  const toggleOpen = useSidebar((state) => state.toggleOpen);
 
   return (
     <aside
       className={cn(
-        "fixed top-0 left-0 z-20 flex flex-col text-sidebar-foreground text-md bg-linear-to-b from-sidebar from-60% via-primary-light via-75% to-secondary-light to-90% shadow-lg h-screen -translate-x-full lg:translate-x-0 transition-[width] ease-in-out duration-300",
-        !getOpenState() ? "w-[90px]" : "w-56  ",
-        settings.disabled && "hidden"
+        "fixed top-[var(--site-notice-h,0px)] left-0 z-20 flex flex-col text-sidebar-foreground text-md bg-linear-to-b from-sidebar from-60% via-primary-light via-75% to-secondary-light to-90% shadow-lg h-[calc(100vh-var(--site-notice-h,0px))] -translate-x-full lg:translate-x-0 transition-[width] ease-in-out duration-300",
+        isOpen ? "w-56" : "w-[90px]"
       )}
     >
       <SidebarToggle isOpen={isOpen} setIsOpen={toggleOpen} />
       <div
-        onMouseEnter={() => setIsHover(true)}
-        onMouseLeave={() => setIsHover(false)}
         // flex-1 min-h-0 makes this the sidebar's middle region, between the
         // header below and SidebarLegalFooter below — a normal flex sibling
         // now (not an absolute overlay), so it can never overlap this
@@ -39,7 +32,7 @@ export function Sidebar() {
           aria-label="sidebar" role="button"
           className={cn(
             "shrink-0 transition-transform ease-in-out duration-300 mb-1 ",
-            !getOpenState() ? "translate-x-1" : "translate-x-0"
+            isOpen ? "translate-x-0" : "translate-x-1"
           )}
           variant="link"
           asChild
@@ -47,26 +40,33 @@ export function Sidebar() {
             <h1
               className={cn(
                 "font-bold text-lg whitespace-nowrap transition-[transform,opacity,display] ease-in-out duration-300",
-                !getOpenState()
-                  ? "-translate-x-96 opacity-0 hidden"
-                  : "translate-x-0 opacity-100"
+                isOpen
+                  ? "translate-x-0 opacity-100"
+                  : "-translate-x-96 opacity-0 hidden"
               )}
             >
 
               <Link href="https://www.covia.ai">
                <div className="flex flex-row items-center justify-center space-x-4">
-                <Image src="/Covia_logo_icon_transparent.png" width={25} height={0} alt="covia"></Image>
-                {theme == "light" && <Image src="/covia.ai_dark_blue.png" width={100} height={0} alt="Covia" ></Image>}
-                {theme == "dark" && <Image src="/covia.ai_dark_mode.png" width={100} height={0} alt="Covia" ></Image>}
+                <Image src="/Covia_logo_icon_transparent.png" width={25} height={25} alt="covia" />
+                {/* Both wordmarks render everywhere and the theme class on
+                    <html> picks one: the server can't know the theme, so a
+                    JS choice here would never match the client's markup.
+                    Sized in their real proportions (the PNGs are 1330x294)
+                    so next/image's attributes match what CSS renders, and
+                    eager because a wordmark is the largest thing painted
+                    above the fold. */}
+                <Image src="/covia.ai_dark_blue.png" width={100} height={22} loading="eager" alt="Covia" className="dark:hidden" />
+                <Image src="/covia.ai_dark_mode.png" width={100} height={22} loading="eager" alt="Covia" className="hidden dark:block" />
 
               </div>
               </Link>
 
             </h1>
         </Button>
-        <Menu isOpen={getOpenState()} />
+        <Menu isOpen={isOpen} />
       </div>
-      <SidebarLegalFooter isOpen={getOpenState()} />
+      <SidebarLegalFooter isOpen={isOpen} />
     </aside>
   );
 }

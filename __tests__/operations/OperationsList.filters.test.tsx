@@ -1,0 +1,148 @@
+import React from 'react';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import '@testing-library/jest-dom';
+
+// Focused on the facet row + Filters sheet: the "All" pill carries the
+// catalogue total (like every adapter pill carries its count) and the sheet's
+// adapter rows wear the same glyph as their pill, while free-form keyword rows
+// stay icon-less. Heavy children are stubbed so only that surface is exercised.
+jest.mock('@/components/OperationCard', () => ({
+  OperationCard: ({ asset }: any) => (
+    <div data-testid="asset-card">{asset.metadata?.name ?? asset.id}</div>
+  ),
+}));
+jest.mock('@/components/admin-panel/TopBar', () => ({
+  TopBar: () => <div data-testid="top-bar" />,
+}));
+
+const mockListCatalogOperations = jest.fn();
+jest.mock('@/lib/operations-catalog', () => ({
+  listCatalogOperations: (...args: any[]) => mockListCatalogOperations(...args),
+}));
+
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
+  usePathname: () => '/operations',
+  useSearchParams: () => ({ get: () => null }),
+}));
+
+const mockVenue: any = {
+  venueId: 'venue-1',
+  metadata: { name: 'Test Venue' },
+  mcp: { listAllTools: () => Promise.resolve([]) },
+};
+jest.mock('@/hooks/use-venues', () => ({
+  useVenues: () => ({ venues: [mockVenue], addVenue: jest.fn() }),
+}));
+jest.mock('@/hooks/use-resolved-venue', () => ({
+  useResolvedVenueContext: () => ({
+    descriptor: mockVenue,
+    venue: mockVenue,
+    auth: { type: 'keypair' },
+    isAuthenticated: true,
+  }),
+}));
+
+import { OperationsList } from '@/components/OperationsList';
+
+describe('OperationsList — facets & filter sheet', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Two adapters (langchain, http) + one free-form keyword (memory) so the
+    // facet row renders and the sheet splits into Adapter/Keyword sections.
+    mockListCatalogOperations.mockResolvedValue([
+      { path: 'v/ops/langchain/chat', metadata: { name: 'Alpha Chat', operation: { adapter: 'langchain:openai' }, keywords: ['memory'] } },
+      { path: 'v/ops/http/fetch', metadata: { name: 'Beta Fetch', operation: { adapter: 'http:get' } } },
+    ]);
+  });
+
+  it('shows the catalogue total on the "All" pill', async () => {
+    render(<OperationsList />);
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
+
+    const facets = screen.getByTestId('operation-facets');
+    const allPill = within(facets).getByRole('button', { name: /All/ });
+    expect(allPill).toHaveTextContent('2');
+  });
+
+  it('renders an icon on adapter rows in the filter sheet, but not on keyword rows', async () => {
+    const user = userEvent.setup();
+    render(<OperationsList />);
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
+
+    await user.click(screen.getByTestId('filters-trigger'));
+    const sheet = await screen.findByTestId('filters-sheet');
+
+    // Adapter rows carry a glyph (an <svg>); the unchecked checkbox renders no
+    // svg of its own, so any svg in the row is the adapter icon.
+    const adapterRow = within(sheet).getByText('langchain').closest('label')!;
+    expect(adapterRow.querySelector('svg')).toBeTruthy();
+
+    // Free-form keyword rows stay icon-less.
+    const keywordRow = within(sheet).getByText('memory').closest('label')!;
+    expect(keywordRow.querySelector('svg')).toBeFalsy();
+  });
+
+  // The 12-cap used to be silent, so the sheet looked like a redundant copy of
+  // the visible chips while actually holding the adapters the row cut off —
+  // frontend#398.
+  describe('truncation is visible', () => {
+    // 15 adapters > the 12 cap, so exactly 3 are hidden.
+    const manyAdapters = Array.from({ length: 15 }, (_, i) => ({
+      path: `v/ops/ad${i}/run`,
+      metadata: { name: `Op ${i}`, operation: { adapter: `ad${i}:go` } },
+    }));
+
+    it('caps the facet row at 12 adapters and offers the rest behind a "+N more" chip', async () => {
+      mockListCatalogOperations.mockResolvedValue(manyAdapters);
+      render(<OperationsList />);
+      await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(15));
+
+      const facets = screen.getByTestId('operation-facets');
+      // 12 adapter pills + the "All" pill + the overflow chip.
+      expect(within(facets).getAllByRole('button')).toHaveLength(14);
+      expect(screen.getByTestId('operation-facets-overflow')).toHaveTextContent('+3 more');
+    });
+
+    it('opens the filter sheet from the overflow chip, showing a hidden adapter', async () => {
+      const user = userEvent.setup();
+      mockListCatalogOperations.mockResolvedValue(manyAdapters);
+      render(<OperationsList />);
+      await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(15));
+
+      // Every fixture adapter has the same op count, so which three the cap
+      // drops is not fixed — derive one from the rendered row rather than
+      // assuming an order.
+      // The adapter name is its own text node inside the pill (the count sits in
+      // a sibling span), so an exact queryByText tells us pill-by-pill which
+      // adapters the cap dropped — no prefix matching, so ad1 vs ad14 can't
+      // be confused.
+      const facets = screen.getByTestId('operation-facets');
+      const hidden = manyAdapters
+        .map((op) => op.metadata.operation.adapter.split(':')[0])
+        .filter((ad) => within(facets).queryByText(ad) === null);
+      expect(hidden).toHaveLength(3);
+
+      await user.click(screen.getByTestId('operation-facets-overflow'));
+      const sheet = await screen.findByTestId('filters-sheet');
+      for (const ad of hidden) {
+        expect(within(sheet).getByText(ad)).toBeInTheDocument();
+      }
+    });
+
+    it('omits the overflow chip when every adapter already has a pill', async () => {
+      render(<OperationsList />);
+      await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
+
+      expect(screen.queryByTestId('operation-facets-overflow')).not.toBeInTheDocument();
+    });
+  });
+
+  it('labels the trigger "All filters", so it reads as a superset of the chips', async () => {
+    render(<OperationsList />);
+    await waitFor(() => expect(screen.getAllByTestId('asset-card')).toHaveLength(2));
+
+    expect(screen.getByTestId('filters-trigger')).toHaveTextContent('All filters');
+  });
+});

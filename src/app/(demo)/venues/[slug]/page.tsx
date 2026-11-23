@@ -1,19 +1,61 @@
 "use client";
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
-import { Card, CardContent, CardHeader }from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Building2, Database, Settings, Users, Globe, Activity, ArrowRight, ExternalLink, Link as LinkIcon, Fingerprint, Plug }from "lucide-react";
+import { Boxes, Building2, ExternalLink, Fingerprint, Globe, Link as LinkIcon, Package, Puzzle, ScrollText, Settings, Star, Users, Zap }from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useVenues } from "@/hooks/use-venues";
-import { use, useEffect, useState } from "react";
+import { use, type ComponentType } from "react";
 import { CopyField } from "@/components/CopyField";
+import { StatTile } from "@/components/StatTile";
 import { TopBar } from "@/components/admin-panel/TopBar";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
+import { useMcpDiscovery } from "@/hooks/use-mcp-discovery";
 import { VenueResolutionState } from "@/components/VenueResolutionState";
 import { getVenueStatus } from "@/lib/venue-registry";
 import { McpConnectSection } from "@/components/venue/McpConnectSection";
+import { VenueMark } from "@/components/VenueMark";
+import { VenueTrustPill } from "@/components/VenueTrustPill";
+import { venueDisplayName } from "@/lib/venue-display";
+import { useVenueRead } from "@/hooks/use-venue-read";
+import type { Venue } from "@covia/covia-sdk";
+import { routeParam } from "@/lib/route-params";
+
+type VenueOverview = {
+  did: string;
+  name: string;
+  assets: number;
+  ops: number;
+  adapters: number;
+  users: number;
+  jobs: number;
+};
+
+const EMPTY_OVERVIEW: VenueOverview = { did: "", name: "", assets: 0, ops: 0, adapters: 0, users: 0, jobs: 0 };
+
+// Every read here is job-free (status, and the REST GET listings). A count
+// that cannot be read shows as 0 rather than failing the whole page.
+async function loadVenueOverview(venue: Venue): Promise<VenueOverview> {
+  const [status, adapters] = await Promise.all([
+    getVenueStatus(venue),
+    venue.adapters.list().catch(() => []),
+  ]);
+  const stats = status?.stats;
+  return {
+    did: status?.did ?? "",
+    name: status?.name ?? "",
+    assets: stats?.assets ?? 0,
+    ops: stats?.ops ?? 0,
+    users: stats?.users ?? 0,
+    adapters: adapters.length,
+    // Venues up to at least 0.5.0 omit stats.jobs from /api/v1/status
+    // (covia-ai/covia#229) — count the job index rather than show a false 0.
+    jobs: stats?.jobs ?? (await venue.jobs.list().catch(() => [])).length,
+  };
+}
 
 interface VenuePageProps {
   params: Promise<{
@@ -24,64 +66,34 @@ interface VenuePageProps {
 export default function VenuePage({ params }: VenuePageProps) {
   const router = useRouter();
   const { slug } = use(params);
-  const routeVenueId = decodeURIComponent(slug);
-  const { venue, status, error } = useResolvedVenueContext(routeVenueId);
+  const routeVenueId = routeParam(slug);
+  const { venue, auth, status, error } = useResolvedVenueContext(routeVenueId);
   const selectedVenueId = useVenues((state) => state.selectedVenueId);
   const selectVenue = useVenues((state) => state.selectVenue);
-  const [ venueDID, setVenueDID] = useState("");
-  const [ venueName, setVenueName] = useState("");
-  const [ venueMCPUrl, setVenueMCPURL] = useState("Not Found")
-  const [ noOfAssets, setNoOfAssets] = useState(0)
-  const [ noOfOps, setNoOfOps] = useState(0)
-  const [ noOfAdapters, setNoOfAdapters] = useState(0)
-  const [ noOfRuns, setNoOfRuns] = useState(0)
-  const [ noOfUsers, setNoOfUsers] = useState(0)
-  useEffect(() => {
-       if (!venue || status !== "ready") return;
-       const fetchMCP = async () => {
-          try {
-            const response = await fetch(`${venue.baseUrl}/.well-known/mcp`);
-            if (!response.ok) throw new Error(`MCP discovery failed: ${response.status}`);
-            const body = await response.json();
-            setVenueMCPURL(body?.error ? "Not Available" : body?.server_url ?? "Not Available");
-          } catch {
-            setVenueMCPURL("Not Available");
-          }
-      }
-       const fetchStats = async () => {
-         try {
-          const status = await getVenueStatus(venue);
-          if(status?.stats) {
-              setNoOfAssets(status?.stats?.assets ?? 0);
-              setNoOfOps(status?.stats?.ops ?? 0);
-              setNoOfUsers(status?.stats?.users ?? 0);
-              setVenueDID(status?.did ?? "")
-              setVenueName(status?.name ?? "")
-              // Venues up to at least 0.5.0 omit stats.jobs from /api/v1/status
-              // (covia-ai/covia#229) — fall back to counting the job index via
-              // the job-free GET /api/v1/jobs rather than showing a false 0.
-              if (status?.stats?.jobs != undefined) {
-                  setNoOfRuns(status.stats.jobs);
-              } else if (venue) {
-                  try { setNoOfRuns((await venue.jobs.list()).length); } catch { /* leave at 0 */ }
-              }
-          }
-        }
-        catch(e) {
-          console.log(e)
-        }
-      }
-      const fetchAdapters = async () => {
-        try {
-          if (venue) setNoOfAdapters((await venue.adapters.list()).length);
-        } catch { /* non-fatal */ }
-      }
-      fetchMCP();
-      fetchStats();
-      fetchAdapters();
-  }, [venue, status]);
+  // Shared /.well-known/mcp discovery — one request even though McpConnectSection
+  // below also consumes it (W4 4A; was fetched twice per load).
+  const venueMCPUrl = useMcpDiscovery(venue);
+  // Read once the venue is usable. The route can change venue under this
+  // component; the read is keyed to the venue it came from, so a slower reply
+  // from the previous one can never show here, and a failure shows the
+  // placeholder counts.
+  const { data: overview } = useVenueRead<VenueOverview>({
+    venue,
+    auth,
+    enabled: status === "ready",
+    initial: EMPTY_OVERVIEW,
+    failureTitle: "Unable to load venue details",
+    load: loadVenueOverview,
+  });
 
   const isCurrentVenue = selectedVenueId === venue?.venueId;
+  const venueHost = (() => {
+    try {
+      return venue ? new URL(venue.baseUrl).host : "";
+    } catch {
+      return venue?.baseUrl ?? "";
+    }
+  })();
   if (status !== "ready" || !venue) {
     return (
       <ContentLayout>
@@ -104,30 +116,33 @@ export default function VenuePage({ params }: VenuePageProps) {
       <div className="flex flex-col space-y-6">
         {/* Venue Header */}
         <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="bg-primary-vlight  p-3 rounded-lg">
-                <Building2 size={32} className="text-primary  " />
-              </div>
-              <div>
-                <h1 className="text-2xl font-thin">{venueName}</h1>
-                <p className="text-muted-foreground">
-                  {venue.metadata.description || "A Covia venue for managing assets and operations"}
-                </p>
-                <div className="flex items-center space-x-2 mt-2">
-                  <Badge variant="default" className="bg-green-100 text-green-800">
-                    Active
-                  </Badge>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-4 min-w-0">
+              <VenueMark venueId={venue.venueId} className="size-14" />
+              <div className="min-w-0">
+                <h1 className="text-2xl font-semibold">{overview.name || venueDisplayName(venue)}</h1>
+                <p className="mt-0.5 font-mono text-xs text-muted-foreground">{venueHost}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {/* Real access state — replaces the old hard-coded "Active" badge. */}
+                  <VenueTrustPill baseUrl={venue.baseUrl} venueId={venue.venueId} />
+                  {isCurrentVenue && (
+                    <Badge variant="secondary" className="gap-1">
+                      <Star size={11} className="fill-primary text-primary" /> Your default
+                    </Badge>
+                  )}
                   <Badge variant="outline">covia</Badge>
                 </div>
+                <p className="mt-3 max-w-2xl text-muted-foreground">
+                  {venue.metadata.description || "A Covia venue for managing assets and operations"}
+                </p>
               </div>
             </div>
-            <div className="flex flex-col space-y-2">
+            <div className="flex w-full shrink-0 flex-col space-y-2 sm:w-auto">
               <Button
                 onClick={() => window.open(venue.baseUrl, '_blank')}
                 variant="outline"
                 aria-label="open venue" role="button"
-                className="flex items-center space-x-2"
+                className="flex items-center justify-center space-x-2"
               >
                 <ExternalLink size={16} />
                 <span>Open Venue</span>
@@ -136,18 +151,18 @@ export default function VenuePage({ params }: VenuePageProps) {
               <Button
                 onClick={() => router.push(`/venues/${slug}/connect`)}
                 variant="outline"
-                aria-label="connect" role="button"
-                className="flex items-center space-x-2"
+                aria-label="integrate" role="button"
+                className="flex items-center justify-center space-x-2"
               >
-                <Plug size={16} />
-                <span>Connect</span>
+                <Zap size={16} />
+                <span>Integrate</span>
               </Button>
 
               <Button
                 onClick={() => selectVenue(venue.venueId)}
                 variant={isCurrentVenue ? "default" : "secondary"}
                 aria-label="make default" role="button"
-                className="flex items-center space-x-2 bg-secondary text-secondary-foreground border border-muted"
+                className="flex items-center justify-center space-x-2 bg-secondary text-secondary-foreground border border-muted"
                 disabled={isCurrentVenue}
               >
                 <Settings size={16} />
@@ -159,7 +174,7 @@ export default function VenuePage({ params }: VenuePageProps) {
 
         {/* Venue Information */}
         <Card className="p-6">
-          <h2 className="text-xl font-thin mb-4">Venue Information {venue.metadata.name}</h2>
+          <h2 className="text-xl font-thin mb-4">Venue Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="flex items-start space-x-3">
               <div className="bg-primary-vlight p-2 rounded-lg">
@@ -172,7 +187,7 @@ export default function VenuePage({ params }: VenuePageProps) {
               <div className="bg-primary-vlight p-2 rounded-lg">
                 <Fingerprint size={20} className="text-primary" />
               </div>
-              <CopyField label="Venue DID" value={venueDID} className="flex-1" />
+              <CopyField label="Venue DID" value={overview.did} className="flex-1" />
             </div>
 
             <div className="flex items-start space-x-3">
@@ -184,132 +199,25 @@ export default function VenuePage({ params }: VenuePageProps) {
           </div>
         </Card>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-         <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
-            <CardHeader className="flex-1 ">
-              <div className="flex items-center space-x-3">
-              <div className="bg-primary-vlight  p-2 rounded-lg">
-                <Database size={20} className="text-primary" />
-              </div>
-              <div className="">
-                <p className="text-sm text-muted-foreground">Assets</p>
-                <p className="text-2xl font-thin">{noOfAssets}</p>
-              </div>
-            </div>
-            </CardHeader>
-            <CardContent>
-                <Button 
-                  onClick={() => router.push(`/venues/${slug}/assets`)}
-                  className="w-full"
-                  variant="outline"
-                  aria-label="view asset" role="button"
-                >
-                  View Assets
-                  <ArrowRight size={16} className="ml-2" />
-                </Button>
-              </CardContent>
-        </Card>
-          
-        <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
-            <CardHeader className="flex-1 ">
-              <div className="flex items-center space-x-3">
-              <div className="bg-primary-vlight  p-2 rounded-lg">
-                <Settings size={20} className="text-primary" />
-              </div>
-              <div className="">
-                <p className="text-sm text-muted-foreground">Operations</p>
-                <p className="text-2xl font-thin">{noOfOps}</p>
-              </div>
-            </div>
-            </CardHeader>
-            <CardContent>
-                <Button 
-                  onClick={() => router.push(`/venues/${slug}/operations`)}
-                  className="w-full"
-                  variant="outline"
-                  aria-label="view operation" role="button"
-                >
-                  View Operation
-                  <ArrowRight size={16} className="ml-2" />
-                </Button>
-              </CardContent>
-        </Card>
-
-        <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
-            <CardHeader className="flex-1 ">
-              <div className="flex items-center space-x-3">
-              <div className="bg-primary-vlight  p-2 rounded-lg">
-                <Plug size={20} className="text-primary" />
-              </div>
-              <div className="">
-                <p className="text-sm text-muted-foreground">Adapters</p>
-                <p className="text-2xl font-thin">{noOfAdapters}</p>
-              </div>
-            </div>
-            </CardHeader>
-            <CardContent>
-                <Button
-                  onClick={() => router.push(`/venues/${slug}/adapters`)}
-                  className="w-full"
-                  variant="outline"
-                  aria-label="view adapters" role="button"
-                >
-                  View Adapters
-                  <ArrowRight size={16} className="ml-2" />
-                </Button>
-              </CardContent>
-        </Card>
-
-        <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
-            <CardHeader className="flex-1 ">
-              <div className="flex items-center space-x-3">
-              <div className="bg-primary-vlight  p-2 rounded-lg">
-                <Users size={20} className="text-primary" />
-              </div>
-              <div className="">
-                <p className="text-sm text-muted-foreground">Users</p>
-                <p className="text-2xl font-thin">{noOfUsers}</p>
-              </div>
-            </div>
-            </CardHeader>
-            <CardContent>
-                <Button
-                  onClick={() => router.push(`/venues/${slug}/users`)}
-                  className="w-full"
-                  variant="outline"
-                    aria-label="view users" role="button"
-                >
-                  View Users
-                  <ArrowRight size={16} className="ml-2" />
-                </Button>
-              </CardContent>
-        </Card>
-
-        <Card className=" h-42 hover:shadow-lg transition-shadow duration-200 cursor-pointer">
-            <CardHeader className="flex-1 ">
-              <div className="flex items-center space-x-3">
-              <div className="bg-primary-vlight  p-2 rounded-lg">
-                <Activity size={20} className="text-primary" />
-              </div>
-              <div className="">
-                <p className="text-sm text-muted-foreground">Jobs</p>
-                <p className="text-2xl font-thin">{noOfRuns}</p>
-              </div>
-            </div>
-            </CardHeader>
-            <CardContent>
-                <Button 
-                  onClick={() => router.push(`/venues/${slug}/jobs`)}
-                  className="w-full"
-                  variant="outline"
-                  aria-label="view jobs" role="button"
-                >
-                  View Jobs
-                  <ArrowRight size={16} className="ml-2" />
-                </Button>
-              </CardContent>
-        </Card>
+        {/* Stats grid — the shared StatTile (icon + count), each tile a link to
+            its venue sub-page. */}
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
+          {([
+            { label: "Assets", value: overview.assets, icon: Package as ComponentType<{ size?: number; className?: string }>, route: "assets" },
+            { label: "Operations", value: overview.ops, icon: Boxes, route: "operations" },
+            { label: "Adapters", value: overview.adapters, icon: Puzzle, route: "adapters" },
+            { label: "Users", value: overview.users, icon: Users, route: "users" },
+            { label: "Jobs", value: overview.jobs, icon: ScrollText, route: "jobs" },
+          ]).map((stat) => (
+            <Link
+              key={stat.route}
+              href={`/venues/${slug}/${stat.route}`}
+              aria-label={`View ${stat.label}`}
+              className="block rounded-xl transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <StatTile icon={stat.icon} label={stat.label} value={String(stat.value)} caption="View →" />
+            </Link>
+          ))}
         </div>
 
         <McpConnectSection venue={venue} slug={slug} />

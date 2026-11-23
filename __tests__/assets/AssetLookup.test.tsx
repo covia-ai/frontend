@@ -14,12 +14,13 @@ const mockVenue: any = {
 };
 
 jest.mock('@/hooks/use-authenticated-venue', () => ({
+  ...require('@test/use-authenticated-venue').venueMock,
   useAuthenticatedVenue: () => mockVenue,
   getVenueFor: () => mockVenue,
 }));
-jest.mock('@/hooks/use-auth', () => ({
-  useAuthStore: (selector: (s: any) => unknown) => selector({ getAuthForVenue: () => null }),
-}));
+// The complete double: the listing resolves the account stored for the venue
+// through the auth store, alongside the getAuthForVenue the picker uses.
+jest.mock('@/hooks/use-auth', () => require('@test/use-auth').authMock);
 jest.mock('@/hooks/use-venues', () => ({
   useVenues: () => ({ venues: [mockVenue] }),
 }));

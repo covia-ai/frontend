@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { Check, Copy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { notifyError } from "@/lib/notify";
-import { cn, writeTextToClipboard } from "@/lib/utils";
-import { highlightCode, supportedShikiLanguage } from "@/lib/shiki";
+import { useCopyFeedback } from "@/hooks/use-copy-feedback";
+import { cn } from "@/lib/utils";
+import { supportedShikiLanguage } from "@/lib/shiki-languages";
 
 type ShikiCodeBlockProps = {
   code: string;
@@ -31,7 +31,7 @@ export function ShikiCodeBlock({
     key: string;
     html: string | null;
   }>({ key: "", html: null });
-  const [copied, setCopied] = useState(false);
+  const { copied, copy } = useCopyFeedback("Unable to copy code", 1500);
 
   useEffect(() => {
     let active = true;
@@ -39,28 +39,18 @@ export function ShikiCodeBlock({
       active = false;
     };
 
-    void highlightCode(code, supportedLanguage).then((result) => {
-      if (active) setHighlighted({ key: highlightKey, html: result });
-    });
+    // The highlighter loads on first use, not with the page (#473); until it
+    // resolves, the plain <pre> below is what shows.
+    void import("@/lib/shiki")
+      .then(({ highlightCode }) => highlightCode(code, supportedLanguage))
+      .catch(() => null)
+      .then((result) => {
+        if (active) setHighlighted({ key: highlightKey, html: result });
+      });
     return () => {
       active = false;
     };
   }, [code, highlight, highlightKey, supportedLanguage]);
-
-  useEffect(() => {
-    if (!copied) return;
-    const timer = setTimeout(() => setCopied(false), 1500);
-    return () => clearTimeout(timer);
-  }, [copied]);
-
-  const copyCode = async () => {
-    try {
-      await writeTextToClipboard(code);
-      setCopied(true);
-    } catch (error) {
-      notifyError("Unable to copy code", error);
-    }
-  };
 
   return (
     <div
@@ -77,7 +67,7 @@ export function ShikiCodeBlock({
           size="sm"
           className="ml-auto h-7 gap-1.5 px-2 text-xs text-white/65 hover:bg-white/10 hover:text-white"
           aria-label="Copy code"
-          onClick={copyCode}
+          onClick={() => void copy(code)}
         >
           {copied ? <Check size={13} /> : <Copy size={13} />}
           {copied ? "Copied" : "Copy"}

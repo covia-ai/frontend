@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { useVenues } from "@/hooks/use-venues";
-import { browserStorage } from "@/lib/persist-storage";
+import { browserStorage, syncStoreAcrossTabs } from "@/lib/persist-storage";
 import { resetIdentity } from "@/lib/analytics";
 
 export type BearerVenueAuth = {
@@ -33,9 +33,8 @@ function upsertAccount(list: VenueAuth[] | undefined, auth: VenueAuth): VenueAut
 type AuthStore = {
   // The active account per venue — what the rest of the app authenticates with.
   authMap: Record<string, VenueAuth>;
-  // Every account ever used per venue, most-recently-used first. Lets a venue
-  // switch (or a sign-out) keep its accounts choosable without re-entering
-  // tokens or keys. Forgotten only via removeAccount.
+  // Recent accounts, most-recently-used first. Bearers live only in this tab
+  // and are forgotten on sign-out; device keys remain until explicitly removed.
   accountsMap: Record<string, VenueAuth[]>;
   // The default device key — what the sign-in dialog offers first.
   deviceKeyHex: string | null;
@@ -43,6 +42,8 @@ type AuthStore = {
   // default key is one of these; managed on the profile's Keys tab.
   deviceKeys: string[];
   addDeviceKey: (hex: string) => void;
+  // Removes the key from this browser entirely: the known-key list and every
+  // account that signed in with it, on every venue.
   removeDeviceKey: (hex: string) => void;
   loginWithToken: (venueId: string, token: string, did: string) => void;
   loginWithKeypair: (venueId: string, privateKeyHex: string, did: string) => void;
@@ -52,15 +53,27 @@ type AuthStore = {
   removeAccount: (venueId: string, did: string, type?: VenueAuth["type"]) => void;
   getDeviceKeyHex: () => string | null;
   setDeviceKeyHex: (hex: string) => void;
-  // Deactivates the venue's account but keeps it in accountsMap, so it can be
-  // re-chosen later without re-authenticating. removeAccount forgets for real.
+  // Deactivates the venue account and forgets its bearer credentials.
+  // Device-key accounts remain available for deliberate reactivation.
   logout: (venueId: string) => void;
-  // Drops ALL auth state for a venue id — used when a venue's identity is
-  // replaced (restart with a fresh DID): credentials scoped to the dead
-  // identity can never be valid again, so keeping them only leaves orphans.
+  // Drops ALL auth state for a venue id — used when the venue is removed, or
+  // its identity is replaced (restart with a fresh DID): credentials scoped to
+  // an id the app no longer knows only leave orphans.
   purgeVenueAuth: (venueId: string) => void;
   getAuthForVenue: (venueId: string) => VenueAuth | null;
 };
+
+function accountsOfType(
+  state: Pick<AuthStore, "authMap" | "accountsMap">,
+  type: VenueAuth["type"],
+): Pick<AuthStore, "authMap" | "accountsMap"> {
+  return {
+    authMap: Object.fromEntries(Object.entries(state.authMap).filter(([, a]) => a.type === type)),
+    accountsMap: Object.fromEntries(Object.entries(state.accountsMap)
+      .map(([venueId, accounts]) => [venueId, accounts.filter((a) => a.type === type)] as const)
+      .filter(([, accounts]) => accounts.length > 0)),
+  };
+}
 
 export function useCurrentAuth(): VenueAuth | null {
   const selectedVenueId = useVenues((state) => state.selectedVenueId);
@@ -91,11 +104,22 @@ export const useAuthStore = create(
       },
 
       removeDeviceKey: (hex: string) => {
-        const { deviceKeys, deviceKeyHex } = get();
+        const { deviceKeys, deviceKeyHex, authMap, accountsMap } = get();
         const remaining = deviceKeys.filter((k) => k !== hex);
+        // Accounts carry their own copy of the key, so dropping it from the
+        // list alone would leave it stored — and still usable to sign in.
+        const usesKey = (a: VenueAuth) => a.type === "keypair" && a.privateKeyHex === hex;
         set({
           deviceKeys: remaining,
           deviceKeyHex: deviceKeyHex === hex ? remaining[0] ?? null : deviceKeyHex,
+          authMap: Object.fromEntries(
+            Object.entries(authMap).filter(([, auth]) => !usesKey(auth)),
+          ),
+          accountsMap: Object.fromEntries(
+            Object.entries(accountsMap)
+              .map(([venueId, accounts]) => [venueId, accounts.filter((a) => !usesKey(a))] as const)
+              .filter(([, accounts]) => accounts.length > 0),
+          ),
         });
       },
 
@@ -157,11 +181,13 @@ export const useAuthStore = create(
       },
 
       logout: (venueId: string) => {
-        const { authMap } = get();
-        if (authMap[venueId]) {
-          const { [venueId]: _, ...rest } = authMap;
-          set({ authMap: rest });
-        }
+        const { authMap, accountsMap } = get();
+        const { [venueId]: _, ...rest } = authMap;
+        const nextAccounts = { ...accountsMap };
+        const keys = (accountsMap[venueId] ?? []).filter((a) => a.type === "keypair");
+        if (keys.length) nextAccounts[venueId] = keys;
+        else delete nextAccounts[venueId];
+        set({ authMap: rest, accountsMap: nextAccounts });
         // Signing out of any venue drops the analytics identity (D070 §4):
         // subsequent events must not stay attributed to the DID that left.
         resetIdentity();
@@ -181,8 +207,15 @@ export const useAuthStore = create(
     {
       name: "venue-auth",
       storage: createJSONStorage(browserStorage),
+      version: 1,
+      // Migration causes Zustand to rewrite the old blob, removing old tokens
+      // from disk as well as declining to restore them into memory.
+      migrate: (persisted) => persisted as AuthStore,
+      partialize: (state) => ({ ...state, ...accountsOfType(state, "keypair") }),
       merge: (persisted, current) => {
-        const old = persisted as {
+        // `persisted` is undefined on a first visit; throwing here would be
+        // swallowed by persist and leave the store permanently un-hydrated.
+        const old = (persisted ?? {}) as {
           authMap?: Record<string, VenueAuth>;
           accountsMap?: Record<string, VenueAuth[]>;
           deviceKeyHex?: string | null;
@@ -192,7 +225,7 @@ export const useAuthStore = create(
         };
         let authMap = old.authMap ?? {};
         // Backward compat: migrate old single-auth format to authMap
-        if (old?.auth && !old?.authMap) {
+        if (old.auth && !old.authMap) {
           let auth = old.auth;
           // Old format without type field
           if (!("type" in auth)) {
@@ -203,11 +236,19 @@ export const useAuthStore = create(
         }
         // Account history arrived after authMap — seed it from the active
         // entries so pre-existing sign-ins appear in the Accounts panel.
-        const accountsMap =
+        let accountsMap =
           old.accountsMap ??
           Object.fromEntries(
             Object.entries(authMap).map(([venueId, auth]) => [venueId, [auth]]),
           );
+        const keys = accountsOfType({ authMap, accountsMap }, "keypair");
+        const transient = accountsOfType(current, "bearer");
+        // Cross-tab key updates must not discard this tab's in-memory sign-in.
+        authMap = { ...keys.authMap, ...transient.authMap };
+        accountsMap = { ...keys.accountsMap };
+        for (const [venueId, accounts] of Object.entries(transient.accountsMap)) {
+          accountsMap[venueId] = [...accounts, ...(accountsMap[venueId] ?? [])];
+        }
         const deviceKeyHex = old.deviceKeyHex ?? null;
         // The key list arrived after the single default key — seed it so the
         // existing key shows up on the Keys tab.
@@ -224,3 +265,5 @@ export const useAuthStore = create(
     }
   )
 );
+
+syncStoreAcrossTabs(useAuthStore);

@@ -132,6 +132,11 @@ describe('notify helpers', () => {
       );
     });
 
+    it('encodes a venue-supplied job id so it cannot escape the job path', () => {
+      const { jobHref } = jobFailure(jobFailedError({ id: '../../x?y#z' }), 'did:key:venue123');
+      expect(jobHref).toBe('/venues/did%3Akey%3Avenue123/jobs/..%2F..%2Fx%3Fy%23z');
+    });
+
     it('omits jobHref when no venueId is available', () => {
       const { jobHref } = jobFailure(jobFailedError(), undefined);
       expect(jobHref).toBeUndefined();

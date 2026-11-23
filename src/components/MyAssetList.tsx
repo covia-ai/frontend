@@ -1,15 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { DataAsset } from "@covia/covia-sdk";
-import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
+import { useCallback } from "react";
+import { DataAsset, type Venue } from "@covia/covia-sdk";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { AssetCard } from "./AssetCard";
-import { usePinnedAssets } from "@/hooks/use-pinned-assets";
-import { PaginationHeader } from "./PaginationHeader";
-import { useGridPageSize } from "@/hooks/use-grid-page-size";
-import { useLatestQuery } from "@/hooks/use-latest-query";
-import { useClientPagination } from "@/hooks/use-pagination";
+import { Button } from "./ui/button";
+import { useAssetCatalog } from "@/hooks/use-asset-catalog";
 import { CARD_GRID_CLASS } from "@/lib/grid";
 import { FileStack, Search } from "lucide-react";
 import { ListToolbar } from "./ListToolbar";
@@ -18,78 +14,43 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { VenueResolutionState } from "@/components/VenueResolutionState";
 
 export function MyAssetList() {
-  const {
-    data: assets,
-    loading: isLoading,
-    error: loadError,
-    run: runMyAssetsQuery,
-    reset: resetMyAssetsQuery,
-    invalidate: invalidateMyAssetsQuery,
-  } = useLatestQuery<DataAsset[]>([], { initialLoading: true });
-
-  const { ref: gridRef, pageSize: itemsPerPage } = useGridPageSize();
-  const [searchInput, setSearchInput] = useState("");
-
-  const resolvedVenue = useResolvedVenueContext();
-  const { descriptor: venueObj, venue } = resolvedVenue;
-  const venueStatus = resolvedVenue.status ?? (venue ? "ready" : "absent");
-
   // The a/ namespace is small (a user's own artifacts, not a venue catalog),
-  // so one page-free fetch (server-capped at 1000) plus client-side
-  // search/pagination keeps this consistent with AssetList's approach
-  // without needing a second server-pagination code path.
-  const fetchMyAssets = useCallback(() => {
-    if (!venue || venueStatus !== "ready") {
-      resetMyAssetsQuery();
-      return Promise.resolve();
-    }
-    return runMyAssetsQuery(async () => {
-      const result = await venue.assets.listMine();
-      return result.items.map(
-        (item) =>
-          new DataAsset(item.id, venue, {
-            name: item.name,
-            description: item.description,
-            type: item.type,
-          }),
-      );
-    }, { clear: true });
-  }, [venue, venueStatus, resetMyAssetsQuery, runMyAssetsQuery]);
-
-  useEffect(() => {
-    void fetchMyAssets();
-    return invalidateMyAssetsQuery;
-  }, [fetchMyAssets, invalidateMyAssetsQuery]);
-
-  const pinnedRecords = usePinnedAssets((s) => s.pinned);
-  const pinnedIds = useMemo(() => {
-    if (!venueObj?.venueId) return new Set<string>();
-    const venueId = venueObj.venueId;
-    return new Set(pinnedRecords.filter((p) => p.venueId === venueId).map((p) => p.assetId));
-  }, [pinnedRecords, venueObj?.venueId]);
-
-  const filteredAssets = useMemo(() => {
-    const term = searchInput.trim().toLowerCase();
-    const filtered = term
-      ? assets.filter(
-          (a) => (a.metadata?.name ?? "").toLowerCase().includes(term) || (a.id ?? "").toLowerCase().includes(term),
-        )
-      : assets;
-    if (pinnedIds.size === 0) return filtered;
-    // Stable sort: pinned assets surface first, unpinned keep their relative order.
-    return [...filtered].sort((a, b) => Number(pinnedIds.has(b.id)) - Number(pinnedIds.has(a.id)));
-  }, [assets, searchInput, pinnedIds]);
+  // so one page-free fetch (server-capped at 1000) plus the shared client-side
+  // search/pagination in useAssetCatalog keeps this consistent with AssetList
+  // without a second server-pagination code path. listMine() returns
+  // AssetSummary (id/name/description/type) — no keywords, so My Artifacts cards
+  // carry none by design (hydrating each would be an N+1 against the one-GET rule).
+  const fetchMine = useCallback(
+    (venue: Venue) =>
+      venue.assets.listMine().then((result) =>
+        result.items.map(
+          (item) =>
+            new DataAsset(item.id, venue, {
+              name: item.name,
+              description: item.description,
+              type: item.type,
+            }),
+        ),
+      ),
+    [],
+  );
 
   const {
-    currentPage,
-    setCurrentPage,
-    totalPages,
-    pageItems,
-  } = useClientPagination({
-    items: filteredAssets,
-    pageSize: itemsPerPage,
-    resetKey: searchInput,
-  });
+    assets,
+    isLoading,
+    loadError,
+    resolvedVenue,
+    venue,
+    venueObj,
+    venueStatus,
+    searchInput,
+    setSearchInput,
+    filteredAssets,
+    visibleItems,
+    hasMore,
+    loadMore,
+    sentinelRef,
+  } = useAssetCatalog({ fetchAssets: fetchMine });
 
   if (venueStatus !== "ready") {
     return <VenueResolutionState status={venueStatus} error={resolvedVenue.error} icon={FileStack} subject="Your artifacts" venueId={venueObj?.venueId} />;
@@ -109,8 +70,7 @@ export function MyAssetList() {
             />
           </div>
         }
-        summary={!isLoading && `Page ${currentPage} : Showing ${pageItems.length} of ${filteredAssets.length}`}
-        pagination={<PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={isLoading}></PaginationHeader>}
+        summary={!isLoading && `Showing ${visibleItems.length} of ${filteredAssets.length}`}
       />
 
       {loadError && <ErrorDisplay error={loadError} className="mb-4 w-full" />}
@@ -119,19 +79,32 @@ export function MyAssetList() {
         <div className="flex flex-row items-center justify-center w-full h-100">
           <Spinner variant="ellipsis" className="text-primary" size={64} />
         </div>
-      ) : pageItems.length === 0 ? (
+      ) : visibleItems.length === 0 ? (
         <p className="text-sm text-muted-foreground py-8 text-center">
           {assets.length === 0 ? "You haven't created or pinned any assets yet." : "No artifacts match this search."}
         </p>
       ) : (
-        <div ref={gridRef} className={CARD_GRID_CLASS}>
-          {pageItems.map((asset) => (
-            <AssetCard key={asset.id} asset={asset} type="assets" compact={true} venue={venue ?? undefined} scoped={true} />
-          ))}
-        </div>
-      )}
+        <>
+          <div className={CARD_GRID_CLASS}>
+            {visibleItems.map((asset) => (
+              <AssetCard key={asset.id} asset={asset} type="assets" compact={true} venue={venue ?? undefined} scoped={true} />
+            ))}
+          </div>
 
-      <PaginationHeader currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} disabled={isLoading}></PaginationHeader>
+          {/* Infinite scroll: the sentinel reveals the next batch; the button is
+              a manual fallback (and covers no-IntersectionObserver envs). */}
+          <div className="flex w-full items-center justify-center py-6">
+            {hasMore ? (
+              <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={loadMore}>
+                Load more assets
+              </Button>
+            ) : (
+              <span className="text-xs text-muted-foreground">End of results</span>
+            )}
+            <div ref={sentinelRef} className="h-px w-px" aria-hidden />
+          </div>
+        </>
+      )}
     </div>
   );
 }

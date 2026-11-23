@@ -5,7 +5,8 @@ import { Ed25519Auth, generateKeyPair, privateKeyToHex } from "@covia/covia-sdk"
 import { gtmEvent } from "@/lib/utils";
 import { useAuthStore } from "@/hooks/use-auth";
 import { useVenues } from "@/hooks/use-venues";
-import { notifySuccess, notifyWarning } from "@/lib/notify";
+import { writeTextToClipboard } from "@/lib/clipboard";
+import { notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { DidDisplay } from "@/components/DidDisplay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -90,11 +91,16 @@ export function KeysPanel() {
     notifySuccess(`Signed in to ${venueLabel(selectedVenueId)}`, { description: did });
   };
 
-  const handleExport = (hex: string) => {
-    void navigator.clipboard.writeText(hex);
-    notifySuccess("Private key copied to clipboard", {
-      description: "Anyone with this key can act as you. Paste it somewhere safe.",
-    });
+  const handleExport = async (hex: string) => {
+    try {
+      await writeTextToClipboard(hex);
+      notifySuccess("Private key copied to clipboard", {
+        description: "Anyone with this key can act as you. Paste it somewhere safe.",
+      });
+    } catch (error: unknown) {
+      // An export is a backup of the only copy — never claim one that failed.
+      notifyError("Unable to copy private key", error);
+    }
   };
 
   return (

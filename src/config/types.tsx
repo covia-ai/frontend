@@ -4,10 +4,9 @@ export interface AgentDetail {
    tasks?: number;
    timelineLength?: number;
    config?: Record<string, any>;
-   unavailableTools?: unknown[];
+   // The principal whose authority the agent acts with (covia 0.11).
+   controller?: string;
    error?: string;
-   /** Legacy SDK field; canonical editable configuration is `config`. */
-   stateConfig?: Record<string, any>;
    state?: Record<string, any>;
    timeline?: any[];
    [key: string]: any;
@@ -23,7 +22,7 @@ export interface AgentListItem {
 
 export interface SessionMessage {
    role: string;
-   content: any;
+   content?: any;
    ts?: number;
    source?: string;
    /** The job that delivered this turn (chat/request intake), when the venue

@@ -13,6 +13,11 @@ export const COMMON_ABILITIES: { value: string; label: string }[] = [
   { value: "crud/read", label: "crud/read — read lattice state" },
   { value: "crud/write", label: "crud/write — write lattice state" },
   { value: "crud/delete", label: "crud/delete — delete lattice state" },
+  { value: "invoke", label: "invoke — look up and run operations" },
+  { value: "job/read", label: "job/read — read job records and updates" },
+  { value: "job/manage", label: "job/manage — control and delete jobs" },
+  { value: "job/message", label: "job/message — send input to jobs" },
+  { value: "schedule/manage", label: "schedule/manage — cancel or trigger schedules" },
   { value: "asset/read", label: "asset/read — read assets" },
   { value: "asset/store", label: "asset/store — store assets" },
   { value: "agent/create", label: "agent/create — create agents" },
@@ -20,11 +25,20 @@ export const COMMON_ABILITIES: { value: string; label: string }[] = [
   { value: "agent/message", label: "agent/message — message other agents" },
   { value: "agent/write", label: "agent/write — write agent state" },
   { value: "secret/write", label: "secret/write — store secrets" },
+  { value: "secret/use", label: "secret/use — use stored credentials" },
   { value: "hitl/request", label: "hitl/request — raise human-in-the-loop requests" },
   { value: "mcp/manage", label: "mcp/manage — manage MCP bridging" },
-  { value: "user/create", label: "user/create — register users" },
-  { value: "user/read", label: "user/read — read user info" },
-  { value: "adapter/manage", label: "adapter/manage — adapter and module lifecycle" },
+  { value: "mcp/token", label: "mcp/token — manage scoped MCP tokens" },
+  { value: "admin/token/mcp", label: "admin/token/mcp — administer MCP access tokens" },
+  { value: "callable/call", label: "callable/call — call published functions" },
+  { value: "callable/manage", label: "callable/manage — manage published functions" },
+  { value: "admin/user/create", label: "admin/user/create — register users" },
+  { value: "admin/user/read", label: "admin/user/read — read user info" },
+  { value: "admin/user/delete", label: "admin/user/delete — delete accounts" },
+  { value: "admin/adapter/manage", label: "admin/adapter/manage — adapter and module lifecycle" },
+  { value: "admin/venue/restart", label: "admin/venue/restart — restart the venue" },
+  { value: "admin/venue/gc", label: "admin/venue/gc — collect unused venue storage" },
+  { value: "admin/sudo", label: "admin/sudo — act with another user's authority" },
 ];
 
 export function emptyCap(): AgentCap {
@@ -44,4 +58,23 @@ export function isAgentCap(value: unknown): value is AgentCap {
 // should only ever hold intentional entries, never a blank placeholder row.
 export function cleanCaps(caps: AgentCap[]): AgentCap[] {
   return caps.filter((cap) => cap.with.trim() || cap.can.trim());
+}
+
+// An agent's authority (covia 0.11, UCAN.md §5.4): it acts with its
+// controller's authority narrowed by `caps`. `caps: "unrestricted"` is the
+// controller's whole authority; a list narrows it, and an empty list leaves
+// none. An agent created without `caps`, or given `caps: null`, has no
+// authority at all, so a form must always send one or the other explicitly.
+// `agent:info` shows an unrestricted agent as `caps: "unrestricted"`.
+export const UNRESTRICTED_CAPS = "unrestricted";
+
+export type AgentCapsMode = "unrestricted" | "restricted";
+
+export function isUnrestrictedCaps(value: unknown): value is typeof UNRESTRICTED_CAPS {
+  return value === UNRESTRICTED_CAPS;
+}
+
+/** The caps list a config holds, or [] for "unrestricted" or none. */
+export function capsListOf(value: unknown): AgentCap[] {
+  return Array.isArray(value) ? value.filter(isAgentCap) : [];
 }

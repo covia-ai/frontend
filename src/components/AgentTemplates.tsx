@@ -7,7 +7,7 @@ import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { AddNewAgent } from "./AddNewAgent";
 import { useIsAuthenticated } from "@/hooks/use-auth";
 import { useAgentTemplates, type AgentTemplate } from "@/hooks/use-agent-templates";
-import { providerForOperation } from "@/lib/agent-config";
+import { providerSeedForOperation } from "@/lib/agent-config";
 
 // A recognisable face per template. Falls back to a generic bot for any the
 // venue adds later that we don't have an icon for.
@@ -75,7 +75,10 @@ export function AgentTemplates() {
                 trigger={card}
                 initialAgentName={title}
                 initialSystemPrompt={template.systemPrompt ?? ""}
-                initialProvider={providerForOperation(template.llmOperation)}
+                // Only inline layers are visible here, so a missing operation
+                // may still come from a reference: say nothing and let the
+                // dialog start on its own default, as it always has.
+                {...(template.llmOperation && providerSeedForOperation(template.llmOperation))}
                 initialModel={template.model ?? ""}
                 initialConfig={template.config}
                 initialConfigPreview={template.preview}

@@ -7,6 +7,7 @@ jest.mock("@/hooks/use-venue-access", () => ({
   useVenueAccess: () => mockAccess,
 }));
 jest.mock("@/hooks/use-auth", () => ({
+  ...require("@test/use-auth").authMock,
   useIsAuthenticated: () => true,
 }));
 jest.mock("@/components/admin-panel/signin-button", () => ({
@@ -38,6 +39,7 @@ const mockVenue: any = {
   },
 };
 jest.mock("@/hooks/use-authenticated-venue", () => ({
+  ...require("@test/use-authenticated-venue").venueMock,
   useAuthenticatedVenue: () => mockVenue,
 }));
 
@@ -60,7 +62,7 @@ describe("AgentSettings — tool/skill picker", () => {
 
   async function openPickerOnCapabilitiesTab(onSave: jest.Mock, agent: AgentDetail = baseAgent) {
     const user = userEvent.setup();
-    render(<AgentSettings agent={agent} onBack={jest.fn()} onSave={onSave} />);
+    render(<AgentSettings agent={agent} onSave={onSave} />);
     await user.click(screen.getByRole("tab", { name: "Capabilities" }));
     await user.click(screen.getByTestId("open-tool-skill-picker"));
     await user.click(screen.getByRole("button", { name: /covia/i }));
@@ -82,7 +84,7 @@ describe("AgentSettings — tool/skill picker", () => {
     await user.click(await screen.findByRole("checkbox", { name: "Attach Write" }));
 
     await waitFor(() =>
-      expect(onSave).toHaveBeenCalledWith({ tools: ["v/ops/covia/read", "v/ops/covia/write"] }),
+      expect(onSave).toHaveBeenCalledWith({ tools: ["v/ops/covia/read", "v/ops/covia/write"] }, expect.any(Object)),
     );
     await waitFor(() =>
       expect(screen.getByTestId("agent-tools-json")).toHaveValue(
@@ -118,7 +120,7 @@ describe("AgentSettings — inject user memory into context", () => {
       ...baseAgent,
       config: { context: [{ op: "v/ops/memory", input: { command: "recall" }, label: "User Memory" }] },
     };
-    render(<AgentSettings agent={agent} onBack={jest.fn()} onSave={jest.fn()} />);
+    render(<AgentSettings agent={agent} onSave={jest.fn()} />);
     await user.click(screen.getByRole("tab", { name: "Capabilities" }));
 
     expect(screen.getByRole("checkbox", { name: /inject user memory into context/i })).toBeChecked();
@@ -131,15 +133,16 @@ describe("AgentSettings — inject user memory into context", () => {
       ...baseAgent,
       config: { context: ["w/notes"] },
     };
-    render(<AgentSettings agent={agent} onBack={jest.fn()} onSave={onSave} />);
+    render(<AgentSettings agent={agent} onSave={onSave} />);
     await user.click(screen.getByRole("tab", { name: "Capabilities" }));
 
     await user.click(screen.getByRole("checkbox", { name: /inject user memory into context/i }));
 
     await waitFor(() =>
-      expect(onSave).toHaveBeenCalledWith({
-        context: ["w/notes", { op: "v/ops/memory", input: { command: "recall" }, label: "User Memory" }],
-      }),
+      expect(onSave).toHaveBeenCalledWith(
+        { context: ["w/notes", { op: "v/ops/memory", input: { command: "recall" }, label: "User Memory" }] },
+        expect.any(Object),
+      ),
     );
   });
 
@@ -152,12 +155,12 @@ describe("AgentSettings — inject user memory into context", () => {
         context: ["w/notes", { op: "v/ops/memory", input: { command: "recall" }, label: "User Memory" }],
       },
     };
-    render(<AgentSettings agent={agent} onBack={jest.fn()} onSave={onSave} />);
+    render(<AgentSettings agent={agent} onSave={onSave} />);
     await user.click(screen.getByRole("tab", { name: "Capabilities" }));
 
     await user.click(screen.getByRole("checkbox", { name: /inject user memory into context/i }));
 
-    await waitFor(() => expect(onSave).toHaveBeenCalledWith({ context: ["w/notes"] }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith({ context: ["w/notes"] }, expect.any(Object)));
   });
 });
 
@@ -175,10 +178,10 @@ describe("AgentSettings — capabilities (caps) editor", () => {
       ...baseAgent,
       config: { caps: [{ with: "w/notes/", can: "crud/write" }] },
     };
-    render(<AgentSettings agent={agent} onBack={jest.fn()} onSave={jest.fn()} />);
+    render(<AgentSettings agent={agent} onSave={jest.fn()} />);
     await user.click(screen.getByRole("tab", { name: "Capabilities" }));
 
-    expect(screen.getByRole("checkbox", { name: /capabilities \(optional\)/i })).toBeChecked();
+    expect(screen.getByLabelText("Only these capabilities")).toBeChecked();
     expect(screen.getByTestId("cap-with-0")).toHaveValue("w/notes/");
   });
 
@@ -189,7 +192,7 @@ describe("AgentSettings — capabilities (caps) editor", () => {
       ...baseAgent,
       config: { caps: [{ with: "w/notes/", can: "crud/write" }] },
     };
-    render(<AgentSettings agent={agent} onBack={jest.fn()} onSave={onSave} />);
+    render(<AgentSettings agent={agent} onSave={onSave} />);
     await user.click(screen.getByRole("tab", { name: "Capabilities" }));
 
     await user.clear(screen.getByTestId("cap-with-0"));
@@ -197,24 +200,62 @@ describe("AgentSettings — capabilities (caps) editor", () => {
     await user.click(screen.getByTestId("save-agent-settings"));
 
     await waitFor(() =>
-      expect(onSave).toHaveBeenCalledWith({ caps: [{ with: "w/other/", can: "crud/write" }] }),
+      expect(onSave).toHaveBeenCalledWith({ caps: [{ with: "w/other/", can: "crud/write" }] }, expect.any(Object)),
     );
   });
 
-  it("disabling a previously-enabled caps set clears it with a null patch", async () => {
+  // caps: null gives the agent no authority (covia 0.11), so choosing
+  // unrestricted sends the string.
+  it('choosing unrestricted sends caps: "unrestricted", never null', async () => {
     const user = userEvent.setup();
     const onSave = jest.fn().mockResolvedValue({ status: "saved" });
     const agent: AgentDetail = {
       ...baseAgent,
       config: { caps: [{ with: "w/notes/", can: "crud/write" }] },
     };
-    render(<AgentSettings agent={agent} onBack={jest.fn()} onSave={onSave} />);
+    render(<AgentSettings agent={agent} onSave={onSave} />);
     await user.click(screen.getByRole("tab", { name: "Capabilities" }));
 
-    await user.click(screen.getByRole("checkbox", { name: /capabilities \(optional\)/i }));
+    await user.click(screen.getByLabelText("Unrestricted"));
     await user.click(screen.getByTestId("save-agent-settings"));
 
-    await waitFor(() => expect(onSave).toHaveBeenCalledWith({ caps: null }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith({ caps: "unrestricted" }, expect.any(Object)));
+  });
+
+  // From covia 0.12 an agent refuses tasks unless its config sets
+  // acceptTasks; an agent created before then can be fixed here.
+  it("checking Takes tasks saves acceptTasks: true", async () => {
+    const user = userEvent.setup();
+    const onSave = jest.fn().mockResolvedValue({ status: "saved" });
+    const agent: AgentDetail = { ...baseAgent, config: { caps: "unrestricted" } };
+    render(<AgentSettings agent={agent} onSave={onSave} />);
+    await user.click(screen.getByRole("tab", { name: "Capabilities" }));
+
+    expect(screen.getByLabelText("Takes tasks")).not.toBeChecked();
+    await user.click(screen.getByLabelText("Takes tasks"));
+    await user.click(screen.getByTestId("save-agent-settings"));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith({ acceptTasks: true }, expect.any(Object)));
+  });
+
+  it("shows an unrestricted agent as unrestricted and keeps it so on an unrelated save", async () => {
+    const user = userEvent.setup();
+    const onSave = jest.fn().mockResolvedValue({ status: "saved" });
+    const agent: AgentDetail = {
+      ...baseAgent,
+      config: { caps: "unrestricted", systemPrompt: "Old" },
+    };
+    render(<AgentSettings agent={agent} onSave={onSave} />);
+    await user.click(screen.getByRole("tab", { name: "Capabilities" }));
+    expect(screen.getByLabelText("Unrestricted")).toBeChecked();
+    expect(screen.queryByTestId("cap-with-0")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "General" }));
+    await user.clear(screen.getByLabelText("System prompt"));
+    await user.type(screen.getByLabelText("System prompt"), "New");
+    await user.click(screen.getByTestId("save-agent-settings"));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith({ systemPrompt: "New" }, expect.any(Object)));
   });
 });
 
@@ -234,7 +275,7 @@ describe("AgentSettings — concurrent-edit conflict on save", () => {
       ...baseAgent,
       config: { systemPrompt: "original", tools: ["v/ops/covia/read"] },
     };
-    render(<AgentSettings agent={agent} onBack={jest.fn()} onSave={onSave} />);
+    render(<AgentSettings agent={agent} onSave={onSave} />);
 
     const promptField = screen.getByTestId("agent-system-prompt");
     await user.clear(promptField);
@@ -251,7 +292,7 @@ describe("AgentSettings — concurrent-edit conflict on save", () => {
   it("does not touch the draft on an ordinary (non-conflict) failure", async () => {
     const user = userEvent.setup();
     const onSave = jest.fn().mockResolvedValue({ status: "failed" });
-    render(<AgentSettings agent={baseAgent} onBack={jest.fn()} onSave={onSave} />);
+    render(<AgentSettings agent={baseAgent} onSave={onSave} />);
 
     const promptField = screen.getByTestId("agent-system-prompt");
     await user.clear(promptField);
@@ -260,5 +301,47 @@ describe("AgentSettings — concurrent-edit conflict on save", () => {
 
     await waitFor(() => expect(onSave).toHaveBeenCalled());
     expect(promptField).toHaveValue("keep me");
+  });
+});
+
+describe("AgentSettings skill sets", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAccess.state = "connected";
+    mockVenue.secrets.list.mockResolvedValue([]);
+    mockVenue.skills.list.mockResolvedValue([]);
+  });
+
+  // A ported agent carries its skills as a skillset (agent:from-skills sets
+  // skillsets: ["w/skills"]), which the Skills field alone would hide (#523).
+  it("shows an agent's skillsets in their own field", async () => {
+    const user = userEvent.setup();
+    const agent: AgentDetail = { ...baseAgent, config: { skillsets: ["w/skills"] } };
+    render(<AgentSettings agent={agent} onSave={jest.fn()} />);
+    await user.click(screen.getByRole("tab", { name: "Capabilities" }));
+
+    expect(screen.getByLabelText("Skill sets")).toHaveValue('[\n  "w/skills"\n]');
+    expect(screen.getByLabelText("Skills")).toHaveValue("");
+  });
+
+  it("saves an edited skill set as a skillsets patch", async () => {
+    const user = userEvent.setup();
+    const onSave = jest.fn().mockResolvedValue({ status: "saved" });
+    const agent: AgentDetail = { ...baseAgent, config: { skillsets: ["w/skills"] } };
+    render(<AgentSettings agent={agent} onSave={onSave} />);
+    await user.click(screen.getByRole("tab", { name: "Capabilities" }));
+
+    const field = screen.getByLabelText("Skill sets");
+    await user.clear(field);
+    await user.click(field);
+    await user.paste('["w/skills", "v/skills/data"]');
+    await user.click(screen.getByTestId("save-agent-settings"));
+
+    await waitFor(() =>
+      expect(onSave).toHaveBeenCalledWith(
+        { skillsets: ["w/skills", "v/skills/data"] },
+        expect.any(Object),
+      ),
+    );
   });
 });

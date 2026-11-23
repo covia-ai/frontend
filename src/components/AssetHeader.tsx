@@ -1,16 +1,33 @@
 'use client'
 
-import { useEffect, useRef, useState } from "react";
-import { Asset, Namespace, assetHash, didUrl, parseDidUrl } from "@covia/covia-sdk";
+import { useCallback, useState } from "react";
+import { Asset, Namespace, assetHash, didFromPublicKey, didUrl, parseDidUrl } from "@covia/covia-sdk";
 import { cn, copyDataToClipBoard } from "@/lib/utils";
-import { ASSET_KIND_LABELS, getAssetKind } from "@/lib/asset-kind";
+import { assetKindLook, getAssetKind } from "@/lib/asset-kind";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { TypeTile } from "./TypeTile";
+import { Identicon } from "./Identicon";
 import { Badge } from "./ui/badge";
 import { Copy, Link2 } from "lucide-react";
 import Link from "next/link";
 
 interface AssetHeaderProps {
   asset: Asset;
+}
+
+// An asset's own mark: a content hash (64 hex) maps to a did:key so the
+// identicon is unique per asset (the same mark its catalogue card shows). A
+// catalogue-path id (operations) has no key bytes, so no identicon.
+function assetIdenticonDid(asset: Asset): string | null {
+  const hash = assetHash(asset.id);
+  if (hash && /^[0-9a-fA-F]{64}$/.test(hash)) {
+    try {
+      return didFromPublicKey(Uint8Array.from(hash.match(/../g)!.map((h) => parseInt(h, 16))));
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 type ResolvedDidUrl = { text: string; href: string | null };
@@ -64,34 +81,40 @@ function assetDidUrl(asset: Asset): ResolvedDidUrl | null {
 
 export const AssetHeader = ({ asset }: AssetHeaderProps) => {
   const didUrlInfo = assetDidUrl(asset);
-  const kind = getAssetKind(asset?.metadata);
+  const kindLook = assetKindLook(getAssetKind(asset?.metadata));
+  const identiconDid = assetIdenticonDid(asset);
   const description = asset?.metadata?.description as string | undefined;
 
-  const descriptionRef = useRef<HTMLParagraphElement>(null);
-  const [expanded, setExpanded] = useState(false);
+  // "Expanded" belongs to the description it was expanded for, so a new
+  // description renders collapsed without an effect having to collapse it.
+  const [expansion, setExpansion] = useState<{ description?: string; expanded: boolean }>({
+    description,
+    expanded: false,
+  });
+  const expanded = expansion.description === description && expansion.expanded;
   const [isTruncated, setIsTruncated] = useState(false);
-
-  useEffect(() => {
-    setExpanded(false);
-    const el = descriptionRef.current;
-    // Measured against the clamped (collapsed) layout, so this only ever
-    // reflects whether line-clamp-2 is actually cutting text off — not
-    // whatever the height happens to be after the reader expands it.
-    setIsTruncated(!!el && el.scrollHeight > el.clientHeight + 1);
+  // Measured when the paragraph mounts and again when the description changes
+  // (a new callback identity re-runs a ref callback) — so it reflects whether
+  // line-clamp-2 is actually cutting text off in the collapsed layout, never
+  // whatever the height happens to be after the reader expands it. Without a
+  // description the placeholder shows, which is never worth expanding.
+  const measureClamp = useCallback((el: HTMLParagraphElement | null) => {
+    if (el) setIsTruncated(!!description && el.scrollHeight > el.clientHeight + 1);
   }, [description]);
 
   return (
-    <div className="flex flex-col w-full mb-2 mt-2 border border-slate-200 bg-card text-bg-card-foreground rounded-md p-2">
+    <div className="flex flex-col w-full mb-2 mt-2 border border-border bg-card text-card-foreground rounded-xl p-2">
       <div className="flex flex-col items-start justify-between w-full ">
 
-             <div className="flex flex-row items-center gap-2">
-               <span>{asset?.metadata?.name}</span>
+             <div className="flex flex-row items-center gap-2.5">
+               <TypeTile Icon={kindLook.Icon} tile={kindLook.tile} className="size-8" iconSize={16} title={kindLook.label} />
+               <span className="font-semibold">{asset?.metadata?.name}</span>
                <Badge variant="secondary" className="font-normal text-[10px] text-secondary-foreground" data-testid="asset-kind-badge">
-                 {ASSET_KIND_LABELS[kind]}
+                 {kindLook.label}
                </Badge>
              </div>
               <p
-                ref={descriptionRef}
+                ref={measureClamp}
                 data-testid="assetH_descr"
                 className={cn(
                   "text-sm",
@@ -105,7 +128,7 @@ export const AssetHeader = ({ asset }: AssetHeaderProps) => {
                 <button
                   type="button"
                   data-testid="assetH_descr_toggle"
-                  onClick={() => setExpanded((value) => !value)}
+                  onClick={() => setExpansion({ description, expanded: !expanded })}
                   className="text-xs text-secondary hover:underline mt-0.5"
                 >
                   {expanded ? "Show less" : "Show more"}
@@ -117,23 +140,24 @@ export const AssetHeader = ({ asset }: AssetHeaderProps) => {
         <div className="flex flex-row items-start justify-center w-full text-xs mt-2">
           <Tooltip>
             <TooltipTrigger asChild>
-              <div data-testid="idcopy_btn" className="p-1 flex flex-row items-center w-fit max-w-full border border-border text-muted-foreground rounded-md space-x-2">
+              <div data-testid="idcopy_btn" className="p-1 flex flex-row items-start w-fit max-w-full border border-border text-muted-foreground rounded-md space-x-2">
+                {identiconDid && <Identicon did={identiconDid} size={12} className="mt-0.5" title="Asset identity" />}
                 {didUrlInfo.href ? (
                   <>
-                    <Link2 size={10} className="shrink-0" />
+                    <Link2 size={10} className="mt-0.5 shrink-0" />
                     <Link
                       href={didUrlInfo.href}
-                      className="select-text text-[10px] hover:text-secondary hover:underline"
+                      className="min-w-0 break-all select-text text-[10px] hover:text-secondary hover:underline"
                     >
                       {didUrlInfo.text}
                     </Link>
                   </>
                 ) : (
-                  <div className="select-text text-[10px]">{didUrlInfo.text}</div>
+                  <div className="min-w-0 break-all select-text text-[10px]">{didUrlInfo.text}</div>
                 )}
                 <Copy
                   size={10}
-                  className="shrink-0 cursor-pointer"
+                  className="mt-0.5 shrink-0 cursor-pointer"
                   onClick={() =>
                     didUrlInfo.href
                       // A bare DID URL isn't something anyone else can open —

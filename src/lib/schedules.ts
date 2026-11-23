@@ -1,21 +1,59 @@
 import { Venue, fetchWithError } from "@covia/covia-sdk";
 
-// {handle, op, time, track, repeat?, lastFired?, lastJob?} — the grid
-// scheduler's event shape as of covia 0.9.6 (covia#408): `time` is the next
-// fire time in epoch ms; a recurring event also carries `repeat` (fixed
-// interval only — cron-style calendar expressions are still covia#408 stage
-// 2), `lastFired`, and, when tracked, `lastJob` (a Job id — read
+// {handle, op, time, track, caller?, owner?, input?, description?, created?, repeat?,
+// lastFired?, lastJob?} — the grid scheduler's event shape (covia#408, with
+// the descriptive fields from covia 0.10, covia#583): `time` is the next fire
+// time in epoch ms; a recurring event also carries `repeat` (fixed interval
+// only — cron-style calendar expressions are still covia#408 stage 2),
+// `lastFired`, and, when tracked, `lastJob` (a Job id — read
 // GET /api/v1/jobs/{id} for that fire's outcome). One-shot events carry none
-// of the recurrence fields.
+// of the recurrence fields. `caller` is whoever scheduled it (the account, or
+// one of its agents) and `owner` the namespace it acted in, present only when
+// it differs (covia 0.11, which renamed `by`). From 0.12 `owner` is omitted
+// and `id` identifies the schedule capability resource. `input` is shown with the operation's secret fields hidden,
+// as job records show it, and `description` is the scheduler's own free text.
+// Venues before 0.10 send none of those four.
 export type ScheduledEvent = {
+  /** Capability resource id, provided by venues from 0.12. */
+  id?: string;
   handle: string;
   op: string;
   time: number;
   track: boolean;
+  caller?: string;
+  /** Caller spelling on venues before 0.11. */
+  by?: string;
+  owner?: string;
+  input?: unknown;
+  description?: string;
+  created?: number;
   repeat?: { every: number };
   lastFired?: number;
   lastJob?: string;
 };
+
+/** The venue refuses a longer description (covia's MAX_DESCRIPTION_CHARS). */
+export const MAX_SCHEDULE_DESCRIPTION = 500;
+
+// An operation named by its adapter ("agent:trigger") rather than by a
+// catalogue path or asset id. Venues resolve a scheduled operation as an
+// asset, so such an event is accepted but fails every time it fires ("Cannot
+// resolve operation") — as the agent page's wakes did until they switched to
+// "v/ops/agent/trigger".
+export function isAdapterOnlyOperation(op: string): boolean {
+  return /^[A-Za-z][\w-]*:[\w-]+$/.test(op);
+}
+
+// The agent a wake targets, read from the event's input — what an agent's
+// page schedules through SchedulePickerDialog. The venue lists that input only
+// when it resolves the operation, which "v/ops/agent/trigger" does and the bare
+// adapter form "agent:trigger" (older wakes) does not. Only a bare id names an
+// agent of the caller's own; anything else is shown as the operation alone.
+export function wakeTargetAgent(event: Pick<ScheduledEvent, "op" | "input">): string | null {
+  if (event.op !== "agent:trigger" && event.op !== "v/ops/agent/trigger") return null;
+  const agentId = (event.input as { agentId?: unknown } | null | undefined)?.agentId;
+  return typeof agentId === "string" && agentId !== "" && !/[/:]/.test(agentId) ? agentId : null;
+}
 
 // Fixed-interval cadence presets offered by SchedulePickerDialog, in
 // milliseconds — the single source of truth for preset-to-repeat.every
@@ -37,10 +75,10 @@ export type CadencePreset = keyof typeof CADENCE_PRESETS;
 // violating "reads must not create jobs".
 export async function listScheduledEvents(venue: Venue): Promise<ScheduledEvent[]> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  venue.auth.apply(headers, venue.venueId);
+  await venue.auth.apply(headers, venue.venueId);
   const data = await fetchWithError<{ events: ScheduledEvent[] }>(
     `${venue.baseUrl}/api/v1/schedules`,
     { headers },
   );
-  return data.events ?? [];
+  return (data.events ?? []).map((event) => ({ ...event, caller: event.caller ?? event.by }));
 }

@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  revalidateVenueOnFailure,
-  useAuthenticatedVenue,
-} from "@/hooks/use-authenticated-venue";
-import { useIsAuthenticated } from "@/hooks/use-auth";
+import { useCallback, useMemo, useState } from "react";
+import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useVenueRead } from "@/hooks/use-venue-read";
+import { errorMessage } from "@/lib/errors";
+import { useCurrentAuth, useIsAuthenticated } from "@/hooks/use-auth";
 import { cn, formatRelativeTime } from "@/lib/utils";
+import { TONE_STYLES } from "@/lib/status";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import {
   CONNECTIONS,
@@ -26,8 +26,11 @@ import {
   Check,
   CheckCircle2,
   ExternalLink,
+  GitPullRequest,
+  Lightbulb,
   Loader2,
   Lock,
+  MessageSquarePlus,
   Plus,
   RefreshCw,
   Search,
@@ -35,6 +38,7 @@ import {
   Trash2,
   XCircle,
 } from "lucide-react";
+import { FaDiscord } from "react-icons/fa";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import {
   Dialog,
@@ -55,6 +59,22 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { memo } from "react";
+
+// Where "suggest / contribute a connection" send people. Covia's connectors are
+// open-source skill manifests in the public covia-ai/covia repo (see the note
+// at the top of config/connections.ts), so a suggestion opens a PREFILLED —
+// never auto-submitted — issue there for the person to review and file, and
+// "contribute" links to the repo itself. The Discord invite is the same
+// community URL used elsewhere in the app (PortAgentDialog, learning page).
+const CONNECTORS_REPO_URL = "https://github.com/covia-ai/covia";
+const COMMUNITY_URL = "https://discord.gg/fywdrKd8QT";
+const suggestConnectionUrl = (service = "") => {
+  const name = service.trim();
+  const title = name ? `Connector request: ${name}` : "Connector request";
+  const body = `**Service:** ${name}\n\n**What would you use it for?**\n\n**API docs / auth type (if known):**\n\n_Requested from the Connections page._`;
+  return `${CONNECTORS_REPO_URL}/issues/new?labels=connector-request&title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+};
 
 type TestState =
   | { phase: "idle" }
@@ -70,6 +90,14 @@ type HealthState =
   | { phase: "checking" }
   | { phase: "ok"; message: string; checkedAt: string }
   | { phase: "attention"; message: string; checkedAt: string };
+
+// Stable empty values, so memoised derivations keyed on them don't re-run.
+const NO_NAMES: string[] = [];
+const NO_HEALTH: Record<string, HealthState> = {};
+
+// What per-venue state is filed under. One derivation for render and handlers
+// alike, so what a handler records is always what render looks up.
+const venueKeyOf = (venue: { venueId?: string } | null | undefined) => venue?.venueId ?? "";
 
 type ConnectionCardProps = {
   service: ConnectionService;
@@ -89,7 +117,16 @@ type ConnectionCardProps = {
 // including typing a single character into the search box. Passing explicit
 // props instead of closing over ConnectionsList's state keeps this a stable
 // type across renders, so React diffs and updates in place like normal.
-function ConnectionCard({
+//
+// Wrapped in React.memo (perf): the catalogue filters search client-side, so a
+// keystroke re-renders ConnectionsList and remaps every visible card. With the
+// parent passing stable props (the three handlers are useCallback'd), a card
+// re-renders only when its own service/connected/health/loading actually
+// changes — so testing one service's health never re-renders the others.
+// The card root stays `div.rounded-xl` (the tests locate a card via
+// `.closest("div.rounded-xl")`); the banded header brings it into visual
+// parity with the operation and agent cards.
+const ConnectionCard = memo(function ConnectionCard({
   service,
   connected,
   health,
@@ -100,129 +137,176 @@ function ConnectionCard({
 }: ConnectionCardProps) {
   const on = connected;
   const attention = on && health?.phase === "attention";
+  const example = CONNECTION_CAPABILITIES[service.id]?.examples[0];
   return (
-    <div className="flex flex-col rounded-xl border bg-card p-4">
-      <div className="flex items-start gap-3">
+    <div className="group flex flex-col overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:border-accent hover:shadow-md">
+      {/* Header band: logo identity + name + auth method */}
+      <div className="flex items-start gap-3 border-b bg-card-banner px-4 py-3">
         <Logo service={service} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <span className="truncate font-semibold">{service.name}</span>
-            <span className="font-mono text-[10px] uppercase text-muted-foreground">{service.method}</span>
+            <span className="shrink-0 font-mono text-[10px] uppercase text-muted-foreground">
+              {service.method}
+            </span>
           </div>
           <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{service.blurb}</p>
-          {on && CONNECTION_CAPABILITIES[service.id]?.examples[0] && (
-            <p className="mt-1 line-clamp-1 text-xs italic text-muted-foreground/80">
-              Try: &ldquo;{CONNECTION_CAPABILITIES[service.id].examples[0]}&rdquo;
-            </p>
-          )}
         </div>
       </div>
-      <div className="mt-4 flex items-center justify-between gap-2">
-        <div className="flex min-w-0 flex-col gap-0.5">
-          {loading ? (
-            <Loader2 className="animate-spin text-muted-foreground" size={16} />
-          ) : attention ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Badge
-                  variant="outline"
-                  className="w-fit gap-1 border-amber-600/30 bg-amber-600/10 text-amber-700 dark:text-amber-400"
-                >
-                  <AlertTriangle size={12} /> Needs attention
-                </Badge>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-64">{health.message}</TooltipContent>
-            </Tooltip>
-          ) : on ? (
-            <Badge variant="outline" className="w-fit gap-1 border-green-600/30 bg-green-600/10 text-green-700 dark:text-green-400">
-              <Check size={12} /> Connected
-            </Badge>
-          ) : (
-            <span className="text-xs text-muted-foreground">Not connected</span>
-          )}
-          {on && health && health.phase !== "checking" && (
-            <span className="text-[10px] text-muted-foreground">
-              Checked {formatRelativeTime(health.checkedAt)}
-            </span>
-          )}
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-          {on && service.verify && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-muted-foreground"
-                  aria-label={`Test ${service.name} connection`}
-                  disabled={health?.phase === "checking"}
-                  onClick={() => onTest(service)}
-                >
-                  {health?.phase === "checking" ? (
-                    <Loader2 className="animate-spin" size={14} />
-                  ) : (
-                    <RefreshCw size={14} />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Test connection</TooltipContent>
-            </Tooltip>
-          )}
-          {attention && (
-            <Button variant="outline" size="sm" className="h-7" onClick={() => onOpenAdd(service)}>
-              Fix
-            </Button>
-          )}
-          {on ? (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-muted-foreground"
-                  aria-label={`Disconnect ${service.name}`}
-                >
-                  <Trash2 size={14} />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Disconnect {service.name}?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Removes the stored secret <code className="rounded bg-muted px-1 font-mono text-xs">{service.secretName}</code>. Agents using the {service.id} skill lose access until you reconnect.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => onDisconnect(service)}>Disconnect</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          ) : (
-            <Button variant="outline" size="sm" className="h-7" onClick={() => onOpenAdd(service)}>
-              <Plus size={14} /> Connect
-            </Button>
-          )}
+
+      {/* Body: capability hint (connected), status + actions */}
+      <div className="flex flex-1 flex-col gap-3 px-4 py-3">
+        {on && example && (
+          <p className="line-clamp-1 text-xs italic text-muted-foreground/80">
+            Try: &ldquo;{example}&rdquo;
+          </p>
+        )}
+        <div className="mt-auto flex items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            {loading ? (
+              <Loader2 className="animate-spin text-muted-foreground" size={16} />
+            ) : attention ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge
+                    variant="outline"
+                    className={cn("w-fit gap-1", TONE_STYLES.attention.tint, TONE_STYLES.attention.text)}
+                  >
+                    <AlertTriangle size={12} /> Needs attention
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-64">{health.message}</TooltipContent>
+              </Tooltip>
+            ) : on ? (
+              <Badge variant="outline" className={cn("w-fit gap-1", TONE_STYLES.success.tint, TONE_STYLES.success.text)}>
+                <Check size={12} /> Connected
+              </Badge>
+            ) : (
+              <span className="text-xs text-muted-foreground">Not connected</span>
+            )}
+            {on && health && health.phase !== "checking" && (
+              <span className="text-[10px] text-muted-foreground">
+                Checked {formatRelativeTime(health.checkedAt)}
+              </span>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {on && service.verify && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-muted-foreground"
+                    aria-label={`Test ${service.name} connection`}
+                    disabled={health?.phase === "checking"}
+                    onClick={() => onTest(service)}
+                  >
+                    {health?.phase === "checking" ? (
+                      <Loader2 className="animate-spin" size={14} />
+                    ) : (
+                      <RefreshCw size={14} />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Test connection</TooltipContent>
+              </Tooltip>
+            )}
+            {attention && (
+              <Button variant="outline" size="sm" className="h-7" onClick={() => onOpenAdd(service)}>
+                Fix
+              </Button>
+            )}
+            {on ? (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-muted-foreground"
+                    aria-label={`Disconnect ${service.name}`}
+                  >
+                    <Trash2 size={14} />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Disconnect {service.name}?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Removes the stored secret <code className="rounded bg-muted px-1 font-mono text-xs">{service.secretName}</code>. Agents using the {service.id} skill lose access until you reconnect.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => onDisconnect(service)}>Disconnect</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : (
+              <Button variant="outline" size="sm" className="h-7" onClick={() => onOpenAdd(service)}>
+                <Plus size={14} /> Connect
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
-}
+});
 
 export function ConnectionsList() {
   const venue = useAuthenticatedVenue();
   const isAuthenticated = useIsAuthenticated();
+  const auth = useCurrentAuth();
 
-  const [connected, setConnected] = useState<Set<string>>(new Set());
-  const [health, setHealth] = useState<Record<string, HealthState>>({});
-  const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState("");
+  // The venue's stored secret names, held with the venue they answer for: a
+  // venue switch never shows the previous venue's connections, and a slow reply
+  // from it can't land on this one.
+  const { data: storedNames, loading } = useVenueRead<string[]>({
+    venue,
+    auth,
+    enabled: isAuthenticated,
+    initial: NO_NAMES,
+    failureTitle: "Unable to load connections",
+    load: async (target) => {
+      const names = await target.secrets.list();
+      return Array.isArray(names) ? names : [];
+    },
+  });
+  // Connects and disconnects made on this page, per venue, applied over the
+  // stored names; the last change to a name wins.
+  const [edits, setEdits] = useState<Record<string, Record<string, boolean>>>({});
+  // On-demand health, per venue then per secret name, so a check still running
+  // when the venue changes lands under the venue it was for.
+  const [healthByVenue, setHealthByVenue] = useState<Record<string, Record<string, HealthState>>>({});
+  const venueKey = venueKeyOf(venue);
+  const connected = useMemo(() => {
+    const names = new Set(storedNames);
+    for (const [name, on] of Object.entries(edits[venueKey] ?? {})) {
+      if (on) names.add(name);
+      else names.delete(name);
+    }
+    return names;
+  }, [storedNames, edits, venueKey]);
+  const health = healthByVenue[venueKey] ?? NO_HEALTH;
+  const markConnected = useCallback((venueId: string, name: string, on: boolean) => {
+    setEdits((prev) => ({ ...prev, [venueId]: { ...prev[venueId], [name]: on } }));
+  }, []);
+  const updateHealth = useCallback(
+    (venueId: string, update: (prev: Record<string, HealthState>) => Record<string, HealthState>) => {
+      setHealthByVenue((prev) => ({ ...prev, [venueId]: update(prev[venueId] ?? NO_HEALTH) }));
+    },
+    [],
+  );
   // Category filter chip; null = All. Complements search (search wins).
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
-  // Quick-connect (paste any token → detect the service).
-  const [quick, setQuick] = useState("");
-  const detected = useMemo(() => detectService(quick), [quick]);
+  // The search box is one value: text that looks like a known service's token
+  // is a quick-connect (paste any token → detect the service), anything else a
+  // search over the catalogue.
+  const [text, setText] = useState("");
+  const detected = useMemo(() => detectService(text), [text]);
+  const query = detected ? "" : text;
 
   // Add dialog. `values` holds one entry per collected secret (keyed by its
   // s/<name>); single-value connections have exactly one.
@@ -233,26 +317,10 @@ export function ConnectionsList() {
   const allFilled = fields.length > 0 && fields.every((f) => (values[f.name] ?? "").trim());
   const setField = (name: string, v: string) => setValues((prev) => ({ ...prev, [name]: v }));
 
-  const loadConnections = useCallback(() => {
-    if (!venue || !isAuthenticated) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    venue.secrets
-      .list()
-      .then((names) => setConnected(new Set(Array.isArray(names) ? names : [])))
-      .catch((err: unknown) => {
-        notifyError("Unable to load connections", err, venue.baseUrl);
-        revalidateVenueOnFailure(venue, null, err);
-        setConnected(new Set());
-      })
-      .finally(() => setLoading(false));
-  }, [venue, isAuthenticated]);
-
-  useEffect(() => loadConnections(), [loadConnections]);
-
-  const openAdd = (service: ConnectionService, prefill = "") => {
+  // useCallback so the handlers passed to every ConnectionCard keep a stable
+  // identity across ConnectionsList re-renders (search keystrokes, health
+  // updates). Without this, React.memo on the card could never skip a render.
+  const openAdd = useCallback((service: ConnectionService, prefill = "") => {
     setActive(service);
     // Empty per field; a quick-connect prefill seeds the primary secret.
     setValues(
@@ -261,25 +329,29 @@ export function ConnectionsList() {
       ),
     );
     setTest({ phase: "idle" });
-  };
+  }, []);
 
   /** Run the service's verify call through the venue (secret already stored). */
-  const runVerify = async (service: ConnectionService): Promise<string> => {
-    const call = venue && buildVerifyCall(service);
-    if (!venue || !call) throw new Error("No verification available.");
-    const out = await venue.operations.run(call.op, call.input);
-    return interpretVerify(service, out);
-  };
+  const runVerify = useCallback(
+    async (service: ConnectionService): Promise<string> => {
+      const call = venue && buildVerifyCall(service);
+      if (!venue || !call) throw new Error("No verification available.");
+      const out = await venue.operations.run(call.op, call.input);
+      return interpretVerify(service, out);
+    },
+    [venue],
+  );
 
-  const connect = async () => {
+  const connect = useCallback(async () => {
     if (!venue || !active || !allFilled) return;
     const svc = active;
     const svcFields = connectionSecrets(svc);
+    const venueId = venueKeyOf(venue);
     setTest({ phase: "testing" });
     // A fresh save (including a Fix-triggered reconnect) supersedes whatever
     // an earlier health check said — clear it rather than show a stale
     // "Needs attention" next to a token that was just re-verified.
-    setHealth((prev) => {
+    updateHealth(venueId, (prev) => {
       const { [svc.secretName]: _drop, ...rest } = prev;
       return rest;
     });
@@ -291,7 +363,7 @@ export function ConnectionsList() {
       if (svc.verify) {
         try {
           const message = await runVerify(svc);
-          setConnected((prev) => new Set(prev).add(svc.secretName));
+          markConnected(venueId, svc.secretName, true);
           setTest({ phase: "ok", message });
         } catch (verifyErr: any) {
           const msg = String(verifyErr?.message ?? "");
@@ -303,7 +375,7 @@ export function ConnectionsList() {
             svc.auth === "url" &&
             (/bad uri/i.test(msg) || svcFields.some((f) => msg.includes(`{s/${f.name}}`)));
           if (placeholderGap) {
-            setConnected((prev) => new Set(prev).add(svc.secretName));
+            markConnected(venueId, svc.secretName, true);
             setTest({
               phase: "ok",
               message: `Saved. ${svc.name} verifies once your venue supports URL secrets (an upcoming release).`,
@@ -315,14 +387,14 @@ export function ConnectionsList() {
         }
       } else {
         // No generic verify (e.g. Jira's per-user host) — store and confirm.
-        setConnected((prev) => new Set(prev).add(svc.secretName));
+        markConnected(venueId, svc.secretName, true);
         setTest({ phase: "ok", message: "Saved. Validates on first use." });
       }
     } catch (err: unknown) {
       notifyError(`Unable to connect ${svc.name}`, err, venue?.baseUrl);
       setTest({ phase: "idle" });
     }
-  };
+  }, [venue, active, allFilled, values, runVerify, markConnected, updateHealth]);
 
   const finishOk = () => {
     if (active && test.phase === "ok") {
@@ -336,65 +408,106 @@ export function ConnectionsList() {
   };
 
   /** On-demand health check for an already-connected service (frontend#290). */
-  const checkHealth = async (service: ConnectionService) => {
-    if (!venue) return;
-    setHealth((prev) => ({ ...prev, [service.secretName]: { phase: "checking" } }));
-    const checkedAt = new Date().toISOString();
-    try {
-      const message = await runVerify(service);
-      setHealth((prev) => ({ ...prev, [service.secretName]: { phase: "ok", message, checkedAt } }));
-    } catch (err: unknown) {
-      setHealth((prev) => ({
-        ...prev,
-        [service.secretName]: {
-          phase: "attention",
-          message: err instanceof Error ? err.message : String(err),
-          checkedAt,
-        },
-      }));
-    }
-  };
-
-  const disconnect = (service: ConnectionService) => {
-    if (!venue) return;
-    // Remove every value the connection stored, not just the primary.
-    Promise.all(connectionSecrets(service).map((f) => venue.secrets.delete(f.name)))
-      .then(() => {
-        setConnected((prev) => {
-          const next = new Set(prev);
-          next.delete(service.secretName);
-          return next;
-        });
-        setHealth((prev) => {
-          const { [service.secretName]: _drop, ...rest } = prev;
-          return rest;
-        });
-        notifySuccess(`${service.name} disconnected`);
-      })
-      .catch((err: unknown) =>
-        notifyError(`Unable to disconnect ${service.name}`, err, venue?.baseUrl),
-      );
-  };
-
-  const isConnected = (s: ConnectionService) => connected.has(s.secretName);
-  const connectedServices = CONNECTIONS.filter(isConnected);
-  const searching = query.trim().length > 0;
-  const filtered = CONNECTIONS.filter(
-    (s) =>
-      s.name.toLowerCase().includes(query.toLowerCase()) ||
-      s.category.toLowerCase().includes(query.toLowerCase()),
+  const checkHealth = useCallback(
+    async (service: ConnectionService) => {
+      if (!venue) return;
+      const venueId = venueKeyOf(venue);
+      const record = (state: HealthState) =>
+        updateHealth(venueId, (prev) => ({ ...prev, [service.secretName]: state }));
+      record({ phase: "checking" });
+      const checkedAt = new Date().toISOString();
+      try {
+        const message = await runVerify(service);
+        record({ phase: "ok", message, checkedAt });
+      } catch (err: unknown) {
+        record({ phase: "attention", message: errorMessage(err), checkedAt });
+      }
+    },
+    [venue, runVerify, updateHealth],
   );
-  const catalogueByCategory = CONNECTION_CATEGORIES.map((cat) => ({
-    category: cat,
-    services: CONNECTIONS.filter((s) => s.category === cat && !isConnected(s)),
-  })).filter((g) => g.services.length > 0);
+
+  const disconnect = useCallback(
+    (service: ConnectionService) => {
+      if (!venue) return;
+      const venueId = venueKeyOf(venue);
+      // Remove every value the connection stored, not just the primary.
+      Promise.all(connectionSecrets(service).map((f) => venue.secrets.delete(f.name)))
+        .then(() => {
+          markConnected(venueId, service.secretName, false);
+          updateHealth(venueId, (prev) => {
+            const { [service.secretName]: _drop, ...rest } = prev;
+            return rest;
+          });
+          notifySuccess(`${service.name} disconnected`);
+        })
+        .catch((err: unknown) =>
+          notifyError(`Unable to disconnect ${service.name}`, err, venue?.baseUrl),
+        );
+    },
+    [venue, markConnected, updateHealth],
+  );
+
+  // Derivations memoised so a search keystroke or health update doesn't rescan
+  // the catalogue on every render. All keyed on the state they actually read.
+  const connectedServices = useMemo(
+    () => CONNECTIONS.filter((s) => connected.has(s.secretName)),
+    [connected],
+  );
+  const searching = query.trim().length > 0;
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase();
+    return CONNECTIONS.filter(
+      (s) => s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q),
+    );
+  }, [query]);
+  const catalogueByCategory = useMemo(
+    () =>
+      CONNECTION_CATEGORIES.map((cat) => ({
+        category: cat,
+        services: CONNECTIONS.filter((s) => s.category === cat && !connected.has(s.secretName)),
+      })).filter((g) => g.services.length > 0),
+    [connected],
+  );
   // Category chip narrows both the connected-first row and the catalogue.
-  const shownConnected = activeCategory
-    ? connectedServices.filter((s) => s.category === activeCategory)
-    : connectedServices;
-  const shownCatalogue = activeCategory
-    ? catalogueByCategory.filter((g) => g.category === activeCategory)
-    : catalogueByCategory;
+  const shownConnected = useMemo(
+    () => (activeCategory ? connectedServices.filter((s) => s.category === activeCategory) : connectedServices),
+    [connectedServices, activeCategory],
+  );
+  const shownCatalogue = useMemo(
+    () => (activeCategory ? catalogueByCategory.filter((g) => g.category === activeCategory) : catalogueByCategory),
+    [catalogueByCategory, activeCategory],
+  );
+
+  // Per-category available (not-yet-connected) counts for the filter chips, and
+  // the KPI tiles that frame the whole set — consistent with the Operations and
+  // Agents headers.
+  const categoryCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const g of catalogueByCategory) m.set(g.category, g.services.length);
+    return m;
+  }, [catalogueByCategory]);
+  const availableCount = useMemo(
+    () => catalogueByCategory.reduce((n, g) => n + g.services.length, 0),
+    [catalogueByCategory],
+  );
+  const needsAttention = useMemo(
+    () => Object.values(health).filter((h) => h.phase === "attention").length,
+    [health],
+  );
+  const statTiles = [
+    { label: "Connected", value: connectedServices.length },
+    { label: "Available", value: availableCount },
+    { label: "Categories", value: CONNECTION_CATEGORIES.length },
+    ...(needsAttention > 0 ? [{ label: "Needs attention", value: needsAttention }] : []),
+  ];
+
+  const chipCls = (on: boolean) =>
+    cn(
+      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+      on
+        ? "border-transparent bg-primary text-primary-foreground"
+        : "bg-card text-muted-foreground hover:border-accent hover:text-foreground",
+    );
 
   if (!isAuthenticated) {
     return (
@@ -407,8 +520,40 @@ export function ConnectionsList() {
     );
   }
 
+  // One card per service, drawn the same in every list. A plain function, not a
+  // component defined here, so React.memo on the card still skips unchanged
+  // cards and nothing remounts (frontend#344).
+  const renderCard = (s: ConnectionService) => (
+    <ConnectionCard
+      key={s.id}
+      service={s}
+      connected={connected.has(s.secretName)}
+      health={health[s.secretName]}
+      loading={loading}
+      onTest={checkHealth}
+      onOpenAdd={openAdd}
+      onDisconnect={disconnect}
+    />
+  );
+
   return (
     <div className="space-y-6">
+      {/* KPI header — frames the whole set, consistent with Operations/Agents. */}
+      <div
+        data-testid="connections-stats"
+        className={cn(
+          "grid grid-cols-2 gap-3",
+          statTiles.length === 4 ? "sm:grid-cols-4" : "sm:grid-cols-3",
+        )}
+      >
+        {statTiles.map((t) => (
+          <div key={t.label} className="rounded-lg border bg-card px-4 py-3 shadow-sm">
+            <div className="text-xs font-medium text-muted-foreground">{t.label}</div>
+            <div className="mt-1 text-3xl font-semibold tabular-nums text-foreground">{t.value}</div>
+          </div>
+        ))}
+      </div>
+
       {/* Trust cue — Covia's differentiator, stated up front. */}
       <div className="flex items-start gap-2.5 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
         <ShieldCheck className="mt-0.5 shrink-0 text-primary" size={17} />
@@ -423,20 +568,15 @@ export function ConnectionsList() {
           <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={15} />
           <Input
             placeholder="Search services, or paste a token to auto-detect…"
-            value={quick || query}
-            onChange={(e) => {
-              const val = e.target.value;
-              // A pasted secret-looking value drives detection; plain text filters.
-              if (detectService(val)) { setQuick(val); setQuery(""); }
-              else { setQuery(val); setQuick(""); }
-            }}
-            onKeyDown={(e) => { if (e.key === "Enter" && detected) { openAdd(detected, quick); setQuick(""); } }}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && detected) { openAdd(detected, text); setText(""); } }}
             className="pl-9 font-normal"
           />
         </div>
         {detected && (
           <button
-            onClick={() => { openAdd(detected, quick); setQuick(""); }}
+            onClick={() => { openAdd(detected, text); setText(""); }}
             className="mt-2 flex w-full items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-left text-sm hover:bg-primary/10"
           >
             <Logo service={detected} size={22} />
@@ -449,21 +589,21 @@ export function ConnectionsList() {
       {/* Category filter chips (hidden while searching — search is its own filter) */}
       {!searching && (
         <div className="flex flex-wrap gap-2">
-          {[null, ...CONNECTION_CATEGORIES].map((cat) => {
-            const label = cat ?? "All";
+          <button onClick={() => setActiveCategory(null)} className={chipCls(activeCategory === null)}>
+            All
+            <span className={cn("font-mono text-[10px]", activeCategory === null ? "opacity-80" : "text-muted-foreground")}>
+              {availableCount}
+            </span>
+          </button>
+          {CONNECTION_CATEGORIES.map((cat) => {
             const on = activeCategory === cat;
+            const count = categoryCounts.get(cat) ?? 0;
             return (
-              <button
-                key={label}
-                onClick={() => setActiveCategory(cat)}
-                className={cn(
-                  "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                  on
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted",
-                )}
-              >
-                {label}
+              <button key={cat} onClick={() => setActiveCategory(cat)} className={chipCls(on)}>
+                {cat}
+                <span className={cn("font-mono text-[10px]", on ? "opacity-80" : "text-muted-foreground")}>
+                  {count}
+                </span>
               </button>
             );
           })}
@@ -477,21 +617,19 @@ export function ConnectionsList() {
             {filtered.length} result{filtered.length === 1 ? "" : "s"}
           </h3>
           {filtered.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No service matches “{query}”. Try a token, or add a custom connection from Secrets.</p>
+            <div className="rounded-lg border border-dashed p-6 text-center">
+              <p className="text-sm text-muted-foreground">
+                No service matches “{query}”. Try a token, or add a custom connection from Secrets.
+              </p>
+              <Button asChild variant="outline" size="sm" className="mt-3">
+                <a href={suggestConnectionUrl(query)} target="_blank" rel="noreferrer">
+                  <MessageSquarePlus size={14} className="mr-1.5" /> Suggest “{query}”
+                </a>
+              </Button>
+            </div>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((s) => (
-                <ConnectionCard
-                  key={s.id}
-                  service={s}
-                  connected={isConnected(s)}
-                  health={health[s.secretName]}
-                  loading={loading}
-                  onTest={checkHealth}
-                  onOpenAdd={openAdd}
-                  onDisconnect={disconnect}
-                />
-              ))}
+              {filtered.map(renderCard)}
             </div>
           )}
         </section>
@@ -504,18 +642,7 @@ export function ConnectionsList() {
                 Connected · {shownConnected.length}
               </h3>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {shownConnected.map((s) => (
-                  <ConnectionCard
-                    key={s.id}
-                    service={s}
-                    connected={isConnected(s)}
-                    health={health[s.secretName]}
-                    loading={loading}
-                    onTest={checkHealth}
-                    onOpenAdd={openAdd}
-                    onDisconnect={disconnect}
-                  />
-                ))}
+                {shownConnected.map(renderCard)}
               </div>
             </section>
           )}
@@ -524,23 +651,48 @@ export function ConnectionsList() {
             <section key={category}>
               <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{category}</h3>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {services.map((s) => (
-                  <ConnectionCard
-                    key={s.id}
-                    service={s}
-                    connected={isConnected(s)}
-                    health={health[s.secretName]}
-                    loading={loading}
-                    onTest={checkHealth}
-                    onOpenAdd={openAdd}
-                    onDisconnect={disconnect}
-                  />
-                ))}
+                {services.map(renderCard)}
               </div>
             </section>
           ))}
         </>
       )}
+
+      {/* Open-source CTA — turn a missing connector into a contribution. The
+          suggest/contribute links open GitHub/Discord in a new tab; nothing is
+          submitted on the user's behalf. */}
+      <div className="rounded-xl border border-dashed bg-muted/20 px-5 py-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Lightbulb size={18} />
+            </span>
+            <div className="min-w-0">
+              <p className="font-semibold">Don&rsquo;t see a service you need?</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Covia is open source — request a connector, add one yourself, or ask the community.
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <Button asChild variant="outline" size="sm">
+              <a href={suggestConnectionUrl()} target="_blank" rel="noreferrer">
+                <MessageSquarePlus size={14} className="mr-1.5" /> Suggest a connection
+              </a>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <a href={CONNECTORS_REPO_URL} target="_blank" rel="noreferrer">
+                <GitPullRequest size={14} className="mr-1.5" /> Contribute one
+              </a>
+            </Button>
+            <Button asChild variant="ghost" size="sm" className="text-[#5865F2] hover:text-[#5865F2]">
+              <a href={COMMUNITY_URL} target="_blank" rel="noreferrer">
+                <FaDiscord size={15} className="mr-1.5" /> Ask on Discord
+              </a>
+            </Button>
+          </div>
+        </div>
+      </div>
 
       {/* Guided add-connection dialog with live test */}
       <Dialog open={!!active} onOpenChange={(o) => !o && finishOk()}>
@@ -563,7 +715,7 @@ export function ConnectionsList() {
                   <ul className="mt-1.5 space-y-1">
                     {CONNECTION_CAPABILITIES[active.id].does.map((d, i) => (
                       <li key={i} className="flex gap-1.5 text-xs text-muted-foreground">
-                        <Check size={13} className="mt-0.5 shrink-0 text-green-600 dark:text-green-400" />
+                        <Check size={13} className={cn("mt-0.5 shrink-0", TONE_STYLES.success.text)} />
                         {d}
                       </li>
                     ))}
@@ -613,11 +765,11 @@ export function ConnectionsList() {
                   ))}
                 </div>
                 {test.phase === "ok" ? (
-                  <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-green-700 dark:text-green-400">
+                  <p className={cn("mt-2 flex items-center gap-1.5 text-xs font-medium", TONE_STYLES.success.text)}>
                     <CheckCircle2 size={14} /> {test.message}
                   </p>
                 ) : test.phase === "error" ? (
-                  <p className="mt-2 flex items-start gap-1.5 text-xs text-red-600 dark:text-red-400">
+                  <p className={cn("mt-2 flex items-start gap-1.5 text-xs", TONE_STYLES.failure.text)}>
                     <XCircle size={14} className="mt-0.5 shrink-0" /> {test.message}
                   </p>
                 ) : (

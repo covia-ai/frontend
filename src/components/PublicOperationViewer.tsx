@@ -8,6 +8,7 @@ import { OperationViewer } from "./OperationViewer";
 import { ContentLayout } from "./admin-panel/content-layout";
 import { TopBar } from "./admin-panel/TopBar";
 import { PlayCircle } from "lucide-react";
+import { routeParam } from "@/lib/route-params";
 
 interface PublicOperationViewerProps {
   path: string[];
@@ -23,7 +24,7 @@ interface PublicOperationViewerProps {
 export function PublicOperationViewer({ path }: PublicOperationViewerProps) {
   const { descriptor, venue } = useResolvedVenueContext();
   const router = useRouter();
-  const address = path.map((s) => decodeURIComponent(s)).join("/");
+  const address = path.map(routeParam).join("/");
 
   // Same reasoning as PublicArtifactViewer.handleNotFound: this page always
   // follows the globally selected venue, so a not-found here (initial load

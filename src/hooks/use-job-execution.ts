@@ -2,19 +2,26 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Venue } from "@covia/covia-sdk";
+import type { Job, Venue } from "@covia/covia-sdk";
 import { errorMessage } from "@/lib/errors";
 import { jobFailure, notifyError, notifyWarning } from "@/lib/notify";
 import { useWatchedJobs } from "@/hooks/use-watched-jobs";
-
-type JobResult = { id?: string } | null | undefined;
+import { jobPath } from "@/lib/routes";
 
 type ExecuteJobOptions = {
-  action: () => Promise<JobResult>;
+  // Must start the job and hand it back — `invoke`, never `run`: `run` waits
+  // for the job and resolves to its *result*, which has no id to watch or
+  // link to. (`run<T>` infers T from this return type, so the compiler cannot
+  // catch that mistake; the id check below does.)
+  action: () => Promise<Pick<Job, "id">>;
   failureTitle: string;
   missingJobMessage?: string;
   onError?: (message: string) => void;
   onSuccess?: (jobId: string) => void;
+  // Default true: on success, navigate to the job's detail page. Pass false
+  // for a run-in-place caller that renders the result inline and only offers
+  // an opt-in link to the full job (the job is still watched either way).
+  navigate?: boolean;
 };
 
 export function useJobExecution(venue?: Venue | null) {
@@ -27,6 +34,7 @@ export function useJobExecution(venue?: Venue | null) {
     missingJobMessage = "The operation completed without returning a job ID",
     onError,
     onSuccess,
+    navigate = true,
   }: ExecuteJobOptions): Promise<string | null> => {
     if (!venue) return null;
     setRunning(true);
@@ -42,7 +50,9 @@ export function useJobExecution(venue?: Venue | null) {
       // #241: ambient completion notification even if the user navigates
       // away before this job finishes — see use-watched-jobs.ts.
       useWatchedJobs.getState().watch(venue.venueId, result.id);
-      router.push(`/venues/${encodeURIComponent(venue.venueId)}/jobs/${result.id}`);
+      if (navigate) {
+        router.push(jobPath(venue.venueId, result.id));
+      }
       return result.id;
     } catch (error: unknown) {
       const { reason, jobHref } = jobFailure(error, venue.venueId);

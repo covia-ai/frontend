@@ -10,13 +10,13 @@ import { errorMessage, errorStatus, isAuthenticationRejectedError } from "@/lib/
 import { verifyVenueAccount } from "@/lib/venue-auth-probe";
 import {
   connectVenue,
-  evictVenueInstances,
   getVenueStatus,
   getVenueFor,
 } from "@/lib/venue-registry";
 import { applyVenueReplacement } from "@/lib/venue-replacement";
+import { publicCapsOf } from "@/lib/venue-public-caps";
 
-export { evictVenueInstances, getVenueFor };
+export { getVenueFor };
 
 const AUTH_VALIDATION_TIMEOUT_MS = 10_000;
 
@@ -54,6 +54,7 @@ function validateVenue(
           state: "connected",
           version: status?.version,
           publicAccess: authData ? undefined : status !== undefined,
+          publicCaps: publicCapsOf(status),
         });
         if (!authData) return;
         // Verify the account separately from the public status endpoint.
@@ -98,6 +99,7 @@ function validateVenue(
                 state: "connected",
                 version: fresh.lastKnownStatus?.version,
                 publicAccess: fresh.lastKnownStatus !== undefined,
+                publicCaps: publicCapsOf(fresh.lastKnownStatus),
               });
             })
             .catch(() => {

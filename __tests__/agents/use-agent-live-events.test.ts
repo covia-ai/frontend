@@ -156,4 +156,32 @@ describe("useAgentLiveEvents", () => {
     expect(signals[0].aborted).toBe(true);
     expect(signals[1].aborted).toBe(false);
   });
+
+  // The result belongs to the subscription it came from: the moment the agent
+  // changes it reads idle, before the new stream has delivered anything.
+  it("reports idle for a newly selected agent until its own stream delivers", async () => {
+    let releaseSecond!: () => void;
+    const secondGate = new Promise<void>((resolve) => {
+      releaseSecond = resolve;
+    });
+    const venue = makeVenue(async function* (agentId: string) {
+      if (agentId === "a2") await secondGate;
+      yield { type: "status", status: "RUNNING" };
+      await new Promise(() => {});
+    });
+
+    const { result, rerender } = renderHook(
+      ({ agentId }) => useAgentLiveEvents(venue, agentId),
+      { initialProps: { agentId: "a1" } },
+    );
+    await waitFor(() => expect(result.current.live).toBe(true));
+
+    rerender({ agentId: "a2" });
+    expect(result.current).toEqual({ live: false, detailVersion: 0, activity: null });
+
+    await act(async () => {
+      releaseSecond();
+    });
+    await waitFor(() => expect(result.current.live).toBe(true));
+  });
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { JobMetadata } from "@covia/covia-sdk";
+import type { JobMetadata, Venue } from "@covia/covia-sdk";
 import { ExternalLink } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,9 @@ import { JobRowActions } from "@/components/jobs/JobRowActions";
 interface JobDetailDrawerProps {
   /** The row's job record; the drawer is open while this is non-null. */
   job: JobMetadata | null;
+  /** The venue the job belongs to, for the header actions. */
+  venue: Venue;
+  /** Route venue id for the embedded viewer; undefined on the unscoped route. */
   venueId?: string;
   /** Full-page detail href for the "Open full page" link. */
   fullHref?: string;
@@ -24,7 +27,7 @@ interface JobDetailDrawerProps {
  * without leaving the list, with the same per-row actions in the header and an
  * "Open full page" link to the standalone /job/[id] route.
  */
-export function JobDetailDrawer({ job, venueId, fullHref, onOpenChange, onChanged }: JobDetailDrawerProps) {
+export function JobDetailDrawer({ job, venue, venueId, fullHref, onOpenChange, onChanged }: JobDetailDrawerProps) {
   return (
     <Sheet open={!!job} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="flex w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
@@ -39,7 +42,7 @@ export function JobDetailDrawer({ job, venueId, fullHref, onOpenChange, onChange
                   </Link>
                 </Button>
               )}
-              {job && <JobRowActions job={job} onChanged={onChanged} />}
+              {job && <JobRowActions job={job} venue={venue} onChanged={onChanged} />}
             </div>
           </div>
         </SheetHeader>

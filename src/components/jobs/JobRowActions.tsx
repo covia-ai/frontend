@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { JobMetadata } from "@covia/covia-sdk";
+import type { JobMetadata, Venue } from "@covia/covia-sdk";
 import { Ban, Download, Loader2, MoreHorizontal, RotateCcw } from "lucide-react";
 import {
   DropdownMenu,
@@ -20,14 +20,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
-import { jobFailure, notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
+import { jobFailure, notifyError, notifySuccess } from "@/lib/notify";
+import { isJobCancellable } from "@/lib/job-history";
+import { useJobExecution } from "@/hooks/use-job-execution";
 import { abbreviateJobId } from "@/lib/job-visuals";
-
-const ACTIVE = new Set(["PENDING", "STARTED", "PAUSED", "INPUT_REQUIRED", "AUTH_REQUIRED"]);
+import { jobPath } from "@/lib/routes";
 
 interface JobRowActionsProps {
   job: JobMetadata;
+  /** The venue the job belongs to — the one the list is showing, which on a
+   *  /venues/<id>/jobs route is not necessarily the globally selected one. */
+  venue: Venue;
   /** Called after an action changes venue state, so the list can refetch. */
   onChanged?: () => void;
 }
@@ -39,45 +42,50 @@ interface JobRowActionsProps {
  * client-side from the fetched record. Cancel confirms first (it can lose
  * in-flight work).
  */
-export function JobRowActions({ job, onChanged }: JobRowActionsProps) {
-  const venue = useAuthenticatedVenue();
+export function JobRowActions({ job, venue, onChanged }: JobRowActionsProps) {
   const [busy, setBusy] = useState<null | "rerun" | "cancel" | "receipt">(null);
+  const { execute } = useJobExecution(venue);
   const [confirmCancel, setConfirmCancel] = useState(false);
 
   const jobId = job.id ?? "";
-  const isActive = ACTIVE.has((job.status ?? "").toUpperCase());
+  const canCancel = isJobCancellable(job.status);
 
   const rerun = async () => {
-    if (!venue) return notifyWarning("Please connect to a venue first");
     setBusy("rerun");
     try {
-      // The list record is a summary; fetch the full job for its operation + input.
-      const full = await venue.jobs.get(jobId);
-      // Job records carry the operation as a content hash under `op` (see #322);
-      // fall back to `operation` for any record that surfaces the path instead.
-      const meta = full.metadata as Record<string, unknown>;
-      const operation = (meta.op ?? meta.operation) as string | undefined;
-      if (!operation) throw new Error("This job has no operation reference to re-run.");
-      const newJob = await venue.operations.invoke(operation, full.metadata.input);
-      notifySuccess("Re-running operation", {
-        description: `New job ${abbreviateJobId(newJob.id)}`,
-        receiptHref: newJob.id ? `/job/${newJob.id}` : undefined,
+      // The same path as every other user-started run: the new job is watched
+      // for the ambient completion notification, and a failure names the job.
+      await execute({
+        action: async () => {
+          // The list record is a summary; fetch the full job for its operation + input.
+          const full = await venue.jobs.get(jobId);
+          // `op` is the reference that was invoked (covia#499). A path is a mutable
+          // binding, so re-running it runs whatever sits there now — which is what
+          // "re-run" should mean. A pinned record carries a hash and re-runs that.
+          const operation = full.metadata.op;
+          if (!operation) throw new Error("This job has no operation reference to re-run.");
+          return venue.operations.invoke(operation, full.metadata.input);
+        },
+        failureTitle: "Unable to re-run job",
+        navigate: false,
+        onSuccess: (newJobId) => {
+          notifySuccess("Re-running operation", {
+            description: `New job ${abbreviateJobId(newJobId)}`,
+            receiptHref: jobPath(venue.venueId, newJobId),
+          });
+          onChanged?.();
+        },
       });
-      onChanged?.();
-    } catch (err) {
-      const { reason } = jobFailure(err, venue.venueId);
-      notifyError("Unable to re-run job", reason, venue.baseUrl);
     } finally {
       setBusy(null);
     }
   };
 
   const cancel = async () => {
-    if (!venue) return notifyWarning("Please connect to a venue first");
     setBusy("cancel");
     try {
       await venue.jobs.cancel(jobId);
-      notifySuccess(`Cancelled job ${abbreviateJobId(jobId)}`);
+      notifySuccess(`Cancellation requested for job ${abbreviateJobId(jobId)}`);
       onChanged?.();
     } catch (err) {
       const { reason } = jobFailure(err, venue.venueId);
@@ -89,14 +97,13 @@ export function JobRowActions({ job, onChanged }: JobRowActionsProps) {
   };
 
   const downloadReceipt = async () => {
-    if (!venue) return notifyWarning("Please connect to a venue first");
     setBusy("receipt");
     try {
       const full = await venue.jobs.get(jobId);
-      const m = full.metadata as Record<string, unknown> & typeof full.metadata;
+      const m = full.metadata;
       const receipt = {
         id: m.id ?? jobId,
-        operation: (m.op ?? m.operation ?? null) as string | null,
+        operation: m.op ?? null,
         name: m.name ?? null,
         caller: m.caller ?? null,
         status: m.status ?? null,
@@ -147,7 +154,7 @@ export function JobRowActions({ job, onChanged }: JobRowActionsProps) {
           <DropdownMenuItem onSelect={() => void downloadReceipt()} disabled={busy !== null}>
             <Download size={14} /> Download receipt
           </DropdownMenuItem>
-          {isActive && (
+          {canCancel && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem

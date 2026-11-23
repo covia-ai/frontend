@@ -1,23 +1,23 @@
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
-import { useCallback, useEffect, useMemo, useRef, useState, type UIEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type UIEvent } from "react";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { useActiveJobsLive } from "@/hooks/use-active-jobs-live";
-import { JobMetadata, RunStatus }from "@covia/covia-sdk";
-import { cn, formatDateTime, getExecutionTime } from "@/lib/utils";
-import { StatusBadge } from "@/components/StatusBadge";
+import { isJobFinished, type JobMetadata, RunStatus } from "@covia/covia-sdk";
+import { formatDurationMs } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScheduledList } from "@/components/ScheduledList";
 import { FiltersSheet } from "@/components/FiltersSheet";
 import { ListToolbar } from "@/components/ListToolbar";
 import { StatTile } from "@/components/StatTile";
 import { Button } from "@/components/ui/button";
-import { JobRowActions } from "@/components/jobs/JobRowActions";
+import { JobRow } from "@/components/jobs/JobRow";
 import { JobDetailDrawer } from "@/components/jobs/JobDetailDrawer";
-import { TONE_STYLES, toneForRunStatus } from "@/lib/status";
-import { operationVisual, abbreviateJobId, jobDurationMs, percentile, durationFillClass } from "@/lib/job-visuals";
-import { Activity, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2, Copy, Gauge, Layers } from "lucide-react";
+import { TONE_STYLES } from "@/lib/status";
+import { jobDurationMs, percentile } from "@/lib/job-visuals";
+import { useOperationAdapters } from "@/hooks/use-operation-adapters";
+import { Activity, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2, Gauge, Layers } from "lucide-react";
 import { TopBar } from "./admin-panel/TopBar";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -28,10 +28,8 @@ import {
   jobRecordsFromSlice,
   sliceJobWindow,
   jobTrendFromRecords,
-  TERMINAL_STATUSES,
+  isJobLive,
 } from "@/lib/job-history";
-
-const ACTIVE_STATUSES = new Set([RunStatus.PENDING, RunStatus.STARTED, RunStatus.PAUSED]);
 
 const STATUS_OPTIONS = [
   RunStatus.PENDING, RunStatus.STARTED, RunStatus.PAUSED, RunStatus.CANCELLED, RunStatus.TIMEOUT,
@@ -52,23 +50,40 @@ const FILTER_WINDOW = 100;
 const STATS_WINDOW = 50;
 const EMPTY_JOB_QUERY = { records: [] as JobMetadata[], totalCount: 0 };
 
+// The tab a deep link asks for — SchedulePickerDialog's "Schedule created"
+// toast points at /jobs?tab=scheduled (#230). Read from the URL through
+// useSyncExternalStore rather than next/navigation's useSearchParams, so this
+// doesn't force the route out of static rendering / require a Suspense
+// boundary for what's a one-off query param read: the server snapshot stands
+// in during hydration and the URL's answer replaces it without a second
+// commit. The URL never changes underneath a mounted list, so there is
+// nothing to subscribe to.
+const subscribeToNothing = () => () => {};
+const readRequestedTab = () =>
+  new URLSearchParams(window.location.search).get("tab") === "scheduled" ? "scheduled" : "history";
+// Same pattern for a status filter, e.g. /jobs?status=AUTH_REQUIRED from an
+// agent's "Waiting on you" link (#364). Read as the raw string so the
+// snapshot is stable; unknown statuses are dropped when parsed.
+const readRequestedStatus = () => new URLSearchParams(window.location.search).get("status") ?? "";
+const KNOWN_STATUSES = new Set<string>(STATUS_OPTIONS.map((o) => o.value));
+
 interface JobListProps {
   venueId?: string;
 }
 
 export function JobList({ venueId }: JobListProps = {}) {
-  // Lets SchedulePickerDialog's "Schedule created" toast deep-link to
-  // /jobs?tab=scheduled (#230). Read after mount rather than via
-  // next/navigation's useSearchParams so this doesn't force the route out
-  // of static rendering / require a Suspense boundary for what's a one-off
-  // query param read.
-  const [activeTab, setActiveTab] = useState("history");
-  useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("tab") === "scheduled") {
-      setActiveTab("scheduled");
-    }
-  }, []);
-  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const requestedTab = useSyncExternalStore(subscribeToNothing, readRequestedTab, () => "history");
+  // The user's choice, once made, wins over the deep link.
+  const [chosenTab, setChosenTab] = useState<string | null>(null);
+  const activeTab = chosenTab ?? requestedTab;
+  const requestedStatusParam = useSyncExternalStore(subscribeToNothing, readRequestedStatus, () => "");
+  const requestedStatus = useMemo(
+    () => requestedStatusParam.split(",").filter((s) => KNOWN_STATUSES.has(s)),
+    [requestedStatusParam],
+  );
+  // As with the tab, the user's own filter choice replaces the deep link's.
+  const [chosenStatus, setStatusFilter] = useState<string[] | null>(null);
+  const statusFilter = chosenStatus ?? requestedStatus;
   const [dateFilter, setDateFilter] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -78,11 +93,6 @@ export function JobList({ venueId }: JobListProps = {}) {
     setSort(prev => prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" });
   const [refreshTick, setRefreshTick] = useState(0);
   const [drawerJob, setDrawerJob] = useState<JobMetadata | null>(null);
-  // Infinite scroll: how many of the newest jobs are currently shown. Grows in
-  // ITEMS_PER_PAGE steps as the user scrolls the list; the unfiltered fetch
-  // reads the newest `visibleCount` from the lattice, filter mode slices its
-  // window client-side to the same count.
-  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const scrollBoxRef = useRef<HTMLDivElement | null>(null);
   // Set the moment a grow is requested; cleared when the next fetch settles, so
@@ -91,6 +101,7 @@ export function JobList({ venueId }: JobListProps = {}) {
   const {
     data: pageData,
     loading: pageLoading,
+    settled: pageSettled,
     error: pageError,
     run: runPageQuery,
     reset: resetPageQuery,
@@ -98,17 +109,23 @@ export function JobList({ venueId }: JobListProps = {}) {
   const {
     data: recentData,
     loading: recentLoading,
+    settled: recentSettled,
     error: recentError,
     run: runRecentQuery,
     reset: resetRecentQuery,
   } = useLatestQuery(EMPTY_JOB_QUERY);
   const {
     data: statsData,
+    settled: statsSettled,
     run: runStatsQuery,
     reset: resetStatsQuery,
   } = useLatestQuery(EMPTY_JOB_QUERY);
   const resolvedVenue = useResolvedVenueContext(venueId);
   const { descriptor: venueObj, venue, auth, isAuthenticated } = resolvedVenue;
+  // Resolves each row's true operation adapter from a catalogue index read once
+  // per venue (job-free), so a job whose `op` is a content hash (most of them —
+  // covia#322) still shows its real adapter icon instead of the generic tile.
+  const operationAdapters = useOperationAdapters(venue, isAuthenticated);
   const venueStatus = resolvedVenue.status ?? (venue ? "ready" : "absent");
   const prevVenueId = useRef<string | undefined>(undefined);
   const venueKey = venueObj?.venueId ?? "";
@@ -116,10 +133,23 @@ export function JobList({ venueId }: JobListProps = {}) {
   // count, so pagination and refresh can skip the list() count probe — the
   // window self-corrects (sliceJobWindow) if the index moved meanwhile.
   const countRef = useRef<{ venueId: string; count: number } | null>(null);
-  // Read through a ref so the fetch callbacks don't depend on the auth
-  // object's identity — it's only consulted when a fetch fails.
+  // The auth a failed fetch re-probes with, kept in a ref (written from an
+  // effect, never during render) so the fetch callbacks don't depend on the
+  // auth object's identity — it's only consulted when a fetch fails, and a
+  // caller that hands over a fresh object per render must not refetch.
   const authRef = useRef(auth);
-  authRef.current = auth;
+  useEffect(() => {
+    authRef.current = auth;
+  }, [auth]);
+  // Infinite scroll: how many of the newest jobs are currently shown. Grows in
+  // ITEMS_PER_PAGE steps as the user scrolls the list; the unfiltered fetch
+  // reads the newest `visibleCount` from the lattice, filter mode slices its
+  // window client-side to the same count. The window is stored with the venue
+  // and filters it was grown under, so a change to either starts from the
+  // first page in the same render — the feed fetch never sees the stale count.
+  const resetKey = `${venueKey} ${statusFilter.join(" ")} ${dateFilter.join(" ")} ${debouncedQuery}`;
+  const [shown, setShown] = useState({ resetKey, count: ITEMS_PER_PAGE });
+  const visibleCount = shown.resetKey === resetKey ? shown.count : ITEMS_PER_PAGE;
 
   const isInRange = useCallback((date: string, ranges: string[]) => {
     if (ranges.length === 0) return true;
@@ -158,102 +188,31 @@ export function JobList({ venueId }: JobListProps = {}) {
   // handleSlice computes `total` from the same live value it pages), so it's
   // authoritative for that specific read — if it disagrees with the count used
   // to pick the window, recompute against it and slice once more.
-  const fetchFeed = useCallback(async () => {
-    if (!venue || venueStatus !== "ready") {
-      resetPageQuery();
-      return;
-    }
-    await runPageQuery(
-      async () => {
+  // One windowed-slice read, parametrised by size + which query slot it feeds.
+  // The three fetches below differ ONLY in those two things; everything else
+  // (count guess, end-anchored window, #193 self-correcting slice, revalidate-
+  // on-failure) is identical, so it lives here once.
+  const fetchSlice = useCallback(
+    async (
+      size: number,
+      runQuery: typeof runPageQuery,
+      resetQuery: typeof resetPageQuery,
+    ) => {
+      if (!venue || venueStatus !== "ready") {
+        resetQuery();
+        return;
+      }
+      await runQuery(async () => {
         try {
           const cached = countRef.current;
           const guessCount = cached?.venueId === venueKey
             ? cached.count
             : (await venue.workspace.list("j", 1)).count ?? 0;
-          // Infinite scroll reads the newest `visibleCount` from the end of the
-          // index and grows it on scroll. Reading a fresh window from the end
-          // each time (rather than appending offset pages) keeps the #193
-          // offset-race from ever mattering: there is no drifting anchor, and a
-          // job completing mid-scroll simply appears in the next read.
-          const windowFor = (count: number) => ({
-            start: Math.max(0, count - visibleCount),
-            end: count,
-          });
-          const { count, values } = await sliceJobWindow(
-            venue,
-            windowFor,
-            guessCount,
-          );
-          countRef.current = { venueId: venueKey, count };
-          return {
-            totalCount: count,
-            records: jobRecordsFromSlice(values),
-          };
-        } catch (error) {
-          revalidateVenueOnFailure(venue, authRef.current, error);
-          throw error;
-        }
-      },
-    );
-  }, [venue, venueKey, venueStatus, visibleCount, resetPageQuery, runPageQuery]);
-
-  // Filter mode: one slice of the newest FILTER_WINDOW records, filtered and
-  // paged client-side. Filters only ever see this recent window — same
-  // semantics as before, when the window was 100 individual per-job GETs.
-  const fetchWindow = useCallback(async () => {
-    if (!venue || venueStatus !== "ready") {
-      resetRecentQuery();
-      return;
-    }
-    await runRecentQuery(
-      async () => {
-        try {
-          const cached = countRef.current;
-          const guessCount = cached?.venueId === venueKey
-            ? cached.count
-            : (await venue.workspace.list("j", 1)).count ?? 0;
-          const windowFor = (count: number) => ({
-            start: Math.max(0, count - FILTER_WINDOW),
-            end: count,
-          });
-          const { count, values } = await sliceJobWindow(
-            venue,
-            windowFor,
-            guessCount,
-          );
-          countRef.current = { venueId: venueKey, count };
-          return {
-            totalCount: count,
-            records: jobRecordsFromSlice(values),
-          };
-        } catch (error) {
-          revalidateVenueOnFailure(venue, authRef.current, error);
-          throw error;
-        }
-      },
-    );
-  }, [venue, venueKey, venueStatus, resetRecentQuery, runRecentQuery]);
-
-  // Headline stats window: the newest STATS_WINDOW records, venue-wide, read
-  // once per venue/refresh and independent of the table's page or filters, so
-  // the success rate and latency describe recent venue activity rather than
-  // whatever ten rows happen to be on screen.
-  const fetchStats = useCallback(async () => {
-    if (!venue || venueStatus !== "ready") {
-      resetStatsQuery();
-      return;
-    }
-    await runStatsQuery(
-      async () => {
-        try {
-          const cached = countRef.current;
-          const guessCount = cached?.venueId === venueKey
-            ? cached.count
-            : (await venue.workspace.list("j", 1)).count ?? 0;
-          const windowFor = (count: number) => ({
-            start: Math.max(0, count - STATS_WINDOW),
-            end: count,
-          });
+          // A fresh window from the END of the index each time (rather than
+          // appending offset pages) keeps the #193 count-race from mattering:
+          // no drifting anchor, and a job completing mid-scroll simply appears
+          // in the next read.
+          const windowFor = (count: number) => ({ start: Math.max(0, count - size), end: count });
           const { count, values } = await sliceJobWindow(venue, windowFor, guessCount);
           countRef.current = { venueId: venueKey, count };
           return { totalCount: count, records: jobRecordsFromSlice(values) };
@@ -261,9 +220,26 @@ export function JobList({ venueId }: JobListProps = {}) {
           revalidateVenueOnFailure(venue, authRef.current, error);
           throw error;
         }
-      },
-    );
-  }, [venue, venueKey, venueStatus, resetStatsQuery, runStatsQuery]);
+      });
+    },
+    [venue, venueKey, venueStatus],
+  );
+
+  // Feed: the newest `visibleCount` (infinite scroll). Filter: the newest
+  // FILTER_WINDOW, filtered/paged client-side. Stats: the newest STATS_WINDOW
+  // venue-wide, so success rate + latency stay stable as you paginate.
+  const fetchFeed = useCallback(
+    () => fetchSlice(visibleCount, runPageQuery, resetPageQuery),
+    [fetchSlice, visibleCount, runPageQuery, resetPageQuery],
+  );
+  const fetchWindow = useCallback(
+    () => fetchSlice(FILTER_WINDOW, runRecentQuery, resetRecentQuery),
+    [fetchSlice, runRecentQuery, resetRecentQuery],
+  );
+  const fetchStats = useCallback(
+    () => fetchSlice(STATS_WINDOW, runStatsQuery, resetStatsQuery),
+    [fetchSlice, runStatsQuery, resetStatsQuery],
+  );
 
   // Debounce free-text search so typing doesn't fire a fresh window fetch
   // on every keystroke.
@@ -282,7 +258,7 @@ export function JobList({ venueId }: JobListProps = {}) {
     return windowRecords
       .filter(m => statusFilter.length === 0 || statusFilter.includes(m.status ?? ""))
       .filter(m => dateFilter.length === 0 || isInRange(m.created ?? "", dateFilter))
-      .filter(m => !q || [m.id, m.operation, m.name].some(v => v?.toLowerCase().includes(q)));
+      .filter(m => !q || [m.id, m.op, m.name].some(v => v?.toLowerCase().includes(q)));
   }, [hasFilters, windowRecords, statusFilter, dateFilter, debouncedQuery, isInRange]);
 
   // What the table renders: the server-paged window, or a client-side page
@@ -291,9 +267,10 @@ export function JobList({ venueId }: JobListProps = {}) {
     ? recentData.totalCount
     : pageData.totalCount || recentData.totalCount;
   const matchTotal = filteredRecords ? filteredRecords.length : totalCount;
-  const resetKey = `${venueObj?.venueId ?? ""} ${statusFilter.join(" ")} ${dateFilter.join(" ")} ${debouncedQuery}`;
-  // Reset the window to the first page whenever the venue or filters change.
-  useEffect(() => { setVisibleCount(ITEMS_PER_PAGE); }, [resetKey]);
+  // Until a read has landed, `totalCount` is the placeholder zero, not an
+  // answer. Rendering it says "this venue has no jobs" to anyone who looks
+  // during the first seconds of a cold load (#419).
+  const countsKnown = hasFilters ? recentSettled : pageSettled || recentSettled;
 
   const pageRecords = filteredRecords
     ? filteredRecords.slice(0, visibleCount)
@@ -310,7 +287,7 @@ export function JobList({ venueId }: JobListProps = {}) {
   // current page, so success rate and latency stay stable as you paginate.
   // CANCELLED is user-initiated, not a failure, so it counts as neither.
   const venueStats = useMemo(() => {
-    const terminal = statsData.records.filter(j => TERMINAL_STATUSES.has(j.status as RunStatus));
+    const terminal = statsData.records.filter(j => isJobFinished(j.status as RunStatus));
     const completed = terminal.filter(j => j.status === RunStatus.COMPLETE);
     const failed = terminal.filter(j =>
       j.status !== RunStatus.COMPLETE && j.status !== RunStatus.CANCELLED);
@@ -340,6 +317,10 @@ export function JobList({ venueId }: JobListProps = {}) {
   const statsWindowCaption = venueStats.sampleSize > 0
     ? `last ${venueStats.sampleSize} jobs`
     : undefined;
+  // The stats read is skipped entirely when there are no jobs, so "no jobs"
+  // is itself a complete answer for the stats tiles — but only once the count
+  // that decided it is known.
+  const statsKnown = statsSettled || (countsKnown && totalCount === 0);
 
   // Sort once, shared by the desktop table and the mobile card list.
   const sortedRecords = useMemo(() => [...pageRecords].sort((a, b) => {
@@ -353,7 +334,7 @@ export function JobList({ venueId }: JobListProps = {}) {
   // Live-stream the active rows on this page so their status flips instantly
   // (the detail view already streams; this brings the list up to parity).
   const activeIds = useMemo(
-    () => sortedRecords.filter(j => ACTIVE_STATUSES.has(j.status as RunStatus)).map(j => j.id ?? "").filter(Boolean),
+    () => sortedRecords.filter(j => isJobLive(j.status)).map(j => j.id ?? "").filter(Boolean),
     [sortedRecords],
   );
   const liveJobs = useActiveJobsLive(venue, activeIds);
@@ -365,8 +346,11 @@ export function JobList({ venueId }: JobListProps = {}) {
   const maybeLoadMore = useCallback(() => {
     if (!hasMore || loading || growingRef.current) return;
     growingRef.current = true;
-    setVisibleCount((v) => v + ITEMS_PER_PAGE);
-  }, [hasMore, loading]);
+    setShown((previous) => ({
+      resetKey,
+      count: (previous.resetKey === resetKey ? previous.count : ITEMS_PER_PAGE) + ITEMS_PER_PAGE,
+    }));
+  }, [hasMore, loading, resetKey]);
 
   // Clear the grow guard once a fetch settles (unfiltered) or immediately
   // (filtered has no fetch), so the next scroll can load again.
@@ -376,6 +360,10 @@ export function JobList({ venueId }: JobListProps = {}) {
     const el = e.currentTarget;
     if (el.scrollHeight - el.scrollTop - el.clientHeight < 250) maybeLoadMore();
   }, [maybeLoadMore]);
+
+  // Stable so a memoised JobRow only re-renders when its own job/live changes.
+  const handleOpenJob = useCallback((job: JobMetadata) => setDrawerJob(job), []);
+  const handleJobChanged = useCallback(() => setRefreshTick((t) => t + 1), []);
 
   // Also grow when the sentinel scrolls into view within the list box (covers a
   // tall viewport where the initial window doesn't fill the scroll area).
@@ -397,7 +385,9 @@ export function JobList({ venueId }: JobListProps = {}) {
   useEffect(() => {
     if (!venueObj) return;
     if (prevVenueId.current !== venueObj.venueId) {
-      setStatusFilter([]);
+      // First mount (no previous venue) keeps the ?status= deep link; a real
+      // switch clears it along with the rest.
+      setStatusFilter(prevVenueId.current === undefined ? null : []);
       setDateFilter([]);
       setSearchQuery("");
       setDebouncedQuery("");
@@ -430,13 +420,13 @@ export function JobList({ venueId }: JobListProps = {}) {
 
   // Poll every 5 s when there are active jobs on the current page.
   useEffect(() => {
-    const hasActive = pageRecords.some(j => ACTIVE_STATUSES.has(j.status as RunStatus));
+    const hasActive = pageRecords.some(j => isJobLive(j.status));
     if (!hasActive || !venueObj) return;
     const id = setInterval(() => setRefreshTick(t => t + 1), 5000);
     return () => clearInterval(id);
   }, [pageRecords, venueObj]);
 
-  if (venueStatus !== "ready")
+  if (venueStatus !== "ready" || !venue)
     return (
       <ContentLayout>
         <TopBar venueId={venueId} venueName={venueObj?.metadata.name} />
@@ -464,7 +454,7 @@ export function JobList({ venueId }: JobListProps = {}) {
   return (
     <ContentLayout >
       <TopBar venueId={venueId} venueName={venueObj?.metadata.name}/>
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-2">
+      <Tabs value={activeTab} onValueChange={setChosenTab} className="mt-2">
         <TabsList data-testid="jobs-tabs">
           <TabsTrigger value="history" data-testid="jobs-tab-history">History</TabsTrigger>
           <TabsTrigger value="scheduled" data-testid="jobs-tab-scheduled">Scheduled</TabsTrigger>
@@ -490,12 +480,27 @@ export function JobList({ venueId }: JobListProps = {}) {
             />
           }
           summary={
-            <>
-              Showing {pageRecords.length} of {matchTotal}
-              {hasFilters && matchTotal === 0 && !loading && (
-                <span className="ml-2 text-muted-foreground">— no jobs match this filter</span>
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              {countsKnown
+                ? <span>Showing {pageRecords.length} of {matchTotal}</span>
+                : <span className="text-muted-foreground">Counting jobs…</span>}
+              {/* One honest place for the read scopes: filters only ever see the
+                  newest FILTER_WINDOW, and the headline stats are over the recent
+                  STATS_WINDOW — surfaced up-front rather than scattered. */}
+              {hasFilters && (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                  filtering newest {FILTER_WINDOW}
+                </span>
               )}
-            </>
+              {venueStats.sampleSize > 0 && (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                  stats over last {venueStats.sampleSize}
+                </span>
+              )}
+              {hasFilters && matchTotal === 0 && !loading && (
+                <span className="text-muted-foreground">— no jobs match this filter</span>
+              )}
+            </span>
           }
         />
         {loadError && <ErrorDisplay error={loadError} className="mb-4 w-full" />}
@@ -547,101 +552,38 @@ export function JobList({ venueId }: JobListProps = {}) {
                   No jobs found
                 </TableCell>
               </TableRow>
-            ) : sortedRecords
-              .map((job) => {
-                const eff = liveJobs[job.id ?? ""] ? { ...job, ...liveJobs[job.id ?? ""] } : job;
-                const isTerminal = TERMINAL_STATUSES.has(eff.status as RunStatus);
-                const tone = toneForRunStatus(eff.status);
-                const isLive = !!liveJobs[job.id ?? ""] && ACTIVE_STATUSES.has(eff.status as RunStatus);
-                const rowTint =
-                  tone === "failure" ? "bg-destructive/5 hover:bg-destructive/10"
-                  : tone === "attention" ? "bg-amber-500/5 hover:bg-amber-500/10"
-                  : "";
-                const { Icon, className: opClass } = operationVisual(job);
-                return (
-              <TableRow key={job.id} className={cn("cursor-pointer", rowTint)} onClick={() => setDrawerJob(job)}>
-                <TableCell>
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", opClass)}>
-                      <Icon size={16} />
-                    </span>
-                    <div className="min-w-0">
-                      <div className="truncate font-medium text-foreground">{job.name ?? "Operation"}</div>
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); if (job.id) navigator.clipboard?.writeText(job.id); }}
-                        title={`${job.id ?? ""} — click to copy`}
-                        className="group mt-0.5 inline-flex items-center gap-1 rounded font-mono text-[11px] text-muted-foreground transition-colors hover:text-primary"
-                      >
-                        {abbreviateJobId(job.id)}
-                        <Copy size={11} className="opacity-0 transition-opacity group-hover:opacity-100" />
-                      </button>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell className="whitespace-nowrap text-muted-foreground">
-                  {job.created ? formatDateTime(job.created) : "--"}
-                </TableCell>
-                <TableCell>
-                  <DurationCell job={eff} maxMs={pageMaxMs} isTerminal={isTerminal} />
-                </TableCell>
-                <TableCell>
-                  <span className="inline-flex items-center gap-1.5">
-                    {isLive && <span className="size-1.5 shrink-0 animate-pulse rounded-full bg-emerald-500" title="Live" />}
-                    <StatusBadge status={eff.status} kind="job" />
-                  </span>
-                </TableCell>
-                <TableCell className="text-right">
-                  <JobRowActions job={job} onChanged={() => setRefreshTick(t => t + 1)} />
-                </TableCell>
-              </TableRow>
-                );
-              })}
+            ) : sortedRecords.map((job) => (
+              <JobRow
+                key={job.id}
+                variant="table"
+                job={job}
+                venue={venue}
+                live={liveJobs[job.id ?? ""]}
+                adapter={operationAdapters.adapterFor(job.op)}
+                maxMs={pageMaxMs}
+                onOpen={handleOpenJob}
+                onChanged={handleJobChanged}
+              />
+            ))}
           </TableBody>
         </Table>
         {/* Mobile: stacked cards so nothing hides behind a horizontal scroll. */}
         <div className="divide-y divide-border md:hidden">
           {sortedRecords.length === 0 ? (
             <div className="flex h-[38vh] items-center justify-center text-muted-foreground">No jobs found</div>
-          ) : sortedRecords.map((job) => {
-            const eff = liveJobs[job.id ?? ""] ? { ...job, ...liveJobs[job.id ?? ""] } : job;
-            const isTerminal = TERMINAL_STATUSES.has(eff.status as RunStatus);
-            const tone = toneForRunStatus(eff.status);
-            const isLive = !!liveJobs[job.id ?? ""] && ACTIVE_STATUSES.has(eff.status as RunStatus);
-            const rowTint = tone === "failure" ? "bg-destructive/5" : tone === "attention" ? "bg-amber-500/5" : "";
-            const { Icon, className: opClass } = operationVisual(job);
-            const openJob = () => setDrawerJob(job);
-            return (
-              <div
-                key={job.id}
-                role="button"
-                tabIndex={0}
-                onClick={openJob}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openJob(); } }}
-                className={cn("flex w-full cursor-pointer items-start gap-3 p-3 text-left transition-colors hover:bg-muted/50", rowTint)}
-              >
-                <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", opClass)}>
-                  <Icon size={17} />
-                </span>
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate font-medium text-foreground">{job.name ?? "Operation"}</span>
-                    <span className="ml-auto inline-flex shrink-0 items-center gap-1.5">
-                      {isLive && <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" title="Live" />}
-                      <StatusBadge status={eff.status} kind="job" />
-                    </span>
-                    <JobRowActions job={job} onChanged={() => setRefreshTick(t => t + 1)} />
-                  </div>
-                  <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
-                    <span>{abbreviateJobId(job.id)}</span>
-                    <span aria-hidden>·</span>
-                    <span className="truncate">{job.created ? formatDateTime(job.created) : "--"}</span>
-                  </div>
-                  <DurationCell job={eff} maxMs={pageMaxMs} isTerminal={isTerminal} />
-                </div>
-              </div>
-            );
-          })}
+          ) : sortedRecords.map((job) => (
+            <JobRow
+              key={job.id}
+              variant="card"
+              job={job}
+              venue={venue}
+              live={liveJobs[job.id ?? ""]}
+              adapter={operationAdapters.adapterFor(job.op)}
+              maxMs={pageMaxMs}
+              onOpen={handleOpenJob}
+              onChanged={handleJobChanged}
+            />
+          ))}
         </div>
         {/* Infinite scroll: reaching here loads the next window of older jobs. */}
         <div className="flex items-center justify-center py-3">
@@ -667,8 +609,12 @@ export function JobList({ venueId }: JobListProps = {}) {
           <StatTile
             icon={Layers}
             label="Total Jobs"
-            value={totalCount.toLocaleString()}
-            caption={isAuthenticated ? "for this user" : "across this venue"}
+            value={countsKnown ? totalCount.toLocaleString() : "–"}
+            // Always the caller's own jobs, never the venue's. Signed out the
+            // caller is the venue's shared public identity, so the count is the
+            // jobs run without signing in — venue-3 reads 311 here while the
+            // venue itself holds ~35,000 (#422).
+            caption={isAuthenticated ? "for this user" : "for signed-out callers"}
           />
           <StatTile
             icon={CheckCircle2}
@@ -694,9 +640,11 @@ export function JobList({ venueId }: JobListProps = {}) {
           <StatTile
             icon={AlertTriangle}
             label="Failures"
-            value={venueStats.failures.toLocaleString()}
+            value={statsKnown ? venueStats.failures.toLocaleString() : "–"}
             caption={statsWindowCaption}
-            iconClassName={venueStats.failures > 0 ? TONE_STYLES.failure.text : TONE_STYLES.neutral.text}
+            iconClassName={statsKnown && venueStats.failures > 0
+              ? TONE_STYLES.failure.text
+              : TONE_STYLES.neutral.text}
           />
         </div>
       </div>
@@ -704,6 +652,7 @@ export function JobList({ venueId }: JobListProps = {}) {
       </Tabs>
       <JobDetailDrawer
         job={drawerJob}
+        venue={venue}
         venueId={venueId}
         fullHref={drawerJob ? encodedPath(drawerJob.id ?? "") : undefined}
         onOpenChange={(open) => { if (!open) setDrawerJob(null); }}
@@ -713,43 +662,8 @@ export function JobList({ venueId }: JobListProps = {}) {
 );
 }
 
-/** Format a millisecond duration using the same helper as the table cells. */
+/** Format a millisecond duration the way the table cells do. */
 function fmtDurationMs(ms: number | null): string {
-  if (ms == null) return "–";
-  return getExecutionTime("1970-01-01T00:00:00.000Z", new Date(ms).toISOString());
+  return ms == null ? "–" : formatDurationMs(ms);
 }
 
-/**
- * Latency as a bar plus a value. Terminal jobs show a colour-graded fill
- * (green fast, amber/red slow) scaled to the page's longest run; a running
- * job shows an indeterminate pulse and its elapsed time so far.
- */
-function DurationCell({ job, maxMs, isTerminal }: { job: JobMetadata; maxMs: number; isTerminal: boolean }) {
-  if (!isTerminal) {
-    return job.created ? (
-      <div className="flex items-center gap-2">
-        <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
-          <div className="h-full w-1/3 animate-pulse rounded-full bg-blue-500 dark:bg-blue-400" />
-        </div>
-        <span className="text-xs italic text-muted-foreground">
-          {getExecutionTime(job.created, new Date().toISOString())} so far
-        </span>
-      </div>
-    ) : (
-      <span className="text-muted-foreground">--</span>
-    );
-  }
-  const ms = jobDurationMs(job);
-  if (ms == null) return <span className="text-muted-foreground">--</span>;
-  const pct = maxMs > 0 ? Math.max(6, Math.round((ms / maxMs) * 100)) : 100;
-  return (
-    <div className="flex items-center gap-2" title={`${ms} ms`}>
-      <div className="h-1.5 w-20 shrink-0 overflow-hidden rounded-full bg-muted">
-        <div className={cn("h-full rounded-full", durationFillClass(ms))} style={{ width: `${pct}%` }} />
-      </div>
-      <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
-        {getExecutionTime(job.created ?? "", job.updated ?? "")}
-      </span>
-    </div>
-  );
-}

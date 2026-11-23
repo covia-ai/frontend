@@ -1,4 +1,5 @@
 import { UsersList } from "@/components/UsersList";
+import { routeParam } from "@/lib/route-params";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -6,5 +7,5 @@ interface Props {
 
 export default async function UsersPage({ params }: Props) {
   const { slug } = await params;
-  return <UsersList venueId={decodeURIComponent(slug)} />;
+  return <UsersList venueId={routeParam(slug)} />;
 }

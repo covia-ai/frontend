@@ -25,7 +25,8 @@ import { JsonEditor } from "json-edit-react";
 import { Button } from "./ui/button";
 import { Asset, AssetMetadata, Venue } from "@covia/covia-sdk";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
-import { getContentTypeForFile, gtmEvent } from "@/lib/utils";
+import { gtmEvent } from "@/lib/utils";
+import { getContentTypeForFile } from "@/lib/content-type";
 import { notifyError } from "@/lib/notify";
 import { FORM_DIALOG_CLASS, JSON_EDITOR_DIALOG_CLASS, JSON_EDITOR_MAX_WIDTH } from "@/lib/dialog-sizes";
 import { AssetMetadataForm } from "@/components/AssetMetadataForm";
@@ -49,7 +50,7 @@ export const CreateAssetComponent = ({
     initialFile?: File;
 }) => {
     const router = useRouter();
-    const [step, setStep] = useState(0);
+    const [step, setStep] = useState(1);
     const [jsonData, setJsonData] = useState<any>({});
     const [assetType, setAssetType] = useState("file");
     const [assetJSONData, setAssetJSONData] = useState<any>({});
@@ -63,6 +64,8 @@ export const CreateAssetComponent = ({
     const isControlled = controlledOpen !== undefined;
     const open = isControlled ? controlledOpen : uncontrolledOpen;
     const setOpen = useCallback((next: boolean) => {
+      // Closing ends the flow: the next open starts from the first screen.
+      if (!next) setStep(1);
       if (isControlled) onOpenChange?.(next);
       else setUncontrolledOpen(next);
     }, [isControlled, onOpenChange]);
@@ -190,24 +193,7 @@ export const CreateAssetComponent = ({
       
     }
   
-     useEffect(() => {
-      const handleKeyDown = (e: KeyboardEvent) => {
-       
-        // Ctrl/Cmd + K: Search
-      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
-        e.preventDefault();
-        setOpen(true)
-      }
-      }
-  
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [setOpen]);
-    useEffect(() => {
-          if(open == false)
-              setStep(1)
-      }, [open]);
-    
+
     return (
         <Dialog open={open} onOpenChange={setOpen}>
           {!isControlled &&
@@ -254,7 +240,7 @@ export const CreateAssetComponent = ({
                                 data={assetJSONData  }
                                 setData={ setAssetJSONData }
                                 rootName="content"
-                                rootFontSize="1em"
+                                baseFontSize="1em"
                                 collapse={2}
                                 className="w-full"
                                     />
@@ -325,7 +311,7 @@ export const CreateAssetComponent = ({
                                 data={ baseData }
                                 setData={ setJsonData }
                                 rootName="metadata"
-                                rootFontSize="1em"
+                                baseFontSize="1em"
                                 collapse={false}
                                 maxWidth={JSON_EDITOR_MAX_WIDTH}
                                 minWidth="50vw"
@@ -335,7 +321,7 @@ export const CreateAssetComponent = ({
                                 data={ jsonData }
                                 setData={ setJsonData }
                                 rootName="metadata"
-                                rootFontSize="1em"
+                                baseFontSize="1em"
                                 collapse={false}
                                 maxWidth={JSON_EDITOR_MAX_WIDTH}
                                 minWidth="50vw"

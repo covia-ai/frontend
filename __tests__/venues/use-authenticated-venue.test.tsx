@@ -54,7 +54,7 @@ describe("useValidateVenue", () => {
       );
     });
     expect(global.fetch).toHaveBeenCalledWith(
-      `${BASE_URL}/api/v1/agents?includeTerminated=false`,
+      `${BASE_URL}/api/v1/status`,
       {
         headers: {
           "Content-Type": "application/json",

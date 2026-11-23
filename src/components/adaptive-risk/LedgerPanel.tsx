@@ -1,12 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import type { Venue } from "@covia/covia-sdk";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { notifyError } from "@/lib/notify";
 import { AdaptiveRiskAddresses } from "./fixtures";
-import { LedgerSnapshot, readLedger } from "./beats";
+import { readLedger } from "./beats";
+import { useLedgerSnapshot } from "./use-ledger-snapshot";
 
 // The shared signal ledger, read job-free off the lattice (workspace.list /
 // read — no job minted by looking). This is the beat-1 effect: the fraud
@@ -21,24 +20,12 @@ export function LedgerPanel({
   addresses: AdaptiveRiskAddresses;
   refreshToken: number;
 }) {
-  const [snapshot, setSnapshot] = useState<LedgerSnapshot | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const refresh = useCallback(async () => {
-    if (!venue) return;
-    setLoading(true);
-    try {
-      setSnapshot(await readLedger(venue, addresses));
-    } catch (err) {
-      notifyError("Unable to read the signal ledger", err, venue.baseUrl);
-    } finally {
-      setLoading(false);
-    }
-  }, [venue, addresses]);
-
-  useEffect(() => {
-    if (refreshToken > 0) void refresh();
-  }, [refreshToken, refresh]);
+  const { snapshot, loading, refresh } = useLedgerSnapshot(
+    venue,
+    refreshToken,
+    "Unable to read the signal ledger",
+    (target) => readLedger(target, addresses),
+  );
 
   if (!snapshot) return null;
 

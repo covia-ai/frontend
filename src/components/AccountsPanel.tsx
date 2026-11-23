@@ -52,7 +52,7 @@ export function AccountsPanel() {
       </h3>
       <p className="text-xs text-muted-foreground">
         Sign-ins are per venue. Switching venue restores the account you last used
-        there; signing out keeps the account here so you can use it again later.
+        there. Device keys stay available after sign-out; OAuth accounts are forgotten on sign-out or reload.
       </p>
 
       {venueIds.length === 0 && (

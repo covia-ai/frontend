@@ -150,7 +150,7 @@ export function withoutAgentConfigFields(
 }
 
 /**
- * SDK 1.8's declaration still says config is map-only, while the updated
+ * The SDK's declaration (still in 1.24) says config is map-only, while the
  * venue accepts references and ordered layers. Keep that declaration lag
  * contained at the call boundary until the SDK publishes the wider type.
  */

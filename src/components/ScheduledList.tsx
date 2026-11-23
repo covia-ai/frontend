@@ -18,13 +18,22 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useResolvedVenueContext } from "@/hooks/use-resolved-venue";
 import { useLatestQuery } from "@/hooks/use-latest-query";
-import { listScheduledEvents, type ScheduledEvent } from "@/lib/schedules";
-import { formatCountdown, formatDateTime, formatInterval, formatRelativeTime, gtmEvent } from "@/lib/utils";
+import { useVenues } from "@/hooks/use-venues";
+import {
+  isAdapterOnlyOperation,
+  listScheduledEvents,
+  wakeTargetAgent,
+  type ScheduledEvent,
+} from "@/lib/schedules";
+import { TONE_STYLES } from "@/lib/status";
+import { cn, formatCountdown, formatDateTime, formatInterval, formatRelativeTime, gtmEvent } from "@/lib/utils";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
+import { DidDisplay } from "@/components/DidDisplay";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { VenueResolutionState } from "@/components/VenueResolutionState";
-import { CalendarClock, PlayCircle, Repeat, XCircle } from "lucide-react";
+import { agentPath, jobPath, operationPathSegments, venueScopedHref } from "@/lib/routes";
+import { AlertTriangle, CalendarClock, PlayCircle, Repeat, XCircle } from "lucide-react";
 
 interface ScheduledListProps {
   venueId?: string;
@@ -50,25 +59,31 @@ export function ScheduledList({ venueId }: ScheduledListProps = {}) {
   const resolvedVenue = useResolvedVenueContext(venueId);
   const { venue } = resolvedVenue;
   const venueStatus = resolvedVenue.status ?? (venue ? "ready" : "absent");
+  const ownDid = resolvedVenue.auth?.did;
+  // Agent pages open on the selected venue, so a wake's agent is a link only
+  // when this list is that venue's.
+  const selectedVenueId = useVenues((state) => state.selectedVenueId);
+  const agentsLinkable = !!venue && venue.venueId === selectedVenueId;
   const [, setTick] = useState(0);
   const [actioning, setActioning] = useState<string | null>(null);
 
   const jobHref = useCallback(
     (jobId: string) =>
-      venueId ? `/venues/${encodeURIComponent(venue?.venueId ?? "")}/jobs/${jobId}` : `/job/${jobId}`,
+      jobPath(venueId ? venue?.venueId : undefined, jobId),
     [venueId, venue],
   );
 
-  // scheduler:list only reports the target `op` (a catalog path or asset id,
-  // per AssetCard's operations-link handling) — never the agent an
-  // agent:trigger wake targets, since that lives in the event's `input`
-  // which the list endpoint doesn't surface. So this always links the
-  // operation itself; an agent wake links to the agent:trigger adapter.
+  // The target `op` is a catalog path or asset id (per AssetCard's
+  // operations-link handling); an agent wake links to v/ops/agent/trigger
+  // here, and to its agent separately from the event's `input` (covia 0.10 —
+  // older venues don't list the input, so they get the operation alone). `op` may be a catalog path or a full DID URL; either way
+  // it goes into the catch-all route as encoded segments, never raw
+  // (frontend#382).
   const opHref = useCallback(
     (op: string) =>
       venueId
-        ? `/venues/${encodeURIComponent(venue?.venueId ?? "")}/operations/${op}`
-        : `/operation/${op}`,
+        ? venueScopedHref(venue?.venueId ?? "", "operations", op)
+        : `/operation/${operationPathSegments(op)}`,
     [venueId, venue],
   );
 
@@ -162,129 +177,181 @@ export function ScheduledList({ venueId }: ScheduledListProps = {}) {
                   </TableCell>
                 </TableRow>
               ) : (
-                events.map((event) => (
-                  <TableRow key={event.handle}>
-                    <TableCell className="font-mono">
-                      <Link href={opHref(event.op)} className="hover:underline">
-                        {event.op}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      {event.repeat ? (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="inline-flex items-center gap-1">
-                              <Repeat className="size-3.5 text-muted-foreground" />
-                              {formatInterval(event.repeat.every)}
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {event.lastFired ? (
-                              <>
-                                Last fired {formatRelativeTime(new Date(event.lastFired).toISOString())}
-                                {event.lastJob && (
-                                  <>
-                                    {" — "}
-                                    <Link
-                                      href={jobHref(event.lastJob)}
-                                      className="underline"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      view job
-                                    </Link>
-                                  </>
-                                )}
-                              </>
-                            ) : (
-                              "Not fired yet"
-                            )}
-                          </TooltipContent>
-                        </Tooltip>
-                      ) : (
-                        <span className="text-muted-foreground">Once</span>
-                      )}
-                    </TableCell>
-                    <TableCell>{formatDateTime(event.time)}</TableCell>
-                    <TableCell>{formatCountdown(event.time)}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-row items-center gap-2">
-                        <AlertDialog>
+                events.map((event) => {
+                  const wakes = wakeTargetAgent(event);
+                  return (
+                    <TableRow key={event.handle}>
+                      <TableCell className="max-w-[28rem]">
+                        {event.description && (
+                          <div
+                            data-testid="schedule-description"
+                            className="truncate font-medium"
+                            title={event.description}
+                          >
+                            {event.description}
+                          </div>
+                        )}
+                        <div
+                          className={cn(
+                            "flex flex-wrap items-center gap-x-1.5 font-mono",
+                            event.description && "text-xs text-muted-foreground",
+                          )}
+                        >
+                          <Link href={opHref(event.op)} className="hover:underline">
+                            {event.op}
+                          </Link>
+                          {wakes && (
+                            <>
+                              <span aria-hidden>→</span>
+                              {agentsLinkable ? (
+                                <Link
+                                  href={agentPath(wakes)}
+                                  data-testid="schedule-agent"
+                                  className="hover:underline"
+                                >
+                                  {wakes}
+                                </Link>
+                              ) : (
+                                <span data-testid="schedule-agent">{wakes}</span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        {event.caller && event.caller !== ownDid && (
+                          <div
+                            data-testid="schedule-by"
+                            className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground"
+                          >
+                            scheduled by <DidDisplay value={event.caller} chars={10} />
+                          </div>
+                        )}
+                        {isAdapterOnlyOperation(event.op) && (
+                          <div
+                            data-testid="schedule-unrunnable"
+                            className={cn("mt-0.5 flex items-center gap-1 text-xs", TONE_STYLES.attention.text)}
+                          >
+                            <AlertTriangle className="size-3.5 shrink-0" />
+                            Fails when it fires: venues find operations by path. Cancel it and schedule it again.
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {event.repeat ? (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  aria-label="trigger now"
-                                  role="button"
-                                  variant="outline"
-                                  disabled={actioning === event.handle}
-                                  className="text-xs justify-center h-8 text-sm"
-                                >
-                                  <PlayCircle />
-                                  Trigger Now
-                                </Button>
-                              </AlertDialogTrigger>
+                              <span className="inline-flex items-center gap-1">
+                                <Repeat className="size-3.5 text-muted-foreground" />
+                                {formatInterval(event.repeat.every)}
+                              </span>
                             </TooltipTrigger>
-                            <TooltipContent>Fire this event now</TooltipContent>
+                            <TooltipContent>
+                              {event.lastFired ? (
+                                <>
+                                  Last fired {formatRelativeTime(event.lastFired)}
+                                  {event.lastJob && (
+                                    <>
+                                      {" — "}
+                                      <Link
+                                        href={jobHref(event.lastJob)}
+                                        className="underline"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        view job
+                                      </Link>
+                                    </>
+                                  )}
+                                </>
+                              ) : (
+                                "Not fired yet"
+                              )}
+                            </TooltipContent>
                           </Tooltip>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Trigger this scheduled event now?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                {event.op} will run immediately instead of waiting for its scheduled
-                                time
-                                {event.repeat
-                                  ? ", then stay scheduled at its next fire time."
-                                  : ", then be removed from the schedule."}{" "}
-                                This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>No</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => triggerEvent(event.handle)}>
-                                Yes
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        ) : (
+                          <span className="text-muted-foreground">Once</span>
+                        )}
+                      </TableCell>
+                      <TableCell>{formatDateTime(event.time)}</TableCell>
+                      <TableCell>{formatCountdown(event.time)}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-row items-center gap-2">
+                          <AlertDialog>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    aria-label="trigger now"
+                                    role="button"
+                                    variant="outline"
+                                    disabled={actioning === event.handle}
+                                    className="text-xs justify-center h-8 text-sm"
+                                  >
+                                    <PlayCircle />
+                                    Trigger Now
+                                  </Button>
+                                </AlertDialogTrigger>
+                              </TooltipTrigger>
+                              <TooltipContent>Fire this event now</TooltipContent>
+                            </Tooltip>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Trigger this scheduled event now?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  {event.op} will run immediately instead of waiting for its scheduled
+                                  time
+                                  {event.repeat
+                                    ? ", then stay scheduled at its next fire time."
+                                    : ", then be removed from the schedule."}{" "}
+                                  This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>No</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => triggerEvent(event.handle)}>
+                                  Yes
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
 
-                        <AlertDialog>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  aria-label="cancel"
-                                  role="button"
-                                  variant="outline"
-                                  disabled={actioning === event.handle}
-                                  className="text-xs justify-center h-8 text-sm"
-                                >
-                                  <XCircle />
-                                  Cancel
-                                </Button>
-                              </AlertDialogTrigger>
-                            </TooltipTrigger>
-                            <TooltipContent>Cancel this scheduled event</TooltipContent>
-                          </Tooltip>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Cancel this scheduled event?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                {event.op} will be removed before it fires. This action cannot be
-                                undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>No</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => cancelEvent(event.handle)}>
-                                Yes
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                          <AlertDialog>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    aria-label="cancel"
+                                    role="button"
+                                    variant="outline"
+                                    disabled={actioning === event.handle}
+                                    className="text-xs justify-center h-8 text-sm"
+                                  >
+                                    <XCircle />
+                                    Cancel
+                                  </Button>
+                                </AlertDialogTrigger>
+                              </TooltipTrigger>
+                              <TooltipContent>Cancel this scheduled event</TooltipContent>
+                            </Tooltip>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Cancel this scheduled event?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  {event.op} will be removed before it fires. This action cannot be
+                                  undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>No</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => cancelEvent(event.handle)}>
+                                  Yes
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

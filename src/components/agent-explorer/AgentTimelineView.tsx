@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ArrowLeft, Clock, Loader2, MessageSquare, TriangleAlert } from "lucide-react";
+import { useEffect } from "react";
+import { Clock, Loader2, MessageSquare, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { DidDisplay } from "@/components/DidDisplay";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useLatestQuery } from "@/hooks/use-latest-query";
 import { notifyError } from "@/lib/notify";
+import { TONE_STYLES } from "@/lib/status";
 
 type TimelineMessage = {
   message?: unknown;
@@ -67,6 +68,8 @@ const KNOWN_KEYS = new Set([
   "tokens",
 ]);
 
+const NO_ENTRIES: TimelineEntry[] = [];
+
 function TimelineCard({ entry }: { entry: TimelineEntry }) {
   const duration = formatDuration(entry.start, entry.end);
   const failed = resultLooksLikeFailure(entry.result);
@@ -79,7 +82,7 @@ function TimelineCard({ entry }: { entry: TimelineEntry }) {
     <div className="relative pl-10">
       <span
         className={`absolute left-2.5 top-1.5 size-3 rounded-full border-2 border-background ${
-          failed ? "bg-red-500" : "bg-primary"
+          failed ? TONE_STYLES.failure.dot : "bg-primary"
         }`}
       />
       <div className="rounded-lg border border-border bg-card p-4 mb-6">
@@ -141,7 +144,7 @@ function TimelineCard({ entry }: { entry: TimelineEntry }) {
           </div>
           <p
             className={`text-xs whitespace-pre-wrap break-words ${
-              failed ? "text-red-500 dark:text-red-400" : ""
+              failed ? TONE_STYLES.failure.text : ""
             }`}
           >
             {resultText(entry.result)}
@@ -153,7 +156,7 @@ function TimelineCard({ entry }: { entry: TimelineEntry }) {
             {entry.toolFailures.map((tf, i) => (
               <div
                 key={i}
-                className="text-xs text-red-500 dark:text-red-400 flex items-start gap-1"
+                className={`text-xs ${TONE_STYLES.failure.text} flex items-start gap-1`}
               >
                 <TriangleAlert size={12} className="mt-0.5 shrink-0" />
                 <span>
@@ -180,52 +183,48 @@ function TimelineCard({ entry }: { entry: TimelineEntry }) {
   );
 }
 
-// Inline replacement for the chat area (session picker + transcript +
-// composer) in AgentChatPanel — the header above (name/status/icons) stays
-// put, only this region swaps between chat and timeline.
+// The agent profile's "Timeline" tab.
 export function AgentTimelineView({
   agentId,
-  onBack,
 }: {
   agentId: string;
-  onBack: () => void;
 }) {
   const venue = useAuthenticatedVenue();
-  const [loading, setLoading] = useState(true);
-  const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
+  // The read is keyed on the agent as well as the venue, so the outcome carries
+  // its key and the view derives the current one: switching agents can never
+  // show the previous agent's timeline, not even for the render before the new
+  // read starts.
+  const key = venue ? `${venue.venueId}/${agentId}` : "";
+  const { data: outcome, loading: reading, run, invalidate } = useLatestQuery<{
+    key: string;
+    entries: TimelineEntry[];
+  }>({ key: "", entries: NO_ENTRIES });
 
   useEffect(() => {
     if (!venue) {
-      setLoading(false);
+      invalidate();
       return;
     }
-    let cancelled = false;
-    setLoading(true);
-    venue.workspace
-      .read(`g/${agentId}/timeline`)
-      .then((result) => (Array.isArray(result?.value) ? result.value : []))
-      .then((entries) => {
-        if (cancelled) return;
+    const readKey = `${venue.venueId}/${agentId}`;
+    void run(async () => {
+      try {
+        const result = await venue.workspace.read(`g/${agentId}/timeline`);
+        const entries = Array.isArray(result?.value) ? (result.value as TimelineEntry[]) : [];
         // Newest first — matches the session list's most-recent-first ordering.
-        setTimeline([...(entries as TimelineEntry[])].reverse());
-      })
-      .catch((error) => {
-        if (!cancelled) notifyError("Unable to load agent timeline", error, venue.baseUrl);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [venue, agentId]);
+        return { key: readKey, entries: [...entries].reverse() };
+      } catch (error) {
+        notifyError("Unable to load agent timeline", error, venue.baseUrl);
+        return { key: readKey, entries: NO_ENTRIES };
+      }
+    });
+  }, [venue, agentId, run, invalidate]);
+
+  const settled = outcome.key === key;
+  const timeline = settled ? outcome.entries : NO_ENTRIES;
+  const loading = !!venue && (reading || !settled);
 
   return (
     <div className="flex-1 overflow-y-auto p-6 bg-background">
-      <Button variant="ghost" size="sm" className="mb-4 gap-2" onClick={onBack}>
-        <ArrowLeft size={15} /> Chat
-      </Button>
-
       {loading && (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="animate-spin text-primary" size={28} />

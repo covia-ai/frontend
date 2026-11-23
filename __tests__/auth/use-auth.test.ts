@@ -102,20 +102,53 @@ describe("useAuthStore", () => {
     expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toMatchObject({ did: "did:a2" });
   });
 
-  it("keeps the account choosable after logout and reactivates it via switchAccount", () => {
+  it("forgets bearer credentials on logout but keeps device-key accounts", () => {
     act(() => {
+      useAuthStore.getState().loginWithKeypair(VENUE_A, MOCK_HEX, "did:key");
       useAuthStore.getState().loginWithToken(VENUE_A, "token1", "did:a1");
       useAuthStore.getState().logout(VENUE_A);
+      useAuthStore.getState().switchAccount(VENUE_A, "did:a1");
     });
-
     expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toBeNull();
-    expect(useAuthStore.getState().accountsMap[VENUE_A]).toHaveLength(1);
+    expect(useAuthStore.getState().accountsMap[VENUE_A]).toEqual([{ type: "keypair", privateKeyHex: MOCK_HEX, did: "did:key" }]);
+  });
 
-    act(() => useAuthStore.getState().switchAccount(VENUE_A, "did:a1"));
-    expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toMatchObject({
-      did: "did:a1",
-      token: "token1",
+  it("never persists active or inactive bearer credentials", () => {
+    act(() => {
+      useAuthStore.getState().loginWithToken(VENUE_A, "secret1", "did:a1");
+      useAuthStore.getState().loginWithToken(VENUE_A, "secret2", "did:a2");
+      useAuthStore.getState().loginWithKeypair(VENUE_B, MOCK_HEX, "did:key");
     });
+    const persisted = localStorage.getItem("venue-auth")!;
+    expect(persisted).not.toContain("secret1");
+    expect(persisted).not.toContain("secret2");
+    expect(persisted).toContain(MOCK_HEX);
+  });
+
+  it("migrates old storage by dropping tokens from memory and disk, retaining keys", async () => {
+    const bearer = { type: "bearer", token: "legacy-secret", did: "did:a" };
+    const key = { type: "keypair", privateKeyHex: MOCK_HEX, did: "did:key" };
+    localStorage.setItem("venue-auth", JSON.stringify({ version: 0, state: {
+      authMap: { [VENUE_A]: bearer, [VENUE_B]: key },
+      accountsMap: { [VENUE_A]: [bearer], [VENUE_B]: [key] }, deviceKeyHex: MOCK_HEX,
+    } }));
+    await act(async () => { await useAuthStore.persist.rehydrate(); });
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toBeNull();
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_B)).toEqual(key);
+    expect(useAuthStore.getState().deviceKeys).toEqual([MOCK_HEX]);
+    expect(localStorage.getItem("venue-auth")).not.toContain("legacy-secret");
+  });
+
+  it("preserves this tab's bearer login across another tab's key update", async () => {
+    act(() => useAuthStore.getState().loginWithToken(VENUE_A, "memory-secret", "did:a"));
+    const key = { type: "keypair", privateKeyHex: MOCK_HEX, did: "did:key" };
+    localStorage.setItem("venue-auth", JSON.stringify({ version: 1, state: {
+      authMap: { [VENUE_A]: key }, accountsMap: { [VENUE_A]: [key] },
+    } }));
+    await act(async () => { await useAuthStore.persist.rehydrate(); });
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toMatchObject({ token: "memory-secret" });
+    expect(useAuthStore.getState().accountsMap[VENUE_A]).toHaveLength(2);
+    expect(localStorage.getItem("venue-auth")).not.toContain("memory-secret");
   });
 
   it("switches between two accounts on the same venue and marks the chosen one last-used", () => {
@@ -195,6 +228,39 @@ describe("useAuthStore", () => {
 
     act(() => useAuthStore.getState().removeDeviceKey(KEY_B));
     expect(useAuthStore.getState().deviceKeyHex).toBeNull();
+  });
+
+  it("removeDeviceKey forgets every account signed in with that key, on every venue", () => {
+    const KEY_B = "b".repeat(64);
+    act(() => {
+      useAuthStore.getState().addDeviceKey(MOCK_HEX);
+      useAuthStore.getState().loginWithKeypair(VENUE_A, MOCK_HEX, "did:a");
+      useAuthStore.getState().loginWithKeypair(VENUE_B, MOCK_HEX, "did:a");
+      useAuthStore.getState().loginWithKeypair(VENUE_B, KEY_B, "did:b");
+      useAuthStore.getState().loginWithToken(VENUE_A, "token", "did:oauth");
+      useAuthStore.getState().removeDeviceKey(MOCK_HEX);
+    });
+
+    // The private key must not survive anywhere in the persisted blob.
+    expect(JSON.stringify(useAuthStore.getState())).not.toContain(MOCK_HEX);
+    expect(useAuthStore.getState().accountsMap).toEqual({
+      [VENUE_A]: [{ type: "bearer", token: "token", did: "did:oauth" }],
+      [VENUE_B]: [{ type: "keypair", privateKeyHex: KEY_B, did: "did:b" }],
+    });
+    // VENUE_A's active account was the bearer login and is untouched; VENUE_B's
+    // active account was KEY_B (logged in after MOCK_HEX) and is untouched too.
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toMatchObject({ did: "did:oauth" });
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_B)).toMatchObject({ did: "did:b" });
+  });
+
+  it("removeDeviceKey signs out a venue whose active account used that key", () => {
+    act(() => {
+      useAuthStore.getState().loginWithKeypair(VENUE_A, MOCK_HEX, "did:a");
+      useAuthStore.getState().removeDeviceKey(MOCK_HEX);
+    });
+
+    expect(useAuthStore.getState().getAuthForVenue(VENUE_A)).toBeNull();
+    expect(useAuthStore.getState().accountsMap).toEqual({});
   });
 
   it("setDeviceKeyHex records the key in the known list", () => {

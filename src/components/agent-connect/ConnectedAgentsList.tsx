@@ -1,0 +1,226 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import type { Venue } from "@covia/covia-sdk";
+import { Cable, Loader2, Lock, MessageSquareText, Plug, Unplug, Wand2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ConnectAgentDialog } from "@/components/ConnectAgentDialog";
+import { FROM_SKILLS_OP, PortAgentDialog } from "@/components/PortAgentDialog";
+import { useIsAuthenticated } from "@/hooks/use-auth";
+import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useVenueHasOperation } from "@/hooks/use-venue-operation";
+import { useVenueRead } from "@/hooks/use-venue-read";
+import { notifyError, notifySuccess } from "@/lib/notify";
+import { TONE_STYLES } from "@/lib/status";
+import {
+  A2A_AGENTS_DIR,
+  ConnectedAgent,
+  connectedAgentFromBinding,
+} from "@/lib/a2a";
+
+const NO_AGENTS: ConnectedAgent[] = [];
+
+// Every `w/a2a/agents/<name>` binding, read job-free. A binding that cannot be
+// read still lists, as a bare name, rather than hiding the agent.
+async function readConnectedAgents(venue: Venue): Promise<ConnectedAgent[]> {
+  const listing = await venue.workspace.list(A2A_AGENTS_DIR);
+  const names = listing.exists ? listing.keys ?? [] : [];
+  const entries = await Promise.all(
+    names.map(async (name) => {
+      try {
+        const rec = await venue.workspace.read(`${A2A_AGENTS_DIR}/${name}`);
+        return connectedAgentFromBinding(name, rec.value);
+      } catch {
+        return connectedAgentFromBinding(name, undefined);
+      }
+    }),
+  );
+  return entries.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * The connected (BYOA) agents on this venue: every `w/a2a/agents/<name>`
+ * binding, read job-free, with a link to task each one and a disconnect that
+ * removes its binding (the immutable agent asset is left intact). The hub for
+ * the Connect flow — its "Connect an agent" button opens the same dialog.
+ */
+export function ConnectedAgentsList() {
+  const venue = useAuthenticatedVenue();
+  const isAuthenticated = useIsAuthenticated();
+
+  const { data: agents, loading, reload } = useVenueRead<ConnectedAgent[]>({
+    venue,
+    enabled: isAuthenticated,
+    initial: NO_AGENTS,
+    failureTitle: "Unable to load connected agents",
+    load: readConnectedAgents,
+  });
+  const [removing, setRemoving] = useState<string | null>(null);
+  // Seeds the Port dialog when converting a connected agent to native.
+  const [convertSeed, setConvertSeed] = useState<{ name: string; prompt: string } | null>(null);
+  // Convert ports the agent, so it needs the same operation Port does (#350).
+  const canConvert = useVenueHasOperation(FROM_SKILLS_OP) !== false;
+
+  const disconnect = async (name: string) => {
+    if (!venue) return;
+    setRemoving(name);
+    try {
+      await venue.workspace.delete(`${A2A_AGENTS_DIR}/${name}`);
+      notifySuccess(`Disconnected ${name}`);
+      // Re-read rather than patch a local copy: the list shows what the venue holds.
+      reload();
+    } catch (error) {
+      notifyError("Unable to disconnect agent", error, venue.baseUrl);
+    } finally {
+      setRemoving(null);
+    }
+  };
+
+  const heading = (
+    <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold">
+          <Cable size={22} className="text-primary" /> Connected agents
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Remote A2A agents registered on this venue. They run where they live; task them from here.
+        </p>
+      </div>
+      {isAuthenticated && (
+        <ConnectAgentDialog
+          trigger={
+            <Button className="gap-2" data-testid="connected-list-connect">
+              <Plug size={15} /> Connect an agent
+            </Button>
+          }
+        />
+      )}
+    </div>
+  );
+
+  if (!isAuthenticated) {
+    return (
+      <div className="mx-auto w-full max-w-4xl px-4 py-6">
+        {heading}
+        <Card className="flex flex-col items-center gap-3 p-10 text-center">
+          <Lock className="text-muted-foreground" size={28} />
+          <p className="text-sm text-muted-foreground">Sign in to connect and task remote agents.</p>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-4xl px-4 py-6">
+      {heading}
+
+      {/* Said once for the list rather than per row: a hover-only tooltip on a
+          disabled button is unreachable by keyboard and easy to miss (#350). */}
+      {!canConvert && agents.length > 0 && (
+        <p className={`mb-4 text-sm ${TONE_STYLES.attention.text}`} data-testid="convert-unsupported-notice">
+          Convert to native is unavailable — this venue doesn&apos;t publish{" "}
+          <span className="font-mono text-xs">{FROM_SKILLS_OP}</span>. Switch to a venue
+          running 0.9.9 or later.
+        </p>
+      )}
+
+      {loading ? (
+        <div className="flex min-h-40 items-center justify-center gap-2 text-muted-foreground" role="status">
+          <Loader2 className="animate-spin text-primary" size={22} /> Loading connected agents…
+        </div>
+      ) : agents.length === 0 ? (
+        <Card className="flex flex-col items-center gap-3 p-10 text-center" data-testid="connected-list-empty">
+          <Cable className="text-primary/60" size={30} />
+          <div>
+            <p className="font-medium">No connected agents yet</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Connect a remote A2A agent to task it from this venue.
+            </p>
+          </div>
+        </Card>
+      ) : (
+        <ul className="grid gap-3 sm:grid-cols-2" data-testid="connected-list">
+          {agents.map((agent) => (
+            <li key={agent.name}>
+              <Card className="flex h-full flex-col gap-3 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Cable size={16} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">{agent.cardName || agent.name}</div>
+                    <div className="truncate font-mono text-xs text-muted-foreground">
+                      w/a2a/agents/{agent.name}
+                    </div>
+                  </div>
+                </div>
+                {agent.description && (
+                  <p className="line-clamp-2 text-sm text-muted-foreground">{agent.description}</p>
+                )}
+                {(agent.url || agent.coviaAgent) && (
+                  <p className="truncate font-mono text-xs text-muted-foreground">
+                    {agent.url || agent.coviaAgent}
+                  </p>
+                )}
+                <div className="mt-auto flex flex-wrap gap-2 pt-1">
+                  <Button asChild variant="outline" size="sm" className="gap-2">
+                    <Link href={`/agents/connected?agent=${encodeURIComponent(agent.name)}`}>
+                      <MessageSquareText size={14} /> Talk
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-2"
+                    disabled={!canConvert}
+                    onClick={() => setConvertSeed({ name: agent.name, prompt: convertPrompt(agent) })}
+                    data-testid={`connected-convert-${agent.name}`}
+                  >
+                    <Wand2 size={14} /> Convert to native
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-2 text-muted-foreground hover:text-destructive"
+                    disabled={removing === agent.name}
+                    onClick={() => disconnect(agent.name)}
+                    data-testid={`connected-disconnect-${agent.name}`}
+                  >
+                    {removing === agent.name ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Unplug size={14} />
+                    )}
+                    Disconnect
+                  </Button>
+                </div>
+              </Card>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {convertSeed && (
+        <PortAgentDialog
+          open
+          onOpenChange={(o) => !o && setConvertSeed(null)}
+          initialName={convertSeed.name}
+          initialSystemPrompt={convertSeed.prompt}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * A starting system prompt for a native agent modelled on a connected one.
+ * A remote A2A agent's skills have no importable SKILL.md bodies, so Convert
+ * seeds identity and description — the user adds the skills in the Port dialog.
+ */
+function convertPrompt(agent: ConnectedAgent): string {
+  const who = agent.cardName || agent.name;
+  const desc = agent.description ? ` ${agent.description}` : "";
+  return `You are ${who}, recreated as a native Covia agent.${desc}\n\nAdd below the skills this agent should follow.`;
+}

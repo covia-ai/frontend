@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { JobFailedError, type WorkspaceReadResult } from '@covia/covia-sdk';
 
 jest.mock('@/lib/notify', () => ({
   notifySuccess: jest.fn(),
@@ -19,7 +20,7 @@ jest.mock('next/navigation', () => ({
 // `mockResolvedValue` would either starve the picker or fake out every
 // template as pre-existing. Individual tests can still override with
 // `.mockResolvedValue`/`.mockImplementation` for their own scope.
-function defaultWorkspaceRead(path: string) {
+function defaultWorkspaceRead(path: string): Promise<WorkspaceReadResult> {
   if (path === 'v/ops') {
     return Promise.resolve({
       exists: true,
@@ -53,10 +54,14 @@ const mockVenue = {
     create: jest.fn().mockResolvedValue({ agentId: 'test-agent', status: 'active' }),
     request: jest.fn().mockResolvedValue({}),
   },
+  jobs: {
+    get: jest.fn(),
+  },
   secrets: {
     // ANTHROPIC_API_KEY present so the default provider (anthropic) is
     // ready and the Create button isn't disabled by the key-readiness gate.
     list: jest.fn().mockResolvedValue(['ANTHROPIC_API_KEY']),
+    set: jest.fn().mockResolvedValue({}),
   },
   workspace: {
     read: jest.fn(defaultWorkspaceRead),
@@ -71,10 +76,22 @@ jest.mock('@/hooks/use-authenticated-venue', () => ({
 }));
 
 import { AddNewAgent } from '@/components/AddNewAgent';
-import { notifySuccess, notifyWarning } from '@/lib/notify';
+import { providerSeedForOperation } from '@/lib/agent-config';
+import { notifyError, notifySuccess, notifyWarning } from '@/lib/notify';
 
+// One input event instead of one per character. Every keystroke re-renders the
+// whole dialog, which under coverage pushed the longest-typing tests past the
+// timeout; these tests check what is sent, not how it was typed.
+async function fill(user: ReturnType<typeof userEvent.setup>, field: HTMLElement, text: string) {
+  await user.click(field);
+  await user.paste(text);
+}
+
+// `delay: null` throughout: by default user-event waits a macrotask per
+// keystroke, and these tests type whole prompts into a Radix dialog — enough to
+// put several within 2x of the 5 s timeout, and over it under coverage in CI.
 async function renderAndOpenDialog() {
-  const user = userEvent.setup();
+  const user = userEvent.setup({ delay: null });
   render(<AddNewAgent />);
   const trigger = screen.getByTestId('create-agent-trigger');
   await user.click(trigger);
@@ -87,6 +104,7 @@ describe('AddNewAgent', () => {
     mockVenue.workspace.read.mockImplementation(defaultWorkspaceRead);
     mockVenue.workspace.write.mockResolvedValue({});
     mockVenue.skills.list.mockImplementation(defaultSkillsList);
+    mockVenue.secrets.list.mockResolvedValue(['ANTHROPIC_API_KEY']);
   });
 
   it('renders the trigger button', () => {
@@ -111,7 +129,7 @@ describe('AddNewAgent', () => {
     const user = await renderAndOpenDialog();
 
     const input = screen.getByPlaceholderText('e.g., Customer Support Agent');
-    await user.type(input, 'Test Agent');
+    await fill(user, input, 'Test Agent');
 
     expect(input).toHaveValue('Test Agent');
   });
@@ -153,7 +171,7 @@ describe('AddNewAgent', () => {
     const user = await renderAndOpenDialog();
 
     const input = screen.getByPlaceholderText('e.g., Customer Support Agent');
-    await user.type(input, 'My Test Agent');
+    await fill(user, input, 'My Test Agent');
 
     const createButton = screen.getByTestId('create-agent');
     await user.click(createButton);
@@ -165,7 +183,7 @@ describe('AddNewAgent', () => {
 
   it('omits model from the agent config when left on venue default', async () => {
     const user = await renderAndOpenDialog();
-    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+    await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
     await user.click(screen.getByTestId('create-agent'));
 
     await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
@@ -175,24 +193,26 @@ describe('AddNewAgent', () => {
 
   it('passes a picked model into the agent config', async () => {
     const user = await renderAndOpenDialog();
-    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+    await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
 
     await user.click(screen.getByTestId('model-select'));
-    await user.click(await screen.findByRole('option', { name: 'claude-opus-4-8' }));
+    await user.click(await screen.findByRole('option', { name: 'claude-opus-5-5' }));
     await user.click(screen.getByTestId('create-agent'));
 
     await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
     const config = mockVenue.agents.create.mock.calls[0][0].config;
-    expect(config.model).toBe('claude-opus-4-8');
+    expect(config.model).toBe('claude-opus-5-5');
   });
 
   it('preserves cloned creation settings while allowing identity fields to change', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     render(
       <AddNewAgent
         initialAgentName="writer copy"
         initialSystemPrompt="You are a careful writer."
         initialProvider="anthropic"
+        // Not in the picker's list any more: a cloned model it doesn't carry
+        // must still show as selected and be kept.
         initialModel="claude-opus-4-8"
         preferAvailableProvider={false}
         initialConfig={{
@@ -221,7 +241,7 @@ describe('AddNewAgent', () => {
   });
 
   it('preserves ordered template layers and appends editable overrides last', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     render(
       <AddNewAgent
         initialAgentName="layered agent"
@@ -249,17 +269,57 @@ describe('AddNewAgent', () => {
       {
         llmOperation: 'v/ops/langchain/anthropic',
         systemPrompt: 'Final instructions',
+        acceptTasks: true,
       },
     ]);
   });
 
+  it('keeps an acceptTasks the initial config states itself', async () => {
+    const user = userEvent.setup({ delay: null });
+    render(
+      <AddNewAgent
+        initialAgentName="no tasks"
+        initialConfig={{ operation: 'v/ops/llmagent/chat', acceptTasks: false }}
+      />,
+    );
+    await user.click(screen.getByTestId('create-agent-trigger'));
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    expect(mockVenue.agents.create.mock.calls[0][0].config.acceptTasks).toBe(false);
+  });
+
+  it('reports a first task the venue refuses after submission', async () => {
+    const refusal = new JobFailedError({
+      id: '0xjob',
+      error: 'Agent test-agent does not take tasks: its config does not set acceptTasks',
+    });
+    mockVenue.agents.request.mockResolvedValueOnce({ id: '0xjob', status: 'PENDING', agentId: 'test-agent' });
+    mockVenue.jobs.get.mockResolvedValueOnce({ wait: jest.fn().mockRejectedValue(refusal) });
+    const user = await renderAndOpenDialog();
+    await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'test agent');
+    await fill(user, screen.getByPlaceholderText('e.g., Greet the user and ask how you can help'), 'Say hello');
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() =>
+      expect(notifyError).toHaveBeenCalledWith(
+        'Created test-agent, but its first task failed',
+        refusal,
+        'https://venue.example',
+        undefined,
+      ),
+    );
+    expect(mockVenue.jobs.get).toHaveBeenCalledWith('0xjob');
+    expect(pushMock).toHaveBeenCalled();
+  });
+
   it('passes a custom-typed model into the agent config', async () => {
     const user = await renderAndOpenDialog();
-    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+    await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
 
     await user.click(screen.getByTestId('model-select'));
     await user.click(await screen.findByRole('option', { name: 'Custom…' }));
-    await user.type(screen.getByTestId('model-custom-input'), 'my-org/experimental-model');
+    await fill(user, screen.getByTestId('model-custom-input'), 'my-org/experimental-model');
     await user.click(screen.getByTestId('create-agent'));
 
     await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
@@ -269,11 +329,11 @@ describe('AddNewAgent', () => {
 
   it('resets the model choice when the provider changes', async () => {
     const user = await renderAndOpenDialog();
-    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+    await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
 
     // Pick an Anthropic model, then switch provider — the id must not leak.
     await user.click(screen.getByTestId('model-select'));
-    await user.click(await screen.findByRole('option', { name: 'claude-opus-4-8' }));
+    await user.click(await screen.findByRole('option', { name: 'claude-opus-5-5' }));
     const providerSelect = screen.getAllByRole('combobox')[0];
     await user.click(providerSelect);
     await user.click(await screen.findByRole('option', { name: 'Ollama (local)' }));
@@ -302,8 +362,8 @@ describe('AddNewAgent', () => {
 
   it('saves a canonical workspace template without creating an agent', async () => {
     const user = await renderAndOpenDialog();
-    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'Support Agent');
-    await user.type(
+    await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'Support Agent');
+    await fill(user, 
       screen.getByPlaceholderText("Describe the agent's role, behaviour, and boundaries."),
       'Help customers clearly.',
     );
@@ -319,6 +379,8 @@ describe('AddNewAgent', () => {
               operation: 'v/ops/llmagent/chat',
               llmOperation: 'v/ops/langchain/anthropic',
               systemPrompt: 'Help customers clearly.',
+              caps: 'unrestricted',
+              acceptTasks: true,
             },
           },
         },
@@ -333,7 +395,7 @@ describe('AddNewAgent', () => {
   it('does not overwrite an existing workspace template', async () => {
     mockVenue.workspace.read.mockResolvedValue({ exists: true });
     const user = await renderAndOpenDialog();
-    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'Existing');
+    await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'Existing');
     await user.click(screen.getByTestId('save-agent-template'));
 
     await waitFor(() => expect(notifyWarning).toHaveBeenCalledWith(
@@ -347,7 +409,7 @@ describe('AddNewAgent', () => {
     const user = await renderAndOpenDialog();
 
     const input = screen.getByPlaceholderText('e.g., Customer Support Agent');
-    await user.type(input, 'Assistant');
+    await fill(user, input, 'Assistant');
 
     expect(screen.getByText(/is reserved/i)).toBeInTheDocument();
     const createButton = screen.getByTestId('create-agent');
@@ -363,12 +425,12 @@ describe('AddNewAgent', () => {
     const user = await renderAndOpenDialog();
 
     const nameInput = screen.getByPlaceholderText('e.g., Customer Support Agent');
-    await user.type(nameInput, 'Assistant');
+    await fill(user, nameInput, 'Assistant');
     expect(screen.getByTestId('create-agent')).toBeDisabled();
 
     const idInput = screen.getByPlaceholderText('e.g., customer-support-agent');
     await user.clear(idInput);
-    await user.type(idInput, 'my-assistant');
+    await fill(user, idInput, 'my-assistant');
 
     expect(screen.queryByText(/is reserved/i)).not.toBeInTheDocument();
     expect(screen.getByTestId('create-agent')).not.toBeDisabled();
@@ -376,10 +438,10 @@ describe('AddNewAgent', () => {
 
   it('stages a tool attached via the picker into the created agent config, with no venue read before creation', async () => {
     const user = await renderAndOpenDialog();
-    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+    await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
 
     await user.click(screen.getByTestId('open-tool-skill-picker'));
-    await user.click(screen.getByRole('button', { name: /covia/i }));
+    await user.click(await screen.findByRole('button', { name: /covia/i }));
     await user.click(await screen.findByRole('checkbox', { name: 'Attach Read' }));
     await user.keyboard('{Escape}');
 
@@ -395,31 +457,34 @@ describe('AddNewAgent', () => {
     expect(mockVenue.agents.create).toHaveBeenCalledTimes(1);
   });
 
-  it('omits caps from the agent config by default (unrestricted)', async () => {
+  // The venue gives an agent created without caps no authority (covia 0.11),
+  // so unrestricted is sent as the string, never as the absence of the key.
+  it('sends caps: "unrestricted" by default', async () => {
     const user = await renderAndOpenDialog();
-    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+    await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+    expect(screen.getByLabelText('Unrestricted')).toBeChecked();
     await user.click(screen.getByTestId('create-agent'));
 
     await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
-    expect(mockVenue.agents.create.mock.calls[0][0].config).not.toHaveProperty('caps');
+    expect(mockVenue.agents.create.mock.calls[0][0].config.caps).toBe('unrestricted');
   });
 
-  it('enabling capabilities seeds one empty row and warns on an empty caps array', async () => {
+  it('choosing capabilities seeds one empty row and warns on an empty list', async () => {
     const user = await renderAndOpenDialog();
-    await user.click(screen.getByLabelText('Capabilities (optional)'));
+    await user.click(screen.getByLabelText('Only these capabilities'));
 
     expect(screen.getByTestId('cap-with-0')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Remove capability 1' }));
-    expect(screen.getByText(/denies every tool call/)).toBeInTheDocument();
+    expect(screen.getByText(/every tool call will be refused/)).toBeInTheDocument();
   });
 
   it('sends a filled-in capability in the agent config, using the curated ability list', async () => {
     const user = await renderAndOpenDialog();
-    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
-    await user.click(screen.getByLabelText('Capabilities (optional)'));
+    await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+    await user.click(screen.getByLabelText('Only these capabilities'));
 
-    await user.type(screen.getByTestId('cap-with-0'), 'w/notes/');
+    await fill(user, screen.getByTestId('cap-with-0'), 'w/notes/');
     await user.click(screen.getByTestId('cap-can-0'));
     await user.click(await screen.findByRole('option', { name: /crud\/write/ }));
 
@@ -432,13 +497,13 @@ describe('AddNewAgent', () => {
 
   it('supports a custom-typed ability outside the curated list', async () => {
     const user = await renderAndOpenDialog();
-    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
-    await user.click(screen.getByLabelText('Capabilities (optional)'));
+    await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+    await user.click(screen.getByLabelText('Only these capabilities'));
 
-    await user.type(screen.getByTestId('cap-with-0'), 'w/');
+    await fill(user, screen.getByTestId('cap-with-0'), 'w/');
     await user.click(screen.getByTestId('cap-can-0'));
     await user.click(await screen.findByRole('option', { name: 'Custom…' }));
-    await user.type(screen.getByTestId('cap-can-custom-0'), 'covia/read');
+    await fill(user, screen.getByTestId('cap-can-custom-0'), 'covia/read');
 
     await user.click(screen.getByTestId('create-agent'));
 
@@ -449,11 +514,11 @@ describe('AddNewAgent', () => {
 
   it('drops a blank unfinished row instead of sending it', async () => {
     const user = await renderAndOpenDialog();
-    await user.type(screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
-    await user.click(screen.getByLabelText('Capabilities (optional)'));
+    await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+    await user.click(screen.getByLabelText('Only these capabilities'));
     // Seeded row is left blank; add a second, filled-in row.
     await user.click(screen.getByRole('button', { name: /Add capability/ }));
-    await user.type(screen.getByTestId('cap-with-1'), 'w/');
+    await fill(user, screen.getByTestId('cap-with-1'), 'w/');
     await user.click(screen.getByTestId('cap-can-1'));
     await user.click(await screen.findByRole('option', { name: /crud\/read/ }));
 
@@ -464,8 +529,141 @@ describe('AddNewAgent', () => {
     expect(config.caps).toEqual([{ with: 'w/', can: 'crud/read' }]);
   });
 
+  it('sends "unrestricted" when capabilities are chosen and then unchosen', async () => {
+    const user = await renderAndOpenDialog();
+    await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+    await user.click(screen.getByLabelText('Only these capabilities'));
+    await user.click(screen.getByLabelText('Unrestricted'));
+
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    expect(mockVenue.agents.create.mock.calls[0][0].config.caps).toBe('unrestricted');
+  });
+
+  it("replaces a cloned agent's caps with \"unrestricted\" when chosen", async () => {
+    const user = userEvent.setup({ delay: null });
+    render(
+      <AddNewAgent
+        initialAgentName="governed copy"
+        initialConfig={{
+          operation: 'v/ops/llmagent/chat',
+          caps: [{ with: 'w/results/', can: 'crud/write' }],
+          customSetting: 'preserve-me',
+        }}
+      />,
+    );
+    await user.click(screen.getByTestId('create-agent-trigger'));
+    expect(screen.getByLabelText('Only these capabilities')).toBeChecked();
+    expect(screen.getByTestId('cap-with-0')).toHaveValue('w/results/');
+    await user.click(screen.getByLabelText('Unrestricted'));
+
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    const config = mockVenue.agents.create.mock.calls[0][0].config;
+    expect(config.caps).toBe('unrestricted');
+    expect(config).toMatchObject({ customSetting: 'preserve-me' });
+  });
+
+  it('keeps an unrestricted clone unrestricted', async () => {
+    const user = userEvent.setup({ delay: null });
+    render(
+      <AddNewAgent
+        initialAgentName="admin copy"
+        initialConfig={{ operation: 'v/ops/llmagent/chat', caps: 'unrestricted' }}
+      />,
+    );
+    await user.click(screen.getByTestId('create-agent-trigger'));
+    expect(screen.getByLabelText('Unrestricted')).toBeChecked();
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    expect(mockVenue.agents.create.mock.calls[0][0].config.caps).toBe('unrestricted');
+  });
+
+  // A referenced layer the form cannot read may set caps itself (the reader
+  // template does), so an untouched choice is left to it.
+  it('leaves caps to a referenced template layer until the user chooses', async () => {
+    const user = userEvent.setup({ delay: null });
+    render(
+      <AddNewAgent
+        initialAgentName="reader copy"
+        initialConfig={['v/agents/templates/reader', { systemPrompt: 'Read only' }]}
+      />,
+    );
+    await user.click(screen.getByTestId('create-agent-trigger'));
+    expect(screen.getByTestId('caps-inherited')).toBeInTheDocument();
+    expect(screen.getByLabelText('Unrestricted')).not.toBeChecked();
+    expect(screen.getByLabelText('Only these capabilities')).not.toBeChecked();
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    const layers = mockVenue.agents.create.mock.calls[0][0].config as unknown[];
+    expect(layers[0]).toBe('v/agents/templates/reader');
+    expect(layers.some((layer) => typeof layer === 'object' && layer && 'caps' in layer)).toBe(false);
+  });
+
+  it('keeps a custom provider operation when seeded from a clone', async () => {
+    const user = userEvent.setup({ delay: null });
+    render(
+      <AddNewAgent
+        initialAgentName="local copy"
+        preferAvailableProvider={false}
+        {...providerSeedForOperation('v/ops/local/my-llm')}
+        initialConfig={{ operation: 'v/ops/llmagent/chat' }}
+      />,
+    );
+    await user.click(screen.getByTestId('create-agent-trigger'));
+    expect(screen.getByTestId('custom-provider-operation')).toHaveValue('v/ops/local/my-llm');
+
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    expect(mockVenue.agents.create.mock.calls[0][0].config.llmOperation).toBe('v/ops/local/my-llm');
+  });
+
+  it('keeps the venue default provider when seeded from a clone', async () => {
+    const user = userEvent.setup({ delay: null });
+    render(
+      <AddNewAgent
+        initialAgentName="default copy"
+        preferAvailableProvider={false}
+        {...providerSeedForOperation(undefined)}
+        initialConfig={{ operation: 'v/ops/llmagent/chat' }}
+      />,
+    );
+    await user.click(screen.getByTestId('create-agent-trigger'));
+    expect(screen.getByTestId('venue-default-key-notice')).toBeInTheDocument();
+
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    expect(mockVenue.agents.create.mock.calls[0][0].config).not.toHaveProperty('llmOperation');
+  });
+
+  // Looking for a provider with a stored key must not move a seed off a custom
+  // operation or the venue default, neither of which has a key to look for.
+  it('does not swap a seeded custom provider for one that has a key', async () => {
+    const user = userEvent.setup({ delay: null });
+    render(
+      <AddNewAgent
+        initialAgentName="local template"
+        {...providerSeedForOperation('v/ops/local/my-llm')}
+        initialConfig={{ operation: 'v/ops/llmagent/chat' }}
+      />,
+    );
+    await user.click(screen.getByTestId('create-agent-trigger'));
+    await waitFor(() => expect(mockVenue.secrets.list).toHaveBeenCalled());
+
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    expect(mockVenue.agents.create.mock.calls[0][0].config.llmOperation).toBe('v/ops/local/my-llm');
+  });
+
   it('leaves an untouched template config untouched by the picker', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     render(
       <AddNewAgent
         initialAgentName="cloned agent"
@@ -479,5 +677,40 @@ describe('AddNewAgent', () => {
     expect(mockVenue.agents.create.mock.calls[0][0].config).toMatchObject({
       skills: ['w/skills'],
     });
+  });
+
+  // A pasted key is stored on create, so it has to be able to enable Create:
+  // the button used to stay disabled until a key was *stored*, which made the
+  // inline field a dead end.
+  it('creates with a key pasted inline when the provider has none stored', async () => {
+    mockVenue.secrets.list.mockResolvedValue([]);
+    const user = await renderAndOpenDialog();
+    await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+    await waitFor(() => expect(mockVenue.secrets.list).toHaveBeenCalled());
+
+    expect(screen.getByTestId('create-agent')).toBeDisabled();
+    await fill(user, await screen.findByTestId('inline-api-key'), 'sk-test');
+    expect(screen.getByTestId('create-agent')).toBeEnabled();
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    expect(mockVenue.secrets.set).toHaveBeenCalledWith('ANTHROPIC_API_KEY', 'sk-test');
+    expect(mockVenue.secrets.set.mock.invocationCallOrder[0])
+      .toBeLessThan(mockVenue.agents.create.mock.invocationCallOrder[0]);
+    // With no key stored anywhere it stays on the template's provider rather
+    // than moving to one that merely needs no key.
+    expect(mockVenue.agents.create.mock.calls[0][0].config.llmOperation).toBe('v/ops/langchain/anthropic');
+  });
+
+  it('moves a keyless template to a provider whose key is stored', async () => {
+    mockVenue.secrets.list.mockResolvedValue(['OPENAI_API_KEY']);
+    const user = await renderAndOpenDialog();
+    await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'My Agent');
+    await waitFor(() => expect(screen.getByTestId('create-agent')).toBeEnabled());
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    expect(mockVenue.secrets.set).not.toHaveBeenCalled();
+    expect(mockVenue.agents.create.mock.calls[0][0].config.llmOperation).toBe('v/ops/langchain/openai');
   });
 });

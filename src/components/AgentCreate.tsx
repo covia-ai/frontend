@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
+  ArrowDownToLine,
   Bot,
+  Cable,
   CopyPlus,
   Loader2,
   Lock,
@@ -14,6 +16,8 @@ import {
 } from "lucide-react";
 
 import { AddNewAgent } from "@/components/AddNewAgent";
+import { FROM_SKILLS_OP, PortAgentDialog } from "@/components/PortAgentDialog";
+import { ConnectAgentDialog } from "@/components/ConnectAgentDialog";
 import { AgentTemplates } from "@/components/AgentTemplates";
 import { PageHeading } from "@/components/PageHeading";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
@@ -30,6 +34,8 @@ import {
 import type { AgentListItem } from "@/config/types";
 import { useAuthStore, useCurrentAuth, useIsAuthenticated } from "@/hooks/use-auth";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
+import { useVenueHasOperation } from "@/hooks/use-venue-operation";
+import { useVenueRead } from "@/hooks/use-venue-read";
 import {
   reportVenueAuthHealth,
   useVenueAccessState,
@@ -42,9 +48,11 @@ import { normalizeAgentEntries } from "@/lib/agent-list";
 import {
   errorMessage,
   errorStatus,
-  isAuthenticationRejectedError,
 } from "@/lib/errors";
 import { notifyError } from "@/lib/notify";
+import { TONE_STYLES } from "@/lib/status";
+
+const NO_AGENTS: AgentListItem[] = [];
 
 export function AgentCreate() {
   const router = useRouter();
@@ -54,8 +62,9 @@ export function AgentCreate() {
   const logout = useAuthStore((state) => state.logout);
   const access = useVenueAccessState(venue?.venueId);
   const canUseAgents = access.state === "accepted" || access.state === "unverified";
-  const [agents, setAgents] = useState<AgentListItem[]>([]);
-  const [agentsLoading, setAgentsLoading] = useState(true);
+  // Port needs an operation older venues don't publish (#350). Only a
+  // definitive "absent" disables it; unknown stays offered.
+  const canPort = useVenueHasOperation(FROM_SKILLS_OP) !== false;
   const [sourceAgentId, setSourceAgentId] = useState("");
   const [cloneLoading, setCloneLoading] = useState(false);
   const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
@@ -63,7 +72,10 @@ export function AgentCreate() {
 
   const handleAgentError = useCallback((title: string, error: unknown) => {
     if (!venue) return;
-    if (auth && isAuthenticationRejectedError(error)) {
+    // Only a 401 says the credential itself is refused. A 403 here can be a
+    // missing grant (listing agents needs crud/read on g/ since covia 0.11);
+    // whether the venue admits the account is the auth probe's call.
+    if (auth && errorStatus(error) === 401) {
       reportVenueAuthHealth(venue.venueId, auth, {
         state: "rejected",
         detail: errorMessage(error, "This venue rejected the stored account"),
@@ -74,38 +86,26 @@ export function AgentCreate() {
     notifyError(title, error, venue.baseUrl);
   }, [auth, venue]);
 
-  useEffect(() => {
-    let active = true;
-    if (!venue || !canUseAgents) {
-      setAgents([]);
-      setAgentsLoading(false);
-      return () => {
-        active = false;
-      };
-    }
-
-    setAgentsLoading(true);
-    void venue.agents
-      .list()
-      .then(({ agents: entries }) => {
-        if (!active) return;
-        if (auth) reportVenueAuthHealth(venue.venueId, auth, { state: "accepted" });
-        setAgents(normalizeAgentEntries(entries));
-      })
-      .catch((error: unknown) => {
-        if (active) {
-          setAgents([]);
-          handleAgentError("Unable to load agents", error);
-        }
-      })
-      .finally(() => {
-        if (active) setAgentsLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [auth, canUseAgents, handleAgentError, venue]);
+  // The clone-source list. A successful list is positive evidence the stored
+  // account is accepted; a rejected one is reported to the auth-health store
+  // rather than toasted (handleAgentError), so the read itself stays quiet.
+  const { data: agents, loading: agentsLoading } = useVenueRead<AgentListItem[]>({
+    venue,
+    enabled: canUseAgents,
+    initial: NO_AGENTS,
+    failureTitle: "Unable to load agents",
+    notify: false,
+    load: async (target) => {
+      try {
+        const { agents: entries } = await target.agents.list();
+        if (auth) reportVenueAuthHealth(target.venueId, auth, { state: "accepted" });
+        return normalizeAgentEntries(entries);
+      } catch (error) {
+        handleAgentError("Unable to load agents", error);
+        throw error;
+      }
+    },
+  });
 
   const prepareClone = async () => {
     if (!venue || !sourceAgentId) return;
@@ -176,7 +176,75 @@ export function AgentCreate() {
 
         <section className="px-4 pb-8 pt-2 sm:px-10">
           <h2 className="mb-4 text-lg font-semibold">Other options</h2>
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <Card className="flex flex-col gap-4 p-6">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <ArrowDownToLine size={20} />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold">Port an agent</h2>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  Bring an existing agent&apos;s prompt and SKILL.md skills in as a native agent.
+                </p>
+              </div>
+              <div className="mt-auto space-y-2 pt-2">
+                {!isAuthenticated ? (
+                  <Button disabled className="gap-2">
+                    <Lock size={14} /> Sign in to port
+                  </Button>
+                ) : canPort ? (
+                  <PortAgentDialog
+                    trigger={
+                      <Button variant="outline" data-testid="port-agent-trigger">
+                        Port an agent
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <>
+                    <Button variant="outline" disabled data-testid="port-agent-trigger">
+                      Port an agent
+                    </Button>
+                    <p
+                      className={`text-sm ${TONE_STYLES.attention.text}`}
+                      data-testid="port-unsupported-notice"
+                    >
+                      This venue can&apos;t port agents — it doesn&apos;t publish{" "}
+                      <span className="font-mono text-xs">{FROM_SKILLS_OP}</span>. Switch to a
+                      venue running 0.9.9 or later.
+                    </p>
+                  </>
+                )}
+              </div>
+            </Card>
+
+            <Card className="flex flex-col gap-4 p-6">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Cable size={20} />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold">Connect an agent</h2>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  Register a remote A2A agent and task it from here. It keeps running where it lives.
+                </p>
+              </div>
+              <div className="mt-auto pt-2">
+                {isAuthenticated ? (
+                  <ConnectAgentDialog
+                    trigger={
+                      <Button variant="outline" data-testid="connect-agent-trigger">
+                        Connect an agent
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <Button disabled className="gap-2">
+                    <Lock size={14} /> Sign in to connect
+                  </Button>
+                )}
+              </div>
+            </Card>
+
             <Card className="flex flex-col gap-4 p-6">
               <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <Plus size={20} />

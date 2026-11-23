@@ -2,24 +2,30 @@ import {
   agentSessionsToSessions,
   defaultSessionTitle,
   formatSessionLabel,
+  queuedSessionMessages,
 } from "@/lib/agent-sessions";
 
 describe("agent session normalization", () => {
-  it("flattens frame conversations and sorts newest sessions first", () => {
+  it.each(["ab12", "0xab12", "0XAB12"])("reads session ID %s in the same selection form", (id) => {
+    expect(agentSessionsToSessions([{ id, conversation: [] }])[0].sessionId).toBe("ab12");
+  });
+
+  it("uses SDK transcripts and sorts newest sessions first", () => {
     const sessions = agentSessionsToSessions([
       {
         id: "older-session",
         metadata: { created: 100, turns: 1 },
-        frames: [{ conversation: [{ role: "user", content: "old" }] }],
+        conversation: [{ role: "user", content: "old" }],
       },
       {
         id: "newer-session",
         metadata: { created: 200, turns: 2, parties: ["user", "agent"] },
         pending: ["work"],
         wakeTime: 1750000000000,
-        frames: [
-          { conversation: [{ role: "user", content: "hello" }] },
-          { conversation: [{ role: "assistant", content: "hi" }] },
+        frames: [{ historyVersion: 1, contextStart: 2, history: [] }],
+        conversation: [
+          { role: "user", content: "hello" },
+          { role: "assistant", content: "hi" },
         ],
       },
     ]);
@@ -60,7 +66,7 @@ describe("agent session normalization", () => {
       {
         id: "titled-session",
         metadata: { created: 100, turns: 1, title: "Planning the launch" },
-        frames: [{ conversation: [{ role: "user", content: "hi" }] }],
+        conversation: [{ role: "user", content: "hi" }],
       },
     ]);
     expect(sessions[0].title).toBe("Planning the launch");
@@ -130,5 +136,31 @@ describe("defaultSessionTitle", () => {
         conversation: [{ role: "assistant", content: "only an assistant turn" }],
       }),
     ).toBeUndefined();
+  });
+});
+
+describe("queuedSessionMessages", () => {
+  it("reads the venue's pending chat envelopes as text with their job", () => {
+    const [session] = agentSessionsToSessions([{
+      id: "s-1",
+      metadata: {},
+      conversation: [],
+      pending: [
+        { sessionId: "s-1", jobId: "0xjob1", message: "plain text" },
+        { sessionId: "s-1", message: { content: "structured" } },
+        { sessionId: "s-1", message: "   " },
+        { sessionId: "s-1", input: { task: "not a chat" } },
+        null,
+      ],
+    }]);
+    expect(queuedSessionMessages(session)).toEqual([
+      { jobId: "0xjob1", text: "plain text" },
+      { text: "structured" },
+    ]);
+  });
+
+  it("is empty for no session or no pending list", () => {
+    expect(queuedSessionMessages(null)).toEqual([]);
+    expect(queuedSessionMessages({ sessionId: "s", conversation: [] } as never)).toEqual([]);
   });
 });

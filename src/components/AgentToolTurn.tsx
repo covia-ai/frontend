@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ChevronRight, ChevronDown } from "lucide-react";
+import { CredentialBadges } from "@/components/CredentialBadges";
 import { cn } from "@/lib/utils";
 import type { ToolTurn } from "@/lib/agent-turns";
 
@@ -39,6 +40,9 @@ export function AgentToolTurn({ role, tool, ts }: AgentToolTurnProps) {
           {/* Mono, not uppercased — the name is a code identifier (auth_whoami). */}
           <span className="font-mono">{role}{tool.name ? ` · ${tool.name}` : ""}</span>
         </button>
+        {/* Which connection the call used — visible collapsed, since it's the
+            provenance a reader scans for. */}
+        {tool.credentials && <CredentialBadges uses={tool.credentials} size="sm" className="mt-1" />}
 
         {expanded && (
           <>

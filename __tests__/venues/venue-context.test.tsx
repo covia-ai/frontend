@@ -22,7 +22,9 @@ jest.mock('@/components/AssetInfoSheet', () => ({
   AssetInfoSheet: () => null,
 }));
 jest.mock('@/lib/utils', () => ({
-  cn: (...inputs: unknown[]) => inputs.filter(Boolean).join(' '),
+  // Keep the real helpers (cn, abbreviateDid, formatDateTime — the asset card
+  // now renders a DidDisplay + provenance), stub only analytics.
+  ...jest.requireActual('@/lib/utils'),
   gtmEvent: { buttonClick: jest.fn() },
 }));
 

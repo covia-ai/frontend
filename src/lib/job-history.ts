@@ -1,16 +1,32 @@
-import { RunStatus, type JobMetadata, type Venue } from "@covia/covia-sdk";
+import { RunStatus, isJobFinished, isJobPaused, type JobMetadata, type Venue } from "@covia/covia-sdk";
+import { normalizeJobId } from "@/lib/job-tree";
 
 export type JobWindow = {
   count: number;
   values: unknown[];
 };
 
-// Single source of truth for "finished" — shared by JobList's headline stats,
-// its table rendering, and the trend derivation below, so all three agree on
-// which records count as terminal.
-export const TERMINAL_STATUSES = new Set([
-  RunStatus.COMPLETE, RunStatus.FAILED, RunStatus.CANCELLED, RunStatus.REJECTED, RunStatus.TIMEOUT,
+// "Finished" is the SDK's isJobFinished everywhere. The two predicates below
+// are the only other status groupings the jobs UI needs, kept here so the
+// list, its rows and the row actions cannot drift apart again.
+
+// Live: can change without anyone acting, so the list streams and polls it.
+// INPUT_REQUIRED / AUTH_REQUIRED are deliberately excluded — they wait on a
+// person, possibly for days, and an SSE stream per waiting row would eat the
+// browser's per-host connection budget for nothing.
+const LIVE_STATUSES: ReadonlySet<string> = new Set([
+  RunStatus.PENDING, RunStatus.STARTED, RunStatus.PAUSED,
 ]);
+
+export function isJobLive(status?: string): boolean {
+  return !!status && LIVE_STATUSES.has(status);
+}
+
+// Cancellable: every unfinished state, so also the jobs waiting on a person —
+// exactly the ones a user most often wants to abandon.
+export function isJobCancellable(status?: string): boolean {
+  return isJobLive(status) || isJobPaused(status as RunStatus);
+}
 
 export function jobRecordsFromSlice(values: unknown[]): JobMetadata[] {
   const records: JobMetadata[] = [];
@@ -22,7 +38,8 @@ export function jobRecordsFromSlice(values: unknown[]): JobMetadata[] {
     if (!record.value) continue;
     records.push({
       ...record.value,
-      id: record.value.id ?? `0x${String(record.key ?? "")}`,
+      // The slice key is 0x-prefixed since covia 0.11 and bare before it.
+      id: record.value.id ?? `0x${normalizeJobId(record.key)}`,
     });
   }
   return records.reverse();
@@ -122,9 +139,9 @@ const bucketLabelFormatter = new Intl.DateTimeFormat(undefined, {
 });
 
 /**
- * Derives Jobs-page trend sparkline data straight from the records already on
- * screen (`pageRecords`) — deliberately no new fetch of the wider job window.
- * Two different aggregations per metric, chosen because a raw per-job
+ * Derives Jobs-page trend sparkline data from the records the page already
+ * holds for its headline stats (JobList's STATS_WINDOW read) — no fetch of its
+ * own. Two different aggregations per metric, chosen because a raw per-job
  * success/fail (0/100) reads as an illegible zigzag at this sample size:
  *
  * - avgDurationMs: one point per terminal record, chronological — each job's
@@ -135,7 +152,7 @@ const bucketLabelFormatter = new Intl.DateTimeFormat(undefined, {
  */
 export function jobTrendFromRecords(records: JobMetadata[]): JobTrend | null {
   const terminal = records
-    .filter((j) => j.created && TERMINAL_STATUSES.has(j.status as RunStatus))
+    .filter((j) => j.created && isJobFinished(j.status as RunStatus))
     .sort((a, b) => new Date(a.created as string).getTime() - new Date(b.created as string).getTime());
 
   if (terminal.length < MIN_RECORDS_FOR_TREND) return null;

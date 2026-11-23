@@ -1,12 +1,12 @@
 "use client";
 
-import { AIPrompt } from "@/components/AIPrompt";
-import { DEFAULT_AGENT_ID } from "@/config/agents";
+import { HomeLauncher } from "@/components/home/HomeLauncher";
 
-// Home always stays the "start something new" surface — sending a message
-// hands off to AIPrompt's own navigation (to /agents/chat), it never swaps
-// itself out for the chat view in place. Resuming or browsing existing
-// conversations happens on the dedicated Chat page (sidebar: /agents/chat).
+// Home is a launchpad: the composer stays the hero and still hands off to
+// /agents/chat on submit (it never swaps itself for the chat view in place),
+// with Jump-back-in / Quick actions / Venue pulse surfaced around it for signed-in
+// people. All of that lives in HomeLauncher — see it for the composer contract
+// and the job-free, non-blocking reads that feed the launchpad sections.
 export function DefaultAssistantHome() {
-  return <AIPrompt fixedAgentId={DEFAULT_AGENT_ID} />;
+  return <HomeLauncher />;
 }

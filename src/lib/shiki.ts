@@ -3,6 +3,11 @@ import {
   createSingletonShorthands,
 } from "shiki/core";
 import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
+import { supportedShikiLanguage, type ShikiLanguage } from "@/lib/shiki-languages";
+
+// The highlighter itself. Loaded on demand by ShikiCodeBlock (frontend#473):
+// nothing imports this module statically, so shiki/core stays out of every
+// page's initial JS and arrives only when a code block needs highlighting.
 
 const languages = {
   bash: () => import("@shikijs/langs/bash"),
@@ -31,7 +36,7 @@ const languages = {
   typescript: () => import("@shikijs/langs/typescript"),
   xml: () => import("@shikijs/langs/xml"),
   yaml: () => import("@shikijs/langs/yaml"),
-};
+} satisfies Record<ShikiLanguage, unknown>;
 
 const themes = {
   "github-dark": () => import("@shikijs/themes/github-dark"),
@@ -45,58 +50,9 @@ const createHighlighter = createBundledHighlighter({
 
 const { codeToHtml } = createSingletonShorthands(createHighlighter);
 
-const aliases: Record<string, keyof typeof languages> = {
-  bash: "bash",
-  c: "c",
-  clj: "clojure",
-  clojure: "clojure",
-  cpp: "cpp",
-  cs: "csharp",
-  css: "css",
-  csharp: "csharp",
-  docker: "dockerfile",
-  dockerfile: "dockerfile",
-  go: "go",
-  golang: "go",
-  graphql: "graphql",
-  html: "html",
-  java: "java",
-  js: "javascript",
-  javascript: "javascript",
-  json: "json",
-  json5: "jsonc",
-  jsonc: "jsonc",
-  jsx: "jsx",
-  kotlin: "kotlin",
-  kt: "kotlin",
-  md: "markdown",
-  markdown: "markdown",
-  py: "python",
-  python: "python",
-  rb: "ruby",
-  ruby: "ruby",
-  rs: "rust",
-  rust: "rust",
-  sh: "bash",
-  shell: "bash",
-  sql: "sql",
-  ts: "typescript",
-  tsx: "tsx",
-  toml: "toml",
-  typescript: "typescript",
-  xml: "xml",
-  yaml: "yaml",
-  yml: "yaml",
-  zsh: "bash",
-};
 
 const resultCache = new Map<string, Promise<string | null>>();
 const MAX_CACHE_ENTRIES = 100;
-
-export function supportedShikiLanguage(language?: string) {
-  if (!language) return undefined;
-  return aliases[language.toLowerCase()];
-}
 
 export function highlightCode(code: string, language: string) {
   const resolvedLanguage = supportedShikiLanguage(language);

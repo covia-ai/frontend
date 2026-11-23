@@ -1,6 +1,7 @@
 import type { AgentSession } from "@covia/covia-sdk";
-import type { Session, SessionMessage } from "@/config/types";
+import type { Session } from "@/config/types";
 import { messageContentToString } from "@/lib/agent-turns";
+import { normalizeCoviaId } from "@/lib/covia-ids";
 
 export function agentSessionsToSessions(items: unknown): Session[] {
   if (!Array.isArray(items)) return [];
@@ -9,14 +10,11 @@ export function agentSessionsToSessions(items: unknown): Session[] {
     .map((item): Session => {
       const session = item as AgentSession;
       const metadata = session.metadata ?? {};
-      const frames = Array.isArray(session.frames) ? session.frames : [];
-      const conversation = frames.flatMap((frame) => {
-        const f = frame as { conversation?: SessionMessage[] } | undefined;
-        return Array.isArray(f?.conversation) ? f.conversation : [];
-      });
+      // The SDK owns frame formats and compacted-history expansion.
+      const conversation = Array.isArray(session.conversation) ? session.conversation : [];
 
       return {
-        sessionId: String(session.id ?? ""),
+        sessionId: normalizeCoviaId(String(session.id ?? "")),
         created: metadata.created,
         parties: metadata.parties,
         turns: metadata.turns ?? metadata.turnCount,
@@ -60,4 +58,27 @@ export function formatSessionLabel(session: Session): string {
     : "—";
   const turns = session.turns ?? 0;
   return `${created} · …${shortId} · ${turns} turn${turns === 1 ? "" : "s"}`;
+}
+
+/** A message the venue holds for a session that no reply has answered yet. */
+export type QueuedSessionMessage = {
+  /** The chat's job, when the venue's envelope names one. */
+  jobId?: string;
+  text: string;
+};
+
+// The venue's own record of chats still waiting for a reply: a session's
+// `pending` envelopes ({sessionId, message, jobId, …}). It outlives the page
+// that sent them, so the transcript can show them after the client stopped
+// waiting, or after a reload, until the agent takes them.
+export function queuedSessionMessages(session: Session | null | undefined): QueuedSessionMessage[] {
+  const pending = session?.pending;
+  if (!Array.isArray(pending)) return [];
+  return pending.flatMap((envelope): QueuedSessionMessage[] => {
+    if (!envelope || typeof envelope !== "object" || !("message" in envelope)) return [];
+    const { message, jobId } = envelope as { message?: unknown; jobId?: unknown };
+    const text = messageContentToString(message).trim();
+    if (!text) return [];
+    return [{ ...(typeof jobId === "string" && jobId ? { jobId } : {}), text }];
+  });
 }

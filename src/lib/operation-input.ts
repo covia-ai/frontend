@@ -2,15 +2,6 @@ import { getParsedAssetId } from "@covia/covia-sdk";
 
 export const TOP_LEVEL_INPUT_KEY = "__top__";
 
-export type OperationInputType =
-  | "string"
-  | "number"
-  | "json"
-  | "object"
-  | "any"
-  | "asset"
-  | "array";
-
 export type OperationInputProperty = {
   type?: string;
   default?: unknown;
@@ -31,9 +22,29 @@ export type OperationInputDefaults = {
 
 const JSON_TYPES = new Set(["json", "object", "any", "array"]);
 
+/**
+ * A boolean field's text: "true" or "false", or "" for not set. Undefined
+ * means the field is left out of the payload, so the operation's own default
+ * applies (frontend#553: booleans used to be sent as the string "true").
+ */
+function parseBoolean(rawValue: string): boolean | undefined {
+  const text = rawValue.trim().toLowerCase();
+  if (text === "") return undefined;
+  if (text === "true") return true;
+  if (text === "false") return false;
+  throw new Error(`Expected true or false, got "${rawValue}"`);
+}
+
 export function parseOperationInput(rawValue: string, type: string): unknown {
+  if (type === "boolean") return parseBoolean(rawValue);
   if (JSON_TYPES.has(type)) return JSON.parse(rawValue);
   if (type === "number") return Number(rawValue);
+  if (type === "integer") {
+    // Same defect class as #553: JSON Schema's `integer` was sent as a string.
+    const value = Number(rawValue);
+    if (!Number.isInteger(value)) throw new Error(`Expected a whole number, got "${rawValue}"`);
+    return value;
+  }
   if (type === "asset") return getParsedAssetId(rawValue);
   return rawValue;
 }
@@ -46,8 +57,12 @@ export function printOperationInput(value: unknown, type: string): string {
     return type === "array" ? "[]" : "{}";
   }
 
-  if (type === "number") {
+  if (type === "number" || type === "integer") {
     return typeof value === "object" ? "0" : String(value || 0);
+  }
+
+  if (type === "boolean") {
+    return value === true || value === "true" ? "true" : value === false || value === "false" ? "false" : "";
   }
 
   return typeof value === "object" ? "" : String(value ?? "");

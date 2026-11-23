@@ -1,4 +1,4 @@
-import { Venue, UnsupportedVenueFeatureError, createUCANJWT, hexToPrivateKey } from "@covia/covia-sdk";
+import { Venue, createUCANJWT, hexToPrivateKey } from "@covia/covia-sdk";
 import { resolveOperationByAddress } from "@/lib/operations-catalog";
 
 // Human-in-the-loop requests. A request is delivered as a durable record into
@@ -25,7 +25,7 @@ export type HitlTokenSpec = {
   caps: HitlCap[];
   /** Requested lifetime hint (seconds); the responder sets the real expiry. */
   exp?: number;
-  /** DID the signed token must be audienced to; defaults to the request's `from`. */
+  /** DID the signed token must be audienced to; defaults to the request's caller. */
   audience?: string;
   /** Target venue — informational, for the responder's UI. */
   venue?: string;
@@ -84,8 +84,12 @@ export type HitlRequest = {
   id: string;
   title: string;
   status: HitlStatus;
-  /** DID of the requesting user — the agent's owner when `agent` is set. */
+  /** The principal that asked: a user, one of its agents or a delegate (covia 0.11). */
+  caller?: string;
+  /** Legacy caller field, before venue 0.11. */
   from?: string;
+  /** Legacy namespace attribution (0.11); 0.12 records only the caller. */
+  owner?: string;
   /**
    * Id of the agent that raised the request, when one did. Absent for requests
    * raised directly by a person or a plain operation call.
@@ -121,7 +125,7 @@ export const HITL_RESPOND_ADDRESS = "v/ops/hitl/respond";
 // `v/ops/hitl/list` operation returns the same summaries but mints a Job on
 // every call — unacceptable for a page load or a poll (AGENTS.md), which is
 // why the lattice is read directly here.
-export async function listHitlRequests(venue: Venue): Promise<HitlRequest[]> {
+export async function listHitlRequests(venue: Venue, inboxOwner?: string): Promise<HitlRequest[]> {
   // An inbox that has never received a request resolves to Nil (exists:false)
   // rather than throwing, so anything thrown here is a genuine failure — a 403
   // because the selected venue isn't the one holding your requests, an expired
@@ -141,6 +145,10 @@ export async function listHitlRequests(venue: Venue): Promise<HitlRequest[]> {
     .filter((value): value is HitlRequest =>
       !!value && typeof value === "object" && !!(value as HitlRequest).id,
     )
+    // Since 0.12, a caller equal to the account holding h/ is omitted in
+    // stored records. The account comes from the authenticated reader, never
+    // the venue DID. Keep the pre-0.11 `from` spelling readable too.
+    .map((request) => ({ ...request, caller: request.caller ?? request.from ?? inboxOwner }))
     .sort((a, b) => (b.created ?? 0) - (a.created ?? 0));
 }
 
@@ -163,20 +171,13 @@ async function sliceInboxRecords(venue: Venue): Promise<unknown[]> {
 }
 
 // The indicator badge only needs a number, not the records: one job-free
-// aggregate groups the inbox by status server-side. Venues without the
-// aggregate surface fall back to the full listing.
+// aggregate groups the inbox by status server-side. There is no listing
+// fallback for venues without it: the SDK serves every Values read through one
+// latch, so a venue that can't aggregate can't list either.
 export async function countOpenHitlRequests(venue: Venue): Promise<number> {
-  try {
-    const res = await venue.workspace.aggregate("h", { groupBy: "status" });
-    if (!res.exists) return 0;
-    return res.groups?.open?.count ?? 0;
-  } catch (err) {
-    if (err instanceof UnsupportedVenueFeatureError) {
-      const requests = await listHitlRequests(venue);
-      return requests.filter((r) => r.status === "open").length;
-    }
-    throw err;
-  }
+  const res = await venue.workspace.aggregate("h", { groupBy: "status" });
+  if (!res.exists) return 0;
+  return res.groups?.open?.count ?? 0;
 }
 
 // Which required asks are still unanswered. `false` is a legitimate answer to

@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from "react";
 import type { Venue } from "@covia/covia-sdk";
-import { useTheme } from "next-themes";
-import { JsonEditor, githubDarkTheme, githubLightTheme } from "json-edit-react";
+import { useResolvedTheme } from "@/hooks/use-resolved-theme";
+import { JsonViewer as JsonTree } from "json-edit-react";
+import { githubDarkTheme, githubLightTheme } from "@json-edit-react/themes";
 import { Eye, Loader2 } from "lucide-react";
 import { useAuthenticatedVenue } from "@/hooks/use-authenticated-venue";
 import { useAssetTextContent } from "@/hooks/use-asset-text-content";
@@ -33,7 +34,7 @@ type JsonViewerProps = {
 export const JsonViewer = ({ assetId, venue: providedVenue }: JsonViewerProps) => {
   const fallbackVenue = useAuthenticatedVenue();
   const venue = providedVenue ?? fallbackVenue;
-  const { theme } = useTheme();
+  const theme = useResolvedTheme();
   const [open, setOpen] = useState(false);
   const content = useAssetTextContent(venue, assetId, open);
   const parsed = useMemo(() => {
@@ -75,14 +76,13 @@ export const JsonViewer = ({ assetId, venue: providedVenue }: JsonViewerProps) =
       );
     }
     return (
-      <JsonEditor
+      // json-edit-react 2: the read-only entry point is JsonViewer (the editor
+      // is strictly controlled and needs a setData).
+      <JsonTree
         data={parsed.value}
         rootName="content"
-        rootFontSize="0.875em"
+        baseFontSize="0.875em"
         maxWidth="100%"
-        restrictEdit
-        restrictAdd
-        restrictDelete
         collapse={3}
         theme={theme === "dark" ? githubDarkTheme : githubLightTheme}
       />
