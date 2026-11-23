@@ -239,10 +239,12 @@ describe("useAgentExplorer — forkAgent (#251)", () => {
     });
 
     expect(outcome).toEqual({ status: "created", agentId: "agent-a-fork" });
+    // agent-a's config has no acceptTasks (an agent from before covia 0.12).
     expect(mockVenue.agents.fork).toHaveBeenCalledWith({
       sourceId: "agent-a",
       agentId: "agent-a-fork",
       includeTimeline: true,
+      config: { acceptTasks: true },
     });
     await waitFor(() => expect(result.current.selectedAgentId).toBe("agent-a-fork"));
     await waitFor(() =>
@@ -267,12 +269,46 @@ describe("useAgentExplorer — forkAgent (#251)", () => {
       sourceId: "agent-a",
       agentId: "agent-a-fork",
       includeTimeline: false,
-      config: { systemPrompt: "override" },
+      config: { acceptTasks: true, systemPrompt: "override" },
+    });
+  });
+
+  it("sends no acceptTasks for a source that states it, and keeps an override's own", async () => {
+    mockVenue = makeVenue("venue-a", ["agent-a", "agent-b"], {
+      "agent-a": { acceptTasks: false },
+    });
+    const { result } = renderHook(() => useAgentExplorer("agent-a"));
+    await waitFor(() => expect(result.current.selectedAgentDetail).not.toBeNull());
+
+    await act(async () => {
+      await result.current.forkAgent({ agentId: "agent-a-fork", includeTimeline: false });
+    });
+    expect(mockVenue.agents.fork).toHaveBeenLastCalledWith({
+      sourceId: "agent-a",
+      agentId: "agent-a-fork",
+      includeTimeline: false,
+    });
+
+    mockVenue = makeVenue("venue-a", ["agent-b"]);
+    const second = renderHook(() => useAgentExplorer("agent-b"));
+    await waitFor(() => expect(second.result.current.selectedAgentDetail).not.toBeNull());
+    await act(async () => {
+      await second.result.current.forkAgent({
+        agentId: "agent-b-fork",
+        includeTimeline: false,
+        config: { acceptTasks: false },
+      });
+    });
+    expect(mockVenue.agents.fork).toHaveBeenLastCalledWith({
+      sourceId: "agent-b",
+      agentId: "agent-b-fork",
+      includeTimeline: false,
+      config: { acceptTasks: false },
     });
   });
 
   it("omits an empty config override rather than sending {}", async () => {
-    mockVenue = makeVenue("venue-a", ["agent-a"]);
+    mockVenue = makeVenue("venue-a", ["agent-a"], { "agent-a": { acceptTasks: true } });
     const { result } = renderHook(() => useAgentExplorer("agent-a"));
     await waitFor(() => expect(result.current.selectedAgentDetail).not.toBeNull());
 
