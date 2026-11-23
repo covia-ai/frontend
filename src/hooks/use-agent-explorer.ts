@@ -34,6 +34,7 @@ import { gtmEvent } from "@/lib/utils";
 import { describeSendFailure, dispatchAgentMessage, sendAgentChat } from "@/lib/agent-chat";
 import { useAgentForkProvenance } from "@/hooks/use-agent-fork-provenance";
 import { useAgentLiveEvents } from "@/hooks/use-agent-live-events";
+import { ACCEPT_TASKS } from "@/lib/agent-tasks";
 
 const POLL_INTERVAL_MS = 3000;
 const SESSION_LIMIT = 50;
@@ -435,15 +436,20 @@ export function useAgentExplorer(
   }): Promise<{ status: "created" | "failed"; agentId?: string }> => {
     if (!venue || !selectedAgentId || forking) return { status: "failed" };
     const sourceId = selectedAgentId;
+    // agent:fork merges this layer over the source's config. A source from
+    // before covia 0.12 has no acceptTasks, and a fork of it would refuse
+    // every task like its source; one that states acceptTasks keeps it.
+    const config = {
+      ...(typeof selectedAgentDetail?.config?.acceptTasks !== "boolean" ? ACCEPT_TASKS : {}),
+      ...options.config,
+    };
     setForking(true);
     try {
       const result = await venue.agents.fork({
         sourceId,
         agentId: options.agentId,
         includeTimeline: options.includeTimeline,
-        ...(options.config && Object.keys(options.config).length > 0
-          ? { config: options.config }
-          : {}),
+        ...(Object.keys(config).length > 0 ? { config } : {}),
       });
       gtmEvent.forkAgent(sourceId, result.agentId);
       recordForkProvenance(venue.venueId, result.agentId, result.forkedFrom);

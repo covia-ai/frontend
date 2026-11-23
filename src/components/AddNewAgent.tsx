@@ -46,6 +46,7 @@ import {
 } from "@/lib/agent-caps";
 import { isReservedAgentId, slugifyAgentId } from "@/lib/agent-id";
 import { agentChatPath } from "@/lib/routes";
+import { acceptTasksOverride, watchSubmittedTask } from "@/lib/agent-tasks";
 import {
   AGENT_TEMPLATES_CHANGED_EVENT,
   asSdkAgentConfig,
@@ -281,6 +282,9 @@ function AddNewAgentForm({
       ...(sendCaps && {
         caps: capsMode === "unrestricted" ? UNRESTRICTED_CAPS : cleanCaps(caps),
       }),
+      // The form sends this agent tasks (its first command, then the chat's
+      // requests), which a venue from 0.12 refuses unless acceptTasks is set.
+      ...acceptTasksOverride(initialConfig),
     };
     return withAgentConfigOverrides(baseConfig, overrides);
   };
@@ -324,8 +328,15 @@ function AddNewAgentForm({
         // Fire-and-forget (wait:false): the SDK (1.26+, covia-sdk#112) returns
         // once the task is submitted instead of blocking until it is terminal,
         // so a failed task cannot surface below as a false "Unable to create
-        // agent". Task failures instead show up via normal job polling (#142).
-        await venue.agents.request(result.agentId, { task: initialCommand.trim() }, false);
+        // agent".
+        const submitted = await venue.agents.request(result.agentId, { task: initialCommand.trim() }, false);
+        // The snapshot is PENDING even for a task the venue then refuses, so
+        // check the job separately; the form has closed by the time it fails.
+        const createdId = result.agentId;
+        void watchSubmittedTask(venue, submitted.id, (err) => {
+          const { reason, jobHref } = jobFailure(err, venue.venueId);
+          notifyError(`Created ${createdId}, but its first task failed`, reason, venue.baseUrl, jobHref);
+        });
       }
 
       gtmEvent.createAgent(result.agentId, llmProvider);

@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import { JobFailedError } from "@covia/covia-sdk";
 import userEvent from "@testing-library/user-event";
 
 jest.mock("@/lib/notify", () => require("@test/notify").notifyMock);
@@ -26,6 +27,7 @@ const mockVenue = {
   baseUrl: "https://venue.example",
   operations: { run: runMock },
   agents: { request: jest.fn().mockResolvedValue({}) },
+  jobs: { get: jest.fn() },
   secrets: { list: jest.fn().mockResolvedValue([]) },
 };
 jest.mock("@/hooks/use-authenticated-venue", () => ({
@@ -55,6 +57,7 @@ describe("PortAgentDialog (Migrate → native)", () => {
     (notifyWarning as jest.Mock).mockClear();
     (notifyError as jest.Mock).mockClear();
     mockVenue.agents.request.mockReset().mockResolvedValue({});
+    mockVenue.jobs.get.mockReset();
   });
 
   it("migrates: stages a pasted SKILL.md and calls agent:from-skills, then routes to chat", async () => {
@@ -85,7 +88,7 @@ describe("PortAgentDialog (Migrate → native)", () => {
       systemPrompt: "You are Acme support. Follow the refund-policy skill.",
       skills: [{ text: expect.stringContaining("name: refund-policy") }],
       // Without caps the venue gives the agent no authority (covia 0.11).
-      config: { caps: "unrestricted" },
+      config: { caps: "unrestricted", acceptTasks: true },
     });
 
     // notifySuccess and router.push fire later in handlePort's async chain
@@ -158,6 +161,32 @@ describe("PortAgentDialog (Migrate → native)", () => {
       ),
     );
     expect(notifyError).not.toHaveBeenCalledWith("Unable to port agent", expect.anything(), expect.anything(), expect.anything());
+  });
+
+  it("reports a first task the venue refuses after accepting the submission", async () => {
+    const refusal = new JobFailedError({
+      id: "0xjob",
+      error: "Agent refund-bot does not take tasks: its config does not set acceptTasks",
+    });
+    mockVenue.agents.request.mockResolvedValue({ id: "0xjob", status: "PENDING", agentId: "refund-bot" });
+    mockVenue.jobs.get.mockResolvedValue({ wait: jest.fn().mockRejectedValue(refusal) });
+    const user = userEvent.setup({ delay: null });
+    renderOpen();
+    await user.type(screen.getByTestId("port-agent-name"), "Refund bot");
+    await user.type(screen.getByTestId("port-agent-prompt"), "You are Acme support.");
+    await user.type(screen.getByTestId("port-agent-first-task"), "Say hello");
+    await user.click(screen.getByTestId("port-agent-submit"));
+
+    await waitFor(() =>
+      expect(notifyError).toHaveBeenCalledWith(
+        "Ported refund-bot, but unable to start its first task",
+        expect.anything(),
+        "https://venue.example",
+        undefined,
+      ),
+    );
+    expect(mockVenue.jobs.get).toHaveBeenCalledWith("0xjob");
+    expect(pushMock).toHaveBeenCalledWith("/agents/chat?agentId=refund-bot");
   });
 
   it("rejects a draft that is not a valid SKILL.md (no frontmatter)", async () => {

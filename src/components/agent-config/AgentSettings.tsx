@@ -279,6 +279,24 @@ export function AgentSettings({ agent, onSave }: AgentSettingsProps) {
               <div className="rounded-md border p-4">
                 <div className="flex items-start gap-3">
                   <Checkbox
+                    id="agent-accept-tasks"
+                    checked={draft.acceptTasks}
+                    onCheckedChange={(checked) =>
+                      setField("acceptTasks", checked === true)
+                    }
+                  />
+                  <div>
+                    <Label htmlFor="agent-accept-tasks">Takes tasks</Label>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Lets you, other agents and workflows send this agent tasks. Without it the
+                      venue refuses every task; chat still works.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-md border p-4">
+                <div className="flex items-start gap-3">
+                  <Checkbox
                     id="agent-inject-memory"
                     checked={hasMemoryContext}
                     disabled={capabilitySaving}

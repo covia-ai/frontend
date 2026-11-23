@@ -218,6 +218,9 @@ export function agentConfigs(addresses: AdaptiveRiskAddresses) {
     operation: "v/ops/llmagent/chat",
     llmOperation: addresses.llmOperation,
     ...(addresses.model ? { model: addresses.model } : {}),
+    // Each beat reaches its agent as a task (agent:request), which a venue
+    // from 0.12 refuses unless the agent's config sets acceptTasks.
+    acceptTasks: true,
   };
   return {
     sentinel: {

@@ -39,11 +39,6 @@ export const COMMON_ABILITIES: { value: string; label: string }[] = [
   { value: "admin/venue/restart", label: "admin/venue/restart — restart the venue" },
   { value: "admin/venue/gc", label: "admin/venue/gc — collect unused venue storage" },
   { value: "admin/sudo", label: "admin/sudo — act with another user's authority" },
-  // Keep existing grants editable during the rollout. Never silently rewrite
-  // or broaden them: the appropriate ability depends on the target venue.
-  { value: "user/create", label: "user/create — register users (before 0.12)" },
-  { value: "user/read", label: "user/read — read user info (before 0.12)" },
-  { value: "adapter/manage", label: "adapter/manage — adapter lifecycle (before 0.12)" },
 ];
 
 export function emptyCap(): AgentCap {

@@ -72,6 +72,9 @@ export function monitorConfig(addresses: EscalationAddresses) {
     tools: ["v/ops/covia/read", "v/ops/covia/list"],
     skills: [addresses.skillsPath],
     defaultTools: false,
+    // Beats reach the monitor as tasks (agent:request), which a venue from
+    // 0.12 refuses unless the agent's config sets acceptTasks.
+    acceptTasks: true,
     // Reads cover this demo's own data and the shadowed skill. The monitor
     // holds no write anywhere except the reviewed-limit record, and no
     // authority to change policy — it watches and escalates.

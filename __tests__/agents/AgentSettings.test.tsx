@@ -222,6 +222,22 @@ describe("AgentSettings — capabilities (caps) editor", () => {
     await waitFor(() => expect(onSave).toHaveBeenCalledWith({ caps: "unrestricted" }, expect.any(Object)));
   });
 
+  // From covia 0.12 an agent refuses tasks unless its config sets
+  // acceptTasks; an agent created before then can be fixed here.
+  it("checking Takes tasks saves acceptTasks: true", async () => {
+    const user = userEvent.setup();
+    const onSave = jest.fn().mockResolvedValue({ status: "saved" });
+    const agent: AgentDetail = { ...baseAgent, config: { caps: "unrestricted" } };
+    render(<AgentSettings agent={agent} onSave={onSave} />);
+    await user.click(screen.getByRole("tab", { name: "Capabilities" }));
+
+    expect(screen.getByLabelText("Takes tasks")).not.toBeChecked();
+    await user.click(screen.getByLabelText("Takes tasks"));
+    await user.click(screen.getByTestId("save-agent-settings"));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith({ acceptTasks: true }, expect.any(Object)));
+  });
+
   it("shows an unrestricted agent as unrestricted and keeps it so on an unrelated save", async () => {
     const user = userEvent.setup();
     const onSave = jest.fn().mockResolvedValue({ status: "saved" });
