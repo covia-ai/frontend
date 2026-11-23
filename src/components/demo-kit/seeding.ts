@@ -7,7 +7,7 @@ import type { Venue } from "@covia/covia-sdk";
 //   - a failure stops the run and reports the venue's own words, verbatim
 //   - re-running is a no-op, not a duplicate
 
-export type SeedItemStatus = "created" | "existing" | "removed" | "failed";
+export type SeedItemStatus = "created" | "existing" | "updated" | "removed" | "failed";
 
 export type SeedItemResult = {
   kind: "value" | "operation" | "policy-asset" | "agent";
@@ -47,6 +47,25 @@ export async function agentExists(venue: Venue, agentId: string): Promise<boolea
   } catch {
     return false;
   }
+}
+
+/** The config of the agent at `agentId`, or null when there is none. */
+async function existingAgentConfig(
+  venue: Venue,
+  agentId: string,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const info = await venue.agents.info(agentId);
+    if (!info || info.error) return null;
+    const config = (info as { config?: unknown }).config;
+    return config && typeof config === "object" ? (config as Record<string, unknown>) : {};
+  } catch {
+    return null;
+  }
+}
+
+function wantsTasks(config: unknown): boolean {
+  return !!config && typeof config === "object" && (config as { acceptTasks?: unknown }).acceptTasks === true;
 }
 
 /**
@@ -90,7 +109,12 @@ export class SeedRun {
     }
   }
 
-  /** Creates an agent unless one already occupies the id. */
+  /**
+   * Creates an agent unless one already occupies the id. An existing agent is
+   * left as it is, except that one seeded before covia 0.12 gains the
+   * acceptTasks its config now asks for: without it the venue refuses every
+   * beat sent to it as a task.
+   */
   async ensureAgent(
     venue: Venue,
     agentId: string,
@@ -103,8 +127,14 @@ export class SeedRun {
       address: `g/${agentId}`,
     };
     try {
-      if (await agentExists(venue, agentId)) {
-        this.record({ ...item, status: "existing" });
+      const existing = await existingAgentConfig(venue, agentId);
+      if (existing) {
+        if (wantsTasks(config) && existing.acceptTasks !== true) {
+          await venue.agents.update({ agentId, config: { acceptTasks: true } });
+          this.record({ ...item, status: "updated" });
+        } else {
+          this.record({ ...item, status: "existing" });
+        }
       } else {
         await venue.agents.create({ agentId, config } as never);
         this.record({ ...item, status: "created" });

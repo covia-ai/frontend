@@ -27,6 +27,7 @@ export type AgentSettingsDraft = {
   caps: AgentCap[];
   contextJson: string;
   defaultTools: boolean;
+  acceptTasks: boolean;
   advancedJson: string;
 };
 
@@ -55,6 +56,7 @@ const MANAGED_FIELDS = new Set([
   "caps",
   "context",
   "defaultTools",
+  "acceptTasks",
 ]);
 
 function prettyJson(value: unknown): string {
@@ -86,6 +88,7 @@ export function createAgentSettingsDraft(
     caps: capsListOf(config.caps),
     contextJson: prettyJson(config.context),
     defaultTools: config.defaultTools === true,
+    acceptTasks: config.acceptTasks === true,
     advancedJson: prettyJson(advanced) || "{}",
   };
 }
@@ -159,6 +162,9 @@ export function configFromAgentSettingsDraft(
 
   if (draft.defaultTools || Object.hasOwn(originalConfig, "defaultTools")) {
     config.defaultTools = draft.defaultTools;
+  }
+  if (draft.acceptTasks || Object.hasOwn(originalConfig, "acceptTasks")) {
+    config.acceptTasks = draft.acceptTasks;
   }
   return { config, error: null };
 }

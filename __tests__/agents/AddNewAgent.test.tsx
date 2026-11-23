@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { WorkspaceReadResult } from '@covia/covia-sdk';
+import { JobFailedError, type WorkspaceReadResult } from '@covia/covia-sdk';
 
 jest.mock('@/lib/notify', () => ({
   notifySuccess: jest.fn(),
@@ -54,6 +54,9 @@ const mockVenue = {
     create: jest.fn().mockResolvedValue({ agentId: 'test-agent', status: 'active' }),
     request: jest.fn().mockResolvedValue({}),
   },
+  jobs: {
+    get: jest.fn(),
+  },
   secrets: {
     // ANTHROPIC_API_KEY present so the default provider (anthropic) is
     // ready and the Create button isn't disabled by the key-readiness gate.
@@ -74,7 +77,7 @@ jest.mock('@/hooks/use-authenticated-venue', () => ({
 
 import { AddNewAgent } from '@/components/AddNewAgent';
 import { providerSeedForOperation } from '@/lib/agent-config';
-import { notifySuccess, notifyWarning } from '@/lib/notify';
+import { notifyError, notifySuccess, notifyWarning } from '@/lib/notify';
 
 // One input event instead of one per character. Every keystroke re-renders the
 // whole dialog, which under coverage pushed the longest-typing tests past the
@@ -266,8 +269,48 @@ describe('AddNewAgent', () => {
       {
         llmOperation: 'v/ops/langchain/anthropic',
         systemPrompt: 'Final instructions',
+        acceptTasks: true,
       },
     ]);
+  });
+
+  it('keeps an acceptTasks the initial config states itself', async () => {
+    const user = userEvent.setup({ delay: null });
+    render(
+      <AddNewAgent
+        initialAgentName="no tasks"
+        initialConfig={{ operation: 'v/ops/llmagent/chat', acceptTasks: false }}
+      />,
+    );
+    await user.click(screen.getByTestId('create-agent-trigger'));
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() => expect(mockVenue.agents.create).toHaveBeenCalled());
+    expect(mockVenue.agents.create.mock.calls[0][0].config.acceptTasks).toBe(false);
+  });
+
+  it('reports a first task the venue refuses after submission', async () => {
+    const refusal = new JobFailedError({
+      id: '0xjob',
+      error: 'Agent test-agent does not take tasks: its config does not set acceptTasks',
+    });
+    mockVenue.agents.request.mockResolvedValueOnce({ id: '0xjob', status: 'PENDING', agentId: 'test-agent' });
+    mockVenue.jobs.get.mockResolvedValueOnce({ wait: jest.fn().mockRejectedValue(refusal) });
+    const user = await renderAndOpenDialog();
+    await fill(user, screen.getByPlaceholderText('e.g., Customer Support Agent'), 'test agent');
+    await fill(user, screen.getByPlaceholderText('e.g., Greet the user and ask how you can help'), 'Say hello');
+    await user.click(screen.getByTestId('create-agent'));
+
+    await waitFor(() =>
+      expect(notifyError).toHaveBeenCalledWith(
+        'Created test-agent, but its first task failed',
+        refusal,
+        'https://venue.example',
+        undefined,
+      ),
+    );
+    expect(mockVenue.jobs.get).toHaveBeenCalledWith('0xjob');
+    expect(pushMock).toHaveBeenCalled();
   });
 
   it('passes a custom-typed model into the agent config', async () => {
@@ -337,6 +380,7 @@ describe('AddNewAgent', () => {
               llmOperation: 'v/ops/langchain/anthropic',
               systemPrompt: 'Help customers clearly.',
               caps: 'unrestricted',
+              acceptTasks: true,
             },
           },
         },

@@ -108,3 +108,27 @@ describe("agent settings caps (covia 0.11)", () => {
     expect(configFromAgentSettingsDraft(draft, {}).config).not.toHaveProperty("caps");
   });
 });
+
+describe("agent settings acceptTasks (covia 0.12)", () => {
+  it("turns acceptTasks on for an agent created before 0.12 with a one-field patch", () => {
+    const original = { operation: "v/ops/llmagent/chat", caps: "unrestricted" };
+    const draft = createAgentSettingsDraft(original);
+    expect(draft.acceptTasks).toBe(false);
+    const next = configFromAgentSettingsDraft({ ...draft, acceptTasks: true }, original).config ?? {};
+    expect(agentConfigUpdatePatch(original, next)).toEqual({ acceptTasks: true });
+  });
+
+  it("keeps acceptTasks out of the additional JSON and leaves an unset one unset", () => {
+    const draft = createAgentSettingsDraft({ acceptTasks: true, custom: 1 });
+    expect(draft.acceptTasks).toBe(true);
+    expect(JSON.parse(draft.advancedJson)).toEqual({ custom: 1 });
+    expect(configFromAgentSettingsDraft(createAgentSettingsDraft({}), {}).config).not.toHaveProperty("acceptTasks");
+  });
+
+  it("writes false, not null, when acceptTasks is turned off", () => {
+    const original = { acceptTasks: true };
+    const draft = { ...createAgentSettingsDraft(original), acceptTasks: false };
+    expect(agentConfigUpdatePatch(original, configFromAgentSettingsDraft(draft, original).config ?? {}))
+      .toEqual({ acceptTasks: false });
+  });
+});

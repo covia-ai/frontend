@@ -36,6 +36,7 @@ import { isReservedAgentId, slugifyAgentId } from "@/lib/agent-id";
 import { agentChatPath } from "@/lib/routes";
 import { useSecretNames } from "@/hooks/use-secret-names";
 import { UNRESTRICTED_CAPS } from "@/lib/agent-caps";
+import { ACCEPT_TASKS, watchSubmittedTask } from "@/lib/agent-tasks";
 import {
   AgentRuntimeFields,
   CUSTOM_PROVIDER_OPTION,
@@ -252,8 +253,9 @@ function PortAgentForm({ initialName, initialSystemPrompt, onClose }: PortAgentF
         ...(resolvedModel && { model: resolvedModel }),
         // The venue gives an agent created without caps no authority (covia
         // 0.11); a ported agent acts with its creator's whole authority, as
-        // the create form's default does.
-        config: { caps: UNRESTRICTED_CAPS },
+        // the create form's default does. from-skills adds nothing to this
+        // config, and from 0.12 an agent without acceptTasks refuses tasks.
+        config: { caps: UNRESTRICTED_CAPS, ...ACCEPT_TASKS },
       });
       const createdId = result?.agentId ?? resolvedAgentId;
       const importedCount = result?.importedSkills?.length ?? portSkills.length;
@@ -261,14 +263,19 @@ function PortAgentForm({ initialName, initialSystemPrompt, onClose }: PortAgentF
       // The first task runs on its own, not awaited: the port has already
       // succeeded, so a slow or failing task must not hold the dialog open or
       // turn into a port error. With wait=false the SDK (1.26+, covia-sdk#112)
-      // resolves once the task is submitted, so this only reports a task that
-      // could not be started (e.g. refused); how it runs shows in the chat.
+      // resolves once the task is submitted, with a PENDING snapshot even for
+      // a task the venue then refuses, so the job is checked separately for
+      // that; how an accepted task runs shows in the chat.
       const task = firstTask.trim();
       if (task) {
-        void venue.agents.request(createdId, { task }, false).catch((err) => {
+        const reportFailure = (err: unknown) => {
           const { reason, jobHref } = jobFailure(err, venue.venueId);
           notifyError(`Ported ${createdId}, but unable to start its first task`, reason, venue.baseUrl, jobHref);
-        });
+        };
+        void venue.agents
+          .request(createdId, { task }, false)
+          .then((submitted) => watchSubmittedTask(venue, submitted.id, reportFailure))
+          .catch(reportFailure);
       }
 
       gtmEvent.createAgent(createdId, "from-skills");
