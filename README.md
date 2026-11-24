@@ -20,9 +20,11 @@ pnpm dev
 
 The app runs at <http://localhost:3000>.
 
-Set `NEXT_PUBLIC_IS_ENV_PROD=false` to include development and local venues in
-the default venue list. Production mode connects only to the released Covia
-venues.
+Production mode (the default, app.covia.ai) connects only to the stable
+venues venue-1 and venue-2, which run released builds. Set
+`NEXT_PUBLIC_IS_ENV_PROD=false` (preview.covia.ai and local development) to
+connect to the dev venue venue-test, the QA venues venue-3 and venue-4, and a
+local venue at `http://127.0.0.1:8080` instead.
 
 ## Analytics
 

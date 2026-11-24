@@ -39,25 +39,31 @@ export function toVenueDescriptor(venue: VenueLike): VenueDescriptor {
   };
 }
 
-// Venues offered in every environment. venue-test leads because the first
-// reachable venue becomes a new user's default, and it is the one that admits
-// a new device key on first sign-in (`userAutoCreate`); venue-1 and venue-2,
-// the stable builds, serve signed-out reads but don't register new accounts.
-const commonVenueUrls = [
-  "https://venue-test.covia.ai",
+// Each venue tier belongs to one app (covia BUILD.md "Development and QA"):
+// production (app.covia.ai) offers only the stable venues, which run released
+// builds; preview (preview.covia.ai) and local development offer the dev venue
+// venue-test (develop builds), the QA venues and a local venue. venue-test
+// leads there because the first reachable venue becomes a new user's default,
+// and it admits a new device key on first sign-in (`userAutoCreate`).
+const productionVenueUrls = [
   "https://venue-1.covia.ai",
   "https://venue-2.covia.ai",
 ];
 
-// Dev venues (running latest) plus the local venue — only outside production.
-const devVenueUrls = [
+const previewVenueUrls = [
+  "https://venue-test.covia.ai",
   "https://venue-3.covia.ai",
   "https://venue-4.covia.ai",
   "http://127.0.0.1:8080",
 ];
 
+/** The venues the app connects to by default: production or preview/local. */
+export function defaultVenueUrlsFor(isProd: boolean): readonly string[] {
+  return isProd ? productionVenueUrls : previewVenueUrls;
+}
+
 const isProd = process.env.NEXT_PUBLIC_IS_ENV_PROD !== "false";
-const defaultVenueUrls = isProd ? commonVenueUrls : [...commonVenueUrls, ...devVenueUrls];
+const defaultVenueUrls = defaultVenueUrlsFor(isProd);
 
 async function connectToDefaultVenues(): Promise<Venue[]> {
   const venues = await Promise.allSettled(
