@@ -74,7 +74,7 @@ exist to demonstrate.
    `venue/docs/CONFIG.md`.
 
 2. **Point the app at it.** `NEXT_PUBLIC_IS_ENV_PROD=false` in
-   `frontend/.env.local` adds `http://127.0.0.1:8080` to the venue list, then
+   `frontend/.env.local` puts `http://127.0.0.1:8080` in the venue list, then
    pick it in the top-right venue selector.
 
 3. **Sign in.** Seeding writes into *your* namespace and the Inbox beat needs
