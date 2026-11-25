@@ -6,7 +6,8 @@ covers what only a real browser shows: routing, hydration, the SDK's real
 requests, and whole user flows.
 
 ```bash
-pnpm test:e2e                 # headless; reuses a running `pnpm dev` on :3000
+pnpm test:e2e                 # mocked venue, headless; reuses a running `pnpm dev` on :3000
+pnpm test:e2e:venue           # against a real local venue (below)
 pnpm test:e2e:ui              # interactive runner: watch, time-travel, pick locators
 pnpm test:e2e -g "catalog"    # tests whose title matches
 pnpm exec playwright show-trace test-results/<test>/trace.zip   # after a CI retry
@@ -50,6 +51,50 @@ requests that are truly irrelevant to the test.
 
 Every other origin (the hosted venues, analytics) is refused as unreachable,
 so tests never touch the network.
+
+## Tests against a real venue (`e2e/venue/`)
+
+A second set runs the full stack with nothing mocked: sign-in admitted by the
+venue, jobs the venue really ran, failures it really reported. Start a venue
+first, from the covia repo, then run them:
+
+```bash
+java -jar venue/target/covia.jar local-dev.json   # in ../covia
+pnpm test:e2e:venue
+```
+
+The venue must be at `http://127.0.0.1:8080` (the local venue dev builds
+list), with `users.autoCreate` on, as `local-dev.json` sets. Every other origin
+is blocked, so the app can't fall back to a hosted venue. Without a venue
+these tests are skipped, and `pnpm test:e2e:venue` fails instead, naming the
+command to start one. They don't run in CI.
+
+Import from `./fixtures/real-venue`. Each test gets a fresh device key, so it
+runs as a new user: jobs are per user, so tests can't see each other's and run
+in parallel against one venue.
+
+```ts
+import { expect, jobIds, test } from "../fixtures/real-venue";
+
+test("echo runs on the venue", async ({ page, signIn, user }) => {
+  await signIn();                         // open the app as `user`
+  await page.goto("/operation/v/test/ops/echo");
+  // …drive the UI…
+  const [id] = await jobIds(user);        // then check the venue itself
+  expect((await user.api.jobs.get(id)).metadata.status).toBe("COMPLETE");
+});
+```
+
+| Fixture | Is |
+|---|---|
+| `venueStatus` | The venue's `GET /api/v1/status` (name, DID, version) |
+| `user` | A new user: `keyHex`, `did`, and `api`, an SDK `Venue` signed in as them |
+| `signIn()` | Open the app already signed in as `user` (call before `goto`) |
+| `jobIds(user)` | The user's job ids on the venue |
+
+Read what the venue has (`user.api.workspace.read("v/test/ops")`) rather than
+hard-coding it, and prefer the venue's `v/test/ops/*` operations (`echo`,
+`error`, `delay`, …): they exist for testing and touch nothing outside the venue.
 
 ## Conventions
 

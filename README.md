@@ -75,18 +75,20 @@ pnpm build
 ### End-to-end tests (Playwright)
 
 Browser tests in `e2e/` run the app in Chromium against a mocked venue, so no
-Java venue is needed. They reuse a running `pnpm dev` on port 3000, or start
-one.
+Java venue is needed. A second set in `e2e/venue/` runs against a real local
+venue (`java -jar venue/target/covia.jar local-dev.json` in the covia repo).
+Both reuse a running `pnpm dev` on port 3000, or start one.
 
 ```bash
 pnpm exec playwright install chromium   # once, after pnpm install
-pnpm test:e2e                           # run all, headless
+pnpm test:e2e                           # run all, headless, mocked venue
+pnpm test:e2e:venue                     # against a real venue on :8080 (start it first)
 pnpm test:e2e:ui                        # interactive runner
 pnpm test:e2e --headed -g "catalog"     # watch matching tests in a visible browser
 pnpm exec playwright show-report        # HTML report of the last run
 ```
 
-How to write tests with the mock venue fixture: [e2e/README.md](e2e/README.md).
+How to write both kinds of test: [e2e/README.md](e2e/README.md).
 
 Reads used for rendering and polling must remain job-free. Use the SDK read
 surfaces (`workspace`, assets, jobs, status), native `/mcp`, or `/.well-known`

@@ -13,7 +13,8 @@
     "test": "jest --coverage=false",
     "test:coverage": "jest --coverage",
     "jest:clear": "jest --clearCache",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --project=mocked",
+    "test:e2e:venue": "E2E_REQUIRE_VENUE=1 playwright test --project=venue",
     "test:e2e:ui": "playwright test --ui",
     "mock:a2a": "node scripts/mock-a2a-agent.mjs"
   },

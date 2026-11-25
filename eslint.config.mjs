@@ -9,6 +9,10 @@ const eslintConfig = defineConfig([
     ".next/**",
     "build/**",
     "coverage/**",
+    // Playwright output: generated, bundled report and trace assets.
+    "playwright-report/**",
+    "test-results/**",
+    "blob-report/**",
     "node_modules/**",
     "out/**",
     "next-env.d.ts",

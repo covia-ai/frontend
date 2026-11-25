@@ -1,6 +1,6 @@
 import { test as base, expect, type Page, type Request, type Route } from "@playwright/test";
 import { Ed25519Auth } from "@covia/covia-sdk";
-import { CONSENT_KEY, PRIVACY_POLICY_VERSION } from "@/lib/consent";
+import { seedConsent } from "./browser";
 
 /**
  * A fake Covia venue served through Playwright request interception, so E2E
@@ -78,7 +78,7 @@ function isReply(value: unknown): value is Reply {
   return typeof value === "object" && value !== null && REPLY in value;
 }
 
-/** `GET /api/v1/status`, as covia's CoviaAPI.getStatus returns it. */
+/** `GET /api/v1/status`, as covia's CoviaAPI.getStatus returns it (checked against 0.10.1). */
 export function statusBody(overrides: Record<string, Json> = {}) {
   return {
     status: "OK",
@@ -86,7 +86,8 @@ export function statusBody(overrides: Record<string, Json> = {}) {
     name: "Mock Venue",
     version: "0.10.0",
     url: MOCK_VENUE_URL,
-    ts: new Date(0).toISOString(),
+    ts: 0, // epoch milliseconds, as the venue sends it
+    ucanProfile: "0.10.0",
     stats: { assets: 0, users: 1, ops: 0, jobs: 0, userJobs: 0 },
     access: { public: true, userAutoCreate: true, publicCaps: "read-only" },
     ...overrides,
@@ -111,7 +112,11 @@ export function operationMeta(
   };
 }
 
-/** A job record, as `GET /api/v1/jobs/{id}` returns it (SDK `JobMetadata`). */
+/**
+ * A job record, as `GET /api/v1/jobs/{id}` returns it (SDK `JobMetadata`;
+ * shape checked against a 0.10.1 venue). `id` is "0x" + 32 hex digits; the
+ * job list carries the same id without the prefix.
+ */
 export type JobRecord = {
   id: string;
   status: "PENDING" | "STARTED" | "COMPLETE" | "FAILED" | "CANCELLED" | string;
@@ -119,8 +124,9 @@ export type JobRecord = {
   input: Json;
   output?: Json;
   error?: string;
-  created: string;
-  updated: string;
+  /** Epoch milliseconds. */
+  created: number;
+  updated: number;
 };
 
 export type RecordedRequest = { method: string; path: string; search: string; body: Json };
@@ -232,7 +238,11 @@ async function installMockVenue(page: Page, appOrigin: string): Promise<MockVenu
 
   venue.on("GET", "/api/v1/status", () => statusBody());
   venue.on("GET", "/api/v1/assets", () => ({ items: [], total: 0, offset: 0, limit: 100 }));
-  venue.on("GET", "/api/v1/jobs", () => ({ items: [...jobs.keys()], total: jobs.size, offset: 0, limit: 100 }));
+  // The caller's job ids, bare hex (no 0x), in the venue's page envelope.
+  venue.on("GET", "/api/v1/jobs", () => {
+    const items = [...jobs.keys()].map((id) => id.replace(/^0x/, ""));
+    return { items, total: items.length, offset: 0, limit: items.length };
+  });
   venue.on("GET", "/api/v1/secrets", () => ({ items: [] }));
   // No OAuth providers configured: a venue then serves no /login page.
   venue.on("GET", "/login", () => problem(404, "Not Found"));
@@ -262,15 +272,16 @@ async function installMockVenue(page: Page, appOrigin: string): Promise<MockVenu
   // Jobs: invoke stores a record; the record is readable and streamable.
   venue.on("POST", "/api/v1/invoke", (req) => {
     const { operation, input } = req.postDataJSON() as { operation: string; input: Json };
-    const now = new Date().toISOString();
-    const id = (jobs.size + 1).toString(16).padStart(64, "0");
+    const now = Date.now();
+    const id = "0x" + (jobs.size + 1).toString(16).padStart(32, "0");
     const job: JobRecord = { id, op: operation, input, created: now, updated: now, status: "COMPLETE", ...finish(operation, input) };
     jobs.set(id, job);
     return job;
   });
-  const jobFor = (url: URL) => jobs.get(url.pathname.split("/")[4] ?? "");
-  venue.on("GET", /^\/api\/v1\/jobs\/[0-9a-f]+$/, (_req, url) => jobFor(url) ?? problem(404, "Job not found"));
-  venue.on("GET", /^\/api\/v1\/jobs\/[0-9a-f]+\/sse$/, (_req, url) => {
+  // Accepts the id with or without its 0x prefix, as the venue does.
+  const jobFor = (url: URL) => jobs.get("0x" + (url.pathname.split("/")[4] ?? "").replace(/^0x/, ""));
+  venue.on("GET", /^\/api\/v1\/jobs\/(0x)?[0-9a-f]+$/, (_req, url) => jobFor(url) ?? problem(404, "Job not found"));
+  venue.on("GET", /^\/api\/v1\/jobs\/(0x)?[0-9a-f]+\/sse$/, (_req, url) => {
     const job = jobFor(url);
     return job ? sse(job) : problem(404, "Job not found");
   });
@@ -332,20 +343,7 @@ export const test = base.extend<{ venue: MockVenue }>({
   // The fixture callback is named `provide`, not Playwright's usual `use`, so
   // the React Hooks lint rule doesn't mistake it for React's use().
   venue: async ({ page, baseURL }, provide) => {
-    // An essential-only consent decision, so the cookie banner never covers
-    // what a test clicks and analytics stays off.
-    await page.addInitScript(
-      ({ key, version }) =>
-        localStorage.setItem(
-          key,
-          JSON.stringify({
-            categories: { essential: true, analytics: false, marketing: false },
-            version,
-            givenAt: new Date(0).toISOString(),
-          }),
-        ),
-      { key: CONSENT_KEY, version: PRIVACY_POLICY_VERSION },
-    );
+    await seedConsent(page);
     const venue = await installMockVenue(page, new URL(baseURL!).origin);
     await provide(venue);
     expect(venue.unhandled, "venue requests the mock has no handler for").toEqual([]);
