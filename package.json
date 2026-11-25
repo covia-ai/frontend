@@ -13,6 +13,8 @@
     "test": "jest --coverage=false",
     "test:coverage": "jest --coverage",
     "jest:clear": "jest --clearCache",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "mock:a2a": "node scripts/mock-a2a-agent.mjs"
   },
   "dependencies": {
@@ -96,6 +98,7 @@
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^16.4.6",
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/postcss": "^4.3.5",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",

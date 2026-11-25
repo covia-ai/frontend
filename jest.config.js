@@ -67,6 +67,9 @@ module.exports = async (...args) => {
     // Jest's default testMatch would otherwise run each one and fail it for
     // containing no tests.
     "<rootDir>/__tests__/support/",
+    // Playwright specs (e2e/*.spec.ts) match Jest's default testMatch too;
+    // they run under `pnpm test:e2e`, not here.
+    "<rootDir>/e2e/",
     worktrees,
   ];
   // Not redundant with the above: haste still maps every worktree's files, so
