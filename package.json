@@ -39,7 +39,7 @@
     "@radix-ui/react-tooltip": "^1.4.1",
     "@shikijs/langs": "^4.6.0",
     "@shikijs/themes": "^4.6.0",
-    "@xyflow/react": "^12.12.1",
+    "@xyflow/react": "^13.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
