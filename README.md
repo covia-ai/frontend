@@ -72,6 +72,22 @@ pnpm test:coverage
 pnpm build
 ```
 
+### End-to-end tests (Playwright)
+
+Browser tests in `e2e/` run the app in Chromium against a mocked venue, so no
+Java venue is needed. They reuse a running `pnpm dev` on port 3000, or start
+one.
+
+```bash
+pnpm exec playwright install chromium   # once, after pnpm install
+pnpm test:e2e                           # run all, headless
+pnpm test:e2e:ui                        # interactive runner
+pnpm test:e2e --headed -g "catalog"     # watch matching tests in a visible browser
+pnpm exec playwright show-report        # HTML report of the last run
+```
+
+How to write tests with the mock venue fixture: [e2e/README.md](e2e/README.md).
+
 Reads used for rendering and polling must remain job-free. Use the SDK read
 surfaces (`workspace`, assets, jobs, status), native `/mcp`, or `/.well-known`
 endpoints. Reserve operation invocation for explicit user actions.

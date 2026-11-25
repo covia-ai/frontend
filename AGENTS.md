@@ -20,6 +20,7 @@ pnpm typecheck        # tsc --noEmit; covers __tests__/, which build does not
 pnpm build            # also type-checks the app graph
 pnpm test             # Jest without coverage
 pnpm test:coverage    # what CI runs; coverage is reported, never gated
+pnpm test:e2e         # Playwright, against a mocked venue (e2e/README.md)
 ```
 
 Never run `pnpm build` while `pnpm dev` is running: both write `.next/` and the
@@ -89,6 +90,10 @@ Assert behaviour and rendered data, not microcopy; give structural markers a
 `data-testid`. Coverage instrumentation slows UI-heavy suites, so a test near
 2 s locally can hit the 5 s timeout in CI: prefer `user.paste` to `user.type`
 for long strings and `userEvent.setup({ delay: null })`.
+
+Browser flows go in `e2e/` (Playwright) using the mock venue fixture in
+`e2e/fixtures/mock-venue.ts`; a venue request it has no handler for fails the
+test. See `e2e/README.md`.
 
 ## Git workflow
 
