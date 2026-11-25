@@ -21,6 +21,7 @@ pnpm build            # also type-checks the app graph
 pnpm test             # Jest without coverage
 pnpm test:coverage    # what CI runs; coverage is reported, never gated
 pnpm test:e2e         # Playwright, against a mocked venue (e2e/README.md)
+pnpm test:e2e:venue   # Playwright, against a real venue on :8080 (start it first)
 ```
 
 Never run `pnpm build` while `pnpm dev` is running: both write `.next/` and the
@@ -93,7 +94,8 @@ for long strings and `userEvent.setup({ delay: null })`.
 
 Browser flows go in `e2e/` (Playwright) using the mock venue fixture in
 `e2e/fixtures/mock-venue.ts`; a venue request it has no handler for fails the
-test. See `e2e/README.md`.
+test. Flows that need the real stack go in `e2e/venue/` with
+`e2e/fixtures/real-venue.ts`. See `e2e/README.md`.
 
 ## Git workflow
 
